@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <!-- Background Icon Tile -->
+  <rect width="64" height="64" rx="14" fill="#1e293b"/>
+
+  <!-- Main Dark Olive Hull & Turret Group -->
+  <g fill="#4d7c0f">
+    <!-- Main Turret Box -->
+    <rect x="22" y="24" width="20" height="11" rx="3"/>
+    
+    <!-- Commander Hatch / Cupola -->
+    <path d="M28 21h8a1 1 0 0 1 1 1v2h-10v-2a1 1 0 0 1 1-1z"/>
+
+    <!-- Main Body / Sloped Hull -->
+    <path d="M10 41l6-11h32l6 11H10z"/>
+  </g>
+
+  <!-- Tank Barrel (Gun) -->
+  <!-- Extended forward (right) with a reinforced muzzle brake -->
+  <path d="M41 27h16v4H41z" fill="#365314"/>
+  <rect x="54" y="26" width="4" height="6" rx="1" fill="#1a2e05"/>
+
+  <!-- Treads & Wheels Assembly -->
+  <g>
+    <!-- Tread Belt Housing (Dark Base) -->
+    <rect x="8" y="39" width="48" height="15" rx="7.5" fill="#0f172a"/>
+    <rect x="8" y="39" width="48" height="15" rx="7.5" fill="none" stroke="#334155" stroke-width="2"/>
+
+    <!-- Road Wheels -->
+    <circle cx="16" cy="46.5" r="4.5" fill="#475569"/>
+    <circle cx="16" cy="46.5" r="2" fill="#0f172a"/>
+
+    <circle cx="26" cy="46.5" r="4.5" fill="#475569"/>
+    <circle cx="26" cy="46.5" r="2" fill="#0f172a"/>
+
+    <circle cx="36" cy="46.5" r="4.5" fill="#475569"/>
+    <circle cx="36" cy="46.5" r="2" fill="#0f172a"/>
+
+    <circle cx="46" cy="46.5" r="4.5" fill="#475569"/>
+    <circle cx="46" cy="46.5" r="2" fill="#0f172a"/>
+  </g>
+
+  <!-- Stylized Highlight on Hull -->
+  <path d="M18 32h28l2 4H16l2-4z" fill="#65a30d" opacity="0.4"/>
+</svg>

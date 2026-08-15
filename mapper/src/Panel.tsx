@@ -1,4 +1,9 @@
-import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
+import type {
+  ChangeEvent,
+  CSSProperties,
+  Dispatch,
+  SetStateAction,
+} from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import { Button, Form, Table } from 'react-bootstrap';
 import { decodeBase85, encodeBase85 } from './base85';
@@ -265,7 +270,7 @@ function Panel({
 
   return (
     <div
-      className="position-absolute top-0 end-0 h-100 bg-light bg-opacity-75 border-start p-3 d-flex flex-column"
+      className="position-absolute top-0 end-0 h-100 bg-body bg-opacity-75 border-start p-3 d-flex flex-column"
       style={{ width: 280 }}
     >
       <div className="d-flex justify-content-end mb-3">
@@ -330,7 +335,6 @@ function Panel({
           <thead>
             <tr>
               <th>#</th>
-              <th>Color</th>
               <th>Size</th>
               <th>Bonus</th>
               <th></th>
@@ -338,9 +342,13 @@ function Panel({
           </thead>
           <tbody>
             {Array.from({ length: continentCount }, (_, i) => (
-              <tr key={i}>
+              <tr
+                key={i}
+                style={
+                  { '--bs-table-bg': continentColor(i) } as CSSProperties
+                }
+              >
                 <td>{i + 1}</td>
-                <td style={{ backgroundColor: continentColor(i) }}></td>
                 <td>{territories.filter((t) => t.continentId === i).length}</td>
                 <td>
                   <Form.Control
@@ -366,7 +374,7 @@ function Panel({
               </tr>
             ))}
             <tr>
-              <td colSpan={5} className="text-center">
+              <td colSpan={4} className="text-center">
                 <Button
                   variant="success"
                   size="sm"

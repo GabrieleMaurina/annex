@@ -9,7 +9,7 @@ export function createDefaultImage(): string {
   canvas.width = DEFAULT_IMAGE_WIDTH;
   canvas.height = DEFAULT_IMAGE_HEIGHT;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#212529';
   ctx.fillRect(0, 0, DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT);
   cachedDefaultImage = canvas.toDataURL('image/png');
   return cachedDefaultImage;

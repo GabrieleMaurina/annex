@@ -13,7 +13,7 @@ function writeCookie(name: string, value: string) {
 }
 
 function randomName(): string {
-  return `Player${Math.floor(Math.random() * 1000) + 1}`;
+  return `Player${Math.floor(Math.random() * 9000) + 1000}`;
 }
 
 export function getPlayer(): Player {

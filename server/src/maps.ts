@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { Socket } from 'socket.io';
 import { GameMap } from './types';
 
 const mapsDir = path.resolve(__dirname, '..', '..', 'client', 'public', 'maps');
@@ -16,8 +17,14 @@ for (const file of fs.readdirSync(mapsDir)) {
   });
 }
 
-export const defaultMapName = [...maps.keys()][0];
+export const defaultMapName = maps.has('World') ? 'World' : [...maps.keys()][0];
 
 export function listMapNames(): string[] {
   return [...maps.keys()];
+}
+
+export function registerMapsHandlers(socket: Socket) {
+  socket.on('maps:list', (callback: (names: string[]) => void) => {
+    callback(listMapNames());
+  });
 }

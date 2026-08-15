@@ -1,13 +1,6 @@
 import { useEffect, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Col,
-  Container,
-  Form,
-  Row,
-  Table,
-} from 'react-bootstrap';
+import { Alert, Button, Container, Table } from 'react-bootstrap';
+import PlayerNameEditor from './PlayerNameEditor';
 import { socket } from './socket';
 import type { Ack, GameSummary, Player } from './types';
 
@@ -26,7 +19,6 @@ function Home({
   kickedMessage,
   clearKickedMessage,
 }: Props) {
-  const [name, setName] = useState(player.name);
   const [games, setGames] = useState<GameSummary[]>([]);
   const [error, setError] = useState('');
 
@@ -39,15 +31,6 @@ function Home({
       socket.off('home:games', onGames);
     };
   }, []);
-
-  function commitName() {
-    const trimmed = name.trim();
-    if (trimmed && trimmed !== player.name) {
-      onNameChange(trimmed);
-    } else {
-      setName(player.name);
-    }
-  }
 
   function createGame() {
     socket.emit('game:create', (res: Ack) => {
@@ -64,8 +47,14 @@ function Home({
   }
 
   return (
-    <Container className="py-5">
-      <h1 className="mb-4">Annex</h1>
+    <Container fluid className="py-5 px-4 position-relative">
+      <PlayerNameEditor player={player} onNameChange={onNameChange} />
+
+      <div className="d-flex justify-content-center align-items-center gap-5 mb-4">
+        <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
+        <h1 className="mb-0">Annex</h1>
+        <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
+      </div>
 
       {kickedMessage && (
         <Alert variant="warning" dismissible onClose={clearKickedMessage}>
@@ -78,19 +67,6 @@ function Home({
         </Alert>
       )}
 
-      <Row className="mb-4">
-        <Col md={4}>
-          <Form.Group>
-            <Form.Label>Player Name</Form.Label>
-            <Form.Control
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={commitName}
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-
       <Button className="mb-4" onClick={createGame}>
         Create Game
       </Button>
@@ -101,28 +77,26 @@ function Home({
             <th>Name</th>
             <th>Map</th>
             <th>Players</th>
-            <th></th>
           </tr>
         </thead>
         <tbody>
-          {games.map((g) => (
-            <tr key={g.name}>
-              <td>{g.name}</td>
-              <td>{g.mapName}</td>
-              <td>
-                {g.playerCount}/{g.slots}
-              </td>
-              <td>
-                <Button
-                  size="sm"
-                  disabled={g.playerCount >= g.slots}
-                  onClick={() => joinGame(g.name)}
-                >
-                  Join
-                </Button>
-              </td>
-            </tr>
-          ))}
+          {games.map((g) => {
+            const full = g.playerCount >= g.slots;
+            return (
+              <tr
+                key={g.name}
+                onClick={() => !full && joinGame(g.name)}
+                className={full ? 'text-muted' : undefined}
+                style={{ cursor: full ? 'not-allowed' : 'pointer' }}
+              >
+                <td>{g.name}</td>
+                <td>{g.mapName}</td>
+                <td>
+                  {g.playerCount}/{g.slots}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </Table>
     </Container>

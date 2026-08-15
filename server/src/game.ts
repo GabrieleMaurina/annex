@@ -1,14 +1,37 @@
 import { Server, Socket } from 'socket.io';
 import { defaultMapName, maps } from './maps';
-import { Game, HOME_ROOM, Player } from './types';
+import {
+  CardsMode,
+  DiceRandomness,
+  Game,
+  GameMode,
+  HOME_ROOM,
+  Player,
+  TurnDuration,
+} from './types';
 
 const games = new Map<string, Game>();
+
+const GAME_MODE_VALUES: GameMode[] = [
+  'World Domination',
+  'Capital Conquest',
+  'Team Deathmatch',
+];
+const DICE_RANDOMNESS_VALUES: DiceRandomness[] = ['Balanced', 'True'];
+const DEFENCE_DICE_VALUES = [2, 3];
+const CARDS_VALUES: CardsMode[] = ['Fixed', 'Progressive', 'Exponential'];
+const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 
 interface GameSettings {
   name?: string;
   mapName?: string;
   slots?: number;
   bannedPlayerIds?: number[];
+  gameMode?: GameMode;
+  diceRandomness?: DiceRandomness;
+  defenceDice?: 2 | 3;
+  cards?: CardsMode;
+  turnDuration?: TurnDuration;
 }
 
 type GameResponse =
@@ -41,6 +64,12 @@ function gameState(game: Game, playersById: Map<number, Player>) {
     mapName: game.mapName,
     slots: game.slots,
     hostId: game.hostId,
+    phase: game.phase,
+    gameMode: game.gameMode,
+    diceRandomness: game.diceRandomness,
+    defenceDice: game.defenceDice,
+    cards: game.cards,
+    turnDuration: game.turnDuration,
     players: toSummaries(game.playerIds, playersById),
     bannedPlayers: toSummaries([...game.bannedIds], playersById),
   };
@@ -101,6 +130,12 @@ export function registerGameHandlers(
       mapName: defaultMapName,
       slots: 2,
       hostId: player.id,
+      phase: 'lobby',
+      gameMode: 'World Domination',
+      diceRandomness: 'Balanced',
+      defenceDice: 2,
+      cards: 'Fixed',
+      turnDuration: 120,
       playerIds: [player.id],
       bannedIds: new Set(),
     };
@@ -157,6 +192,12 @@ export function registerGameHandlers(
         game.mapName = settings.mapName;
       }
 
+      if (settings.gameMode !== undefined) {
+        if (!GAME_MODE_VALUES.includes(settings.gameMode))
+          return callback({ ok: false, error: 'invalid game mode' });
+        game.gameMode = settings.gameMode;
+      }
+
       if (settings.name !== undefined) {
         const trimmedName = settings.name.trim();
         if (!trimmedName) return callback({ ok: false, error: 'invalid name' });
@@ -206,6 +247,7 @@ export function registerGameHandlers(
       if (settings.slots !== undefined) {
         if (
           !Number.isFinite(settings.slots) ||
+          settings.slots < 2 ||
           settings.slots < game.playerIds.length ||
           settings.slots > 20
         ) {
@@ -214,7 +256,49 @@ export function registerGameHandlers(
         game.slots = settings.slots;
       }
 
+      if (settings.diceRandomness !== undefined) {
+        if (!DICE_RANDOMNESS_VALUES.includes(settings.diceRandomness))
+          return callback({ ok: false, error: 'invalid dice randomness' });
+        game.diceRandomness = settings.diceRandomness;
+      }
+
+      if (settings.defenceDice !== undefined) {
+        if (!DEFENCE_DICE_VALUES.includes(settings.defenceDice))
+          return callback({ ok: false, error: 'invalid defence dice' });
+        game.defenceDice = settings.defenceDice;
+      }
+
+      if (settings.cards !== undefined) {
+        if (!CARDS_VALUES.includes(settings.cards))
+          return callback({ ok: false, error: 'invalid cards' });
+        game.cards = settings.cards;
+      }
+
+      if (settings.turnDuration !== undefined) {
+        if (!TURN_DURATION_VALUES.includes(settings.turnDuration))
+          return callback({ ok: false, error: 'invalid turn duration' });
+        game.turnDuration = settings.turnDuration;
+      }
+
       callback({ ok: true, game: gameState(game, playersById) });
     },
   );
+
+  socket.on('game:start', (callback: (response: GameResponse) => void) => {
+    const player = playersBySocket.get(socket.id);
+    if (!player || !player.gameName)
+      return callback({ ok: false, error: 'not in a game' });
+
+    const game = games.get(player.gameName);
+    if (!game) return callback({ ok: false, error: 'game not found' });
+    if (game.hostId !== player.id)
+      return callback({ ok: false, error: 'not the host' });
+    if (game.phase !== 'lobby')
+      return callback({ ok: false, error: 'already started' });
+    if (game.playerIds.length < 2)
+      return callback({ ok: false, error: 'not enough players' });
+
+    game.phase = 'playing';
+    callback({ ok: true, game: gameState(game, playersById) });
+  });
 }

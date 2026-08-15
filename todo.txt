@@ -1,10 +1,6 @@
-make the whole client dark mode. So dark gray background and light test. Buttons can stay as they are.
-
-the client game page should have 2 subpages: lobby, and map. Lobby shows other players and game settings. Map shows the game map and it is for the actual gameplay.
+Allow additional players to join a full game as spectators, both for games still in the lobby, and for games that are already in progress. Spectators should be able to view the game state, chat with other spectators. The lobby should show current player and separately spectators. If a player leaves while in the lobby, the next spectator in line should be promoted to player status. If a player leaves during an ongoing game, the game should continue without them. Spectators can be banned like players.
 
 
-the host starts the game from the lobby if there are at least 2 players. Add a game start event from client to server. All clients should then switch to the Map subpage.
+When game mode is Team Deathmatch, a new calumn called team should be added. The column contains the team number of the player. The maximum number of teams is equal to the number of players - 1.
 
-The map subpage should be similar to the canvas map inside the mapper/ app, but with some key differences. In the game the map is not editable, so vertices and edges cannot be added, removed, or moved. Edges are not visible. Only nodes are. Nodes now have 4 states with increasing brightness: normal, selectable, hovered, and selected.
 
-Implement these things for now and nothing more.

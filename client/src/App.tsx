@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Container } from 'react-bootstrap';
 import Game from './Game';
 import Home from './Home';
 import { getPlayer, savePlayer } from './player';
@@ -19,6 +20,7 @@ function App() {
   const [path, setPath] = useState(window.location.pathname);
   const [joinError, setJoinError] = useState('');
   const [kickedMessage, setKickedMessage] = useState('');
+  const [sessionTakenOver, setSessionTakenOver] = useState(false);
   const [mapNames, setMapNames] = useState<string[]>([]);
   const [selfId, setSelfId] = useState<number | null>(null);
   const playerRef = useRef(player);
@@ -44,6 +46,9 @@ function App() {
 
   useEffect(() => {
     function afterConnect() {
+      socket.emit('maps:list', (names: string[]) => {
+        setMapNames(names);
+      });
       socket.emit(
         'player:identify',
         {
@@ -86,12 +91,16 @@ function App() {
   }, []);
 
   useEffect(() => {
-    function onMaps(names: string[]) {
-      setMapNames(names);
+    function onDisconnect(reason: string) {
+      if (reason === 'io server disconnect') {
+        setSessionTakenOver(true);
+        return;
+      }
+      navigate('/');
     }
-    socket.on('maps:list', onMaps);
+    socket.on('disconnect', onDisconnect);
     return () => {
-      socket.off('maps:list', onMaps);
+      socket.off('disconnect', onDisconnect);
     };
   }, []);
 
@@ -100,6 +109,17 @@ function App() {
     setPlayer(updated);
     savePlayer(updated);
     socket.emit('player:setName', { name });
+  }
+
+  if (sessionTakenOver) {
+    return (
+      <Container className="py-5">
+        <Alert variant="warning">
+          This tab was disconnected: opened in another tab or window.
+        </Alert>
+        <Button onClick={() => window.location.reload()}>Reload</Button>
+      </Container>
+    );
   }
 
   if (room === 'home') {
@@ -117,6 +137,8 @@ function App() {
   return (
     <Game
       gameName={room}
+      player={player}
+      onNameChange={handleNameChange}
       selfId={selfId}
       joinError={joinError}
       mapNames={mapNames}

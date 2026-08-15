@@ -33,12 +33,18 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
   mapName: string;
   slots: number;
   hostId: number;
+  phase: 'lobby' | 'playing';
+  gameMode: 'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
+  diceRandomness: 'Balanced' | 'True';
+  defenceDice: 2 | 3;
+  cards: 'Fixed' | 'Progressive' | 'Exponential';
+  turnDuration: 60 | 90 | 120 | 150 | 180 | 300; // seconds
   players: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
 }
 ```
 
-**Ack response** — `game:create`, `game:join`, and `game:settings` all reply via the Socket.IO acknowledgement callback with:
+**Ack response** — `game:create`, `game:join`, `game:settings`, and `game:start` all reply via the Socket.IO acknowledgement callback with:
 ```ts
 { ok: true; game: GameState } | { ok: false; error: string }
 ```
@@ -71,7 +77,7 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
 
 ### `game:create`
 - **When sent:** a player in `home` starts a new game.
-- **Purpose:** create a game with default settings — name `Game with <playerName>`, the first available map, 2 slots — make the caller its host, and move their socket into the game's room.
+- **Purpose:** create a game with default settings — name `Game with <playerName>`, map `World`, 2 slots, `World Domination` game mode, `Balanced` dice randomness, 2 defence dice, `Fixed` cards, 120s turn duration — make the caller its host, and move their socket into the game's room.
 - **Content:** none
 - **Ack:** shared Ack response. Errors: `not identified`, `already in a game`, `game name already in use`.
 
@@ -86,30 +92,42 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
 
 ### `game:settings`
 - **When sent:** the host of a game changes any settings.
-- **Purpose:** single bundled message for every game-settings mutation: rename, change map, change slot count, replace the ban list. Only the fields present are applied; the caller must be the game's current host. Fields are applied in a fixed order — `mapName`, then `name`, then `bannedPlayerIds`, then `slots` — so a `slots` shrink is validated against the player count *after* any kicks from the same request have been applied.
+- **Purpose:** single bundled message for every game-settings mutation: rename, change map, change slot count, replace the ban list, change game mode / dice randomness / defence dice / cards mode / turn duration. Only the fields present are applied; the caller must be the game's current host. Fields are applied in a fixed order — `mapName`, then `gameMode`, then `name`, then `bannedPlayerIds`, then `slots`, then `diceRandomness`, then `defenceDice`, then `cards`, then `turnDuration` — so a `slots` shrink is validated against the player count *after* any kicks from the same request have been applied. `gameMode` and the last four fields are independent of the rest and of each other; their position in the order doesn't otherwise matter.
 - **Content:** (all fields optional — only send what changed)
   ```ts
   {
     name?: string;              // trimmed; empty or all-whitespace is rejected
     mapName?: string;
-    slots?: number;            // 1–20, and never below the player count once bannedPlayerIds (if present) has been applied
+    slots?: number;            // 2–20, and never below the player count once bannedPlayerIds (if present) has been applied
     bannedPlayerIds?: number[]; // replaces the game's entire ban list
+    gameMode?: 'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
+    diceRandomness?: 'Balanced' | 'True';
+    defenceDice?: 2 | 3;
+    cards?: 'Fixed' | 'Progressive' | 'Exponential';
+    turnDuration?: 60 | 90 | 120 | 150 | 180 | 300; // seconds
   }
   ```
   `bannedPlayerIds` replaces the full ban list in one shot rather than adding/removing one id at a time — to kick a player, send the current `bannedPlayers` ids (from `game:state`) plus the new id; to unban, send them minus the id to remove. Any id newly present that belongs to a player currently in the game is kicked (evicted and sent `game:kicked`); the host's own id is silently dropped from the list rather than self-banning.
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `invalid name`, `invalid map`, `invalid slots`, `game name already in use`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `invalid name`, `invalid map`, `invalid slots`, `invalid game mode`, `invalid dice randomness`, `invalid defence dice`, `invalid cards`, `invalid turn duration`, `game name already in use`.
+
+### `game:start`
+- **When sent:** the host of a game starts it from the lobby.
+- **Purpose:** move the game from the `lobby` phase to the `playing` phase, so every client in the game switches from the Lobby subpage to the Map subpage. The caller must be the game's current host, and the game must have at least 2 players.
+- **Content:** none
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `already started`, `not enough players`.
+
+### `maps:list`
+- **When sent:** once, immediately after the socket connects; re-sent any time the client reconnects. Sent as a request/ack rather than the server pushing it unprompted, so the client can't miss it by registering its handler a moment too late.
+- **Purpose:** ask the server which map names are available to choose from (e.g. for the host's map-select control in `game:settings`).
+- **Content:** none
+- **Ack:**
+  ```ts
+  string[]
+  ```
 
 ---
 
 ## Server → Client
-
-### `maps:list`
-- **When sent:** once, immediately after the socket connects.
-- **Purpose:** tell the client which map names are available to choose from (e.g. for the host's map-select control in `game:settings`).
-- **Content:**
-  ```ts
-  string[]
-  ```
 
 ### `home:games`
 - **When sent:** once per second, to every socket currently in the `home` room.

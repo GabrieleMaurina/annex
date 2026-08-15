@@ -22,11 +22,23 @@ export interface Player {
   gameName: string | null;
 }
 
+export type DiceRandomness = 'Balanced' | 'True';
+export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
+export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
+export type GameMode =
+  'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
+
 export interface Game {
   name: string;
   mapName: string;
   slots: number;
   hostId: number;
+  phase: 'lobby' | 'playing';
+  gameMode: GameMode;
+  diceRandomness: DiceRandomness;
+  defenceDice: 2 | 3;
+  cards: CardsMode;
+  turnDuration: TurnDuration;
   playerIds: number[];
   bannedIds: Set<number>;
 }

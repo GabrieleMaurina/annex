@@ -15,18 +15,6 @@ export function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
   return `data:${mime};base64,${btoa(binary)}`;
 }
 
-export function normalizeImageToPng(
-  srcDataUrl: string,
-  onDone: (pngDataUrl: string) => void,
-): void {
-  const img = new Image();
-  img.onload = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(img, 0, 0);
-    onDone(canvas.toDataURL('image/png'));
-  };
-  img.src = srcDataUrl;
+export function mimeFromDataUrl(dataUrl: string): string {
+  return dataUrl.slice(dataUrl.indexOf(':') + 1, dataUrl.indexOf(';'));
 }

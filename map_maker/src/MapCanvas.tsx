@@ -9,6 +9,9 @@ interface Props {
   setTerritories: Dispatch<SetStateAction<Territory[]>>;
   continentCount: number;
   imageSrc: string;
+  currentContinentId: number;
+  setCurrentContinentId: Dispatch<SetStateAction<number>>;
+  setCollapsed: Dispatch<SetStateAction<boolean>>;
 }
 
 interface Point {
@@ -33,7 +36,7 @@ type DragState =
     }
   | null;
 
-const VERTEX_RADIUS = 7;
+const VERTEX_RADIUS = 15;
 const HIT_TOLERANCE = 6;
 const DRAG_THRESHOLD = 4;
 const MIN_ZOOM = 1;
@@ -52,6 +55,9 @@ function MapCanvas({
   setTerritories,
   continentCount,
   imageSrc,
+  currentContinentId,
+  setCurrentContinentId,
+  setCollapsed,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -62,6 +68,7 @@ function MapCanvas({
     offsetY: 0,
   });
   const [selectedVertexId, setSelectedVertexId] = useState<number | null>(null);
+  const [hoveredVertexId, setHoveredVertexId] = useState<number | null>(null);
   const [size, setSize] = useState({
     w: window.innerWidth,
     h: window.innerHeight,
@@ -130,6 +137,14 @@ function MapCanvas({
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (selectedVertexId !== null) {
+          setSelectedVertexId(null);
+        } else {
+          setCollapsed(true);
+        }
+        return;
+      }
       if (e.key !== 'Backspace' && e.key !== 'Delete') return;
       if (selectedVertexId === null) return;
       e.preventDefault();
@@ -146,7 +161,7 @@ function MapCanvas({
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedVertexId, setTerritories]);
+  }, [selectedVertexId, setTerritories, setCollapsed]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -155,8 +170,8 @@ function MapCanvas({
       e.preventDefault();
       const rect = canvas!.getBoundingClientRect();
       const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      const canvasW = canvas!.width;
-      const canvasH = canvas!.height;
+      const canvasW = canvas!.clientWidth;
+      const canvasH = canvas!.clientHeight;
       const { w: imgW, h: imgH } = getImageDims();
       const factor = e.deltaY < 0 ? 1.1 : 0.9;
       setTransform((prev) => {
@@ -187,23 +202,21 @@ function MapCanvas({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    canvas.width = size.w;
-    canvas.height = size.h;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(size.w * dpr);
+    canvas.height = Math.round(size.h * dpr);
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, size.w, size.h);
 
     const { zoom } = transform;
-    const { imgW, imgH, scaleX, scaleY } = getScales(
-      canvas.width,
-      canvas.height,
-      zoom,
-    );
+    const { imgW, imgH, scaleX, scaleY } = getScales(size.w, size.h, zoom);
     const { x: offsetX, y: offsetY } = getClampedOffset(
-      canvas.width,
-      canvas.height,
+      size.w,
+      size.h,
       zoom,
       transform.offsetX,
       transform.offsetY,
@@ -226,7 +239,7 @@ function MapCanvas({
     const byId = new Map(territories.map((t) => [t.id, t]));
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * zoom;
     const drawnEdges = new Set<string>();
     for (const t of territories) {
       for (const n of t.neighbors) {
@@ -247,12 +260,17 @@ function MapCanvas({
     for (const t of territories) {
       const p = toScreen(t);
       const isSelected = selectedVertexId === t.id;
+      const isHovered = hoveredVertexId === t.id;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, VERTEX_RADIUS, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, VERTEX_RADIUS * zoom, 0, Math.PI * 2);
       ctx.fillStyle = continentColor(t.continentId);
       ctx.fill();
-      ctx.strokeStyle = isSelected ? '#ff4136' : '#000000';
-      ctx.lineWidth = isSelected ? 3 : 2;
+      ctx.strokeStyle = isSelected
+        ? '#bbbbbb'
+        : isHovered
+          ? '#555555'
+          : '#000000';
+      ctx.lineWidth = (isSelected || isHovered ? 7 : 2) * zoom;
       ctx.stroke();
     }
   });
@@ -265,13 +283,13 @@ function MapCanvas({
   function hitVertex(pos: Point): Territory | null {
     const canvas = canvasRef.current!;
     const { scaleX, scaleY } = getScales(
-      canvas.width,
-      canvas.height,
+      canvas.clientWidth,
+      canvas.clientHeight,
       transform.zoom,
     );
     const { x: offsetX, y: offsetY } = getClampedOffset(
-      canvas.width,
-      canvas.height,
+      canvas.clientWidth,
+      canvas.clientHeight,
       transform.zoom,
       transform.offsetX,
       transform.offsetY,
@@ -282,7 +300,7 @@ function MapCanvas({
         pos.x - (t.x * scaleX + offsetX),
         pos.y - (t.y * scaleY + offsetY),
       );
-      if (d <= VERTEX_RADIUS + HIT_TOLERANCE) return t;
+      if (d <= VERTEX_RADIUS * transform.zoom + HIT_TOLERANCE) return t;
     }
     return null;
   }
@@ -290,13 +308,13 @@ function MapCanvas({
   function addVertexAt(pos: Point) {
     const canvas = canvasRef.current!;
     const { scaleX, scaleY } = getScales(
-      canvas.width,
-      canvas.height,
+      canvas.clientWidth,
+      canvas.clientHeight,
       transform.zoom,
     );
     const { x: offsetX, y: offsetY } = getClampedOffset(
-      canvas.width,
-      canvas.height,
+      canvas.clientWidth,
+      canvas.clientHeight,
       transform.zoom,
       transform.offsetX,
       transform.offsetY,
@@ -308,45 +326,53 @@ function MapCanvas({
       : 0;
     setTerritories((prev) => [
       ...prev,
-      { id: nextId, continentId: 0, x: worldX, y: worldY, neighbors: [] },
+      {
+        id: nextId,
+        continentId: currentContinentId % continentCount,
+        x: worldX,
+        y: worldY,
+        neighbors: [],
+      },
     ]);
-    setSelectedVertexId(null);
+    setHoveredVertexId(nextId);
   }
 
   function handleVertexClick(id: number) {
-    setSelectedVertexId((prev) => {
-      if (prev !== null) {
-        if (prev === id) return null;
-        const from = prev;
-        setTerritories((ts) => {
-          const fromTerritory = ts.find((t) => t.id === from);
-          const linked = fromTerritory
-            ? fromTerritory.neighbors.includes(id)
-            : false;
-          return ts.map((t) => {
-            if (t.id === from) {
-              return {
-                ...t,
-                neighbors: linked
-                  ? t.neighbors.filter((n) => n !== id)
-                  : [...t.neighbors, id],
-              };
-            }
-            if (t.id === id) {
-              return {
-                ...t,
-                neighbors: linked
-                  ? t.neighbors.filter((n) => n !== from)
-                  : [...t.neighbors, from],
-              };
-            }
-            return t;
-          });
-        });
-        return id;
-      }
-      return id;
+    if (selectedVertexId === null) {
+      setSelectedVertexId(id);
+      return;
+    }
+    if (selectedVertexId === id) {
+      setSelectedVertexId(null);
+      return;
+    }
+    const from = selectedVertexId;
+    setTerritories((ts) => {
+      const fromTerritory = ts.find((t) => t.id === from);
+      const linked = fromTerritory
+        ? fromTerritory.neighbors.includes(id)
+        : false;
+      return ts.map((t) => {
+        if (t.id === from) {
+          return {
+            ...t,
+            neighbors: linked
+              ? t.neighbors.filter((n) => n !== id)
+              : [...t.neighbors, id],
+          };
+        }
+        if (t.id === id) {
+          return {
+            ...t,
+            neighbors: linked
+              ? t.neighbors.filter((n) => n !== from)
+              : [...t.neighbors, from],
+          };
+        }
+        return t;
+      });
     });
+    setSelectedVertexId(id);
   }
 
   function handleMouseDown(e: React.MouseEvent) {
@@ -365,8 +391,8 @@ function MapCanvas({
     }
     const canvas = canvasRef.current!;
     const { x, y } = getClampedOffset(
-      canvas.width,
-      canvas.height,
+      canvas.clientWidth,
+      canvas.clientHeight,
       transform.zoom,
       transform.offsetX,
       transform.offsetY,
@@ -381,8 +407,11 @@ function MapCanvas({
 
   function handleMouseMove(e: React.MouseEvent) {
     const drag = dragRef.current;
-    if (!drag) return;
     const pos = getPos(e);
+    if (!drag) {
+      setHoveredVertexId(hitVertex(pos)?.id ?? null);
+      return;
+    }
     if (drag.type === 'pan') {
       const dx = pos.x - drag.startPos.x;
       const dy = pos.y - drag.startPos.y;
@@ -390,13 +419,13 @@ function MapCanvas({
       if (drag.moved) {
         const canvas = canvasRef.current!;
         const { imgW, imgH, scaleX, scaleY } = getScales(
-          canvas.width,
-          canvas.height,
+          canvas.clientWidth,
+          canvas.clientHeight,
           transform.zoom,
         );
         const { x, y } = clampOffset(
-          canvas.width,
-          canvas.height,
+          canvas.clientWidth,
+          canvas.clientHeight,
           scaleX,
           scaleY,
           imgW,
@@ -418,8 +447,8 @@ function MapCanvas({
       const id = drag.id;
       const canvas = canvasRef.current!;
       const { scaleX, scaleY } = getScales(
-        canvas.width,
-        canvas.height,
+        canvas.clientWidth,
+        canvas.clientHeight,
         transform.zoom,
       );
       setTerritories((prev) =>
@@ -438,7 +467,13 @@ function MapCanvas({
     if (!drag) return;
     const pos = getPos(e);
     if (drag.type === 'pan') {
-      if (!drag.moved) addVertexAt(pos);
+      if (!drag.moved) {
+        if (selectedVertexId !== null) {
+          setSelectedVertexId(null);
+        } else {
+          addVertexAt(pos);
+        }
+      }
       return;
     }
     if (!drag.moved) handleVertexClick(drag.id);
@@ -446,19 +481,27 @@ function MapCanvas({
 
   function handleMouseLeave() {
     dragRef.current = null;
+    setHoveredVertexId(null);
   }
 
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault();
     const pos = getPos(e);
     const vertex = hitVertex(pos);
-    if (!vertex) return;
+    if (!vertex) {
+      if (selectedVertexId !== null) {
+        setSelectedVertexId(null);
+        return;
+      }
+      setCurrentContinentId((currentContinentId + 1) % continentCount);
+      return;
+    }
+    const nextContinentId = (vertex.continentId + 1) % continentCount;
+    setCurrentContinentId(nextContinentId);
     const id = vertex.id;
     setTerritories((prev) =>
       prev.map((t) =>
-        t.id === id
-          ? { ...t, continentId: (t.continentId + 1) % continentCount }
-          : t,
+        t.id === id ? { ...t, continentId: nextContinentId } : t,
       ),
     );
   }
@@ -471,7 +514,12 @@ function MapCanvas({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onContextMenu={handleContextMenu}
-      style={{ display: 'block' }}
+      style={{
+        display: 'block',
+        width: size.w,
+        height: size.h,
+        cursor: hoveredVertexId !== null ? 'pointer' : 'default',
+      }}
     />
   );
 }

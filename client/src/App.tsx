@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Container } from 'react-bootstrap';
 import { socket } from './socket';
 
 function App() {
@@ -18,10 +19,10 @@ function App() {
   }, []);
 
   return (
-    <div className="container py-5">
+    <Container className="py-5">
       <h1>client</h1>
       <p>{connected ? 'Connected' : 'Disconnected'}</p>
-    </div>
+    </Container>
   );
 }
 

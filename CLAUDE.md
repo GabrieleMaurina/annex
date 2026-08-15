@@ -45,10 +45,10 @@ Code for readability first, then simplicity, and finally performance. No comment
 - Node.js, nodemon, Express, Socket.io, TypeScript, ESLint, Prettier.
 
 **Client**
-- Vite, React, Bootstrap, TypeScript, ESLint, Prettier.
+- Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
 - No CSS or style. Use Bootstrap classes.
 
 **Map-Maker**
-- Vite, React, Bootstrap, TypeScript, ESLint, Prettier.
+- Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
 - No CSS or style. Use Bootstrap classes.
 - Independent and disconnected from client and server.

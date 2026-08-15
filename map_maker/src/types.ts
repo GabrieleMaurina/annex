@@ -6,7 +6,10 @@ export interface Territory {
   neighbors: number[];
 }
 
-export interface MapFile {
+export interface Map {
+  name: string;
   territories: Territory[];
-  image: string;
+  bonuses: number[];
+  image: string | null;
+  imageMime: string | null;
 }

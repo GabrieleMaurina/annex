@@ -50,6 +50,76 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function segmentsProperlyIntersect(
+  p1: Point,
+  p2: Point,
+  p3: Point,
+  p4: Point,
+): boolean {
+  const cross = (o: Point, a: Point, b: Point) =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const d1 = cross(p3, p4, p1);
+  const d2 = cross(p3, p4, p2);
+  const d3 = cross(p1, p2, p3);
+  const d4 = cross(p1, p2, p4);
+  return (
+    ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+    ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+  );
+}
+
+function pointToSegmentDistance(p: Point, a: Point, b: Point): number {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const lenSq = abx * abx + aby * aby;
+  const t =
+    lenSq === 0
+      ? 0
+      : clamp(((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq, 0, 1);
+  return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
+}
+
+function wrapSplitX(a: Point, b: Point, mapW: number): [Point, Point][] {
+  const d = b.x - a.x;
+  if (Math.abs(d) <= mapW / 2) return [[a, b]];
+  const sign = Math.sign(d);
+  const bx = b.x - sign * mapW;
+  const boundary = sign < 0 ? mapW : 0;
+  const t = (boundary - a.x) / (bx - a.x);
+  const y = a.y + t * (b.y - a.y);
+  return [
+    [a, { x: boundary, y }],
+    [{ x: mapW - boundary, y }, b],
+  ];
+}
+
+function wrapSplitY(a: Point, b: Point, mapH: number): [Point, Point][] {
+  const d = b.y - a.y;
+  if (Math.abs(d) <= mapH / 2) return [[a, b]];
+  const sign = Math.sign(d);
+  const by = b.y - sign * mapH;
+  const boundary = sign < 0 ? mapH : 0;
+  const t = (boundary - a.y) / (by - a.y);
+  const x = a.x + t * (b.x - a.x);
+  return [
+    [a, { x, y: boundary }],
+    [{ x, y: mapH - boundary }, b],
+  ];
+}
+
+function wrapEdgeSegments(
+  a: Point,
+  b: Point,
+  mapW: number,
+  mapH: number,
+): [Point, Point][] {
+  const segments: [Point, Point][] = [];
+  for (const [p1, p2] of wrapSplitX(a, b, mapW)) {
+    segments.push(...wrapSplitY(p1, p2, mapH));
+  }
+  return segments;
+}
+
 function MapCanvas({
   territories,
   setTerritories,
@@ -69,6 +139,11 @@ function MapCanvas({
   });
   const [selectedVertexId, setSelectedVertexId] = useState<number | null>(null);
   const [hoveredVertexId, setHoveredVertexId] = useState<number | null>(null);
+  const [mouseWorldPos, setMouseWorldPos] = useState<Point | null>(null);
+  const [rejectedEdge, setRejectedEdge] = useState<[Point, Point][] | null>(
+    null,
+  );
+  const rejectedTimeoutRef = useRef<number | null>(null);
   const [size, setSize] = useState({
     w: window.innerWidth,
     h: window.innerHeight,
@@ -232,9 +307,9 @@ function MapCanvas({
       );
     }
 
-    const toScreen = (t: Territory): Point => ({
-      x: t.x * scaleX + offsetX,
-      y: t.y * scaleY + offsetY,
+    const toScreen = (p: Point): Point => ({
+      x: p.x * scaleX + offsetX,
+      y: p.y * scaleY + offsetY,
     });
     const byId = new Map(territories.map((t) => [t.id, t]));
 
@@ -248,12 +323,55 @@ function MapCanvas({
         drawnEdges.add(key);
         const other = byId.get(n);
         if (!other) continue;
-        const p1 = toScreen(t);
-        const p2 = toScreen(other);
+        for (const [a, b] of wrapEdgeSegments(t, other, imgW, imgH)) {
+          const p1 = toScreen(a);
+          const p2 = toScreen(b);
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    if (rejectedEdge) {
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 3 * zoom;
+      for (const [a, b] of rejectedEdge) {
+        const p1 = toScreen(a);
+        const p2 = toScreen(b);
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
         ctx.stroke();
+      }
+    }
+
+    if (selectedVertexId !== null && mouseWorldPos !== null && !dragRef.current) {
+      const fromTerritory = byId.get(selectedVertexId);
+      if (fromTerritory) {
+        const excludeIds = new Set<number>([selectedVertexId]);
+        if (hoveredVertexId !== null) excludeIds.add(hoveredVertexId);
+        const overlapping = segmentWouldCross(
+          fromTerritory,
+          mouseWorldPos,
+          excludeIds,
+        );
+        ctx.strokeStyle = overlapping ? '#ff0000' : '#000000';
+        ctx.lineWidth = 2 * zoom;
+        for (const [a, b] of wrapEdgeSegments(
+          fromTerritory,
+          mouseWorldPos,
+          imgW,
+          imgH,
+        )) {
+          const p1 = toScreen(a);
+          const p2 = toScreen(b);
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
       }
     }
 
@@ -337,6 +455,80 @@ function MapCanvas({
     setHoveredVertexId(nextId);
   }
 
+  function segmentWouldCross(
+    from: Point,
+    to: Point,
+    excludeIds: Set<number>,
+  ): boolean {
+    const canvas = canvasRef.current!;
+    const { imgW, imgH, scaleX, scaleY } = getScales(
+      canvas.clientWidth,
+      canvas.clientHeight,
+      transform.zoom,
+    );
+    const { x: offsetX, y: offsetY } = getClampedOffset(
+      canvas.clientWidth,
+      canvas.clientHeight,
+      transform.zoom,
+      transform.offsetX,
+      transform.offsetY,
+    );
+    const toScreenPos = (p: Point): Point => ({
+      x: p.x * scaleX + offsetX,
+      y: p.y * scaleY + offsetY,
+    });
+    const toScreenSegments = (a: Point, b: Point): [Point, Point][] =>
+      wrapEdgeSegments(a, b, imgW, imgH).map(
+        ([p1, p2]) => [toScreenPos(p1), toScreenPos(p2)] as [Point, Point],
+      );
+    const candidateSegments = toScreenSegments(from, to);
+    const radius = VERTEX_RADIUS * transform.zoom;
+    const byId = new Map(territories.map((t) => [t.id, t]));
+
+    for (const v of territories) {
+      if (excludeIds.has(v.id)) continue;
+      const vScreen = toScreenPos(v);
+      for (const [p1, p2] of candidateSegments) {
+        if (pointToSegmentDistance(vScreen, p1, p2) < radius) return true;
+      }
+    }
+
+    const seen = new Set<string>();
+    for (const t of territories) {
+      for (const n of t.neighbors) {
+        if (excludeIds.has(t.id) || excludeIds.has(n)) continue;
+        const key = edgeKey(t.id, n);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const other = byId.get(n);
+        if (!other) continue;
+        const existingSegments = toScreenSegments(t, other);
+        for (const [c1, c2] of candidateSegments) {
+          for (const [e1, e2] of existingSegments) {
+            if (segmentsProperlyIntersect(c1, c2, e1, e2)) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  function edgeWouldCross(from: Territory, to: Territory): boolean {
+    return segmentWouldCross(from, to, new Set([from.id, to.id]));
+  }
+
+  function flashRejectedEdge(from: Territory, to: Territory) {
+    const { w: imgW, h: imgH } = getImageDims();
+    setRejectedEdge(wrapEdgeSegments(from, to, imgW, imgH));
+    if (rejectedTimeoutRef.current !== null) {
+      window.clearTimeout(rejectedTimeoutRef.current);
+    }
+    rejectedTimeoutRef.current = window.setTimeout(
+      () => setRejectedEdge(null),
+      300,
+    );
+  }
+
   function handleVertexClick(id: number) {
     if (selectedVertexId === null) {
       setSelectedVertexId(id);
@@ -347,12 +539,23 @@ function MapCanvas({
       return;
     }
     const from = selectedVertexId;
-    setTerritories((ts) => {
-      const fromTerritory = ts.find((t) => t.id === from);
-      const linked = fromTerritory
-        ? fromTerritory.neighbors.includes(id)
-        : false;
-      return ts.map((t) => {
+    const fromTerritory = territories.find((t) => t.id === from);
+    const toTerritory = territories.find((t) => t.id === id);
+    const linked = fromTerritory
+      ? fromTerritory.neighbors.includes(id)
+      : false;
+    if (
+      !linked &&
+      fromTerritory &&
+      toTerritory &&
+      edgeWouldCross(fromTerritory, toTerritory)
+    ) {
+      flashRejectedEdge(fromTerritory, toTerritory);
+      setSelectedVertexId(id);
+      return;
+    }
+    setTerritories((ts) =>
+      ts.map((t) => {
         if (t.id === from) {
           return {
             ...t,
@@ -370,8 +573,8 @@ function MapCanvas({
           };
         }
         return t;
-      });
-    });
+      }),
+    );
     setSelectedVertexId(id);
   }
 
@@ -408,6 +611,23 @@ function MapCanvas({
   function handleMouseMove(e: React.MouseEvent) {
     const drag = dragRef.current;
     const pos = getPos(e);
+    const canvas = canvasRef.current!;
+    const { scaleX, scaleY } = getScales(
+      canvas.clientWidth,
+      canvas.clientHeight,
+      transform.zoom,
+    );
+    const { x: offsetX, y: offsetY } = getClampedOffset(
+      canvas.clientWidth,
+      canvas.clientHeight,
+      transform.zoom,
+      transform.offsetX,
+      transform.offsetY,
+    );
+    setMouseWorldPos({
+      x: (pos.x - offsetX) / scaleX,
+      y: (pos.y - offsetY) / scaleY,
+    });
     if (!drag) {
       setHoveredVertexId(hitVertex(pos)?.id ?? null);
       return;
@@ -445,6 +665,9 @@ function MapCanvas({
         drag.moved = true;
       drag.lastPos = pos;
       const id = drag.id;
+      if (drag.moved && selectedVertexId !== null && selectedVertexId !== id) {
+        setSelectedVertexId(null);
+      }
       const canvas = canvasRef.current!;
       const { scaleX, scaleY } = getScales(
         canvas.clientWidth,
@@ -482,6 +705,7 @@ function MapCanvas({
   function handleMouseLeave() {
     dragRef.current = null;
     setHoveredVertexId(null);
+    setMouseWorldPos(null);
   }
 
   function handleContextMenu(e: React.MouseEvent) {

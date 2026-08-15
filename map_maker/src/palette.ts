@@ -18,7 +18,7 @@ const CONTINENT_COLORS = [
   '#3300FF',
   '#00FF66',
   '#FF004D',
-  '#80FF00'
+  '#80FF00',
 ];
 
 export function continentColor(continentId: number): string {

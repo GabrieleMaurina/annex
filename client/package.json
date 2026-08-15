@@ -9,7 +9,8 @@
     "start": "vite preview",
     "lint": "eslint src",
     "format": "prettier --write src",
-    "check": "npm run format && npm run lint"
+    "types": "tsc -b",
+    "check": "npm run format && npm run lint && npm run types"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",

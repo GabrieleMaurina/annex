@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { broadcastGameStates, registerGameHandlers } from './game';
 import { broadcastHomeGames, registerHomeHandlers } from './home';
+import { listMapNames } from './maps';
 import { HOME_ROOM, Player } from './types';
 
 const app = express();
@@ -14,11 +15,13 @@ const io = new Server(httpServer, {
 });
 
 const playersBySocket = new Map<string, Player>();
-const playersById = new Map<string, Player>();
+const playersByKey = new Map<string, Player>();
+const playersById = new Map<number, Player>();
 
 io.on('connection', (socket) => {
   socket.join(HOME_ROOM);
-  registerHomeHandlers(io, socket, playersBySocket, playersById);
+  socket.emit('maps:list', listMapNames());
+  registerHomeHandlers(io, socket, playersBySocket, playersByKey, playersById);
   registerGameHandlers(io, socket, playersBySocket, playersById);
 });
 

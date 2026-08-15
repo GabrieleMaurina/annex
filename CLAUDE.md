@@ -43,12 +43,14 @@ Code for readability first, then simplicity, and finally performance. No comment
 
 **Server**
 - Node.js, nodemon, Express, Socket.io, TypeScript, ESLint, Prettier.
+- Follow PROTOCOL.md for socket.io events and data structures.
 
 **Client**
 - Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
-- No CSS or style. Use Bootstrap classes.
+- No CSS or style, unless stictly necessary. Use Bootstrap classes.
+- Follow PROTOCOL.md for socket.io events and data structures.
 
-**Map-Maker**
+**Mapper**
 - Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
 - No CSS or style. Use Bootstrap classes.
 - Independent and disconnected from client and server.

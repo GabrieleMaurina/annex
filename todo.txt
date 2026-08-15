@@ -1,0 +1,10 @@
+make the whole client dark mode. So dark gray background and light test. Buttons can stay as they are.
+
+the client game page should have 2 subpages: lobby, and map. Lobby shows other players and game settings. Map shows the game map and it is for the actual gameplay.
+
+
+the host starts the game from the lobby if there are at least 2 players. Add a game start event from client to server. All clients should then switch to the Map subpage.
+
+The map subpage should be similar to the canvas map inside the mapper/ app, but with some key differences. In the game the map is not editable, so vertices and edges cannot be added, removed, or moved. Edges are not visible. Only nodes are. Nodes now have 4 states with increasing brightness: normal, selectable, hovered, and selected.
+
+Implement these things for now and nothing more.

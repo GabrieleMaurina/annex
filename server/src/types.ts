@@ -15,7 +15,8 @@ export interface GameMap {
 }
 
 export interface Player {
-  id: string;
+  key: string;
+  id: number;
   name: string;
   socketId: string;
   gameName: string | null;
@@ -25,7 +26,7 @@ export interface Game {
   name: string;
   mapName: string;
   slots: number;
-  hostId: string;
-  playerIds: string[];
-  bannedIds: Set<string>;
+  hostId: number;
+  playerIds: number[];
+  bannedIds: Set<number>;
 }

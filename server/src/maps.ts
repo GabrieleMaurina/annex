@@ -17,3 +17,7 @@ for (const file of fs.readdirSync(mapsDir)) {
 }
 
 export const defaultMapName = [...maps.keys()][0];
+
+export function listMapNames(): string[] {
+  return [...maps.keys()];
+}

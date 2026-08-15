@@ -2,39 +2,50 @@ import { Server, Socket } from 'socket.io';
 import { gameRoomName, leaveGame, listGameSummaries } from './game';
 import { HOME_ROOM, Player } from './types';
 
+let nextPlayerId = 1;
+
+function isValidName(name: string): boolean {
+  return name.trim().length > 0;
+}
+
 export function registerHomeHandlers(
   io: Server,
   socket: Socket,
   playersBySocket: Map<string, Player>,
-  playersById: Map<string, Player>,
+  playersByKey: Map<string, Player>,
+  playersById: Map<number, Player>,
 ) {
   socket.on(
     'player:identify',
-    ({
-      playerId,
-      playerName,
-      room,
-    }: {
-      playerId: string;
-      playerName: string;
-      room: string;
-    }) => {
-      let player = playersById.get(playerId);
+    (
+      {
+        playerKey,
+        playerName,
+        room,
+      }: {
+        playerKey: string;
+        playerName: string;
+        room: string;
+      },
+      callback: (response: { id: number }) => void,
+    ) => {
+      let player = playersByKey.get(playerKey);
       if (player) {
         if (player.socketId !== socket.id) {
           playersBySocket.delete(player.socketId);
           io.sockets.sockets.get(player.socketId)?.disconnect(true);
         }
-        player.name = playerName;
         player.socketId = socket.id;
       } else {
         player = {
-          id: playerId,
-          name: playerName,
+          key: playerKey,
+          id: nextPlayerId++,
+          name: isValidName(playerName) ? playerName.trim() : 'Player',
           socketId: socket.id,
           gameName: null,
         };
-        playersById.set(playerId, player);
+        playersByKey.set(playerKey, player);
+        playersById.set(player.id, player);
       }
       playersBySocket.set(socket.id, player);
 
@@ -44,13 +55,15 @@ export function registerHomeHandlers(
         if (joinedRoom !== socket.id) socket.leave(joinedRoom);
       }
       socket.join(player.gameName ? gameRoomName(player.gameName) : HOME_ROOM);
+
+      callback({ id: player.id });
     },
   );
 
   socket.on('player:setName', ({ name }: { name: string }) => {
     const player = playersBySocket.get(socket.id);
-    if (!player) return;
-    player.name = name;
+    if (!player || !isValidName(name)) return;
+    player.name = name.trim();
   });
 
   socket.on('disconnect', () => {

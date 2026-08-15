@@ -8,8 +8,7 @@ interface GameSettings {
   name?: string;
   mapName?: string;
   slots?: number;
-  kickPlayerId?: string;
-  unbanPlayerId?: string;
+  bannedPlayerIds?: number[];
 }
 
 type GameResponse =
@@ -29,24 +28,25 @@ function gameSummary(game: Game) {
   };
 }
 
-function gameState(game: Game, playersById: Map<string, Player>) {
+function toSummaries(ids: number[], playersById: Map<number, Player>) {
+  return ids
+    .map((id) => playersById.get(id))
+    .filter((player): player is Player => !!player)
+    .map((player) => ({ id: player.id, name: player.name }));
+}
+
+function gameState(game: Game, playersById: Map<number, Player>) {
   return {
     name: game.name,
     mapName: game.mapName,
     slots: game.slots,
     hostId: game.hostId,
-    players: game.playerIds
-      .map((id) => playersById.get(id))
-      .filter((player): player is Player => !!player)
-      .map((player) => ({ id: player.id, name: player.name })),
-    bannedPlayers: [...game.bannedIds].map((id) => ({
-      id,
-      name: playersById.get(id)?.name ?? id,
-    })),
+    players: toSummaries(game.playerIds, playersById),
+    bannedPlayers: toSummaries([...game.bannedIds], playersById),
   };
 }
 
-function removePlayerFromGame(game: Game, playerId: string) {
+function removePlayerFromGame(game: Game, playerId: number) {
   game.playerIds = game.playerIds.filter((id) => id !== playerId);
   if (game.playerIds.length === 0) {
     games.delete(game.name);
@@ -70,7 +70,7 @@ export function listGameSummaries() {
 
 export function broadcastGameStates(
   io: Server,
-  playersById: Map<string, Player>,
+  playersById: Map<number, Player>,
 ) {
   for (const game of games.values()) {
     io.to(gameRoomName(game.name)).emit(
@@ -84,7 +84,7 @@ export function registerGameHandlers(
   io: Server,
   socket: Socket,
   playersBySocket: Map<string, Player>,
-  playersById: Map<string, Player>,
+  playersById: Map<number, Player>,
 ) {
   socket.on('game:create', (callback: (response: GameResponse) => void) => {
     const player = playersBySocket.get(socket.id);
@@ -157,48 +157,61 @@ export function registerGameHandlers(
         game.mapName = settings.mapName;
       }
 
-      if (settings.slots !== undefined) {
-        if (settings.slots < game.playerIds.length || settings.slots > 20) {
-          return callback({ ok: false, error: 'invalid slots' });
+      if (settings.name !== undefined) {
+        const trimmedName = settings.name.trim();
+        if (!trimmedName) return callback({ ok: false, error: 'invalid name' });
+
+        if (trimmedName !== game.name) {
+          if (games.has(trimmedName))
+            return callback({ ok: false, error: 'game name already in use' });
+
+          const oldRoom = gameRoomName(game.name);
+          const newRoom = gameRoomName(trimmedName);
+          games.delete(game.name);
+          for (const id of game.playerIds) {
+            const member = playersById.get(id);
+            if (member) member.gameName = trimmedName;
+            const memberSocket =
+              member && io.sockets.sockets.get(member.socketId);
+            memberSocket?.leave(oldRoom);
+            memberSocket?.join(newRoom);
+          }
+          game.name = trimmedName;
+          games.set(game.name, game);
         }
-        game.slots = settings.slots;
       }
 
-      if (settings.name !== undefined && settings.name !== game.name) {
-        if (games.has(settings.name))
-          return callback({ ok: false, error: 'game name already in use' });
+      if (settings.bannedPlayerIds !== undefined) {
+        const newBannedIds = new Set(
+          settings.bannedPlayerIds.filter((id) => id !== player.id),
+        );
 
-        const oldRoom = gameRoomName(game.name);
-        const newRoom = gameRoomName(settings.name);
-        games.delete(game.name);
-        for (const id of game.playerIds) {
-          const member = playersById.get(id);
-          if (member) member.gameName = settings.name;
-          const memberSocket =
-            member && io.sockets.sockets.get(member.socketId);
-          memberSocket?.leave(oldRoom);
-          memberSocket?.join(newRoom);
-        }
-        game.name = settings.name;
-        games.set(game.name, game);
-      }
-
-      if (settings.unbanPlayerId !== undefined) {
-        game.bannedIds.delete(settings.unbanPlayerId);
-      }
-
-      if (settings.kickPlayerId !== undefined) {
-        const kickedId = settings.kickPlayerId;
-        game.bannedIds.add(kickedId);
-        const kicked = playersById.get(kickedId);
-        if (kicked) {
+        for (const id of newBannedIds) {
+          if (game.bannedIds.has(id) || !game.playerIds.includes(id)) {
+            continue;
+          }
+          const kicked = playersById.get(id);
+          if (!kicked) continue;
           kicked.gameName = null;
           const kickedSocket = io.sockets.sockets.get(kicked.socketId);
           kickedSocket?.leave(gameRoomName(game.name));
           kickedSocket?.join(HOME_ROOM);
           kickedSocket?.emit('game:kicked', { gameName: game.name });
+          removePlayerFromGame(game, id);
         }
-        removePlayerFromGame(game, kickedId);
+
+        game.bannedIds = newBannedIds;
+      }
+
+      if (settings.slots !== undefined) {
+        if (
+          !Number.isFinite(settings.slots) ||
+          settings.slots < game.playerIds.length ||
+          settings.slots > 20
+        ) {
+          return callback({ ok: false, error: 'invalid slots' });
+        }
+        game.slots = settings.slots;
       }
 
       callback({ ok: true, game: gameState(game, playersById) });

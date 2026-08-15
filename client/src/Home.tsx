@@ -47,13 +47,23 @@ function Home({
   }
 
   return (
-    <Container fluid className="py-5 px-4 position-relative">
-      <PlayerNameEditor player={player} onNameChange={onNameChange} />
-
-      <div className="d-flex justify-content-center align-items-center gap-5 mb-4">
-        <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
-        <h1 className="mb-0">Annex</h1>
-        <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
+    <Container fluid className="py-5 px-4">
+      <div className="d-flex align-items-center mb-4">
+        <div
+          className="flex-grow-1"
+          style={{ flexBasis: 0, minWidth: 0 }}
+        ></div>
+        <div className="d-flex align-items-center gap-5">
+          <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
+          <h1 className="mb-0">Annex</h1>
+          <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
+        </div>
+        <div
+          className="d-flex justify-content-end flex-grow-1"
+          style={{ flexBasis: 0, minWidth: 0 }}
+        >
+          <PlayerNameEditor player={player} onNameChange={onNameChange} />
+        </div>
       </div>
 
       {kickedMessage && (
@@ -81,18 +91,20 @@ function Home({
         </thead>
         <tbody>
           {games.map((g) => {
-            const full = g.playerCount >= g.slots;
+            const spectateOnly =
+              g.phase === 'playing' || g.playerCount >= g.slots;
             return (
               <tr
                 key={g.name}
-                onClick={() => !full && joinGame(g.name)}
-                className={full ? 'text-muted' : undefined}
-                style={{ cursor: full ? 'not-allowed' : 'pointer' }}
+                onClick={() => joinGame(g.name)}
+                className={spectateOnly ? 'text-muted' : undefined}
+                style={{ cursor: 'pointer' }}
               >
                 <td>{g.name}</td>
                 <td>{g.mapName}</td>
                 <td>
                   {g.playerCount}/{g.slots}
+                  {g.spectatorCount > 0 && ` · ${g.spectatorCount} spectating`}
                 </td>
               </tr>
             );

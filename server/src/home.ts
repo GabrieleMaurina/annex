@@ -4,8 +4,11 @@ import { HOME_ROOM, Player } from './types';
 
 let nextPlayerId = 1;
 
+const MAX_PLAYER_NAME_LENGTH = 10;
+
 function isValidName(name: string): boolean {
-  return name.trim().length > 0;
+  const trimmed = name.trim();
+  return trimmed.length > 0 && trimmed.length <= MAX_PLAYER_NAME_LENGTH;
 }
 
 export function registerHomeHandlers(

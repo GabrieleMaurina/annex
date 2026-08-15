@@ -23,6 +23,8 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
   mapName: string;
   playerCount: number;
   slots: number;
+  phase: 'lobby' | 'playing';
+  spectatorCount: number;
 }
 ```
 
@@ -39,10 +41,16 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
   defenceDice: 2 | 3;
   cards: 'Fixed' | 'Progressive' | 'Exponential';
   turnDuration: 60 | 90 | 120 | 150 | 180 | 300; // seconds
-  players: { id: number; name: string }[];
+  players: { id: number; name: string; team: number; color: number }[];
+  spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
 }
 ```
+`team` is only meaningful when `gameMode` is `'Team Deathmatch'` — it always defaults to `1` otherwise and is ignored by the client. Its valid range is `1` to `max(1, players.length - 1)`, guaranteeing at least one team has more than one member.
+
+`color` is an index into a 20-entry color palette the client owns — the server never sends actual color values, only the index. It's assigned at random when a player is seated (`game:create`, `game:join`, or spectator promotion), and is always unique among the game's current players. To keep early joiners' colors nicer (the palette is ordered nicest-first), both the random assignment and `game:cycleColor` are restricted to the first `min(20, players.length + 3)` palette indices. Spectators have no color.
+
+Players who couldn't be seated (lobby full, or the game is already `playing`) become **spectators**: same room, full visibility of `game:state`, but no roster slot and no gameplay actions. In the `lobby` phase, spectators are an ordered queue (`spectators[0]` is next in line) — if a seated player leaves while the game is still in `lobby`, the front spectator is promoted to a player automatically. Nothing promotes spectators once the game is `playing`; a player leaving mid-game just shrinks the roster.
 
 **Ack response** — `game:create`, `game:join`, `game:settings`, and `game:start` all reply via the Socket.IO acknowledgement callback with:
 ```ts
@@ -55,7 +63,7 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
 
 ### `player:identify`
 - **When sent:** once, immediately after the socket connects; re-sent any time the client reconnects (new tab, page reload, dropped connection); and re-sent any time the client's own declared room changes on the client side — e.g. after creating/joining a game, after navigating back to `/` to leave a game, or when navigating directly to a different game's URL.
-- **Purpose:** register this socket against a persistent player identity, and declare which room the client believes it's in — `'home'` or a game name. The server uses this to place the socket in the correct room and to detect stale game membership: if `room` doesn't match what the server has on record (e.g. another of the player's tabs is still in a game but this tab reports `'home'`), the server removes the player from that game, reassigning the host or deleting the game if no players remain. If the same `playerKey` is already attached to a different, still-connected socket, that older socket is disconnected and dropped. `playerName` only sets the player's name the first time a given `playerKey` is seen (i.e. when the player is created) — on every later identify (reconnects, tab duplicates) it is ignored, since renaming afterward is `player:setName`'s job. If `playerName` is empty or all-whitespace at creation time, the server assigns a default name instead.
+- **Purpose:** register this socket against a persistent player identity, and declare which room the client believes it's in — `'home'` or a game name. The server uses this to place the socket in the correct room and to detect stale game membership: if `room` doesn't match what the server has on record (e.g. another of the player's tabs is still in a game but this tab reports `'home'`), the server removes the player from that game, reassigning the host or deleting the game if no players remain. If the same `playerKey` is already attached to a different, still-connected socket, that older socket is disconnected and dropped. `playerName` only sets the player's name the first time a given `playerKey` is seen (i.e. when the player is created) — on every later identify (reconnects, tab duplicates) it is ignored, since renaming afterward is `player:setName`'s job. If `playerName` is empty, all-whitespace, or longer than 10 characters (after trimming) at creation time, the server assigns a default name instead.
 - **Content:**
   ```ts
   { playerKey: string; playerName: string; room: string }
@@ -68,7 +76,7 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
 
 ### `player:setName`
 - **When sent:** any time the player changes their display name (their `playerKey` never changes).
-- **Purpose:** update the stored name for the identified player. If `name` is empty or all-whitespace, the message is ignored and the stored name is left unchanged.
+- **Purpose:** update the stored name for the identified player. If `name` is empty, all-whitespace, or longer than 10 characters (after trimming), the message is ignored and the stored name is left unchanged.
 - **Content:**
   ```ts
   { name: string }
@@ -83,23 +91,24 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
 
 ### `game:join`
 - **When sent:** a player in `home` joins an existing game from the games list, or a client navigates straight to a game's URL without having joined from `home` first (sent immediately after `player:identify`, once per such navigation).
-- **Purpose:** add the caller to the game's roster and move their socket into its room.
+- **Purpose:** add the caller to the game and move their socket into its room. If the game is still in `lobby` phase and has an open slot, the caller becomes a player; otherwise (lobby full, or the game is already `playing`) the caller becomes a spectator instead — this call never fails just because the game is full or in progress.
 - **Content:**
   ```ts
   { gameName: string }
   ```
-- **Ack:** shared Ack response. Errors: `not identified`, `already in a game`, `game not found`, `banned from this game`, `game is full`.
+- **Ack:** shared Ack response. Errors: `not identified`, `already in a game`, `game not found`, `banned from this game`.
 
 ### `game:settings`
 - **When sent:** the host of a game changes any settings.
-- **Purpose:** single bundled message for every game-settings mutation: rename, change map, change slot count, replace the ban list, change game mode / dice randomness / defence dice / cards mode / turn duration. Only the fields present are applied; the caller must be the game's current host. Fields are applied in a fixed order — `mapName`, then `gameMode`, then `name`, then `bannedPlayerIds`, then `slots`, then `diceRandomness`, then `defenceDice`, then `cards`, then `turnDuration` — so a `slots` shrink is validated against the player count *after* any kicks from the same request have been applied. `gameMode` and the last four fields are independent of the rest and of each other; their position in the order doesn't otherwise matter.
+- **Purpose:** single bundled message for every game-settings mutation: rename, change map, change slot count, replace the ban list, set a player's team, change game mode / dice randomness / defence dice / cards mode / turn duration. Only the fields present are applied; the caller must be the game's current host. Fields are applied in a fixed order — `mapName`, then `gameMode`, then `name`, then `bannedPlayerIds`, then `playerTeam`, then `slots`, then `diceRandomness`, then `defenceDice`, then `cards`, then `turnDuration` — so `slots` and `playerTeam` are validated against the roster *after* any kicks from the same request have been applied. `gameMode` and the last four fields are independent of the rest and of each other; their position in the order doesn't otherwise matter.
 - **Content:** (all fields optional — only send what changed)
   ```ts
   {
-    name?: string;              // trimmed; empty or all-whitespace is rejected
+    name?: string;              // trimmed; empty, all-whitespace, or over 20 characters is rejected
     mapName?: string;
     slots?: number;            // 2–20, and never below the player count once bannedPlayerIds (if present) has been applied
     bannedPlayerIds?: number[]; // replaces the game's entire ban list
+    playerTeam?: { playerId: number; team: number };
     gameMode?: 'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
     diceRandomness?: 'Balanced' | 'True';
     defenceDice?: 2 | 3;
@@ -107,8 +116,16 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
     turnDuration?: 60 | 90 | 120 | 150 | 180 | 300; // seconds
   }
   ```
-  `bannedPlayerIds` replaces the full ban list in one shot rather than adding/removing one id at a time — to kick a player, send the current `bannedPlayers` ids (from `game:state`) plus the new id; to unban, send them minus the id to remove. Any id newly present that belongs to a player currently in the game is kicked (evicted and sent `game:kicked`); the host's own id is silently dropped from the list rather than self-banning.
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `invalid name`, `invalid map`, `invalid slots`, `invalid game mode`, `invalid dice randomness`, `invalid defence dice`, `invalid cards`, `invalid turn duration`, `game name already in use`.
+  `bannedPlayerIds` replaces the full ban list in one shot rather than adding/removing one id at a time — to kick a player or spectator, send the current `bannedPlayers` ids (from `game:state`) plus the new id; to unban, send them minus the id to remove. Any id newly present that belongs to a player or spectator currently in the game is kicked (evicted and sent `game:kicked`); the host's own id is silently dropped from the list rather than self-banning.
+
+  `playerTeam` sets one player's `team` (see `GameState.players` above); `playerId` must currently be a player in the game (not a spectator) and `team` must be an integer between `1` and `max(1, players.length - 1)`, otherwise the whole request is rejected with `invalid team`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `invalid name`, `invalid map`, `invalid slots`, `invalid team`, `invalid game mode`, `invalid dice randomness`, `invalid defence dice`, `invalid cards`, `invalid turn duration`, `game name already in use`.
+
+### `game:cycleColor`
+- **When sent:** a player clicks their own color in the lobby's player table.
+- **Purpose:** change the caller's own `color` to the next available one, unlike `game:settings` this needs no host privileges since players only ever change their own color. Starting from the caller's current index, the server walks forward (wrapping) through the first `min(20, players.length + 3)` palette indices and stops at the first one not already used by another player. The caller must currently be a seated player (not a spectator).
+- **Content:** none
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not a player`.
 
 ### `game:start`
 - **When sent:** the host of a game starts it from the lobby.
@@ -124,6 +141,15 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
   ```ts
   string[]
   ```
+
+### `game:chat`
+- **When sent:** a player or spectator sends a chat message.
+- **Purpose:** relay a chat message to everyone (players and spectators alike) currently in the same game. Silently ignored if the sender isn't currently in a game, or if `message` is empty or all-whitespace.
+- **Content:**
+  ```ts
+  { message: string }
+  ```
+- **Ack:** none
 
 ---
 
@@ -146,9 +172,17 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
   ```
 
 ### `game:kicked`
-- **When sent:** immediately, only to the socket of the player who was just kicked.
+- **When sent:** immediately, only to the socket of the player or spectator who was just kicked.
 - **Purpose:** tell that client it has been removed and banned from the game, so it can leave the game view. The server has already moved that socket back to `home`.
 - **Content:**
   ```ts
   { gameName: string }
+  ```
+
+### `game:chatMessage`
+- **When sent:** immediately, to every socket in a game's room, whenever a player or spectator sends `game:chat` (including back to the sender).
+- **Purpose:** deliver a chat message to everyone currently in the game.
+- **Content:**
+  ```ts
+  { id: number; name: string; message: string }
   ```

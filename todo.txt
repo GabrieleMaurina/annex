@@ -1,6 +1,24 @@
-Allow additional players to join a full game as spectators, both for games still in the lobby, and for games that are already in progress. Spectators should be able to view the game state, chat with other spectators. The lobby should show current player and separately spectators. If a player leaves while in the lobby, the next spectator in line should be promoted to player status. If a player leaves during an ongoing game, the game should continue without them. Spectators can be banned like players.
+Implement the following.
+
+START OF THE GAME:
+After a game has started, the server must keep track of the territories. Which player controls them and with how many troops. A territory can never be empty.
+
+randomize the order of players, to establish the turn order.
+
+assign each player an equal number of territories at random. If the number of territories is not divisible by the number of players, give 1 extra territory to the last player, or players, in the turn order. for example with 6 players and 20 territories, the number of territories for each player in turn order would be: 3, 3, 3, 3, 4, 4.
+
+Next, each player gets (n_territories * 3) troops. Place the troops at random on the territories controlled by the player. The logic should be: for a given player, place 1 troop on each player's territory first, then for each of the remaining troops, randomly select a territory controlled by the player and add 1 troop to it. Repeat until all troops are placed.
+
+On the client, the map page should have a small side panel to the right. The panel is semi transparent and should be collapsible (same as the panel in Mapper). Make sure the trasparency of the chat is consistent with the transparency of this panel. The panel should show every player in the turn order (vertically). Also it should show total number of troops and total number of territories for each players. These numbers should be kept updated throught the game. The color for each player must be shown too.
+
+in the client Map, pressing escape deselects the selected territory. If no territory is selected, then pressing escape should collapse both the side panel and the chat.
+
+The server allows a player to change color. Restrict this to the lobby phase only. Make sure this restriction is enforced on both client and server. On the client simply do not provide the option to change color after the game has started. On the server, if a player tries to change color after the game has started, send an error message back to the client.
+
+Do not implement anything more than what I described above.
 
 
-When game mode is Team Deathmatch, a new calumn called team should be added. The column contains the team number of the player. The maximum number of teams is equal to the number of players - 1.
 
 
+
+Review PROTOCOL.md. Make sure it is clear, precise, complete, and minimal. Ensure it has not contradictions. Remove repetitions and unnecessary prose.

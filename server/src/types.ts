@@ -40,5 +40,8 @@ export interface Game {
   cards: CardsMode;
   turnDuration: TurnDuration;
   playerIds: number[];
+  spectatorIds: number[];
+  playerTeams: Map<number, number>;
+  playerColors: Map<number, number>;
   bannedIds: Set<number>;
 }

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Form } from 'react-bootstrap';
 import type { Player } from './types';
 
+const MAX_NAME_LENGTH = 10;
+
 interface Props {
   player: Player;
   onNameChange: (name: string) => void;
@@ -13,7 +15,11 @@ function PlayerNameEditor({ player, onNameChange }: Props) {
 
   function commit() {
     const trimmed = name.trim();
-    if (trimmed && trimmed !== player.name) {
+    if (
+      trimmed &&
+      trimmed.length <= MAX_NAME_LENGTH &&
+      trimmed !== player.name
+    ) {
       onNameChange(trimmed);
     } else {
       setName(player.name);
@@ -22,11 +28,12 @@ function PlayerNameEditor({ player, onNameChange }: Props) {
   }
 
   return (
-    <div className="position-absolute top-0 end-0 m-4">
+    <div className="text-truncate">
       {editing ? (
         <Form.Control
           autoFocus
           size="sm"
+          maxLength={MAX_NAME_LENGTH}
           style={{ width: 'auto' }}
           value={name}
           onChange={(e) => setName(e.target.value)}

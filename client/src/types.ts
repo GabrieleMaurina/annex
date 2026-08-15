@@ -8,6 +8,8 @@ export interface GameSummary {
   mapName: string;
   playerCount: number;
   slots: number;
+  phase: 'lobby' | 'playing';
+  spectatorCount: number;
 }
 
 export type DiceRandomness = 'Balanced' | 'True';
@@ -27,7 +29,8 @@ export interface GameState {
   defenceDice: 2 | 3;
   cards: CardsMode;
   turnDuration: TurnDuration;
-  players: { id: number; name: string }[];
+  players: { id: number; name: string; team: number; color: number }[];
+  spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
 }
 
@@ -36,6 +39,7 @@ export interface GameSettingsInput {
   mapName?: string;
   slots?: number;
   bannedPlayerIds?: number[];
+  playerTeam?: { playerId: number; team: number };
   gameMode?: GameMode;
   diceRandomness?: DiceRandomness;
   defenceDice?: 2 | 3;
@@ -44,3 +48,9 @@ export interface GameSettingsInput {
 }
 
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
+
+export interface ChatMessage {
+  id: number;
+  name: string;
+  message: string;
+}

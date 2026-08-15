@@ -12,6 +12,9 @@ import {
 
 const games = new Map<string, Game>();
 
+const MAX_GAME_NAME_LENGTH = 20;
+const COLOR_COUNT = 20;
+
 const GAME_MODE_VALUES: GameMode[] = [
   'World Domination',
   'Capital Conquest',
@@ -27,6 +30,7 @@ interface GameSettings {
   mapName?: string;
   slots?: number;
   bannedPlayerIds?: number[];
+  playerTeam?: { playerId: number; team: number };
   gameMode?: GameMode;
   diceRandomness?: DiceRandomness;
   defenceDice?: 2 | 3;
@@ -48,6 +52,8 @@ function gameSummary(game: Game) {
     mapName: game.mapName,
     playerCount: game.playerIds.length,
     slots: game.slots,
+    phase: game.phase,
+    spectatorCount: game.spectatorIds.length,
   };
 }
 
@@ -56,6 +62,48 @@ function toSummaries(ids: number[], playersById: Map<number, Player>) {
     .map((id) => playersById.get(id))
     .filter((player): player is Player => !!player)
     .map((player) => ({ id: player.id, name: player.name }));
+}
+
+function maxTeams(game: Game) {
+  return Math.max(1, game.playerIds.length - 1);
+}
+
+function colorBound(game: Game) {
+  return Math.min(COLOR_COUNT, game.playerIds.length + 3);
+}
+
+function assignRandomColor(game: Game, playerId: number) {
+  const bound = colorBound(game);
+  const used = new Set(game.playerColors.values());
+  const available = [];
+  for (let i = 0; i < bound; i++) {
+    if (!used.has(i)) available.push(i);
+  }
+  const pool =
+    available.length > 0
+      ? available
+      : Array.from({ length: bound }, (_, i) => i);
+  game.playerColors.set(
+    playerId,
+    pool[Math.floor(Math.random() * pool.length)],
+  );
+}
+
+function cycleColor(game: Game, playerId: number) {
+  const bound = colorBound(game);
+  const current = game.playerColors.get(playerId) ?? 0;
+  const usedByOthers = new Set(
+    [...game.playerColors.entries()]
+      .filter(([id]) => id !== playerId)
+      .map(([, index]) => index),
+  );
+  for (let step = 1; step <= bound; step++) {
+    const candidate = (current + step) % bound;
+    if (!usedByOthers.has(candidate)) {
+      game.playerColors.set(playerId, candidate);
+      return;
+    }
+  }
 }
 
 function gameState(game: Game, playersById: Map<number, Player>) {
@@ -70,19 +118,44 @@ function gameState(game: Game, playersById: Map<number, Player>) {
     defenceDice: game.defenceDice,
     cards: game.cards,
     turnDuration: game.turnDuration,
-    players: toSummaries(game.playerIds, playersById),
+    players: toSummaries(game.playerIds, playersById).map((player) => ({
+      ...player,
+      team: game.playerTeams.get(player.id) ?? 1,
+      color: game.playerColors.get(player.id) ?? 0,
+    })),
+    spectators: toSummaries(game.spectatorIds, playersById),
     bannedPlayers: toSummaries([...game.bannedIds], playersById),
   };
 }
 
 function removePlayerFromGame(game: Game, playerId: number) {
   game.playerIds = game.playerIds.filter((id) => id !== playerId);
+  game.playerTeams.delete(playerId);
+  game.playerColors.delete(playerId);
+
+  if (
+    game.phase === 'lobby' &&
+    game.playerIds.length < game.slots &&
+    game.spectatorIds.length > 0
+  ) {
+    const promotedId = game.spectatorIds.shift()!;
+    game.playerIds.push(promotedId);
+    game.playerTeams.set(promotedId, 1);
+    assignRandomColor(game, promotedId);
+  }
+
   if (game.playerIds.length === 0) {
     games.delete(game.name);
     return;
   }
+
   if (game.hostId === playerId) {
     game.hostId = game.playerIds[0];
+  }
+
+  const cap = maxTeams(game);
+  for (const id of game.playerIds) {
+    if ((game.playerTeams.get(id) ?? 1) > cap) game.playerTeams.set(id, 1);
   }
 }
 
@@ -90,7 +163,13 @@ export function leaveGame(player: Player) {
   if (!player.gameName) return;
   const game = games.get(player.gameName);
   player.gameName = null;
-  if (game) removePlayerFromGame(game, player.id);
+  if (!game) return;
+
+  if (game.spectatorIds.includes(player.id)) {
+    game.spectatorIds = game.spectatorIds.filter((id) => id !== player.id);
+    return;
+  }
+  removePlayerFromGame(game, player.id);
 }
 
 export function listGameSummaries() {
@@ -137,10 +216,14 @@ export function registerGameHandlers(
       cards: 'Fixed',
       turnDuration: 120,
       playerIds: [player.id],
+      spectatorIds: [],
+      playerTeams: new Map([[player.id, 1]]),
+      playerColors: new Map(),
       bannedIds: new Set(),
     };
     games.set(game.name, game);
     player.gameName = game.name;
+    assignRandomColor(game, player.id);
 
     socket.leave(HOME_ROOM);
     socket.join(gameRoomName(game.name));
@@ -162,10 +245,14 @@ export function registerGameHandlers(
       if (!game) return callback({ ok: false, error: 'game not found' });
       if (game.bannedIds.has(player.id))
         return callback({ ok: false, error: 'banned from this game' });
-      if (game.playerIds.length >= game.slots)
-        return callback({ ok: false, error: 'game is full' });
 
-      game.playerIds.push(player.id);
+      if (game.phase === 'lobby' && game.playerIds.length < game.slots) {
+        game.playerIds.push(player.id);
+        game.playerTeams.set(player.id, 1);
+        assignRandomColor(game, player.id);
+      } else {
+        game.spectatorIds.push(player.id);
+      }
       player.gameName = game.name;
 
       socket.leave(HOME_ROOM);
@@ -200,7 +287,8 @@ export function registerGameHandlers(
 
       if (settings.name !== undefined) {
         const trimmedName = settings.name.trim();
-        if (!trimmedName) return callback({ ok: false, error: 'invalid name' });
+        if (!trimmedName || trimmedName.length > MAX_GAME_NAME_LENGTH)
+          return callback({ ok: false, error: 'invalid name' });
 
         if (trimmedName !== game.name) {
           if (games.has(trimmedName))
@@ -209,7 +297,7 @@ export function registerGameHandlers(
           const oldRoom = gameRoomName(game.name);
           const newRoom = gameRoomName(trimmedName);
           games.delete(game.name);
-          for (const id of game.playerIds) {
+          for (const id of [...game.playerIds, ...game.spectatorIds]) {
             const member = playersById.get(id);
             if (member) member.gameName = trimmedName;
             const memberSocket =
@@ -228,9 +316,11 @@ export function registerGameHandlers(
         );
 
         for (const id of newBannedIds) {
-          if (game.bannedIds.has(id) || !game.playerIds.includes(id)) {
-            continue;
-          }
+          if (game.bannedIds.has(id)) continue;
+          const isPlayer = game.playerIds.includes(id);
+          const isSpectator = game.spectatorIds.includes(id);
+          if (!isPlayer && !isSpectator) continue;
+
           const kicked = playersById.get(id);
           if (!kicked) continue;
           kicked.gameName = null;
@@ -238,10 +328,28 @@ export function registerGameHandlers(
           kickedSocket?.leave(gameRoomName(game.name));
           kickedSocket?.join(HOME_ROOM);
           kickedSocket?.emit('game:kicked', { gameName: game.name });
-          removePlayerFromGame(game, id);
+
+          if (isPlayer) {
+            removePlayerFromGame(game, id);
+          } else {
+            game.spectatorIds = game.spectatorIds.filter((s) => s !== id);
+          }
         }
 
         game.bannedIds = newBannedIds;
+      }
+
+      if (settings.playerTeam !== undefined) {
+        const { playerId, team } = settings.playerTeam;
+        if (
+          !game.playerIds.includes(playerId) ||
+          !Number.isInteger(team) ||
+          team < 1 ||
+          team > maxTeams(game)
+        ) {
+          return callback({ ok: false, error: 'invalid team' });
+        }
+        game.playerTeams.set(playerId, team);
       }
 
       if (settings.slots !== undefined) {
@@ -300,5 +408,34 @@ export function registerGameHandlers(
 
     game.phase = 'playing';
     callback({ ok: true, game: gameState(game, playersById) });
+  });
+
+  socket.on('game:cycleColor', (callback: (response: GameResponse) => void) => {
+    const player = playersBySocket.get(socket.id);
+    if (!player || !player.gameName)
+      return callback({ ok: false, error: 'not in a game' });
+
+    const game = games.get(player.gameName);
+    if (!game) return callback({ ok: false, error: 'game not found' });
+    if (!game.playerIds.includes(player.id))
+      return callback({ ok: false, error: 'not a player' });
+
+    cycleColor(game, player.id);
+    callback({ ok: true, game: gameState(game, playersById) });
+  });
+
+  socket.on('game:chat', ({ message }: { message: string }) => {
+    const player = playersBySocket.get(socket.id);
+    if (!player || !player.gameName) return;
+
+    const game = games.get(player.gameName);
+    if (!game) return;
+
+    if (typeof message !== 'string') return;
+    const trimmed = message.trim();
+    if (!trimmed) return;
+
+    const payload = { id: player.id, name: player.name, message: trimmed };
+    io.to(gameRoomName(game.name)).emit('game:chatMessage', payload);
   });
 }

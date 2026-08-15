@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
+import Chat from './Chat';
 import GameMap from './GameMap';
 import Lobby from './Lobby';
 import { socket } from './socket';
@@ -52,22 +53,34 @@ function Game({
     );
   }
 
-  if (game.phase === 'playing') {
-    return <GameMap mapName={game.mapName} />;
-  }
+  const nameById = new Map(
+    [...game.players, ...game.spectators].map((p) => [p.id, p.name]),
+  );
+  const colorById = new Map(game.players.map((p) => [p.id, p.color]));
 
   return (
-    <Container fluid className="py-5 px-4 position-relative">
-      <Lobby
-        game={game}
-        setGame={setGame}
-        player={player}
-        onNameChange={onNameChange}
-        selfId={selfId}
-        mapNames={mapNames}
-        navigate={navigate}
+    <>
+      {game.phase === 'playing' ? (
+        <GameMap mapName={game.mapName} />
+      ) : (
+        <Container fluid className="py-5 px-4">
+          <Lobby
+            game={game}
+            setGame={setGame}
+            player={player}
+            onNameChange={onNameChange}
+            selfId={selfId}
+            mapNames={mapNames}
+            navigate={navigate}
+          />
+        </Container>
+      )}
+      <Chat
+        nameById={nameById}
+        colorById={colorById}
+        transparent={game.phase === 'playing'}
       />
-    </Container>
+    </>
   );
 }
 

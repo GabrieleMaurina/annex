@@ -1,0 +1,19 @@
+import fs from 'fs';
+import path from 'path';
+import { GameMap } from './types';
+
+const mapsDir = path.resolve(__dirname, '..', '..', 'client', 'public', 'maps');
+
+export const maps = new Map<string, GameMap>();
+
+for (const file of fs.readdirSync(mapsDir)) {
+  if (!file.endsWith('.anx')) continue;
+  const data = JSON.parse(fs.readFileSync(path.join(mapsDir, file), 'utf-8'));
+  maps.set(data.name, {
+    name: data.name,
+    territories: data.territories,
+    bonuses: data.bonuses,
+  });
+}
+
+export const defaultMapName = [...maps.keys()][0];

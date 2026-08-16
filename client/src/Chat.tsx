@@ -8,18 +8,21 @@ interface Props {
   nameById: Map<number, string>;
   colorById: Map<number, number>;
   transparent?: boolean;
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }
 
-function Chat({ nameById, colorById, transparent }: Props) {
+function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
-  const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
   const openRef = useRef(open);
 
   useEffect(() => {
     openRef.current = open;
+    if (!open) summaryRef.current?.blur();
   }, [open]);
 
   useEffect(() => {
@@ -59,7 +62,7 @@ function Chat({ nameById, colorById, transparent }: Props) {
       style={{ zIndex: 1 }}
     >
       <details open={open} onToggle={toggle} style={{ width: 300 }}>
-        <summary>
+        <summary ref={summaryRef}>
           Chat
           {!open && unreadCount > 0 && (
             <Badge bg="danger" className="ms-2">

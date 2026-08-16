@@ -44,4 +44,6 @@ export interface Game {
   playerTeams: Map<number, number>;
   playerColors: Map<number, number>;
   bannedIds: Set<number>;
+  territoryOwners: Map<number, number>;
+  territoryTroops: Map<number, number>;
 }

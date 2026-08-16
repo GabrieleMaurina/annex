@@ -270,8 +270,8 @@ function Panel({
 
   return (
     <div
-      className="position-absolute top-0 end-0 h-100 bg-body bg-opacity-75 border-start p-3 d-flex flex-column"
-      style={{ width: 280 }}
+      className="position-absolute top-0 end-0 bg-body bg-opacity-75 p-3 d-flex flex-column"
+      style={{ width: 280, maxHeight: '100vh' }}
     >
       <div className="d-flex justify-content-end mb-3">
         <Button

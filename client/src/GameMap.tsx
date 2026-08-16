@@ -1,9 +1,25 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { loadGameMap, type Territory } from './mapData';
-import { continentColor } from './palette';
+import { continentColor, contrastTextColor, playerColor } from './palette';
+import PlayersPanel from './PlayersPanel';
+import type { GameState } from './types';
 
 interface Props {
   mapName: string;
+  players: GameState['players'];
+  spectators: GameState['spectators'];
+  ownership: GameState['territories'];
+  setChatOpen: Dispatch<SetStateAction<boolean>>;
+  navigate: (path: string) => void;
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  );
 }
 
 interface Point {
@@ -40,7 +56,14 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function GameMap({ mapName }: Props) {
+function GameMap({
+  mapName,
+  players,
+  spectators,
+  ownership,
+  setChatOpen,
+  navigate,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<DragState>(null);
@@ -52,6 +75,7 @@ function GameMap({ mapName }: Props) {
   });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [size, setSize] = useState({
     w: window.innerWidth,
     h: window.innerHeight,
@@ -85,11 +109,26 @@ function GameMap({ mapName }: Props) {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setSelectedId(null);
+      if (e.key === 'Escape') {
+        if (selectedId !== null) {
+          setSelectedId(null);
+          return;
+        }
+        setPanelCollapsed(true);
+        setChatOpen(false);
+        return;
+      }
+      if (isTypingTarget(e.target)) return;
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setPanelCollapsed((prev) => !prev);
+      } else if (e.key.toLowerCase() === 't') {
+        setChatOpen((prev) => !prev);
+      }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [selectedId, setChatOpen]);
 
   function getImageDims(): { w: number; h: number } {
     const img = imageRef.current;
@@ -219,16 +258,31 @@ function GameMap({ mapName }: Props) {
       y: p.y * scaleY + offsetY,
     });
 
+    const ownerById = new Map(ownership.map((o) => [o.id, o]));
+    const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
+
     for (const t of territories) {
       const p = toScreen(t);
       const style = STATE_STYLE[nodeState(t.id)];
+      const owner = ownerById.get(t.id);
+      const fillColor = owner
+        ? playerColor(colorByPlayerId.get(owner.ownerId) ?? 0)
+        : continentColor(t.continentId);
       ctx.beginPath();
       ctx.arc(p.x, p.y, VERTEX_RADIUS * zoom, 0, Math.PI * 2);
-      ctx.fillStyle = continentColor(t.continentId);
+      ctx.fillStyle = fillColor;
       ctx.fill();
       ctx.strokeStyle = style.stroke;
       ctx.lineWidth = style.width * zoom;
       ctx.stroke();
+
+      if (owner) {
+        ctx.fillStyle = contrastTextColor(fillColor);
+        ctx.font = `bold ${VERTEX_RADIUS * zoom}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(owner.troops), p.x, p.y);
+      }
     }
   });
 
@@ -332,20 +386,29 @@ function GameMap({ mapName }: Props) {
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      onContextMenu={handleContextMenu}
-      style={{
-        display: 'block',
-        width: size.w,
-        height: size.h,
-        cursor: hoveredId !== null ? 'pointer' : 'default',
-      }}
-    />
+    <div className="position-relative">
+      <canvas
+        ref={canvasRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onContextMenu={handleContextMenu}
+        style={{
+          display: 'block',
+          width: size.w,
+          height: size.h,
+          cursor: hoveredId !== null ? 'pointer' : 'default',
+        }}
+      />
+      <PlayersPanel
+        players={players}
+        spectators={spectators}
+        collapsed={panelCollapsed}
+        setCollapsed={setPanelCollapsed}
+        navigate={navigate}
+      />
+    </div>
   );
 }
 

@@ -64,12 +64,65 @@ function toSummaries(ids: number[], playersById: Map<number, Player>) {
     .map((player) => ({ id: player.id, name: player.name }));
 }
 
-function maxTeams(game: Game) {
-  return Math.max(1, game.playerIds.length - 1);
+function maxTeam(game: Game) {
+  return Math.max(0, game.playerIds.length - 2);
 }
 
 function colorBound(game: Game) {
   return Math.min(COLOR_COUNT, game.playerIds.length + 3);
+}
+
+function shuffle<T>(array: T[]): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function assignTerritories(game: Game) {
+  const map = maps.get(game.mapName)!;
+  const territoryIds = shuffle(map.territories.map((t) => t.id));
+  const playerCount = game.playerIds.length;
+  const base = Math.floor(territoryIds.length / playerCount);
+  const remainder = territoryIds.length % playerCount;
+
+  let index = 0;
+  game.playerIds.forEach((playerId, i) => {
+    const count = base + (i >= playerCount - remainder ? 1 : 0);
+    const owned = territoryIds.slice(index, index + count);
+    index += count;
+
+    for (const territoryId of owned) {
+      game.territoryOwners.set(territoryId, playerId);
+      game.territoryTroops.set(territoryId, 1);
+    }
+
+    let remainingTroops = count * 3 - count;
+    while (remainingTroops > 0) {
+      const territoryId = owned[Math.floor(Math.random() * owned.length)];
+      game.territoryTroops.set(
+        territoryId,
+        (game.territoryTroops.get(territoryId) ?? 0) + 1,
+      );
+      remainingTroops--;
+    }
+  });
+}
+
+function territoryStats(game: Game) {
+  const stats = new Map<
+    number,
+    { territoryCount: number; troopCount: number }
+  >();
+  for (const [territoryId, ownerId] of game.territoryOwners) {
+    const entry = stats.get(ownerId) ?? { territoryCount: 0, troopCount: 0 };
+    entry.territoryCount++;
+    entry.troopCount += game.territoryTroops.get(territoryId) ?? 0;
+    stats.set(ownerId, entry);
+  }
+  return stats;
 }
 
 function assignRandomColor(game: Game, playerId: number) {
@@ -107,6 +160,7 @@ function cycleColor(game: Game, playerId: number) {
 }
 
 function gameState(game: Game, playersById: Map<number, Player>) {
+  const stats = territoryStats(game);
   return {
     name: game.name,
     mapName: game.mapName,
@@ -120,11 +174,18 @@ function gameState(game: Game, playersById: Map<number, Player>) {
     turnDuration: game.turnDuration,
     players: toSummaries(game.playerIds, playersById).map((player) => ({
       ...player,
-      team: game.playerTeams.get(player.id) ?? 1,
+      team: game.playerTeams.get(player.id) ?? 0,
       color: game.playerColors.get(player.id) ?? 0,
+      territoryCount: stats.get(player.id)?.territoryCount ?? 0,
+      troopCount: stats.get(player.id)?.troopCount ?? 0,
     })),
     spectators: toSummaries(game.spectatorIds, playersById),
     bannedPlayers: toSummaries([...game.bannedIds], playersById),
+    territories: [...game.territoryOwners.entries()].map(([id, ownerId]) => ({
+      id,
+      ownerId,
+      troops: game.territoryTroops.get(id) ?? 0,
+    })),
   };
 }
 
@@ -140,7 +201,7 @@ function removePlayerFromGame(game: Game, playerId: number) {
   ) {
     const promotedId = game.spectatorIds.shift()!;
     game.playerIds.push(promotedId);
-    game.playerTeams.set(promotedId, 1);
+    game.playerTeams.set(promotedId, 0);
     assignRandomColor(game, promotedId);
   }
 
@@ -153,9 +214,9 @@ function removePlayerFromGame(game: Game, playerId: number) {
     game.hostId = game.playerIds[0];
   }
 
-  const cap = maxTeams(game);
+  const cap = maxTeam(game);
   for (const id of game.playerIds) {
-    if ((game.playerTeams.get(id) ?? 1) > cap) game.playerTeams.set(id, 1);
+    if ((game.playerTeams.get(id) ?? 0) > cap) game.playerTeams.set(id, 0);
   }
 }
 
@@ -217,9 +278,11 @@ export function registerGameHandlers(
       turnDuration: 120,
       playerIds: [player.id],
       spectatorIds: [],
-      playerTeams: new Map([[player.id, 1]]),
+      playerTeams: new Map([[player.id, 0]]),
       playerColors: new Map(),
       bannedIds: new Set(),
+      territoryOwners: new Map(),
+      territoryTroops: new Map(),
     };
     games.set(game.name, game);
     player.gameName = game.name;
@@ -248,7 +311,7 @@ export function registerGameHandlers(
 
       if (game.phase === 'lobby' && game.playerIds.length < game.slots) {
         game.playerIds.push(player.id);
-        game.playerTeams.set(player.id, 1);
+        game.playerTeams.set(player.id, 0);
         assignRandomColor(game, player.id);
       } else {
         game.spectatorIds.push(player.id);
@@ -344,8 +407,8 @@ export function registerGameHandlers(
         if (
           !game.playerIds.includes(playerId) ||
           !Number.isInteger(team) ||
-          team < 1 ||
-          team > maxTeams(game)
+          team < 0 ||
+          team > maxTeam(game)
         ) {
           return callback({ ok: false, error: 'invalid team' });
         }
@@ -406,6 +469,8 @@ export function registerGameHandlers(
     if (game.playerIds.length < 2)
       return callback({ ok: false, error: 'not enough players' });
 
+    game.playerIds = shuffle(game.playerIds);
+    assignTerritories(game);
     game.phase = 'playing';
     callback({ ok: true, game: gameState(game, playersById) });
   });
@@ -419,6 +484,8 @@ export function registerGameHandlers(
     if (!game) return callback({ ok: false, error: 'game not found' });
     if (!game.playerIds.includes(player.id))
       return callback({ ok: false, error: 'not a player' });
+    if (game.phase !== 'lobby')
+      return callback({ ok: false, error: 'game already started' });
 
     cycleColor(game, player.id);
     callback({ ok: true, game: gameState(game, playersById) });

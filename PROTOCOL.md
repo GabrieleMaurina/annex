@@ -1,6 +1,6 @@
 # Server ↔ Client Protocol
 
-This document lists every Socket.IO message exchanged between server and a client, and must be followed by both side. This document must be clear, precise, and short.
+This document lists every Socket.IO message exchanged between server and a client, and must be followed by both sidess. This document must be clear, precise, comprehensive, short, and up to date.
 
 Every socket starts in the `home` room on connect. A player moves to a game's room (`game:create` / `game:join`) and can be moved back to `home` (kicked, or `player:identify` reporting `room: 'home'`).
 
@@ -41,14 +41,19 @@ A client can choose its own `name` and `key`, but never its own `id`, nor its `s
   defenceDice: 2 | 3;
   cards: 'Fixed' | 'Progressive' | 'Exponential';
   turnDuration: 60 | 90 | 120 | 150 | 180 | 300; // seconds
-  players: { id: number; name: string; team: number; color: number }[];
+  players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
+  territories: { id: number; ownerId: number; troops: number }[];
 }
 ```
-`team` is only meaningful when `gameMode` is `'Team Deathmatch'` — it always defaults to `1` otherwise and is ignored by the client. Its valid range is `1` to `max(1, players.length - 1)`, guaranteeing at least one team has more than one member.
+`team` is only meaningful when `gameMode` is `'Team Deathmatch'` — it always defaults to `0` otherwise and is ignored by the client. Its valid range is `0` to `max(0, players.length - 2)`, guaranteeing at least one team has more than one member.
 
 `color` is an index into a 20-entry color palette the client owns — the server never sends actual color values, only the index. It's assigned at random when a player is seated (`game:create`, `game:join`, or spectator promotion), and is always unique among the game's current players. To keep early joiners' colors nicer (the palette is ordered nicest-first), both the random assignment and `game:cycleColor` are restricted to the first `min(20, players.length + 3)` palette indices. Spectators have no color.
+
+`territoryCount` and `troopCount` are the number of territories the player currently controls and the total troops on them; both are `0` until the game starts. Once `game:start` succeeds, `players` is reordered into the game's randomized turn order and stays in that order for the rest of the game.
+
+`territories` is empty until the game starts; once `playing`, it lists every territory on the map with its current owner (`ownerId`, a player's `id`) and troop count.
 
 Players who couldn't be seated (lobby full, or the game is already `playing`) become **spectators**: same room, full visibility of `game:state`, but no roster slot and no gameplay actions. In the `lobby` phase, spectators are an ordered queue (`spectators[0]` is next in line) — if a seated player leaves while the game is still in `lobby`, the front spectator is promoted to a player automatically. Nothing promotes spectators once the game is `playing`; a player leaving mid-game just shrinks the roster.
 
@@ -118,18 +123,18 @@ Players who couldn't be seated (lobby full, or the game is already `playing`) be
   ```
   `bannedPlayerIds` replaces the full ban list in one shot rather than adding/removing one id at a time — to kick a player or spectator, send the current `bannedPlayers` ids (from `game:state`) plus the new id; to unban, send them minus the id to remove. Any id newly present that belongs to a player or spectator currently in the game is kicked (evicted and sent `game:kicked`); the host's own id is silently dropped from the list rather than self-banning.
 
-  `playerTeam` sets one player's `team` (see `GameState.players` above); `playerId` must currently be a player in the game (not a spectator) and `team` must be an integer between `1` and `max(1, players.length - 1)`, otherwise the whole request is rejected with `invalid team`.
+  `playerTeam` sets one player's `team` (see `GameState.players` above); `playerId` must currently be a player in the game (not a spectator) and `team` must be an integer between `0` and `max(0, players.length - 2)`, otherwise the whole request is rejected with `invalid team`.
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `invalid name`, `invalid map`, `invalid slots`, `invalid team`, `invalid game mode`, `invalid dice randomness`, `invalid defence dice`, `invalid cards`, `invalid turn duration`, `game name already in use`.
 
 ### `game:cycleColor`
 - **When sent:** a player clicks their own color in the lobby's player table.
-- **Purpose:** change the caller's own `color` to the next available one, unlike `game:settings` this needs no host privileges since players only ever change their own color. Starting from the caller's current index, the server walks forward (wrapping) through the first `min(20, players.length + 3)` palette indices and stops at the first one not already used by another player. The caller must currently be a seated player (not a spectator).
+- **Purpose:** change the caller's own `color` to the next available one, unlike `game:settings` this needs no host privileges since players only ever change their own color. Starting from the caller's current index, the server walks forward (wrapping) through the first `min(20, players.length + 3)` palette indices and stops at the first one not already used by another player. The caller must currently be a seated player (not a spectator), and the game must still be in the `lobby` phase — colors can't change once playing.
 - **Content:** none
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not a player`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not a player`, `game already started`.
 
 ### `game:start`
 - **When sent:** the host of a game starts it from the lobby.
-- **Purpose:** move the game from the `lobby` phase to the `playing` phase, so every client in the game switches from the Lobby subpage to the Map subpage. The caller must be the game's current host, and the game must have at least 2 players.
+- **Purpose:** move the game from the `lobby` phase to the `playing` phase, so every client in the game switches from the Lobby subpage to the Map subpage. The caller must be the game's current host, and the game must have at least 2 players. The player order is shuffled at random to establish turn order (reflected in `players`); the map's territories are then dealt out at random in as equal shares as the player count allows — if they don't divide evenly, the last players in turn order get one extra territory each. Each player's territories start with 1 troop each, plus `territoryCount * 2` more troops dropped one at a time on random territories they own.
 - **Content:** none
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `already started`, `not enough players`.
 

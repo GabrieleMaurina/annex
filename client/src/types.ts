@@ -29,9 +29,17 @@ export interface GameState {
   defenceDice: 2 | 3;
   cards: CardsMode;
   turnDuration: TurnDuration;
-  players: { id: number; name: string; team: number; color: number }[];
+  players: {
+    id: number;
+    name: string;
+    team: number;
+    color: number;
+    territoryCount: number;
+    troopCount: number;
+  }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
+  territories: { id: number; ownerId: number; troops: number }[];
 }
 
 export interface GameSettingsInput {

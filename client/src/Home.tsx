@@ -87,6 +87,7 @@ function Home({
             <th>Name</th>
             <th>Map</th>
             <th>Players</th>
+            <th>Phase</th>
           </tr>
         </thead>
         <tbody>
@@ -106,6 +107,7 @@ function Home({
                   {g.playerCount}/{g.slots}
                   {g.spectatorCount > 0 && ` · ${g.spectatorCount} spectating`}
                 </td>
+                <td>{g.phase === 'lobby' ? 'Lobby' : 'Playing'}</td>
               </tr>
             );
           })}

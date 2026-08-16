@@ -374,17 +374,16 @@ function Lobby({
                             setPlayerTeam(p.id, Number(e.target.value))
                           }
                         >
-                          {Array.from(
-                            { length: maxTeams },
-                            (_, t) => t + 1,
-                          ).map((team) => (
-                            <option key={team} value={team}>
-                              {team}
-                            </option>
-                          ))}
+                          {Array.from({ length: maxTeams }, (_, t) => t).map(
+                            (team) => (
+                              <option key={team} value={team}>
+                                {team + 1}
+                              </option>
+                            ),
+                          )}
                         </Form.Select>
                       ) : (
-                        p.team
+                        p.team + 1
                       )
                     ) : null}
                   </td>

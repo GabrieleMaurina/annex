@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Container } from 'react-bootstrap';
+import { Alert, Button, Container, Spinner } from 'react-bootstrap';
 import Chat from './Chat';
 import GameMap from './GameMap';
 import Lobby from './Lobby';
@@ -25,6 +25,7 @@ function Game({
   navigate,
 }: Props) {
   const [game, setGame] = useState<GameState | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     function onState(state: GameState) {
@@ -48,6 +49,7 @@ function Game({
   if (!game) {
     return (
       <Container fluid className="py-5 px-4">
+        <Spinner size="sm" className="me-2" />
         Loading...
       </Container>
     );
@@ -61,7 +63,14 @@ function Game({
   return (
     <>
       {game.phase === 'playing' ? (
-        <GameMap mapName={game.mapName} />
+        <GameMap
+          mapName={game.mapName}
+          players={game.players}
+          spectators={game.spectators}
+          ownership={game.territories}
+          setChatOpen={setChatOpen}
+          navigate={navigate}
+        />
       ) : (
         <Container fluid className="py-5 px-4">
           <Lobby
@@ -79,6 +88,8 @@ function Game({
         nameById={nameById}
         colorById={colorById}
         transparent={game.phase === 'playing'}
+        open={chatOpen}
+        setOpen={setChatOpen}
       />
     </>
   );

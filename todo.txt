@@ -1,24 +1,33 @@
-Implement the following.
 
-START OF THE GAME:
-After a game has started, the server must keep track of the territories. Which player controls them and with how many troops. A territory can never be empty.
+# Commit
 
-randomize the order of players, to establish the turn order.
+3. Review PROTOCOL.md. Make sure it is clear, precise, complete, and minimal. Ensure it has not contradictions. Remove repetitions and unnecessary prose.
 
-assign each player an equal number of territories at random. If the number of territories is not divisible by the number of players, give 1 extra territory to the last player, or players, in the turn order. for example with 6 players and 20 territories, the number of territories for each player in turn order would be: 3, 3, 3, 3, 4, 4.
+4. Review all server .ts files. Make sure they are clear, precise, complete, minimal, free of bugs, and follow the coding style for the project. Additionally evaluate if a refactoring or reorganization is necessary. Improving organization or consistency might improvee future manintanance.
 
-Next, each player gets (n_territories * 3) troops. Place the troops at random on the territories controlled by the player. The logic should be: for a given player, place 1 troop on each player's territory first, then for each of the remaining troops, randomly select a territory controlled by the player and add 1 troop to it. Repeat until all troops are placed.
-
-On the client, the map page should have a small side panel to the right. The panel is semi transparent and should be collapsible (same as the panel in Mapper). Make sure the trasparency of the chat is consistent with the transparency of this panel. The panel should show every player in the turn order (vertically). Also it should show total number of troops and total number of territories for each players. These numbers should be kept updated throught the game. The color for each player must be shown too.
-
-in the client Map, pressing escape deselects the selected territory. If no territory is selected, then pressing escape should collapse both the side panel and the chat.
-
-The server allows a player to change color. Restrict this to the lobby phase only. Make sure this restriction is enforced on both client and server. On the client simply do not provide the option to change color after the game has started. On the server, if a player tries to change color after the game has started, send an error message back to the client.
-
-Do not implement anything more than what I described above.
+5. Review all client .ts and .tsx files. Make sure they are clear, precise, complete, minimal, free of bugs, and follow the coding style for the project. Additionally evaluate if a refactoring or reorganization is necessary. Improving organization or consistency might improvee future manintanance.
 
 
+# Commit
 
 
+6. GAME PROGRESSION
 
-Review PROTOCOL.md. Make sure it is clear, precise, complete, and minimal. Ensure it has not contradictions. Remove repetitions and unnecessary prose.
+Server tracks the game phase with "lobby" or "playing". Refactor that and call it game state instead of phase. This refactoring should happend in client, server, and protocol.
+
+Once the game has started, the game proceeds as follows: for each player in turn order, the player turn has 3 phases: deploy, attack, and fortify. Only a player whose turn it is can move on to the next phase. Once a player has completed all three phases, the turn moves to the next player. The server enforces the turn limit, so that if a player does not complete their turn in time, the turn will automatically move to the next player.
+
+Update server and client model/protocol to include and track the following:
+- turn counter: starts at 0 and goes up by one every time all remaining players have completed their turn
+- current player in turn: integer index of the player in turn order
+- current turn phase: one of "deploy", "attack", or "fortify"
+
+At the bottom center of the game screen add a little semi transparent panel that shows the current phase for the current player in turn. If the local player is the current player in turn, also add a button to move to the next phase.
+
+At the top of the screen add a think progress bar that shows the time spent in the current turn by the current player in turn. The progress bar is only a few pixels thick and spans the width of the screen. It has not borders and has the color of the player in turn. The progress bar should be updated smoothly by the client. The server does not send the state of the progress bar, but rather every client keeps track of the time spent in the current turn and updates the progress bar accordingly. The server only notifies when the turn has changed (and what a turn phase has changed to).
+
+
+Do not implement anything inside the 3 turn phases. Just implement the protocol, tracking, UI, and time limit.
+
+
+# Commit

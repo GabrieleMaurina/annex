@@ -137,7 +137,6 @@ function App() {
   return (
     <Game
       key={room}
-      gameName={room}
       player={player}
       onNameChange={handleNameChange}
       selfId={selfId}

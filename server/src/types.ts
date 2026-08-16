@@ -23,6 +23,7 @@ export interface Player {
 }
 
 export type DiceRandomness = 'Balanced' | 'True';
+export type DefenceDice = 2 | 3;
 export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
@@ -36,7 +37,7 @@ export interface Game {
   phase: 'lobby' | 'playing';
   gameMode: GameMode;
   diceRandomness: DiceRandomness;
-  defenceDice: 2 | 3;
+  defenceDice: DefenceDice;
   cards: CardsMode;
   turnDuration: TurnDuration;
   playerIds: number[];

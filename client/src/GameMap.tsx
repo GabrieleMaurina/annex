@@ -1,6 +1,17 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { loadGameMap, type Territory } from './mapData';
+import {
+  DEFAULT_IMAGE_HEIGHT,
+  DEFAULT_IMAGE_WIDTH,
+  loadGameMap,
+  type Territory,
+} from './mapData';
+import {
+  clamp,
+  clampOffset,
+  getClampedOffset as computeClampedOffset,
+  getScales as computeScales,
+} from './mapMath';
 import { continentColor, contrastTextColor, playerColor } from './palette';
 import PlayersPanel from './PlayersPanel';
 import type { GameState } from './types';
@@ -52,10 +63,6 @@ const STATE_STYLE = {
   selected: { stroke: '#ffffff', width: 7 },
 };
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
 function GameMap({
   mapName,
   players,
@@ -100,15 +107,15 @@ function GameMap({
   }, [mapName]);
 
   useEffect(() => {
-    function handleResize() {
+    function onResize() {
       setSize({ w: window.innerWidth, h: window.innerHeight });
     }
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
+    function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         if (selectedId !== null) {
           setSelectedId(null);
@@ -126,39 +133,20 @@ function GameMap({
         setChatOpen((prev) => !prev);
       }
     }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [selectedId, setChatOpen]);
 
   function getImageDims(): { w: number; h: number } {
     const img = imageRef.current;
-    return img ? { w: img.naturalWidth, h: img.naturalHeight } : { w: 1, h: 1 };
+    return img
+      ? { w: img.naturalWidth, h: img.naturalHeight }
+      : { w: DEFAULT_IMAGE_WIDTH, h: DEFAULT_IMAGE_HEIGHT };
   }
 
   function getScales(canvasW: number, canvasH: number, zoom: number) {
     const { w: imgW, h: imgH } = getImageDims();
-    return {
-      imgW,
-      imgH,
-      scaleX: (canvasW / imgW) * zoom,
-      scaleY: (canvasH / imgH) * zoom,
-    };
-  }
-
-  function clampOffset(
-    canvasW: number,
-    canvasH: number,
-    scaleX: number,
-    scaleY: number,
-    imgW: number,
-    imgH: number,
-    x: number,
-    y: number,
-  ) {
-    return {
-      x: clamp(x, canvasW - imgW * scaleX, 0),
-      y: clamp(y, canvasH - imgH * scaleY, 0),
-    };
+    return computeScales(canvasW, canvasH, zoom, imgW, imgH);
   }
 
   function getClampedOffset(
@@ -168,8 +156,8 @@ function GameMap({
     x: number,
     y: number,
   ) {
-    const { imgW, imgH, scaleX, scaleY } = getScales(canvasW, canvasH, zoom);
-    return clampOffset(canvasW, canvasH, scaleX, scaleY, imgW, imgH, x, y);
+    const { w: imgW, h: imgH } = getImageDims();
+    return computeClampedOffset(canvasW, canvasH, zoom, imgW, imgH, x, y);
   }
 
   useEffect(() => {

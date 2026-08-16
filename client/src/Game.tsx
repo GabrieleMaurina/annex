@@ -7,7 +7,6 @@ import { socket } from './socket';
 import type { GameState, Player } from './types';
 
 interface Props {
-  gameName: string;
   player: Player;
   onNameChange: (name: string) => void;
   selfId: number | null;

@@ -7,6 +7,7 @@ let nextPlayerId = 1;
 const MAX_PLAYER_NAME_LENGTH = 10;
 
 function isValidName(name: string): boolean {
+  if (typeof name !== 'string') return false;
   const trimmed = name.trim();
   return trimmed.length > 0 && trimmed.length <= MAX_PLAYER_NAME_LENGTH;
 }
@@ -52,7 +53,7 @@ export function registerHomeHandlers(
       }
       playersBySocket.set(socket.id, player);
 
-      if (room !== player.gameName) leaveGame(player);
+      if (room !== (player.gameName ?? HOME_ROOM)) leaveGame(player);
 
       for (const joinedRoom of [...socket.rooms]) {
         if (joinedRoom !== socket.id) socket.leave(joinedRoom);

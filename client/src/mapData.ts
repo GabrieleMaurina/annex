@@ -12,6 +12,9 @@ interface MapFile {
   imageMime: string | null;
 }
 
+export const DEFAULT_IMAGE_WIDTH = 2560;
+export const DEFAULT_IMAGE_HEIGHT = 1440;
+
 const ALPHABET =
   '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-:+=^!/*?&<>()[]{}@%$#';
 const DECODE_MAP = new Map(Array.from(ALPHABET).map((c, i) => [c, i]));
@@ -45,14 +48,16 @@ function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
   return `data:${mime};base64,${btoa(binary)}`;
 }
 
-export async function loadGameMap(
+export function loadGameMap(
   mapName: string,
 ): Promise<{ territories: Territory[]; imageSrc: string | null }> {
-  const res = await fetch(`/maps/${encodeURIComponent(mapName)}.anx`);
-  const data: MapFile = await res.json();
-  const imageSrc =
-    data.image === null
-      ? null
-      : bytesToDataUrl(decodeBase85(data.image), data.imageMime!);
-  return { territories: data.territories, imageSrc };
+  return fetch(`/maps/${encodeURIComponent(mapName)}.anx`)
+    .then((res) => res.json())
+    .then((data: MapFile) => ({
+      territories: data.territories,
+      imageSrc:
+        data.image === null
+          ? null
+          : bytesToDataUrl(decodeBase85(data.image), data.imageMime!),
+    }));
 }

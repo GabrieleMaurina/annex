@@ -400,6 +400,8 @@ export function registerGameHandlers(
       }
 
       game.selectedTerritoryId = territoryId;
+      if (territoryId !== null)
+        io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
       callback({ ok: true, game: gameState(game, playersById) });
     },
   );
@@ -439,6 +441,10 @@ export function registerGameHandlers(
       game.selectedTerritoryId = null;
       if (game.troopsToDeploy <= 0) advanceTurnPhase(game);
 
+      io.to(gameRoomName(game.name)).emit('game:deployed', {
+        territoryId,
+        troops,
+      });
       callback({ ok: true, game: gameState(game, playersById) });
     },
   );

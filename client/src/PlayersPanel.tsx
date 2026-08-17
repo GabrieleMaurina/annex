@@ -1,7 +1,6 @@
 import { Button, ListGroup, Table } from 'react-bootstrap';
 import { useWhiteIcon } from './icon';
 import { contrastTextColor, playerColor } from './palette';
-import ShareButton from './ShareButton';
 import { socket } from './socket';
 import type { Ack, GameState } from './types';
 
@@ -46,7 +45,7 @@ function PlayersPanel({
       <Button
         variant="secondary"
         size="sm"
-        className="position-absolute top-0 end-0 m-2"
+        className="position-absolute top-0 end-0 m-3"
         onClick={() => setCollapsed(false)}
       >
         ☰
@@ -56,10 +55,10 @@ function PlayersPanel({
 
   return (
     <div
-      className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2"
+      className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-3"
       style={{
         width: isTeamDeathmatch ? 280 : 240,
-        maxHeight: 'calc(100vh - 1rem)',
+        maxHeight: 'calc(100vh - 2rem)',
       }}
     >
       <div className="d-flex justify-content-end mb-3">
@@ -73,7 +72,7 @@ function PlayersPanel({
       </div>
       <div
         className="overflow-auto no-scrollbar"
-        style={{ maxHeight: 'calc(100vh - 7rem)' }}
+        style={{ maxHeight: 'calc(100vh - 8rem)' }}
       >
         <Table
           size="sm"
@@ -207,9 +206,6 @@ function PlayersPanel({
           Surrender
         </Button>
       )}
-      <div className="d-flex justify-content-end mt-2">
-        <ShareButton url={window.location.href} />
-      </div>
     </div>
   );
 }

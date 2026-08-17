@@ -3,6 +3,7 @@ import { Alert, Button, Container, Spinner } from 'react-bootstrap';
 import Chat from './Chat';
 import GameMap from './GameMap';
 import Lobby from './Lobby';
+import SettingsMenu from './SettingsMenu';
 import { socket } from './socket';
 import type { GameState, Player } from './types';
 
@@ -61,6 +62,7 @@ function Game({
 
   return (
     <>
+      <SettingsMenu shareUrl={window.location.href} />
       {game.state === 'playing' ? (
         <GameMap
           mapName={game.mapName}

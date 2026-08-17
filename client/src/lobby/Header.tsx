@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
 import PlayerNameEditor from '../PlayerNameEditor';
-import ShareButton from '../ShareButton';
 import type { GameSettingsInput, GameState, Player } from '../types';
 
 const MAX_GAME_NAME_LENGTH = 20;
@@ -19,14 +18,11 @@ function Header({ game, isHost, applySettings, player, onNameChange }: Props) {
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="d-flex align-items-center mb-4">
-      <div
-        className="d-flex align-items-center flex-grow-1"
-        style={{ flexBasis: 0, minWidth: 0 }}
-      >
-        <ShareButton url={window.location.href} />
+    <div className="mb-4">
+      <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
+        <PlayerNameEditor player={player} onNameChange={onNameChange} />
       </div>
-      <div className="d-flex align-items-center gap-3">
+      <div className="d-flex justify-content-center align-items-center gap-3">
         <img src="/favicon.svg" alt="" style={{ height: '3rem' }} />
         {isHost && editingName ? (
           <Form.Control
@@ -60,12 +56,6 @@ function Header({ game, isHost, applySettings, player, onNameChange }: Props) {
           </h1>
         )}
         <img src="/favicon.svg" alt="" style={{ height: '3rem' }} />
-      </div>
-      <div
-        className="d-flex justify-content-end flex-grow-1"
-        style={{ flexBasis: 0, minWidth: 0 }}
-      >
-        <PlayerNameEditor player={player} onNameChange={onNameChange} />
       </div>
     </div>
   );

@@ -253,3 +253,19 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
   ```ts
   { id: number; name: string; message: string }
   ```
+
+### `game:deployed`
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:deploy` call succeeds (including back to the deploying player).
+- **Purpose:** let every client play the deploy sound effect in sync, rather than inferring it from the next `game:state` tick.
+- **Content:**
+  ```ts
+  { territoryId: number; troops: number }
+  ```
+
+### `game:selected`
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:selectTerritory` call succeeds with a non-`null` `territoryId` (including back to the selecting player). Not sent for a deselection.
+- **Purpose:** let every client play the territory-selection sound effect in sync, rather than inferring it from the next `game:state` tick.
+- **Content:**
+  ```ts
+  { territoryId: number }
+  ```

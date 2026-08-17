@@ -1,6 +1,14 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Toast, ToastContainer } from 'react-bootstrap';
+import {
+  areAnimationsDisabled,
+  drawAnimations,
+  getAnimationDuration,
+  hasActiveAnimations,
+  pruneAnimations,
+  startAnimation,
+} from './animations';
 import DeployPanel from './DeployPanel';
 import {
   DEFAULT_IMAGE_HEIGHT,
@@ -17,6 +25,7 @@ import {
 import { continentColor, contrastTextColor, playerColor } from './palette';
 import PlayersPanel from './PlayersPanel';
 import { socket } from './socket';
+import { playSound } from './sounds';
 import TurnPanel from './TurnPanel';
 import TurnProgressBar from './TurnProgressBar';
 import type { Ack, GameState, TurnDuration, TurnPhase } from './types';
@@ -129,6 +138,28 @@ function GameMap({
     w: DEFAULT_IMAGE_WIDTH,
     h: DEFAULT_IMAGE_HEIGHT,
   });
+  const [, forceRedraw] = useState(0);
+  const animationLoopActiveRef = useRef(false);
+  const frozenTroopsRef = useRef<Map<number, number>>(new Map());
+  const ownerByIdRef = useRef(
+    new Map<number, GameState['territories'][number]>(),
+  );
+  const territoriesRef = useRef<Territory[]>([]);
+
+  function startAnimationLoop() {
+    if (animationLoopActiveRef.current) return;
+    animationLoopActiveRef.current = true;
+    function step() {
+      pruneAnimations();
+      forceRedraw((n) => n + 1);
+      if (hasActiveAnimations()) {
+        requestAnimationFrame(step);
+      } else {
+        animationLoopActiveRef.current = false;
+      }
+    }
+    requestAnimationFrame(step);
+  }
 
   useEffect(() => {
     loadGameMap(mapName).then(({ territories, imageSrc }) => {
@@ -152,6 +183,10 @@ function GameMap({
   const currentTurnPlayer = players[turnPlayerIndex];
   const isMyTurn = currentTurnPlayer?.id === selfId;
   const ownerById = new Map(ownership.map((o) => [o.id, o]));
+  useEffect(() => {
+    ownerByIdRef.current = ownerById;
+    territoriesRef.current = territories;
+  });
 
   const selectTerritory = useCallback(
     (territoryId: number | null) => {
@@ -185,6 +220,39 @@ function GameMap({
     setTrackedSelectedTerritoryId(selectedTerritoryId);
     if (selectedTerritoryId !== null) setDeployTroops(troopsToDeploy);
   }
+
+  useEffect(() => {
+    function onDeployed({ territoryId }: { territoryId: number }) {
+      playSound('deploy');
+      if (areAnimationsDisabled()) return;
+      const territory = territoriesRef.current.find(
+        (t) => t.id === territoryId,
+      );
+      if (territory) startAnimation('deploy', territory.x, territory.y);
+      const troops = ownerByIdRef.current.get(territoryId)?.troops;
+      if (troops !== undefined) {
+        frozenTroopsRef.current.set(territoryId, troops);
+        setTimeout(() => {
+          frozenTroopsRef.current.delete(territoryId);
+        }, getAnimationDuration('deploy'));
+      }
+      startAnimationLoop();
+    }
+    socket.on('game:deployed', onDeployed);
+    return () => {
+      socket.off('game:deployed', onDeployed);
+    };
+  }, []);
+
+  useEffect(() => {
+    function onSelected() {
+      playSound('select');
+    }
+    socket.on('game:selected', onSelected);
+    return () => {
+      socket.off('game:selected', onSelected);
+    };
+  }, []);
 
   const deployPanelOpen =
     turnPhase === 'deploy' && isMyTurn && selectedTerritoryId !== null;
@@ -376,6 +444,8 @@ function GameMap({
       y: p.y * scaleY + offsetY,
     });
 
+    drawAnimations(ctx, toScreen, VERTEX_RADIUS * zoom);
+
     const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
 
     for (const t of territories) {
@@ -385,6 +455,7 @@ function GameMap({
       const fillColor = owner
         ? playerColor(colorByPlayerId.get(owner.ownerId) ?? 0)
         : continentColor(t.continentId);
+
       ctx.beginPath();
       ctx.arc(p.x, p.y, VERTEX_RADIUS * zoom, 0, Math.PI * 2);
       ctx.fillStyle = fillColor;
@@ -394,11 +465,12 @@ function GameMap({
       ctx.stroke();
 
       if (owner) {
+        const troops = frozenTroopsRef.current.get(t.id) ?? owner.troops;
         ctx.fillStyle = contrastTextColor(fillColor);
         ctx.font = `bold ${VERTEX_RADIUS * zoom}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-        const text = String(owner.troops);
+        const text = String(troops);
         const metrics = ctx.measureText(text);
         const baselineY =
           p.y +

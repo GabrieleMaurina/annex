@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container, Table } from 'react-bootstrap';
 import PlayerNameEditor from './PlayerNameEditor';
-import ShareButton from './ShareButton';
+import SettingsMenu from './SettingsMenu';
 import { socket } from './socket';
 import type { Ack, GameSummary, Player } from './types';
 
@@ -68,24 +68,14 @@ function Home({
 
   return (
     <Container fluid className="pt-3 pb-5 px-4">
-      <div className="d-flex align-items-center mb-4">
-        <div
-          className="d-flex align-items-center flex-grow-1"
-          style={{ flexBasis: 0, minWidth: 0 }}
-        >
-          <ShareButton url={window.location.origin} />
-        </div>
-        <div className="d-flex align-items-center gap-5">
-          <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
-          <h1 className="mb-0">Annex</h1>
-          <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
-        </div>
-        <div
-          className="d-flex justify-content-end flex-grow-1"
-          style={{ flexBasis: 0, minWidth: 0 }}
-        >
-          <PlayerNameEditor player={player} onNameChange={onNameChange} />
-        </div>
+      <SettingsMenu shareUrl={window.location.origin} />
+      <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
+        <PlayerNameEditor player={player} onNameChange={onNameChange} />
+      </div>
+      <div className="d-flex justify-content-center align-items-center gap-5 mb-4">
+        <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
+        <h1 className="mb-0">Annex</h1>
+        <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
       </div>
 
       {kickedMessage && (

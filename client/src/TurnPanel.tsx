@@ -22,7 +22,7 @@ function TurnPanel({
   setGame,
 }: Props) {
   const isDark = contrastTextColor(color) === '#ffffff';
-  const whiteTankIcon = useWhiteIcon('/tank.svg');
+  const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
 
   function nextPhase() {
     socket.emit('game:nextPhase', (res: Ack) => {
@@ -46,7 +46,9 @@ function TurnPanel({
       {turnPhase === 'deploy' && (
         <span className="d-flex align-items-center gap-1">
           <img
-            src={isDark ? (whiteTankIcon ?? '/tank.svg') : '/tank.svg'}
+            src={
+              isDark ? (whiteTankIcon ?? '/icons/tank.svg') : '/icons/tank.svg'
+            }
             width={14}
             height={14}
             alt="Troops to deploy"
@@ -57,7 +59,7 @@ function TurnPanel({
       )}
       {isMyTurn && turnPhase !== 'deploy' && (
         <Button size="sm" onClick={nextPhase}>
-          Next Phase
+          {turnPhase === 'fortify' ? 'End Turn' : 'Next Phase'}
         </Button>
       )}
     </div>

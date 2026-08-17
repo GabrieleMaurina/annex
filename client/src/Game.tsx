@@ -78,6 +78,8 @@ function Game({
           troopsToDeploy={game.troopsToDeploy}
           turnStartedAt={game.turnStartedAt}
           selectedTerritoryId={game.selectedTerritoryId}
+          fortifyStartTerritoryId={game.fortifyStartTerritoryId}
+          fortifyEndTerritoryId={game.fortifyEndTerritoryId}
           setGame={setGame}
           setChatOpen={setChatOpen}
           navigate={navigate}

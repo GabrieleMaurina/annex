@@ -27,6 +27,8 @@ export function advanceToNextPlayer(game: Game) {
   game.turnPlayerIndex = nextIndex;
   game.turnPhase = 'deploy';
   game.selectedTerritoryId = null;
+  game.fortifyStartTerritoryId = null;
+  game.fortifyEndTerritoryId = null;
   game.troopsToDeploy = calculateDeployTroops(game, game.playerIds[nextIndex]);
   scheduleTurnTimer(game);
 }
@@ -36,6 +38,8 @@ export function advanceTurnPhase(game: Game) {
   if (index < PHASE_ORDER.length - 1) {
     game.turnPhase = PHASE_ORDER[index + 1];
     game.selectedTerritoryId = null;
+    game.fortifyStartTerritoryId = null;
+    game.fortifyEndTerritoryId = null;
   } else {
     advanceToNextPlayer(game);
   }
@@ -46,6 +50,8 @@ export function startTurns(game: Game) {
   game.turnPlayerIndex = 0;
   game.turnPhase = 'deploy';
   game.selectedTerritoryId = null;
+  game.fortifyStartTerritoryId = null;
+  game.fortifyEndTerritoryId = null;
   game.troopsToDeploy = calculateDeployTroops(game, game.playerIds[0]);
   scheduleTurnTimer(game);
 }

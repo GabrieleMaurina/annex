@@ -8,7 +8,7 @@ interface Props {
 
 function ShareButton({ url }: Props) {
   const [copied, setCopied] = useState(false);
-  const whiteShareIcon = useWhiteIcon('/share.svg');
+  const whiteShareIcon = useWhiteIcon('/icons/share.svg');
 
   function share() {
     navigator.clipboard.writeText(url).then(
@@ -23,7 +23,7 @@ function ShareButton({ url }: Props) {
     <>
       <Button variant="secondary" size="sm" onClick={share} title="Copy link">
         <img
-          src={whiteShareIcon ?? '/share.svg'}
+          src={whiteShareIcon ?? '/icons/share.svg'}
           width={16}
           height={16}
           alt="Share"

@@ -74,7 +74,12 @@ function Home({
       </div>
       <div className="d-flex justify-content-center align-items-center gap-5 mb-4">
         <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
-        <h1 className="mb-0">Annex</h1>
+        <h1
+          className="mb-0"
+          title="/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission"
+        >
+          Annex
+        </h1>
         <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
       </div>
 

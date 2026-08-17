@@ -1,3 +1,5 @@
+export { registerDeployHandlers } from './deploy';
+export { registerFortifyHandlers } from './fortify';
 export { registerGameHandlers } from './handlers';
 export {
   broadcastGameStates,

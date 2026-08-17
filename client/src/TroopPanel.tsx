@@ -3,22 +3,26 @@ import { Button, Form } from 'react-bootstrap';
 import { contrastTextColor, withAlpha } from './palette';
 
 interface Props {
+  label: string;
+  buttonLabel: string;
   troops: number;
   maxTroops: number;
   color: string;
   inputRef: RefObject<HTMLInputElement | null>;
   onChange: (troops: number) => void;
-  onDeploy: () => void;
+  onConfirm: () => void;
   style: React.CSSProperties;
 }
 
-function DeployPanel({
+function TroopPanel({
+  label,
+  buttonLabel,
   troops,
   maxTroops,
   color,
   inputRef,
   onChange,
-  onDeploy,
+  onConfirm,
   style,
 }: Props) {
   return (
@@ -32,7 +36,7 @@ function DeployPanel({
         color: contrastTextColor(color),
       }}
     >
-      <span>Deploy troops:</span>
+      <span>{label}</span>
       <Form.Control
         ref={inputRef}
         type="number"
@@ -47,11 +51,11 @@ function DeployPanel({
         }
         style={{ width: 70 }}
       />
-      <Button size="sm" onClick={onDeploy}>
-        Deploy
+      <Button size="sm" onClick={onConfirm}>
+        {buttonLabel}
       </Button>
     </div>
   );
 }
 
-export default DeployPanel;
+export default TroopPanel;

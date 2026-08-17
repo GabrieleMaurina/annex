@@ -4,12 +4,18 @@ import { Toast, ToastContainer } from 'react-bootstrap';
 import {
   areAnimationsDisabled,
   drawAnimations,
+  drawFortifyPath,
   getAnimationDuration,
   hasActiveAnimations,
   pruneAnimations,
+  setContinuousAnimation,
   startAnimation,
 } from './animations';
-import DeployPanel from './DeployPanel';
+import {
+  getFortifyEndCandidates,
+  getFortifyPath,
+  getFortifyStartCandidates,
+} from './fortify';
 import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
@@ -17,15 +23,18 @@ import {
   type Territory,
 } from './mapData';
 import {
+  buildWrappedPathSegments,
   clamp,
   clampOffset,
   getClampedOffset as computeClampedOffset,
   getScales as computeScales,
+  getAnchoredPanelPosition,
 } from './mapMath';
 import { continentColor, contrastTextColor, playerColor } from './palette';
 import PlayersPanel from './PlayersPanel';
 import { socket } from './socket';
 import { playSound } from './sounds';
+import TroopPanel from './TroopPanel';
 import TurnPanel from './TurnPanel';
 import TurnProgressBar from './TurnProgressBar';
 import type { Ack, GameState, TurnDuration, TurnPhase } from './types';
@@ -44,6 +53,8 @@ interface Props {
   troopsToDeploy: number;
   turnStartedAt: number;
   selectedTerritoryId: number | null;
+  fortifyStartTerritoryId: number | null;
+  fortifyEndTerritoryId: number | null;
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
@@ -79,9 +90,9 @@ const HIT_TOLERANCE = 6;
 const DRAG_THRESHOLD = 4;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
-const DEPLOY_PANEL_GAP = 10;
-const DEPLOY_PANEL_HEIGHT = 50;
-const DEPLOY_PANEL_WIDTH = 350;
+const TROOP_PANEL_GAP = 10;
+const TROOP_PANEL_HEIGHT = 50;
+const TROOP_PANEL_WIDTH = 350;
 const SCREEN_EDGE_MARGIN = 8;
 const TURN_PANEL_RESERVED_HEIGHT = 70;
 
@@ -106,6 +117,8 @@ function GameMap({
   troopsToDeploy,
   turnStartedAt,
   selectedTerritoryId,
+  fortifyStartTerritoryId,
+  fortifyEndTerritoryId,
   setGame,
   setChatOpen,
   navigate,
@@ -134,6 +147,10 @@ function GameMap({
     number | null
   >(null);
   const deployInputRef = useRef<HTMLInputElement>(null);
+  const [fortifyTroops, setFortifyTroops] = useState(1);
+  const [trackedFortifyEndTerritoryId, setTrackedFortifyEndTerritoryId] =
+    useState<number | null>(null);
+  const fortifyInputRef = useRef<HTMLInputElement>(null);
   const [imgDims, setImgDims] = useState({
     w: DEFAULT_IMAGE_WIDTH,
     h: DEFAULT_IMAGE_HEIGHT,
@@ -197,6 +214,69 @@ function GameMap({
     [setGame],
   );
 
+  const selectFortifyStart = useCallback(
+    (territoryId: number | null) => {
+      socket.emit('game:fortifySelectStart', { territoryId }, (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      });
+    },
+    [setGame],
+  );
+
+  const cancelFortify = useCallback(
+    () => selectFortifyStart(null),
+    [selectFortifyStart],
+  );
+
+  const selectFortifyEnd = useCallback(
+    (territoryId: number) => {
+      socket.emit('game:fortifySelectEnd', { territoryId }, (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      });
+    },
+    [setGame],
+  );
+
+  const submitFortify = useCallback(() => {
+    socket.emit('game:fortify', { troops: fortifyTroops }, (res: Ack) => {
+      if (res.ok) setGame(res.game);
+    });
+  }, [fortifyTroops, setGame]);
+
+  const fortifyStartCandidates =
+    turnPhase === 'fortify' && isMyTurn
+      ? getFortifyStartCandidates(territories, ownerById, selfId)
+      : new Set<number>();
+  const fortifyEndCandidates =
+    turnPhase === 'fortify' && isMyTurn && fortifyStartTerritoryId !== null
+      ? getFortifyEndCandidates(
+          territories,
+          ownerById,
+          selfId,
+          fortifyStartTerritoryId,
+        )
+      : new Set<number>();
+  const fortifyMaxTroops =
+    fortifyStartTerritoryId !== null
+      ? (ownerById.get(fortifyStartTerritoryId)?.troops ?? 1) - 1
+      : 1;
+  const fortifyPathOwnerId =
+    fortifyStartTerritoryId !== null
+      ? (ownerById.get(fortifyStartTerritoryId)?.ownerId ?? null)
+      : null;
+  const fortifyPath =
+    fortifyStartTerritoryId !== null &&
+    fortifyEndTerritoryId !== null &&
+    fortifyPathOwnerId !== null
+      ? getFortifyPath(
+          territories,
+          ownerById,
+          fortifyPathOwnerId,
+          fortifyStartTerritoryId,
+          fortifyEndTerritoryId,
+        )
+      : [];
+
   const deployPhaseKey =
     turnPhase === 'deploy' && currentTurnPlayer
       ? `${turnNumber}-${turnPlayerIndex}`
@@ -221,28 +301,55 @@ function GameMap({
     if (selectedTerritoryId !== null) setDeployTroops(troopsToDeploy);
   }
 
+  if (trackedFortifyEndTerritoryId !== fortifyEndTerritoryId) {
+    setTrackedFortifyEndTerritoryId(fortifyEndTerritoryId);
+    if (fortifyEndTerritoryId !== null) setFortifyTroops(fortifyMaxTroops);
+  }
+
   useEffect(() => {
-    function onDeployed({ territoryId }: { territoryId: number }) {
-      playSound('deploy');
+    function playTroopChangeEffect(
+      sound: string,
+      { territoryId, troops }: { territoryId: number; troops: number },
+    ) {
+      playSound(sound);
       if (areAnimationsDisabled()) return;
       const territory = territoriesRef.current.find(
         (t) => t.id === territoryId,
       );
-      if (territory) startAnimation('deploy', territory.x, territory.y);
-      const troops = ownerByIdRef.current.get(territoryId)?.troops;
-      if (troops !== undefined) {
-        frozenTroopsRef.current.set(territoryId, troops);
+      if (territory)
+        startAnimation('deploy', territory.x, territory.y, `+${troops}`);
+      const currentTroops = ownerByIdRef.current.get(territoryId)?.troops;
+      if (currentTroops !== undefined) {
+        frozenTroopsRef.current.set(territoryId, currentTroops);
         setTimeout(() => {
           frozenTroopsRef.current.delete(territoryId);
         }, getAnimationDuration('deploy'));
       }
       startAnimationLoop();
     }
+    function onDeployed(payload: { territoryId: number; troops: number }) {
+      playTroopChangeEffect('deploy', payload);
+    }
+    function onFortified(payload: { territoryId: number; troops: number }) {
+      playTroopChangeEffect('fortify', payload);
+    }
     socket.on('game:deployed', onDeployed);
+    socket.on('game:fortified', onFortified);
     return () => {
       socket.off('game:deployed', onDeployed);
+      socket.off('game:fortified', onFortified);
     };
   }, []);
+
+  useEffect(() => {
+    const arrowActive =
+      turnPhase === 'fortify' &&
+      fortifyStartTerritoryId !== null &&
+      fortifyEndTerritoryId !== null;
+    setContinuousAnimation(arrowActive);
+    if (arrowActive) startAnimationLoop();
+    return () => setContinuousAnimation(false);
+  }, [turnPhase, fortifyStartTerritoryId, fortifyEndTerritoryId]);
 
   useEffect(() => {
     function onSelected() {
@@ -256,6 +363,8 @@ function GameMap({
 
   const deployPanelOpen =
     turnPhase === 'deploy' && isMyTurn && selectedTerritoryId !== null;
+  const fortifyPanelOpen =
+    turnPhase === 'fortify' && isMyTurn && fortifyEndTerritoryId !== null;
 
   const submitDeploy = useCallback(() => {
     if (selectedTerritoryId === null) return;
@@ -271,6 +380,12 @@ function GameMap({
   function isInteractable(t: Territory): boolean {
     if (!isMyTurn) return false;
     if (turnPhase === 'deploy') return ownerById.get(t.id)?.ownerId === selfId;
+    if (turnPhase === 'fortify') {
+      if (fortifyStartTerritoryId === null)
+        return fortifyStartCandidates.has(t.id);
+      if (fortifyEndTerritoryId === null) return fortifyEndCandidates.has(t.id);
+      return false;
+    }
     return true;
   }
 
@@ -285,6 +400,14 @@ function GameMap({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        if (
+          isMyTurn &&
+          turnPhase === 'fortify' &&
+          fortifyStartTerritoryId !== null
+        ) {
+          cancelFortify();
+          return;
+        }
         if (isMyTurn && selectedTerritoryId !== null) {
           selectTerritory(null);
           return;
@@ -300,6 +423,13 @@ function GameMap({
           return;
         }
       }
+      if (e.key === 'Enter' && fortifyPanelOpen) {
+        if (!isTypingTarget(e.target) || e.target === fortifyInputRef.current) {
+          e.preventDefault();
+          submitFortify();
+          return;
+        }
+      }
       if (isTypingTarget(e.target)) return;
       if (e.key === 'Tab') {
         e.preventDefault();
@@ -312,11 +442,16 @@ function GameMap({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
     isMyTurn,
+    turnPhase,
     selectedTerritoryId,
     selectTerritory,
     setChatOpen,
     deployPanelOpen,
     submitDeploy,
+    fortifyStartTerritoryId,
+    cancelFortify,
+    fortifyPanelOpen,
+    submitFortify,
   ]);
 
   function getImageDims(): { w: number; h: number } {
@@ -361,6 +496,13 @@ function GameMap({
         );
         return;
       }
+      if (fortifyPanelOpen) {
+        const delta = e.deltaY < 0 ? 1 : -1;
+        setFortifyTroops((prev) =>
+          Math.min(fortifyMaxTroops, Math.max(1, prev + delta)),
+        );
+        return;
+      }
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -392,11 +534,31 @@ function GameMap({
     }
     window.addEventListener('wheel', onWheel, { passive: false });
     return () => window.removeEventListener('wheel', onWheel);
-  }, [deployPanelOpen, troopsToDeploy, imgDims]);
+  }, [
+    deployPanelOpen,
+    troopsToDeploy,
+    imgDims,
+    fortifyPanelOpen,
+    fortifyMaxTroops,
+  ]);
 
   function nodeState(
     id: number,
   ): 'normal' | 'selectable' | 'hovered' | 'selected' {
+    if (turnPhase === 'fortify') {
+      if (id === fortifyStartTerritoryId || id === fortifyEndTerritoryId)
+        return 'selected';
+      if (id === hoveredId) return 'hovered';
+      if (fortifyStartTerritoryId === null && fortifyStartCandidates.has(id))
+        return 'selectable';
+      if (
+        fortifyStartTerritoryId !== null &&
+        fortifyEndTerritoryId === null &&
+        fortifyEndCandidates.has(id)
+      )
+        return 'selectable';
+      return 'normal';
+    }
     if (id === selectedTerritoryId) return 'selected';
     if (id === hoveredId) return 'hovered';
     if (turnPhase !== 'deploy' && selectedTerritoryId !== null) {
@@ -445,6 +607,22 @@ function GameMap({
     });
 
     drawAnimations(ctx, toScreen, VERTEX_RADIUS * zoom);
+
+    if (fortifyPath.length > 1) {
+      const territoryById = new Map(territories.map((t) => [t.id, t]));
+      const worldPath = fortifyPath
+        .map((id) => territoryById.get(id))
+        .filter((t): t is Territory => !!t);
+      if (worldPath.length === fortifyPath.length) {
+        const segments = buildWrappedPathSegments(
+          worldPath,
+          toScreen,
+          imgW,
+          imgH,
+        );
+        drawFortifyPath(ctx, segments);
+      }
+    }
 
     const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
 
@@ -564,6 +742,24 @@ function GameMap({
     if (!drag || drag.moved || !isMyTurn) return;
     const pos = getPos(e);
     const vertex = hitVertex(pos);
+
+    if (turnPhase === 'fortify') {
+      if (fortifyEndTerritoryId !== null) {
+        cancelFortify();
+        return;
+      }
+      if (!vertex || !isInteractable(vertex)) {
+        if (fortifyStartTerritoryId !== null) cancelFortify();
+        return;
+      }
+      if (fortifyStartTerritoryId === null) {
+        selectFortifyStart(vertex.id);
+      } else {
+        selectFortifyEnd(vertex.id);
+      }
+      return;
+    }
+
     if (!vertex || !isInteractable(vertex)) {
       if (selectedTerritoryId !== null) selectTerritory(null);
       return;
@@ -580,8 +776,15 @@ function GameMap({
 
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault();
-    if (isMyTurn && selectedTerritoryId !== null) selectTerritory(null);
+    if (!isMyTurn) return;
+    if (turnPhase === 'fortify') {
+      if (fortifyStartTerritoryId !== null) cancelFortify();
+      return;
+    }
+    if (selectedTerritoryId !== null) selectTerritory(null);
   }
+
+  const zoomedRadius = VERTEX_RADIUS * transform.zoom;
 
   const selectedTerritory =
     selectedTerritoryId !== null
@@ -590,34 +793,43 @@ function GameMap({
   const selectedScreenPos = selectedTerritory
     ? getTerritoryScreenPos(selectedTerritory)
     : null;
-  const zoomedRadius = VERTEX_RADIUS * transform.zoom;
-  let rawLeft = 0;
-  let rawTop = 0;
-  if (selectedScreenPos) {
-    rawLeft = selectedScreenPos.x - DEPLOY_PANEL_WIDTH / 2;
-    const fitsBelow =
-      selectedScreenPos.y +
-        zoomedRadius +
-        DEPLOY_PANEL_GAP +
-        DEPLOY_PANEL_HEIGHT <=
-      size.h - TURN_PANEL_RESERVED_HEIGHT;
-    rawTop = fitsBelow
-      ? selectedScreenPos.y + zoomedRadius + DEPLOY_PANEL_GAP
-      : selectedScreenPos.y -
-        zoomedRadius -
-        DEPLOY_PANEL_GAP -
-        DEPLOY_PANEL_HEIGHT;
-  }
   const deployPanelStyle: React.CSSProperties | undefined = selectedScreenPos
     ? {
         position: 'absolute',
-        left: Math.max(
-          Math.min(rawLeft, size.w - DEPLOY_PANEL_WIDTH - SCREEN_EDGE_MARGIN),
+        ...getAnchoredPanelPosition(
+          selectedScreenPos,
+          zoomedRadius,
+          TROOP_PANEL_WIDTH,
+          TROOP_PANEL_HEIGHT,
+          size.w,
+          size.h,
+          TROOP_PANEL_GAP,
           SCREEN_EDGE_MARGIN,
+          TURN_PANEL_RESERVED_HEIGHT,
         ),
-        top: Math.min(
-          Math.max(rawTop, SCREEN_EDGE_MARGIN),
-          size.h - TURN_PANEL_RESERVED_HEIGHT - DEPLOY_PANEL_HEIGHT,
+      }
+    : undefined;
+
+  const fortifyEndTerritory =
+    fortifyEndTerritoryId !== null
+      ? territories.find((t) => t.id === fortifyEndTerritoryId)
+      : undefined;
+  const fortifyScreenPos = fortifyEndTerritory
+    ? getTerritoryScreenPos(fortifyEndTerritory)
+    : null;
+  const fortifyPanelStyle: React.CSSProperties | undefined = fortifyScreenPos
+    ? {
+        position: 'absolute',
+        ...getAnchoredPanelPosition(
+          fortifyScreenPos,
+          zoomedRadius,
+          TROOP_PANEL_WIDTH,
+          TROOP_PANEL_HEIGHT,
+          size.w,
+          size.h,
+          TROOP_PANEL_GAP,
+          SCREEN_EDGE_MARGIN,
+          TURN_PANEL_RESERVED_HEIGHT,
         ),
       }
     : undefined;
@@ -664,14 +876,29 @@ function GameMap({
             setGame={setGame}
           />
           {deployPanelOpen && deployPanelStyle && (
-            <DeployPanel
+            <TroopPanel
+              label="Deploy troops:"
+              buttonLabel="Deploy"
               troops={deployTroops}
               maxTroops={troopsToDeploy}
               color={playerColor(currentTurnPlayer.color)}
               inputRef={deployInputRef}
               onChange={setDeployTroops}
-              onDeploy={submitDeploy}
+              onConfirm={submitDeploy}
               style={deployPanelStyle}
+            />
+          )}
+          {fortifyPanelOpen && fortifyPanelStyle && (
+            <TroopPanel
+              label="Move troops:"
+              buttonLabel="Fortify"
+              troops={fortifyTroops}
+              maxTroops={fortifyMaxTroops}
+              color={playerColor(currentTurnPlayer.color)}
+              inputRef={fortifyInputRef}
+              onChange={setFortifyTroops}
+              onConfirm={submitFortify}
+              style={fortifyPanelStyle}
             />
           )}
         </>

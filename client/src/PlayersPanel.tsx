@@ -28,11 +28,11 @@ function PlayersPanel({
   const isSpectator = spectators.some((s) => s.id === selfId);
   const canSurrender = !isSpectator && players.some((p) => p.id === selfId);
 
-  const whiteTeamIcon = useWhiteIcon('/team.svg');
-  const whiteTerritoryIcon = useWhiteIcon('/territory.svg');
-  const whiteTankIcon = useWhiteIcon('/tank.svg');
-  const whiteNoWifiIcon = useWhiteIcon('/no-wifi.svg');
-  const whiteFlagIcon = useWhiteIcon('/flag.svg');
+  const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
+  const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
+  const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
+  const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
+  const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
 
   function surrender() {
     socket.emit('game:surrender', (res: Ack) => {
@@ -87,7 +87,7 @@ function PlayersPanel({
               {isTeamDeathmatch && (
                 <th className="text-end" style={{ width: 34 }}>
                   <img
-                    src={whiteTeamIcon ?? '/team.svg'}
+                    src={whiteTeamIcon ?? '/icons/team.svg'}
                     width={14}
                     height={14}
                     alt="Team"
@@ -100,7 +100,7 @@ function PlayersPanel({
                 style={{ width: 34, paddingRight: '0.75rem' }}
               >
                 <img
-                  src={whiteTerritoryIcon ?? '/territory.svg'}
+                  src={whiteTerritoryIcon ?? '/icons/territory.svg'}
                   width={14}
                   height={14}
                   alt="Territories"
@@ -112,7 +112,7 @@ function PlayersPanel({
                 style={{ width: 34, paddingRight: '0.75rem' }}
               >
                 <img
-                  src={whiteTankIcon ?? '/tank.svg'}
+                  src={whiteTankIcon ?? '/icons/tank.svg'}
                   width={14}
                   height={14}
                   alt="Troops"
@@ -138,8 +138,8 @@ function PlayersPanel({
                       <img
                         src={
                           isDark
-                            ? (whiteNoWifiIcon ?? '/no-wifi.svg')
-                            : '/no-wifi.svg'
+                            ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
+                            : '/icons/no-wifi.svg'
                         }
                         width={12}
                         height={12}
@@ -151,7 +151,9 @@ function PlayersPanel({
                     {p.surrendered && (
                       <img
                         src={
-                          isDark ? (whiteFlagIcon ?? '/flag.svg') : '/flag.svg'
+                          isDark
+                            ? (whiteFlagIcon ?? '/icons/flag.svg')
+                            : '/icons/flag.svg'
                         }
                         width={12}
                         height={12}
@@ -200,9 +202,15 @@ function PlayersPanel({
         <Button
           variant="danger"
           size="sm"
-          className="w-100 mt-2"
+          className="w-100 mt-2 d-flex align-items-center justify-content-center gap-1"
           onClick={surrender}
         >
+          <img
+            src={whiteFlagIcon ?? '/icons/flag.svg'}
+            width={14}
+            height={14}
+            alt=""
+          />
           Surrender
         </Button>
       )}

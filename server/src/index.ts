@@ -1,7 +1,12 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { broadcastGameStates, registerGameHandlers } from './game';
+import {
+  broadcastGameStates,
+  registerDeployHandlers,
+  registerFortifyHandlers,
+  registerGameHandlers,
+} from './game';
 import { broadcastHomeGames, registerHomeHandlers } from './home';
 import { registerMapsHandlers } from './maps';
 import { HOME_ROOM, Player } from './types';
@@ -23,6 +28,8 @@ io.on('connection', (socket) => {
   registerMapsHandlers(socket);
   registerHomeHandlers(io, socket, playersBySocket, playersByKey, playersById);
   registerGameHandlers(io, socket, playersBySocket, playersById);
+  registerDeployHandlers(io, socket, playersBySocket, playersById);
+  registerFortifyHandlers(io, socket, playersBySocket, playersById);
 });
 
 setInterval(() => {

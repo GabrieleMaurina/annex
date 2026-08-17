@@ -48,6 +48,8 @@ export interface Game {
   troopsToDeploy: number;
   turnStartedAt: number;
   selectedTerritoryId: number | null;
+  fortifyStartTerritoryId: number | null;
+  fortifyEndTerritoryId: number | null;
   playerIds: number[];
   spectatorIds: number[];
   playerTeams: Map<number, number>;

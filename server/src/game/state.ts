@@ -51,6 +51,8 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     troopsToDeploy: game.troopsToDeploy,
     turnStartedAt: game.turnStartedAt,
     selectedTerritoryId: game.selectedTerritoryId,
+    fortifyStartTerritoryId: game.fortifyStartTerritoryId,
+    fortifyEndTerritoryId: game.fortifyEndTerritoryId,
     players: toSummaries(game.playerIds, playersById).map((player) => ({
       ...player,
       team: game.playerTeams.get(player.id) ?? 0,

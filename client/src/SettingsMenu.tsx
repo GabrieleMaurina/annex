@@ -14,11 +14,11 @@ function SettingsMenu({ shareUrl }: Props) {
   const [, forceUpdate] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const whiteGearIcon = useWhiteIcon('/gear.svg');
-  const whiteSoundOnIcon = useWhiteIcon('/sound-on.svg');
-  const whiteSoundOffIcon = useWhiteIcon('/sound-off.svg');
-  const whiteAnimationOnIcon = useWhiteIcon('/animation-on.svg');
-  const whiteAnimationOffIcon = useWhiteIcon('/animation-off.svg');
+  const whiteGearIcon = useWhiteIcon('/icons/gear.svg');
+  const whiteSoundOnIcon = useWhiteIcon('/icons/sound-on.svg');
+  const whiteSoundOffIcon = useWhiteIcon('/icons/sound-off.svg');
+  const whiteAnimationOnIcon = useWhiteIcon('/icons/animation-on.svg');
+  const whiteAnimationOffIcon = useWhiteIcon('/icons/animation-off.svg');
 
   useEffect(() => {
     if (!open) return;
@@ -47,7 +47,7 @@ function SettingsMenu({ shareUrl }: Props) {
         title="Settings"
       >
         <img
-          src={whiteGearIcon ?? '/gear.svg'}
+          src={whiteGearIcon ?? '/icons/gear.svg'}
           width={16}
           height={16}
           alt="Settings"
@@ -75,8 +75,8 @@ function SettingsMenu({ shareUrl }: Props) {
         <img
           src={
             isSoundMuted()
-              ? (whiteSoundOffIcon ?? '/sound-off.svg')
-              : (whiteSoundOnIcon ?? '/sound-on.svg')
+              ? (whiteSoundOffIcon ?? '/icons/sound-off.svg')
+              : (whiteSoundOnIcon ?? '/icons/sound-on.svg')
           }
           width={16}
           height={16}
@@ -98,8 +98,8 @@ function SettingsMenu({ shareUrl }: Props) {
         <img
           src={
             areAnimationsDisabled()
-              ? (whiteAnimationOffIcon ?? '/animation-off.svg')
-              : (whiteAnimationOnIcon ?? '/animation-on.svg')
+              ? (whiteAnimationOffIcon ?? '/icons/animation-off.svg')
+              : (whiteAnimationOnIcon ?? '/icons/animation-on.svg')
           }
           width={16}
           height={16}

@@ -1,4 +1,4 @@
 # annex
-Strategy Multiplayer Game
+Strategy Multiplayer War Game
 
-**annex** : to incorporate (an additional geographic area) within the domain of a country, state, etc.: to incorporate (an additional geographic area) within the domain of a country, state, etc.
+**annex** /ænˈeks/ *(verb)* : to take possession of an area of land or a country, usually by force or without permission

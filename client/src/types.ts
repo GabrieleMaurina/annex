@@ -37,6 +37,8 @@ export interface GameState {
   troopsToDeploy: number;
   turnStartedAt: number;
   selectedTerritoryId: number | null;
+  fortifyStartTerritoryId: number | null;
+  fortifyEndTerritoryId: number | null;
   players: {
     id: number;
     name: string;

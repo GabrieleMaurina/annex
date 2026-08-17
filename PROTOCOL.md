@@ -59,6 +59,8 @@ Since `playing` games never lose a player this way, one where everyone has disco
   troopsToDeploy: number;
   turnStartedAt: number; // ms since epoch
   selectedTerritoryId: number | null;
+  fortifyStartTerritoryId: number | null;
+  fortifyEndTerritoryId: number | null;
   players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number; connected: boolean; surrendered: boolean }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
@@ -72,6 +74,8 @@ Once `game:start` succeeds, `turnNumber` counts full rounds completed (starts at
 `'deploy'` is the one phase `game:nextPhase` cannot advance (`cannot skip deploy phase`) — it only ends once the current player has placed every troop available that turn, via `game:deploy` (see below). Entering `'deploy'` (turn start, or the timer force-advancing from `'fortify'`) silently grants the player a troop pool: `max(3, floor(territoryCount / 3))`, plus, for every continent where they own every territory, that continent's entry in the map's `bonuses` array. `troopsToDeploy` is that pool, decremented as the player calls `game:deploy`; it sits at `0` outside `'deploy'` and in the `lobby` state.
 
 `selectedTerritoryId` is the territory the player at `turnPlayerIndex` currently has selected (`null` if none), set via `game:selectTerritory` — it's part of `GameState` so every client, not just the selecting player, sees the same selection highlighted on the map. It resets to `null` whenever the turn or phase changes (including the automatic `'deploy'` → `'attack'` advance) and whenever a `game:deploy` succeeds, regardless of whether the player's troop pool is now empty.
+
+`fortifyStartTerritoryId` and `fortifyEndTerritoryId` track the two-step territory selection specific to the `'fortify'` phase, set via `game:fortifySelectStart` / `game:fortifySelectEnd` below (both `null` outside an in-progress fortify selection). Like `selectedTerritoryId`, they're part of `GameState` so every client sees the same start/end highlighting and, once both are set, the same animated arrow between them — `game:selectTerritory` is not used during `'fortify'`. Both reset to `null` whenever the turn or phase changes and whenever a `game:fortify` succeeds.
 
 `team` is only meaningful when `gameMode` is `'Team Deathmatch'` — it always defaults to `0` otherwise and is ignored by the client. Its valid range is `0` to `max(0, players.length - 1)`, one value per player, so team counts from a single shared team up to every player on their own team are all valid. The client displays teams 1-based (`team + 1`); the wire value stays 0-based.
 
@@ -194,6 +198,33 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
   ```
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not deploy phase`, `territory not owned`, `invalid troops`.
 
+### `game:fortifySelectStart`
+- **When sent:** the player whose turn it currently is, during `'fortify'`, clicks one of their candidate start territories on the map, or cancels the in-progress fortify selection (clicking/right-clicking outside it, or pressing Escape).
+- **Purpose:** set (or clear, with `territoryId: null`) `fortifyStartTerritoryId`, clearing `fortifyEndTerritoryId` in the same call. A candidate start territory must be owned by the caller, have at least 2 troops, and have at least one neighboring territory also owned by the caller — the client computes candidacy itself (for highlighting/hover), but the server independently re-checks it here. The caller must be the player at `turnPlayerIndex`, and the game must be `playing` and in `'fortify'`.
+- **Content:**
+  ```ts
+  { territoryId: number | null }
+  ```
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not fortify phase`, `invalid territory`, `territory not owned`, `invalid start territory`.
+
+### `game:fortifySelectEnd`
+- **When sent:** the player whose turn it currently is, during `'fortify'` with `fortifyStartTerritoryId` already set, clicks one of the candidate end territories on the map.
+- **Purpose:** set `fortifyEndTerritoryId`. A candidate end territory must be owned by the caller, different from `fortifyStartTerritoryId`, and reachable from it through a path of territories all owned by the caller (as with the start territory, the client computes this for highlighting and the server re-checks it). The caller must be the player at `turnPlayerIndex`, and the game must be `playing` and in `'fortify'`.
+- **Content:**
+  ```ts
+  { territoryId: number }
+  ```
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not fortify phase`, `no start territory selected`, `invalid territory`, `territory not owned`, `invalid end territory`.
+
+### `game:fortify`
+- **When sent:** the player whose turn it currently is, during `'fortify'` with both `fortifyStartTerritoryId` and `fortifyEndTerritoryId` set, confirms the troop movement from the fortify panel (its confirm button, or Enter).
+- **Purpose:** move `troops` from `fortifyStartTerritoryId` to `fortifyEndTerritoryId`, then immediately end the turn — same as completing `'fortify'` via `game:nextPhase` (see `turnNumber` above) — since only one movement is allowed per fortify phase. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'fortify'` with both fortify territories selected, and `troops` must be an integer from `1` up to the start territory's current troop count minus `1` (at least 1 troop always stays behind).
+- **Content:**
+  ```ts
+  { troops: number }
+  ```
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not fortify phase`, `no fortify selection`, `invalid troops`.
+
 ### `game:surrender`
 - **When sent:** a seated player in a `playing` game gives up.
 - **Purpose:** permanently give up the caller's seat for rejoining purposes, and move their socket back to `home`. Slot, territories, and troops stay exactly as they were — same as any other player leaving a `playing` game (see "Leaving and reconnecting" above) — so the game carries on unaffected; the only difference from an ordinary disconnect is that this player can now only ever rejoin as a spectator.
@@ -262,8 +293,16 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
   { territoryId: number; troops: number }
   ```
 
+### `game:fortified`
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:fortify` call succeeds (including back to the moving player).
+- **Purpose:** let every client play the fortify sound effect and the deploy animation on the destination territory in sync, rather than inferring it from the next `game:state` tick.
+- **Content:**
+  ```ts
+  { territoryId: number; troops: number }
+  ```
+
 ### `game:selected`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:selectTerritory` call succeeds with a non-`null` `territoryId` (including back to the selecting player). Not sent for a deselection.
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:selectTerritory`, `game:fortifySelectStart`, or `game:fortifySelectEnd` call succeeds with a non-`null` `territoryId` (including back to the selecting player). Not sent for a deselection.
 - **Purpose:** let every client play the territory-selection sound effect in sync, rather than inferring it from the next `game:state` tick.
 - **Content:**
   ```ts

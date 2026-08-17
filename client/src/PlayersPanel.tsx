@@ -1,6 +1,7 @@
 import { Button, ListGroup, Table } from 'react-bootstrap';
 import { useWhiteIcon } from './icon';
 import { contrastTextColor, playerColor } from './palette';
+import ShareButton from './ShareButton';
 import { socket } from './socket';
 import type { Ack, GameState } from './types';
 
@@ -206,6 +207,9 @@ function PlayersPanel({
           Surrender
         </Button>
       )}
+      <div className="d-flex justify-content-end mt-2">
+        <ShareButton url={window.location.href} />
+      </div>
     </div>
   );
 }

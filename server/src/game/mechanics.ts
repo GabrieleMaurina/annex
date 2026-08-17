@@ -136,6 +136,31 @@ export function assignTerritories(game: Game) {
   });
 }
 
+export function calculateDeployTroops(game: Game, playerId: number): number {
+  const map = maps.get(game.mapName)!;
+  const territoryCount = [...game.territoryOwners.values()].filter(
+    (ownerId) => ownerId === playerId,
+  ).length;
+  const territoryTroops = Math.max(3, Math.floor(territoryCount / 3));
+
+  const continents = new Map<number, number[]>();
+  for (const territory of map.territories) {
+    const list = continents.get(territory.continentId);
+    if (list) list.push(territory.id);
+    else continents.set(territory.continentId, [territory.id]);
+  }
+
+  let bonusTroops = 0;
+  for (const [continentId, territoryIds] of continents) {
+    const controlsAll = territoryIds.every(
+      (id) => game.territoryOwners.get(id) === playerId,
+    );
+    if (controlsAll) bonusTroops += map.bonuses[continentId] ?? 0;
+  }
+
+  return territoryTroops + bonusTroops;
+}
+
 export function assignRandomColor(game: Game, playerId: number) {
   const bound = colorBound(game);
   const used = new Set(game.playerColors.values());

@@ -34,6 +34,9 @@ export interface GameState {
   turnNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
+  troopsToDeploy: number;
+  turnStartedAt: number;
+  selectedTerritoryId: number | null;
   players: {
     id: number;
     name: string;

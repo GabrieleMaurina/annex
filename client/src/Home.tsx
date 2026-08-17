@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container, Table } from 'react-bootstrap';
 import PlayerNameEditor from './PlayerNameEditor';
+import ShareButton from './ShareButton';
 import { socket } from './socket';
 import type { Ack, GameSummary, Player } from './types';
 
@@ -69,9 +70,11 @@ function Home({
     <Container fluid className="pt-3 pb-5 px-4">
       <div className="d-flex align-items-center mb-4">
         <div
-          className="flex-grow-1"
+          className="d-flex align-items-center flex-grow-1"
           style={{ flexBasis: 0, minWidth: 0 }}
-        ></div>
+        >
+          <ShareButton url={window.location.origin} />
+        </div>
         <div className="d-flex align-items-center gap-5">
           <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
           <h1 className="mb-0">Annex</h1>

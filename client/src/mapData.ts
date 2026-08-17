@@ -8,6 +8,7 @@ export interface Territory {
 
 interface MapFile {
   territories: Territory[];
+  bonuses: number[];
   image: string | null;
   imageMime: string | null;
 }
@@ -48,13 +49,16 @@ function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
   return `data:${mime};base64,${btoa(binary)}`;
 }
 
-export function loadGameMap(
-  mapName: string,
-): Promise<{ territories: Territory[]; imageSrc: string | null }> {
+export function loadGameMap(mapName: string): Promise<{
+  territories: Territory[];
+  bonuses: number[];
+  imageSrc: string | null;
+}> {
   return fetch(`/maps/${encodeURIComponent(mapName)}.anx`)
     .then((res) => res.json())
     .then((data: MapFile) => ({
       territories: data.territories,
+      bonuses: data.bonuses,
       imageSrc:
         data.image === null
           ? null

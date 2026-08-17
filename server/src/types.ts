@@ -45,6 +45,9 @@ export interface Game {
   turnNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
+  troopsToDeploy: number;
+  turnStartedAt: number;
+  selectedTerritoryId: number | null;
   playerIds: number[];
   spectatorIds: number[];
   playerTeams: Map<number, number>;

@@ -73,6 +73,9 @@ function Game({
           turnPlayerIndex={game.turnPlayerIndex}
           turnPhase={game.turnPhase}
           turnDuration={game.turnDuration}
+          troopsToDeploy={game.troopsToDeploy}
+          turnStartedAt={game.turnStartedAt}
+          selectedTerritoryId={game.selectedTerritoryId}
           setGame={setGame}
           setChatOpen={setChatOpen}
           navigate={navigate}

@@ -1,10 +1,24 @@
+import { useLayoutEffect, useRef } from 'react';
+
 interface Props {
-  turnKey: string;
+  turnStartedAt: number;
   turnDuration: number;
   color: string;
 }
 
-function TurnProgressBar({ turnKey, turnDuration, color }: Props) {
+function TurnProgressBar({ turnStartedAt, turnDuration, color }: Props) {
+  const barRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const elapsed = Math.max(0, Date.now() - turnStartedAt) / 1000;
+    bar.style.animation = 'none';
+    void bar.offsetHeight;
+    bar.style.animation = `annexTurnProgress ${turnDuration}s linear forwards`;
+    bar.style.animationDelay = `-${elapsed}s`;
+  }, [turnStartedAt, turnDuration]);
+
   return (
     <div
       className="position-fixed top-0 start-0 end-0"
@@ -17,13 +31,8 @@ function TurnProgressBar({ turnKey, turnDuration, color }: Props) {
         }
       `}</style>
       <div
-        key={turnKey}
-        style={{
-          height: '100%',
-          width: '0%',
-          backgroundColor: color,
-          animation: `annexTurnProgress ${turnDuration}s linear forwards`,
-        }}
+        ref={barRef}
+        style={{ height: '100%', width: '0%', backgroundColor: color }}
       />
     </div>
   );

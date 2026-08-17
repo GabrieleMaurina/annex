@@ -61,7 +61,11 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
       }`}
       style={{ zIndex: 1 }}
     >
-      <details open={open} onToggle={toggle} style={{ width: 300 }}>
+      <details
+        open={open}
+        onToggle={toggle}
+        style={{ width: open ? 300 : 'auto' }}
+      >
         <summary ref={summaryRef}>
           Chat
           {!open && unreadCount > 0 && (

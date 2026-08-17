@@ -56,6 +56,9 @@ Since `playing` games never lose a player this way, one where everyone has disco
   turnNumber: number;
   turnPlayerIndex: number;
   turnPhase: 'deploy' | 'attack' | 'fortify';
+  troopsToDeploy: number;
+  turnStartedAt: number; // ms since epoch
+  selectedTerritoryId: number | null;
   players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number; connected: boolean; surrendered: boolean }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
@@ -64,7 +67,11 @@ Since `playing` games never lose a player this way, one where everyone has disco
 ```
 `hostId` is the id of the game's current host — the only player who may call `game:settings` or `game:start`. The server recomputes it whenever it might need to change (a leave, kick, join, or reconnect) from the game's host-priority list — every player who's ever held a seat, in the order they first got one, never reordered or shortened by a leave — picking the first one still seated, connected, and not surrendered (see "Leaving and reconnecting" above, `game:surrender` below). So host passes to the next eligible player when the current one disconnects or leaves, and passes back the moment a higher-priority former host reconnects, cascading through however many stand-ins came in between. If no players remain, the game is deleted.
 
-Once `game:start` succeeds, `turnNumber` counts full rounds completed (starts at `0`); `turnPlayerIndex` indexes `players` for whoever's turn it is; `turnPhase` is that player's progress — `'deploy'`, `'attack'`, `'fortify'`, in order. Only the player at `turnPlayerIndex` may advance it, via `game:nextPhase`; completing `'fortify'` instead ends the turn, advancing to the next player (`turnPlayerIndex + 1`, wrapping to `0` and incrementing `turnNumber` after the last player) and resetting `turnPhase` to `'deploy'`. `turnDuration` is a hard limit on the whole turn (all three phases, not reset between them) — if the current player hasn't finished in time, the server force-advances exactly as `game:nextPhase` would from `'fortify'`. This also covers a disconnected player: `players`/`turnPlayerIndex` are unaffected by leaving a `playing` game (see "Leaving and reconnecting" above), so an absent turn just runs out the clock. The server never reports elapsed time — only that the turn or phase changed, via `game:state` or a `game:nextPhase` ack — so each client tracks it locally, resetting whenever `turnNumber`/`turnPlayerIndex` change. Both fields sit inert (`0`/`'deploy'`) in the `lobby` state.
+Once `game:start` succeeds, `turnNumber` counts full rounds completed (starts at `0`); `turnPlayerIndex` indexes `players` for whoever's turn it is; `turnPhase` is that player's progress — `'deploy'`, `'attack'`, `'fortify'`, in order. Only the player at `turnPlayerIndex` may advance it, via `game:nextPhase`; completing `'fortify'` instead ends the turn, advancing to the next player (`turnPlayerIndex + 1`, wrapping to `0` and incrementing `turnNumber` after the last player) and resetting `turnPhase` to `'deploy'`. `turnDuration` is a hard limit on the whole turn (all three phases, not reset between them) — if the current player hasn't finished in time, the server force-advances exactly as `game:nextPhase` would from `'fortify'`. This also covers a disconnected player: `players`/`turnPlayerIndex` are unaffected by leaving a `playing` game (see "Leaving and reconnecting" above), so an absent turn just runs out the clock. `turnStartedAt` is when the current player's turn began (server clock, ms since epoch) — it only changes alongside `turnNumber`/`turnPlayerIndex`, not between phases, so every client (including one that just connected or reconnected mid-turn) can derive the same remaining time from it instead of trusting local state. Both `turnNumber` and `turnPhase` sit inert (`0`/`'deploy'`) in the `lobby` state, with `turnStartedAt` at `0`.
+
+`'deploy'` is the one phase `game:nextPhase` cannot advance (`cannot skip deploy phase`) — it only ends once the current player has placed every troop available that turn, via `game:deploy` (see below). Entering `'deploy'` (turn start, or the timer force-advancing from `'fortify'`) silently grants the player a troop pool: `max(3, floor(territoryCount / 3))`, plus, for every continent where they own every territory, that continent's entry in the map's `bonuses` array. `troopsToDeploy` is that pool, decremented as the player calls `game:deploy`; it sits at `0` outside `'deploy'` and in the `lobby` state.
+
+`selectedTerritoryId` is the territory the player at `turnPlayerIndex` currently has selected (`null` if none), set via `game:selectTerritory` — it's part of `GameState` so every client, not just the selecting player, sees the same selection highlighted on the map. It resets to `null` whenever the turn or phase changes (including the automatic `'deploy'` → `'attack'` advance) and whenever a `game:deploy` succeeds, regardless of whether the player's troop pool is now empty.
 
 `team` is only meaningful when `gameMode` is `'Team Deathmatch'` — it always defaults to `0` otherwise and is ignored by the client. Its valid range is `0` to `max(0, players.length - 1)`, one value per player, so team counts from a single shared team up to every player on their own team are all valid. The client displays teams 1-based (`team + 1`); the wire value stays 0-based.
 
@@ -164,10 +171,28 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `already started`, `not enough players`, `not enough teams`.
 
 ### `game:nextPhase`
-- **When sent:** the player whose turn it currently is finishes a phase (`deploy`, `attack`, or `fortify`) and is ready to move on.
-- **Purpose:** advance `turnPhase` to the next phase in order; completing `'fortify'` instead ends the turn (see `turnNumber` above). The caller must be the player at `turnPlayerIndex`, and the game must be `playing`.
+- **When sent:** the player whose turn it currently is finishes a phase (`attack` or `fortify`) and is ready to move on.
+- **Purpose:** advance `turnPhase` to the next phase in order; completing `'fortify'` instead ends the turn (see `turnNumber` above). The caller must be the player at `turnPlayerIndex`, and the game must be `playing`. Cannot be used to leave `'deploy'` — that phase only ends via `game:deploy` (see below).
 - **Content:** none
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `cannot skip deploy phase`.
+
+### `game:selectTerritory`
+- **When sent:** the player whose turn it currently is clicks one of their selectable territories on the map, or deselects the current one.
+- **Purpose:** set (or clear, with `territoryId: null`) `selectedTerritoryId` so every client — not just the caller — sees the same territory highlighted. The caller must be the player at `turnPlayerIndex`, and the game must be `playing`. A non-`null` `territoryId` must belong to some player; during `'deploy'` it must additionally be owned by the caller (other phases don't yet restrict this — see `turnPhase` above).
+- **Content:**
+  ```ts
+  { territoryId: number | null }
+  ```
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `invalid territory`, `territory not owned`.
+
+### `game:deploy`
+- **When sent:** the player whose turn it currently is, during `'deploy'`, places some of their troop pool (see `turnPhase` above) on one of their own territories.
+- **Purpose:** add `troops` to `territoryId`'s troop count and deduct them from the caller's remaining pool for the turn, clearing `selectedTerritoryId` in the process. Once the pool reaches `0`, the server auto-advances `turnPhase` to `'attack'`, same as a `game:nextPhase` call would. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'deploy'`, `territoryId` must be owned by the caller, and `troops` must be an integer from `1` up to the caller's remaining pool.
+- **Content:**
+  ```ts
+  { territoryId: number; troops: number }
+  ```
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not deploy phase`, `territory not owned`, `invalid troops`.
 
 ### `game:surrender`
 - **When sent:** a seated player in a `playing` game gives up.

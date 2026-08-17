@@ -1,5 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Toast, ToastContainer } from 'react-bootstrap';
+import DeployPanel from './DeployPanel';
 import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
@@ -14,9 +16,10 @@ import {
 } from './mapMath';
 import { continentColor, contrastTextColor, playerColor } from './palette';
 import PlayersPanel from './PlayersPanel';
+import { socket } from './socket';
 import TurnPanel from './TurnPanel';
 import TurnProgressBar from './TurnProgressBar';
-import type { GameState, TurnDuration, TurnPhase } from './types';
+import type { Ack, GameState, TurnDuration, TurnPhase } from './types';
 
 interface Props {
   mapName: string;
@@ -29,6 +32,9 @@ interface Props {
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
   turnDuration: TurnDuration;
+  troopsToDeploy: number;
+  turnStartedAt: number;
+  selectedTerritoryId: number | null;
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
@@ -64,6 +70,11 @@ const HIT_TOLERANCE = 6;
 const DRAG_THRESHOLD = 4;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
+const DEPLOY_PANEL_GAP = 10;
+const DEPLOY_PANEL_HEIGHT = 50;
+const DEPLOY_PANEL_WIDTH = 350;
+const SCREEN_EDGE_MARGIN = 8;
+const TURN_PANEL_RESERVED_HEIGHT = 70;
 
 const STATE_STYLE = {
   normal: { stroke: '#000000', width: 2 },
@@ -83,6 +94,9 @@ function GameMap({
   turnPlayerIndex,
   turnPhase,
   turnDuration,
+  troopsToDeploy,
+  turnStartedAt,
+  selectedTerritoryId,
   setGame,
   setChatOpen,
   navigate,
@@ -96,31 +110,101 @@ function GameMap({
     offsetX: 0,
     offsetY: 0,
   });
-  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [size, setSize] = useState({
     w: window.innerWidth,
     h: window.innerHeight,
   });
+  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
+  const [processedDeployPhaseKey, setProcessedDeployPhaseKey] = useState<
+    string | null
+  >(null);
+  const [deployTroops, setDeployTroops] = useState(0);
+  const [trackedSelectedTerritoryId, setTrackedSelectedTerritoryId] = useState<
+    number | null
+  >(null);
+  const deployInputRef = useRef<HTMLInputElement>(null);
+  const [imgDims, setImgDims] = useState({
+    w: DEFAULT_IMAGE_WIDTH,
+    h: DEFAULT_IMAGE_HEIGHT,
+  });
 
   useEffect(() => {
     loadGameMap(mapName).then(({ territories, imageSrc }) => {
       setTerritories(territories);
-      setSelectedId(null);
       setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
       if (!imageSrc) {
         imageRef.current = null;
+        setImgDims({ w: DEFAULT_IMAGE_WIDTH, h: DEFAULT_IMAGE_HEIGHT });
         return;
       }
       const img = new Image();
       img.onload = () => {
         imageRef.current = img;
+        setImgDims({ w: img.naturalWidth, h: img.naturalHeight });
         setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
       };
       img.src = imageSrc;
     });
   }, [mapName]);
+
+  const currentTurnPlayer = players[turnPlayerIndex];
+  const isMyTurn = currentTurnPlayer?.id === selfId;
+  const ownerById = new Map(ownership.map((o) => [o.id, o]));
+
+  const selectTerritory = useCallback(
+    (territoryId: number | null) => {
+      socket.emit('game:selectTerritory', { territoryId }, (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      });
+    },
+    [setGame],
+  );
+
+  const deployPhaseKey =
+    turnPhase === 'deploy' && currentTurnPlayer
+      ? `${turnNumber}-${turnPlayerIndex}`
+      : null;
+  if (
+    deployPhaseKey !== null &&
+    processedDeployPhaseKey !== deployPhaseKey &&
+    currentTurnPlayer
+  ) {
+    setProcessedDeployPhaseKey(deployPhaseKey);
+    setToasts((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        message: `${currentTurnPlayer.name} received ${troopsToDeploy} troops at the start of the turn`,
+      },
+    ]);
+  }
+
+  if (trackedSelectedTerritoryId !== selectedTerritoryId) {
+    setTrackedSelectedTerritoryId(selectedTerritoryId);
+    if (selectedTerritoryId !== null) setDeployTroops(troopsToDeploy);
+  }
+
+  const deployPanelOpen =
+    turnPhase === 'deploy' && isMyTurn && selectedTerritoryId !== null;
+
+  const submitDeploy = useCallback(() => {
+    if (selectedTerritoryId === null) return;
+    socket.emit(
+      'game:deploy',
+      { territoryId: selectedTerritoryId, troops: deployTroops },
+      (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      },
+    );
+  }, [selectedTerritoryId, deployTroops, setGame]);
+
+  function isInteractable(t: Territory): boolean {
+    if (!isMyTurn) return false;
+    if (turnPhase === 'deploy') return ownerById.get(t.id)?.ownerId === selfId;
+    return true;
+  }
 
   useEffect(() => {
     function onResize() {
@@ -133,13 +217,20 @@ function GameMap({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (selectedId !== null) {
-          setSelectedId(null);
+        if (isMyTurn && selectedTerritoryId !== null) {
+          selectTerritory(null);
           return;
         }
         setPanelCollapsed(true);
         setChatOpen(false);
         return;
+      }
+      if (e.key === 'Enter' && deployPanelOpen) {
+        if (!isTypingTarget(e.target) || e.target === deployInputRef.current) {
+          e.preventDefault();
+          submitDeploy();
+          return;
+        }
       }
       if (isTypingTarget(e.target)) return;
       if (e.key === 'Tab') {
@@ -151,13 +242,17 @@ function GameMap({
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selectedId, setChatOpen]);
+  }, [
+    isMyTurn,
+    selectedTerritoryId,
+    selectTerritory,
+    setChatOpen,
+    deployPanelOpen,
+    submitDeploy,
+  ]);
 
   function getImageDims(): { w: number; h: number } {
-    const img = imageRef.current;
-    return img
-      ? { w: img.naturalWidth, h: img.naturalHeight }
-      : { w: DEFAULT_IMAGE_WIDTH, h: DEFAULT_IMAGE_HEIGHT };
+    return imgDims;
   }
 
   function getScales(canvasW: number, canvasH: number, zoom: number) {
@@ -176,16 +271,35 @@ function GameMap({
     return computeClampedOffset(canvasW, canvasH, zoom, imgW, imgH, x, y);
   }
 
+  function getTerritoryScreenPos(t: Territory): Point {
+    const { scaleX, scaleY } = getScales(size.w, size.h, transform.zoom);
+    const { x: offsetX, y: offsetY } = getClampedOffset(
+      size.w,
+      size.h,
+      transform.zoom,
+      transform.offsetX,
+      transform.offsetY,
+    );
+    return { x: t.x * scaleX + offsetX, y: t.y * scaleY + offsetY };
+  }
+
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
     function onWheel(e: WheelEvent) {
       e.preventDefault();
-      const rect = canvas!.getBoundingClientRect();
+      if (deployPanelOpen) {
+        const delta = e.deltaY < 0 ? 1 : -1;
+        setDeployTroops((prev) =>
+          Math.min(troopsToDeploy, Math.max(1, prev + delta)),
+        );
+        return;
+      }
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
       const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      const canvasW = canvas!.clientWidth;
-      const canvasH = canvas!.clientHeight;
-      const { w: imgW, h: imgH } = getImageDims();
+      const canvasW = canvas.clientWidth;
+      const canvasH = canvas.clientHeight;
+      const { w: imgW, h: imgH } = imgDims;
       const factor = e.deltaY < 0 ? 1.1 : 0.9;
       setTransform((prev) => {
         const oldScaleX = (canvasW / imgW) * prev.zoom;
@@ -208,17 +322,17 @@ function GameMap({
         return { zoom: newZoom, offsetX: x, offsetY: y };
       });
     }
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', onWheel);
-  }, []);
+    window.addEventListener('wheel', onWheel, { passive: false });
+    return () => window.removeEventListener('wheel', onWheel);
+  }, [deployPanelOpen, troopsToDeploy, imgDims]);
 
   function nodeState(
     id: number,
   ): 'normal' | 'selectable' | 'hovered' | 'selected' {
-    if (id === selectedId) return 'selected';
+    if (id === selectedTerritoryId) return 'selected';
     if (id === hoveredId) return 'hovered';
-    if (selectedId !== null) {
-      const selected = territories.find((t) => t.id === selectedId);
+    if (turnPhase !== 'deploy' && selectedTerritoryId !== null) {
+      const selected = territories.find((t) => t.id === selectedTerritoryId);
       if (selected?.neighbors.includes(id)) return 'selectable';
     }
     return 'normal';
@@ -262,7 +376,6 @@ function GameMap({
       y: p.y * scaleY + offsetY,
     });
 
-    const ownerById = new Map(ownership.map((o) => [o.id, o]));
     const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
 
     for (const t of territories) {
@@ -344,7 +457,8 @@ function GameMap({
     const drag = dragRef.current;
     const pos = getPos(e);
     if (!drag) {
-      setHoveredId(hitVertex(pos)?.id ?? null);
+      const vertex = hitVertex(pos);
+      setHoveredId(vertex && isInteractable(vertex) ? vertex.id : null);
       return;
     }
     const dx = pos.x - drag.startPos.x;
@@ -375,14 +489,16 @@ function GameMap({
   function handleMouseUp(e: React.MouseEvent) {
     const drag = dragRef.current;
     dragRef.current = null;
-    if (!drag || drag.moved) return;
+    if (!drag || drag.moved || !isMyTurn) return;
     const pos = getPos(e);
     const vertex = hitVertex(pos);
-    if (!vertex) {
-      setSelectedId(null);
+    if (!vertex || !isInteractable(vertex)) {
+      if (selectedTerritoryId !== null) selectTerritory(null);
       return;
     }
-    setSelectedId((prev) => (prev === vertex.id ? null : vertex.id));
+    const newSelectedId = selectedTerritoryId === vertex.id ? null : vertex.id;
+    if (newSelectedId !== null && turnPhase === 'deploy') setToasts([]);
+    selectTerritory(newSelectedId);
   }
 
   function handleMouseLeave() {
@@ -392,10 +508,47 @@ function GameMap({
 
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault();
-    setSelectedId(null);
+    if (isMyTurn && selectedTerritoryId !== null) selectTerritory(null);
   }
 
-  const currentTurnPlayer = players[turnPlayerIndex];
+  const selectedTerritory =
+    selectedTerritoryId !== null
+      ? territories.find((t) => t.id === selectedTerritoryId)
+      : undefined;
+  const selectedScreenPos = selectedTerritory
+    ? getTerritoryScreenPos(selectedTerritory)
+    : null;
+  const zoomedRadius = VERTEX_RADIUS * transform.zoom;
+  let rawLeft = 0;
+  let rawTop = 0;
+  if (selectedScreenPos) {
+    rawLeft = selectedScreenPos.x - DEPLOY_PANEL_WIDTH / 2;
+    const fitsBelow =
+      selectedScreenPos.y +
+        zoomedRadius +
+        DEPLOY_PANEL_GAP +
+        DEPLOY_PANEL_HEIGHT <=
+      size.h - TURN_PANEL_RESERVED_HEIGHT;
+    rawTop = fitsBelow
+      ? selectedScreenPos.y + zoomedRadius + DEPLOY_PANEL_GAP
+      : selectedScreenPos.y -
+        zoomedRadius -
+        DEPLOY_PANEL_GAP -
+        DEPLOY_PANEL_HEIGHT;
+  }
+  const deployPanelStyle: React.CSSProperties | undefined = selectedScreenPos
+    ? {
+        position: 'absolute',
+        left: Math.max(
+          Math.min(rawLeft, size.w - DEPLOY_PANEL_WIDTH - SCREEN_EDGE_MARGIN),
+          SCREEN_EDGE_MARGIN,
+        ),
+        top: Math.min(
+          Math.max(rawTop, SCREEN_EDGE_MARGIN),
+          size.h - TURN_PANEL_RESERVED_HEIGHT - DEPLOY_PANEL_HEIGHT,
+        ),
+      }
+    : undefined;
 
   return (
     <div className="position-relative">
@@ -426,7 +579,7 @@ function GameMap({
       {currentTurnPlayer && (
         <>
           <TurnProgressBar
-            turnKey={`${turnNumber}-${turnPlayerIndex}`}
+            turnStartedAt={turnStartedAt}
             turnDuration={turnDuration}
             color={playerColor(currentTurnPlayer.color)}
           />
@@ -434,11 +587,41 @@ function GameMap({
             turnPhase={turnPhase}
             currentPlayerName={currentTurnPlayer.name}
             color={playerColor(currentTurnPlayer.color)}
-            isMyTurn={currentTurnPlayer.id === selfId}
+            isMyTurn={isMyTurn}
+            troopsToDeploy={troopsToDeploy}
             setGame={setGame}
           />
+          {deployPanelOpen && deployPanelStyle && (
+            <DeployPanel
+              troops={deployTroops}
+              maxTroops={troopsToDeploy}
+              color={playerColor(currentTurnPlayer.color)}
+              inputRef={deployInputRef}
+              onChange={setDeployTroops}
+              onDeploy={submitDeploy}
+              style={deployPanelStyle}
+            />
+          )}
         </>
       )}
+      <ToastContainer
+        position="top-center"
+        className="position-fixed p-3"
+        style={{ zIndex: 3 }}
+      >
+        {toasts.map((t) => (
+          <Toast
+            key={t.id}
+            onClose={() =>
+              setToasts((prev) => prev.filter((x) => x.id !== t.id))
+            }
+            autohide
+            delay={5000}
+          >
+            <Toast.Body>{t.message}</Toast.Body>
+          </Toast>
+        ))}
+      </ToastContainer>
     </div>
   );
 }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20">
+  <!-- Treads -->
+  <rect x="2" y="13" width="16" height="4" rx="2" fill="#000000"/>
+  <!-- Main Body -->
+  <polygon points="4,12 6,8 14,8 16,12" fill="#000000"/>
+  <!-- Turret -->
+  <path d="M7,8 L7,5 C7,4.5 7.5,4 8,4 L11,4 C11.5,4 12,4.5 12,5 L12,8 Z" fill="#000000"/>
+  <!-- Barrel -->
+  <rect x="11" y="5" width="8" height="1.5" fill="#000000"/>
+</svg>

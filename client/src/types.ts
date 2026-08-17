@@ -8,7 +8,7 @@ export interface GameSummary {
   mapName: string;
   playerCount: number;
   slots: number;
-  phase: 'lobby' | 'playing';
+  state: 'lobby' | 'playing';
   spectatorCount: number;
 }
 
@@ -18,18 +18,22 @@ export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
   'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
+export type TurnPhase = 'deploy' | 'attack' | 'fortify';
 
 export interface GameState {
   name: string;
   mapName: string;
   slots: number;
   hostId: number;
-  phase: 'lobby' | 'playing';
+  state: 'lobby' | 'playing';
   gameMode: GameMode;
   diceRandomness: DiceRandomness;
   defenceDice: DefenceDice;
   cards: CardsMode;
   turnDuration: TurnDuration;
+  turnNumber: number;
+  turnPlayerIndex: number;
+  turnPhase: TurnPhase;
   players: {
     id: number;
     name: string;
@@ -37,6 +41,8 @@ export interface GameState {
     color: number;
     territoryCount: number;
     troopCount: number;
+    connected: boolean;
+    surrendered: boolean;
   }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];

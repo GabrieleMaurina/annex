@@ -49,7 +49,10 @@ function Lobby({
 
   const isHost = game.hostId === selfId;
   const isTeamDeathmatch = game.gameMode === 'Team Deathmatch';
-  const maxTeams = Math.max(1, game.players.length - 1);
+  const maxTeams = game.players.length;
+  const teamCount = new Set(game.players.map((p) => p.team)).size;
+  const canStart =
+    game.players.length >= 2 && (!isTeamDeathmatch || teamCount >= 2);
 
   function banId(id: number) {
     bannedIdsRef.current = [...bannedIdsRef.current, id];
@@ -127,7 +130,7 @@ function Lobby({
 
         <div className="d-flex flex-column gap-2">
           {isHost && (
-            <Button disabled={game.players.length < 2} onClick={startGame}>
+            <Button disabled={!canStart} onClick={startGame}>
               Start Game
             </Button>
           )}

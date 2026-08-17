@@ -36,7 +36,7 @@ type DragState =
     }
   | null;
 
-const VERTEX_RADIUS = 15;
+const VERTEX_RADIUS = 20;
 const HIT_TOLERANCE = 6;
 const DRAG_THRESHOLD = 4;
 const MIN_ZOOM = 1;

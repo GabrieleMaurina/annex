@@ -1,5 +1,10 @@
 import { Server, Socket } from 'socket.io';
-import { gameRoomName, leaveGame, listGameSummaries } from './game';
+import {
+  gameRoomName,
+  handleReconnect,
+  leaveGame,
+  listGameSummaries,
+} from './game';
 import { HOME_ROOM, Player } from './types';
 
 let nextPlayerId = 1;
@@ -40,6 +45,7 @@ export function registerHomeHandlers(
           io.sockets.sockets.get(player.socketId)?.disconnect(true);
         }
         player.socketId = socket.id;
+        player.connected = true;
       } else {
         player = {
           key: playerKey,
@@ -47,13 +53,16 @@ export function registerHomeHandlers(
           name: isValidName(playerName) ? playerName.trim() : 'Player',
           socketId: socket.id,
           gameName: null,
+          connected: true,
         };
         playersByKey.set(playerKey, player);
         playersById.set(player.id, player);
       }
       playersBySocket.set(socket.id, player);
 
-      if (room !== (player.gameName ?? HOME_ROOM)) leaveGame(player);
+      if (room !== (player.gameName ?? HOME_ROOM))
+        leaveGame(player, playersById, io);
+      handleReconnect(player, playersById);
 
       for (const joinedRoom of [...socket.rooms]) {
         if (joinedRoom !== socket.id) socket.leave(joinedRoom);
@@ -73,7 +82,10 @@ export function registerHomeHandlers(
   socket.on('disconnect', () => {
     const player = playersBySocket.get(socket.id);
     playersBySocket.delete(socket.id);
-    if (player) leaveGame(player);
+    if (player) {
+      player.connected = false;
+      leaveGame(player, playersById, io);
+    }
   });
 }
 

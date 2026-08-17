@@ -1,7 +1,9 @@
 import { Server } from 'socket.io';
-import { Game, Player } from '../types';
+import { Game, HOME_ROOM, Player } from '../types';
+import { addHostCandidate, recomputeHost } from './host';
 import { assignRandomColor, maxTeam } from './mechanics';
 import { gameState, gameSummary } from './state';
+import { clearTurnTimer } from './turns';
 
 export const games = new Map<string, Game>();
 
@@ -9,13 +11,44 @@ export function gameRoomName(name: string): string {
   return `game-${name}`;
 }
 
-export function removePlayerFromGame(game: Game, playerId: number) {
+function hasActivePlayer(game: Game, playersById: Map<number, Player>) {
+  return game.playerIds.some(
+    (id) =>
+      !game.surrenderedIds.has(id) && (playersById.get(id)?.connected ?? false),
+  );
+}
+
+export function destroyIfInactive(
+  game: Game,
+  playersById: Map<number, Player>,
+  io: Server,
+) {
+  if (game.state !== 'playing' || hasActivePlayer(game, playersById)) return;
+
+  clearTurnTimer(game.name);
+  games.delete(game.name);
+
+  for (const id of [...game.playerIds, ...game.spectatorIds]) {
+    const member = playersById.get(id);
+    if (!member || member.gameName !== game.name) continue;
+    member.gameName = null;
+    const memberSocket = io.sockets.sockets.get(member.socketId);
+    memberSocket?.leave(gameRoomName(game.name));
+    memberSocket?.join(HOME_ROOM);
+  }
+}
+
+export function removePlayerFromGame(
+  game: Game,
+  playerId: number,
+  playersById: Map<number, Player>,
+) {
   game.playerIds = game.playerIds.filter((id) => id !== playerId);
   game.playerTeams.delete(playerId);
   game.playerColors.delete(playerId);
 
   if (
-    game.phase === 'lobby' &&
+    game.state === 'lobby' &&
     game.playerIds.length < game.slots &&
     game.spectatorIds.length > 0
   ) {
@@ -23,34 +56,58 @@ export function removePlayerFromGame(game: Game, playerId: number) {
     game.playerIds.push(promotedId);
     game.playerTeams.set(promotedId, 0);
     assignRandomColor(game, promotedId);
+    addHostCandidate(game, promotedId);
   }
 
   if (game.playerIds.length === 0) {
+    clearTurnTimer(game.name);
     games.delete(game.name);
     return;
-  }
-
-  if (game.hostId === playerId) {
-    game.hostId = game.playerIds[0];
   }
 
   const cap = maxTeam(game);
   for (const id of game.playerIds) {
     if ((game.playerTeams.get(id) ?? 0) > cap) game.playerTeams.set(id, 0);
   }
+
+  recomputeHost(game, playersById);
 }
 
-export function leaveGame(player: Player) {
+export function leaveGame(
+  player: Player,
+  playersById: Map<number, Player>,
+  io: Server,
+) {
   if (!player.gameName) return;
   const game = games.get(player.gameName);
-  player.gameName = null;
-  if (!game) return;
+  if (!game) {
+    player.gameName = null;
+    return;
+  }
 
   if (game.spectatorIds.includes(player.id)) {
+    player.gameName = null;
     game.spectatorIds = game.spectatorIds.filter((id) => id !== player.id);
     return;
   }
-  removePlayerFromGame(game, player.id);
+
+  if (game.state === 'playing') {
+    recomputeHost(game, playersById);
+    destroyIfInactive(game, playersById, io);
+    return;
+  }
+
+  player.gameName = null;
+  removePlayerFromGame(game, player.id, playersById);
+}
+
+export function handleReconnect(
+  player: Player,
+  playersById: Map<number, Player>,
+) {
+  if (!player.gameName) return;
+  const game = games.get(player.gameName);
+  if (game) recomputeHost(game, playersById);
 }
 
 export function listGameSummaries() {

@@ -8,7 +8,23 @@ function colorBound(game: Game) {
 }
 
 export function maxTeam(game: Game) {
-  return Math.max(0, game.playerIds.length - 2);
+  return Math.max(0, game.playerIds.length - 1);
+}
+
+export function teamCount(game: Game) {
+  return new Set(game.playerIds.map((id) => game.playerTeams.get(id) ?? 0))
+    .size;
+}
+
+export function compactTeams(game: Game) {
+  const usedTeams = [
+    ...new Set(game.playerIds.map((id) => game.playerTeams.get(id) ?? 0)),
+  ].sort((a, b) => a - b);
+  const remap = new Map(usedTeams.map((team, index) => [team, index]));
+  for (const id of game.playerIds) {
+    const oldTeam = game.playerTeams.get(id) ?? 0;
+    game.playerTeams.set(id, remap.get(oldTeam)!);
+  }
 }
 
 export function shuffle<T>(array: T[]): T[] {
@@ -18,6 +34,76 @@ export function shuffle<T>(array: T[]): T[] {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
+}
+
+function isValidCycle(order: number[], playerTeams: Map<number, number>) {
+  const n = order.length;
+  for (let i = 0; i < n; i++) {
+    const a = playerTeams.get(order[i]) ?? 0;
+    const b = playerTeams.get(order[(i + 1) % n]) ?? 0;
+    if (a === b) return false;
+  }
+  return true;
+}
+
+function fixWrapAround(order: number[], playerTeams: Map<number, number>) {
+  const n = order.length;
+  if (n < 3) return;
+  const teamAt = (i: number) => playerTeams.get(order[i]) ?? 0;
+  if (teamAt(0) !== teamAt(n - 1)) return;
+
+  for (let i = n - 2; i >= 1; i--) {
+    const swapped = [...order];
+    [swapped[i], swapped[n - 1]] = [swapped[n - 1], swapped[i]];
+    if (isValidCycle(swapped, playerTeams)) {
+      order.splice(0, n, ...swapped);
+      return;
+    }
+  }
+}
+
+interface TeamQueue {
+  team: number;
+  queue: number[];
+}
+
+export function interleaveTeams(game: Game): number[] {
+  const byTeam = new Map<number, number[]>();
+  for (const id of game.playerIds) {
+    const team = game.playerTeams.get(id) ?? 0;
+    const list = byTeam.get(team);
+    if (list) list.push(id);
+    else byTeam.set(team, [id]);
+  }
+
+  const queues: TeamQueue[] = [...byTeam.entries()].map(([team, players]) => ({
+    team,
+    queue: shuffle(players),
+  }));
+
+  const total = game.playerIds.length;
+  const order: number[] = [];
+  let firstTeam: number | null = null;
+  let lastTeam: number | null = null;
+  while (order.length < total) {
+    const nonEmpty: TeamQueue[] = queues.filter((q) => q.queue.length > 0);
+    const avoid: (number | null)[] =
+      order.length === total - 1 ? [lastTeam, firstTeam] : [lastTeam];
+
+    let pool: TeamQueue[] = nonEmpty.filter((q) => !avoid.includes(q.team));
+    if (pool.length === 0) pool = nonEmpty.filter((q) => q.team !== lastTeam);
+    if (pool.length === 0) pool = nonEmpty;
+
+    const maxRemaining = Math.max(...pool.map((q) => q.queue.length));
+    const tied = pool.filter((q) => q.queue.length === maxRemaining);
+    const chosen = tied[Math.floor(Math.random() * tied.length)];
+    order.push(chosen.queue.shift()!);
+    if (firstTeam === null) firstTeam = chosen.team;
+    lastTeam = chosen.team;
+  }
+
+  fixWrapAround(order, game.playerTeams);
+  return order;
 }
 
 export function assignTerritories(game: Game) {

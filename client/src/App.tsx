@@ -64,12 +64,35 @@ function App() {
         setJoinError('');
         return;
       }
+
       socket.emit('game:join', { gameName: room }, (res: Ack) => {
-        if (!res.ok && res.error !== 'already in a game') {
-          setJoinError(res.error);
-        } else {
+        if (res.ok || res.error === 'already in a game') {
           setJoinError('');
+          return;
         }
+        if (res.error !== 'game not found') {
+          setJoinError(res.error);
+          return;
+        }
+
+        socket.emit('game:create', { name: room }, (createRes: Ack) => {
+          if (createRes.ok || createRes.error === 'already in a game') {
+            setJoinError('');
+            return;
+          }
+          if (createRes.error !== 'game name already in use') {
+            setJoinError(createRes.error);
+            return;
+          }
+
+          socket.emit('game:join', { gameName: room }, (retryRes: Ack) => {
+            if (retryRes.ok || retryRes.error === 'already in a game') {
+              setJoinError('');
+            } else {
+              setJoinError(retryRes.error);
+            }
+          });
+        });
       });
     }
     if (socket.connected) afterConnect();

@@ -270,8 +270,8 @@ function Panel({
 
   return (
     <div
-      className="position-absolute top-0 end-0 bg-body bg-opacity-75 p-3 d-flex flex-column"
-      style={{ width: 280, maxHeight: '100vh' }}
+      className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column"
+      style={{ width: 280, maxHeight: 'calc(100vh - 1rem)' }}
     >
       <div className="d-flex justify-content-end mb-3">
         <Button
@@ -344,9 +344,7 @@ function Panel({
             {Array.from({ length: continentCount }, (_, i) => (
               <tr
                 key={i}
-                style={
-                  { '--bs-table-bg': continentColor(i) } as CSSProperties
-                }
+                style={{ '--bs-table-bg': continentColor(i) } as CSSProperties}
               >
                 <td>{i + 1}</td>
                 <td>{territories.filter((t) => t.continentId === i).length}</td>

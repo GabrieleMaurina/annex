@@ -14,13 +14,22 @@ import {
 } from './mapMath';
 import { continentColor, contrastTextColor, playerColor } from './palette';
 import PlayersPanel from './PlayersPanel';
-import type { GameState } from './types';
+import TurnPanel from './TurnPanel';
+import TurnProgressBar from './TurnProgressBar';
+import type { GameState, TurnDuration, TurnPhase } from './types';
 
 interface Props {
   mapName: string;
   players: GameState['players'];
   spectators: GameState['spectators'];
   ownership: GameState['territories'];
+  isTeamDeathmatch: boolean;
+  selfId: number | null;
+  turnNumber: number;
+  turnPlayerIndex: number;
+  turnPhase: TurnPhase;
+  turnDuration: TurnDuration;
+  setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
 }
@@ -50,7 +59,7 @@ type DragState = {
   moved: boolean;
 } | null;
 
-const VERTEX_RADIUS = 15;
+const VERTEX_RADIUS = 20;
 const HIT_TOLERANCE = 6;
 const DRAG_THRESHOLD = 4;
 const MIN_ZOOM = 1;
@@ -68,6 +77,13 @@ function GameMap({
   players,
   spectators,
   ownership,
+  isTeamDeathmatch,
+  selfId,
+  turnNumber,
+  turnPlayerIndex,
+  turnPhase,
+  turnDuration,
+  setGame,
   setChatOpen,
   navigate,
 }: Props) {
@@ -268,8 +284,14 @@ function GameMap({
         ctx.fillStyle = contrastTextColor(fillColor);
         ctx.font = `bold ${VERTEX_RADIUS * zoom}px sans-serif`;
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String(owner.troops), p.x, p.y);
+        ctx.textBaseline = 'alphabetic';
+        const text = String(owner.troops);
+        const metrics = ctx.measureText(text);
+        const baselineY =
+          p.y +
+          (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
+            2;
+        ctx.fillText(text, p.x, baselineY);
       }
     }
   });
@@ -373,6 +395,8 @@ function GameMap({
     setSelectedId(null);
   }
 
+  const currentTurnPlayer = players[turnPlayerIndex];
+
   return (
     <div className="position-relative">
       <canvas
@@ -392,10 +416,29 @@ function GameMap({
       <PlayersPanel
         players={players}
         spectators={spectators}
+        isTeamDeathmatch={isTeamDeathmatch}
+        selfId={selfId}
+        turnPlayerId={currentTurnPlayer?.id ?? null}
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}
         navigate={navigate}
       />
+      {currentTurnPlayer && (
+        <>
+          <TurnProgressBar
+            turnKey={`${turnNumber}-${turnPlayerIndex}`}
+            turnDuration={turnDuration}
+            color={playerColor(currentTurnPlayer.color)}
+          />
+          <TurnPanel
+            turnPhase={turnPhase}
+            currentPlayerName={currentTurnPlayer.name}
+            color={playerColor(currentTurnPlayer.color)}
+            isMyTurn={currentTurnPlayer.id === selfId}
+            setGame={setGame}
+          />
+        </>
+      )}
     </div>
   );
 }

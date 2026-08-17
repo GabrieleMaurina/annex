@@ -77,6 +77,7 @@ function PlayerRoster({
                     isHost ? (
                       <Form.Select
                         size="sm"
+                        className="w-auto"
                         value={p.team}
                         onChange={(e) =>
                           setPlayerTeam(p.id, Number(e.target.value))

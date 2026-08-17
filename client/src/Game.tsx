@@ -61,17 +61,24 @@ function Game({
 
   return (
     <>
-      {game.phase === 'playing' ? (
+      {game.state === 'playing' ? (
         <GameMap
           mapName={game.mapName}
           players={game.players}
           spectators={game.spectators}
           ownership={game.territories}
+          isTeamDeathmatch={game.gameMode === 'Team Deathmatch'}
+          selfId={selfId}
+          turnNumber={game.turnNumber}
+          turnPlayerIndex={game.turnPlayerIndex}
+          turnPhase={game.turnPhase}
+          turnDuration={game.turnDuration}
+          setGame={setGame}
           setChatOpen={setChatOpen}
           navigate={navigate}
         />
       ) : (
-        <Container fluid className="py-5 px-4">
+        <Container fluid className="pt-3 pb-5 px-4">
           <Lobby
             game={game}
             setGame={setGame}
@@ -86,7 +93,7 @@ function Game({
       <Chat
         nameById={nameById}
         colorById={colorById}
-        transparent={game.phase === 'playing'}
+        transparent={game.state === 'playing'}
         open={chatOpen}
         setOpen={setChatOpen}
       />

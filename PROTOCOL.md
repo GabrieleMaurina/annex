@@ -1,6 +1,6 @@
 # Server ↔ Client Protocol
 
-This document lists every Socket.IO message exchanged between server and a client, and must be followed by both sides. This document must be clear, precise, comprehensive, short, and up to date.
+This document lists every Socket.IO message exchanged between server and client, and must be followed by both sides — kept clear, precise, comprehensive, short, and up to date.
 
 Every socket starts in the `home` room on connect. A player moves to a game's room (`game:create` / `game:join`) and can be moved back to `home` (kicked, or `player:identify` reporting `room: 'home'`).
 
@@ -8,9 +8,23 @@ Every socket starts in the `home` room on connect. A player moves to a game's ro
 
 Each player known to the server has two distinct identifiers, plus a display name:
 
-- **`id`** — a unique integer assigned by the server the first time it sees a given player. Safe to share: it identifies a player in every message to every client (roster entries, host, ban list, kick/unban targets). A client cannot choose its own `id`; the server hands it out.
-- **`key`** — a unique random UUID, generated and stored by the client (in its cookie) and never by the server. It is a secret credential that proves the client's identity: whoever presents a given `key` in `player:identify` is treated as that player, and any other socket currently holding that identity is disconnected. **The server must never send any player's `key` to any client — including that player's own socket.** A client learns its own `id` from the `player:identify` ack, but it generates and already holds its own `key`; it never learns anyone else's `key`.
-- **`name`** — a display string, not unique, freely chosen by the client via `player:setName`. Must not be empty or all-whitespace; the server ignores a `playerName`/`name` that fails this check (see `player:identify` and `player:setName` below).
+- **`id`** — a unique integer the server assigns the first time it sees a player. Safe to share — identifies them in every message to every client (roster entries, host, ban list, kick/unban targets). The client never chooses its own `id`.
+- **`key`** — a unique random UUID the client generates and stores (in its cookie), never the server. It's a secret credential: whoever presents a given `key` in `player:identify` is treated as that player, and any other socket already holding that identity is disconnected. **The server must never send any player's `key` to any client, including that player's own socket.** The client learns its own `id` from the `player:identify` ack; it already has its own `key` and never learns anyone else's.
+- **`name`** — a display string, not unique, freely chosen via `player:setName`. Must not be empty or all-whitespace — the server ignores it otherwise (see `player:identify` / `player:setName` below).
+
+A player, once seen, stays in server memory (keyed by `id` and `key`) for as long as the server runs, connected or not — nothing is persisted, so a restart wipes it. This is what lets a reconnecting `key` always resume the same `id`.
+
+### Leaving and reconnecting
+
+Closing the tab, opening a new one, refreshing, or otherwise dropping the connection all disconnect the socket. Reconnecting (a fresh `player:identify`) with the same `key` resumes the same `id`; a different or new `key` is a different player — a new `id` who, per the seating rules below, can only ever join as a spectator.
+
+What losing (and regaining) the socket does to a player's game membership depends on the game's `state`:
+- **`lobby`**: a disconnect (or a mismatched-room `player:identify`, see below) removes the player entirely, same as leaving on purpose. If they held a slot, `hostId` is reassigned (see below) and the front queued spectator, if any, is promoted to fill it. Reconnecting afterward is just a fresh `game:join`.
+- **`playing`**: nothing changes — slot, territories, and troops stay exactly as they were; only the socket drops. Reconnecting with the same `key` (any device) silently resumes that slot. If their turn comes up while away, it just runs out the clock and passes on (see `turnDuration` under `GameState` below), same as anyone taking too long.
+
+`game:surrender` is the one way to leave a `playing` game for good: slot, territories, and troops stay untouched just like a disconnect, but the player is permanently barred from that slot — reconnecting, or navigating back later, only ever seats them as a spectator.
+
+Since `playing` games never lose a player this way, one where everyone has disconnected or surrendered would otherwise sit forever with no one able to act. So after every disconnect and every `game:surrender`, the server checks: if no player is both connected and not-surrendered, the game is destroyed immediately — turn timer stopped, every remaining player/spectator's membership cleared, and their socket (if still connected) moved back to `home`.
 
 ## Shared types
 
@@ -21,7 +35,7 @@ Each player known to the server has two distinct identifiers, plus a display nam
   mapName: string;
   playerCount: number;
   slots: number;
-  phase: 'lobby' | 'playing';
+  state: 'lobby' | 'playing';
   spectatorCount: number;
 }
 ```
@@ -33,31 +47,38 @@ Each player known to the server has two distinct identifiers, plus a display nam
   mapName: string;
   slots: number;
   hostId: number;
-  phase: 'lobby' | 'playing';
+  state: 'lobby' | 'playing';
   gameMode: 'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
   diceRandomness: 'Balanced' | 'True';
   defenceDice: 2 | 3;
   cards: 'Fixed' | 'Progressive' | 'Exponential';
   turnDuration: 60 | 90 | 120 | 150 | 180 | 300; // seconds
-  players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number }[];
+  turnNumber: number;
+  turnPlayerIndex: number;
+  turnPhase: 'deploy' | 'attack' | 'fortify';
+  players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number; connected: boolean; surrendered: boolean }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
   territories: { id: number; ownerId: number; troops: number }[];
 }
 ```
-`hostId` is the id of the game's current host — the only player who may call `game:settings` or `game:start`. If the host leaves the game (disconnects, is kicked, or `player:identify`s reporting a different room) while other players remain, it passes to the next player in `players` order; if no players remain, the game is deleted.
+`hostId` is the id of the game's current host — the only player who may call `game:settings` or `game:start`. The server recomputes it whenever it might need to change (a leave, kick, join, or reconnect) from the game's host-priority list — every player who's ever held a seat, in the order they first got one, never reordered or shortened by a leave — picking the first one still seated, connected, and not surrendered (see "Leaving and reconnecting" above, `game:surrender` below). So host passes to the next eligible player when the current one disconnects or leaves, and passes back the moment a higher-priority former host reconnects, cascading through however many stand-ins came in between. If no players remain, the game is deleted.
 
-`team` is only meaningful when `gameMode` is `'Team Deathmatch'` — it always defaults to `0` otherwise and is ignored by the client. Its valid range is `0` to `max(0, players.length - 2)`, guaranteeing at least one team has more than one member.
+Once `game:start` succeeds, `turnNumber` counts full rounds completed (starts at `0`); `turnPlayerIndex` indexes `players` for whoever's turn it is; `turnPhase` is that player's progress — `'deploy'`, `'attack'`, `'fortify'`, in order. Only the player at `turnPlayerIndex` may advance it, via `game:nextPhase`; completing `'fortify'` instead ends the turn, advancing to the next player (`turnPlayerIndex + 1`, wrapping to `0` and incrementing `turnNumber` after the last player) and resetting `turnPhase` to `'deploy'`. `turnDuration` is a hard limit on the whole turn (all three phases, not reset between them) — if the current player hasn't finished in time, the server force-advances exactly as `game:nextPhase` would from `'fortify'`. This also covers a disconnected player: `players`/`turnPlayerIndex` are unaffected by leaving a `playing` game (see "Leaving and reconnecting" above), so an absent turn just runs out the clock. The server never reports elapsed time — only that the turn or phase changed, via `game:state` or a `game:nextPhase` ack — so each client tracks it locally, resetting whenever `turnNumber`/`turnPlayerIndex` change. Both fields sit inert (`0`/`'deploy'`) in the `lobby` state.
 
-`color` is an index into a 20-entry color palette the client owns — the server never sends actual color values, only the index. It's assigned at random when a player is seated (`game:create`, `game:join`, or spectator promotion), and is always unique among the game's current players. To keep early joiners' colors nicer (the palette is ordered nicest-first), both the random assignment and `game:cycleColor` are restricted to the first `min(20, players.length + 3)` palette indices. Spectators have no color.
+`team` is only meaningful when `gameMode` is `'Team Deathmatch'` — it always defaults to `0` otherwise and is ignored by the client. Its valid range is `0` to `max(0, players.length - 1)`, one value per player, so team counts from a single shared team up to every player on their own team are all valid. The client displays teams 1-based (`team + 1`); the wire value stays 0-based.
 
-`territoryCount` and `troopCount` are the number of territories the player currently controls and the total troops on them; both are `0` until the game starts. Once `game:start` succeeds, `players` is reordered into the game's randomized turn order and stays in that order for the rest of the game.
+`color` is an index into a 20-entry palette the client owns — the server sends only the index, never actual color values. Assigned at random when seated (`game:create`, `game:join`, spectator promotion), always unique among current players. To keep early joiners' colors nicer (palette ordered nicest-first), both random assignment and `game:cycleColor` are restricted to the first `min(20, players.length + 3)` indices. Spectators have no color.
+
+`territoryCount` and `troopCount` are the number of territories the player currently controls and the total troops on them; both are `0` until the game starts. Once `game:start` succeeds, `players` is reordered into the game's randomized turn order and stays that way for the rest of the game.
+
+`connected` is whether the player currently has a live socket anywhere on the server (not necessarily this game's room — see "Leaving and reconnecting" above). `surrendered` is whether they've called `game:surrender` on this game; they're typically still `connected` (surrendering doesn't disconnect them) but can never be seated in it again. Both are informational only — an absent player's territories, troops, and turn are still tracked exactly like anyone else's.
 
 `territories` is empty until the game starts; once `playing`, it lists every territory on the map with its current owner (`ownerId`, a player's `id`) and troop count.
 
-Players who couldn't be seated (lobby full, or the game is already `playing`) become **spectators**: same room, full visibility of `game:state`, but no roster slot and no gameplay actions. In the `lobby` phase, spectators are an ordered queue (`spectators[0]` is next in line) — if a seated player leaves while the game is still in `lobby`, the front spectator is promoted to a player automatically. Nothing promotes spectators once the game is `playing`; a player leaving mid-game just shrinks the roster.
+Players who couldn't be seated (lobby full, game already `playing`, or they'd previously surrendered from it) become **spectators**: same room, full `game:state` visibility, no roster slot, no gameplay actions. In the `lobby` state, spectators are an ordered queue (`spectators[0]` next in line) — if a seated player leaves, the front spectator is promoted automatically. Nothing promotes spectators once `playing`, and leaving (or disconnecting from) a `playing` game never frees a seat — see "Leaving and reconnecting" above.
 
-**Ack response** — `game:create`, `game:join`, `game:settings`, `game:start`, and `game:cycleColor` all reply via the Socket.IO acknowledgement callback with:
+**Ack response** — `game:create`, `game:join`, `game:settings`, `game:start`, `game:cycleColor`, `game:nextPhase`, and `game:surrender` all reply via the Socket.IO acknowledgement callback with:
 ```ts
 { ok: true; game: GameState } | { ok: false; error: string }
 ```
@@ -67,18 +88,18 @@ Players who couldn't be seated (lobby full, or the game is already `playing`) be
 ## Client → Server
 
 ### `player:identify`
-- **When sent:** once, immediately after the socket connects; re-sent any time the client reconnects (new tab, page reload, dropped connection); and re-sent any time the client's own declared room changes on the client side — e.g. after creating/joining a game, after navigating back to `/` to leave a game, or when navigating directly to a different game's URL.
-- **Purpose:** register this socket against a persistent player identity, and declare which room the client believes it's in — `'home'` or a game name. The server uses this to place the socket in the correct room and to detect stale game membership: if `room` doesn't match what the server has on record (e.g. another of the player's tabs is still in a game but this tab reports `'home'`), the server removes the player from that game (see `hostId` above for what happens next).
+- **When sent:** once, immediately after connecting; re-sent on every reconnect (new tab, reload, dropped connection); and re-sent whenever the client's own declared room changes — e.g. after creating/joining a game, navigating back to `/`, or navigating directly to a different game's URL.
+- **Purpose:** register this socket against a persistent player identity, and declare which room the client believes it's in — `'home'` or a game name. The server uses this to place the socket correctly and to detect stale membership: if `room` doesn't match its record (e.g. another tab is still in a game but this one reports `'home'`), it updates their game membership accordingly (see "Leaving and reconnecting" above). A reconnect also re-checks `hostId` for whatever game the player is in, in case a former host is due back (see `hostId` above).
 - **Content:**
   ```ts
   { playerKey: string; playerName: string; room: string }
   ```
-  `playerName` only sets the player's name the first time a given `playerKey` is seen (i.e. when the player is created) — on every later identify (reconnects, tab duplicates) it is ignored, since renaming afterward is `player:setName`'s job. If `playerName` is empty, all-whitespace, or longer than 10 characters (after trimming) at creation time, the server assigns a default name instead.
+  `playerName` only sets the name the first time a `playerKey` is seen (player creation) — later identifies (reconnects, tab duplicates) ignore it, since renaming is `player:setName`'s job. If it's empty, all-whitespace, or over 10 characters (trimmed) at creation, the server assigns a default name instead.
 - **Ack:**
   ```ts
   { id: number }
   ```
-  The caller's own `id` — assigned once by the server the first time it sees this `playerKey`, and stable for as long as the player exists on the server.
+  The caller's own `id` — assigned once, the first time the server sees this `playerKey`, and stable for as long as the player exists on the server.
 
 ### `player:setName`
 - **When sent:** any time the player changes their display name (their `playerKey` never changes).
@@ -91,13 +112,16 @@ Players who couldn't be seated (lobby full, or the game is already `playing`) be
 
 ### `game:create`
 - **When sent:** a player in `home` starts a new game.
-- **Purpose:** create a game with default settings — name `Game with <playerName>`, map `World`, 2 slots, `World Domination` game mode, `Balanced` dice randomness, 2 defence dice, `Fixed` cards, 120s turn duration — make the caller its host, and move their socket into the game's room.
-- **Content:** none
-- **Ack:** shared Ack response. Errors: `not identified`, `already in a game`, `game name already in use`.
+- **Purpose:** create a game with default settings — name `Game with <playerName>` unless `name` is given, map `World`, 2 slots, `World Domination` game mode, `Balanced` dice randomness, 2 defence dice, `Fixed` cards, 120s turn duration — make the caller host and move their socket into the room.
+- **Content:**
+  ```ts
+  { name?: string } // same validation as game:settings' name field; defaults to `Game with <playerName>` when omitted
+  ```
+- **Ack:** shared Ack response. Errors: `not identified`, `already in a game`, `invalid name`, `game name already in use`.
 
 ### `game:join`
-- **When sent:** a player in `home` joins an existing game from the games list, or a client navigates straight to a game's URL without having joined from `home` first (sent immediately after `player:identify`, once per such navigation).
-- **Purpose:** add the caller to the game and move their socket into its room. If the game is still in `lobby` phase and has an open slot, the caller becomes a player; otherwise (lobby full, or the game is already `playing`) the caller becomes a spectator instead — this call never fails just because the game is full or in progress.
+- **When sent:** a player in `home` joins a game from the list, or navigates straight to a game's URL without joining from `home` first (sent right after `player:identify`, once per such navigation). In the URL-navigation case, if the ack comes back `game not found`, the client falls back to `game:create` with that name (see `game:create` above) to create the game at that URL; if that in turn fails with `game name already in use` (another client won the race), the client retries `game:join` once more.
+- **Purpose:** add the caller to the game and move their socket into its room. If the game is still `lobby` with an open slot, they become a player; otherwise (full lobby, or already `playing`) they become a spectator — this call never fails just because the game is full or in progress.
 - **Content:**
   ```ts
   { gameName: string }
@@ -106,7 +130,7 @@ Players who couldn't be seated (lobby full, or the game is already `playing`) be
 
 ### `game:settings`
 - **When sent:** the host of a game changes any settings.
-- **Purpose:** single bundled message for every game-settings mutation: rename, change map, change slot count, replace the ban list, set a player's team, change game mode / dice randomness / defence dice / cards mode / turn duration. Only the fields present are applied; the caller must be the game's current host, and the game must still be in the `lobby` phase — nothing about a game's settings can change once it's `playing`. Fields are applied in a fixed order — `mapName`, then `gameMode`, then `name`, then `bannedPlayerIds`, then `playerTeam`, then `slots`, then `diceRandomness`, then `defenceDice`, then `cards`, then `turnDuration` — so `slots` and `playerTeam` are validated against the roster *after* any kicks from the same request have been applied. `gameMode` and the last four fields are independent of the rest and of each other; their position in the order doesn't otherwise matter.
+- **Purpose:** single bundled message for every settings mutation: rename, change map, slot count, ban list, a player's team, game mode / dice randomness / defence dice / cards / turn duration. Only the fields present are applied; the caller must be host, and the game must still be `lobby` — nothing can change once `playing`. Fields apply in a fixed order — `mapName`, `gameMode`, `name`, `bannedPlayerIds`, `playerTeam`, `slots`, `diceRandomness`, `defenceDice`, `cards`, `turnDuration` — so `slots`/`playerTeam` are validated against the roster *after* any kicks in the same request. `gameMode` and the last four fields are independent of the rest and each other; their position otherwise doesn't matter.
 - **Content:** (all fields optional — only send what changed)
   ```ts
   {
@@ -122,22 +146,34 @@ Players who couldn't be seated (lobby full, or the game is already `playing`) be
     turnDuration?: 60 | 90 | 120 | 150 | 180 | 300; // seconds
   }
   ```
-  `bannedPlayerIds` replaces the full ban list in one shot rather than adding/removing one id at a time — to kick a player or spectator, send the current `bannedPlayers` ids (from `game:state`) plus the new id; to unban, send them minus the id to remove. Any id newly present that belongs to a player or spectator currently in the game is kicked (evicted and sent `game:kicked`); the host's own id is silently dropped from the list rather than self-banning.
+  `bannedPlayerIds` replaces the whole ban list at once, not one id at a time — to kick, send the current `bannedPlayers` ids (from `game:state`) plus the new one; to unban, send them minus the id. Any newly-present id belonging to a current player or spectator is kicked (evicted, sent `game:kicked`); the host's own id is silently dropped rather than self-banning.
 
-  `playerTeam` sets one player's `team` (see `GameState.players` above for its valid range); the request is rejected with `invalid team` unless `playerId` is currently a player in the game (not a spectator) and `team` is an integer within that range.
+  `playerTeam` sets one player's `team` (see `GameState.players` above for its valid range); rejected with `invalid team` unless `playerId` is currently a player (not a spectator) and `team` is an integer within that range.
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid name`, `invalid map`, `invalid slots`, `invalid banned players`, `invalid team`, `invalid game mode`, `invalid dice randomness`, `invalid defence dice`, `invalid cards`, `invalid turn duration`, `game name already in use`.
 
 ### `game:cycleColor`
 - **When sent:** a player clicks their own color in the lobby's player table.
-- **Purpose:** change the caller's own `color` to the next available one; unlike `game:settings` this needs no host privileges, since players only ever change their own color. Starting from the caller's current index, the server walks forward (wrapping) through the same restricted index range described under `color` above, stopping at the first one not already used by another player. The caller must currently be a seated player (not a spectator), and the game must still be in the `lobby` phase — colors can't change once playing.
+- **Purpose:** change the caller's own `color` to the next available one; unlike `game:settings`, no host privileges needed since players only change their own color. Starting from the caller's current index, the server walks forward (wrapping) through the same restricted range described under `color` above, stopping at the first one unused by another player. The caller must be a seated player (not spectator), and the game must still be `lobby` — colors can't change once playing.
 - **Content:** none
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not a player`, `game already started`.
 
 ### `game:start`
 - **When sent:** the host of a game starts it from the lobby.
-- **Purpose:** move the game from the `lobby` phase to the `playing` phase, so every client in the game switches from the Lobby subpage to the Map subpage. The caller must be the game's current host, and the game must have at least 2 players. The player order is shuffled at random to establish turn order (reflected in `players`); the map's territories are then dealt out at random in as equal shares as the player count allows — if they don't divide evenly, the last players in turn order get one extra territory each. Each player's territories start with 1 troop each, plus `territoryCount * 2` more troops dropped one at a time on random territories they own.
+- **Purpose:** move the game from `lobby` to `playing`, switching every client from the Lobby subpage to the Map subpage. The caller must be host, with at least 2 players; if `gameMode` is `'Team Deathmatch'`, at least 2 distinct teams must be represented among them too. If it is `'Team Deathmatch'`, `team` values are also compacted to remove gaps left by the host skipping numbers (e.g. teams `0` and `2` but no `1` become `0` and `1`), preserving their relative order. Player order (`players`) is then set at random to establish turn order — plain random shuffle normally, but for `'Team Deathmatch'` it's randomized *and* interleaved so two teammates never end up back-to-back (wrapping from the last player to the first counts too) unless a team's size makes that unavoidable, in which case it's kept to the minimum number of forced adjacencies. The map's territories are then dealt out as evenly as possible — if they don't divide evenly, the last players in turn order get one extra each. Each player's territories start with 1 troop each, plus `territoryCount * 2` more dropped one at a time on random territories they own. Turn tracking starts here too: `turnNumber`/`turnPlayerIndex` set to `0`, `turnPhase` to `'deploy'`, and the server begins counting the first player's `turnDuration` (see `turnNumber` above).
 - **Content:** none
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `already started`, `not enough players`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `already started`, `not enough players`, `not enough teams`.
+
+### `game:nextPhase`
+- **When sent:** the player whose turn it currently is finishes a phase (`deploy`, `attack`, or `fortify`) and is ready to move on.
+- **Purpose:** advance `turnPhase` to the next phase in order; completing `'fortify'` instead ends the turn (see `turnNumber` above). The caller must be the player at `turnPlayerIndex`, and the game must be `playing`.
+- **Content:** none
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`.
+
+### `game:surrender`
+- **When sent:** a seated player in a `playing` game gives up.
+- **Purpose:** permanently give up the caller's seat for rejoining purposes, and move their socket back to `home`. Slot, territories, and troops stay exactly as they were — same as any other player leaving a `playing` game (see "Leaving and reconnecting" above) — so the game carries on unaffected; the only difference from an ordinary disconnect is that this player can now only ever rejoin as a spectator.
+- **Content:** none
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not a player`.
 
 ### `maps:list`
 - **When sent:** once, immediately after the socket connects; re-sent any time the client reconnects. Sent as a request/ack rather than the server pushing it unprompted, so the client can't miss it by registering its handler a moment too late.
@@ -171,7 +207,7 @@ Players who couldn't be seated (lobby full, or the game is already `playing`) be
 
 ### `game:state`
 - **When sent:** once per second, to every socket currently in a given game's room.
-- **Purpose:** keep everyone in a game synced on its settings, roster, and ban list (including for the host's own settings UI, and so clients can offer an "unban" action from `bannedPlayers`).
+- **Purpose:** keep everyone in a game synced on its settings, roster, ban list, and (once `playing`) turn progress (including for the host's own settings UI, and so clients can offer an "unban" action from `bannedPlayers`).
 - **Content:**
   ```ts
   GameState

@@ -10,15 +10,25 @@ import {
   Player,
   TurnDuration,
 } from '../types';
+import { addHostCandidate, recomputeHost } from './host';
 import {
   assignRandomColor,
   assignTerritories,
+  compactTeams,
   cycleColor,
+  interleaveTeams,
   maxTeam,
   shuffle,
+  teamCount,
 } from './mechanics';
 import { gameState } from './state';
-import { gameRoomName, games, removePlayerFromGame } from './store';
+import {
+  destroyIfInactive,
+  gameRoomName,
+  games,
+  removePlayerFromGame,
+} from './store';
+import { advanceTurnPhase, startTurns } from './turns';
 
 const MAX_GAME_NAME_LENGTH = 20;
 
@@ -31,6 +41,18 @@ const DICE_RANDOMNESS_VALUES: DiceRandomness[] = ['Balanced', 'True'];
 const DEFENCE_DICE_VALUES: DefenceDice[] = [2, 3];
 const CARDS_VALUES: CardsMode[] = ['Fixed', 'Progressive', 'Exponential'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
+
+function validateGameName(name: unknown): string | null {
+  if (typeof name !== 'string') return null;
+  const trimmed = name.trim();
+  if (
+    !trimmed ||
+    trimmed.length > MAX_GAME_NAME_LENGTH ||
+    trimmed === HOME_ROOM
+  )
+    return null;
+  return trimmed;
+}
 
 interface GameSettings {
   name?: string;
@@ -55,43 +77,61 @@ export function registerGameHandlers(
   playersBySocket: Map<string, Player>,
   playersById: Map<number, Player>,
 ) {
-  socket.on('game:create', (callback: (response: GameResponse) => void) => {
-    const player = playersBySocket.get(socket.id);
-    if (!player) return callback({ ok: false, error: 'not identified' });
-    if (player.gameName)
-      return callback({ ok: false, error: 'already in a game' });
+  socket.on(
+    'game:create',
+    (
+      settings: { name?: string },
+      callback: (response: GameResponse) => void,
+    ) => {
+      if (typeof callback !== 'function') return;
+      const player = playersBySocket.get(socket.id);
+      if (!player) return callback({ ok: false, error: 'not identified' });
+      if (player.gameName)
+        return callback({ ok: false, error: 'already in a game' });
 
-    const name = `Game with ${player.name}`;
-    if (games.has(name))
-      return callback({ ok: false, error: 'game name already in use' });
+      let name = `Game with ${player.name}`;
+      if (settings.name !== undefined) {
+        const trimmedName = validateGameName(settings.name);
+        if (!trimmedName) return callback({ ok: false, error: 'invalid name' });
+        name = trimmedName;
+      }
 
-    const game: Game = {
-      name,
-      mapName: defaultMapName,
-      slots: 2,
-      hostId: player.id,
-      phase: 'lobby',
-      gameMode: 'World Domination',
-      diceRandomness: 'Balanced',
-      defenceDice: 2,
-      cards: 'Fixed',
-      turnDuration: 120,
-      playerIds: [player.id],
-      spectatorIds: [],
-      playerTeams: new Map([[player.id, 0]]),
-      playerColors: new Map(),
-      bannedIds: new Set(),
-      territoryOwners: new Map(),
-      territoryTroops: new Map(),
-    };
-    games.set(game.name, game);
-    player.gameName = game.name;
-    assignRandomColor(game, player.id);
+      if (games.has(name))
+        return callback({ ok: false, error: 'game name already in use' });
 
-    socket.leave(HOME_ROOM);
-    socket.join(gameRoomName(game.name));
-    callback({ ok: true, game: gameState(game, playersById) });
-  });
+      const game: Game = {
+        name,
+        mapName: defaultMapName,
+        slots: 2,
+        hostId: player.id,
+        state: 'lobby',
+        gameMode: 'World Domination',
+        diceRandomness: 'Balanced',
+        defenceDice: 2,
+        cards: 'Fixed',
+        turnDuration: 120,
+        turnNumber: 0,
+        turnPlayerIndex: 0,
+        turnPhase: 'deploy',
+        playerIds: [player.id],
+        spectatorIds: [],
+        playerTeams: new Map([[player.id, 0]]),
+        playerColors: new Map(),
+        bannedIds: new Set(),
+        territoryOwners: new Map(),
+        territoryTroops: new Map(),
+        hostPriority: [player.id],
+        surrenderedIds: new Set(),
+      };
+      games.set(game.name, game);
+      player.gameName = game.name;
+      assignRandomColor(game, player.id);
+
+      socket.leave(HOME_ROOM);
+      socket.join(gameRoomName(game.name));
+      callback({ ok: true, game: gameState(game, playersById) });
+    },
+  );
 
   socket.on(
     'game:join',
@@ -109,10 +149,12 @@ export function registerGameHandlers(
       if (game.bannedIds.has(player.id))
         return callback({ ok: false, error: 'banned from this game' });
 
-      if (game.phase === 'lobby' && game.playerIds.length < game.slots) {
+      if (game.state === 'lobby' && game.playerIds.length < game.slots) {
         game.playerIds.push(player.id);
         game.playerTeams.set(player.id, 0);
         assignRandomColor(game, player.id);
+        addHostCandidate(game, player.id);
+        recomputeHost(game, playersById);
       } else {
         game.spectatorIds.push(player.id);
       }
@@ -135,7 +177,7 @@ export function registerGameHandlers(
       if (!game) return callback({ ok: false, error: 'game not found' });
       if (game.hostId !== player.id)
         return callback({ ok: false, error: 'not the host' });
-      if (game.phase !== 'lobby')
+      if (game.state !== 'lobby')
         return callback({ ok: false, error: 'game already started' });
 
       if (settings.mapName !== undefined) {
@@ -151,15 +193,8 @@ export function registerGameHandlers(
       }
 
       if (settings.name !== undefined) {
-        if (typeof settings.name !== 'string')
-          return callback({ ok: false, error: 'invalid name' });
-        const trimmedName = settings.name.trim();
-        if (
-          !trimmedName ||
-          trimmedName.length > MAX_GAME_NAME_LENGTH ||
-          trimmedName === HOME_ROOM
-        )
-          return callback({ ok: false, error: 'invalid name' });
+        const trimmedName = validateGameName(settings.name);
+        if (!trimmedName) return callback({ ok: false, error: 'invalid name' });
 
         if (trimmedName !== game.name) {
           if (games.has(trimmedName))
@@ -204,7 +239,7 @@ export function registerGameHandlers(
           kickedSocket?.emit('game:kicked', { gameName: game.name });
 
           if (isPlayer) {
-            removePlayerFromGame(game, id);
+            removePlayerFromGame(game, id, playersById);
           } else {
             game.spectatorIds = game.spectatorIds.filter((s) => s !== id);
           }
@@ -281,14 +316,22 @@ export function registerGameHandlers(
     if (!game) return callback({ ok: false, error: 'game not found' });
     if (game.hostId !== player.id)
       return callback({ ok: false, error: 'not the host' });
-    if (game.phase !== 'lobby')
+    if (game.state !== 'lobby')
       return callback({ ok: false, error: 'already started' });
     if (game.playerIds.length < 2)
       return callback({ ok: false, error: 'not enough players' });
+    if (game.gameMode === 'Team Deathmatch' && teamCount(game) < 2)
+      return callback({ ok: false, error: 'not enough teams' });
 
-    game.playerIds = shuffle(game.playerIds);
+    if (game.gameMode === 'Team Deathmatch') {
+      compactTeams(game);
+      game.playerIds = interleaveTeams(game);
+    } else {
+      game.playerIds = shuffle(game.playerIds);
+    }
     assignTerritories(game);
-    game.phase = 'playing';
+    game.state = 'playing';
+    startTurns(game);
     callback({ ok: true, game: gameState(game, playersById) });
   });
 
@@ -301,10 +344,48 @@ export function registerGameHandlers(
     if (!game) return callback({ ok: false, error: 'game not found' });
     if (!game.playerIds.includes(player.id))
       return callback({ ok: false, error: 'not a player' });
-    if (game.phase !== 'lobby')
+    if (game.state !== 'lobby')
       return callback({ ok: false, error: 'game already started' });
 
     cycleColor(game, player.id);
+    callback({ ok: true, game: gameState(game, playersById) });
+  });
+
+  socket.on('game:nextPhase', (callback: (response: GameResponse) => void) => {
+    const player = playersBySocket.get(socket.id);
+    if (!player || !player.gameName)
+      return callback({ ok: false, error: 'not in a game' });
+
+    const game = games.get(player.gameName);
+    if (!game) return callback({ ok: false, error: 'game not found' });
+    if (game.state !== 'playing')
+      return callback({ ok: false, error: 'game not started' });
+    if (game.playerIds[game.turnPlayerIndex] !== player.id)
+      return callback({ ok: false, error: 'not your turn' });
+
+    advanceTurnPhase(game);
+    callback({ ok: true, game: gameState(game, playersById) });
+  });
+
+  socket.on('game:surrender', (callback: (response: GameResponse) => void) => {
+    const player = playersBySocket.get(socket.id);
+    if (!player || !player.gameName)
+      return callback({ ok: false, error: 'not in a game' });
+
+    const game = games.get(player.gameName);
+    if (!game) return callback({ ok: false, error: 'game not found' });
+    if (game.state !== 'playing')
+      return callback({ ok: false, error: 'game not started' });
+    if (!game.playerIds.includes(player.id))
+      return callback({ ok: false, error: 'not a player' });
+
+    game.surrenderedIds.add(player.id);
+    player.gameName = null;
+    socket.leave(gameRoomName(game.name));
+    socket.join(HOME_ROOM);
+    recomputeHost(game, playersById);
+    destroyIfInactive(game, playersById, io);
+
     callback({ ok: true, game: gameState(game, playersById) });
   });
 

@@ -4,12 +4,24 @@ import PlayerNameEditor from './PlayerNameEditor';
 import { socket } from './socket';
 import type { Ack, GameSummary, Player } from './types';
 
+const MAX_GAME_NAME_LENGTH = 20;
+const MAX_CREATE_ATTEMPTS = 20;
+
 interface Props {
   player: Player;
   onNameChange: (name: string) => void;
   navigate: (path: string) => void;
   kickedMessage: string;
   clearKickedMessage: () => void;
+}
+
+function suggestedGameName(playerName: string, attempt: number): string {
+  const base = `Game with ${playerName}`;
+  if (attempt === 0) return base;
+  const suffix = ` (${attempt})`;
+  return base.length + suffix.length > MAX_GAME_NAME_LENGTH
+    ? base.slice(0, MAX_GAME_NAME_LENGTH - suffix.length) + suffix
+    : base + suffix;
 }
 
 function Home({
@@ -32,9 +44,16 @@ function Home({
     };
   }, []);
 
-  function createGame() {
-    socket.emit('game:create', (res: Ack) => {
+  function createGame(attempt = 0) {
+    const name =
+      attempt === 0 ? undefined : suggestedGameName(player.name, attempt);
+    socket.emit('game:create', { name }, (res: Ack) => {
       if (res.ok) navigate(`/${encodeURIComponent(res.game.name)}`);
+      else if (
+        res.error === 'game name already in use' &&
+        attempt < MAX_CREATE_ATTEMPTS
+      )
+        createGame(attempt + 1);
       else setError(res.error);
     });
   }
@@ -47,7 +66,7 @@ function Home({
   }
 
   return (
-    <Container fluid className="py-5 px-4">
+    <Container fluid className="pt-3 pb-5 px-4">
       <div className="d-flex align-items-center mb-4">
         <div
           className="flex-grow-1"
@@ -77,7 +96,7 @@ function Home({
         </Alert>
       )}
 
-      <Button className="mb-4" onClick={createGame}>
+      <Button className="mb-4" onClick={() => createGame()}>
         Create Game
       </Button>
 
@@ -93,7 +112,7 @@ function Home({
         <tbody>
           {games.map((g) => {
             const spectateOnly =
-              g.phase === 'playing' || g.playerCount >= g.slots;
+              g.state === 'playing' || g.playerCount >= g.slots;
             return (
               <tr
                 key={g.name}
@@ -107,7 +126,7 @@ function Home({
                   {g.playerCount}/{g.slots}
                   {g.spectatorCount > 0 && ` · ${g.spectatorCount} spectating`}
                 </td>
-                <td>{g.phase === 'lobby' ? 'Lobby' : 'Playing'}</td>
+                <td>{g.state === 'lobby' ? 'Lobby' : 'Playing'}</td>
               </tr>
             );
           })}

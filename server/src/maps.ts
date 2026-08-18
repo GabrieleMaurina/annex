@@ -25,6 +25,7 @@ export function listMapNames(): string[] {
 
 export function registerMapsHandlers(socket: Socket) {
   socket.on('maps:list', (callback: (names: string[]) => void) => {
+    if (typeof callback !== 'function') return;
     callback(listMapNames());
   });
 }

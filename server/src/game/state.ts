@@ -41,7 +41,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     hostId: game.hostId,
     state: game.state,
     gameMode: game.gameMode,
-    diceRandomness: game.diceRandomness,
+    blitz: game.blitz,
     defenceDice: game.defenceDice,
     cards: game.cards,
     turnDuration: game.turnDuration,
@@ -53,6 +53,9 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     selectedTerritoryId: game.selectedTerritoryId,
     fortifyStartTerritoryId: game.fortifyStartTerritoryId,
     fortifyEndTerritoryId: game.fortifyEndTerritoryId,
+    attackStartTerritoryId: game.attackStartTerritoryId,
+    attackEndTerritoryId: game.attackEndTerritoryId,
+    attackConquestMinTroops: game.attackConquestMinTroops,
     players: toSummaries(game.playerIds, playersById).map((player) => ({
       ...player,
       team: game.playerTeams.get(player.id) ?? 0,

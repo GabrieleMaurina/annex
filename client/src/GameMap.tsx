@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Toast, ToastContainer } from 'react-bootstrap';
 import {
   areAnimationsDisabled,
+  DICE_ROLL_STEP_DURATION,
+  DICE_ROLL_STEPS,
   drawAnimations,
   drawFortifyPath,
   getAnimationDuration,
@@ -11,6 +13,8 @@ import {
   setContinuousAnimation,
   startAnimation,
 } from './animations';
+import { getAttackEndCandidates, getAttackStartCandidates } from './attack';
+import AttackPanel, { type AttackType, type DiceRoll } from './AttackPanel';
 import {
   getFortifyEndCandidates,
   getFortifyPath,
@@ -39,6 +43,20 @@ import TurnPanel from './TurnPanel';
 import TurnProgressBar from './TurnProgressBar';
 import type { Ack, GameState, TurnDuration, TurnPhase } from './types';
 
+type AttackSelectEndAck =
+  | { ok: true; game: GameState; blitzWinProbabilities: number[] }
+  | { ok: false; error: string };
+
+type AttackResultAck =
+  | {
+      ok: true;
+      game: GameState;
+      blitzWinProbabilities: number[];
+      attackerDice: number[];
+      defenderDice: number[];
+    }
+  | { ok: false; error: string };
+
 interface Props {
   mapName: string;
   players: GameState['players'];
@@ -55,6 +73,9 @@ interface Props {
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
+  attackStartTerritoryId: number | null;
+  attackEndTerritoryId: number | null;
+  attackConquestMinTroops: number | null;
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
@@ -93,6 +114,8 @@ const MAX_ZOOM = 10;
 const TROOP_PANEL_GAP = 10;
 const TROOP_PANEL_HEIGHT = 50;
 const TROOP_PANEL_WIDTH = 350;
+const ATTACK_PANEL_WIDTH = 460;
+const ATTACK_PANEL_HEIGHT = 160;
 const SCREEN_EDGE_MARGIN = 8;
 const TURN_PANEL_RESERVED_HEIGHT = 70;
 
@@ -119,6 +142,9 @@ function GameMap({
   selectedTerritoryId,
   fortifyStartTerritoryId,
   fortifyEndTerritoryId,
+  attackStartTerritoryId,
+  attackEndTerritoryId,
+  attackConquestMinTroops,
   setGame,
   setChatOpen,
   navigate,
@@ -151,6 +177,26 @@ function GameMap({
   const [trackedFortifyEndTerritoryId, setTrackedFortifyEndTerritoryId] =
     useState<number | null>(null);
   const fortifyInputRef = useRef<HTMLInputElement>(null);
+  const [attackWinProbabilities, setAttackWinProbabilities] = useState<
+    number[] | null
+  >(null);
+  const [attackSelectedType, setAttackSelectedType] =
+    useState<AttackType>('regular');
+  const [attackRegularTroops, setAttackRegularTroops] = useState<1 | 2 | 3>(1);
+  const [attackBlitzTroops, setAttackBlitzTroops] = useState(1);
+  const blitzInputRef = useRef<HTMLInputElement>(null);
+  const [attackMoveTroops, setAttackMoveTroops] = useState(1);
+  const attackMoveInputRef = useRef<HTMLInputElement>(null);
+  const [attackDiceRoll, setAttackDiceRoll] = useState<DiceRoll | null>(null);
+  const [attackDiceSettled, setAttackDiceSettled] = useState(true);
+  const attackDiceRollIdRef = useRef(0);
+  const [attackPreRevealSnapshot, setAttackPreRevealSnapshot] = useState<{
+    maxBlitzTroops: number;
+    blitzWinProbabilities: number[];
+    selectedType: AttackType;
+    regularTroops: 1 | 2 | 3;
+    blitzTroops: number;
+  } | null>(null);
   const [imgDims, setImgDims] = useState({
     w: DEFAULT_IMAGE_WIDTH,
     h: DEFAULT_IMAGE_HEIGHT,
@@ -162,6 +208,8 @@ function GameMap({
     new Map<number, GameState['territories'][number]>(),
   );
   const territoriesRef = useRef<Territory[]>([]);
+  const colorByPlayerIdRef = useRef(new Map<number, number>());
+  const attackOptionIndexRef = useRef(0);
 
   function startAnimationLoop() {
     if (animationLoopActiveRef.current) return;
@@ -200,9 +248,16 @@ function GameMap({
   const currentTurnPlayer = players[turnPlayerIndex];
   const isMyTurn = currentTurnPlayer?.id === selfId;
   const ownerById = new Map(ownership.map((o) => [o.id, o]));
+  const maxBlitzTroops =
+    attackStartTerritoryId !== null
+      ? Math.max(1, (ownerById.get(attackStartTerritoryId)?.troops ?? 1) - 1)
+      : 1;
   useEffect(() => {
     ownerByIdRef.current = ownerById;
     territoriesRef.current = territories;
+    colorByPlayerIdRef.current = new Map(
+      players.map((pl) => [pl.id, pl.color]),
+    );
   });
 
   const selectTerritory = useCallback(
@@ -243,6 +298,172 @@ function GameMap({
     });
   }, [fortifyTroops, setGame]);
 
+  const selectAttackStart = useCallback(
+    (territoryId: number | null) => {
+      socket.emit('game:attackSelectStart', { territoryId }, (res: Ack) => {
+        if (!res.ok) return;
+        setGame(res.game);
+        if (territoryId !== null) setAttackDiceRoll(null);
+      });
+    },
+    [setGame],
+  );
+
+  const cancelAttack = useCallback(
+    () => selectAttackStart(null),
+    [selectAttackStart],
+  );
+
+  const applyAttackProbabilities = useCallback(
+    (blitzWinProbabilities: number[]) => {
+      setAttackWinProbabilities(blitzWinProbabilities);
+      setAttackSelectedType('blitz');
+      setAttackRegularTroops(1);
+      setAttackBlitzTroops(Math.max(1, blitzWinProbabilities.length));
+    },
+    [],
+  );
+
+  const continueAttackSelection = useCallback(
+    (blitzWinProbabilities: number[]) => {
+      setAttackWinProbabilities(blitzWinProbabilities);
+      const newMaxBlitz = blitzWinProbabilities.length;
+      const newMaxRegular = Math.min(newMaxBlitz, 3);
+      if (attackSelectedType === 'regular') {
+        setAttackRegularTroops(
+          (prev) => Math.min(prev, newMaxRegular) as 1 | 2 | 3,
+        );
+      } else {
+        setAttackBlitzTroops((prev) => Math.min(prev, newMaxBlitz));
+      }
+    },
+    [attackSelectedType],
+  );
+
+  const selectAttackEnd = useCallback(
+    (territoryId: number) => {
+      socket.emit(
+        'game:attackSelectEnd',
+        { territoryId },
+        (res: AttackSelectEndAck) => {
+          if (!res.ok) return;
+          setGame(res.game);
+          applyAttackProbabilities(res.blitzWinProbabilities);
+        },
+      );
+    },
+    [setGame, applyAttackProbabilities],
+  );
+
+  const performAttackMove = useCallback(
+    (troops: number, conqueredTerritoryId: number | null) => {
+      socket.emit('game:attackMove', { troops }, (res: Ack) => {
+        if (!res.ok) return;
+        setGame(res.game);
+        if (attackStartTerritoryId !== null)
+          frozenTroopsRef.current.delete(attackStartTerritoryId);
+        if (conqueredTerritoryId !== null) {
+          frozenTroopsRef.current.delete(conqueredTerritoryId);
+          const freshOwnerById = new Map(
+            res.game.territories.map((t) => [t.id, t]),
+          );
+          const candidates = getAttackStartCandidates(
+            territories,
+            freshOwnerById,
+            selfId,
+          );
+          if (candidates.has(conqueredTerritoryId)) {
+            selectAttackStart(conqueredTerritoryId);
+          }
+        }
+      });
+    },
+    [attackStartTerritoryId, territories, selfId, setGame, selectAttackStart],
+  );
+
+  const submitAttack = useCallback(() => {
+    const preRevealSnapshot = {
+      maxBlitzTroops,
+      blitzWinProbabilities: attackWinProbabilities ?? [],
+      selectedType: attackSelectedType,
+      regularTroops: attackRegularTroops,
+      blitzTroops: attackBlitzTroops,
+    };
+    const payload =
+      attackSelectedType === 'regular'
+        ? { type: 'regular' as const, troops: attackRegularTroops }
+        : { type: 'blitz' as const, troops: attackBlitzTroops };
+    socket.emit('game:attack', payload, (res: AttackResultAck) => {
+      if (!res.ok) return;
+      setGame(res.game);
+
+      const conqueredTerritoryId = res.game.attackEndTerritoryId;
+      let autoMoveTroops: number | null = null;
+      if (res.game.attackConquestMinTroops !== null) {
+        const startTerritory = res.game.territories.find(
+          (t) => t.id === attackStartTerritoryId,
+        );
+        const minMove = res.game.attackConquestMinTroops;
+        const maxMove = startTerritory
+          ? Math.max(minMove, startTerritory.troops - 1)
+          : minMove;
+        setAttackMoveTroops(maxMove);
+        if (minMove === maxMove) autoMoveTroops = maxMove;
+      }
+
+      const hasDiceRoll =
+        res.attackerDice.length > 0 && attackEndTerritoryId !== null;
+      if (hasDiceRoll) {
+        attackDiceRollIdRef.current += 1;
+        const rollId = attackDiceRollIdRef.current;
+        setAttackPreRevealSnapshot(preRevealSnapshot);
+        setAttackDiceRoll({
+          attackerDice: res.attackerDice,
+          defenderDice: res.defenderDice,
+          territoryId: attackEndTerritoryId!,
+          id: rollId,
+        });
+        setAttackDiceSettled(false);
+        setTimeout(() => {
+          if (attackDiceRollIdRef.current !== rollId) return;
+          setAttackDiceSettled(true);
+          setAttackPreRevealSnapshot(null);
+          if (res.game.attackConquestMinTroops !== null) {
+            if (autoMoveTroops !== null) {
+              performAttackMove(autoMoveTroops, conqueredTerritoryId);
+            } else {
+              setAttackDiceRoll((prev) => (prev?.id === rollId ? null : prev));
+            }
+          } else if (res.game.attackEndTerritoryId !== null) {
+            continueAttackSelection(res.blitzWinProbabilities);
+          }
+        }, DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION);
+      } else if (autoMoveTroops !== null) {
+        performAttackMove(autoMoveTroops, conqueredTerritoryId);
+      } else if (
+        res.game.attackConquestMinTroops === null &&
+        res.game.attackEndTerritoryId !== null
+      ) {
+        continueAttackSelection(res.blitzWinProbabilities);
+      }
+    });
+  }, [
+    attackSelectedType,
+    attackRegularTroops,
+    attackBlitzTroops,
+    attackStartTerritoryId,
+    attackEndTerritoryId,
+    maxBlitzTroops,
+    attackWinProbabilities,
+    setGame,
+    continueAttackSelection,
+    performAttackMove,
+  ]);
+
+  const submitAttackMove = useCallback(() => {
+    performAttackMove(attackMoveTroops, attackEndTerritoryId);
+  }, [attackMoveTroops, attackEndTerritoryId, performAttackMove]);
+
   const fortifyStartCandidates =
     turnPhase === 'fortify' && isMyTurn
       ? getFortifyStartCandidates(territories, ownerById, selfId)
@@ -277,6 +498,58 @@ function GameMap({
         )
       : [];
 
+  const attackPendingConquest = attackConquestMinTroops !== null;
+  const attackStartCandidates =
+    turnPhase === 'attack' && isMyTurn && !attackPendingConquest
+      ? getAttackStartCandidates(territories, ownerById, selfId)
+      : new Set<number>();
+  const attackEndCandidates =
+    turnPhase === 'attack' &&
+    isMyTurn &&
+    attackStartTerritoryId !== null &&
+    attackEndTerritoryId === null
+      ? getAttackEndCandidates(
+          territories,
+          ownerById,
+          selfId,
+          attackStartTerritoryId,
+        )
+      : new Set<number>();
+  const attackMoveMinTroops = attackConquestMinTroops ?? 1;
+  const attackMoveMaxTroops =
+    attackStartTerritoryId !== null
+      ? Math.max(1, (ownerById.get(attackStartTerritoryId)?.troops ?? 1) - 1)
+      : 1;
+  const maxRegularTroops = Math.min(maxBlitzTroops, 3);
+
+  useEffect(() => {
+    attackOptionIndexRef.current =
+      attackSelectedType === 'blitz'
+        ? maxRegularTroops
+        : attackRegularTroops - 1;
+  });
+
+  const cycleAttackOption = useCallback(
+    (direction: 1 | -1) => {
+      const optionCount = maxRegularTroops + 1;
+      const nextIndex =
+        (attackOptionIndexRef.current + direction + optionCount) % optionCount;
+      attackOptionIndexRef.current = nextIndex;
+      setAttackDiceRoll(null);
+      if (nextIndex === maxRegularTroops) {
+        setAttackSelectedType('blitz');
+      } else {
+        setAttackSelectedType('regular');
+        setAttackRegularTroops((nextIndex + 1) as 1 | 2 | 3);
+      }
+    },
+    [maxRegularTroops],
+  );
+
+  if (attackEndTerritoryId === null && attackWinProbabilities !== null) {
+    setAttackWinProbabilities(null);
+  }
+
   const deployPhaseKey =
     turnPhase === 'deploy' && currentTurnPlayer
       ? `${turnNumber}-${turnPlayerIndex}`
@@ -306,6 +579,12 @@ function GameMap({
     if (fortifyEndTerritoryId !== null) setFortifyTroops(fortifyMaxTroops);
   }
 
+  function colorForPlayer(playerId: number | undefined): string {
+    if (playerId === undefined) return '#ffffff';
+    const colorIndex = colorByPlayerIdRef.current.get(playerId);
+    return colorIndex !== undefined ? playerColor(colorIndex) : '#ffffff';
+  }
+
   useEffect(() => {
     function playTroopChangeEffect(
       sound: string,
@@ -316,8 +595,15 @@ function GameMap({
       const territory = territoriesRef.current.find(
         (t) => t.id === territoryId,
       );
+      const ownerId = ownerByIdRef.current.get(territoryId)?.ownerId;
       if (territory)
-        startAnimation('deploy', territory.x, territory.y, `+${troops}`);
+        startAnimation(
+          'deploy',
+          territory.x,
+          territory.y,
+          `+${troops}`,
+          colorForPlayer(ownerId),
+        );
       const currentTroops = ownerByIdRef.current.get(territoryId)?.troops;
       if (currentTroops !== undefined) {
         frozenTroopsRef.current.set(territoryId, currentTroops);
@@ -333,23 +619,94 @@ function GameMap({
     function onFortified(payload: { territoryId: number; troops: number }) {
       playTroopChangeEffect('fortify', payload);
     }
+    function onAttackMoved(payload: { territoryId: number; troops: number }) {
+      playTroopChangeEffect('fortify', payload);
+    }
     socket.on('game:deployed', onDeployed);
     socket.on('game:fortified', onFortified);
+    socket.on('game:attackMoved', onAttackMoved);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
+      socket.off('game:attackMoved', onAttackMoved);
+    };
+  }, []);
+
+  useEffect(() => {
+    function explode(territoryId: number, losses: number, playerId: number) {
+      const territory = territoriesRef.current.find(
+        (t) => t.id === territoryId,
+      );
+      if (!territory) return;
+      startAnimation(
+        'explosion',
+        territory.x,
+        territory.y,
+        `-${losses}`,
+        colorForPlayer(playerId),
+      );
+      const currentTroops = ownerByIdRef.current.get(territoryId)?.troops;
+      if (currentTroops === undefined) return;
+      frozenTroopsRef.current.set(territoryId, currentTroops);
+      setTimeout(() => {
+        frozenTroopsRef.current.delete(territoryId);
+      }, getAnimationDuration('explosion'));
+    }
+    function onAttacked(payload: {
+      attackingTerritoryId: number;
+      defendingTerritoryId: number;
+      attackerId: number;
+      defenderId: number;
+      attackLosses: number;
+      defenceLosses: number;
+      type: 'regular' | 'blitz';
+    }) {
+      const delay =
+        payload.type === 'regular'
+          ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
+          : 0;
+      setTimeout(() => {
+        playSound('explode');
+        if (areAnimationsDisabled()) return;
+        if (payload.attackLosses > 0)
+          explode(
+            payload.attackingTerritoryId,
+            payload.attackLosses,
+            payload.attackerId,
+          );
+        if (payload.defenceLosses > 0)
+          explode(
+            payload.defendingTerritoryId,
+            payload.defenceLosses,
+            payload.defenderId,
+          );
+        startAnimationLoop();
+      }, delay);
+    }
+    socket.on('game:attacked', onAttacked);
+    return () => {
+      socket.off('game:attacked', onAttacked);
     };
   }, []);
 
   useEffect(() => {
     const arrowActive =
-      turnPhase === 'fortify' &&
-      fortifyStartTerritoryId !== null &&
-      fortifyEndTerritoryId !== null;
+      (turnPhase === 'fortify' &&
+        fortifyStartTerritoryId !== null &&
+        fortifyEndTerritoryId !== null) ||
+      (turnPhase === 'attack' &&
+        attackStartTerritoryId !== null &&
+        attackEndTerritoryId !== null);
     setContinuousAnimation(arrowActive);
     if (arrowActive) startAnimationLoop();
     return () => setContinuousAnimation(false);
-  }, [turnPhase, fortifyStartTerritoryId, fortifyEndTerritoryId]);
+  }, [
+    turnPhase,
+    fortifyStartTerritoryId,
+    fortifyEndTerritoryId,
+    attackStartTerritoryId,
+    attackEndTerritoryId,
+  ]);
 
   useEffect(() => {
     function onSelected() {
@@ -365,6 +722,25 @@ function GameMap({
     turnPhase === 'deploy' && isMyTurn && selectedTerritoryId !== null;
   const fortifyPanelOpen =
     turnPhase === 'fortify' && isMyTurn && fortifyEndTerritoryId !== null;
+  const attackRevealing = attackDiceRoll !== null && !attackDiceSettled;
+  const attackDiceOnly =
+    attackDiceSettled &&
+    attackEndTerritoryId === null &&
+    attackDiceRoll !== null;
+  const attackShowPendingConquest = attackPendingConquest && attackDiceSettled;
+  const attackPanelOpen =
+    turnPhase === 'attack' &&
+    isMyTurn &&
+    (attackRevealing ||
+      (attackEndTerritoryId !== null &&
+        (attackPendingConquest || attackWinProbabilities !== null)) ||
+      attackDiceOnly);
+
+  if (!attackPanelOpen && attackDiceRoll !== null) {
+    setAttackDiceRoll(null);
+    setAttackDiceSettled(true);
+    setAttackPreRevealSnapshot(null);
+  }
 
   const submitDeploy = useCallback(() => {
     if (selectedTerritoryId === null) return;
@@ -384,6 +760,13 @@ function GameMap({
       if (fortifyStartTerritoryId === null)
         return fortifyStartCandidates.has(t.id);
       if (fortifyEndTerritoryId === null) return fortifyEndCandidates.has(t.id);
+      return false;
+    }
+    if (turnPhase === 'attack') {
+      if (attackPendingConquest) return false;
+      if (attackStartTerritoryId === null)
+        return attackStartCandidates.has(t.id);
+      if (attackEndTerritoryId === null) return attackEndCandidates.has(t.id);
       return false;
     }
     return true;
@@ -408,6 +791,19 @@ function GameMap({
           cancelFortify();
           return;
         }
+        if (
+          isMyTurn &&
+          turnPhase === 'attack' &&
+          attackStartTerritoryId !== null &&
+          !attackPendingConquest
+        ) {
+          cancelAttack();
+          return;
+        }
+        if (isMyTurn && turnPhase === 'attack' && attackDiceOnly) {
+          setAttackDiceRoll(null);
+          return;
+        }
         if (isMyTurn && selectedTerritoryId !== null) {
           selectTerritory(null);
           return;
@@ -429,6 +825,61 @@ function GameMap({
           submitFortify();
           return;
         }
+      }
+      if (e.key === 'Enter' && attackPanelOpen && attackShowPendingConquest) {
+        if (
+          !isTypingTarget(e.target) ||
+          e.target === attackMoveInputRef.current
+        ) {
+          e.preventDefault();
+          submitAttackMove();
+          return;
+        }
+      }
+      if (
+        e.key === 'Enter' &&
+        attackPanelOpen &&
+        !attackShowPendingConquest &&
+        !attackDiceOnly &&
+        !attackRevealing
+      ) {
+        if (!isTypingTarget(e.target) || e.target === blitzInputRef.current) {
+          e.preventDefault();
+          submitAttack();
+          return;
+        }
+      }
+      if (
+        attackPanelOpen &&
+        !attackShowPendingConquest &&
+        !attackDiceOnly &&
+        (e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
+        e.target === blitzInputRef.current
+      ) {
+        e.preventDefault();
+        const delta = e.key === 'ArrowUp' ? 1 : -1;
+        setAttackDiceRoll(null);
+        setAttackSelectedType('blitz');
+        setAttackBlitzTroops((prev) =>
+          Math.min(maxBlitzTroops, Math.max(1, prev + delta)),
+        );
+        return;
+      }
+      if (
+        attackPanelOpen &&
+        !attackShowPendingConquest &&
+        !attackDiceOnly &&
+        !isTypingTarget(e.target) &&
+        (e.key === 'ArrowUp' ||
+          e.key === 'ArrowDown' ||
+          e.key === 'ArrowLeft' ||
+          e.key === 'ArrowRight')
+      ) {
+        e.preventDefault();
+        const direction =
+          e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : -1;
+        cycleAttackOption(direction);
+        return;
       }
       if (isTypingTarget(e.target)) return;
       if (e.key === 'Tab') {
@@ -452,6 +903,17 @@ function GameMap({
     cancelFortify,
     fortifyPanelOpen,
     submitFortify,
+    attackStartTerritoryId,
+    attackPendingConquest,
+    attackShowPendingConquest,
+    attackDiceOnly,
+    attackRevealing,
+    cancelAttack,
+    attackPanelOpen,
+    submitAttack,
+    submitAttackMove,
+    maxBlitzTroops,
+    cycleAttackOption,
   ]);
 
   function getImageDims(): { w: number; h: number } {
@@ -503,6 +965,21 @@ function GameMap({
         );
         return;
       }
+      if (attackPanelOpen && attackShowPendingConquest) {
+        const delta = e.deltaY < 0 ? 1 : -1;
+        setAttackMoveTroops((prev) =>
+          Math.min(
+            attackMoveMaxTroops,
+            Math.max(attackMoveMinTroops, prev + delta),
+          ),
+        );
+        return;
+      }
+      if (attackPanelOpen && !attackShowPendingConquest && !attackDiceOnly) {
+        cycleAttackOption(e.deltaY < 0 ? -1 : 1);
+        return;
+      }
+      if (attackPanelOpen) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -540,6 +1017,12 @@ function GameMap({
     imgDims,
     fortifyPanelOpen,
     fortifyMaxTroops,
+    attackPanelOpen,
+    attackShowPendingConquest,
+    attackDiceOnly,
+    cycleAttackOption,
+    attackMoveMinTroops,
+    attackMoveMaxTroops,
   ]);
 
   function nodeState(
@@ -555,6 +1038,18 @@ function GameMap({
         fortifyStartTerritoryId !== null &&
         fortifyEndTerritoryId === null &&
         fortifyEndCandidates.has(id)
+      )
+        return 'selectable';
+      return 'normal';
+    }
+    if (turnPhase === 'attack') {
+      if (id === attackStartTerritoryId || id === attackEndTerritoryId)
+        return 'selected';
+      if (id === hoveredId) return 'hovered';
+      if (
+        attackStartTerritoryId !== null &&
+        attackEndTerritoryId === null &&
+        attackEndCandidates.has(id)
       )
         return 'selectable';
       return 'normal';
@@ -624,6 +1119,21 @@ function GameMap({
       }
     }
 
+    if (attackStartTerritoryId !== null && attackEndTerritoryId !== null) {
+      const territoryById = new Map(territories.map((t) => [t.id, t]));
+      const start = territoryById.get(attackStartTerritoryId);
+      const end = territoryById.get(attackEndTerritoryId);
+      if (start && end) {
+        const segments = buildWrappedPathSegments(
+          [start, end],
+          toScreen,
+          imgW,
+          imgH,
+        );
+        drawFortifyPath(ctx, segments);
+      }
+    }
+
     const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
 
     for (const t of territories) {
@@ -643,7 +1153,18 @@ function GameMap({
       ctx.stroke();
 
       if (owner) {
-        const troops = frozenTroopsRef.current.get(t.id) ?? owner.troops;
+        const troops =
+          isMyTurn && attackPendingConquest && t.id === attackEndTerritoryId
+            ? attackMoveTroops
+            : isMyTurn &&
+                attackPendingConquest &&
+                t.id === attackStartTerritoryId
+              ? owner.troops - attackMoveTroops
+              : !isMyTurn &&
+                  attackPendingConquest &&
+                  t.id === attackEndTerritoryId
+                ? (attackConquestMinTroops ?? owner.troops)
+                : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
         ctx.fillStyle = contrastTextColor(fillColor);
         ctx.font = `bold ${VERTEX_RADIUS * zoom}px sans-serif`;
         ctx.textAlign = 'center';
@@ -760,6 +1281,28 @@ function GameMap({
       return;
     }
 
+    if (turnPhase === 'attack') {
+      if (attackPendingConquest) return;
+      if (attackEndTerritoryId !== null) {
+        cancelAttack();
+        return;
+      }
+      if (!vertex || !isInteractable(vertex)) {
+        if (attackStartTerritoryId !== null) {
+          cancelAttack();
+        } else if (attackDiceRoll !== null) {
+          setAttackDiceRoll(null);
+        }
+        return;
+      }
+      if (attackStartTerritoryId === null) {
+        selectAttackStart(vertex.id);
+      } else {
+        selectAttackEnd(vertex.id);
+      }
+      return;
+    }
+
     if (!vertex || !isInteractable(vertex)) {
       if (selectedTerritoryId !== null) selectTerritory(null);
       return;
@@ -779,6 +1322,15 @@ function GameMap({
     if (!isMyTurn) return;
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId !== null) cancelFortify();
+      return;
+    }
+    if (turnPhase === 'attack') {
+      if (attackPendingConquest) return;
+      if (attackStartTerritoryId !== null) {
+        cancelAttack();
+      } else if (attackDiceRoll !== null) {
+        setAttackDiceRoll(null);
+      }
       return;
     }
     if (selectedTerritoryId !== null) selectTerritory(null);
@@ -834,6 +1386,43 @@ function GameMap({
       }
     : undefined;
 
+  const attackAnchorTerritoryId =
+    attackEndTerritoryId ?? attackDiceRoll?.territoryId ?? null;
+  const attackEndTerritory =
+    attackAnchorTerritoryId !== null
+      ? territories.find((t) => t.id === attackAnchorTerritoryId)
+      : undefined;
+  const attackScreenPos = attackEndTerritory
+    ? getTerritoryScreenPos(attackEndTerritory)
+    : null;
+  const attackPanelStyle: React.CSSProperties | undefined = attackScreenPos
+    ? {
+        position: 'absolute',
+        ...getAnchoredPanelPosition(
+          attackScreenPos,
+          zoomedRadius,
+          ATTACK_PANEL_WIDTH,
+          ATTACK_PANEL_HEIGHT,
+          size.w,
+          size.h,
+          TROOP_PANEL_GAP,
+          SCREEN_EDGE_MARGIN,
+          TURN_PANEL_RESERVED_HEIGHT,
+        ),
+      }
+    : undefined;
+
+  const attackDisplay =
+    attackRevealing && attackPreRevealSnapshot
+      ? attackPreRevealSnapshot
+      : {
+          maxBlitzTroops,
+          blitzWinProbabilities: attackWinProbabilities ?? [],
+          selectedType: attackSelectedType,
+          regularTroops: attackRegularTroops,
+          blitzTroops: attackBlitzTroops,
+        };
+
   return (
     <div className="position-relative">
       <canvas
@@ -881,7 +1470,6 @@ function GameMap({
               buttonLabel="Deploy"
               troops={deployTroops}
               maxTroops={troopsToDeploy}
-              color={playerColor(currentTurnPlayer.color)}
               inputRef={deployInputRef}
               onChange={setDeployTroops}
               onConfirm={submitDeploy}
@@ -894,11 +1482,52 @@ function GameMap({
               buttonLabel="Fortify"
               troops={fortifyTroops}
               maxTroops={fortifyMaxTroops}
-              color={playerColor(currentTurnPlayer.color)}
               inputRef={fortifyInputRef}
               onChange={setFortifyTroops}
               onConfirm={submitFortify}
               style={fortifyPanelStyle}
+            />
+          )}
+          {attackPanelOpen && attackPanelStyle && (
+            <AttackPanel
+              blitzWinProbabilities={attackDisplay.blitzWinProbabilities}
+              maxBlitzTroops={attackDisplay.maxBlitzTroops}
+              selectedType={attackDisplay.selectedType}
+              regularTroops={attackDisplay.regularTroops}
+              blitzTroops={attackDisplay.blitzTroops}
+              blitzInputRef={blitzInputRef}
+              diceRoll={attackDiceRoll}
+              onSelectRegular={(troops) => {
+                setAttackDiceRoll(null);
+                setAttackSelectedType('regular');
+                setAttackRegularTroops(troops);
+              }}
+              onSelectBlitz={() => {
+                setAttackDiceRoll(null);
+                setAttackSelectedType('blitz');
+              }}
+              onBlitzTroopsChange={(troops) => {
+                setAttackDiceRoll(null);
+                setAttackBlitzTroops(troops);
+              }}
+              onBlitzTroopsWheel={(delta) => {
+                setAttackDiceRoll(null);
+                setAttackSelectedType('blitz');
+                setAttackBlitzTroops((prev) =>
+                  Math.min(maxBlitzTroops, Math.max(1, prev + delta)),
+                );
+              }}
+              onConfirm={submitAttack}
+              revealing={attackRevealing}
+              diceOnly={attackDiceOnly}
+              pendingConquest={attackShowPendingConquest}
+              moveTroops={attackMoveTroops}
+              moveMinTroops={attackMoveMinTroops}
+              moveMaxTroops={attackMoveMaxTroops}
+              moveInputRef={attackMoveInputRef}
+              onMoveTroopsChange={setAttackMoveTroops}
+              onConfirmMove={submitAttackMove}
+              style={attackPanelStyle}
             />
           )}
         </>

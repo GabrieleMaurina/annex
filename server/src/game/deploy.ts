@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../types';
+import { isInteger, isNullableInteger, isObject } from '../validate';
 import { gameState } from './state';
 import { gameRoomName, games } from './store';
 import { advanceTurnPhase } from './turns';
@@ -16,10 +17,8 @@ export function registerDeployHandlers(
 ) {
   socket.on(
     'game:selectTerritory',
-    (
-      { territoryId }: { territoryId: number | null },
-      callback: (response: GameResponse) => void,
-    ) => {
+    (data: unknown, callback: (response: GameResponse) => void) => {
+      if (typeof callback !== 'function') return;
       const player = playersBySocket.get(socket.id);
       if (!player || !player.gameName)
         return callback({ ok: false, error: 'not in a game' });
@@ -30,6 +29,10 @@ export function registerDeployHandlers(
         return callback({ ok: false, error: 'game not started' });
       if (game.playerIds[game.turnPlayerIndex] !== player.id)
         return callback({ ok: false, error: 'not your turn' });
+
+      const territoryId = isObject(data) ? data.territoryId : undefined;
+      if (!isNullableInteger(territoryId))
+        return callback({ ok: false, error: 'invalid territory' });
 
       if (territoryId !== null) {
         if (!game.territoryOwners.has(territoryId))
@@ -50,10 +53,8 @@ export function registerDeployHandlers(
 
   socket.on(
     'game:deploy',
-    (
-      { territoryId, troops }: { territoryId: number; troops: number },
-      callback: (response: GameResponse) => void,
-    ) => {
+    (data: unknown, callback: (response: GameResponse) => void) => {
+      if (typeof callback !== 'function') return;
       const player = playersBySocket.get(socket.id);
       if (!player || !player.gameName)
         return callback({ ok: false, error: 'not in a game' });
@@ -66,13 +67,17 @@ export function registerDeployHandlers(
         return callback({ ok: false, error: 'not your turn' });
       if (game.turnPhase !== 'deploy')
         return callback({ ok: false, error: 'not deploy phase' });
+
+      const { territoryId, troops } = isObject(data)
+        ? data
+        : ({} as Record<string, unknown>);
+      if (!isInteger(territoryId))
+        return callback({ ok: false, error: 'territory not owned' });
       if (game.territoryOwners.get(territoryId) !== player.id)
         return callback({ ok: false, error: 'territory not owned' });
-      if (
-        !Number.isInteger(troops) ||
-        troops < 1 ||
-        troops > game.troopsToDeploy
-      )
+      if (!isInteger(troops))
+        return callback({ ok: false, error: 'invalid troops' });
+      if (troops < 1 || troops > game.troopsToDeploy)
         return callback({ ok: false, error: 'invalid troops' });
 
       game.territoryTroops.set(

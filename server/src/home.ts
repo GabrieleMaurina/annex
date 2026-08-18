@@ -6,12 +6,13 @@ import {
   listGameSummaries,
 } from './game';
 import { HOME_ROOM, Player } from './types';
+import { isObject } from './validate';
 
 let nextPlayerId = 1;
 
 const MAX_PLAYER_NAME_LENGTH = 10;
 
-function isValidName(name: string): boolean {
+function isValidName(name: unknown): name is string {
   if (typeof name !== 'string') return false;
   const trimmed = name.trim();
   return trimmed.length > 0 && trimmed.length <= MAX_PLAYER_NAME_LENGTH;
@@ -26,18 +27,12 @@ export function registerHomeHandlers(
 ) {
   socket.on(
     'player:identify',
-    (
-      {
-        playerKey,
-        playerName,
-        room,
-      }: {
-        playerKey: string;
-        playerName: string;
-        room: string;
-      },
-      callback: (response: { id: number }) => void,
-    ) => {
+    (data: unknown, callback: (response: { id: number }) => void) => {
+      if (typeof callback !== 'function') return;
+      if (!isObject(data)) return;
+      const { playerKey, playerName, room } = data;
+      if (typeof playerKey !== 'string' || typeof room !== 'string') return;
+
       let player = playersByKey.get(playerKey);
       if (player) {
         if (player.socketId !== socket.id) {
@@ -73,9 +68,12 @@ export function registerHomeHandlers(
     },
   );
 
-  socket.on('player:setName', ({ name }: { name: string }) => {
+  socket.on('player:setName', (data: unknown) => {
     const player = playersBySocket.get(socket.id);
-    if (!player || !isValidName(name)) return;
+    if (!player) return;
+    if (!isObject(data)) return;
+    const { name } = data;
+    if (!isValidName(name)) return;
     player.name = name.trim();
   });
 

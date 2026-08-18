@@ -80,6 +80,9 @@ function Game({
           selectedTerritoryId={game.selectedTerritoryId}
           fortifyStartTerritoryId={game.fortifyStartTerritoryId}
           fortifyEndTerritoryId={game.fortifyEndTerritoryId}
+          attackStartTerritoryId={game.attackStartTerritoryId}
+          attackEndTerritoryId={game.attackEndTerritoryId}
+          attackConquestMinTroops={game.attackConquestMinTroops}
           setGame={setGame}
           setChatOpen={setChatOpen}
           navigate={navigate}

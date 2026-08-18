@@ -49,7 +49,7 @@ Since `playing` games never lose a player this way, one where everyone has disco
   hostId: number;
   state: 'lobby' | 'playing';
   gameMode: 'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
-  diceRandomness: 'Balanced' | 'True';
+  blitz: 'Balanced' | 'True';
   defenceDice: 2 | 3;
   cards: 'Fixed' | 'Progressive' | 'Exponential';
   turnDuration: 60 | 90 | 120 | 150 | 180 | 300; // seconds
@@ -61,6 +61,9 @@ Since `playing` games never lose a player this way, one where everyone has disco
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
+  attackStartTerritoryId: number | null;
+  attackEndTerritoryId: number | null;
+  attackConquestMinTroops: number | null;
   players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number; connected: boolean; surrendered: boolean }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
@@ -69,13 +72,15 @@ Since `playing` games never lose a player this way, one where everyone has disco
 ```
 `hostId` is the id of the game's current host — the only player who may call `game:settings` or `game:start`. The server recomputes it whenever it might need to change (a leave, kick, join, or reconnect) from the game's host-priority list — every player who's ever held a seat, in the order they first got one, never reordered or shortened by a leave — picking the first one still seated, connected, and not surrendered (see "Leaving and reconnecting" above, `game:surrender` below). So host passes to the next eligible player when the current one disconnects or leaves, and passes back the moment a higher-priority former host reconnects, cascading through however many stand-ins came in between. If no players remain, the game is deleted.
 
-Once `game:start` succeeds, `turnNumber` counts full rounds completed (starts at `0`); `turnPlayerIndex` indexes `players` for whoever's turn it is; `turnPhase` is that player's progress — `'deploy'`, `'attack'`, `'fortify'`, in order. Only the player at `turnPlayerIndex` may advance it, via `game:nextPhase`; completing `'fortify'` instead ends the turn, advancing to the next player (`turnPlayerIndex + 1`, wrapping to `0` and incrementing `turnNumber` after the last player) and resetting `turnPhase` to `'deploy'`. `turnDuration` is a hard limit on the whole turn (all three phases, not reset between them) — if the current player hasn't finished in time, the server force-advances exactly as `game:nextPhase` would from `'fortify'`. This also covers a disconnected player: `players`/`turnPlayerIndex` are unaffected by leaving a `playing` game (see "Leaving and reconnecting" above), so an absent turn just runs out the clock. `turnStartedAt` is when the current player's turn began (server clock, ms since epoch) — it only changes alongside `turnNumber`/`turnPlayerIndex`, not between phases, so every client (including one that just connected or reconnected mid-turn) can derive the same remaining time from it instead of trusting local state. Both `turnNumber` and `turnPhase` sit inert (`0`/`'deploy'`) in the `lobby` state, with `turnStartedAt` at `0`.
+Once `game:start` succeeds, `turnNumber` counts full rounds completed (starts at `0`); `turnPlayerIndex` indexes `players` for whoever's turn it is; `turnPhase` is that player's progress — `'deploy'`, `'attack'`, `'fortify'`, in order. Only the player at `turnPlayerIndex` may advance it, via `game:nextPhase`; completing `'fortify'` instead ends the turn, advancing to the next player (`turnPlayerIndex + 1`, wrapping to `0` and incrementing `turnNumber` after the last player) and resetting `turnPhase` to `'deploy'`. `turnDuration` is a hard limit on the whole turn (all three phases, not reset between them) — if the current player hasn't finished in time, the server force-advances exactly as `game:nextPhase` would from `'fortify'`. Before doing so, it completes whichever action the cut-off phase left unfinished: in `'deploy'`, any remaining `troopsToDeploy` are dropped one at a time on random territories the player owns; in `'attack'`, a pending conquest (`attackConquestMinTroops` non-`null`) is resolved by moving the minimum number of troops it allows, exactly as `game:attackMove` would; in `'fortify'`, a selection with both `fortifyStartTerritoryId` and `fortifyEndTerritoryId` set moves exactly `1` troop. Any other in-progress selection (a lone attack or fortify start territory, or an attack with both territories selected but no conquest pending) is simply discarded. This also covers a disconnected player: `players`/`turnPlayerIndex` are unaffected by leaving a `playing` game (see "Leaving and reconnecting" above), so an absent turn just runs out the clock. `turnStartedAt` is when the current player's turn began (server clock, ms since epoch) — it only changes alongside `turnNumber`/`turnPlayerIndex`, not between phases, so every client (including one that just connected or reconnected mid-turn) can derive the same remaining time from it instead of trusting local state. Both `turnNumber` and `turnPhase` sit inert (`0`/`'deploy'`) in the `lobby` state, with `turnStartedAt` at `0`.
 
 `'deploy'` is the one phase `game:nextPhase` cannot advance (`cannot skip deploy phase`) — it only ends once the current player has placed every troop available that turn, via `game:deploy` (see below). Entering `'deploy'` (turn start, or the timer force-advancing from `'fortify'`) silently grants the player a troop pool: `max(3, floor(territoryCount / 3))`, plus, for every continent where they own every territory, that continent's entry in the map's `bonuses` array. `troopsToDeploy` is that pool, decremented as the player calls `game:deploy`; it sits at `0` outside `'deploy'` and in the `lobby` state.
 
 `selectedTerritoryId` is the territory the player at `turnPlayerIndex` currently has selected (`null` if none), set via `game:selectTerritory` — it's part of `GameState` so every client, not just the selecting player, sees the same selection highlighted on the map. It resets to `null` whenever the turn or phase changes (including the automatic `'deploy'` → `'attack'` advance) and whenever a `game:deploy` succeeds, regardless of whether the player's troop pool is now empty.
 
 `fortifyStartTerritoryId` and `fortifyEndTerritoryId` track the two-step territory selection specific to the `'fortify'` phase, set via `game:fortifySelectStart` / `game:fortifySelectEnd` below (both `null` outside an in-progress fortify selection). Like `selectedTerritoryId`, they're part of `GameState` so every client sees the same start/end highlighting and, once both are set, the same animated arrow between them — `game:selectTerritory` is not used during `'fortify'`. Both reset to `null` whenever the turn or phase changes and whenever a `game:fortify` succeeds.
+
+`attackStartTerritoryId` and `attackEndTerritoryId` track the same kind of two-step selection for the `'attack'` phase, set via `game:attackSelectStart` / `game:attackSelectEnd` below (both `null` outside an in-progress attack). Unlike fortify, they are **not** cleared once `game:attack` resolves an attack that fails to fully conquer the defending territory — nor once it does (`game:selectTerritory` is not used during `'attack'`, either). A failed or inconclusive attack (defender still owns the territory afterward) resets both to `null`, letting the player pick a fresh attack. A conquering attack (defender's territory reaches `0` troops) instead transfers `territoryOwners` for `attackEndTerritoryId` to the attacker immediately but leaves both ids set and populates `attackConquestMinTroops` — the game is now waiting on `game:attackMove` to finish moving troops in, and no other attack-phase action (including `game:nextPhase`) is accepted until it does. `attackConquestMinTroops` is `null` whenever no conquest is pending. All three reset to `null` whenever the turn or phase changes.
 
 `team` is only meaningful when `gameMode` is `'Team Deathmatch'` — it always defaults to `0` otherwise and is ignored by the client. Its valid range is `0` to `max(0, players.length - 1)`, one value per player, so team counts from a single shared team up to every player on their own team are all valid. The client displays teams 1-based (`team + 1`); the wire value stays 0-based.
 
@@ -123,7 +128,7 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
 
 ### `game:create`
 - **When sent:** a player in `home` starts a new game.
-- **Purpose:** create a game with default settings — name `Game with <playerName>` unless `name` is given, map `World`, 2 slots, `World Domination` game mode, `Balanced` dice randomness, 2 defence dice, `Fixed` cards, 120s turn duration — make the caller host and move their socket into the room.
+- **Purpose:** create a game with default settings — name `Game with <playerName>` unless `name` is given, map `World`, 2 slots, `World Domination` game mode, `Balanced` blitz, 2 defence dice, `Fixed` cards, 120s turn duration — make the caller host and move their socket into the room.
 - **Content:**
   ```ts
   { name?: string } // same validation as game:settings' name field; defaults to `Game with <playerName>` when omitted
@@ -151,7 +156,7 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
     bannedPlayerIds?: number[]; // replaces the game's entire ban list
     playerTeam?: { playerId: number; team: number };
     gameMode?: 'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
-    diceRandomness?: 'Balanced' | 'True';
+    blitz?: 'Balanced' | 'True';
     defenceDice?: 2 | 3;
     cards?: 'Fixed' | 'Progressive' | 'Exponential';
     turnDuration?: 60 | 90 | 120 | 150 | 180 | 300; // seconds
@@ -160,7 +165,7 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
   `bannedPlayerIds` replaces the whole ban list at once, not one id at a time — to kick, send the current `bannedPlayers` ids (from `game:state`) plus the new one; to unban, send them minus the id. Any newly-present id belonging to a current player or spectator is kicked (evicted, sent `game:kicked`); the host's own id is silently dropped rather than self-banning.
 
   `playerTeam` sets one player's `team` (see `GameState.players` above for its valid range); rejected with `invalid team` unless `playerId` is currently a player (not a spectator) and `team` is an integer within that range.
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid name`, `invalid map`, `invalid slots`, `invalid banned players`, `invalid team`, `invalid game mode`, `invalid dice randomness`, `invalid defence dice`, `invalid cards`, `invalid turn duration`, `game name already in use`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid name`, `invalid map`, `invalid slots`, `invalid banned players`, `invalid team`, `invalid game mode`, `invalid blitz`, `invalid defence dice`, `invalid cards`, `invalid turn duration`, `game name already in use`.
 
 ### `game:cycleColor`
 - **When sent:** a player clicks their own color in the lobby's player table.
@@ -176,9 +181,9 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
 
 ### `game:nextPhase`
 - **When sent:** the player whose turn it currently is finishes a phase (`attack` or `fortify`) and is ready to move on.
-- **Purpose:** advance `turnPhase` to the next phase in order; completing `'fortify'` instead ends the turn (see `turnNumber` above). The caller must be the player at `turnPlayerIndex`, and the game must be `playing`. Cannot be used to leave `'deploy'` — that phase only ends via `game:deploy` (see below).
+- **Purpose:** advance `turnPhase` to the next phase in order; completing `'fortify'` instead ends the turn (see `turnNumber` above). The caller must be the player at `turnPlayerIndex`, and the game must be `playing`. Cannot be used to leave `'deploy'` — that phase only ends via `game:deploy` (see below). Cannot be used to leave `'attack'` while a conquest is pending (`attackConquestMinTroops` non-`null`) — that must be resolved via `game:attackMove` first.
 - **Content:** none
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `cannot skip deploy phase`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `cannot skip deploy phase`, `pending conquest move`.
 
 ### `game:selectTerritory`
 - **When sent:** the player whose turn it currently is clicks one of their selectable territories on the map, or deselects the current one.
@@ -224,6 +229,62 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
   { troops: number }
   ```
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not fortify phase`, `no fortify selection`, `invalid troops`.
+
+### `game:attackSelectStart`
+- **When sent:** the player whose turn it currently is, during `'attack'`, clicks one of their candidate attacking territories on the map, or cancels the in-progress attack selection (clicking/right-clicking outside it, or pressing Escape) — only while no conquest is pending (see `attackConquestMinTroops` above).
+- **Purpose:** set (or clear, with `territoryId: null`) `attackStartTerritoryId`, clearing `attackEndTerritoryId` and `attackConquestMinTroops` in the same call. A candidate attacking territory must be owned by the caller, have more than 1 troop, and have at least one neighboring territory owned by a different player — the client computes candidacy itself (for highlighting/hover), but the server independently re-checks it here. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'attack'`, and no conquest may currently be pending.
+- **Content:**
+  ```ts
+  { territoryId: number | null }
+  ```
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not attack phase`, `pending conquest move`, `invalid territory`, `territory not owned`, `invalid start territory`.
+
+### `game:attackSelectEnd`
+- **When sent:** the player whose turn it currently is, during `'attack'` with `attackStartTerritoryId` already set, clicks one of the candidate defending territories on the map.
+- **Purpose:** set `attackEndTerritoryId`, and compute the blitz win probability of every troop count the attack panel can offer, all in one response so the client never has to ask again while the panel is open. Regular attacks (1–3 troops) have no probability computed or sent — a regular attack is a single dice exchange with no meaningful "chance of winning the territory" the way a blitz has, so the panel shows no percentage for those options. A candidate defending territory must be owned by a different player than the caller and be a neighbor of `attackStartTerritoryId` — the client computes this for highlighting, the server re-checks it here. The caller must be the player at `turnPlayerIndex`, and the game must be `playing` and in `'attack'` with a start territory already selected.
+- **Content:**
+  ```ts
+  { territoryId: number }
+  ```
+- **Ack:** unlike other calls, this one is not the shared Ack response — it carries the computed probabilities alongside it:
+  ```ts
+  | {
+      ok: true;
+      game: GameState;
+      blitzWinProbabilities: number[]; // index i = probability of winning with i+1 troops via blitz (trueWinProb or balancedWinProb, chosen by the game's blitz setting), length attacking territory's troops − 1
+    }
+  | { ok: false; error: string }
+  ```
+  Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not attack phase`, `no start territory selected`, `invalid territory`, `invalid end territory`.
+
+### `game:attack`
+- **When sent:** the player whose turn it currently is, during `'attack'` with both attack territories selected, confirms an attack option from the attack panel (its confirm button, or Enter).
+- **Purpose:** resolve one battle between `attackStartTerritoryId` and `attackEndTerritoryId`. For `type: 'regular'`, `troops` (1–3, capped at the attacking territory's troops − 1) fight exactly one exchange via `attack()` in `dice.ts`, the defending territory rolling `min(its troops, defenceDice)` dice, and the raw dice results are returned (see Ack below) so the client can animate the roll. For `type: 'blitz'`, `troops` (1 up to the attacking territory's troops − 1) fight to elimination of one side via `trueBlitz()` or `balancedBlitz()` (chosen by the game's `blitz` setting). Losses on both sides are applied immediately. If the defending territory's troops reach `0`, it's conquered: ownership transfers to the caller right away, `attackConquestMinTroops` is set to `min(troops used, 3, remaining attacking-territory troops − 1)`, and both attack territory ids stay set awaiting `game:attackMove`. Otherwise, if the attacking territory still has more than 1 troop left, both attack territory ids are left set (so the attack panel stays open against the same defending territory) and blitz win probabilities are recomputed for the reduced troop counts; if it's down to 1 troop (can't attack again), both reset to `null` instead. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'attack'` with both territories selected, and no conquest may already be pending.
+- **Content:**
+  ```ts
+  { type: 'regular'; troops: 1 | 2 | 3 } | { type: 'blitz'; troops: number }
+  ```
+- **Ack:** like `game:attackSelectEnd`, not the shared Ack response — it carries fresh blitz win probabilities (empty when the battle was conquered, or when the attacking territory can no longer attack) plus the dice actually rolled (both empty for `type: 'blitz'`, since blitz doesn't animate a roll):
+  ```ts
+  | {
+      ok: true;
+      game: GameState;
+      blitzWinProbabilities: number[];
+      attackerDice: number[];
+      defenderDice: number[];
+    }
+  | { ok: false; error: string }
+  ```
+  Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not attack phase`, `no attack selection`, `territory already conquered`, `invalid attack type`, `invalid troops`.
+
+### `game:attackMove`
+- **When sent:** the player whose turn it currently is, during `'attack'` with a conquest pending (`attackConquestMinTroops` non-`null`), confirms how many troops to move into the just-conquered territory from the attack panel.
+- **Purpose:** move `troops` from `attackStartTerritoryId` to `attackEndTerritoryId`, then clear both attack territory ids and `attackConquestMinTroops`, ending this attack. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'attack'` with a conquest pending, and `troops` must be an integer from `attackConquestMinTroops` up to the attacking territory's current troops − 1.
+- **Content:**
+  ```ts
+  { troops: number }
+  ```
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not attack phase`, `no pending conquest`, `invalid troops`.
 
 ### `game:surrender`
 - **When sent:** a seated player in a `playing` game gives up.
@@ -301,8 +362,33 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
   { territoryId: number; troops: number }
   ```
 
+### `game:attacked`
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:attack` call resolves a battle (including back to the attacking player).
+- **Purpose:** let every client play the explosion sound effect and animation on whichever side(s) lost troops, in sync, rather than inferring it from the next `game:state` tick. `attackerId` and `defenderId` are the owners of the two territories at the moment of the attack (`defenderId` in particular is captured before a conquering attack transfers ownership) — so a client can color each side's troop-loss number with the right player's color even for the conquered territory. `type` echoes the `game:attack` call's own `type` — the client uses it to delay the explosion until its dice-roll animation (`type: 'regular'` only) finishes, so the explosion lands right as the dice settle instead of overlapping them.
+- **Content:**
+  ```ts
+  {
+    attackingTerritoryId: number;
+    defendingTerritoryId: number;
+    attackerId: number;
+    defenderId: number;
+    attackLosses: number;
+    defenceLosses: number;
+    conquered: boolean;
+    type: 'regular' | 'blitz';
+  }
+  ```
+
+### `game:attackMoved`
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:attackMove` call succeeds (including back to the moving player).
+- **Purpose:** let every client play the fortify sound effect and the deploy animation on the newly-conquered territory in sync, rather than inferring it from the next `game:state` tick.
+- **Content:**
+  ```ts
+  { territoryId: number; troops: number }
+  ```
+
 ### `game:selected`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:selectTerritory`, `game:fortifySelectStart`, or `game:fortifySelectEnd` call succeeds with a non-`null` `territoryId` (including back to the selecting player). Not sent for a deselection.
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:selectTerritory`, `game:fortifySelectStart`, `game:fortifySelectEnd`, `game:attackSelectStart`, or `game:attackSelectEnd` call succeeds with a non-`null` `territoryId` (including back to the selecting player). Not sent for a deselection.
 - **Purpose:** let every client play the territory-selection sound effect in sync, rather than inferring it from the next `game:state` tick.
 - **Content:**
   ```ts

@@ -23,7 +23,7 @@ export interface Player {
   connected: boolean;
 }
 
-export type DiceRandomness = 'Balanced' | 'True';
+export type Blitz = 'Balanced' | 'True';
 export type DefenceDice = 2 | 3;
 export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
@@ -38,7 +38,7 @@ export interface Game {
   hostId: number;
   state: 'lobby' | 'playing';
   gameMode: GameMode;
-  diceRandomness: DiceRandomness;
+  blitz: Blitz;
   defenceDice: DefenceDice;
   cards: CardsMode;
   turnDuration: TurnDuration;
@@ -50,6 +50,9 @@ export interface Game {
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
+  attackStartTerritoryId: number | null;
+  attackEndTerritoryId: number | null;
+  attackConquestMinTroops: number | null;
   playerIds: number[];
   spectatorIds: number[];
   playerTeams: Map<number, number>;

@@ -347,7 +347,11 @@ function MapCanvas({
       }
     }
 
-    if (selectedVertexId !== null && mouseWorldPos !== null && !dragRef.current) {
+    if (
+      selectedVertexId !== null &&
+      mouseWorldPos !== null &&
+      !dragRef.current
+    ) {
       const fromTerritory = byId.get(selectedVertexId);
       if (fromTerritory) {
         const excludeIds = new Set<number>([selectedVertexId]);
@@ -541,9 +545,7 @@ function MapCanvas({
     const from = selectedVertexId;
     const fromTerritory = territories.find((t) => t.id === from);
     const toTerritory = territories.find((t) => t.id === id);
-    const linked = fromTerritory
-      ? fromTerritory.neighbors.includes(id)
-      : false;
+    const linked = fromTerritory ? fromTerritory.neighbors.includes(id) : false;
     if (
       !linked &&
       fromTerritory &&

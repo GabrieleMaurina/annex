@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { maps } from '../maps';
 import { Game, Player } from '../types';
+import { isInteger, isNullableInteger, isObject } from '../validate';
 import { gameState } from './state';
 import { gameRoomName, games } from './store';
 import { advanceTurnPhase } from './turns';
@@ -55,10 +56,8 @@ export function registerFortifyHandlers(
 ) {
   socket.on(
     'game:fortifySelectStart',
-    (
-      { territoryId }: { territoryId: number | null },
-      callback: (response: GameResponse) => void,
-    ) => {
+    (data: unknown, callback: (response: GameResponse) => void) => {
+      if (typeof callback !== 'function') return;
       const player = playersBySocket.get(socket.id);
       if (!player || !player.gameName)
         return callback({ ok: false, error: 'not in a game' });
@@ -71,6 +70,10 @@ export function registerFortifyHandlers(
         return callback({ ok: false, error: 'not your turn' });
       if (game.turnPhase !== 'fortify')
         return callback({ ok: false, error: 'not fortify phase' });
+
+      const territoryId = isObject(data) ? data.territoryId : undefined;
+      if (!isNullableInteger(territoryId))
+        return callback({ ok: false, error: 'invalid territory' });
 
       if (territoryId !== null) {
         if (!game.territoryOwners.has(territoryId))
@@ -91,10 +94,8 @@ export function registerFortifyHandlers(
 
   socket.on(
     'game:fortifySelectEnd',
-    (
-      { territoryId }: { territoryId: number },
-      callback: (response: GameResponse) => void,
-    ) => {
+    (data: unknown, callback: (response: GameResponse) => void) => {
+      if (typeof callback !== 'function') return;
       const player = playersBySocket.get(socket.id);
       if (!player || !player.gameName)
         return callback({ ok: false, error: 'not in a game' });
@@ -109,6 +110,10 @@ export function registerFortifyHandlers(
         return callback({ ok: false, error: 'not fortify phase' });
       if (game.fortifyStartTerritoryId === null)
         return callback({ ok: false, error: 'no start territory selected' });
+
+      const territoryId = isObject(data) ? data.territoryId : undefined;
+      if (!isInteger(territoryId))
+        return callback({ ok: false, error: 'invalid territory' });
       if (!game.territoryOwners.has(territoryId))
         return callback({ ok: false, error: 'invalid territory' });
       if (game.territoryOwners.get(territoryId) !== player.id)
@@ -132,10 +137,8 @@ export function registerFortifyHandlers(
 
   socket.on(
     'game:fortify',
-    (
-      { troops }: { troops: number },
-      callback: (response: GameResponse) => void,
-    ) => {
+    (data: unknown, callback: (response: GameResponse) => void) => {
+      if (typeof callback !== 'function') return;
       const player = playersBySocket.get(socket.id);
       if (!player || !player.gameName)
         return callback({ ok: false, error: 'not in a game' });
@@ -157,7 +160,11 @@ export function registerFortifyHandlers(
       const startId = game.fortifyStartTerritoryId;
       const endId = game.fortifyEndTerritoryId;
       const startTroops = game.territoryTroops.get(startId) ?? 0;
-      if (!Number.isInteger(troops) || troops < 1 || troops > startTroops - 1)
+
+      const troops = isObject(data) ? data.troops : undefined;
+      if (!isInteger(troops))
+        return callback({ ok: false, error: 'invalid troops' });
+      if (troops < 1 || troops > startTroops - 1)
         return callback({ ok: false, error: 'invalid troops' });
 
       game.territoryTroops.set(startId, startTroops - troops);

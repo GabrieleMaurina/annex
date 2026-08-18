@@ -14,11 +14,60 @@ export function clearTurnTimer(gameName: string) {
 function scheduleTurnTimer(game: Game) {
   clearTurnTimer(game.name);
   game.turnStartedAt = Date.now();
-  const timer = setTimeout(
-    () => advanceToNextPlayer(game),
-    game.turnDuration * 1000,
-  );
+  const timer = setTimeout(() => forceEndTurn(game), game.turnDuration * 1000);
   turnTimers.set(game.name, timer);
+}
+
+function randomDeployRemainingTroops(game: Game) {
+  const playerId = game.playerIds[game.turnPlayerIndex];
+  const territoryIds = [...game.territoryOwners.entries()]
+    .filter(([, ownerId]) => ownerId === playerId)
+    .map(([territoryId]) => territoryId);
+  if (territoryIds.length === 0) return;
+
+  while (game.troopsToDeploy > 0) {
+    const territoryId =
+      territoryIds[Math.floor(Math.random() * territoryIds.length)];
+    game.territoryTroops.set(
+      territoryId,
+      (game.territoryTroops.get(territoryId) ?? 0) + 1,
+    );
+    game.troopsToDeploy--;
+  }
+}
+
+function completePendingAttackMove(game: Game) {
+  if (game.attackConquestMinTroops === null) return;
+
+  const startId = game.attackStartTerritoryId!;
+  const endId = game.attackEndTerritoryId!;
+  const troops = game.attackConquestMinTroops;
+  const startTroops = game.territoryTroops.get(startId) ?? 0;
+
+  game.territoryTroops.set(startId, startTroops - troops);
+  game.territoryTroops.set(endId, troops);
+}
+
+function completePendingFortify(game: Game) {
+  if (
+    game.fortifyStartTerritoryId === null ||
+    game.fortifyEndTerritoryId === null
+  )
+    return;
+
+  const startId = game.fortifyStartTerritoryId;
+  const endId = game.fortifyEndTerritoryId;
+  const startTroops = game.territoryTroops.get(startId) ?? 0;
+
+  game.territoryTroops.set(startId, startTroops - 1);
+  game.territoryTroops.set(endId, (game.territoryTroops.get(endId) ?? 0) + 1);
+}
+
+function forceEndTurn(game: Game) {
+  if (game.turnPhase === 'deploy') randomDeployRemainingTroops(game);
+  if (game.turnPhase === 'attack') completePendingAttackMove(game);
+  if (game.turnPhase === 'fortify') completePendingFortify(game);
+  advanceToNextPlayer(game);
 }
 
 export function advanceToNextPlayer(game: Game) {
@@ -29,6 +78,9 @@ export function advanceToNextPlayer(game: Game) {
   game.selectedTerritoryId = null;
   game.fortifyStartTerritoryId = null;
   game.fortifyEndTerritoryId = null;
+  game.attackStartTerritoryId = null;
+  game.attackEndTerritoryId = null;
+  game.attackConquestMinTroops = null;
   game.troopsToDeploy = calculateDeployTroops(game, game.playerIds[nextIndex]);
   scheduleTurnTimer(game);
 }
@@ -40,6 +92,9 @@ export function advanceTurnPhase(game: Game) {
     game.selectedTerritoryId = null;
     game.fortifyStartTerritoryId = null;
     game.fortifyEndTerritoryId = null;
+    game.attackStartTerritoryId = null;
+    game.attackEndTerritoryId = null;
+    game.attackConquestMinTroops = null;
   } else {
     advanceToNextPlayer(game);
   }
@@ -52,6 +107,9 @@ export function startTurns(game: Game) {
   game.selectedTerritoryId = null;
   game.fortifyStartTerritoryId = null;
   game.fortifyEndTerritoryId = null;
+  game.attackStartTerritoryId = null;
+  game.attackEndTerritoryId = null;
+  game.attackConquestMinTroops = null;
   game.troopsToDeploy = calculateDeployTroops(game, game.playerIds[0]);
   scheduleTurnTimer(game);
 }

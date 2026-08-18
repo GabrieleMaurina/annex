@@ -1,8 +1,8 @@
 import { Form } from 'react-bootstrap';
 import type {
+  Blitz,
   CardsMode,
   DefenceDice,
-  DiceRandomness,
   GameMode,
   GameSettingsInput,
   GameState,
@@ -69,14 +69,14 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
         <summary>Settings</summary>
         <div className="mt-2">
           <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0">Dice Randomness</Form.Label>
+            <Form.Label className="mb-0">Blitz</Form.Label>
             {isHost ? (
               <Form.Select
                 className="w-auto"
-                value={game.diceRandomness}
+                value={game.blitz}
                 onChange={(e) =>
                   applySettings({
-                    diceRandomness: e.target.value as DiceRandomness,
+                    blitz: e.target.value as Blitz,
                   })
                 }
               >
@@ -84,7 +84,7 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
                 <option value="True">True</option>
               </Form.Select>
             ) : (
-              <span>{game.diceRandomness}</span>
+              <span>{game.blitz}</span>
             )}
           </div>
 

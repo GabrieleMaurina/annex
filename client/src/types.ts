@@ -12,7 +12,7 @@ export interface GameSummary {
   spectatorCount: number;
 }
 
-export type DiceRandomness = 'Balanced' | 'True';
+export type Blitz = 'Balanced' | 'True';
 export type DefenceDice = 2 | 3;
 export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
@@ -27,7 +27,7 @@ export interface GameState {
   hostId: number;
   state: 'lobby' | 'playing';
   gameMode: GameMode;
-  diceRandomness: DiceRandomness;
+  blitz: Blitz;
   defenceDice: DefenceDice;
   cards: CardsMode;
   turnDuration: TurnDuration;
@@ -39,6 +39,9 @@ export interface GameState {
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
+  attackStartTerritoryId: number | null;
+  attackEndTerritoryId: number | null;
+  attackConquestMinTroops: number | null;
   players: {
     id: number;
     name: string;
@@ -61,7 +64,7 @@ export interface GameSettingsInput {
   bannedPlayerIds?: number[];
   playerTeam?: { playerId: number; team: number };
   gameMode?: GameMode;
-  diceRandomness?: DiceRandomness;
+  blitz?: Blitz;
   defenceDice?: DefenceDice;
   cards?: CardsMode;
   turnDuration?: TurnDuration;

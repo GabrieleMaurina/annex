@@ -1,4 +1,4 @@
-import { Game, Player } from '../types';
+import { Game, Player } from '../../types';
 
 function toSummaries(ids: number[], playersById: Map<number, Player>) {
   return ids

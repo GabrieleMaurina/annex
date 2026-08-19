@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container, Table } from 'react-bootstrap';
-import PlayerNameEditor from './PlayerNameEditor';
-import SettingsMenu from './SettingsMenu';
-import { socket } from './socket';
-import type { Ack, GameSummary, Player } from './types';
+import PlayerNameEditor from '../common/PlayerNameEditor';
+import SettingsMenu from '../common/SettingsMenu';
+import { socket } from '../lib/socket';
+import type { Ack, GameSummary, Player } from '../lib/types';
 
 const MAX_GAME_NAME_LENGTH = 20;
 const MAX_CREATE_ATTEMPTS = 20;

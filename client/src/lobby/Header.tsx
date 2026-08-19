@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
-import PlayerNameEditor from '../PlayerNameEditor';
-import type { GameSettingsInput, GameState, Player } from '../types';
+import PlayerNameEditor from '../common/PlayerNameEditor';
+import type { GameSettingsInput, GameState, Player } from '../lib/types';
 
 const MAX_GAME_NAME_LENGTH = 20;
 

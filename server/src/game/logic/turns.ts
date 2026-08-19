@@ -1,4 +1,4 @@
-import { Game, TurnPhase } from '../types';
+import { Game, TurnPhase } from '../../types';
 import { calculateDeployTroops } from './mechanics';
 
 const PHASE_ORDER: TurnPhase[] = ['deploy', 'attack', 'fortify'];

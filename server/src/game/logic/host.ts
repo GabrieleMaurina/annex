@@ -1,4 +1,4 @@
-import { Game, Player } from '../types';
+import { Game, Player } from '../../types';
 
 export function addHostCandidate(game: Game, playerId: number) {
   if (!game.hostPriority.includes(playerId)) game.hostPriority.push(playerId);

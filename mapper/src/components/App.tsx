@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { createDefaultImage } from './defaultImage';
+import type { Territory } from '../types';
+import { createDefaultImage } from '../utils/defaultImage';
 import MapCanvas from './MapCanvas';
 import Panel from './Panel';
-import type { Territory } from './types';
 
 function App() {
   const [territories, setTerritories] = useState<Territory[]>([]);

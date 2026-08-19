@@ -1,9 +1,9 @@
 import { Server, Socket } from 'socket.io';
-import { Player } from '../types';
-import { isInteger, isNullableInteger, isObject } from '../validate';
-import { gameState } from './state';
-import { gameRoomName, games } from './store';
-import { advanceTurnPhase } from './turns';
+import { Player } from '../../types';
+import { isInteger, isNullableInteger, isObject } from '../../validate';
+import { gameState } from '../logic/state';
+import { gameRoomName, games } from '../logic/store';
+import { advanceTurnPhase } from '../logic/turns';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }

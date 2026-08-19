@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container, Spinner } from 'react-bootstrap';
-import Chat from './Chat';
+import Chat from '../common/Chat';
 import EndPage from './EndPage';
-import GameMap from './GameMap';
-import Lobby from './Lobby';
-import SettingsMenu from './SettingsMenu';
-import { socket } from './socket';
-import type { GameState, Player } from './types';
+import GameMap from '../game/GameMap';
+import Lobby from '../lobby/Lobby';
+import SettingsMenu from '../common/SettingsMenu';
+import { socket } from '../lib/socket';
+import type { GameState, Player } from '../lib/types';
 
 interface Props {
   player: Player;

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
-import { areAnimationsDisabled, toggleAnimationsDisabled } from './animations';
+import {
+  areAnimationsDisabled,
+  toggleAnimationsDisabled,
+} from '../game/animations';
 import { useWhiteIcon } from './icon';
 import ShareButton from './ShareButton';
-import { isSoundMuted, toggleSoundMuted } from './sounds';
+import { isSoundMuted, toggleSoundMuted } from '../lib/sounds';
 
 interface Props {
   shareUrl: string;

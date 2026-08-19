@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Form, ListGroup } from 'react-bootstrap';
-import { playerColor } from './palette';
-import { socket } from './socket';
-import type { ChatMessage } from './types';
+import { playerColor } from '../lib/palette';
+import { socket } from '../lib/socket';
+import type { ChatMessage } from '../lib/types';
 
 interface Props {
   nameById: Map<number, string>;

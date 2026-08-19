@@ -7,7 +7,7 @@ import type {
   GameSettingsInput,
   GameState,
   TurnDuration,
-} from '../types';
+} from '../lib/types';
 
 const TURN_DURATIONS: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 

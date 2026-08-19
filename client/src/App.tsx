@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
-import Game from './Game';
-import Home from './Home';
-import { getPlayer, savePlayer } from './player';
-import { socket } from './socket';
-import type { Ack, Player } from './types';
+import Game from './pages/Game';
+import Home from './pages/Home';
+import { getPlayer, savePlayer } from './lib/player';
+import { socket } from './lib/socket';
+import type { Ack, Player } from './lib/types';
 
 function roomFromPath(pathname: string): string {
   if (pathname === '/') return 'home';

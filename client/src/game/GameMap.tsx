@@ -34,14 +34,14 @@ import {
   getScales as computeScales,
   getAnchoredPanelPosition,
 } from './mapMath';
-import { continentColor, contrastTextColor, playerColor } from './palette';
+import { continentColor, contrastTextColor, playerColor } from '../lib/palette';
 import PlayersPanel from './PlayersPanel';
-import { socket } from './socket';
-import { playSound } from './sounds';
+import { socket } from '../lib/socket';
+import { playSound } from '../lib/sounds';
 import TroopPanel from './TroopPanel';
 import TurnPanel from './TurnPanel';
 import TurnProgressBar from './TurnProgressBar';
-import type { Ack, GameState, TurnDuration, TurnPhase } from './types';
+import type { Ack, GameState, TurnDuration, TurnPhase } from '../lib/types';
 
 type AttackSelectEndAck =
   | { ok: true; game: GameState; blitzWinProbabilities: number[] }

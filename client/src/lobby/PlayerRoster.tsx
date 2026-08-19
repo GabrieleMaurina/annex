@@ -1,6 +1,6 @@
 import { Badge, Button, Form, Table } from 'react-bootstrap';
-import { contrastTextColor, playerColor } from '../palette';
-import type { GameState } from '../types';
+import { contrastTextColor, playerColor } from '../lib/palette';
+import type { GameState } from '../lib/types';
 
 const MIN_SLOTS = 2;
 const MAX_SLOTS = 20;

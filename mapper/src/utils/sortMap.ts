@@ -1,4 +1,4 @@
-import type { Territory } from './types';
+import type { Territory } from '../types';
 
 const ROW_TOLERANCE_FRACTION = 0.5;
 

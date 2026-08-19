@@ -1,8 +1,8 @@
 import { Button, ListGroup, Table } from 'react-bootstrap';
-import { useWhiteIcon } from './icon';
-import { contrastTextColor, playerColor } from './palette';
-import { socket } from './socket';
-import type { Ack, GameState } from './types';
+import { useWhiteIcon } from '../common/icon';
+import { contrastTextColor, playerColor } from '../lib/palette';
+import { socket } from '../lib/socket';
+import type { Ack, GameState } from '../lib/types';
 
 interface Props {
   players: GameState['players'];

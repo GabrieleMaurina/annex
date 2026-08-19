@@ -1,4 +1,4 @@
-import { Game } from '../types';
+import { Game } from '../../types';
 import { clearTurnTimer } from './turns';
 
 export function checkGameEnd(game: Game): void {

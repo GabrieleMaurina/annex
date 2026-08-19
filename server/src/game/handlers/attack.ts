@@ -1,17 +1,17 @@
 import { Server, Socket } from 'socket.io';
-import { maps } from '../maps';
-import { Game, Player } from '../types';
-import { isInteger, isNullableInteger, isObject } from '../validate';
+import { maps } from '../../maps';
+import { Game, Player } from '../../types';
+import { isInteger, isNullableInteger, isObject } from '../../validate';
 import {
   balancedBlitz,
   balancedWinProbs,
   attack as rollAttack,
   trueBlitz,
   trueWinProbs,
-} from './dice';
-import { checkGameEnd } from './end';
-import { gameState } from './state';
-import { gameRoomName, games } from './store';
+} from '../logic/dice';
+import { checkGameEnd } from '../logic/end';
+import { gameState } from '../logic/state';
+import { gameRoomName, games } from '../logic/store';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }

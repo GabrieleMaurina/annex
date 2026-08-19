@@ -1,5 +1,5 @@
 import { Button, Table } from 'react-bootstrap';
-import type { GameState } from '../types';
+import type { GameState } from '../lib/types';
 
 interface Props {
   bannedPlayers: GameState['bannedPlayers'];

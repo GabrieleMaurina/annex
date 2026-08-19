@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { Game, HOME_ROOM, Player } from '../types';
+import { Game, HOME_ROOM, Player } from '../../types';
 import { addHostCandidate, recomputeHost } from './host';
 import { assignRandomColor, maxTeam } from './mechanics';
 import { gameState, gameSummary } from './state';

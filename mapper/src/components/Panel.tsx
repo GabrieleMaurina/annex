@@ -6,12 +6,16 @@ import type {
 } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import { Button, Form, Table } from 'react-bootstrap';
-import { decodeBase85, encodeBase85 } from './base85';
-import { createDefaultImage } from './defaultImage';
-import { bytesToDataUrl, dataUrlToBytes, mimeFromDataUrl } from './imageBytes';
-import { continentColor } from './palette';
-import { sortMapData } from './sortMap';
-import type { Map, Territory } from './types';
+import type { Map, Territory } from '../types';
+import { decodeBase85, encodeBase85 } from '../utils/base85';
+import { createDefaultImage } from '../utils/defaultImage';
+import {
+  bytesToDataUrl,
+  dataUrlToBytes,
+  mimeFromDataUrl,
+} from '../utils/imageBytes';
+import { continentColor } from '../utils/palette';
+import { sortMapData } from '../utils/sortMap';
 
 const MIN_CONTINENTS = 1;
 const MAX_CONTINENTS = 20;

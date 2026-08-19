@@ -1,5 +1,5 @@
-import { maps } from '../maps';
-import { Game } from '../types';
+import { maps } from '../../maps';
+import { Game } from '../../types';
 
 const COLOR_COUNT = 20;
 

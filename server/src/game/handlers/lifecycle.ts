@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { defaultMapName, maps } from '../maps';
+import { defaultMapName, maps } from '../../maps';
 import {
   Blitz,
   CardsMode,
@@ -9,9 +9,9 @@ import {
   HOME_ROOM,
   Player,
   TurnDuration,
-} from '../types';
-import { isInteger, isObject } from '../validate';
-import { addHostCandidate, recomputeHost } from './host';
+} from '../../types';
+import { isInteger, isObject } from '../../validate';
+import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
   assignRandomColor,
   assignTerritories,
@@ -21,15 +21,15 @@ import {
   maxTeam,
   shuffle,
   teamCount,
-} from './mechanics';
-import { gameState } from './state';
+} from '../logic/mechanics';
+import { gameState } from '../logic/state';
 import {
   destroyIfInactive,
   gameRoomName,
   games,
   removePlayerFromGame,
-} from './store';
-import { advanceTurnPhase, startTurns } from './turns';
+} from '../logic/store';
+import { advanceTurnPhase, startTurns } from '../logic/turns';
 
 const MAX_GAME_NAME_LENGTH = 20;
 

@@ -1,8 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from './defaultImage';
-import { continentColor } from './palette';
-import type { Territory } from './types';
+import type { Territory } from '../types';
+import {
+  DEFAULT_IMAGE_HEIGHT,
+  DEFAULT_IMAGE_WIDTH,
+} from '../utils/defaultImage';
+import { continentColor } from '../utils/palette';
 
 interface Props {
   territories: Territory[];

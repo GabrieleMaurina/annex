@@ -1,5 +1,5 @@
 import type { Territory } from './mapData';
-import type { GameState } from './types';
+import type { GameState } from '../lib/types';
 
 type OwnerById = Map<number, GameState['territories'][number]>;
 

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
-import BannedList from './lobby/BannedList';
-import Header from './lobby/Header';
-import PlayerRoster from './lobby/PlayerRoster';
-import SettingsPanel from './lobby/SettingsPanel';
-import SpectatorList from './lobby/SpectatorList';
-import { socket } from './socket';
-import type { Ack, GameSettingsInput, GameState, Player } from './types';
+import BannedList from './BannedList';
+import Header from './Header';
+import PlayerRoster from './PlayerRoster';
+import SettingsPanel from './SettingsPanel';
+import SpectatorList from './SpectatorList';
+import { socket } from '../lib/socket';
+import type { Ack, GameSettingsInput, GameState, Player } from '../lib/types';
 
 interface Props {
   game: GameState;

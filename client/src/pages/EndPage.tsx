@@ -1,6 +1,6 @@
 import { Button, Container } from 'react-bootstrap';
-import { playerColor } from './palette';
-import type { GameState } from './types';
+import { playerColor } from '../lib/palette';
+import type { GameState } from '../lib/types';
 
 interface Props {
   game: GameState;

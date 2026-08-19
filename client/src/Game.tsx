@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container, Spinner } from 'react-bootstrap';
 import Chat from './Chat';
+import EndPage from './EndPage';
 import GameMap from './GameMap';
 import Lobby from './Lobby';
 import SettingsMenu from './SettingsMenu';
@@ -87,6 +88,8 @@ function Game({
           setChatOpen={setChatOpen}
           navigate={navigate}
         />
+      ) : game.state === 'ended' ? (
+        <EndPage game={game} selfId={selfId} navigate={navigate} />
       ) : (
         <Container fluid className="pt-3 pb-5 px-4">
           <Lobby

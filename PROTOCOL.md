@@ -21,6 +21,7 @@ Closing the tab, opening a new one, refreshing, or otherwise dropping the connec
 What losing (and regaining) the socket does to a player's game membership depends on the game's `state`:
 - **`lobby`**: a disconnect (or a mismatched-room `player:identify`, see below) removes the player entirely, same as leaving on purpose. If they held a slot, `hostId` is reassigned (see below) and the front queued spectator, if any, is promoted to fill it. Reconnecting afterward is just a fresh `game:join`.
 - **`playing`**: nothing changes — slot, territories, and troops stay exactly as they were; only the socket drops. Reconnecting with the same `key` (any device) silently resumes that slot. If their turn comes up while away, it just runs out the clock and passes on (see `turnDuration` under `GameState` below), same as anyone taking too long.
+- **`ended`**: like `playing`, a disconnect changes nothing. A mismatched-room `player:identify` (e.g. clicking the end page's "leave" button) clears the player's game membership, letting them rejoin later only as a spectator (see `state`/`winnerIds` under `GameState` below).
 
 `game:surrender` is the one way to leave a `playing` game for good: slot, territories, and troops stay untouched just like a disconnect, but the player is permanently barred from that slot — reconnecting, or navigating back later, only ever seats them as a spectator.
 
@@ -35,7 +36,7 @@ Since `playing` games never lose a player this way, one where everyone has disco
   mapName: string;
   playerCount: number;
   slots: number;
-  state: 'lobby' | 'playing';
+  state: 'lobby' | 'playing' | 'ended';
   spectatorCount: number;
 }
 ```
@@ -47,7 +48,7 @@ Since `playing` games never lose a player this way, one where everyone has disco
   mapName: string;
   slots: number;
   hostId: number;
-  state: 'lobby' | 'playing';
+  state: 'lobby' | 'playing' | 'ended';
   gameMode: 'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
   blitz: 'Balanced' | 'True';
   defenceDice: 2 | 3;
@@ -64,6 +65,7 @@ Since `playing` games never lose a player this way, one where everyone has disco
   attackStartTerritoryId: number | null;
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
+  winnerIds: number[];
   players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number; connected: boolean; surrendered: boolean }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
@@ -91,6 +93,8 @@ Once `game:start` succeeds, `turnNumber` counts full rounds completed (starts at
 `connected` is whether the player currently has a live socket anywhere on the server (not necessarily this game's room — see "Leaving and reconnecting" above). `surrendered` is whether they've called `game:surrender` on this game; they're typically still `connected` (surrendering doesn't disconnect them) but can never be seated in it again. Both are informational only — an absent player's territories, troops, and turn are still tracked exactly like anyone else's.
 
 `territories` is empty until the game starts; once `playing`, it lists every territory on the map with its current owner (`ownerId`, a player's `id`) and troop count.
+
+The server checks for the end of the game every time a territory is conquered (see `game:attack` below). In `World Domination` and `Capital Conquest` (the latter falls back to `World Domination`'s end condition for now), the game ends the moment a single player owns every territory. In `Team Deathmatch`, it ends the moment every territory is owned by players on a single team. Either way, `state` moves to `'ended'`, `winnerIds` is set to that player's id (or every player id on the winning team), and the turn timer stops; `turnPhase`/`selectedTerritoryId`/`fortifyStartTerritoryId`/`fortifyEndTerritoryId`/`attackStartTerritoryId`/`attackEndTerritoryId`/`attackConquestMinTroops` reset exactly as they do on a normal turn change. `winnerIds` is empty while the game is `lobby` or `playing`. No further `game:*` actions are accepted once `state` is `'ended'` (they all require `'playing'`) — the game just sits, still joinable as a spectator (see `game:join` below), until everyone still viewing it (players and spectators alike, going by `connected` and current game membership) has navigated away, at which point the server deletes it — same as `home:games` no longer listing it, and its room being torn down.
 
 Players who couldn't be seated (lobby full, game already `playing`, or they'd previously surrendered from it) become **spectators**: same room, full `game:state` visibility, no roster slot, no gameplay actions. In the `lobby` state, spectators are an ordered queue (`spectators[0]` next in line) — if a seated player leaves, the front spectator is promoted automatically. Nothing promotes spectators once `playing`, and leaving (or disconnecting from) a `playing` game never frees a seat — see "Leaving and reconnecting" above.
 
@@ -137,7 +141,7 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
 
 ### `game:join`
 - **When sent:** a player in `home` joins a game from the list, or navigates straight to a game's URL without joining from `home` first (sent right after `player:identify`, once per such navigation). In the URL-navigation case, if the ack comes back `game not found`, the client falls back to `game:create` with that name (see `game:create` above) to create the game at that URL; if that in turn fails with `game name already in use` (another client won the race), the client retries `game:join` once more.
-- **Purpose:** add the caller to the game and move their socket into its room. If the game is still `lobby` with an open slot, they become a player; otherwise (full lobby, or already `playing`) they become a spectator — this call never fails just because the game is full or in progress.
+- **Purpose:** add the caller to the game and move their socket into its room. If the game is still `lobby` with an open slot, they become a player; otherwise (full lobby, already `playing`, or `ended`) they become a spectator — this call never fails just because the game is full, in progress, or over.
 - **Content:**
   ```ts
   { gameName: string }
@@ -259,7 +263,7 @@ Players who couldn't be seated (lobby full, game already `playing`, or they'd pr
 
 ### `game:attack`
 - **When sent:** the player whose turn it currently is, during `'attack'` with both attack territories selected, confirms an attack option from the attack panel (its confirm button, or Enter).
-- **Purpose:** resolve one battle between `attackStartTerritoryId` and `attackEndTerritoryId`. For `type: 'regular'`, `troops` (1–3, capped at the attacking territory's troops − 1) fight exactly one exchange via `attack()` in `dice.ts`, the defending territory rolling `min(its troops, defenceDice)` dice, and the raw dice results are returned (see Ack below) so the client can animate the roll. For `type: 'blitz'`, `troops` (1 up to the attacking territory's troops − 1) fight to elimination of one side via `trueBlitz()` or `balancedBlitz()` (chosen by the game's `blitz` setting). Losses on both sides are applied immediately. If the defending territory's troops reach `0`, it's conquered: ownership transfers to the caller right away, `attackConquestMinTroops` is set to `min(troops used, 3, remaining attacking-territory troops − 1)`, and both attack territory ids stay set awaiting `game:attackMove`. Otherwise, if the attacking territory still has more than 1 troop left, both attack territory ids are left set (so the attack panel stays open against the same defending territory) and blitz win probabilities are recomputed for the reduced troop counts; if it's down to 1 troop (can't attack again), both reset to `null` instead. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'attack'` with both territories selected, and no conquest may already be pending.
+- **Purpose:** resolve one battle between `attackStartTerritoryId` and `attackEndTerritoryId`. For `type: 'regular'`, `troops` (1–3, capped at the attacking territory's troops − 1) fight exactly one exchange via `attack()` in `dice.ts`, the defending territory rolling `min(its troops, defenceDice)` dice, and the raw dice results are returned (see Ack below) so the client can animate the roll. For `type: 'blitz'`, `troops` (1 up to the attacking territory's troops − 1) fight to elimination of one side via `trueBlitz()` or `balancedBlitz()` (chosen by the game's `blitz` setting). Losses on both sides are applied immediately. If the defending territory's troops reach `0`, it's conquered: ownership transfers to the caller right away, the end-of-game check described under `GameState.territories` above runs immediately (possibly moving `state` to `'ended'`, in which case nothing further below in this paragraph happens), and otherwise `attackConquestMinTroops` is set to `min(troops used, 3, remaining attacking-territory troops − 1)` with both attack territory ids left set awaiting `game:attackMove`. Otherwise, if the attacking territory still has more than 1 troop left, both attack territory ids are left set (so the attack panel stays open against the same defending territory) and blitz win probabilities are recomputed for the reduced troop counts; if it's down to 1 troop (can't attack again), both reset to `null` instead. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'attack'` with both territories selected, and no conquest may already be pending.
 - **Content:**
   ```ts
   { type: 'regular'; troops: 1 | 2 | 3 } | { type: 'blitz'; troops: number }

@@ -110,7 +110,7 @@ function Home({
         <tbody>
           {games.map((g) => {
             const spectateOnly =
-              g.state === 'playing' || g.playerCount >= g.slots;
+              g.state !== 'lobby' || g.playerCount >= g.slots;
             return (
               <tr
                 key={g.name}
@@ -124,7 +124,13 @@ function Home({
                   {g.playerCount}/{g.slots}
                   {g.spectatorCount > 0 && ` · ${g.spectatorCount} spectating`}
                 </td>
-                <td>{g.state === 'lobby' ? 'Lobby' : 'Playing'}</td>
+                <td>
+                  {g.state === 'lobby'
+                    ? 'Lobby'
+                    : g.state === 'playing'
+                      ? 'Playing'
+                      : 'Ended'}
+                </td>
               </tr>
             );
           })}

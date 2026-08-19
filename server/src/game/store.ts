@@ -18,6 +18,21 @@ function hasActivePlayer(game: Game, playersById: Map<number, Player>) {
   );
 }
 
+function evictGameMembers(
+  game: Game,
+  playersById: Map<number, Player>,
+  io: Server,
+) {
+  for (const id of [...game.playerIds, ...game.spectatorIds]) {
+    const member = playersById.get(id);
+    if (!member || member.gameName !== game.name) continue;
+    member.gameName = null;
+    const memberSocket = io.sockets.sockets.get(member.socketId);
+    memberSocket?.leave(gameRoomName(game.name));
+    memberSocket?.join(HOME_ROOM);
+  }
+}
+
 export function destroyIfInactive(
   game: Game,
   playersById: Map<number, Player>,
@@ -27,15 +42,25 @@ export function destroyIfInactive(
 
   clearTurnTimer(game.name);
   games.delete(game.name);
+  evictGameMembers(game, playersById, io);
+}
 
-  for (const id of [...game.playerIds, ...game.spectatorIds]) {
+function hasEndedGameViewer(game: Game, playersById: Map<number, Player>) {
+  return [...game.playerIds, ...game.spectatorIds].some((id) => {
     const member = playersById.get(id);
-    if (!member || member.gameName !== game.name) continue;
-    member.gameName = null;
-    const memberSocket = io.sockets.sockets.get(member.socketId);
-    memberSocket?.leave(gameRoomName(game.name));
-    memberSocket?.join(HOME_ROOM);
-  }
+    return member?.connected && member.gameName === game.name;
+  });
+}
+
+export function destroyIfEnded(
+  game: Game,
+  playersById: Map<number, Player>,
+  io: Server,
+) {
+  if (game.state !== 'ended' || hasEndedGameViewer(game, playersById)) return;
+
+  games.delete(game.name);
+  evictGameMembers(game, playersById, io);
 }
 
 export function removePlayerFromGame(
@@ -88,12 +113,19 @@ export function leaveGame(
   if (game.spectatorIds.includes(player.id)) {
     player.gameName = null;
     game.spectatorIds = game.spectatorIds.filter((id) => id !== player.id);
+    if (game.state === 'ended') destroyIfEnded(game, playersById, io);
     return;
   }
 
   if (game.state === 'playing') {
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);
+    return;
+  }
+
+  if (game.state === 'ended') {
+    if (player.connected) player.gameName = null;
+    destroyIfEnded(game, playersById, io);
     return;
   }
 

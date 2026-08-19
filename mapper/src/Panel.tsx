@@ -10,6 +10,7 @@ import { decodeBase85, encodeBase85 } from './base85';
 import { createDefaultImage } from './defaultImage';
 import { bytesToDataUrl, dataUrlToBytes, mimeFromDataUrl } from './imageBytes';
 import { continentColor } from './palette';
+import { sortMapData } from './sortMap';
 import type { Map, Territory } from './types';
 
 const MIN_CONTINENTS = 1;
@@ -223,10 +224,11 @@ function Panel({
     if (!mapName.trim()) return;
     const baseName = mapName.replace(/\.(anx|json)$/i, '');
     const isBlankImage = imageSrc === createDefaultImage();
+    const sorted = sortMapData(territories, bonuses);
     const mapFile: Map = {
       name: baseName,
-      territories,
-      bonuses,
+      territories: sorted.territories,
+      bonuses: sorted.bonuses,
       image: isBlankImage ? null : encodeBase85(dataUrlToBytes(imageSrc)),
       imageMime: isBlankImage ? null : mimeFromDataUrl(imageSrc),
     };

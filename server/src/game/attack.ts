@@ -9,6 +9,7 @@ import {
   trueBlitz,
   trueWinProbs,
 } from './dice';
+import { checkGameEnd } from './end';
 import { gameState } from './state';
 import { gameRoomName, games } from './store';
 
@@ -261,12 +262,15 @@ export function registerAttackHandlers(
       let blitzWinProbabilities: number[] = [];
       if (conquered) {
         game.territoryOwners.set(endId, player.id);
-        const remainingAttackers = attackingTroops - attackLosses;
-        game.attackConquestMinTroops = Math.min(
-          troops,
-          3,
-          remainingAttackers - 1,
-        );
+        checkGameEnd(game);
+        if (game.state === 'playing') {
+          const remainingAttackers = attackingTroops - attackLosses;
+          game.attackConquestMinTroops = Math.min(
+            troops,
+            3,
+            remainingAttackers - 1,
+          );
+        }
       } else {
         const remainingAttackers = attackingTroops - attackLosses;
         const remainingDefenders = defendingTroops - defenceLosses;

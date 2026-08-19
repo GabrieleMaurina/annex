@@ -36,7 +36,7 @@ export interface Game {
   mapName: string;
   slots: number;
   hostId: number;
-  state: 'lobby' | 'playing';
+  state: 'lobby' | 'playing' | 'ended';
   gameMode: GameMode;
   blitz: Blitz;
   defenceDice: DefenceDice;
@@ -62,4 +62,5 @@ export interface Game {
   territoryTroops: Map<number, number>;
   hostPriority: number[];
   surrenderedIds: Set<number>;
+  winnerIds: number[];
 }

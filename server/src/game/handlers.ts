@@ -117,6 +117,7 @@ export function registerGameHandlers(
         territoryTroops: new Map(),
         hostPriority: [player.id],
         surrenderedIds: new Set(),
+        winnerIds: [],
       };
       games.set(game.name, game);
       player.gameName = game.name;

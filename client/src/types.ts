@@ -8,7 +8,7 @@ export interface GameSummary {
   mapName: string;
   playerCount: number;
   slots: number;
-  state: 'lobby' | 'playing';
+  state: 'lobby' | 'playing' | 'ended';
   spectatorCount: number;
 }
 
@@ -25,7 +25,7 @@ export interface GameState {
   mapName: string;
   slots: number;
   hostId: number;
-  state: 'lobby' | 'playing';
+  state: 'lobby' | 'playing' | 'ended';
   gameMode: GameMode;
   blitz: Blitz;
   defenceDice: DefenceDice;
@@ -42,6 +42,7 @@ export interface GameState {
   attackStartTerritoryId: number | null;
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
+  winnerIds: number[];
   players: {
     id: number;
     name: string;

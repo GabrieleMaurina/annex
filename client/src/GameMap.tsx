@@ -294,9 +294,14 @@ function GameMap({
 
   const submitFortify = useCallback(() => {
     socket.emit('game:fortify', { troops: fortifyTroops }, (res: Ack) => {
-      if (res.ok) setGame(res.game);
+      if (!res.ok) return;
+      setGame(res.game);
+      if (fortifyStartTerritoryId !== null)
+        frozenTroopsRef.current.delete(fortifyStartTerritoryId);
+      if (fortifyEndTerritoryId !== null)
+        frozenTroopsRef.current.delete(fortifyEndTerritoryId);
     });
-  }, [fortifyTroops, setGame]);
+  }, [fortifyTroops, fortifyStartTerritoryId, fortifyEndTerritoryId, setGame]);
 
   const selectAttackStart = useCallback(
     (territoryId: number | null) => {
@@ -395,7 +400,17 @@ function GameMap({
         : { type: 'blitz' as const, troops: attackBlitzTroops };
     socket.emit('game:attack', payload, (res: AttackResultAck) => {
       if (!res.ok) return;
-      setGame(res.game);
+      const hasDiceRoll =
+        res.attackerDice.length > 0 && attackEndTerritoryId !== null;
+      setGame(
+        hasDiceRoll && res.game.state === 'ended'
+          ? { ...res.game, state: 'playing' }
+          : res.game,
+      );
+      if (attackStartTerritoryId !== null)
+        frozenTroopsRef.current.delete(attackStartTerritoryId);
+      if (attackEndTerritoryId !== null)
+        frozenTroopsRef.current.delete(attackEndTerritoryId);
 
       const conqueredTerritoryId = res.game.attackEndTerritoryId;
       let autoMoveTroops: number | null = null;
@@ -411,8 +426,6 @@ function GameMap({
         if (minMove === maxMove) autoMoveTroops = maxMove;
       }
 
-      const hasDiceRoll =
-        res.attackerDice.length > 0 && attackEndTerritoryId !== null;
       if (hasDiceRoll) {
         attackDiceRollIdRef.current += 1;
         const rollId = attackDiceRollIdRef.current;
@@ -428,7 +441,9 @@ function GameMap({
           if (attackDiceRollIdRef.current !== rollId) return;
           setAttackDiceSettled(true);
           setAttackPreRevealSnapshot(null);
-          if (res.game.attackConquestMinTroops !== null) {
+          if (res.game.state === 'ended') {
+            setGame(res.game);
+          } else if (res.game.attackConquestMinTroops !== null) {
             if (autoMoveTroops !== null) {
               performAttackMove(autoMoveTroops, conqueredTerritoryId);
             } else {
@@ -748,7 +763,9 @@ function GameMap({
       'game:deploy',
       { territoryId: selectedTerritoryId, troops: deployTroops },
       (res: Ack) => {
-        if (res.ok) setGame(res.game);
+        if (!res.ok) return;
+        setGame(res.game);
+        frozenTroopsRef.current.delete(selectedTerritoryId);
       },
     );
   }, [selectedTerritoryId, deployTroops, setGame]);
@@ -1164,7 +1181,13 @@ function GameMap({
                   attackPendingConquest &&
                   t.id === attackEndTerritoryId
                 ? (attackConquestMinTroops ?? owner.troops)
-                : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
+                : deployPanelOpen && t.id === selectedTerritoryId
+                  ? owner.troops + deployTroops
+                  : fortifyPanelOpen && t.id === fortifyEndTerritoryId
+                    ? owner.troops + fortifyTroops
+                    : fortifyPanelOpen && t.id === fortifyStartTerritoryId
+                      ? owner.troops - fortifyTroops
+                      : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
         ctx.fillStyle = contrastTextColor(fillColor);
         ctx.font = `bold ${VERTEX_RADIUS * zoom}px sans-serif`;
         ctx.textAlign = 'center';

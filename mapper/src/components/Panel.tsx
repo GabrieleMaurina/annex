@@ -4,11 +4,12 @@ import type {
   Dispatch,
   SetStateAction,
 } from 'react';
-import { useCallback, useEffect, useRef } from 'react';
-import { Button, Form, Table } from 'react-bootstrap';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button, Form, Table, Toast, ToastContainer } from 'react-bootstrap';
 import type { Map, Territory } from '../types';
 import { decodeBase85, encodeBase85 } from '../utils/base85';
 import { createDefaultImage } from '../utils/defaultImage';
+import { isConnected } from '../utils/graph';
 import {
   bytesToDataUrl,
   dataUrlToBytes,
@@ -106,6 +107,7 @@ function Panel({
   setCurrentContinentId,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showConnectivityError, setShowConnectivityError] = useState(false);
 
   function addContinent() {
     if (continentCount >= MAX_CONTINENTS) return;
@@ -226,6 +228,10 @@ function Panel({
 
   const handleExport = useCallback(() => {
     if (!mapName.trim()) return;
+    if (!isConnected(territories)) {
+      setShowConnectivityError(true);
+      return;
+    }
     const baseName = mapName.replace(/\.(anx|json)$/i, '');
     const isBlankImage = imageSrc === createDefaultImage();
     const sorted = sortMapData(territories, bonuses);
@@ -275,120 +281,146 @@ function Panel({
   }
 
   return (
-    <div
-      className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column"
-      style={{ width: 280, maxHeight: 'calc(100vh - 1rem)', cursor: 'pointer' }}
-      onClick={(e) => {
-        const target = e.target as HTMLElement;
-        if (!target.closest('button, input, select, textarea, a')) {
-          setCollapsed(true);
-        }
-      }}
-    >
-      <Form.Control
-        ref={fileInputRef}
-        type="file"
-        accept=".anx,.json,image/*"
-        className="d-none"
-        onChange={handleFileChange}
-      />
-      <Button
-        variant="primary"
-        className="w-100 mb-2"
-        onClick={() => fileInputRef.current?.click()}
-      >
-        Import
-      </Button>
-      <Button
-        variant="primary"
-        className="w-100 mb-2"
-        onClick={handleExport}
-        disabled={!canExport}
-      >
-        Export
-      </Button>
-      <Button
-        variant="primary"
-        className="w-100 mb-3"
-        onClick={handleNew}
-        disabled={isEmptyMap}
-      >
-        New
-      </Button>
-
-      <Form.Group className="mb-3">
-        <Form.Label className="fw-bold">Map Name</Form.Label>
-        <Form.Control
-          type="text"
-          value={mapName}
-          onChange={(e) => setMapName(e.target.value)}
-          placeholder="Enter map name"
-        />
-      </Form.Group>
-
+    <>
       <div
-        className="flex-grow-1 overflow-auto no-scrollbar"
-        style={{ minHeight: 0 }}
+        className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column"
+        style={{
+          width: 280,
+          maxHeight: 'calc(100vh - 1rem)',
+          cursor: 'pointer',
+        }}
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (!target.closest('button, input, select, textarea, a')) {
+            setCollapsed(true);
+          }
+        }}
       >
-        <div className="mb-2 fw-bold">
-          Total territories: {territories.length}
-        </div>
-        <Table size="sm" borderless className="mb-3 text-center">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Size</th>
-              <th>Bonus</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: continentCount }, (_, i) => (
-              <tr
-                key={i}
-                style={{ '--bs-table-bg': continentColor(i) } as CSSProperties}
-              >
-                <td>{i + 1}</td>
-                <td>{territories.filter((t) => t.continentId === i).length}</td>
-                <td>
-                  <Form.Control
-                    type="number"
-                    size="sm"
-                    className="text-center"
-                    min={MIN_BONUS}
-                    max={MAX_BONUS}
-                    value={bonuses[i] ?? 2}
-                    onChange={(e) => updateBonus(i, Number(e.target.value))}
-                  />
-                </td>
-                <td>
+        <Form.Control
+          ref={fileInputRef}
+          type="file"
+          accept=".anx,.json,image/*"
+          className="d-none"
+          onChange={handleFileChange}
+        />
+        <Button
+          variant="primary"
+          className="w-100 mb-2"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Import
+        </Button>
+        <Button
+          variant="primary"
+          className="w-100 mb-2"
+          onClick={handleExport}
+          disabled={!canExport}
+        >
+          Export
+        </Button>
+        <Button
+          variant="primary"
+          className="w-100 mb-3"
+          onClick={handleNew}
+          disabled={isEmptyMap}
+        >
+          New
+        </Button>
+
+        <Form.Group className="mb-3">
+          <Form.Label className="fw-bold">Map Name</Form.Label>
+          <Form.Control
+            type="text"
+            value={mapName}
+            onChange={(e) => setMapName(e.target.value)}
+            placeholder="Enter map name"
+          />
+        </Form.Group>
+
+        <div
+          className="flex-grow-1 overflow-auto no-scrollbar"
+          style={{ minHeight: 0 }}
+        >
+          <div className="mb-2 fw-bold">
+            Total territories: {territories.length}
+          </div>
+          <Table size="sm" borderless className="mb-3 text-center">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Size</th>
+                <th>Bonus</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: continentCount }, (_, i) => (
+                <tr
+                  key={i}
+                  style={
+                    { '--bs-table-bg': continentColor(i) } as CSSProperties
+                  }
+                >
+                  <td>{i + 1}</td>
+                  <td>
+                    {territories.filter((t) => t.continentId === i).length}
+                  </td>
+                  <td>
+                    <Form.Control
+                      type="number"
+                      size="sm"
+                      className="text-center"
+                      min={MIN_BONUS}
+                      max={MAX_BONUS}
+                      value={bonuses[i] ?? 2}
+                      onChange={(e) => updateBonus(i, Number(e.target.value))}
+                    />
+                  </td>
+                  <td>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => deleteContinent(i)}
+                      disabled={continentCount <= MIN_CONTINENTS}
+                    >
+                      ✕
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              <tr>
+                <td colSpan={4} className="text-center">
                   <Button
-                    variant="danger"
+                    variant="success"
                     size="sm"
-                    onClick={() => deleteContinent(i)}
-                    disabled={continentCount <= MIN_CONTINENTS}
+                    onClick={addContinent}
+                    disabled={continentCount >= MAX_CONTINENTS}
                   >
-                    ✕
+                    +
                   </Button>
                 </td>
               </tr>
-            ))}
-            <tr>
-              <td colSpan={4} className="text-center">
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={addContinent}
-                  disabled={continentCount >= MAX_CONTINENTS}
-                >
-                  +
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-        </Table>
+            </tbody>
+          </Table>
+        </div>
       </div>
-    </div>
+      <ToastContainer
+        position="top-center"
+        className="position-fixed p-3"
+        style={{ zIndex: 3 }}
+      >
+        <Toast
+          show={showConnectivityError}
+          onClose={() => setShowConnectivityError(false)}
+          autohide
+          delay={3000}
+        >
+          <Toast.Body>
+            All territories must be connected to each other.
+          </Toast.Body>
+        </Toast>
+      </ToastContainer>
+    </>
   );
 }
 

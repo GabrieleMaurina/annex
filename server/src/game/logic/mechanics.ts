@@ -11,6 +11,13 @@ export function maxTeam(game: Game) {
   return Math.max(0, game.playerIds.length - 1);
 }
 
+export function ownsAnyTerritory(game: Game, playerId: number): boolean {
+  for (const ownerId of game.territoryOwners.values()) {
+    if (ownerId === playerId) return true;
+  }
+  return false;
+}
+
 export function teamCount(game: Game) {
   return new Set(game.playerIds.map((id) => game.playerTeams.get(id) ?? 0))
     .size;

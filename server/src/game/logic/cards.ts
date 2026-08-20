@@ -4,19 +4,18 @@ const SYMBOLS: CardSymbol[] = ['soldier', 'humvee', 'tank'];
 
 export type SetKind = CardSymbol | 'mixed';
 
-const FIXED_VALUES: Record<SetKind, number> = {
+const CONSTANT_VALUES: Record<SetKind, number> = {
   soldier: 4,
   humvee: 6,
   tank: 8,
   mixed: 10,
 };
 
-const PROGRESSIVE_TABLE = [4, 6, 8, 10, 12, 15, 20, 25, 30];
+const LINEAR_TABLE = [4, 6, 8, 10, 12, 15, 20, 25, 30];
 
-function progressiveValue(setNumber: number): number {
-  if (setNumber <= PROGRESSIVE_TABLE.length)
-    return PROGRESSIVE_TABLE[setNumber - 1];
-  return 30 + (setNumber - PROGRESSIVE_TABLE.length) * 5;
+function linearValue(setNumber: number): number {
+  if (setNumber <= LINEAR_TABLE.length) return LINEAR_TABLE[setNumber - 1];
+  return 30 + (setNumber - LINEAR_TABLE.length) * 5;
 }
 
 export function buildCardDeck(territoryIds: number[]): Card[] {
@@ -56,14 +55,30 @@ export function returnCardsToDeck(deck: Card[], cards: Card[]): void {
 }
 
 export function nextSetBaseValues(game: Game): Record<SetKind, number> {
-  if (game.cards === 'Fixed') return { ...FIXED_VALUES };
+  if (game.cards === 'Constant') return { ...CONSTANT_VALUES };
   const value =
-    game.cards === 'Progressive'
-      ? progressiveValue(game.cardSetsPlayed + 1)
+    game.cards === 'Linear'
+      ? linearValue(game.cardSetsPlayed + 1)
       : game.cardsLastSetValue === 0
         ? 5
         : Math.ceil(game.cardsLastSetValue * 1.3);
   return { soldier: value, humvee: value, tank: value, mixed: value };
+}
+
+export function upcomingSetValues(game: Game, count: number): number[] {
+  if (game.cards === 'Constant') return [];
+  if (game.cards === 'Linear') {
+    return Array.from({ length: count }, (_, i) =>
+      linearValue(game.cardSetsPlayed + 1 + i),
+    );
+  }
+  const values: number[] = [];
+  let last = game.cardsLastSetValue;
+  for (let i = 0; i < count; i++) {
+    last = last === 0 ? 5 : Math.ceil(last * 1.3);
+    values.push(last);
+  }
+  return values;
 }
 
 function setKindCandidates(realSymbols: CardSymbol[]): SetKind[] {

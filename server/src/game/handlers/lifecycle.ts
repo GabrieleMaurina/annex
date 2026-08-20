@@ -12,6 +12,7 @@ import {
 } from '../../types';
 import { isInteger, isObject } from '../../validate';
 import { buildCardDeck } from '../logic/cards';
+import { checkGameEnd } from '../logic/end';
 import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
   assignRandomColor,
@@ -20,10 +21,12 @@ import {
   cycleColor,
   interleaveTeams,
   maxTeam,
+  ownsAnyTerritory,
   shuffle,
   teamCount,
 } from '../logic/mechanics';
 import { gameState } from '../logic/state';
+import { emptyPlayerStats } from '../logic/stats';
 import {
   destroyIfInactive,
   gameRoomName,
@@ -32,6 +35,7 @@ import {
 } from '../logic/store';
 import {
   advanceTurnPhase,
+  forceEndTurn,
   startCapitalPlacement,
   startTurns,
 } from '../logic/turns';
@@ -45,7 +49,7 @@ const GAME_MODE_VALUES: GameMode[] = [
 ];
 const BLITZ_VALUES: Blitz[] = ['Balanced', 'True'];
 const DEFENCE_DICE_VALUES: DefenceDice[] = [2, 3];
-const CARDS_VALUES: CardsMode[] = ['Fixed', 'Progressive', 'Exponential'];
+const CARDS_VALUES: CardsMode[] = ['Constant', 'Linear', 'Exponential'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 
 function validateGameName(name: unknown): string | null {
@@ -100,7 +104,7 @@ export function registerGameHandlers(
         gameMode: 'Supremacy',
         blitz: 'Balanced',
         defenceDice: 2,
-        cards: 'Fixed',
+        cards: 'Constant',
         turnDuration: 120,
         turnNumber: 0,
         turnPlayerIndex: 0,
@@ -129,6 +133,10 @@ export function registerGameHandlers(
         conqueredThisTurn: false,
         cardSetsPlayed: 0,
         cardsLastSetValue: 0,
+        stats: new Map(),
+        deathOrder: [],
+        teamDeathOrder: [],
+        finalRanking: [],
       };
       games.set(game.name, game);
       player.gameName = game.name;
@@ -158,7 +166,9 @@ export function registerGameHandlers(
       if (game.bannedIds.has(player.id))
         return callback({ ok: false, error: 'banned from this game' });
 
-      if (game.state === 'lobby' && game.playerIds.length < game.slots) {
+      if (game.playerIds.includes(player.id)) {
+        recomputeHost(game, playersById);
+      } else if (game.state === 'lobby' && game.playerIds.length < game.slots) {
         game.playerIds.push(player.id);
         game.playerTeams.set(player.id, 0);
         assignRandomColor(game, player.id);
@@ -351,6 +361,12 @@ export function registerGameHandlers(
     game.playerCards = new Map(game.playerIds.map((id) => [id, []]));
     game.cardSetsPlayed = 0;
     game.cardsLastSetValue = 0;
+    game.stats = new Map(game.playerIds.map((id) => [id, emptyPlayerStats()]));
+    game.deathOrder = [];
+    game.teamDeathOrder = [];
+    for (const id of game.playerIds) {
+      if (!ownsAnyTerritory(game, id)) game.deathOrder.push(id);
+    }
     game.state = 'playing';
     if (game.gameMode === 'Capitals') {
       startCapitalPlacement(game, io);
@@ -420,9 +436,13 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'already eliminated' });
 
     game.surrenderedIds.add(player.id);
+    if (!game.deathOrder.includes(player.id)) game.deathOrder.push(player.id);
+    const wasTheirTurn = game.playerIds[game.turnPlayerIndex] === player.id;
     player.gameName = null;
     socket.leave(gameRoomName(game.name));
     socket.join(HOME_ROOM);
+    if (wasTheirTurn) forceEndTurn(game, io);
+    checkGameEnd(game);
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);
 

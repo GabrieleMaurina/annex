@@ -3,6 +3,7 @@ import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
 import { evaluateCardSelection, returnCardsToDeck } from '../logic/cards';
 import { gameState } from '../logic/state';
+import { bumpStat } from '../logic/stats';
 import { gameRoomName, games } from '../logic/store';
 
 type GameResponse =
@@ -58,6 +59,13 @@ export function registerCardHandlers(
         );
       }
       game.cardSetsPlayed++;
+      bumpStat(game, player.id, 'setsPlayed');
+      bumpStat(
+        game,
+        player.id,
+        'troopsGained',
+        evaluated.territoryBonusIds.length * 2,
+      );
       if (game.cards === 'Exponential')
         game.cardsLastSetValue = evaluated.baseValue;
 

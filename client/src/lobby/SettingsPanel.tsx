@@ -118,8 +118,8 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
                   applySettings({ cards: e.target.value as CardsMode })
                 }
               >
-                <option value="Fixed">Fixed</option>
-                <option value="Progressive">Progressive</option>
+                <option value="Constant">Constant</option>
+                <option value="Linear">Linear</option>
                 <option value="Exponential">Exponential</option>
               </Form.Select>
             ) : (

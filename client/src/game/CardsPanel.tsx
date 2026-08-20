@@ -1,4 +1,4 @@
-import { Button, ListGroup } from 'react-bootstrap';
+import { Badge, Button, ListGroup } from 'react-bootstrap';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
 import type { Card } from '../lib/types';
 import { comboKey, sortForDisplay, type EvaluatedCombo } from './cards';
@@ -6,6 +6,7 @@ import { comboKey, sortForDisplay, type EvaluatedCombo } from './cards';
 interface Props {
   hand: Card[];
   ownedTerritoryIds: Set<number>;
+  upcomingSetValues: number[];
   combos: EvaluatedCombo[];
   selectedCombo: EvaluatedCombo | undefined;
   onSelectCombo: (combo: EvaluatedCombo) => void;
@@ -119,6 +120,7 @@ function ComboRow({
 function CardsPanel({
   hand,
   ownedTerritoryIds,
+  upcomingSetValues,
   combos,
   selectedCombo,
   onSelectCombo,
@@ -156,6 +158,18 @@ function CardsPanel({
             />
           ))}
         </div>
+      )}
+      {upcomingSetValues.length > 0 && (
+        <>
+          <div className="fw-bold lh-1 mb-2 mt-2">Next Sets</div>
+          <div className="d-flex gap-2 mb-2">
+            {upcomingSetValues.map((value, i) => (
+              <Badge key={i} bg={i === 0 ? 'primary' : 'secondary'}>
+                +{value}
+              </Badge>
+            ))}
+          </div>
+        </>
       )}
       {combos.length > 0 && (
         <>

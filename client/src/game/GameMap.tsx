@@ -96,6 +96,8 @@ interface Props {
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
   nextSetBaseValues: GameState['nextSetBaseValues'];
+  upcomingSetValues: GameState['upcomingSetValues'];
+  gameEnded: boolean;
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
@@ -242,6 +244,8 @@ function GameMap({
   attackEndTerritoryId,
   attackConquestMinTroops,
   nextSetBaseValues,
+  upcomingSetValues,
+  gameEnded,
   setGame,
   setChatOpen,
   navigate,
@@ -2055,6 +2059,7 @@ function GameMap({
             <CardsPanel
               hand={hand}
               ownedTerritoryIds={ownedTerritoryIds}
+              upcomingSetValues={upcomingSetValues}
               combos={combos}
               selectedCombo={selectedCombo}
               onSelectCombo={(combo) => setSelectedComboKey(comboKey(combo))}
@@ -2073,26 +2078,31 @@ function GameMap({
         turnNumber={turnNumber}
         turnPhase={turnPhase}
         turnPlayerId={currentTurnPlayer?.id ?? null}
+        gameEnded={gameEnded}
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}
         navigate={navigate}
       />
       {currentTurnPlayer && (
         <>
-          <TurnProgressBar
-            turnStartedAt={turnStartedAt}
-            turnDuration={turnDuration}
-            color={playerColor(currentTurnPlayer.color)}
-          />
-          <TurnPanel
-            turnPhase={turnPhase}
-            currentPlayerName={currentTurnPlayer.name}
-            color={playerColor(currentTurnPlayer.color)}
-            isMyTurn={isMyTurn}
-            troopsToDeploy={troopsToDeploy}
-            canLeaveDeploy={troopsToDeploy <= 0 && !mustPlaySet}
-            setGame={setGame}
-          />
+          {!gameEnded && (
+            <>
+              <TurnProgressBar
+                turnStartedAt={turnStartedAt}
+                turnDuration={turnDuration}
+                color={playerColor(currentTurnPlayer.color)}
+              />
+              <TurnPanel
+                turnPhase={turnPhase}
+                currentPlayerName={currentTurnPlayer.name}
+                color={playerColor(currentTurnPlayer.color)}
+                isMyTurn={isMyTurn}
+                troopsToDeploy={troopsToDeploy}
+                canLeaveDeploy={troopsToDeploy <= 0 && !mustPlaySet}
+                setGame={setGame}
+              />
+            </>
+          )}
           {deployPanelOpen && deployPanelStyle && (
             <TroopPanel
               label="Deploy troops:"
@@ -2174,7 +2184,8 @@ function GameMap({
             }
             autohide
             delay={5000}
-            style={{ width: 'auto' }}
+            className="mx-auto"
+            style={{ width: 'fit-content', maxWidth: 'none' }}
           >
             <Toast.Body className="text-nowrap">{t.message}</Toast.Body>
           </Toast>

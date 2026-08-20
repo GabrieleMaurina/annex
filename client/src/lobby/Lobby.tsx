@@ -131,11 +131,11 @@ function Lobby({
         <div className="d-flex flex-column gap-2">
           {isHost && (
             <Button disabled={!canStart} onClick={startGame}>
-              Start Game
+              Start
             </Button>
           )}
           <Button variant="secondary" onClick={() => navigate('/')}>
-            Leave Game
+            Leave
           </Button>
         </div>
       </div>

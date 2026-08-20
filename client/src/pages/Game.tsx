@@ -27,6 +27,7 @@ function Game({
 }: Props) {
   const [game, setGame] = useState<GameState | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
 
   useEffect(() => {
     function onState(state: GameState) {
@@ -37,6 +38,15 @@ function Game({
       socket.off('game:state', onState);
     };
   }, []);
+
+  useEffect(() => {
+    if (game?.state !== 'ended') return;
+    const timer = setTimeout(
+      () => setEndView((v) => (v === 'auto' ? 'stats' : v)),
+      1000,
+    );
+    return () => clearTimeout(timer);
+  }, [game?.state]);
 
   if (joinError) {
     return (
@@ -60,11 +70,13 @@ function Game({
     [...game.players, ...game.spectators].map((p) => [p.id, p.name]),
   );
   const colorById = new Map(game.players.map((p) => [p.id, p.color]));
+  const showMap =
+    game.state === 'playing' || (game.state === 'ended' && endView !== 'stats');
 
   return (
     <>
       <SettingsMenu shareUrl={window.location.href} />
-      {game.state === 'playing' ? (
+      {showMap ? (
         <GameMap
           mapName={game.mapName}
           players={game.players}
@@ -86,12 +98,19 @@ function Game({
           attackEndTerritoryId={game.attackEndTerritoryId}
           attackConquestMinTroops={game.attackConquestMinTroops}
           nextSetBaseValues={game.nextSetBaseValues}
+          upcomingSetValues={game.upcomingSetValues}
+          gameEnded={game.state === 'ended'}
           setGame={setGame}
           setChatOpen={setChatOpen}
           navigate={navigate}
         />
       ) : game.state === 'ended' ? (
-        <EndPage game={game} selfId={selfId} navigate={navigate} />
+        <EndPage
+          game={game}
+          selfId={selfId}
+          navigate={navigate}
+          onViewMap={() => setEndView('map')}
+        />
       ) : (
         <Container fluid className="pt-3 pb-5 px-4">
           <Lobby
@@ -105,10 +124,20 @@ function Game({
           />
         </Container>
       )}
+      {game.state === 'ended' && endView === 'map' && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="position-fixed bottom-0 end-0 m-3"
+          onClick={() => setEndView('stats')}
+        >
+          View Results
+        </Button>
+      )}
       <Chat
         nameById={nameById}
         colorById={colorById}
-        transparent={game.state === 'playing'}
+        transparent={showMap}
         open={chatOpen}
         setOpen={setChatOpen}
       />

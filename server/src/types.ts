@@ -32,10 +32,24 @@ export interface Card {
 
 export type Blitz = 'Balanced' | 'True';
 export type DefenceDice = 2 | 3;
-export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
+export type CardsMode = 'Constant' | 'Linear' | 'Exponential';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode = 'Supremacy' | 'Capitals' | 'Team Deathmatch';
 export type TurnPhase = 'capital' | 'deploy' | 'attack' | 'fortify';
+
+export interface PlayerStats {
+  troopsGained: number;
+  troopsKilled: number;
+  troopsLost: number;
+  territoriesConquered: number;
+  territoriesLost: number;
+  capitalsConquered: number;
+  capitalsLost: number;
+  cardsGained: number;
+  playersKilled: number[];
+  turnsPlayed: number;
+  setsPlayed: number;
+}
 
 export interface Game {
   name: string;
@@ -75,4 +89,8 @@ export interface Game {
   conqueredThisTurn: boolean;
   cardSetsPlayed: number;
   cardsLastSetValue: number;
+  stats: Map<number, PlayerStats>;
+  deathOrder: number[];
+  teamDeathOrder: number[];
+  finalRanking: number[];
 }

@@ -3,6 +3,7 @@ import { Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
 import { hasPlayableSet } from '../logic/cards';
 import { gameState } from '../logic/state';
+import { bumpStat } from '../logic/stats';
 import { gameRoomName, games } from '../logic/store';
 import { advanceTurnPhase } from '../logic/turns';
 
@@ -85,6 +86,7 @@ export function registerDeployHandlers(
         territoryId,
         (game.territoryTroops.get(territoryId) ?? 0) + troops,
       );
+      bumpStat(game, player.id, 'troopsGained', troops);
       game.troopsToDeploy -= troops;
       game.selectedTerritoryId = null;
       if (

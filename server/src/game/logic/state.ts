@@ -1,5 +1,8 @@
 import { Game, Player } from '../../types';
-import { nextSetBaseValues } from './cards';
+import { nextSetBaseValues, upcomingSetValues } from './cards';
+import { emptyPlayerStats } from './stats';
+
+const EMPTY_STATS = emptyPlayerStats();
 
 function toSummaries(ids: number[], playersById: Map<number, Player>) {
   return ids
@@ -64,8 +67,11 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     attackConquestMinTroops: game.attackConquestMinTroops,
     winnerIds: game.winnerIds,
     nextSetBaseValues: nextSetBaseValues(game),
+    upcomingSetValues: upcomingSetValues(game, 3),
+    finalRanking: game.finalRanking,
     players: toSummaries(game.playerIds, playersById).map((player) => {
       const territoryCount = stats.get(player.id)?.territoryCount ?? 0;
+      const playerStats = game.stats.get(player.id) ?? EMPTY_STATS;
       return {
         ...player,
         team: game.playerTeams.get(player.id) ?? 0,
@@ -77,6 +83,17 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
         connected: playersById.get(player.id)?.connected ?? false,
         surrendered: game.surrenderedIds.has(player.id),
         eliminated: game.state !== 'lobby' && territoryCount === 0,
+        troopsGained: playerStats.troopsGained,
+        troopsKilled: playerStats.troopsKilled,
+        troopsLost: playerStats.troopsLost,
+        territoriesConquered: playerStats.territoriesConquered,
+        territoriesLost: playerStats.territoriesLost,
+        capitalsConquered: playerStats.capitalsConquered,
+        capitalsLost: playerStats.capitalsLost,
+        cardsGained: playerStats.cardsGained,
+        playersKilled: playerStats.playersKilled,
+        turnsPlayed: playerStats.turnsPlayed,
+        setsPlayed: playerStats.setsPlayed,
       };
     }),
     spectators: toSummaries(game.spectatorIds, playersById),

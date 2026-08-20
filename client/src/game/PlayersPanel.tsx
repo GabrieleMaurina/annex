@@ -14,6 +14,7 @@ interface Props {
   turnNumber: number;
   turnPhase: TurnPhase;
   turnPlayerId: number | null;
+  gameEnded: boolean;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   navigate: (path: string) => void;
@@ -28,13 +29,20 @@ function PlayersPanel({
   turnNumber,
   turnPhase,
   turnPlayerId,
+  gameEnded,
   collapsed,
   setCollapsed,
   navigate,
 }: Props) {
   const isSpectator = spectators.some((s) => s.id === selfId);
   const self = players.find((p) => p.id === selfId);
-  const canSurrender = !isSpectator && !!self && !self.eliminated;
+  const canSurrender =
+    !gameEnded &&
+    !isSpectator &&
+    !!self &&
+    !self.eliminated &&
+    !self.surrendered;
+  const canLeave = isSpectator || (!!self && (gameEnded || self.surrendered));
 
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
@@ -257,6 +265,13 @@ function PlayersPanel({
               alt=""
             />
             Surrender
+          </Button>
+        </div>
+      )}
+      {canLeave && (
+        <div className="d-flex justify-content-end mt-2">
+          <Button variant="secondary" size="sm" onClick={() => navigate('/')}>
+            Leave
           </Button>
         </div>
       )}

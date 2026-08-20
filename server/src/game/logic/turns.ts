@@ -2,8 +2,10 @@ import { Server } from 'socket.io';
 import { Game, TurnPhase } from '../../types';
 import { hasAnyAttack, hasAnyFortify } from './autoSkip';
 import { pickBestSet, popRandomCard, returnCardsToDeck } from './cards';
-import { calculateDeployTroops } from './mechanics';
+import { checkGameEnd } from './end';
+import { calculateDeployTroops, ownsAnyTerritory } from './mechanics';
 import { gameRoomName } from './rooms';
+import { bumpStat } from './stats';
 
 const PHASE_ORDER: TurnPhase[] = ['deploy', 'attack', 'fortify'];
 
@@ -57,6 +59,7 @@ function dropRandomTroops(
     return;
   }
 
+  bumpStat(game, playerId, 'troopsGained', amount);
   while (amount > 0) {
     const territoryId =
       territoryIds[Math.floor(Math.random() * territoryIds.length)];
@@ -93,6 +96,7 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
     }
     returnCardsToDeck(game.deck, best.cards);
     game.cardSetsPlayed++;
+    bumpStat(game, playerId, 'setsPlayed');
     if (game.cards === 'Exponential') game.cardsLastSetValue = best.baseValue;
 
     for (const territoryId of best.territoryBonusIds) {
@@ -102,6 +106,7 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
       );
       deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + 2);
     }
+    bumpStat(game, playerId, 'troopsGained', best.territoryBonusIds.length * 2);
     dropRandomTroops(game, playerId, best.baseValue, deposits);
   }
 
@@ -122,13 +127,23 @@ export function assignCapital(game: Game, territoryId: number) {
     territoryId,
     (game.territoryTroops.get(territoryId) ?? 0) + 3,
   );
+  const ownerId = game.territoryOwners.get(territoryId);
+  if (ownerId !== undefined) bumpStat(game, ownerId, 'troopsGained', 3);
 }
 
 export function advanceCapitalPlacement(game: Game, io: Server) {
-  if (game.turnPlayerIndex >= game.playerIds.length - 1) {
+  let index = game.turnPlayerIndex + 1;
+  while (
+    index < game.playerIds.length &&
+    game.surrenderedIds.has(game.playerIds[index])
+  )
+    index++;
+
+  if (index >= game.playerIds.length) {
     startTurns(game, io);
+    checkGameEnd(game);
   } else {
-    game.turnPlayerIndex++;
+    game.turnPlayerIndex = index;
     scheduleTurnTimer(game, io);
   }
 }
@@ -174,7 +189,7 @@ function completePendingFortify(
   return { territoryId: endId, troops: 1 };
 }
 
-function forceEndTurn(game: Game, io: Server) {
+export function forceEndTurn(game: Game, io: Server) {
   const room = gameRoomName(game.name);
 
   if (game.turnPhase === 'capital') {
@@ -210,29 +225,29 @@ function forceEndTurn(game: Game, io: Server) {
   advanceToNextPlayer(game, io);
 }
 
-function ownsAnyTerritory(game: Game, playerId: number): boolean {
-  for (const ownerId of game.territoryOwners.values()) {
-    if (ownerId === playerId) return true;
-  }
-  return false;
-}
-
 function nextAlivePlayerIndex(game: Game): number {
   const playerCount = game.playerIds.length;
   let index = game.turnPlayerIndex;
   for (let i = 0; i < playerCount; i++) {
     index = (index + 1) % playerCount;
     if (index === 0) game.turnNumber++;
-    if (ownsAnyTerritory(game, game.playerIds[index])) return index;
+    const playerId = game.playerIds[index];
+    if (ownsAnyTerritory(game, playerId) && !game.surrenderedIds.has(playerId))
+      return index;
   }
   return game.turnPlayerIndex;
 }
 
 export function advanceToNextPlayer(game: Game, io: Server) {
+  const endingPlayerId = game.playerIds[game.turnPlayerIndex];
+  bumpStat(game, endingPlayerId, 'turnsPlayed');
+
   if (game.conqueredThisTurn) {
-    const endingPlayerId = game.playerIds[game.turnPlayerIndex];
     const card = popRandomCard(game.deck);
-    if (card) game.playerCards.get(endingPlayerId)?.push(card);
+    if (card) {
+      game.playerCards.get(endingPlayerId)?.push(card);
+      bumpStat(game, endingPlayerId, 'cardsGained');
+    }
   }
   game.conqueredThisTurn = false;
 

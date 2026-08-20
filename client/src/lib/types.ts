@@ -22,7 +22,7 @@ export interface Card {
 
 export type Blitz = 'Balanced' | 'True';
 export type DefenceDice = 2 | 3;
-export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
+export type CardsMode = 'Constant' | 'Linear' | 'Exponential';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode = 'Supremacy' | 'Capitals' | 'Team Deathmatch';
 export type TurnPhase = 'capital' | 'deploy' | 'attack' | 'fortify';
@@ -50,7 +50,9 @@ export interface GameState {
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
   winnerIds: number[];
+  finalRanking: number[];
   nextSetBaseValues: Record<SetKind, number>;
+  upcomingSetValues: number[];
   players: {
     id: number;
     name: string;
@@ -63,6 +65,17 @@ export interface GameState {
     connected: boolean;
     surrendered: boolean;
     eliminated: boolean;
+    troopsGained: number;
+    troopsKilled: number;
+    troopsLost: number;
+    territoriesConquered: number;
+    territoriesLost: number;
+    capitalsConquered: number;
+    capitalsLost: number;
+    cardsGained: number;
+    playersKilled: number[];
+    turnsPlayed: number;
+    setsPlayed: number;
   }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];

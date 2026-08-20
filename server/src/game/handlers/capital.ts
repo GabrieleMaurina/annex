@@ -27,6 +27,7 @@ export function registerCapitalHandlers(
       if (!game) return callback({ ok: false, error: 'game not found' });
       if (game.state !== 'playing')
         return callback({ ok: false, error: 'game not started' });
+      if (game.paused) return callback({ ok: false, error: 'game paused' });
       if (game.turnPhase !== 'capital')
         return callback({ ok: false, error: 'not capital phase' });
       if (game.playerIds[game.turnPlayerIndex] !== player.id)

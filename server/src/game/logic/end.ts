@@ -7,7 +7,7 @@ import { clearTurnTimer } from './turns';
 // in its 3rd round.
 const CAPITALS_WIN_MIN_TURN_NUMBER = 2;
 
-export function checkGameEnd(game: Game): void {
+export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   if (game.state === 'ended') return;
 
   const activePlayers = game.playerIds.filter(
@@ -54,12 +54,14 @@ export function checkGameEnd(game: Game): void {
 
   game.state = 'ended';
   game.winnerIds = winnerIds;
-  const currentPlayerId = game.playerIds[game.turnPlayerIndex];
-  if (
-    !game.surrenderedIds.has(currentPlayerId) &&
-    ownsAnyTerritory(game, currentPlayerId)
-  )
-    bumpStat(game, currentPlayerId, 'turnsPlayed');
+  if (!turnAlreadyEnded) {
+    const currentPlayerId = game.playerIds[game.turnPlayerIndex];
+    if (
+      !game.surrenderedIds.has(currentPlayerId) &&
+      ownsAnyTerritory(game, currentPlayerId)
+    )
+      bumpStat(game, currentPlayerId, 'turnsPlayed');
+  }
   game.turnPhase = 'deploy';
   game.selectedTerritoryId = null;
   game.fortifyStartTerritoryId = null;

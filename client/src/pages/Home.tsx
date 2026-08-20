@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container, Table } from 'react-bootstrap';
+import { useWhiteIcon } from '../common/icon';
 import PlayerNameEditor from '../common/PlayerNameEditor';
 import SettingsMenu from '../common/SettingsMenu';
 import { socket } from '../lib/socket';
@@ -34,6 +35,7 @@ function Home({
 }: Props) {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [error, setError] = useState('');
+  const whiteGithubIcon = useWhiteIcon('/icons/github.svg');
 
   useEffect(() => {
     function onGames(list: GameSummary[]) {
@@ -72,6 +74,22 @@ function Home({
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
         <PlayerNameEditor player={player} onNameChange={onNameChange} />
       </div>
+      <Button
+        variant="secondary"
+        size="sm"
+        href="https://github.com/GabrieleMaurina/annex"
+        target="_blank"
+        rel="noreferrer"
+        title="View on GitHub"
+        className="position-fixed bottom-0 end-0 m-3"
+      >
+        <img
+          src={whiteGithubIcon ?? '/icons/github.svg'}
+          width={16}
+          height={16}
+          alt="GitHub"
+        />
+      </Button>
       <div className="d-flex justify-content-center align-items-center gap-5 mb-4">
         <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
         <h1

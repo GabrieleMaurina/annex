@@ -66,6 +66,7 @@ export function registerFortifyHandlers(
       if (!game) return callback({ ok: false, error: 'game not found' });
       if (game.state !== 'playing')
         return callback({ ok: false, error: 'game not started' });
+      if (game.paused) return callback({ ok: false, error: 'game paused' });
       if (game.playerIds[game.turnPlayerIndex] !== player.id)
         return callback({ ok: false, error: 'not your turn' });
       if (game.turnPhase !== 'fortify')
@@ -104,6 +105,7 @@ export function registerFortifyHandlers(
       if (!game) return callback({ ok: false, error: 'game not found' });
       if (game.state !== 'playing')
         return callback({ ok: false, error: 'game not started' });
+      if (game.paused) return callback({ ok: false, error: 'game paused' });
       if (game.playerIds[game.turnPlayerIndex] !== player.id)
         return callback({ ok: false, error: 'not your turn' });
       if (game.turnPhase !== 'fortify')
@@ -147,6 +149,7 @@ export function registerFortifyHandlers(
       if (!game) return callback({ ok: false, error: 'game not found' });
       if (game.state !== 'playing')
         return callback({ ok: false, error: 'game not started' });
+      if (game.paused) return callback({ ok: false, error: 'game paused' });
       if (game.playerIds[game.turnPlayerIndex] !== player.id)
         return callback({ ok: false, error: 'not your turn' });
       if (game.turnPhase !== 'fortify')

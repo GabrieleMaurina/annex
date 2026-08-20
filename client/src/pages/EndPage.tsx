@@ -67,24 +67,26 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                 .map((id) => nameById.get(id) ?? '?')
                 .join(', ');
               return (
-                <tr key={p.id} style={rowStyle}>
-                  <td>{index + 1}</td>
-                  <td className="text-start">{p.name}</td>
-                  <td>
+                <tr key={p.id}>
+                  <td style={rowStyle}>{index + 1}</td>
+                  <td className="text-start" style={rowStyle}>
+                    {p.name}
+                  </td>
+                  <td style={rowStyle}>
                     {p.turnsPlayed}/{game.turnNumber + 1}
                   </td>
-                  <td title={killedNames || undefined}>
+                  <td style={rowStyle} title={killedNames || undefined}>
                     {p.playersKilled.length}
                   </td>
-                  <td>{p.troopsGained}</td>
-                  <td>{p.troopsKilled}</td>
-                  <td>{p.troopsLost}</td>
-                  <td>{p.territoriesConquered}</td>
-                  <td>{p.territoriesLost}</td>
-                  {isCapitals && <td>{p.capitalsConquered}</td>}
-                  {isCapitals && <td>{p.capitalsLost}</td>}
-                  <td>{p.cardsGained}</td>
-                  <td>{p.setsPlayed}</td>
+                  <td style={rowStyle}>{p.troopsGained}</td>
+                  <td style={rowStyle}>{p.troopsKilled}</td>
+                  <td style={rowStyle}>{p.troopsLost}</td>
+                  <td style={rowStyle}>{p.territoriesConquered}</td>
+                  <td style={rowStyle}>{p.territoriesLost}</td>
+                  {isCapitals && <td style={rowStyle}>{p.capitalsConquered}</td>}
+                  {isCapitals && <td style={rowStyle}>{p.capitalsLost}</td>}
+                  <td style={rowStyle}>{p.cardsGained}</td>
+                  <td style={rowStyle}>{p.setsPlayed}</td>
                 </tr>
               );
             })}

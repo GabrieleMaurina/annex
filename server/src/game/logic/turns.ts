@@ -20,10 +20,34 @@ export function clearTurnTimer(gameName: string) {
 function scheduleTurnTimer(game: Game, io: Server) {
   clearTurnTimer(game.name);
   game.turnStartedAt = Date.now();
+  if (game.paused) {
+    game.pausedAt = Date.now();
+    return;
+  }
   const timer = setTimeout(
     () => forceEndTurn(game, io),
     game.turnDuration * 1000,
   );
+  turnTimers.set(game.name, timer);
+}
+
+export function pauseTurnTimer(game: Game) {
+  if (game.paused) return;
+  game.paused = true;
+  game.pausedAt = Date.now();
+  clearTurnTimer(game.name);
+}
+
+export function resumeTurnTimer(game: Game, io: Server) {
+  if (!game.paused) return;
+  const pausedDuration = Date.now() - (game.pausedAt ?? Date.now());
+  game.turnStartedAt += pausedDuration;
+  game.paused = false;
+  game.pausedAt = null;
+
+  clearTurnTimer(game.name);
+  const remaining = game.turnDuration * 1000 - (Date.now() - game.turnStartedAt);
+  const timer = setTimeout(() => forceEndTurn(game, io), Math.max(0, remaining));
   turnTimers.set(game.name, timer);
 }
 

@@ -4,9 +4,15 @@ interface Props {
   turnStartedAt: number;
   turnDuration: number;
   color: string;
+  paused: boolean;
 }
 
-function TurnProgressBar({ turnStartedAt, turnDuration, color }: Props) {
+function TurnProgressBar({
+  turnStartedAt,
+  turnDuration,
+  color,
+  paused,
+}: Props) {
   const barRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -17,7 +23,14 @@ function TurnProgressBar({ turnStartedAt, turnDuration, color }: Props) {
     void bar.offsetHeight;
     bar.style.animation = `annexTurnProgress ${turnDuration}s linear forwards`;
     bar.style.animationDelay = `-${elapsed}s`;
-  }, [turnStartedAt, turnDuration]);
+    bar.style.animationPlayState = paused ? 'paused' : 'running';
+  }, [turnStartedAt, turnDuration, paused]);
+
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    bar.style.animationPlayState = paused ? 'paused' : 'running';
+  }, [paused]);
 
   return (
     <div

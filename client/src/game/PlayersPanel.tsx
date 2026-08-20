@@ -11,6 +11,9 @@ interface Props {
   isTeamDeathmatch: boolean;
   isCapitals: boolean;
   selfId: number | null;
+  hostId: number;
+  paused: boolean;
+  onTogglePause: () => void;
   turnNumber: number;
   turnPhase: TurnPhase;
   turnPlayerId: number | null;
@@ -26,6 +29,9 @@ function PlayersPanel({
   isTeamDeathmatch,
   isCapitals,
   selfId,
+  hostId,
+  paused,
+  onTogglePause,
   turnNumber,
   turnPhase,
   turnPlayerId,
@@ -43,6 +49,7 @@ function PlayersPanel({
     !self.eliminated &&
     !self.surrendered;
   const canLeave = isSpectator || (!!self && (gameEnded || self.surrendered));
+  const isHost = !gameEnded && selfId === hostId;
 
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
@@ -52,6 +59,8 @@ function PlayersPanel({
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
+  const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
+  const whitePlayIcon = useWhiteIcon('/icons/play.svg');
 
   function surrender() {
     socket.emit('game:surrender', (res: Ack) => {
@@ -250,22 +259,46 @@ function PlayersPanel({
           </>
         )}
       </div>
-      {canSurrender && (
-        <div className="d-flex justify-content-end mt-2">
-          <Button
-            variant="danger"
-            size="sm"
-            className="d-flex align-items-center gap-1"
-            onClick={surrender}
-          >
-            <img
-              src={whiteFlagIcon ?? '/icons/flag.svg'}
-              width={14}
-              height={14}
-              alt=""
-            />
-            Surrender
-          </Button>
+      {(isHost || canSurrender) && (
+        <div
+          className={`d-flex mt-2 ${isHost && canSurrender ? 'justify-content-between' : 'justify-content-end'}`}
+        >
+          {isHost && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="d-flex align-items-center gap-1"
+              onClick={onTogglePause}
+            >
+              <img
+                src={
+                  paused
+                    ? (whitePlayIcon ?? '/icons/play.svg')
+                    : (whitePauseIcon ?? '/icons/pause.svg')
+                }
+                width={14}
+                height={14}
+                alt=""
+              />
+              {paused ? 'Resume' : 'Pause'}
+            </Button>
+          )}
+          {canSurrender && (
+            <Button
+              variant="danger"
+              size="sm"
+              className="d-flex align-items-center gap-1"
+              onClick={surrender}
+            >
+              <img
+                src={whiteFlagIcon ?? '/icons/flag.svg'}
+                width={14}
+                height={14}
+                alt=""
+              />
+              Surrender
+            </Button>
+          )}
         </div>
       )}
       {canLeave && (

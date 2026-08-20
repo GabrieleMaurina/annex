@@ -4,7 +4,7 @@ import Chat from '../common/Chat';
 import SettingsMenu from '../common/SettingsMenu';
 import GameMap from '../game/GameMap';
 import { socket } from '../lib/socket';
-import type { GameState, Player } from '../lib/types';
+import type { Ack, GameState, Player } from '../lib/types';
 import Lobby from '../lobby/Lobby';
 import EndPage from './EndPage';
 
@@ -66,6 +66,14 @@ function Game({
     );
   }
 
+  function togglePause() {
+    setGame((prev) => (prev ? { ...prev, paused: !prev.paused } : prev));
+    socket.emit('game:pause', (res: Ack) => {
+      if (res.ok) setGame(res.game);
+      else setGame((prev) => (prev ? { ...prev, paused: !prev.paused } : prev));
+    });
+  }
+
   const nameById = new Map(
     [...game.players, ...game.spectators].map((p) => [p.id, p.name]),
   );
@@ -91,6 +99,9 @@ function Game({
           turnDuration={game.turnDuration}
           troopsToDeploy={game.troopsToDeploy}
           turnStartedAt={game.turnStartedAt}
+          paused={game.paused}
+          hostId={game.hostId}
+          onTogglePause={togglePause}
           selectedTerritoryId={game.selectedTerritoryId}
           fortifyStartTerritoryId={game.fortifyStartTerritoryId}
           fortifyEndTerritoryId={game.fortifyEndTerritoryId}

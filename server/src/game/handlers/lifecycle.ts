@@ -36,6 +36,8 @@ import {
 import {
   advanceTurnPhase,
   forceEndTurn,
+  pauseTurnTimer,
+  resumeTurnTimer,
   startCapitalPlacement,
   startTurns,
 } from '../logic/turns';
@@ -111,6 +113,8 @@ export function registerGameHandlers(
         turnPhase: 'deploy',
         troopsToDeploy: 0,
         turnStartedAt: 0,
+        paused: false,
+        pausedAt: null,
         selectedTerritoryId: null,
         fortifyStartTerritoryId: null,
         fortifyEndTerritoryId: null,
@@ -403,6 +407,7 @@ export function registerGameHandlers(
     if (!game) return callback({ ok: false, error: 'game not found' });
     if (game.state !== 'playing')
       return callback({ ok: false, error: 'game not started' });
+    if (game.paused) return callback({ ok: false, error: 'game paused' });
     if (game.playerIds[game.turnPlayerIndex] !== player.id)
       return callback({ ok: false, error: 'not your turn' });
     if (game.turnPhase === 'capital')
@@ -417,6 +422,25 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'pending conquest move' });
 
     advanceTurnPhase(game, io);
+    callback({ ok: true, game: gameState(game, playersById) });
+  });
+
+  socket.on('game:pause', (callback: (response: GameResponse) => void) => {
+    if (typeof callback !== 'function') return;
+    const player = playersBySocket.get(socket.id);
+    if (!player || !player.gameName)
+      return callback({ ok: false, error: 'not in a game' });
+
+    const game = games.get(player.gameName);
+    if (!game) return callback({ ok: false, error: 'game not found' });
+    if (game.hostId !== player.id)
+      return callback({ ok: false, error: 'not the host' });
+    if (game.state !== 'playing')
+      return callback({ ok: false, error: 'game not started' });
+
+    if (game.paused) resumeTurnTimer(game, io);
+    else pauseTurnTimer(game);
+
     callback({ ok: true, game: gameState(game, playersById) });
   });
 
@@ -442,7 +466,7 @@ export function registerGameHandlers(
     socket.leave(gameRoomName(game.name));
     socket.join(HOME_ROOM);
     if (wasTheirTurn) forceEndTurn(game, io);
-    checkGameEnd(game);
+    checkGameEnd(game, wasTheirTurn);
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);
 

@@ -61,6 +61,7 @@ Since `playing` games never lose a player this way, one where everyone has disco
   turnPhase: 'capital' | 'deploy' | 'attack' | 'fortify';
   troopsToDeploy: number;
   turnStartedAt: number; // ms since epoch
+  paused: boolean;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
@@ -80,6 +81,8 @@ Since `playing` games never lose a player this way, one where everyone has disco
 `hostId` is the id of the game's current host — the only player who may call `game:settings` or `game:start`. The server recomputes it whenever it might need to change (a leave, kick, join, or reconnect) from the game's host-priority list — every player who's ever held a seat, in the order they first got one, never reordered or shortened by a leave — picking the first one still seated, connected, and not surrendered (see "Leaving and reconnecting" above, `game:surrender` below). So host passes to the next eligible player when the current one disconnects or leaves, and passes back the moment a higher-priority former host reconnects, cascading through however many stand-ins came in between. If no players remain, the game is deleted.
 
 Once `game:start` succeeds, `turnNumber` counts full rounds completed (starts at `0`); `turnPlayerIndex` indexes `players` for whoever's turn it is; `turnPhase` is that player's progress — `'deploy'`, `'attack'`, `'fortify'`, in order. Only the player at `turnPlayerIndex` may advance it, via `game:nextPhase`; completing `'fortify'` instead ends the turn, advancing to the next player (`turnPlayerIndex + 1`, wrapping to `0` and incrementing `turnNumber` each time `0` is passed) and resetting `turnPhase` to `'deploy'` — an eliminated player (`territoryCount === 0`) or a surrendered one (see `game:surrender` below) is always skipped over, so `turnPlayerIndex` only ever lands on someone who still owns at least one territory and hasn't surrendered. `turnDuration` is a hard limit on the whole turn (all three phases, not reset between them) — if the current player hasn't finished in time, the server force-advances exactly as `game:nextPhase` would from `'fortify'`. Before doing so, it completes whichever action the cut-off phase left unfinished: in `'deploy'`, any remaining `troopsToDeploy` are dropped one at a time on random territories the player owns, and then — same as a player who never gets to act at all — a 5+-card hand keeps auto-playing its single best set (highest value, ties broken by fewest wilds; see "Territory cards" above) and dropping the troops it grants the same random way, until the hand is back under 5; in `'attack'`, a pending conquest (`attackConquestMinTroops` non-`null`) is resolved by moving the minimum number of troops it allows, exactly as `game:attackMove` would; in `'fortify'`, a selection with both `fortifyStartTerritoryId` and `fortifyEndTerritoryId` set moves exactly `1` troop. Any other in-progress selection (a lone attack or fortify start territory, or an attack with both territories selected but no conquest pending) is simply discarded. Every territory this touches is still broadcast as `game:deployed`/`game:deployedMany`/`game:attackMoved`/`game:fortified` (see below) exactly as if the player had acted manually, so clients play the same sounds and animations either way. This also covers a disconnected player: `players`/`turnPlayerIndex` are unaffected by leaving a `playing` game (see "Leaving and reconnecting" above), so an absent turn just runs out the clock. `turnStartedAt` is when the current player's turn began (server clock, ms since epoch) — it only changes alongside `turnNumber`/`turnPlayerIndex`, not between phases, so every client (including one that just connected or reconnected mid-turn) can derive the same remaining time from it instead of trusting local state. Both `turnNumber` and `turnPhase` sit inert (`0`/`'deploy'`) in the `lobby` state, with `turnStartedAt` at `0`.
+
+`paused` is `false` unless the host has called `game:pause` to freeze the game (see below) — always `false` in the `lobby` and `ended` states. While `true`, every `game:*` action that mutates turn state (`game:selectCapital`, `game:selectTerritory`, `game:deploy`, `game:playCardSet`, `game:fortifySelectStart`, `game:fortifySelectEnd`, `game:fortify`, `game:attackSelectStart`, `game:attackSelectEnd`, `game:attack`, `game:attackMove`, `game:nextPhase`) is rejected with `game paused`, regardless of whose turn it is — `game:chat`, `game:surrender`, and simply viewing the map/cards are unaffected. The turn timer stops the instant the game is paused and resumes with exactly the time it had left when `game:pause` unpauses it — `turnStartedAt` is shifted forward by however long the pause lasted, so the remaining time (and every client's derived countdown) is unaffected by how long the game sat paused.
 
 In `'Capitals'`, `turnPhase` starts at `'capital'` instead of `'deploy'` and stays there until every player has picked one: `turnPlayerIndex` walks `0` to `players.length - 1` once, in turn order, each player calling `game:selectCapital` to name one of their own territories as their capital — a player who surrenders (see `game:surrender` below) during this phase is skipped over the same as during normal turns, and gets no capital unless it was already their turn to pick at that moment (in which case one is still picked for them at random, exactly as timing out would) — the map's `bonuses` panel and every other action stay locked out until this finishes, since `'attack'`/`'fortify'` don't exist yet and `'deploy'` hasn't started. `turnNumber` stays at `0` for the whole `'capital'` phase — each player's pick advances `turnPlayerIndex` only, never `turnNumber` — so clients conventionally render it as "Turn 0" during this phase rather than the usual `turnNumber + 1`, since no round has actually begun yet. A capital is a permanent property of the territory itself, not its owner: `isCapital` (see `GameState.territories` above) never changes once set, even if the territory is later conquered — so a player controls exactly one capital right after placement, but that count can rise (by conquering another player's) or fall to `0` (by losing their own) as the game goes on. Picking grants `3` troops on the spot (broadcast as `game:deployed`, see below) and is bound by the same `turnDuration` as everything else — a player who doesn't call `game:selectCapital` in time has one picked for them at random from their own territories, exactly as an unattended `'deploy'` drops leftover troops randomly. Once the last player has picked, the game proceeds exactly as `game:start` would otherwise begin it: `turnNumber`/`turnPlayerIndex` reset to `0` and `turnPhase` becomes `'deploy'` for the first player in turn order. `game:nextPhase` always rejects `'capital'` (`cannot skip capital phase`) — it can only be left by picking.
 
@@ -212,6 +215,12 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 - **Content:** none
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `already started`, `not enough players`, `not enough teams`.
 
+### `game:pause`
+- **When sent:** the host of a `playing` game toggles pause, from the players panel.
+- **Purpose:** toggle `paused` (see above). The caller must be host, and the game must be `playing`.
+- **Content:** none
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game not started`.
+
 ### `game:selectCapital`
 - **When sent:** in `'Capitals'` games only, the player whose turn it currently is to pick, during `'capital'`, clicks one of their own territories.
 - **Purpose:** name `territoryId` as the caller's capital: it permanently gains `isCapital: true`, receives `3` troops on the spot (broadcast as `game:deployed`, see below), and `turnPlayerIndex` advances to the next player's pick — or, if the caller was last, the game proceeds into normal turns (see `turnPhase` above). The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'capital'`, and `territoryId` must be owned by the caller.
@@ -219,13 +228,13 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```ts
   { territoryId: number }
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not capital phase`, `not your turn`, `invalid territory`, `territory not owned`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not capital phase`, `not your turn`, `invalid territory`, `territory not owned`.
 
 ### `game:nextPhase`
 - **When sent:** the player whose turn it currently is finishes a phase (`attack` or `fortify`) and is ready to move on.
 - **Purpose:** advance `turnPhase` to the next phase in order; completing `'fortify'` instead ends the turn (see `turnNumber` above). The caller must be the player at `turnPlayerIndex`, and the game must be `playing`. Cannot be used to leave `'capital'` at all — that phase only ends via `game:selectCapital`. Cannot be used to leave `'deploy'` while `troopsToDeploy` is above `0`, or while the caller holds `5` or more cards (see "Territory cards" above). Cannot be used to leave `'attack'` while a conquest is pending (`attackConquestMinTroops` non-`null`) — that must be resolved via `game:attackMove` first.
 - **Content:** none
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `cannot skip capital phase`, `cannot skip deploy phase`, `must play a card set`, `pending conquest move`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `cannot skip capital phase`, `cannot skip deploy phase`, `must play a card set`, `pending conquest move`.
 
 ### `game:selectTerritory`
 - **When sent:** the player whose turn it currently is clicks one of their selectable territories on the map, or deselects the current one.
@@ -234,7 +243,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```ts
   { territoryId: number | null }
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `invalid territory`, `territory not owned`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `invalid territory`, `territory not owned`.
 
 ### `game:deploy`
 - **When sent:** the player whose turn it currently is, during `'deploy'`, places some of their troop pool (see `turnPhase` above) on one of their own territories.
@@ -243,7 +252,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```ts
   { territoryId: number; troops: number }
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not deploy phase`, `territory not owned`, `invalid troops`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not deploy phase`, `territory not owned`, `invalid troops`.
 
 ### `game:playCardSet`
 - **When sent:** the player whose turn it currently is, during `'deploy'`, plays 3 cards from their own hand as a set.
@@ -252,7 +261,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```ts
   { cards: (number | null)[] } // exactly 3 entries
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not deploy phase`, `invalid cards`, `invalid set`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not deploy phase`, `invalid cards`, `invalid set`.
 
 ### `game:fortifySelectStart`
 - **When sent:** the player whose turn it currently is, during `'fortify'`, clicks one of their candidate start territories on the map, or cancels the in-progress fortify selection (clicking/right-clicking outside it, or pressing Escape).
@@ -261,7 +270,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```ts
   { territoryId: number | null }
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not fortify phase`, `invalid territory`, `territory not owned`, `invalid start territory`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not fortify phase`, `invalid territory`, `territory not owned`, `invalid start territory`.
 
 ### `game:fortifySelectEnd`
 - **When sent:** the player whose turn it currently is, during `'fortify'` with `fortifyStartTerritoryId` already set, clicks one of the candidate end territories on the map.
@@ -270,7 +279,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```ts
   { territoryId: number }
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not fortify phase`, `no start territory selected`, `invalid territory`, `territory not owned`, `invalid end territory`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not fortify phase`, `no start territory selected`, `invalid territory`, `territory not owned`, `invalid end territory`.
 
 ### `game:fortify`
 - **When sent:** the player whose turn it currently is, during `'fortify'` with both `fortifyStartTerritoryId` and `fortifyEndTerritoryId` set, confirms the troop movement from the fortify panel (its confirm button, or Enter).
@@ -279,7 +288,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```ts
   { troops: number }
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not fortify phase`, `no fortify selection`, `invalid troops`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not fortify phase`, `no fortify selection`, `invalid troops`.
 
 ### `game:attackSelectStart`
 - **When sent:** the player whose turn it currently is, during `'attack'`, clicks one of their candidate attacking territories on the map, or cancels the in-progress attack selection (clicking/right-clicking outside it, or pressing Escape) — only while no conquest is pending (see `attackConquestMinTroops` above).
@@ -288,7 +297,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```ts
   { territoryId: number | null }
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not attack phase`, `pending conquest move`, `invalid territory`, `territory not owned`, `invalid start territory`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not attack phase`, `pending conquest move`, `invalid territory`, `territory not owned`, `invalid start territory`.
 
 ### `game:attackSelectEnd`
 - **When sent:** the player whose turn it currently is, during `'attack'` with `attackStartTerritoryId` already set, clicks one of the candidate defending territories on the map.
@@ -306,7 +315,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
     }
   | { ok: false; error: string }
   ```
-  Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not attack phase`, `no start territory selected`, `invalid territory`, `invalid end territory`.
+  Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not attack phase`, `no start territory selected`, `invalid territory`, `invalid end territory`.
 
 ### `game:attack`
 - **When sent:** the player whose turn it currently is, during `'attack'` with both attack territories selected, confirms an attack option from the attack panel (its confirm button, or Enter).
@@ -326,7 +335,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
     }
   | { ok: false; error: string }
   ```
-  Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not attack phase`, `no attack selection`, `territory already conquered`, `invalid attack type`, `invalid troops`.
+  Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not attack phase`, `no attack selection`, `territory already conquered`, `invalid attack type`, `invalid troops`.
 
 ### `game:attackMove`
 - **When sent:** the player whose turn it currently is, during `'attack'` with a conquest pending (`attackConquestMinTroops` non-`null`), confirms how many troops to move into the just-conquered territory from the attack panel.
@@ -335,7 +344,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```ts
   { troops: number }
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `not your turn`, `not attack phase`, `no pending conquest`, `invalid troops`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not attack phase`, `no pending conquest`, `invalid troops`.
 
 ### `game:surrender`
 - **When sent:** a seated player in a `playing` game gives up.

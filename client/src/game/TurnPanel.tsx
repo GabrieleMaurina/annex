@@ -11,6 +11,7 @@ interface Props {
   isMyTurn: boolean;
   troopsToDeploy: number;
   canLeaveDeploy: boolean;
+  paused: boolean;
   setGame: (game: GameState) => void;
 }
 
@@ -21,6 +22,7 @@ function TurnPanel({
   isMyTurn,
   troopsToDeploy,
   canLeaveDeploy,
+  paused,
   setGame,
 }: Props) {
   const isDark = contrastTextColor(color) === '#ffffff';
@@ -60,6 +62,7 @@ function TurnPanel({
         </span>
       )}
       {isMyTurn &&
+        !paused &&
         turnPhase !== 'capital' &&
         (turnPhase !== 'deploy' || canLeaveDeploy) && (
           <Button size="sm" onClick={nextPhase}>

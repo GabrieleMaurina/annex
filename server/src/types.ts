@@ -67,6 +67,8 @@ export interface Game {
   turnPhase: TurnPhase;
   troopsToDeploy: number;
   turnStartedAt: number;
+  paused: boolean;
+  pausedAt: number | null;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;

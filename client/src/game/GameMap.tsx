@@ -89,6 +89,9 @@ interface Props {
   turnDuration: TurnDuration;
   troopsToDeploy: number;
   turnStartedAt: number;
+  paused: boolean;
+  hostId: number;
+  onTogglePause: () => void;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
@@ -237,6 +240,9 @@ function GameMap({
   turnDuration,
   troopsToDeploy,
   turnStartedAt,
+  paused,
+  hostId,
+  onTogglePause,
   selectedTerritoryId,
   fortifyStartTerritoryId,
   fortifyEndTerritoryId,
@@ -732,7 +738,7 @@ function GameMap({
   // them to notice and click "Next Phase" — independent of the server
   // having already done the same, in case it hasn't (yet).
   useEffect(() => {
-    if (!isMyTurn) return;
+    if (!isMyTurn || paused) return;
     const noAttackPossible =
       turnPhase === 'attack' &&
       !attackPendingConquest &&
@@ -1073,9 +1079,15 @@ function GameMap({
   }, [openPanel]);
 
   const deployPanelOpen =
-    turnPhase === 'deploy' && isMyTurn && selectedTerritoryId !== null;
+    turnPhase === 'deploy' &&
+    isMyTurn &&
+    !paused &&
+    selectedTerritoryId !== null;
   const fortifyPanelOpen =
-    turnPhase === 'fortify' && isMyTurn && fortifyEndTerritoryId !== null;
+    turnPhase === 'fortify' &&
+    isMyTurn &&
+    !paused &&
+    fortifyEndTerritoryId !== null;
   const attackRevealing = attackDiceRoll !== null && !attackDiceSettled;
   const attackDiceOnly =
     attackDiceSettled &&
@@ -1085,6 +1097,7 @@ function GameMap({
   const attackPanelOpen =
     turnPhase === 'attack' &&
     isMyTurn &&
+    !paused &&
     (attackRevealing ||
       (attackEndTerritoryId !== null &&
         (attackPendingConquest || attackWinProbabilities !== null)) ||
@@ -1110,7 +1123,7 @@ function GameMap({
   }, [selectedTerritoryId, deployTroops, setGame]);
 
   function isInteractable(t: Territory): boolean {
-    if (!isMyTurn) return false;
+    if (!isMyTurn || paused) return false;
     if (turnPhase === 'capital') return ownerById.get(t.id)?.ownerId === selfId;
     if (turnPhase === 'deploy')
       return troopsToDeploy > 0 && ownerById.get(t.id)?.ownerId === selfId;
@@ -1804,7 +1817,7 @@ function GameMap({
   function handleMouseUp(e: React.MouseEvent) {
     const drag = dragRef.current;
     dragRef.current = null;
-    if (!drag || drag.moved || !isMyTurn) return;
+    if (!drag || drag.moved || !isMyTurn || paused) return;
     const pos = getPos(e);
     const vertex = hitVertex(pos);
 
@@ -1868,7 +1881,7 @@ function GameMap({
 
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault();
-    if (!isMyTurn) return;
+    if (!isMyTurn || paused) return;
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId !== null) cancelFortify();
       return;
@@ -2078,6 +2091,9 @@ function GameMap({
         turnNumber={turnNumber}
         turnPhase={turnPhase}
         turnPlayerId={currentTurnPlayer?.id ?? null}
+        hostId={hostId}
+        paused={paused}
+        onTogglePause={onTogglePause}
         gameEnded={gameEnded}
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}
@@ -2091,6 +2107,7 @@ function GameMap({
                 turnStartedAt={turnStartedAt}
                 turnDuration={turnDuration}
                 color={playerColor(currentTurnPlayer.color)}
+                paused={paused}
               />
               <TurnPanel
                 turnPhase={turnPhase}
@@ -2099,6 +2116,7 @@ function GameMap({
                 isMyTurn={isMyTurn}
                 troopsToDeploy={troopsToDeploy}
                 canLeaveDeploy={troopsToDeploy <= 0 && !mustPlaySet}
+                paused={paused}
                 setGame={setGame}
               />
             </>
@@ -2176,6 +2194,13 @@ function GameMap({
         className="position-fixed p-3"
         style={{ zIndex: 3 }}
       >
+        <Toast
+          show={paused && !gameEnded}
+          className="mx-auto"
+          style={{ width: 'fit-content', maxWidth: 'none' }}
+        >
+          <Toast.Body className="text-nowrap fw-bold">Game Paused</Toast.Body>
+        </Toast>
         {toasts.map((t) => (
           <Toast
             key={t.id}

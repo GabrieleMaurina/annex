@@ -59,6 +59,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     turnPhase: game.turnPhase,
     troopsToDeploy: game.troopsToDeploy,
     turnStartedAt: game.turnStartedAt,
+    paused: game.paused,
     selectedTerritoryId: game.selectedTerritoryId,
     fortifyStartTerritoryId: game.fortifyStartTerritoryId,
     fortifyEndTerritoryId: game.fortifyEndTerritoryId,

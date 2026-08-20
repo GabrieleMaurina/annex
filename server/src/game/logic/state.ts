@@ -59,16 +59,20 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     attackConquestMinTroops: game.attackConquestMinTroops,
     winnerIds: game.winnerIds,
     nextSetBaseValues: nextSetBaseValues(game),
-    players: toSummaries(game.playerIds, playersById).map((player) => ({
-      ...player,
-      team: game.playerTeams.get(player.id) ?? 0,
-      color: game.playerColors.get(player.id) ?? 0,
-      territoryCount: stats.get(player.id)?.territoryCount ?? 0,
-      troopCount: stats.get(player.id)?.troopCount ?? 0,
-      cardCount: game.playerCards.get(player.id)?.length ?? 0,
-      connected: playersById.get(player.id)?.connected ?? false,
-      surrendered: game.surrenderedIds.has(player.id),
-    })),
+    players: toSummaries(game.playerIds, playersById).map((player) => {
+      const territoryCount = stats.get(player.id)?.territoryCount ?? 0;
+      return {
+        ...player,
+        team: game.playerTeams.get(player.id) ?? 0,
+        color: game.playerColors.get(player.id) ?? 0,
+        territoryCount,
+        troopCount: stats.get(player.id)?.troopCount ?? 0,
+        cardCount: game.playerCards.get(player.id)?.length ?? 0,
+        connected: playersById.get(player.id)?.connected ?? false,
+        surrendered: game.surrenderedIds.has(player.id),
+        eliminated: game.state !== 'lobby' && territoryCount === 0,
+      };
+    }),
     spectators: toSummaries(game.spectatorIds, playersById),
     bannedPlayers: toSummaries([...game.bannedIds], playersById),
     territories: [...game.territoryOwners.entries()].map(([id, ownerId]) => ({

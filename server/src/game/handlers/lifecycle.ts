@@ -35,8 +35,8 @@ import { advanceTurnPhase, startTurns } from '../logic/turns';
 const MAX_GAME_NAME_LENGTH = 20;
 
 const GAME_MODE_VALUES: GameMode[] = [
-  'World Domination',
-  'Capital Conquest',
+  'Supremacy',
+  'Capitals',
   'Team Deathmatch',
 ];
 const BLITZ_VALUES: Blitz[] = ['Balanced', 'True'];
@@ -93,7 +93,7 @@ export function registerGameHandlers(
         slots: 2,
         hostId: player.id,
         state: 'lobby',
-        gameMode: 'World Domination',
+        gameMode: 'Supremacy',
         blitz: 'Balanced',
         defenceDice: 2,
         cards: 'Fixed',
@@ -405,6 +405,8 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'game not started' });
     if (!game.playerIds.includes(player.id))
       return callback({ ok: false, error: 'not a player' });
+    if (![...game.territoryOwners.values()].includes(player.id))
+      return callback({ ok: false, error: 'already eliminated' });
 
     game.surrenderedIds.add(player.id);
     player.gameName = null;

@@ -21,13 +21,19 @@ import {
   drawFortifyPath,
   getAnimationDuration,
   hasActiveAnimations,
+  onAnimationsToggle,
   pruneAnimations,
   setContinuousAnimation,
   startAnimation,
 } from './animations';
 import { getAttackEndCandidates, getAttackStartCandidates } from './attack';
 import AttackPanel, { type AttackType, type DiceRoll } from './AttackPanel';
-import { comboKey, diffNewCards, enumerateCombos } from './cards';
+import {
+  comboKey,
+  diffNewCards,
+  enumerateCombos,
+  type EvaluatedCombo,
+} from './cards';
 import CardsPanel, { CardFace } from './CardsPanel';
 import {
   getFortifyEndCandidates,
@@ -346,6 +352,12 @@ function GameMap({
   }
 
   useEffect(() => {
+    return onAnimationsToggle(() => {
+      if (!areAnimationsDisabled()) startAnimationLoop();
+    });
+  }, []);
+
+  useEffect(() => {
     loadGameMap(mapName).then(({ territories, bonuses, imageSrc }) => {
       setTerritories(territories);
       setBonuses(bonuses);
@@ -383,12 +395,24 @@ function GameMap({
   const mustPlaySet = hand.length >= 5;
 
   const playCardSet = useCallback(
-    (selection: (number | null)[]) => {
-      socket.emit('game:playCardSet', { cards: selection }, (res: Ack) => {
-        if (res.ok) setGame(res.game);
+    (combo: EvaluatedCombo) => {
+      const cards = combo.cards.map((c) => c.territoryId);
+      socket.emit('game:playCardSet', { cards }, (res: Ack) => {
+        if (!res.ok) return;
+        setGame(res.game);
+        setSelectedComboKey(null);
+        setHand((prev) => {
+          const next = [...prev];
+          for (const card of combo.cards) {
+            const index = next.indexOf(card);
+            if (index !== -1) next.splice(index, 1);
+          }
+          return next;
+        });
+        if (hand.length - combo.cards.length < 5) setOpenPanel(null);
       });
     },
-    [setGame],
+    [setGame, hand],
   );
   const maxBlitzTroops =
     attackStartTerritoryId !== null
@@ -1024,7 +1048,8 @@ function GameMap({
 
   function isInteractable(t: Territory): boolean {
     if (!isMyTurn) return false;
-    if (turnPhase === 'deploy') return ownerById.get(t.id)?.ownerId === selfId;
+    if (turnPhase === 'deploy')
+      return troopsToDeploy > 0 && ownerById.get(t.id)?.ownerId === selfId;
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId === null)
         return fortifyStartCandidates.has(t.id);
@@ -1969,6 +1994,7 @@ function GameMap({
         spectators={spectators}
         isTeamDeathmatch={isTeamDeathmatch}
         selfId={selfId}
+        turnNumber={turnNumber}
         turnPlayerId={currentTurnPlayer?.id ?? null}
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}

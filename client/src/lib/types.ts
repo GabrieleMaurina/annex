@@ -24,8 +24,7 @@ export type Blitz = 'Balanced' | 'True';
 export type DefenceDice = 2 | 3;
 export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
-export type GameMode =
-  'World Domination' | 'Capital Conquest' | 'Team Deathmatch';
+export type GameMode = 'Supremacy' | 'Capitals' | 'Team Deathmatch';
 export type TurnPhase = 'deploy' | 'attack' | 'fortify';
 
 export interface GameState {
@@ -62,6 +61,7 @@ export interface GameState {
     cardCount: number;
     connected: boolean;
     surrendered: boolean;
+    eliminated: boolean;
   }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];

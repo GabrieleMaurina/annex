@@ -37,8 +37,8 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               applySettings({ gameMode: e.target.value as GameMode })
             }
           >
-            <option value="World Domination">World Domination</option>
-            <option value="Capital Conquest">Capital Conquest</option>
+            <option value="Supremacy">Supremacy</option>
+            <option value="Capitals">Capitals</option>
             <option value="Team Deathmatch">Team Deathmatch</option>
           </Form.Select>
         ) : (

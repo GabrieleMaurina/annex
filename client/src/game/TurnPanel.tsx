@@ -41,7 +41,7 @@ function TurnPanel({
         color: contrastTextColor(color),
       }}
     >
-      <span>{isMyTurn ? 'You' : currentPlayerName}:</span>
+      <span>{isMyTurn ? 'You' : currentPlayerName}</span>
       <span className="text-capitalize fw-bold" style={{ fontSize: '1.4em' }}>
         {turnPhase}
       </span>

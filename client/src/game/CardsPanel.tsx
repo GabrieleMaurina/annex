@@ -9,7 +9,7 @@ interface Props {
   selectedCombo: EvaluatedCombo | undefined;
   onSelectCombo: (combo: EvaluatedCombo) => void;
   canPlay: boolean;
-  onPlaySet: (selection: (number | null)[]) => void;
+  onPlaySet: (combo: EvaluatedCombo) => void;
 }
 
 const SELECTED_BORDER_COLOR = '#0d6efd'; // Bootstrap's primary button blue
@@ -106,7 +106,11 @@ function ComboRow({
           />
         ))}
       </div>
-      <div className="fw-bold ms-auto">+{combo.totalValue}</div>
+      <div className="fw-bold ms-auto">
+        +{combo.baseValue}
+        {combo.territoryBonusIds.length > 0 &&
+          ` (+${combo.territoryBonusIds.length * 2})`}
+      </div>
     </ListGroup.Item>
   );
 }
@@ -178,10 +182,7 @@ function CardsPanel({
             size="sm"
             className="w-100"
             disabled={!canPlay || !selectedCombo}
-            onClick={() =>
-              selectedCombo &&
-              onPlaySet(selectedCombo.cards.map((c) => c.territoryId))
-            }
+            onClick={() => selectedCombo && onPlaySet(selectedCombo)}
           >
             Play Set
           </Button>

@@ -166,6 +166,24 @@ function forceEndTurn(game: Game, io: Server) {
   advanceToNextPlayer(game, io);
 }
 
+function ownsAnyTerritory(game: Game, playerId: number): boolean {
+  for (const ownerId of game.territoryOwners.values()) {
+    if (ownerId === playerId) return true;
+  }
+  return false;
+}
+
+function nextAlivePlayerIndex(game: Game): number {
+  const playerCount = game.playerIds.length;
+  let index = game.turnPlayerIndex;
+  for (let i = 0; i < playerCount; i++) {
+    index = (index + 1) % playerCount;
+    if (index === 0) game.turnNumber++;
+    if (ownsAnyTerritory(game, game.playerIds[index])) return index;
+  }
+  return game.turnPlayerIndex;
+}
+
 export function advanceToNextPlayer(game: Game, io: Server) {
   if (game.conqueredThisTurn) {
     const endingPlayerId = game.playerIds[game.turnPlayerIndex];
@@ -174,8 +192,7 @@ export function advanceToNextPlayer(game: Game, io: Server) {
   }
   game.conqueredThisTurn = false;
 
-  const nextIndex = (game.turnPlayerIndex + 1) % game.playerIds.length;
-  if (nextIndex === 0) game.turnNumber++;
+  const nextIndex = nextAlivePlayerIndex(game);
   game.turnPlayerIndex = nextIndex;
   game.turnPhase = 'deploy';
   game.selectedTerritoryId = null;

@@ -9,6 +9,7 @@ interface Props {
   spectators: GameState['spectators'];
   isTeamDeathmatch: boolean;
   selfId: number | null;
+  turnNumber: number;
   turnPlayerId: number | null;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
@@ -20,13 +21,15 @@ function PlayersPanel({
   spectators,
   isTeamDeathmatch,
   selfId,
+  turnNumber,
   turnPlayerId,
   collapsed,
   setCollapsed,
   navigate,
 }: Props) {
   const isSpectator = spectators.some((s) => s.id === selfId);
-  const canSurrender = !isSpectator && players.some((p) => p.id === selfId);
+  const self = players.find((p) => p.id === selfId);
+  const canSurrender = !isSpectator && !!self && !self.eliminated;
 
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
@@ -34,6 +37,7 @@ function PlayersPanel({
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
+  const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
 
   function surrender() {
     socket.emit('game:surrender', (res: Ack) => {
@@ -62,10 +66,14 @@ function PlayersPanel({
         maxHeight: 'calc(100vh - 2rem)',
       }}
     >
-      <div className="d-flex justify-content-end mb-3">
+      <div className="d-flex align-items-center position-relative mb-3">
+        <div className="position-absolute start-50 translate-middle-x fw-bold">
+          Turn {turnNumber + 1}
+        </div>
         <Button
           variant="secondary"
           size="sm"
+          className="ms-auto"
           onClick={() => setCollapsed(true)}
         >
           &gt;
@@ -147,7 +155,21 @@ function PlayersPanel({
                   </td>
                   <td className="align-middle text-truncate" style={rowStyle}>
                     {p.name}
-                    {!p.connected && (
+                    {p.eliminated && (
+                      <img
+                        src={
+                          isDark
+                            ? (whiteDeathIcon ?? '/icons/death.svg')
+                            : '/icons/death.svg'
+                        }
+                        width={12}
+                        height={12}
+                        alt="Eliminated"
+                        title="Eliminated"
+                        className="ms-1"
+                      />
+                    )}
+                    {!p.connected && !p.eliminated && (
                       <img
                         src={
                           isDark

@@ -53,6 +53,12 @@ function animationLifetime(a: Animation): number {
 let animations: Animation[] = [];
 let disabled = false;
 let continuousAnimationActive = false;
+const toggleListeners = new Set<() => void>();
+
+export function onAnimationsToggle(listener: () => void): () => void {
+  toggleListeners.add(listener);
+  return () => toggleListeners.delete(listener);
+}
 
 export function startAnimation(
   type: AnimationType,
@@ -80,6 +86,7 @@ export function areAnimationsDisabled(): boolean {
 export function toggleAnimationsDisabled() {
   disabled = !disabled;
   if (disabled) animations = [];
+  toggleListeners.forEach((listener) => listener());
 }
 
 export function pruneAnimations() {

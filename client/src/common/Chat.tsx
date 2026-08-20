@@ -56,8 +56,8 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
 
   return (
     <div
-      className={`position-fixed bottom-0 start-0 m-3 p-2 bg-body border rounded${
-        transparent ? ' bg-opacity-75' : ''
+      className={`position-fixed bottom-0 start-0 m-3 p-2 border rounded ${
+        open ? `bg-body${transparent ? ' bg-opacity-75' : ''}` : 'bg-secondary'
       }`}
       style={{ zIndex: 1 }}
     >

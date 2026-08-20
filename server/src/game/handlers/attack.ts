@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
+import { hasAnyAttack } from '../logic/autoSkip';
 import {
   balancedBlitz,
   balancedWinProbs,
@@ -12,6 +13,7 @@ import {
 import { checkGameEnd } from '../logic/end';
 import { gameState } from '../logic/state';
 import { gameRoomName, games } from '../logic/store';
+import { advanceTurnPhase, rewindTurnTimerIfBelowHalf } from '../logic/turns';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }
@@ -72,6 +74,13 @@ function isAttackEndCandidate(
   const map = maps.get(game.mapName)!;
   const territory = map.territories.find((t) => t.id === startId);
   return territory?.neighbors.includes(territoryId) ?? false;
+}
+
+function ownsAnyTerritory(game: Game, playerId: number): boolean {
+  for (const ownerId of game.territoryOwners.values()) {
+    if (ownerId === playerId) return true;
+  }
+  return false;
 }
 
 function hasPendingConquest(game: Game, playerId: number): boolean {
@@ -262,14 +271,35 @@ export function registerAttackHandlers(
       let blitzWinProbabilities: number[] = [];
       if (conquered) {
         game.territoryOwners.set(endId, player.id);
+        game.conqueredThisTurn = true;
         checkGameEnd(game);
         if (game.state === 'playing') {
           const remainingAttackers = attackingTroops - attackLosses;
-          game.attackConquestMinTroops = Math.min(
-            troops,
-            3,
-            remainingAttackers - 1,
-          );
+          const minMoveTroops = Math.min(troops, 3, remainingAttackers - 1);
+
+          if (!ownsAnyTerritory(game, defenderId)) {
+            const defenderHand = game.playerCards.get(defenderId) ?? [];
+            const attackerHand = game.playerCards.get(player.id) ?? [];
+            attackerHand.push(...defenderHand);
+            game.playerCards.set(defenderId, []);
+
+            if (attackerHand.length >= 5) {
+              game.territoryTroops.set(
+                startId,
+                remainingAttackers - minMoveTroops,
+              );
+              game.territoryTroops.set(endId, minMoveTroops);
+              game.attackStartTerritoryId = null;
+              game.attackEndTerritoryId = null;
+              game.attackConquestMinTroops = null;
+              game.turnPhase = 'deploy';
+              rewindTurnTimerIfBelowHalf(game, io);
+            } else {
+              game.attackConquestMinTroops = minMoveTroops;
+            }
+          } else {
+            game.attackConquestMinTroops = minMoveTroops;
+          }
         }
       } else {
         const remainingAttackers = attackingTroops - attackLosses;
@@ -284,6 +314,15 @@ export function registerAttackHandlers(
           game.attackStartTerritoryId = null;
           game.attackEndTerritoryId = null;
         }
+      }
+
+      if (
+        game.state === 'playing' &&
+        game.turnPhase === 'attack' &&
+        game.attackConquestMinTroops === null &&
+        !hasAnyAttack(game, player.id)
+      ) {
+        advanceTurnPhase(game, io);
       }
 
       io.to(gameRoomName(game.name)).emit('game:attacked', {
@@ -342,6 +381,8 @@ export function registerAttackHandlers(
       game.attackStartTerritoryId = null;
       game.attackEndTerritoryId = null;
       game.attackConquestMinTroops = null;
+
+      if (!hasAnyAttack(game, player.id)) advanceTurnPhase(game, io);
 
       io.to(gameRoomName(game.name)).emit('game:attackMoved', {
         territoryId: endId,

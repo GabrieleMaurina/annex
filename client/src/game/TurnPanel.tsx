@@ -10,6 +10,7 @@ interface Props {
   color: string;
   isMyTurn: boolean;
   troopsToDeploy: number;
+  canLeaveDeploy: boolean;
   setGame: (game: GameState) => void;
 }
 
@@ -19,6 +20,7 @@ function TurnPanel({
   color,
   isMyTurn,
   troopsToDeploy,
+  canLeaveDeploy,
   setGame,
 }: Props) {
   const isDark = contrastTextColor(color) === '#ffffff';
@@ -39,9 +41,9 @@ function TurnPanel({
         color: contrastTextColor(color),
       }}
     >
-      <span>
-        {isMyTurn ? 'Your' : `${currentPlayerName}'s`} turn:{' '}
-        <span className="text-capitalize">{turnPhase}</span>
+      <span>{isMyTurn ? 'You' : currentPlayerName}:</span>
+      <span className="text-capitalize fw-bold" style={{ fontSize: '1.4em' }}>
+        {turnPhase}
       </span>
       {turnPhase === 'deploy' && (
         <span className="d-flex align-items-center gap-1">
@@ -57,7 +59,7 @@ function TurnPanel({
           {troopsToDeploy}
         </span>
       )}
-      {isMyTurn && turnPhase !== 'deploy' && (
+      {isMyTurn && (turnPhase !== 'deploy' || canLeaveDeploy) && (
         <Button size="sm" onClick={nextPhase}>
           {turnPhase === 'fortify' ? 'End Turn' : 'Next Phase'}
         </Button>

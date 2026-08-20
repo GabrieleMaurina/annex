@@ -173,7 +173,7 @@ export function registerFortifyHandlers(
         (game.territoryTroops.get(endId) ?? 0) + troops,
       );
 
-      advanceTurnPhase(game);
+      advanceTurnPhase(game, io);
 
       io.to(gameRoomName(game.name)).emit('game:fortified', {
         territoryId: endId,

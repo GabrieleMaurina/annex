@@ -235,8 +235,9 @@ function drawArrowHeads(
   const perpX = -uy;
   const perpY = ux;
 
-  const offset =
-    (performance.now() * ARROW_CHEVRON_SPEED) % ARROW_CHEVRON_SPACING;
+  const offset = disabled
+    ? 0
+    : (performance.now() * ARROW_CHEVRON_SPEED) % ARROW_CHEVRON_SPACING;
   for (let d = offset; d < length; d += ARROW_CHEVRON_SPACING) {
     const cx = from.x + ux * d;
     const cy = from.y + uy * d;
@@ -260,7 +261,6 @@ export function drawFortifyPath(
   ctx: CanvasRenderingContext2D,
   segments: [{ x: number; y: number }, { x: number; y: number }][],
 ) {
-  if (disabled) return;
   ctx.save();
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 4;

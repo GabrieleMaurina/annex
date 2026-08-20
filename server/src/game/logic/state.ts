@@ -1,4 +1,5 @@
 import { Game, Player } from '../../types';
+import { nextSetBaseValues } from './cards';
 
 function toSummaries(ids: number[], playersById: Map<number, Player>) {
   return ids
@@ -57,12 +58,14 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     attackEndTerritoryId: game.attackEndTerritoryId,
     attackConquestMinTroops: game.attackConquestMinTroops,
     winnerIds: game.winnerIds,
+    nextSetBaseValues: nextSetBaseValues(game),
     players: toSummaries(game.playerIds, playersById).map((player) => ({
       ...player,
       team: game.playerTeams.get(player.id) ?? 0,
       color: game.playerColors.get(player.id) ?? 0,
       territoryCount: stats.get(player.id)?.territoryCount ?? 0,
       troopCount: stats.get(player.id)?.troopCount ?? 0,
+      cardCount: game.playerCards.get(player.id)?.length ?? 0,
       connected: playersById.get(player.id)?.connected ?? false,
       surrendered: game.surrenderedIds.has(player.id),
     })),

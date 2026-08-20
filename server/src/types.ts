@@ -23,6 +23,13 @@ export interface Player {
   connected: boolean;
 }
 
+export type CardSymbol = 'soldier' | 'humvee' | 'tank';
+
+export interface Card {
+  territoryId: number | null;
+  symbol: CardSymbol | null;
+}
+
 export type Blitz = 'Balanced' | 'True';
 export type DefenceDice = 2 | 3;
 export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
@@ -63,4 +70,9 @@ export interface Game {
   hostPriority: number[];
   surrenderedIds: Set<number>;
   winnerIds: number[];
+  deck: Card[];
+  playerCards: Map<number, Card[]>;
+  conqueredThisTurn: boolean;
+  cardSetsPlayed: number;
+  cardsLastSetValue: number;
 }

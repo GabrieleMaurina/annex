@@ -1,6 +1,18 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Toast, ToastContainer } from 'react-bootstrap';
+import { Badge, Button, Toast, ToastContainer } from 'react-bootstrap';
+import { useWhiteIcon } from '../common/icon';
+import { continentColor, contrastTextColor, playerColor } from '../lib/palette';
+import { socket } from '../lib/socket';
+import { playSound } from '../lib/sounds';
+import type {
+  Ack,
+  Card,
+  CardSymbol,
+  GameState,
+  TurnDuration,
+  TurnPhase,
+} from '../lib/types';
 import {
   areAnimationsDisabled,
   DICE_ROLL_STEP_DURATION,
@@ -15,6 +27,8 @@ import {
 } from './animations';
 import { getAttackEndCandidates, getAttackStartCandidates } from './attack';
 import AttackPanel, { type AttackType, type DiceRoll } from './AttackPanel';
+import { comboKey, diffNewCards, enumerateCombos } from './cards';
+import CardsPanel, { CardFace } from './CardsPanel';
 import {
   getFortifyEndCandidates,
   getFortifyPath,
@@ -32,16 +46,13 @@ import {
   clampOffset,
   getClampedOffset as computeClampedOffset,
   getScales as computeScales,
+  convexHull,
   getAnchoredPanelPosition,
 } from './mapMath';
-import { continentColor, contrastTextColor, playerColor } from '../lib/palette';
 import PlayersPanel from './PlayersPanel';
-import { socket } from '../lib/socket';
-import { playSound } from '../lib/sounds';
 import TroopPanel from './TroopPanel';
 import TurnPanel from './TurnPanel';
 import TurnProgressBar from './TurnProgressBar';
-import type { Ack, GameState, TurnDuration, TurnPhase } from '../lib/types';
 
 type AttackSelectEndAck =
   | { ok: true; game: GameState; blitzWinProbabilities: number[] }
@@ -76,6 +87,7 @@ interface Props {
   attackStartTerritoryId: number | null;
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
+  nextSetBaseValues: GameState['nextSetBaseValues'];
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
@@ -92,6 +104,75 @@ function isTypingTarget(target: EventTarget | null): boolean {
 interface Point {
   x: number;
   y: number;
+}
+
+function normalizeAngle(angle: number): number {
+  const twoPi = Math.PI * 2;
+  return ((angle % twoPi) + twoPi) % twoPi;
+}
+
+// Traces the true offset outline of a convex polygon (its Minkowski sum with
+// a disc of radius `pad`): each edge pushed outward along its own normal by
+// exactly `pad`, with the gaps between edges filled by an arc of radius
+// `pad` centered on the original vertex. Unlike padding each vertex outward
+// from the polygon's centroid, this keeps every point on the line exactly
+// `pad` away from the nearest original vertex/edge — so corners always sit
+// the same distance from the territory that produced them, however
+// irregular the hull's shape.
+function drawConvexOffsetPath(
+  ctx: CanvasRenderingContext2D,
+  hull: Point[],
+  pad: number,
+) {
+  const n = hull.length;
+  // Outward normal per edge, found by flipping the perpendicular if it
+  // points toward the centroid — convex, so the true outward normal always
+  // points away from it, regardless of the hull's winding order.
+  const centroid = {
+    x: hull.reduce((s, p) => s + p.x, 0) / n,
+    y: hull.reduce((s, p) => s + p.y, 0) / n,
+  };
+  const offsetEdges = hull.map((a, i) => {
+    const b = hull[(i + 1) % n];
+    const ex = b.x - a.x;
+    const ey = b.y - a.y;
+    const len = Math.hypot(ex, ey) || 1;
+    let nx = -ey / len;
+    let ny = ex / len;
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    if ((mid.x - centroid.x) * nx + (mid.y - centroid.y) * ny < 0) {
+      nx = -nx;
+      ny = -ny;
+    }
+    return {
+      a: { x: a.x + nx * pad, y: a.y + ny * pad },
+      b: { x: b.x + nx * pad, y: b.y + ny * pad },
+    };
+  });
+
+  // Whether arcs should sweep clockwise or counter-clockwise is constant
+  // for every vertex of a convex polygon — derive it once, from the first
+  // corner, by picking whichever direction is the short way round.
+  const arcAngles = (i: number) => {
+    const vertex = hull[i];
+    const from = offsetEdges[(i - 1 + n) % n].b;
+    const to = offsetEdges[i].a;
+    return {
+      start: Math.atan2(from.y - vertex.y, from.x - vertex.x),
+      end: Math.atan2(to.y - vertex.y, to.x - vertex.x),
+    };
+  };
+  const firstAngles = arcAngles(0);
+  const anticlockwise =
+    normalizeAngle(firstAngles.end - firstAngles.start) > Math.PI;
+
+  ctx.moveTo(offsetEdges[n - 1].b.x, offsetEdges[n - 1].b.y);
+  for (let i = 0; i < n; i++) {
+    const { start, end } = arcAngles(i);
+    ctx.arc(hull[i].x, hull[i].y, pad, start, end, anticlockwise);
+    ctx.lineTo(offsetEdges[i].b.x, offsetEdges[i].b.y);
+  }
+  ctx.closePath();
 }
 
 interface Transform {
@@ -118,6 +199,12 @@ const ATTACK_PANEL_WIDTH = 460;
 const ATTACK_PANEL_HEIGHT = 160;
 const SCREEN_EDGE_MARGIN = 8;
 const TURN_PANEL_RESERVED_HEIGHT = 70;
+// Gap below the settings button (measured at runtime, see below) that the
+// Cards/Bonuses buttons are offset by — matches the gap between Cards and
+// Bonuses themselves, so all three read as evenly spaced regardless of the
+// settings button's actual rendered height.
+const TOP_BUTTON_GAP = 16;
+const DEFAULT_CARDS_BUTTONS_TOP = 63;
 
 const STATE_STYLE = {
   normal: { stroke: '#000000', width: 2 },
@@ -145,14 +232,34 @@ function GameMap({
   attackStartTerritoryId,
   attackEndTerritoryId,
   attackConquestMinTroops,
+  nextSetBaseValues,
   setGame,
   setChatOpen,
   navigate,
 }: Props) {
+  const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
+  const whiteBonusIcon = useWhiteIcon('/icons/bonus.svg');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<DragState>(null);
   const [territories, setTerritories] = useState<Territory[]>([]);
+  const [bonuses, setBonuses] = useState<number[]>([]);
+  const [hand, setHand] = useState<Card[]>([]);
+  const handRef = useRef<Card[]>([]);
+  const [awardedCards, setAwardedCards] = useState<
+    { id: number; card: Card }[]
+  >([]);
+  const awardIdRef = useRef(0);
+  const [selectedComboKey, setSelectedComboKey] = useState<string | null>(null);
+  const [openPanel, setOpenPanel] = useState<'cards' | 'bonuses' | null>(null);
+  const cardsOpen = openPanel === 'cards';
+  const bonusesOpen = openPanel === 'bonuses';
+  const [cardsButtonsTop, setCardsButtonsTop] = useState(
+    DEFAULT_CARDS_BUTTONS_TOP,
+  );
+  const cardsPanelRef = useRef<HTMLDivElement>(null);
+  const cardsButtonRef = useRef<HTMLButtonElement>(null);
+  const bonusesButtonRef = useRef<HTMLButtonElement>(null);
   const [transform, setTransform] = useState<Transform>({
     zoom: 1,
     offsetX: 0,
@@ -210,6 +317,18 @@ function GameMap({
   const territoriesRef = useRef<Territory[]>([]);
   const colorByPlayerIdRef = useRef(new Map<number, number>());
   const attackOptionIndexRef = useRef(0);
+  const autoAdvanceKeyRef = useRef<string | null>(null);
+  const cardImagesRef = useRef<Record<CardSymbol, HTMLImageElement>>({
+    soldier: new Image(),
+    humvee: new Image(),
+    tank: new Image(),
+  });
+
+  useEffect(() => {
+    for (const symbol of ['soldier', 'humvee', 'tank'] as const) {
+      cardImagesRef.current[symbol].src = `/images/${symbol}.svg`;
+    }
+  }, []);
 
   function startAnimationLoop() {
     if (animationLoopActiveRef.current) return;
@@ -227,8 +346,9 @@ function GameMap({
   }
 
   useEffect(() => {
-    loadGameMap(mapName).then(({ territories, imageSrc }) => {
+    loadGameMap(mapName).then(({ territories, bonuses, imageSrc }) => {
       setTerritories(territories);
+      setBonuses(bonuses);
       setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
       if (!imageSrc) {
         imageRef.current = null;
@@ -248,6 +368,28 @@ function GameMap({
   const currentTurnPlayer = players[turnPlayerIndex];
   const isMyTurn = currentTurnPlayer?.id === selfId;
   const ownerById = new Map(ownership.map((o) => [o.id, o]));
+  const ownedTerritoryIds = new Set(
+    ownership.filter((o) => o.ownerId === selfId).map((o) => o.id),
+  );
+  const cardByTerritoryId = new Map(
+    hand
+      .filter((c) => c.territoryId !== null)
+      .map((c) => [c.territoryId as number, c]),
+  );
+  const combos = enumerateCombos(hand, nextSetBaseValues, ownedTerritoryIds);
+  const selectedCombo =
+    combos.find((c) => comboKey(c) === selectedComboKey) ?? combos[0];
+  const hasSetToPlay = combos.length > 0;
+  const mustPlaySet = hand.length >= 5;
+
+  const playCardSet = useCallback(
+    (selection: (number | null)[]) => {
+      socket.emit('game:playCardSet', { cards: selection }, (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      });
+    },
+    [setGame],
+  );
   const maxBlitzTroops =
     attackStartTerritoryId !== null
       ? Math.max(1, (ownerById.get(attackStartTerritoryId)?.troops ?? 1) - 1)
@@ -537,6 +679,29 @@ function GameMap({
       : 1;
   const maxRegularTroops = Math.min(maxBlitzTroops, 3);
 
+  // Mirrors the server's own auto-skip: if the current player can't attack
+  // (or, in fortify, can't fortify) at all, move on without waiting for
+  // them to notice and click "Next Phase" — independent of the server
+  // having already done the same, in case it hasn't (yet).
+  useEffect(() => {
+    if (!isMyTurn) return;
+    const noAttackPossible =
+      turnPhase === 'attack' &&
+      !attackPendingConquest &&
+      attackStartCandidates.size === 0;
+    const noFortifyPossible =
+      turnPhase === 'fortify' && fortifyStartCandidates.size === 0;
+    if (!noAttackPossible && !noFortifyPossible) return;
+
+    const key = `${turnNumber}-${turnPlayerIndex}-${turnPhase}`;
+    if (autoAdvanceKeyRef.current === key) return;
+    autoAdvanceKeyRef.current = key;
+
+    socket.emit('game:nextPhase', (res: Ack) => {
+      if (res.ok) setGame(res.game);
+    });
+  });
+
   useEffect(() => {
     attackOptionIndexRef.current =
       attackSelectedType === 'blitz'
@@ -581,6 +746,14 @@ function GameMap({
         id: Date.now(),
         message: `${currentTurnPlayer.name} received ${troopsToDeploy} troops at the start of the turn`,
       },
+      ...(isMyTurn && hasSetToPlay
+        ? [
+            {
+              id: Date.now() + 1,
+              message: 'You have a card set available to play!',
+            },
+          ]
+        : []),
     ]);
   }
 
@@ -601,11 +774,13 @@ function GameMap({
   }
 
   useEffect(() => {
-    function playTroopChangeEffect(
-      sound: string,
-      { territoryId, troops }: { territoryId: number; troops: number },
-    ) {
-      playSound(sound);
+    function animateDeploy({
+      territoryId,
+      troops,
+    }: {
+      territoryId: number;
+      troops: number;
+    }) {
       if (areAnimationsDisabled()) return;
       const territory = territoriesRef.current.find(
         (t) => t.id === territoryId,
@@ -626,6 +801,13 @@ function GameMap({
           frozenTroopsRef.current.delete(territoryId);
         }, getAnimationDuration('deploy'));
       }
+    }
+    function playTroopChangeEffect(
+      sound: string,
+      payload: { territoryId: number; troops: number },
+    ) {
+      playSound(sound);
+      animateDeploy(payload);
       startAnimationLoop();
     }
     function onDeployed(payload: { territoryId: number; troops: number }) {
@@ -637,13 +819,26 @@ function GameMap({
     function onAttackMoved(payload: { territoryId: number; troops: number }) {
       playTroopChangeEffect('fortify', payload);
     }
+    // The server force-completing an unattended deploy phase (troops
+    // dropped randomly, then any 5+-card hand auto-played) can touch many
+    // territories at once — one sound for the whole batch, one animation
+    // per territory, rather than replaying the sound for each.
+    function onDeployedMany(payload: {
+      deposits: { territoryId: number; troops: number }[];
+    }) {
+      playSound('deploy');
+      for (const deposit of payload.deposits) animateDeploy(deposit);
+      startAnimationLoop();
+    }
     socket.on('game:deployed', onDeployed);
     socket.on('game:fortified', onFortified);
     socket.on('game:attackMoved', onAttackMoved);
+    socket.on('game:deployedMany', onDeployedMany);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
       socket.off('game:attackMoved', onAttackMoved);
+      socket.off('game:deployedMany', onDeployedMany);
     };
   }, []);
 
@@ -733,6 +928,63 @@ function GameMap({
     };
   }, []);
 
+  useEffect(() => {
+    let receivedFirstHand = false;
+    function onCards(payload: { cards: Card[] }) {
+      if (receivedFirstHand) {
+        const added = diffNewCards(handRef.current, payload.cards);
+        for (const card of added) {
+          const id = ++awardIdRef.current;
+          setAwardedCards((prev) => [...prev, { id, card }]);
+          setTimeout(() => {
+            setAwardedCards((prev) => prev.filter((a) => a.id !== id));
+          }, 4000);
+        }
+      }
+      receivedFirstHand = true;
+      handRef.current = payload.cards;
+      setHand(payload.cards);
+    }
+    socket.on('game:cards', onCards);
+    return () => {
+      socket.off('game:cards', onCards);
+    };
+  }, []);
+
+  useEffect(() => {
+    const settingsEl = document.getElementById('settings-toggle');
+    if (!settingsEl) return;
+    function measure() {
+      setCardsButtonsTop(
+        settingsEl!.getBoundingClientRect().bottom + TOP_BUTTON_GAP,
+      );
+    }
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(settingsEl);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (openPanel === null) return;
+    function handleOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      // Either toggle button manages openPanel itself via its own onClick —
+      // never fight it here, or clicking one to switch panels would get
+      // undone by this handler closing the panel it just opened.
+      if (cardsButtonRef.current?.contains(target)) return;
+      if (bonusesButtonRef.current?.contains(target)) return;
+      if (cardsPanelRef.current?.contains(target)) return;
+      setOpenPanel(null);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('contextmenu', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('contextmenu', handleOutside);
+    };
+  }, [openPanel]);
+
   const deployPanelOpen =
     turnPhase === 'deploy' && isMyTurn && selectedTerritoryId !== null;
   const fortifyPanelOpen =
@@ -800,6 +1052,10 @@ function GameMap({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        if (openPanel !== null) {
+          setOpenPanel(null);
+          return;
+        }
         if (
           isMyTurn &&
           turnPhase === 'fortify' &&
@@ -909,6 +1165,7 @@ function GameMap({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
+    openPanel,
     isMyTurn,
     turnPhase,
     selectedTerritoryId,
@@ -1049,8 +1306,6 @@ function GameMap({
       if (id === fortifyStartTerritoryId || id === fortifyEndTerritoryId)
         return 'selected';
       if (id === hoveredId) return 'hovered';
-      if (fortifyStartTerritoryId === null && fortifyStartCandidates.has(id))
-        return 'selectable';
       if (
         fortifyStartTerritoryId !== null &&
         fortifyEndTerritoryId === null &&
@@ -1151,6 +1406,58 @@ function GameMap({
       }
     }
 
+    const continentGroups = bonusesOpen
+      ? (() => {
+          const groups = new Map<number, Territory[]>();
+          for (const t of territories) {
+            const list = groups.get(t.continentId);
+            if (list) list.push(t);
+            else groups.set(t.continentId, [t]);
+          }
+          return groups;
+        })()
+      : null;
+
+    if (continentGroups) {
+      const hullPad = (VERTEX_RADIUS + 30) * zoom;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 2.5 * zoom;
+      ctx.lineJoin = 'round';
+      ctx.setLineDash([6 * zoom, 5 * zoom]);
+      for (const group of continentGroups.values()) {
+        const screenPoints = group.map((t) => toScreen(t));
+        if (screenPoints.length === 1) {
+          ctx.beginPath();
+          ctx.arc(
+            screenPoints[0].x,
+            screenPoints[0].y,
+            hullPad,
+            0,
+            Math.PI * 2,
+          );
+          ctx.stroke();
+          continue;
+        }
+        if (screenPoints.length === 2) {
+          ctx.beginPath();
+          ctx.lineCap = 'round';
+          ctx.lineWidth = hullPad * 2;
+          ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+          ctx.lineTo(screenPoints[1].x, screenPoints[1].y);
+          ctx.stroke();
+          ctx.lineWidth = 2.5 * zoom;
+          ctx.lineCap = 'butt';
+          continue;
+        }
+        const hull = convexHull(screenPoints);
+        ctx.beginPath();
+        drawConvexOffsetPath(ctx, hull, hullPad);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
 
     for (const t of territories) {
@@ -1168,6 +1475,89 @@ function GameMap({
       ctx.strokeStyle = style.stroke;
       ctx.lineWidth = style.width * zoom;
       ctx.stroke();
+
+      const territoryCard = cardByTerritoryId.get(t.id);
+      if (territoryCard) {
+        const cardOwned = ownedTerritoryIds.has(t.id);
+
+        const inSelectedCombo =
+          cardsOpen &&
+          (selectedCombo?.cards.some((c) => c.territoryId === t.id) ?? false);
+        if (inSelectedCombo) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * zoom, 0, Math.PI * 2);
+          ctx.strokeStyle = '#0d6efd'; // Bootstrap's primary button blue
+          ctx.lineWidth = 3 * zoom;
+          ctx.stroke();
+        }
+
+        if (territoryCard.symbol && territoryCard.territoryId !== null) {
+          const img = cardImagesRef.current[territoryCard.symbol];
+          if (img.complete && img.naturalWidth > 0) {
+            const iconSize = 16 * zoom;
+            const textHeight = 11 * zoom;
+            const badgePad = 4 * zoom;
+            const badgeGap = 1 * zoom;
+            const badgeW = iconSize + badgePad * 2;
+            const badgeH = iconSize + badgeGap + textHeight + badgePad * 2;
+            const dist = (VERTEX_RADIUS + 6) * zoom + badgeH / 2 + 4;
+            const cx = p.x + dist * Math.SQRT1_2;
+            const cy = p.y - dist * Math.SQRT1_2;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1 * zoom;
+            ctx.beginPath();
+            ctx.roundRect(
+              cx - badgeW / 2,
+              cy - badgeH / 2,
+              badgeW,
+              badgeH,
+              4 * zoom,
+            );
+            ctx.fill();
+            ctx.stroke();
+            ctx.drawImage(
+              img,
+              cx - iconSize / 2,
+              cy - badgeH / 2 + badgePad,
+              iconSize,
+              iconSize,
+            );
+
+            ctx.fillStyle = '#000000';
+            ctx.font = `bold ${textHeight}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText(
+              `#${territoryCard.territoryId + 1}`,
+              cx,
+              cy + badgeH / 2 - badgePad * 0.6,
+            );
+
+            if (cardOwned) {
+              const pillText = '+2';
+              ctx.font = `bold ${10 * zoom}px sans-serif`;
+              const pillWidth = ctx.measureText(pillText).width + 6 * zoom;
+              const pillHeight = 12 * zoom;
+              const pillX = cx + badgeW / 2;
+              const pillY = cy - badgeH / 2;
+              ctx.fillStyle = '#2ecc71';
+              ctx.beginPath();
+              ctx.roundRect(
+                pillX - pillWidth / 2,
+                pillY - pillHeight / 2,
+                pillWidth,
+                pillHeight,
+                pillHeight / 2,
+              );
+              ctx.fill();
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText(pillText, pillX, pillY + 3.5 * zoom);
+            }
+          }
+        }
+      }
 
       if (owner) {
         const troops =
@@ -1199,6 +1589,38 @@ function GameMap({
           (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
             2;
         ctx.fillText(text, p.x, baselineY);
+      }
+    }
+
+    if (continentGroups) {
+      for (const [continentId, group] of continentGroups) {
+        const screenPoints = group.map((t) => toScreen(t));
+        const cx =
+          screenPoints.reduce((s, p) => s + p.x, 0) / screenPoints.length;
+        const cy =
+          screenPoints.reduce((s, p) => s + p.y, 0) / screenPoints.length;
+        const text = `+${bonuses[continentId] ?? 0}`;
+
+        ctx.font = `bold ${34 * zoom}px sans-serif`;
+        const metrics = ctx.measureText(text);
+        const paddingX = 10 * zoom;
+        const boxW = metrics.width + paddingX * 2;
+        const boxH = 42 * zoom;
+        const boxX = cx - boxW / 2;
+        const boxY = cy - boxH / 2;
+
+        ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5 * zoom;
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 10 * zoom);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, cx, cy + 1 * zoom);
       }
     }
   });
@@ -1462,6 +1884,86 @@ function GameMap({
           cursor: hoveredId !== null ? 'pointer' : 'default',
         }}
       />
+      <div
+        className="position-absolute start-0 ms-3 d-flex flex-column align-items-start gap-2"
+        style={{ zIndex: 2, top: cardsButtonsTop }}
+      >
+        <div className="d-flex flex-column align-items-start gap-3">
+          <Button
+            ref={bonusesButtonRef}
+            variant="secondary"
+            size="sm"
+            title="Bonuses"
+            onClick={() =>
+              setOpenPanel((p) => (p === 'bonuses' ? null : 'bonuses'))
+            }
+          >
+            <img
+              src={whiteBonusIcon ?? '/icons/bonus.svg'}
+              width={16}
+              height={16}
+              alt="Continent Bonuses"
+            />
+          </Button>
+          {!cardsOpen && (
+            <Button
+              ref={cardsButtonRef}
+              variant="secondary"
+              size="sm"
+              className="position-relative"
+              title="Cards"
+              onClick={() => {
+                setOpenPanel('cards');
+                setAwardedCards([]);
+              }}
+            >
+              <img
+                src={whiteCardsIcon ?? '/icons/cards.svg'}
+                width={16}
+                height={16}
+                alt="Cards"
+              />
+              {hand.length > 0 && (
+                <Badge
+                  bg={hasSetToPlay ? 'danger' : 'secondary'}
+                  pill
+                  className="position-absolute top-0 start-100 translate-middle"
+                  style={{ fontSize: 10 }}
+                >
+                  {hand.length}
+                  {hasSetToPlay && '!'}
+                </Badge>
+              )}
+            </Button>
+          )}
+        </div>
+        {awardedCards.length > 0 && (
+          <div className="d-flex flex-column gap-2">
+            {awardedCards.map(({ id, card }) => (
+              <div
+                key={id}
+                className="bg-body bg-opacity-75 border rounded p-2 d-flex align-items-center gap-2"
+              >
+                <CardFace card={card} size={36} />
+                <span className="small">New card!</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {cardsOpen && (
+          <div ref={cardsPanelRef}>
+            <CardsPanel
+              hand={hand}
+              ownedTerritoryIds={ownedTerritoryIds}
+              combos={combos}
+              selectedCombo={selectedCombo}
+              onSelectCombo={(combo) => setSelectedComboKey(comboKey(combo))}
+              canPlay={isMyTurn && turnPhase === 'deploy'}
+              onPlaySet={playCardSet}
+            />
+          </div>
+        )}
+      </div>
       <PlayersPanel
         players={players}
         spectators={spectators}
@@ -1485,6 +1987,7 @@ function GameMap({
             color={playerColor(currentTurnPlayer.color)}
             isMyTurn={isMyTurn}
             troopsToDeploy={troopsToDeploy}
+            canLeaveDeploy={troopsToDeploy <= 0 && !mustPlaySet}
             setGame={setGame}
           />
           {deployPanelOpen && deployPanelStyle && (

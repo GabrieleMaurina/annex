@@ -1,0 +1,194 @@
+import { Button, ListGroup } from 'react-bootstrap';
+import type { Card } from '../lib/types';
+import { comboKey, sortForDisplay, type EvaluatedCombo } from './cards';
+
+interface Props {
+  hand: Card[];
+  ownedTerritoryIds: Set<number>;
+  combos: EvaluatedCombo[];
+  selectedCombo: EvaluatedCombo | undefined;
+  onSelectCombo: (combo: EvaluatedCombo) => void;
+  canPlay: boolean;
+  onPlaySet: (selection: (number | null)[]) => void;
+}
+
+const SELECTED_BORDER_COLOR = '#0d6efd'; // Bootstrap's primary button blue
+
+// Matches the 2:3 aspect ratio of the badges GameMap draws next to
+// territories on the map, so a card looks the same wherever it's shown.
+// `owned` marks a card whose territory gives +2 if played; `selected` marks
+// a card that's part of the currently-selected set.
+export function CardFace({
+  card,
+  size = 40,
+  owned = false,
+  selected = false,
+}: {
+  card: Card;
+  size?: number;
+  owned?: boolean;
+  selected?: boolean;
+}) {
+  const width = size;
+  const height = size * 1.5;
+  const borderStyle: React.CSSProperties = selected
+    ? { borderColor: SELECTED_BORDER_COLOR, borderWidth: 2 }
+    : {};
+  if (card.symbol === null) {
+    return (
+      <div
+        className="d-flex flex-column align-items-center justify-content-between border rounded bg-white p-1"
+        style={{ width, height, ...borderStyle }}
+      >
+        {(['soldier', 'humvee', 'tank'] as const).map((symbol) => (
+          <img
+            key={symbol}
+            src={`/images/${symbol}.svg`}
+            alt={symbol}
+            style={{ width: width * 0.55, height: height * 0.28 }}
+          />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div
+      className="d-flex flex-column align-items-center justify-content-center border rounded bg-white position-relative"
+      style={{ width, height, ...borderStyle }}
+    >
+      <img
+        src={`/images/${card.symbol}.svg`}
+        alt={card.symbol}
+        width={width * 0.6}
+        height={width * 0.6}
+      />
+      <span className="text-black" style={{ fontSize: width * 0.24 }}>
+        #{(card.territoryId ?? 0) + 1}
+      </span>
+      {owned && (
+        <span
+          className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success"
+          style={{ fontSize: Math.max(8, width * 0.22) }}
+        >
+          +2
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ComboRow({
+  combo,
+  selected,
+  onClick,
+}: {
+  combo: EvaluatedCombo;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <ListGroup.Item
+      action
+      active={selected}
+      onClick={onClick}
+      className="d-flex align-items-center gap-2 py-1"
+    >
+      <div className="d-flex gap-1">
+        {sortForDisplay(combo.cards).map((c, i) => (
+          <CardFace
+            key={i}
+            card={c}
+            size={24}
+            owned={
+              c.territoryId !== null &&
+              combo.territoryBonusIds.includes(c.territoryId)
+            }
+          />
+        ))}
+      </div>
+      <div className="fw-bold ms-auto">+{combo.totalValue}</div>
+    </ListGroup.Item>
+  );
+}
+
+function CardsPanel({
+  hand,
+  ownedTerritoryIds,
+  combos,
+  selectedCombo,
+  onSelectCombo,
+  canPlay,
+  onPlaySet,
+}: Props) {
+  function handleWheel(e: React.WheelEvent) {
+    if (combos.length === 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const currentIndex = selectedCombo ? combos.indexOf(selectedCombo) : 0;
+    const direction = e.deltaY < 0 ? -1 : 1;
+    const nextIndex = Math.min(
+      combos.length - 1,
+      Math.max(0, currentIndex + direction),
+    );
+    onSelectCombo(combos[nextIndex]);
+  }
+
+  return (
+    <div
+      className="bg-body bg-opacity-75 border rounded p-3"
+      style={{ width: 268 }}
+    >
+      <div className="fw-bold mb-2">Your Cards</div>
+      {hand.length === 0 ? (
+        <div className="text-muted small">No cards yet</div>
+      ) : (
+        <div className="d-flex flex-wrap gap-2 mb-3">
+          {sortForDisplay(hand).map((c, i) => (
+            <CardFace
+              key={i}
+              card={c}
+              owned={
+                c.territoryId !== null && ownedTerritoryIds.has(c.territoryId)
+              }
+              selected={selectedCombo?.cards.includes(c) ?? false}
+            />
+          ))}
+        </div>
+      )}
+      {combos.length > 0 && (
+        <>
+          <div className="fw-bold mb-1 small">Available Sets</div>
+          <div
+            style={{ maxHeight: '40vh', overflowY: 'auto' }}
+            className="mb-2"
+            onWheel={handleWheel}
+          >
+            <ListGroup>
+              {combos.map((combo) => (
+                <ComboRow
+                  key={comboKey(combo)}
+                  combo={combo}
+                  selected={combo === selectedCombo}
+                  onClick={() => onSelectCombo(combo)}
+                />
+              ))}
+            </ListGroup>
+          </div>
+          <Button
+            size="sm"
+            className="w-100"
+            disabled={!canPlay || !selectedCombo}
+            onClick={() =>
+              selectedCombo &&
+              onPlaySet(selectedCombo.cards.map((c) => c.territoryId))
+            }
+          >
+            Play Set
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default CardsPanel;

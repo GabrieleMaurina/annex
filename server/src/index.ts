@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import {
   broadcastGameStates,
   registerAttackHandlers,
+  registerCardHandlers,
   registerDeployHandlers,
   registerFortifyHandlers,
   registerGameHandlers,
@@ -32,6 +33,7 @@ io.on('connection', (socket) => {
   registerDeployHandlers(io, socket, playersBySocket, playersById);
   registerFortifyHandlers(io, socket, playersBySocket, playersById);
   registerAttackHandlers(io, socket, playersBySocket, playersById);
+  registerCardHandlers(io, socket, playersBySocket, playersById);
 });
 
 setInterval(() => {

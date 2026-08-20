@@ -11,6 +11,7 @@ import {
   TurnDuration,
 } from '../../types';
 import { isInteger, isObject } from '../../validate';
+import { buildCardDeck } from '../logic/cards';
 import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
   assignRandomColor,
@@ -118,6 +119,11 @@ export function registerGameHandlers(
         hostPriority: [player.id],
         surrenderedIds: new Set(),
         winnerIds: [],
+        deck: [],
+        playerCards: new Map(),
+        conqueredThisTurn: false,
+        cardSetsPlayed: 0,
+        cardsLastSetValue: 0,
       };
       games.set(game.name, game);
       player.gameName = game.name;
@@ -335,8 +341,13 @@ export function registerGameHandlers(
       game.playerIds = shuffle(game.playerIds);
     }
     assignTerritories(game);
+    const map = maps.get(game.mapName)!;
+    game.deck = buildCardDeck(map.territories.map((t) => t.id));
+    game.playerCards = new Map(game.playerIds.map((id) => [id, []]));
+    game.cardSetsPlayed = 0;
+    game.cardsLastSetValue = 0;
     game.state = 'playing';
-    startTurns(game);
+    startTurns(game, io);
     callback({ ok: true, game: gameState(game, playersById) });
   });
 
@@ -369,12 +380,16 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'game not started' });
     if (game.playerIds[game.turnPlayerIndex] !== player.id)
       return callback({ ok: false, error: 'not your turn' });
-    if (game.turnPhase === 'deploy')
-      return callback({ ok: false, error: 'cannot skip deploy phase' });
+    if (game.turnPhase === 'deploy') {
+      if (game.troopsToDeploy > 0)
+        return callback({ ok: false, error: 'cannot skip deploy phase' });
+      if ((game.playerCards.get(player.id)?.length ?? 0) >= 5)
+        return callback({ ok: false, error: 'must play a card set' });
+    }
     if (game.turnPhase === 'attack' && game.attackConquestMinTroops !== null)
       return callback({ ok: false, error: 'pending conquest move' });
 
-    advanceTurnPhase(game);
+    advanceTurnPhase(game, io);
     callback({ ok: true, game: gameState(game, playersById) });
   });
 

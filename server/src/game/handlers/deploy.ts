@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
+import { hasPlayableSet } from '../logic/cards';
 import { gameState } from '../logic/state';
 import { gameRoomName, games } from '../logic/store';
 import { advanceTurnPhase } from '../logic/turns';
@@ -86,7 +87,11 @@ export function registerDeployHandlers(
       );
       game.troopsToDeploy -= troops;
       game.selectedTerritoryId = null;
-      if (game.troopsToDeploy <= 0) advanceTurnPhase(game);
+      if (
+        game.troopsToDeploy <= 0 &&
+        !hasPlayableSet(game.playerCards.get(player.id) ?? [])
+      )
+        advanceTurnPhase(game, io);
 
       io.to(gameRoomName(game.name)).emit('game:deployed', {
         territoryId,

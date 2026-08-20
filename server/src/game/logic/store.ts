@@ -2,14 +2,13 @@ import { Server } from 'socket.io';
 import { Game, HOME_ROOM, Player } from '../../types';
 import { addHostCandidate, recomputeHost } from './host';
 import { assignRandomColor, maxTeam } from './mechanics';
+import { gameRoomName } from './rooms';
 import { gameState, gameSummary } from './state';
 import { clearTurnTimer } from './turns';
 
-export const games = new Map<string, Game>();
+export { gameRoomName } from './rooms';
 
-export function gameRoomName(name: string): string {
-  return `game-${name}`;
-}
+export const games = new Map<string, Game>();
 
 function hasActivePlayer(game: Game, playersById: Map<number, Player>) {
   return game.playerIds.some(
@@ -155,5 +154,9 @@ export function broadcastGameStates(
       'game:state',
       gameState(game, playersById),
     );
+    for (const [playerId, cards] of game.playerCards) {
+      const socketId = playersById.get(playerId)?.socketId;
+      if (socketId) io.to(socketId).emit('game:cards', { cards });
+    }
   }
 }

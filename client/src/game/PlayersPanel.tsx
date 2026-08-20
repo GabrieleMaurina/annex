@@ -31,6 +31,7 @@ function PlayersPanel({
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
   const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
+  const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
 
@@ -57,7 +58,7 @@ function PlayersPanel({
     <div
       className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-3"
       style={{
-        width: isTeamDeathmatch ? 280 : 240,
+        width: isTeamDeathmatch ? 310 : 270,
         maxHeight: 'calc(100vh - 2rem)',
       }}
     >
@@ -117,6 +118,18 @@ function PlayersPanel({
                   height={14}
                   alt="Troops"
                   title="Troops"
+                />
+              </th>
+              <th
+                className="text-end"
+                style={{ width: 34, paddingRight: '0.75rem' }}
+              >
+                <img
+                  src={whiteCardsIcon ?? '/icons/cards.svg'}
+                  width={14}
+                  height={14}
+                  alt="Cards"
+                  title="Cards"
                 />
               </th>
             </tr>
@@ -179,6 +192,12 @@ function PlayersPanel({
                     style={{ ...rowStyle, paddingRight: '0.75rem' }}
                   >
                     {p.troopCount}
+                  </td>
+                  <td
+                    className="align-middle text-end"
+                    style={{ ...rowStyle, paddingRight: '0.75rem' }}
+                  >
+                    {p.cardCount}
                   </td>
                 </tr>
               );

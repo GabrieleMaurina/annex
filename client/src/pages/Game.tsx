@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
-import EndPage from './EndPage';
-import GameMap from '../game/GameMap';
-import Lobby from '../lobby/Lobby';
 import SettingsMenu from '../common/SettingsMenu';
+import GameMap from '../game/GameMap';
 import { socket } from '../lib/socket';
 import type { GameState, Player } from '../lib/types';
+import Lobby from '../lobby/Lobby';
+import EndPage from './EndPage';
 
 interface Props {
   player: Player;
@@ -84,6 +84,7 @@ function Game({
           attackStartTerritoryId={game.attackStartTerritoryId}
           attackEndTerritoryId={game.attackEndTerritoryId}
           attackConquestMinTroops={game.attackConquestMinTroops}
+          nextSetBaseValues={game.nextSetBaseValues}
           setGame={setGame}
           setChatOpen={setChatOpen}
           navigate={navigate}

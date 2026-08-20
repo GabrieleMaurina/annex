@@ -12,6 +12,14 @@ export interface GameSummary {
   spectatorCount: number;
 }
 
+export type CardSymbol = 'soldier' | 'humvee' | 'tank';
+export type SetKind = CardSymbol | 'mixed';
+
+export interface Card {
+  territoryId: number | null;
+  symbol: CardSymbol | null;
+}
+
 export type Blitz = 'Balanced' | 'True';
 export type DefenceDice = 2 | 3;
 export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
@@ -43,6 +51,7 @@ export interface GameState {
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
   winnerIds: number[];
+  nextSetBaseValues: Record<SetKind, number>;
   players: {
     id: number;
     name: string;
@@ -50,6 +59,7 @@ export interface GameState {
     color: number;
     territoryCount: number;
     troopCount: number;
+    cardCount: number;
     connected: boolean;
     surrendered: boolean;
   }[];

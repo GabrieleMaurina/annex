@@ -1,15 +1,18 @@
 import { Button, ListGroup, Table } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import { socket } from '../lib/socket';
-import type { Ack, GameState } from '../lib/types';
+import type { Ack, GameState, TurnPhase } from '../lib/types';
 
 interface Props {
   players: GameState['players'];
   spectators: GameState['spectators'];
   isTeamDeathmatch: boolean;
+  isCapitals: boolean;
   selfId: number | null;
   turnNumber: number;
+  turnPhase: TurnPhase;
   turnPlayerId: number | null;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
@@ -20,8 +23,10 @@ function PlayersPanel({
   players,
   spectators,
   isTeamDeathmatch,
+  isCapitals,
   selfId,
   turnNumber,
+  turnPhase,
   turnPlayerId,
   collapsed,
   setCollapsed,
@@ -33,6 +38,7 @@ function PlayersPanel({
 
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
+  const whiteCapitalIcon = useWhiteIcon('/icons/capital.svg');
   const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
@@ -60,24 +66,23 @@ function PlayersPanel({
 
   return (
     <div
-      className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-3"
+      className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3`}
       style={{
-        width: isTeamDeathmatch ? 310 : 270,
+        width: 270 + (isTeamDeathmatch ? 40 : 0) + (isCapitals ? 40 : 0),
         maxHeight: 'calc(100vh - 2rem)',
       }}
     >
-      <div className="d-flex align-items-center position-relative mb-3">
-        <div className="position-absolute start-50 translate-middle-x fw-bold">
-          Turn {turnNumber + 1}
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="ms-auto"
-          onClick={() => setCollapsed(true)}
-        >
-          &gt;
-        </Button>
+      <div
+        className="text-center fw-bold mb-3"
+        role="button"
+        tabIndex={0}
+        onClick={() => setCollapsed(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') setCollapsed(true);
+        }}
+        style={{ cursor: 'pointer' }}
+      >
+        Turn {turnPhase === 'capital' ? 0 : turnNumber + 1}
       </div>
       <div
         className="overflow-auto no-scrollbar"
@@ -94,7 +99,7 @@ function PlayersPanel({
               <th style={{ width: 16 }}></th>
               <th>Player</th>
               {isTeamDeathmatch && (
-                <th className="text-end" style={{ width: 34 }}>
+                <th className="text-center" style={{ width: 34 }}>
                   <img
                     src={whiteTeamIcon ?? '/icons/team.svg'}
                     width={14}
@@ -104,10 +109,7 @@ function PlayersPanel({
                   />
                 </th>
               )}
-              <th
-                className="text-end"
-                style={{ width: 34, paddingRight: '0.75rem' }}
-              >
+              <th className="text-center" style={{ width: 34 }}>
                 <img
                   src={whiteTerritoryIcon ?? '/icons/territory.svg'}
                   width={14}
@@ -116,10 +118,18 @@ function PlayersPanel({
                   title="Territories"
                 />
               </th>
-              <th
-                className="text-end"
-                style={{ width: 34, paddingRight: '0.75rem' }}
-              >
+              {isCapitals && (
+                <th className="text-center" style={{ width: 34 }}>
+                  <img
+                    src={whiteCapitalIcon ?? '/icons/capital.svg'}
+                    width={14}
+                    height={14}
+                    alt="Capitals"
+                    title="Capitals"
+                  />
+                </th>
+              )}
+              <th className="text-center" style={{ width: 34 }}>
                 <img
                   src={whiteTankIcon ?? '/icons/tank.svg'}
                   width={14}
@@ -128,10 +138,7 @@ function PlayersPanel({
                   title="Troops"
                 />
               </th>
-              <th
-                className="text-end"
-                style={{ width: 34, paddingRight: '0.75rem' }}
-              >
+              <th className="text-center" style={{ width: 34 }}>
                 <img
                   src={whiteCardsIcon ?? '/icons/cards.svg'}
                   width={14}
@@ -199,26 +206,22 @@ function PlayersPanel({
                     )}
                   </td>
                   {isTeamDeathmatch && (
-                    <td className="align-middle text-end" style={rowStyle}>
+                    <td className="align-middle text-center" style={rowStyle}>
                       {p.team + 1}
                     </td>
                   )}
-                  <td
-                    className="align-middle text-end"
-                    style={{ ...rowStyle, paddingRight: '0.75rem' }}
-                  >
+                  <td className="align-middle text-center" style={rowStyle}>
                     {p.territoryCount}
                   </td>
-                  <td
-                    className="align-middle text-end"
-                    style={{ ...rowStyle, paddingRight: '0.75rem' }}
-                  >
+                  {isCapitals && (
+                    <td className="align-middle text-center" style={rowStyle}>
+                      {p.capitalCount}
+                    </td>
+                  )}
+                  <td className="align-middle text-center" style={rowStyle}>
                     {p.troopCount}
                   </td>
-                  <td
-                    className="align-middle text-end"
-                    style={{ ...rowStyle, paddingRight: '0.75rem' }}
-                  >
+                  <td className="align-middle text-center" style={rowStyle}>
                     {p.cardCount}
                   </td>
                 </tr>
@@ -240,20 +243,22 @@ function PlayersPanel({
         )}
       </div>
       {canSurrender && (
-        <Button
-          variant="danger"
-          size="sm"
-          className="w-100 mt-2 d-flex align-items-center justify-content-center gap-1"
-          onClick={surrender}
-        >
-          <img
-            src={whiteFlagIcon ?? '/icons/flag.svg'}
-            width={14}
-            height={14}
-            alt=""
-          />
-          Surrender
-        </Button>
+        <div className="d-flex justify-content-end mt-2">
+          <Button
+            variant="danger"
+            size="sm"
+            className="d-flex align-items-center gap-1"
+            onClick={surrender}
+          >
+            <img
+              src={whiteFlagIcon ?? '/icons/flag.svg'}
+              width={14}
+              height={14}
+              alt=""
+            />
+            Surrender
+          </Button>
+        </div>
       )}
     </div>
   );

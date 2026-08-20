@@ -158,6 +158,13 @@ export function calculateDeployTroops(game: Game, playerId: number): number {
     if (controlsAll) bonusTroops += map.bonuses[continentId] ?? 0;
   }
 
+  if (game.gameMode === 'Capitals') {
+    const capitalsControlled = [...game.capitalTerritoryIds].filter(
+      (id) => game.territoryOwners.get(id) === playerId,
+    ).length;
+    bonusTroops += capitalsControlled * 2;
+  }
+
   return territoryTroops + bonusTroops;
 }
 

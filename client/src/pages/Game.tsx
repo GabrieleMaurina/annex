@@ -71,6 +71,7 @@ function Game({
           spectators={game.spectators}
           ownership={game.territories}
           isTeamDeathmatch={game.gameMode === 'Team Deathmatch'}
+          isCapitals={game.gameMode === 'Capitals'}
           selfId={selfId}
           turnNumber={game.turnNumber}
           turnPlayerIndex={game.turnPlayerIndex}

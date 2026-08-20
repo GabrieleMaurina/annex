@@ -15,6 +15,7 @@ import type {
 } from '../lib/types';
 import {
   areAnimationsDisabled,
+  CARD_SET_FLASH_DURATION,
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
   drawAnimations,
@@ -80,6 +81,7 @@ interface Props {
   spectators: GameState['spectators'];
   ownership: GameState['territories'];
   isTeamDeathmatch: boolean;
+  isCapitals: boolean;
   selfId: number | null;
   turnNumber: number;
   turnPlayerIndex: number;
@@ -225,6 +227,7 @@ function GameMap({
   spectators,
   ownership,
   isTeamDeathmatch,
+  isCapitals,
   selfId,
   turnNumber,
   turnPlayerIndex,
@@ -256,6 +259,11 @@ function GameMap({
     { id: number; card: Card }[]
   >([]);
   const awardIdRef = useRef(0);
+  const [cardSetFlash, setCardSetFlash] = useState<{
+    id: number;
+    cards: Card[];
+  } | null>(null);
+  const cardSetFlashIdRef = useRef(0);
   const [selectedComboKey, setSelectedComboKey] = useState<string | null>(null);
   const [openPanel, setOpenPanel] = useState<'cards' | 'bonuses' | null>(null);
   const cardsOpen = openPanel === 'cards';
@@ -281,6 +289,7 @@ function GameMap({
   const [processedDeployPhaseKey, setProcessedDeployPhaseKey] = useState<
     string | null
   >(null);
+  const [capitalModeAnnounced, setCapitalModeAnnounced] = useState(false);
   const [deployTroops, setDeployTroops] = useState(0);
   const [trackedSelectedTerritoryId, setTrackedSelectedTerritoryId] = useState<
     number | null
@@ -322,6 +331,7 @@ function GameMap({
   );
   const territoriesRef = useRef<Territory[]>([]);
   const colorByPlayerIdRef = useRef(new Map<number, number>());
+  const playersRef = useRef<GameState['players']>([]);
   const attackOptionIndexRef = useRef(0);
   const autoAdvanceKeyRef = useRef<string | null>(null);
   const cardImagesRef = useRef<Record<CardSymbol, HTMLImageElement>>({
@@ -424,11 +434,21 @@ function GameMap({
     colorByPlayerIdRef.current = new Map(
       players.map((pl) => [pl.id, pl.color]),
     );
+    playersRef.current = players;
   });
 
   const selectTerritory = useCallback(
     (territoryId: number | null) => {
       socket.emit('game:selectTerritory', { territoryId }, (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      });
+    },
+    [setGame],
+  );
+
+  const selectCapital = useCallback(
+    (territoryId: number) => {
+      socket.emit('game:selectCapital', { territoryId }, (res: Ack) => {
         if (res.ok) setGame(res.game);
       });
     },
@@ -768,7 +788,7 @@ function GameMap({
       ...prev,
       {
         id: Date.now(),
-        message: `${currentTurnPlayer.name} received ${troopsToDeploy} troops at the start of the turn`,
+        message: `${currentTurnPlayer.name} received ${troopsToDeploy} troops at the start of their turn`,
       },
       ...(isMyTurn && hasSetToPlay
         ? [
@@ -778,6 +798,14 @@ function GameMap({
             },
           ]
         : []),
+    ]);
+  }
+
+  if (isCapitals && !capitalModeAnnounced && turnNumber >= 2) {
+    setCapitalModeAnnounced(true);
+    setToasts((prev) => [
+      ...prev,
+      { id: Date.now(), message: 'Capitals mode activated' },
     ]);
   }
 
@@ -976,6 +1004,37 @@ function GameMap({
   }, []);
 
   useEffect(() => {
+    function onCardSetPlayed(payload: {
+      playerId: number;
+      troops: number;
+      cards: Card[];
+    }) {
+      const id = ++cardSetFlashIdRef.current;
+      setCardSetFlash({ id, cards: payload.cards });
+      setTimeout(() => {
+        setCardSetFlash((prev) => (prev?.id === id ? null : prev));
+      }, CARD_SET_FLASH_DURATION);
+
+      if (payload.playerId !== selfId) {
+        const name =
+          playersRef.current.find((p) => p.id === payload.playerId)?.name ??
+          'A player';
+        setToasts((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            message: `${name} received ${payload.troops} troops from a set`,
+          },
+        ]);
+      }
+    }
+    socket.on('game:cardSetPlayed', onCardSetPlayed);
+    return () => {
+      socket.off('game:cardSetPlayed', onCardSetPlayed);
+    };
+  }, [selfId]);
+
+  useEffect(() => {
     const settingsEl = document.getElementById('settings-toggle');
     if (!settingsEl) return;
     function measure() {
@@ -1048,6 +1107,7 @@ function GameMap({
 
   function isInteractable(t: Territory): boolean {
     if (!isMyTurn) return false;
+    if (turnPhase === 'capital') return ownerById.get(t.id)?.ownerId === selfId;
     if (turnPhase === 'deploy')
       return troopsToDeploy > 0 && ownerById.get(t.id)?.ownerId === selfId;
     if (turnPhase === 'fortify') {
@@ -1494,7 +1554,12 @@ function GameMap({
         : continentColor(t.continentId);
 
       ctx.beginPath();
-      ctx.arc(p.x, p.y, VERTEX_RADIUS * zoom, 0, Math.PI * 2);
+      if (owner?.isCapital) {
+        const half = VERTEX_RADIUS * zoom;
+        ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
+      } else {
+        ctx.arc(p.x, p.y, VERTEX_RADIUS * zoom, 0, Math.PI * 2);
+      }
       ctx.fillStyle = fillColor;
       ctx.fill();
       ctx.strokeStyle = style.stroke;
@@ -1510,7 +1575,12 @@ function GameMap({
           (selectedCombo?.cards.some((c) => c.territoryId === t.id) ?? false);
         if (inSelectedCombo) {
           ctx.beginPath();
-          ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * zoom, 0, Math.PI * 2);
+          if (owner?.isCapital) {
+            const half = (VERTEX_RADIUS + 6) * zoom;
+            ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
+          } else {
+            ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * zoom, 0, Math.PI * 2);
+          }
           ctx.strokeStyle = '#0d6efd'; // Bootstrap's primary button blue
           ctx.lineWidth = 3 * zoom;
           ctx.stroke();
@@ -1733,6 +1803,11 @@ function GameMap({
     if (!drag || drag.moved || !isMyTurn) return;
     const pos = getPos(e);
     const vertex = hitVertex(pos);
+
+    if (turnPhase === 'capital') {
+      if (vertex && isInteractable(vertex)) selectCapital(vertex.id);
+      return;
+    }
 
     if (turnPhase === 'fortify') {
       if (fortifyEndTerritoryId !== null) {
@@ -1993,8 +2068,10 @@ function GameMap({
         players={players}
         spectators={spectators}
         isTeamDeathmatch={isTeamDeathmatch}
+        isCapitals={isCapitals}
         selfId={selfId}
         turnNumber={turnNumber}
+        turnPhase={turnPhase}
         turnPlayerId={currentTurnPlayer?.id ?? null}
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}
@@ -2097,11 +2174,36 @@ function GameMap({
             }
             autohide
             delay={5000}
+            style={{ width: 'auto' }}
           >
-            <Toast.Body>{t.message}</Toast.Body>
+            <Toast.Body className="text-nowrap">{t.message}</Toast.Body>
           </Toast>
         ))}
       </ToastContainer>
+      {cardSetFlash && (
+        <div
+          key={cardSetFlash.id}
+          className="position-fixed top-50 start-50 d-flex gap-3 bg-body bg-opacity-75 border rounded p-3"
+          style={{
+            zIndex: 4,
+            pointerEvents: 'none',
+            animation: `annexCardSetFlash ${CARD_SET_FLASH_DURATION / 1000}s ease-out forwards`,
+          }}
+        >
+          <style>{`
+            @keyframes annexCardSetFlash {
+              0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+              15% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+              25% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+              85% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+              100% { transform: translate(-50%, -50%) scale(0.92); opacity: 0; }
+            }
+          `}</style>
+          {cardSetFlash.cards.map((card, i) => (
+            <CardFace key={i} card={card} size={90} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

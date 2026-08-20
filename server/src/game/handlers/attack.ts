@@ -37,14 +37,19 @@ type AttackResultResponse =
     }
   | { ok: false; error: string };
 
+function defenceDiceFor(game: Game, territoryId: number): number {
+  return game.capitalTerritoryIds.has(territoryId) ? 3 : game.defenceDice;
+}
+
 function computeBlitzWinProbabilities(
   game: Game,
   attackingTroops: number,
   defendingTroops: number,
+  defendingDice: number,
 ): number[] {
   const maxBlitz = attackingTroops - 1;
   const blitzWinProbs = game.blitz === 'True' ? trueWinProbs : balancedWinProbs;
-  return blitzWinProbs(maxBlitz, defendingTroops, game.defenceDice);
+  return blitzWinProbs(maxBlitz, defendingTroops, defendingDice);
 }
 
 function isAttackStartCandidate(
@@ -183,6 +188,7 @@ export function registerAttackHandlers(
         game,
         attackingTroops,
         defendingTroops,
+        defenceDiceFor(game, territoryId),
       );
 
       io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
@@ -242,10 +248,11 @@ export function registerAttackHandlers(
       let defenceLosses: number;
       let attackerDice: number[] = [];
       let defenderDice: number[] = [];
+      const defendingDice = defenceDiceFor(game, endId);
       if (type === 'regular') {
         const result = rollAttack(
           troops,
-          Math.min(defendingTroops, game.defenceDice),
+          Math.min(defendingTroops, defendingDice),
         );
         attackLosses = result.attackLosses;
         defenceLosses = result.defenceLosses;
@@ -255,7 +262,7 @@ export function registerAttackHandlers(
         const result = (game.blitz === 'True' ? trueBlitz : balancedBlitz)(
           troops,
           defendingTroops,
-          game.defenceDice,
+          defendingDice,
         );
         attackLosses = result.attackLosses;
         defenceLosses = result.defenceLosses;
@@ -309,6 +316,7 @@ export function registerAttackHandlers(
             game,
             remainingAttackers,
             remainingDefenders,
+            defendingDice,
           );
         } else {
           game.attackStartTerritoryId = null;

@@ -3,6 +3,7 @@ import { Badge, Button, Form, ListGroup } from 'react-bootstrap';
 import { playerColor } from '../lib/palette';
 import { socket } from '../lib/socket';
 import type { ChatMessage } from '../lib/types';
+import { PANEL_CLASS } from './panelStyle';
 
 interface Props {
   nameById: Map<number, string>;
@@ -56,17 +57,28 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
 
   return (
     <div
-      className={`position-fixed bottom-0 start-0 m-3 p-2 border rounded ${
-        open ? `bg-body${transparent ? ' bg-opacity-75' : ''}` : 'bg-secondary'
+      className={`position-fixed bottom-0 start-0 m-3 ${
+        open
+          ? `${PANEL_CLASS} bg-body${transparent ? ' bg-opacity-75' : ''}`
+          : ''
       }`}
       style={{ zIndex: 1 }}
     >
+      <style>{`
+        .annex-chat-summary { list-style: none; }
+        .annex-chat-summary::-webkit-details-marker { display: none; }
+      `}</style>
       <details
         open={open}
         onToggle={toggle}
         style={{ width: open ? 300 : 'auto' }}
       >
-        <summary ref={summaryRef}>
+        <summary
+          ref={summaryRef}
+          className={`annex-chat-summary ${
+            open ? 'fw-bold mb-2' : 'btn btn-secondary btn-sm'
+          }`}
+        >
           Chat
           {!open && unreadCount > 0 && (
             <Badge bg="danger" className="ms-2">

@@ -35,7 +35,7 @@ export type DefenceDice = 2 | 3;
 export type CardsMode = 'Fixed' | 'Progressive' | 'Exponential';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode = 'Supremacy' | 'Capitals' | 'Team Deathmatch';
-export type TurnPhase = 'deploy' | 'attack' | 'fortify';
+export type TurnPhase = 'capital' | 'deploy' | 'attack' | 'fortify';
 
 export interface Game {
   name: string;
@@ -66,6 +66,7 @@ export interface Game {
   bannedIds: Set<number>;
   territoryOwners: Map<number, number>;
   territoryTroops: Map<number, number>;
+  capitalTerritoryIds: Set<number>;
   hostPriority: number[];
   surrenderedIds: Set<number>;
   winnerIds: number[];

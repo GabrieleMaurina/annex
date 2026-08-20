@@ -61,6 +61,11 @@ export function registerCardHandlers(
       if (game.cards === 'Exponential')
         game.cardsLastSetValue = evaluated.baseValue;
 
+      io.to(gameRoomName(game.name)).emit('game:cardSetPlayed', {
+        playerId: player.id,
+        troops: evaluated.totalValue,
+        cards: evaluated.cards,
+      });
       for (const territoryId of evaluated.territoryBonusIds) {
         io.to(gameRoomName(game.name)).emit('game:deployed', {
           territoryId,

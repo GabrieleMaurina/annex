@@ -1,4 +1,5 @@
 import { Button, ListGroup } from 'react-bootstrap';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
 import type { Card } from '../lib/types';
 import { comboKey, sortForDisplay, type EvaluatedCombo } from './cards';
 
@@ -138,15 +139,12 @@ function CardsPanel({
   }
 
   return (
-    <div
-      className="bg-body bg-opacity-75 border rounded p-3"
-      style={{ width: 268 }}
-    >
-      <div className="fw-bold mb-2">Your Cards</div>
+    <div className={`${PANEL_BG_CLASS} ${PANEL_CLASS}`} style={{ width: 268 }}>
+      <div className="fw-bold lh-1 mb-2">Your Cards</div>
       {hand.length === 0 ? (
         <div className="text-muted small">No cards yet</div>
       ) : (
-        <div className="d-flex flex-wrap gap-2 mb-3">
+        <div className="d-flex flex-wrap gap-2">
           {sortForDisplay(hand).map((c, i) => (
             <CardFace
               key={i}
@@ -161,10 +159,10 @@ function CardsPanel({
       )}
       {combos.length > 0 && (
         <>
-          <div className="fw-bold mb-1 small">Available Sets</div>
+          <div className="fw-bold lh-1 mb-2 mt-2">Available Sets</div>
           <div
             style={{ maxHeight: '40vh', overflowY: 'auto' }}
-            className="mb-2"
+            className="mb-2 no-scrollbar"
             onWheel={handleWheel}
           >
             <ListGroup>

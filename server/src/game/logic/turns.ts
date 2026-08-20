@@ -108,6 +108,39 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
   return deposits;
 }
 
+function pickRandomOwnedTerritory(game: Game, playerId: number): number | null {
+  const territoryIds = [...game.territoryOwners.entries()]
+    .filter(([, ownerId]) => ownerId === playerId)
+    .map(([territoryId]) => territoryId);
+  if (territoryIds.length === 0) return null;
+  return territoryIds[Math.floor(Math.random() * territoryIds.length)];
+}
+
+export function assignCapital(game: Game, territoryId: number) {
+  game.capitalTerritoryIds.add(territoryId);
+  game.territoryTroops.set(
+    territoryId,
+    (game.territoryTroops.get(territoryId) ?? 0) + 3,
+  );
+}
+
+export function advanceCapitalPlacement(game: Game, io: Server) {
+  if (game.turnPlayerIndex >= game.playerIds.length - 1) {
+    startTurns(game, io);
+  } else {
+    game.turnPlayerIndex++;
+    scheduleTurnTimer(game, io);
+  }
+}
+
+export function startCapitalPlacement(game: Game, io: Server) {
+  game.turnNumber = 0;
+  game.turnPlayerIndex = 0;
+  game.turnPhase = 'capital';
+  game.capitalTerritoryIds = new Set();
+  scheduleTurnTimer(game, io);
+}
+
 function completePendingAttackMove(
   game: Game,
 ): { territoryId: number; troops: number } | null {
@@ -143,6 +176,17 @@ function completePendingFortify(
 
 function forceEndTurn(game: Game, io: Server) {
   const room = gameRoomName(game.name);
+
+  if (game.turnPhase === 'capital') {
+    const playerId = game.playerIds[game.turnPlayerIndex];
+    const territoryId = pickRandomOwnedTerritory(game, playerId);
+    if (territoryId !== null) {
+      assignCapital(game, territoryId);
+      io.to(room).emit('game:deployed', { territoryId, troops: 3 });
+    }
+    advanceCapitalPlacement(game, io);
+    return;
+  }
 
   if (game.turnPhase === 'deploy') {
     const deposits = forceCompleteDeployPhase(game);

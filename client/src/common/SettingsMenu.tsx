@@ -6,6 +6,7 @@ import {
 } from '../game/animations';
 import { isSoundMuted, toggleSoundMuted } from '../lib/sounds';
 import { useWhiteIcon } from './icon';
+import { PANEL_BG_CLASS, PANEL_CLASS } from './panelStyle';
 import ShareButton from './ShareButton';
 
 interface Props {
@@ -63,7 +64,7 @@ function SettingsMenu({ shareUrl }: Props) {
       ) : (
         <div
           ref={panelRef}
-          className="bg-body bg-opacity-75 border rounded p-2 d-flex gap-2"
+          className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex gap-2`}
         >
           <Button
             variant="secondary"

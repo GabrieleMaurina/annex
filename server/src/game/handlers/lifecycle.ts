@@ -30,7 +30,11 @@ import {
   games,
   removePlayerFromGame,
 } from '../logic/store';
-import { advanceTurnPhase, startTurns } from '../logic/turns';
+import {
+  advanceTurnPhase,
+  startCapitalPlacement,
+  startTurns,
+} from '../logic/turns';
 
 const MAX_GAME_NAME_LENGTH = 20;
 
@@ -116,6 +120,7 @@ export function registerGameHandlers(
         bannedIds: new Set(),
         territoryOwners: new Map(),
         territoryTroops: new Map(),
+        capitalTerritoryIds: new Set(),
         hostPriority: [player.id],
         surrenderedIds: new Set(),
         winnerIds: [],
@@ -347,7 +352,11 @@ export function registerGameHandlers(
     game.cardSetsPlayed = 0;
     game.cardsLastSetValue = 0;
     game.state = 'playing';
-    startTurns(game, io);
+    if (game.gameMode === 'Capitals') {
+      startCapitalPlacement(game, io);
+    } else {
+      startTurns(game, io);
+    }
     callback({ ok: true, game: gameState(game, playersById) });
   });
 
@@ -380,6 +389,8 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'game not started' });
     if (game.playerIds[game.turnPlayerIndex] !== player.id)
       return callback({ ok: false, error: 'not your turn' });
+    if (game.turnPhase === 'capital')
+      return callback({ ok: false, error: 'cannot skip capital phase' });
     if (game.turnPhase === 'deploy') {
       if (game.troopsToDeploy > 0)
         return callback({ ok: false, error: 'cannot skip deploy phase' });

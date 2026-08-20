@@ -11,12 +11,17 @@ function toSummaries(ids: number[], playersById: Map<number, Player>) {
 function territoryStats(game: Game) {
   const stats = new Map<
     number,
-    { territoryCount: number; troopCount: number }
+    { territoryCount: number; troopCount: number; capitalCount: number }
   >();
   for (const [territoryId, ownerId] of game.territoryOwners) {
-    const entry = stats.get(ownerId) ?? { territoryCount: 0, troopCount: 0 };
+    const entry = stats.get(ownerId) ?? {
+      territoryCount: 0,
+      troopCount: 0,
+      capitalCount: 0,
+    };
     entry.territoryCount++;
     entry.troopCount += game.territoryTroops.get(territoryId) ?? 0;
+    if (game.capitalTerritoryIds.has(territoryId)) entry.capitalCount++;
     stats.set(ownerId, entry);
   }
   return stats;
@@ -67,6 +72,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
         color: game.playerColors.get(player.id) ?? 0,
         territoryCount,
         troopCount: stats.get(player.id)?.troopCount ?? 0,
+        capitalCount: stats.get(player.id)?.capitalCount ?? 0,
         cardCount: game.playerCards.get(player.id)?.length ?? 0,
         connected: playersById.get(player.id)?.connected ?? false,
         surrendered: game.surrenderedIds.has(player.id),
@@ -79,6 +85,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
       id,
       ownerId,
       troops: game.territoryTroops.get(id) ?? 0,
+      isCapital: game.capitalTerritoryIds.has(id),
     })),
   };
 }

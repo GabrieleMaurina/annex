@@ -34,7 +34,7 @@ function TurnPanel({
 
   return (
     <div
-      className="position-fixed bottom-0 start-50 translate-middle-x m-3 p-2 px-3 border rounded d-flex align-items-center gap-2"
+      className="position-fixed bottom-0 start-50 translate-middle-x m-3 py-2 px-3 border rounded d-flex align-items-center gap-2"
       style={{
         zIndex: 1,
         backgroundColor: withAlpha(color, 0.75),
@@ -59,11 +59,13 @@ function TurnPanel({
           {troopsToDeploy}
         </span>
       )}
-      {isMyTurn && (turnPhase !== 'deploy' || canLeaveDeploy) && (
-        <Button size="sm" onClick={nextPhase}>
-          {turnPhase === 'fortify' ? 'End Turn' : 'Next Phase'}
-        </Button>
-      )}
+      {isMyTurn &&
+        turnPhase !== 'capital' &&
+        (turnPhase !== 'deploy' || canLeaveDeploy) && (
+          <Button size="sm" onClick={nextPhase}>
+            {turnPhase === 'fortify' ? 'End Turn' : 'Next Phase'}
+          </Button>
+        )}
     </div>
   );
 }

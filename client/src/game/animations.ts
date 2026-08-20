@@ -23,6 +23,7 @@ const DURATIONS: Record<AnimationType, number> = {
   explosion: 800,
 };
 const LABEL_DURATION = 1500;
+export const CARD_SET_FLASH_DURATION = 2000;
 
 const FIRE_COLORS = ['#fff2b0', '#ffd54a', '#ff9640', '#ff4d2e'];
 const SMOKE_COLORS = ['#1c1c1c', '#2a2a2a', '#3a3a3a'];

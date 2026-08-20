@@ -236,7 +236,7 @@ function Panel({
       image: isBlankImage ? null : encodeBase85(dataUrlToBytes(imageSrc)),
       imageMime: isBlankImage ? null : mimeFromDataUrl(imageSrc),
     };
-    const blob = new Blob([JSON.stringify(mapFile)], {
+    const blob = new Blob([JSON.stringify(mapFile, null, 2)], {
       type: 'application/json',
     });
     const url = URL.createObjectURL(blob);
@@ -277,18 +277,14 @@ function Panel({
   return (
     <div
       className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column"
-      style={{ width: 280, maxHeight: 'calc(100vh - 1rem)' }}
+      style={{ width: 280, maxHeight: 'calc(100vh - 1rem)', cursor: 'pointer' }}
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('button, input, select, textarea, a')) {
+          setCollapsed(true);
+        }
+      }}
     >
-      <div className="d-flex justify-content-end mb-3">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setCollapsed(true)}
-        >
-          &gt;
-        </Button>
-      </div>
-
       <Form.Control
         ref={fileInputRef}
         type="file"

@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import {
   broadcastGameStates,
   registerAttackHandlers,
+  registerCapitalHandlers,
   registerCardHandlers,
   registerDeployHandlers,
   registerFortifyHandlers,
@@ -30,6 +31,7 @@ io.on('connection', (socket) => {
   registerMapsHandlers(socket);
   registerHomeHandlers(io, socket, playersBySocket, playersByKey, playersById);
   registerGameHandlers(io, socket, playersBySocket, playersById);
+  registerCapitalHandlers(io, socket, playersBySocket, playersById);
   registerDeployHandlers(io, socket, playersBySocket, playersById);
   registerFortifyHandlers(io, socket, playersBySocket, playersById);
   registerAttackHandlers(io, socket, playersBySocket, playersById);

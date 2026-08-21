@@ -143,12 +143,21 @@ export function assignTerritories(game: Game) {
   });
 }
 
-export function calculateDeployTroops(game: Game, playerId: number): number {
+export interface DeployTroopsBreakdown {
+  territories: number;
+  bonuses: number;
+  capitals: number;
+}
+
+export function calculateDeployTroopsBreakdown(
+  game: Game,
+  playerId: number,
+): DeployTroopsBreakdown {
   const map = maps.get(game.mapName)!;
   const territoryCount = [...game.territoryOwners.values()].filter(
     (ownerId) => ownerId === playerId,
   ).length;
-  const territoryTroops = Math.max(3, Math.floor(territoryCount / 3));
+  const territories = Math.max(3, Math.floor(territoryCount / 3));
 
   const continents = new Map<number, number[]>();
   for (const territory of map.territories) {
@@ -157,22 +166,23 @@ export function calculateDeployTroops(game: Game, playerId: number): number {
     else continents.set(territory.continentId, [territory.id]);
   }
 
-  let bonusTroops = 0;
+  let bonuses = 0;
   for (const [continentId, territoryIds] of continents) {
     const controlsAll = territoryIds.every(
       (id) => game.territoryOwners.get(id) === playerId,
     );
-    if (controlsAll) bonusTroops += map.bonuses[continentId] ?? 0;
+    if (controlsAll) bonuses += map.bonuses[continentId] ?? 0;
   }
 
+  let capitals = 0;
   if (game.gameMode === 'Capitals') {
     const capitalsControlled = [...game.capitalTerritoryIds].filter(
       (id) => game.territoryOwners.get(id) === playerId,
     ).length;
-    bonusTroops += capitalsControlled * 2;
+    capitals = capitalsControlled * 2;
   }
 
-  return territoryTroops + bonusTroops;
+  return { territories, bonuses, capitals };
 }
 
 export function assignRandomColor(game: Game, playerId: number) {

@@ -1,5 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Badge, Button, Toast, ToastContainer } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
 import { continentColor, contrastTextColor, playerColor } from '../lib/palette';
@@ -42,6 +48,7 @@ import {
   getFortifyPath,
   getFortifyStartCandidates,
 } from './fortify';
+import LogsPanel from './LogsPanel';
 import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
@@ -63,6 +70,7 @@ import ReplayPanel from './ReplayPanel';
 import TroopPanel from './TroopPanel';
 import TurnPanel from './TurnPanel';
 import TurnProgressBar from './TurnProgressBar';
+import type { LogEntry } from './useGameLogs';
 
 type AttackSelectEndAck =
   | { ok: true; game: GameState; blitzWinProbabilities: number[] }
@@ -105,6 +113,7 @@ interface Props {
   upcomingSetValues: GameState['upcomingSetValues'];
   gameEnded: boolean;
   showReplay: boolean;
+  logs: LogEntry[];
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
@@ -257,12 +266,14 @@ function GameMap({
   upcomingSetValues,
   gameEnded,
   showReplay,
+  logs,
   setGame,
   setChatOpen,
   navigate,
 }: Props) {
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteBonusIcon = useWhiteIcon('/icons/bonus.svg');
+  const whiteLogsIcon = useWhiteIcon('/icons/logs.svg');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<DragState>(null);
@@ -280,15 +291,22 @@ function GameMap({
   } | null>(null);
   const cardSetFlashIdRef = useRef(0);
   const [selectedComboKey, setSelectedComboKey] = useState<string | null>(null);
-  const [openPanel, setOpenPanel] = useState<'cards' | 'bonuses' | null>(null);
+  const [openPanel, setOpenPanel] = useState<
+    'cards' | 'bonuses' | 'logs' | null
+  >(null);
   const cardsOpen = openPanel === 'cards';
   const bonusesOpen = openPanel === 'bonuses';
+  const logsOpen = openPanel === 'logs';
   const [cardsButtonsTop, setCardsButtonsTop] = useState(
     DEFAULT_CARDS_BUTTONS_TOP,
   );
   const cardsPanelRef = useRef<HTMLDivElement>(null);
   const cardsButtonRef = useRef<HTMLButtonElement>(null);
   const bonusesButtonRef = useRef<HTMLButtonElement>(null);
+  const logsButtonRef = useRef<HTMLButtonElement>(null);
+  const logsPanelRef = useRef<HTMLDivElement>(null);
+  const buttonColumnRef = useRef<HTMLDivElement>(null);
+  const [logsPanelTop, setLogsPanelTop] = useState(DEFAULT_CARDS_BUTTONS_TOP);
   const [transform, setTransform] = useState<Transform>({
     zoom: 1,
     offsetX: 0,
@@ -585,11 +603,14 @@ function GameMap({
   const ownedTerritoryIds = new Set(
     ownership.filter((o) => o.ownerId === selfId).map((o) => o.id),
   );
-  const cardByTerritoryId = new Map(
-    hand
-      .filter((c) => c.territoryId !== null)
-      .map((c) => [c.territoryId as number, c]),
-  );
+  const cardByTerritoryId =
+    gameEnded && !cardsOpen
+      ? new Map<number, Card>()
+      : new Map(
+          hand
+            .filter((c) => c.territoryId !== null)
+            .map((c) => [c.territoryId as number, c]),
+        );
   const combos = enumerateCombos(hand, nextSetBaseValues, ownedTerritoryIds);
   const selectedCombo =
     combos.find((c) => comboKey(c) === selectedComboKey) ?? combos[0];
@@ -1194,6 +1215,20 @@ function GameMap({
     return () => observer.disconnect();
   }, []);
 
+  useLayoutEffect(() => {
+    if (!logsOpen) return;
+    const container = buttonColumnRef.current;
+    if (!container) return;
+    function measure() {
+      if (logsPanelRef.current)
+        setLogsPanelTop(logsPanelRef.current.getBoundingClientRect().top);
+    }
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [logsOpen]);
+
   useEffect(() => {
     if (openPanel === null) return;
     function handleOutside(e: MouseEvent) {
@@ -1203,7 +1238,9 @@ function GameMap({
       // undone by this handler closing the panel it just opened.
       if (cardsButtonRef.current?.contains(target)) return;
       if (bonusesButtonRef.current?.contains(target)) return;
+      if (logsButtonRef.current?.contains(target)) return;
       if (cardsPanelRef.current?.contains(target)) return;
+      if (logsPanelRef.current?.contains(target)) return;
       setOpenPanel(null);
     }
     document.addEventListener('mousedown', handleOutside);
@@ -1323,21 +1360,35 @@ function GameMap({
         setChatOpen(false);
         return;
       }
-      if (e.key === 'Enter' && deployPanelOpen) {
+      const isConfirmKey = e.key === 'Enter' || e.key === ' ';
+      if (
+        isConfirmKey &&
+        cardsOpen &&
+        isMyTurn &&
+        turnPhase === 'deploy' &&
+        selectedCombo
+      ) {
+        if (!isTypingTarget(e.target)) {
+          e.preventDefault();
+          playCardSet(selectedCombo);
+          return;
+        }
+      }
+      if (isConfirmKey && deployPanelOpen) {
         if (!isTypingTarget(e.target) || e.target === deployInputRef.current) {
           e.preventDefault();
           submitDeploy();
           return;
         }
       }
-      if (e.key === 'Enter' && fortifyPanelOpen) {
+      if (isConfirmKey && fortifyPanelOpen) {
         if (!isTypingTarget(e.target) || e.target === fortifyInputRef.current) {
           e.preventDefault();
           submitFortify();
           return;
         }
       }
-      if (e.key === 'Enter' && attackPanelOpen && attackShowPendingConquest) {
+      if (isConfirmKey && attackPanelOpen && attackShowPendingConquest) {
         if (
           !isTypingTarget(e.target) ||
           e.target === attackMoveInputRef.current
@@ -1348,7 +1399,7 @@ function GameMap({
         }
       }
       if (
-        e.key === 'Enter' &&
+        isConfirmKey &&
         attackPanelOpen &&
         !attackShowPendingConquest &&
         !attackDiceOnly &&
@@ -1426,6 +1477,9 @@ function GameMap({
     submitAttackMove,
     maxBlitzTroops,
     cycleAttackOption,
+    cardsOpen,
+    selectedCombo,
+    playCardSet,
   ]);
 
   function getImageDims(): { w: number; h: number } {
@@ -1979,7 +2033,15 @@ function GameMap({
 
     if (turnPhase === 'fortify') {
       if (fortifyEndTerritoryId !== null) {
-        cancelFortify();
+        if (
+          vertex &&
+          (vertex.id === fortifyStartTerritoryId ||
+            vertex.id === fortifyEndTerritoryId)
+        ) {
+          submitFortify();
+        } else {
+          cancelFortify();
+        }
         return;
       }
       if (!vertex || !isInteractable(vertex)) {
@@ -1995,9 +2057,21 @@ function GameMap({
     }
 
     if (turnPhase === 'attack') {
-      if (attackPendingConquest) return;
+      if (attackPendingConquest) {
+        if (vertex && vertex.id === attackEndTerritoryId) submitAttackMove();
+        return;
+      }
       if (attackEndTerritoryId !== null) {
-        cancelAttack();
+        if (
+          !attackRevealing &&
+          vertex &&
+          (vertex.id === attackStartTerritoryId ||
+            vertex.id === attackEndTerritoryId)
+        ) {
+          submitAttack();
+        } else {
+          cancelAttack();
+        }
         return;
       }
       if (!vertex || !isInteractable(vertex)) {
@@ -2020,9 +2094,12 @@ function GameMap({
       if (selectedTerritoryId !== null) selectTerritory(null);
       return;
     }
-    const newSelectedId = selectedTerritoryId === vertex.id ? null : vertex.id;
-    if (newSelectedId !== null && turnPhase === 'deploy') setToasts([]);
-    selectTerritory(newSelectedId);
+    if (selectedTerritoryId === vertex.id) {
+      submitDeploy();
+      return;
+    }
+    if (turnPhase === 'deploy') setToasts([]);
+    selectTerritory(vertex.id);
   }
 
   function handleMouseLeave() {
@@ -2156,7 +2233,10 @@ function GameMap({
         className="position-absolute start-0 ms-3 d-flex flex-column align-items-start gap-2"
         style={{ zIndex: 2, top: cardsButtonsTop }}
       >
-        <div className="d-flex flex-column align-items-start gap-3">
+        <div
+          ref={buttonColumnRef}
+          className="d-flex flex-column align-items-start gap-3"
+        >
           <Button
             ref={bonusesButtonRef}
             variant="secondary"
@@ -2173,7 +2253,21 @@ function GameMap({
               alt="Continent Bonuses"
             />
           </Button>
-          {!cardsOpen && (
+          {cardsOpen ? (
+            <div ref={cardsPanelRef}>
+              <CardsPanel
+                hand={hand}
+                ownedTerritoryIds={ownedTerritoryIds}
+                upcomingSetValues={upcomingSetValues}
+                combos={combos}
+                selectedCombo={selectedCombo}
+                onSelectCombo={(combo) => setSelectedComboKey(comboKey(combo))}
+                canPlay={isMyTurn && turnPhase === 'deploy'}
+                onPlaySet={playCardSet}
+                onClose={() => setOpenPanel(null)}
+              />
+            </div>
+          ) : (
             <Button
               ref={cardsButtonRef}
               variant="secondary"
@@ -2191,7 +2285,7 @@ function GameMap({
                 height={16}
                 alt="Cards"
               />
-              {hand.length > 0 && (
+              {!gameEnded && hand.length > 0 && (
                 <Badge
                   bg={hasSetToPlay ? 'danger' : 'secondary'}
                   pill
@@ -2204,8 +2298,32 @@ function GameMap({
               )}
             </Button>
           )}
+          {logsOpen ? (
+            <div ref={logsPanelRef}>
+              <LogsPanel
+                logs={logs}
+                top={logsPanelTop}
+                onClose={() => setOpenPanel(null)}
+              />
+            </div>
+          ) : (
+            <Button
+              ref={logsButtonRef}
+              variant="secondary"
+              size="sm"
+              title="Logs"
+              onClick={() => setOpenPanel('logs')}
+            >
+              <img
+                src={whiteLogsIcon ?? '/icons/logs.svg'}
+                width={16}
+                height={16}
+                alt="Logs"
+              />
+            </Button>
+          )}
         </div>
-        {awardedCards.length > 0 && (
+        {!gameEnded && awardedCards.length > 0 && (
           <div className="d-flex flex-column gap-2">
             {awardedCards.map(({ id, card }) => (
               <div
@@ -2216,20 +2334,6 @@ function GameMap({
                 <span className="small">New card!</span>
               </div>
             ))}
-          </div>
-        )}
-        {cardsOpen && (
-          <div ref={cardsPanelRef}>
-            <CardsPanel
-              hand={hand}
-              ownedTerritoryIds={ownedTerritoryIds}
-              upcomingSetValues={upcomingSetValues}
-              combos={combos}
-              selectedCombo={selectedCombo}
-              onSelectCombo={(combo) => setSelectedComboKey(comboKey(combo))}
-              canPlay={isMyTurn && turnPhase === 'deploy'}
-              onPlaySet={playCardSet}
-            />
           </div>
         )}
       </div>
@@ -2384,7 +2488,7 @@ function GameMap({
           </Toast>
         ))}
       </ToastContainer>
-      {cardSetFlash && (
+      {!gameEnded && cardSetFlash && (
         <div
           key={cardSetFlash.id}
           className="position-fixed top-50 start-50 d-flex gap-3 bg-body bg-opacity-75 border rounded p-3"

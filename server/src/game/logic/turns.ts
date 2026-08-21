@@ -3,7 +3,7 @@ import { Game, TurnPhase } from '../../types';
 import { hasAnyAttack, hasAnyFortify } from './autoSkip';
 import { pickBestSet, popRandomCard, returnCardsToDeck } from './cards';
 import { checkGameEnd } from './end';
-import { calculateDeployTroops, ownsAnyTerritory } from './mechanics';
+import { calculateDeployTroopsBreakdown, ownsAnyTerritory } from './mechanics';
 import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
 import { bumpStat } from './stats';
@@ -198,7 +198,21 @@ export function startCapitalPlacement(game: Game, io: Server) {
   game.turnPlayerIndex = 0;
   game.turnPhase = 'capital';
   game.capitalTerritoryIds = new Set();
+  io.to(gameRoomName(game.name)).emit('game:capitalPlacementStarted');
   scheduleTurnTimer(game, io);
+}
+
+function startDeployPhase(game: Game, io: Server, playerId: number) {
+  const breakdown = calculateDeployTroopsBreakdown(game, playerId);
+  game.troopsToDeploy =
+    breakdown.territories + breakdown.bonuses + breakdown.capitals;
+  io.to(gameRoomName(game.name)).emit('game:turnStarted', {
+    playerId,
+    turnNumber: game.turnNumber,
+    troopsFromTerritories: breakdown.territories,
+    troopsFromBonuses: breakdown.bonuses,
+    troopsFromCapitals: breakdown.capitals,
+  });
 }
 
 function completePendingAttackMove(
@@ -336,7 +350,7 @@ export function advanceToNextPlayer(game: Game, io: Server) {
   game.attackStartTerritoryId = null;
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
-  game.troopsToDeploy = calculateDeployTroops(game, game.playerIds[nextIndex]);
+  startDeployPhase(game, io, game.playerIds[nextIndex]);
   scheduleTurnTimer(game, io);
 }
 
@@ -373,6 +387,6 @@ export function startTurns(game: Game, io: Server) {
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
   game.conqueredThisTurn = false;
-  game.troopsToDeploy = calculateDeployTroops(game, game.playerIds[0]);
+  startDeployPhase(game, io, game.playerIds[0]);
   scheduleTurnTimer(game, io);
 }

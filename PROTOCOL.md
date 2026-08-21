@@ -333,7 +333,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:attack`
 - **When sent:** the player whose turn it currently is, during `'attack'` with both attack territories selected, confirms an attack option from the attack panel (its confirm button, or Enter).
-- **Purpose:** resolve one battle between `attackStartTerritoryId` and `attackEndTerritoryId`. The defending territory rolls `min(its troops, defenceDice)` dice per exchange — except a capital (`isCapital: true`, see `turnPhase` above), which always uses `3` in place of `defenceDice`, win or lose, regardless of the game's `defenceDice` setting. For `type: 'regular'`, `troops` (1–3, capped at the attacking territory's troops − 1) fight exactly one exchange via `attack()` in `dice.ts`, and the raw dice results are returned (see Ack below) so the client can animate the roll. For `type: 'blitz'`, `troops` (1 up to the attacking territory's troops − 1) fight to elimination of one side via `trueBlitz()` or `balancedBlitz()` (chosen by the game's `blitz` setting). Losses on both sides are applied immediately. If the defending territory's troops reach `0`, it's conquered: ownership transfers to the caller right away, the end-of-game check described under `GameState.territories` above runs immediately (possibly moving `state` to `'ended'`, in which case nothing further below in this paragraph happens), and otherwise `attackConquestMinTroops` is set to `min(troops used, 3, remaining attacking-territory troops − 1)` with both attack territory ids left set awaiting `game:attackMove` — unless the conquest eliminated the defender (see "Territory cards" above for the card transfer and its side effects), in which case a `5+`-card attacker instead has that pending move resolved immediately and lands back in `'deploy'`. Otherwise, if the attacking territory still has more than 1 troop left, both attack territory ids are left set (so the attack panel stays open against the same defending territory) and blitz win probabilities are recomputed for the reduced troop counts; if it's down to 1 troop (can't attack again), both reset to `null` instead. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'attack'` with both territories selected, and no conquest may already be pending.
+- **Purpose:** resolve one battle between `attackStartTerritoryId` and `attackEndTerritoryId`. The defending territory rolls `min(its troops, defenceDice)` dice per exchange — except a capital (`isCapital: true`, see `turnPhase` above), which always uses `3` in place of `defenceDice`, win or lose, regardless of the game's `defenceDice` setting. For `type: 'regular'`, `troops` (1–3, capped at the attacking territory's troops − 1) fight exactly one exchange via `attack()` in `dice.ts`, and the raw dice results are returned (see Ack below) so the client can animate the roll. For `type: 'blitz'`, `troops` (1 up to the attacking territory's troops − 1) fight to elimination of one side via `trueBlitz()` or `balancedBlitz()` (chosen by the game's `blitz` setting). Losses on both sides are applied immediately. If the defending territory's troops reach `0`, it's conquered: ownership transfers to the caller right away, the end-of-game check described under `GameState.territories` above runs immediately (possibly moving `state` to `'ended'`, in which case every surviving attacking troop is moved into the newly conquered territory automatically, broadcast via `game:attackMoved` since there's no further turn left for the player to choose a smaller amount, and nothing further below in this paragraph happens), and otherwise `attackConquestMinTroops` is set to `min(troops used, 3, remaining attacking-territory troops − 1)` with both attack territory ids left set awaiting `game:attackMove` — unless the conquest eliminated the defender (see "Territory cards" above for the card transfer and its side effects), in which case a `5+`-card attacker instead has that pending move resolved immediately and lands back in `'deploy'`. Otherwise, if the attacking territory still has more than 1 troop left, both attack territory ids are left set (so the attack panel stays open against the same defending territory) and blitz win probabilities are recomputed for the reduced troop counts; if it's down to 1 troop (can't attack again), both reset to `null` instead. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'attack'` with both territories selected, and no conquest may already be pending.
 - **Content:**
   ```ts
   { type: 'regular'; troops: 1 | 2 | 3 } | { type: 'blitz'; troops: number }
@@ -447,6 +447,26 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   { id: number; name: string; message: string }
   ```
 
+### `game:capitalPlacementStarted`
+- **When sent:** immediately, to every socket in a game's room, once, when a `'Capitals'` game's `'capital'` phase begins (see `turnPhase` above).
+- **Purpose:** let every client announce that capital placement has started, without waiting for the next `game:state` tick.
+- **Content:** none
+
+### `game:turnStarted`
+- **When sent:** immediately, to every socket in a game's room, whenever a player's deploy pool is granted: the start of a normal turn (`advanceToNextPlayer`, including via the turn timer) or, in `'Capitals'`, the first turn right after the last player picks a capital (see `turnPhase` above).
+- **Purpose:** announce the new turn and its troop grant in real time, rather than leaving clients to infer it from the next `game:state` tick (up to a second later). A client that only learns of the grant after the fact could otherwise log this player's later, real-time actions (`game:deployed`, etc.) before it, out of order.
+- **Content:**
+  ```ts
+  {
+    playerId: number;
+    turnNumber: number;
+    troopsFromTerritories: number;
+    troopsFromBonuses: number;
+    troopsFromCapitals: number; // always 0 outside 'Capitals'
+  }
+  ```
+  `troopsFromTerritories + troopsFromBonuses + troopsFromCapitals` is the pool granted, matching `GameState.troopsToDeploy`'s value at that instant (see `turnPhase` above for how each is computed).
+
 ### `game:deployed`
 - **When sent:** immediately, to every socket in a game's room, whenever a `game:deploy` call succeeds (including back to the deploying player), once per territory for a `game:playCardSet` call's automatic 2-troop territory bonuses (see "Territory cards" above), and once for a capital's `3` troops — whether picked via `game:selectCapital` or assigned at random by the turn timer (see `turnPhase` above).
 - **Purpose:** let every client play the deploy sound effect in sync, rather than inferring it from the next `game:state` tick.
@@ -468,7 +488,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 - **Purpose:** let every client play the fortify sound effect and the deploy animation on the destination territory in sync, rather than inferring it from the next `game:state` tick.
 - **Content:**
   ```ts
-  { territoryId: number; troops: number }
+  { territoryId: number; fromTerritoryId: number; troops: number }
   ```
 
 ### `game:attacked`
@@ -481,6 +501,8 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
     defendingTerritoryId: number;
     attackerId: number;
     defenderId: number;
+    attackingTroops: number; // troops committed to this exchange (the game:attack call's own `troops`)
+    defendingTroops: number; // defending territory's troop count immediately before this exchange
     attackLosses: number;
     defenceLosses: number;
     conquered: boolean;
@@ -489,7 +511,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:attackMoved`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:attackMove` call succeeds (including back to the moving player), or the turn timer force-completes a pending conquest move.
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:attackMove` call succeeds (including back to the moving player), the turn timer force-completes a pending conquest move, a conquest eliminates the defender and the attacker's hand hits `5+` cards (auto-resolving the move at the minimum troop count, see `turnPhase` and "Territory cards" above), or a conquest ends the game outright (auto-resolving the move with every surviving attacking troop, since no further turn is left to choose a smaller amount).
 - **Purpose:** let every client play the fortify sound effect and the deploy animation on the newly-conquered territory in sync, rather than inferring it from the next `game:state` tick.
 - **Content:**
   ```ts

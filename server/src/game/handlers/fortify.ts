@@ -184,12 +184,13 @@ export function registerFortifyHandlers(
         playerId: player.id,
       });
 
-      advanceTurnPhase(game, io);
-
       io.to(gameRoomName(game.name)).emit('game:fortified', {
         territoryId: endId,
+        fromTerritoryId: startId,
         troops,
       });
+      advanceTurnPhase(game, io);
+
       callback({ ok: true, game: gameState(game, playersById) });
     },
   );

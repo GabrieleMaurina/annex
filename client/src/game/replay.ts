@@ -175,7 +175,8 @@ export function useReplay(
     territories,
     turnNumber: currentFrame ? currentFrame.turnNumber : null,
     turnPlayerId: currentFrame ? currentFrame.playerId : null,
-    conquestArrow: replay ? conquestArrowAt(replay, index) : null,
+    conquestArrow:
+      replay && index < totalFrames ? conquestArrowAt(replay, index) : null,
     stepForward,
     stepBackward,
     jumpToStart,

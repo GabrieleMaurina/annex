@@ -12,6 +12,7 @@ interface Props {
   onSelectCombo: (combo: EvaluatedCombo) => void;
   canPlay: boolean;
   onPlaySet: (combo: EvaluatedCombo) => void;
+  onClose: () => void;
 }
 
 const SELECTED_BORDER_COLOR = '#0d6efd'; // Bootstrap's primary button blue
@@ -126,6 +127,7 @@ function CardsPanel({
   onSelectCombo,
   canPlay,
   onPlaySet,
+  onClose,
 }: Props) {
   function handleWheel(e: React.WheelEvent) {
     if (combos.length === 0) return;
@@ -142,7 +144,21 @@ function CardsPanel({
 
   return (
     <div className={`${PANEL_BG_CLASS} ${PANEL_CLASS}`} style={{ width: 268 }}>
-      <div className="fw-bold lh-1 mb-2">Your Cards</div>
+      <div
+        className="fw-bold lh-1 mb-2"
+        role="button"
+        tabIndex={0}
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
+        style={{ cursor: 'pointer' }}
+      >
+        Your Cards
+      </div>
       {hand.length === 0 ? (
         <div className="text-muted small">No cards yet</div>
       ) : (

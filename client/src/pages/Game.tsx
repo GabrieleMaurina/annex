@@ -3,6 +3,7 @@ import { Alert, Button, Container, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
 import SettingsMenu from '../common/SettingsMenu';
 import GameMap from '../game/GameMap';
+import { useGameLogs } from '../game/useGameLogs';
 import { socket } from '../lib/socket';
 import type { Ack, GameState, Player } from '../lib/types';
 import Lobby from '../lobby/Lobby';
@@ -29,6 +30,7 @@ function Game({
   const [chatOpen, setChatOpen] = useState(false);
   const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
   const receivedFirstStateRef = useRef(false);
+  const logs = useGameLogs(game);
 
   useEffect(() => {
     function onState(state: GameState) {
@@ -123,6 +125,7 @@ function Game({
           upcomingSetValues={game.upcomingSetValues}
           gameEnded={game.state === 'ended'}
           showReplay={endView === 'map'}
+          logs={logs}
           setGame={setGame}
           setChatOpen={setChatOpen}
           navigate={navigate}

@@ -291,6 +291,8 @@ export function registerAttackHandlers(
       });
 
       let blitzWinProbabilities: number[] = [];
+      let autoConquestMove: { territoryId: number; troops: number } | null =
+        null;
       if (conquered) {
         game.conqueredThisTurn = true;
         attackerStats.territoriesConquered++;
@@ -329,6 +331,7 @@ export function registerAttackHandlers(
                 troops: minMoveTroops,
                 playerId: player.id,
               });
+              autoConquestMove = { territoryId: endId, troops: minMoveTroops };
               game.attackStartTerritoryId = null;
               game.attackEndTerritoryId = null;
               game.attackConquestMinTroops = null;
@@ -351,6 +354,7 @@ export function registerAttackHandlers(
             troops: remainingAttackers,
             playerId: player.id,
           });
+          autoConquestMove = { territoryId: endId, troops: remainingAttackers };
         }
       } else {
         const remainingAttackers = attackingTroops - attackLosses;
@@ -368,6 +372,24 @@ export function registerAttackHandlers(
         }
       }
 
+      io.to(gameRoomName(game.name)).emit('game:attacked', {
+        attackingTerritoryId: startId,
+        defendingTerritoryId: endId,
+        attackerId: player.id,
+        defenderId,
+        attackingTroops: troops,
+        defendingTroops,
+        attackLosses,
+        defenceLosses,
+        conquered,
+        type,
+      });
+      if (autoConquestMove)
+        io.to(gameRoomName(game.name)).emit(
+          'game:attackMoved',
+          autoConquestMove,
+        );
+
       if (
         game.state === 'playing' &&
         game.turnPhase === 'attack' &&
@@ -377,16 +399,6 @@ export function registerAttackHandlers(
         advanceTurnPhase(game, io);
       }
 
-      io.to(gameRoomName(game.name)).emit('game:attacked', {
-        attackingTerritoryId: startId,
-        defendingTerritoryId: endId,
-        attackerId: player.id,
-        defenderId,
-        attackLosses,
-        defenceLosses,
-        conquered,
-        type,
-      });
       callback({
         ok: true,
         game: gameState(game, playersById),
@@ -442,12 +454,12 @@ export function registerAttackHandlers(
       game.attackEndTerritoryId = null;
       game.attackConquestMinTroops = null;
 
-      if (!hasAnyAttack(game, player.id)) advanceTurnPhase(game, io);
-
       io.to(gameRoomName(game.name)).emit('game:attackMoved', {
         territoryId: endId,
         troops,
       });
+      if (!hasAnyAttack(game, player.id)) advanceTurnPhase(game, io);
+
       callback({ ok: true, game: gameState(game, playersById) });
     },
   );

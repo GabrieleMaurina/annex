@@ -1,0 +1,180 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { playerColor } from '../lib/palette';
+import { socket } from '../lib/socket';
+import type { Card, GameState } from '../lib/types';
+
+export interface LogEntry {
+  id: number;
+  color: string;
+  text: string;
+}
+
+const NEUTRAL_LOG_COLOR = '#6c757d';
+
+export function useGameLogs(game: GameState | null): LogEntry[] {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const gameRef = useRef<GameState | null>(null);
+  useEffect(() => {
+    gameRef.current = game;
+  });
+
+  const pushLog = useCallback((color: string, text: string) => {
+    setLogs((prev) => [
+      ...prev,
+      { id: (prev.at(-1)?.id ?? 0) + 1, color, text },
+    ]);
+  }, []);
+
+  const colorForPlayer = useCallback((playerId: number | undefined): string => {
+    const player = gameRef.current?.players.find((p) => p.id === playerId);
+    return player ? playerColor(player.color) : '#ffffff';
+  }, []);
+
+  const ownerOfTerritory = useCallback(
+    (territoryId: number): number | undefined =>
+      gameRef.current?.territories.find((t) => t.id === territoryId)?.ownerId,
+    [],
+  );
+
+  const lastConquestAttackerIdRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    function logDeploy(payload: { territoryId: number; troops: number }) {
+      pushLog(
+        colorForPlayer(ownerOfTerritory(payload.territoryId)),
+        `Deployed ${payload.troops} troops to territory #${payload.territoryId + 1}`,
+      );
+    }
+    function onDeployed(payload: { territoryId: number; troops: number }) {
+      logDeploy(payload);
+    }
+    function onFortified(payload: {
+      territoryId: number;
+      fromTerritoryId: number;
+      troops: number;
+    }) {
+      pushLog(
+        colorForPlayer(ownerOfTerritory(payload.territoryId)),
+        `Fortified ${payload.troops} troops from territory #${payload.fromTerritoryId + 1} to territory #${payload.territoryId + 1}`,
+      );
+    }
+    function onAttackMoved(payload: { territoryId: number; troops: number }) {
+      pushLog(
+        colorForPlayer(lastConquestAttackerIdRef.current),
+        `Moved ${payload.troops} troops into conquered territory #${payload.territoryId + 1}`,
+      );
+    }
+    function onDeployedMany(payload: {
+      deposits: { territoryId: number; troops: number }[];
+    }) {
+      for (const deposit of payload.deposits) logDeploy(deposit);
+    }
+    socket.on('game:deployed', onDeployed);
+    socket.on('game:fortified', onFortified);
+    socket.on('game:attackMoved', onAttackMoved);
+    socket.on('game:deployedMany', onDeployedMany);
+    return () => {
+      socket.off('game:deployed', onDeployed);
+      socket.off('game:fortified', onFortified);
+      socket.off('game:attackMoved', onAttackMoved);
+      socket.off('game:deployedMany', onDeployedMany);
+    };
+  }, [colorForPlayer, ownerOfTerritory, pushLog]);
+
+  useEffect(() => {
+    function onAttacked(payload: {
+      attackingTerritoryId: number;
+      defendingTerritoryId: number;
+      attackerId: number;
+      attackingTroops: number;
+      defendingTroops: number;
+      attackLosses: number;
+      defenceLosses: number;
+      conquered: boolean;
+    }) {
+      if (payload.conquered)
+        lastConquestAttackerIdRef.current = payload.attackerId;
+      pushLog(
+        colorForPlayer(payload.attackerId),
+        `${payload.conquered ? 'Conquered' : 'Attacked'} territory #${payload.defendingTerritoryId + 1} from #${payload.attackingTerritoryId + 1} (${payload.attackingTroops} vs ${payload.defendingTroops} troops), losing ${payload.attackLosses} and killing ${payload.defenceLosses}`,
+      );
+    }
+    socket.on('game:attacked', onAttacked);
+    return () => {
+      socket.off('game:attacked', onAttacked);
+    };
+  }, [colorForPlayer, pushLog]);
+
+  useEffect(() => {
+    function onCardSetPlayed(payload: {
+      playerId: number;
+      troops: number;
+      cards: Card[];
+    }) {
+      const territoryBonusCount = payload.cards.filter(
+        (c) =>
+          c.territoryId !== null &&
+          ownerOfTerritory(c.territoryId) === payload.playerId,
+      ).length;
+      pushLog(
+        colorForPlayer(payload.playerId),
+        `Received ${payload.troops - territoryBonusCount * 2} troops from a set`,
+      );
+    }
+    socket.on('game:cardSetPlayed', onCardSetPlayed);
+    return () => {
+      socket.off('game:cardSetPlayed', onCardSetPlayed);
+    };
+  }, [colorForPlayer, ownerOfTerritory, pushLog]);
+
+  const lastLoggedTurnNumberRef = useRef<number | null>(null);
+  useEffect(() => {
+    function onTurnStarted(payload: {
+      playerId: number;
+      turnNumber: number;
+      troopsFromTerritories: number;
+      troopsFromBonuses: number;
+      troopsFromCapitals: number;
+    }) {
+      if (
+        lastLoggedTurnNumberRef.current === null ||
+        payload.turnNumber > lastLoggedTurnNumberRef.current
+      ) {
+        lastLoggedTurnNumberRef.current = payload.turnNumber;
+        pushLog(NEUTRAL_LOG_COLOR, `Started turn ${payload.turnNumber + 1}`);
+      }
+      const color = colorForPlayer(payload.playerId);
+      if (payload.troopsFromTerritories > 0)
+        pushLog(
+          color,
+          `Received ${payload.troopsFromTerritories} troops from territories`,
+        );
+      if (payload.troopsFromBonuses > 0)
+        pushLog(
+          color,
+          `Received ${payload.troopsFromBonuses} troops from bonuses`,
+        );
+      if (payload.troopsFromCapitals > 0)
+        pushLog(
+          color,
+          `Received ${payload.troopsFromCapitals} troops from capitals`,
+        );
+    }
+    socket.on('game:turnStarted', onTurnStarted);
+    return () => {
+      socket.off('game:turnStarted', onTurnStarted);
+    };
+  }, [colorForPlayer, pushLog]);
+
+  useEffect(() => {
+    function onCapitalPlacementStarted() {
+      pushLog(NEUTRAL_LOG_COLOR, 'Started capital placement');
+    }
+    socket.on('game:capitalPlacementStarted', onCapitalPlacementStarted);
+    return () => {
+      socket.off('game:capitalPlacementStarted', onCapitalPlacementStarted);
+    };
+  }, [pushLog]);
+
+  return logs;
+}

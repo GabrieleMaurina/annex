@@ -98,16 +98,16 @@ export function registerDeployHandlers(
       bumpStat(game, player.id, 'troopsGained', troops);
       game.troopsToDeploy -= troops;
       game.selectedTerritoryId = null;
+      io.to(gameRoomName(game.name)).emit('game:deployed', {
+        territoryId,
+        troops,
+      });
       if (
         game.troopsToDeploy <= 0 &&
         !hasPlayableSet(game.playerCards.get(player.id) ?? [])
       )
         advanceTurnPhase(game, io);
 
-      io.to(gameRoomName(game.name)).emit('game:deployed', {
-        territoryId,
-        troops,
-      });
       callback({ ok: true, game: gameState(game, playersById) });
     },
   );

@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isInteger, isObject } from '../../validate';
+import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { gameRoomName, games } from '../logic/store';
 import { advanceCapitalPlacement, assignCapital } from '../logic/turns';
@@ -40,6 +41,12 @@ export function registerCapitalHandlers(
         return callback({ ok: false, error: 'territory not owned' });
 
       assignCapital(game, territoryId);
+      recordReplayFrame(game, {
+        type: 'deploy',
+        territoryId,
+        troops: 3,
+        playerId: player.id,
+      });
       io.to(gameRoomName(game.name)).emit('game:deployed', {
         territoryId,
         troops: 3,

@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
 import { hasPlayableSet } from '../logic/cards';
+import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { bumpStat } from '../logic/stats';
 import { gameRoomName, games } from '../logic/store';
@@ -88,6 +89,12 @@ export function registerDeployHandlers(
         territoryId,
         (game.territoryTroops.get(territoryId) ?? 0) + troops,
       );
+      recordReplayFrame(game, {
+        type: 'deploy',
+        territoryId,
+        troops,
+        playerId: player.id,
+      });
       bumpStat(game, player.id, 'troopsGained', troops);
       game.troopsToDeploy -= troops;
       game.selectedTerritoryId = null;

@@ -10,6 +10,7 @@ import type {
   Card,
   CardSymbol,
   GameState,
+  ReplayAnimation,
   TurnDuration,
   TurnPhase,
 } from '../lib/types';
@@ -57,6 +58,8 @@ import {
   getAnchoredPanelPosition,
 } from './mapMath';
 import PlayersPanel from './PlayersPanel';
+import { useReplay } from './replay';
+import ReplayPanel from './ReplayPanel';
 import TroopPanel from './TroopPanel';
 import TurnPanel from './TurnPanel';
 import TurnProgressBar from './TurnProgressBar';
@@ -101,6 +104,7 @@ interface Props {
   nextSetBaseValues: GameState['nextSetBaseValues'];
   upcomingSetValues: GameState['upcomingSetValues'];
   gameEnded: boolean;
+  showReplay: boolean;
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
@@ -252,6 +256,7 @@ function GameMap({
   nextSetBaseValues,
   upcomingSetValues,
   gameEnded,
+  showReplay,
   setGame,
   setChatOpen,
   navigate,
@@ -397,9 +402,186 @@ function GameMap({
     });
   }, [mapName]);
 
+  const colorForPlayer = useCallback((playerId: number | undefined): string => {
+    if (playerId === undefined) return '#ffffff';
+    const colorIndex = colorByPlayerIdRef.current.get(playerId);
+    return colorIndex !== undefined ? playerColor(colorIndex) : '#ffffff';
+  }, []);
+
+  const animateDeploy = useCallback(
+    (
+      {
+        territoryId,
+        troops,
+      }: {
+        territoryId: number;
+        troops: number;
+      },
+      arrowPath?: { x: number; y: number }[],
+    ) => {
+      if (areAnimationsDisabled()) return;
+      const territory = territoriesRef.current.find(
+        (t) => t.id === territoryId,
+      );
+      const ownerId = ownerByIdRef.current.get(territoryId)?.ownerId;
+      if (territory)
+        startAnimation(
+          'deploy',
+          territory.x,
+          territory.y,
+          `+${troops}`,
+          colorForPlayer(ownerId),
+          arrowPath,
+        );
+      const currentTroops = ownerByIdRef.current.get(territoryId)?.troops;
+      if (currentTroops !== undefined) {
+        frozenTroopsRef.current.set(territoryId, currentTroops);
+        setTimeout(() => {
+          frozenTroopsRef.current.delete(territoryId);
+        }, getAnimationDuration('deploy'));
+      }
+    },
+    [colorForPlayer],
+  );
+
+  const explode = useCallback(
+    (
+      territoryId: number,
+      losses: number,
+      playerId: number,
+      arrowPath?: { x: number; y: number }[],
+    ) => {
+      const territory = territoriesRef.current.find(
+        (t) => t.id === territoryId,
+      );
+      if (!territory) return;
+      startAnimation(
+        'explosion',
+        territory.x,
+        territory.y,
+        `-${losses}`,
+        colorForPlayer(playerId),
+        arrowPath,
+      );
+      const currentTroops = ownerByIdRef.current.get(territoryId)?.troops;
+      if (currentTroops === undefined) return;
+      frozenTroopsRef.current.set(territoryId, currentTroops);
+      setTimeout(() => {
+        frozenTroopsRef.current.delete(territoryId);
+      }, getAnimationDuration('explosion'));
+    },
+    [colorForPlayer],
+  );
+
+  const territoryPoints = useCallback(
+    (territoryIds: number[]): { x: number; y: number }[] =>
+      territoryIds
+        .map((id) => territoriesRef.current.find((t) => t.id === id))
+        .filter((t): t is Territory => !!t)
+        .map((t) => ({ x: t.x, y: t.y })),
+    [],
+  );
+
+  // A conquering attack and the move right after it into the just-conquered
+  // territory get a single persistent arrow spanning both frames instead
+  // (drawn in the canvas effect below, driven by replayConquestArrow) — so
+  // these one-shot, burst-tied arrows are skipped for that pair.
+  const playFrameAnimation = useCallback(
+    (animation: ReplayAnimation, partOfConquestPair: boolean) => {
+      if (animation.type === 'deploy') {
+        playSound('deploy');
+        animateDeploy({
+          territoryId: animation.territoryId,
+          troops: animation.troops,
+        });
+      } else if (animation.type === 'fortify') {
+        playSound('fortify');
+        let arrowPath: { x: number; y: number }[] | undefined;
+        if (!partOfConquestPair) {
+          const pathIds = getFortifyPath(
+            territoriesRef.current,
+            ownerByIdRef.current,
+            animation.playerId,
+            animation.fromTerritoryId,
+            animation.toTerritoryId,
+          );
+          arrowPath = territoryPoints(
+            pathIds.length > 1
+              ? pathIds
+              : [animation.fromTerritoryId, animation.toTerritoryId],
+          );
+        }
+        animateDeploy(
+          { territoryId: animation.toTerritoryId, troops: animation.troops },
+          arrowPath,
+        );
+      } else {
+        playSound('explode');
+        const arrowPath = partOfConquestPair
+          ? undefined
+          : territoryPoints([
+              animation.attackingTerritoryId,
+              animation.defendingTerritoryId,
+            ]);
+        if (animation.defenceLosses > 0) {
+          explode(
+            animation.defendingTerritoryId,
+            animation.defenceLosses,
+            animation.defenderId,
+            arrowPath,
+          );
+          if (animation.attackLosses > 0)
+            explode(
+              animation.attackingTerritoryId,
+              animation.attackLosses,
+              animation.attackerId,
+            );
+        } else if (animation.attackLosses > 0) {
+          explode(
+            animation.attackingTerritoryId,
+            animation.attackLosses,
+            animation.attackerId,
+            arrowPath,
+          );
+        }
+      }
+      startAnimationLoop();
+    },
+    [animateDeploy, explode, territoryPoints],
+  );
+
+  const {
+    index: replayIndex,
+    totalFrames: replayTotalFrames,
+    playing: replayPlaying,
+    speed: replaySpeed,
+    territories: replayTerritories,
+    turnNumber: replayTurnNumber,
+    turnPlayerId: replayTurnPlayerId,
+    conquestArrow: replayConquestArrow,
+    stepForward: replayStepForward,
+    stepBackward: replayStepBackward,
+    jumpToStart: replayJumpToStart,
+    jumpToEnd: replayJumpToEnd,
+    seek: replaySeek,
+    togglePlay: replayTogglePlay,
+    cycleSpeed: replayCycleSpeed,
+  } = useReplay(showReplay, playFrameAnimation);
+
   const currentTurnPlayer = players[turnPlayerIndex];
   const isMyTurn = currentTurnPlayer?.id === selfId;
-  const ownerById = new Map(ownership.map((o) => [o.id, o]));
+  const isCapitalById = new Map(ownership.map((o) => [o.id, o.isCapital]));
+  const displayedOwnership = replayTerritories
+    ? replayTerritories.map((t) => ({
+        ...t,
+        isCapital: isCapitalById.get(t.id) ?? false,
+      }))
+    : ownership;
+  const ownerById = new Map(displayedOwnership.map((o) => [o.id, o]));
+  const replayPlayer = players.find((p) => p.id === replayTurnPlayerId);
+  const replayPlayerColor = replayPlayer
+    ? playerColor(replayPlayer.color)
+    : '#ffffff';
   const ownedTerritoryIds = new Set(
     ownership.filter((o) => o.ownerId === selfId).map((o) => o.id),
   );
@@ -829,41 +1011,7 @@ function GameMap({
     if (fortifyEndTerritoryId !== null) setFortifyTroops(fortifyMaxTroops);
   }
 
-  function colorForPlayer(playerId: number | undefined): string {
-    if (playerId === undefined) return '#ffffff';
-    const colorIndex = colorByPlayerIdRef.current.get(playerId);
-    return colorIndex !== undefined ? playerColor(colorIndex) : '#ffffff';
-  }
-
   useEffect(() => {
-    function animateDeploy({
-      territoryId,
-      troops,
-    }: {
-      territoryId: number;
-      troops: number;
-    }) {
-      if (areAnimationsDisabled()) return;
-      const territory = territoriesRef.current.find(
-        (t) => t.id === territoryId,
-      );
-      const ownerId = ownerByIdRef.current.get(territoryId)?.ownerId;
-      if (territory)
-        startAnimation(
-          'deploy',
-          territory.x,
-          territory.y,
-          `+${troops}`,
-          colorForPlayer(ownerId),
-        );
-      const currentTroops = ownerByIdRef.current.get(territoryId)?.troops;
-      if (currentTroops !== undefined) {
-        frozenTroopsRef.current.set(territoryId, currentTroops);
-        setTimeout(() => {
-          frozenTroopsRef.current.delete(territoryId);
-        }, getAnimationDuration('deploy'));
-      }
-    }
     function playTroopChangeEffect(
       sound: string,
       payload: { territoryId: number; troops: number },
@@ -902,28 +1050,9 @@ function GameMap({
       socket.off('game:attackMoved', onAttackMoved);
       socket.off('game:deployedMany', onDeployedMany);
     };
-  }, []);
+  }, [animateDeploy]);
 
   useEffect(() => {
-    function explode(territoryId: number, losses: number, playerId: number) {
-      const territory = territoriesRef.current.find(
-        (t) => t.id === territoryId,
-      );
-      if (!territory) return;
-      startAnimation(
-        'explosion',
-        territory.x,
-        territory.y,
-        `-${losses}`,
-        colorForPlayer(playerId),
-      );
-      const currentTroops = ownerByIdRef.current.get(territoryId)?.troops;
-      if (currentTroops === undefined) return;
-      frozenTroopsRef.current.set(territoryId, currentTroops);
-      setTimeout(() => {
-        frozenTroopsRef.current.delete(territoryId);
-      }, getAnimationDuration('explosion'));
-    }
     function onAttacked(payload: {
       attackingTerritoryId: number;
       defendingTerritoryId: number;
@@ -959,7 +1088,7 @@ function GameMap({
     return () => {
       socket.off('game:attacked', onAttacked);
     };
-  }, []);
+  }, [explode]);
 
   useEffect(() => {
     const arrowActive =
@@ -979,6 +1108,13 @@ function GameMap({
     attackStartTerritoryId,
     attackEndTerritoryId,
   ]);
+
+  useEffect(() => {
+    const arrowActive = replayConquestArrow !== null;
+    setContinuousAnimation(arrowActive);
+    if (arrowActive) startAnimationLoop();
+    return () => setContinuousAnimation(false);
+  }, [replayConquestArrow]);
 
   useEffect(() => {
     function onSelected() {
@@ -1123,7 +1259,7 @@ function GameMap({
   }, [selectedTerritoryId, deployTroops, setGame]);
 
   function isInteractable(t: Territory): boolean {
-    if (!isMyTurn || paused) return false;
+    if (gameEnded || !isMyTurn || paused) return false;
     if (turnPhase === 'capital') return ownerById.get(t.id)?.ownerId === selfId;
     if (turnPhase === 'deploy')
       return troopsToDeploy > 0 && ownerById.get(t.id)?.ownerId === selfId;
@@ -1508,6 +1644,21 @@ function GameMap({
       }
     }
 
+    if (replayConquestArrow) {
+      const territoryById = new Map(territories.map((t) => [t.id, t]));
+      const start = territoryById.get(replayConquestArrow.fromTerritoryId);
+      const end = territoryById.get(replayConquestArrow.toTerritoryId);
+      if (start && end) {
+        const segments = buildWrappedPathSegments(
+          [start, end],
+          toScreen,
+          imgW,
+          imgH,
+        );
+        drawFortifyPath(ctx, segments);
+      }
+    }
+
     const continentGroups = bonusesOpen
       ? (() => {
           const groups = new Map<number, Territory[]>();
@@ -1817,7 +1968,7 @@ function GameMap({
   function handleMouseUp(e: React.MouseEvent) {
     const drag = dragRef.current;
     dragRef.current = null;
-    if (!drag || drag.moved || !isMyTurn || paused) return;
+    if (!drag || drag.moved || gameEnded || !isMyTurn || paused) return;
     const pos = getPos(e);
     const vertex = hitVertex(pos);
 
@@ -1881,7 +2032,7 @@ function GameMap({
 
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault();
-    if (!isMyTurn || paused) return;
+    if (gameEnded || !isMyTurn || paused) return;
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId !== null) cancelFortify();
       return;
@@ -2099,6 +2250,23 @@ function GameMap({
         setCollapsed={setPanelCollapsed}
         navigate={navigate}
       />
+      {showReplay && replayTerritories && (
+        <ReplayPanel
+          index={replayIndex}
+          totalFrames={replayTotalFrames}
+          playing={replayPlaying}
+          speed={replaySpeed}
+          turnNumber={(replayTurnNumber ?? 0) + 1}
+          color={replayPlayerColor}
+          onTogglePlay={replayTogglePlay}
+          onStepBack={replayStepBackward}
+          onStepForward={replayStepForward}
+          onJumpStart={replayJumpToStart}
+          onJumpEnd={replayJumpToEnd}
+          onSeek={replaySeek}
+          onCycleSpeed={replayCycleSpeed}
+        />
+      )}
       {currentTurnPlayer && (
         <>
           {!gameEnded && (

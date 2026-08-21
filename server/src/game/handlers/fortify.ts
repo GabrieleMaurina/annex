@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
+import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { gameRoomName, games } from '../logic/store';
 import { advanceTurnPhase } from '../logic/turns';
@@ -175,6 +176,13 @@ export function registerFortifyHandlers(
         endId,
         (game.territoryTroops.get(endId) ?? 0) + troops,
       );
+      recordReplayFrame(game, {
+        type: 'fortify',
+        fromTerritoryId: startId,
+        toTerritoryId: endId,
+        troops,
+        playerId: player.id,
+      });
 
       advanceTurnPhase(game, io);
 

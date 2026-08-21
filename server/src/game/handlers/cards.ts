@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
 import { evaluateCardSelection, returnCardsToDeck } from '../logic/cards';
+import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { bumpStat } from '../logic/stats';
 import { gameRoomName, games } from '../logic/store';
@@ -58,6 +59,12 @@ export function registerCardHandlers(
           territoryId,
           (game.territoryTroops.get(territoryId) ?? 0) + 2,
         );
+        recordReplayFrame(game, {
+          type: 'deploy',
+          territoryId,
+          troops: 2,
+          playerId: player.id,
+        });
       }
       game.cardSetsPlayed++;
       bumpStat(game, player.id, 'setsPlayed');

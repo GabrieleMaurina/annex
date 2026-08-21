@@ -64,6 +64,7 @@ export interface GameState {
     capitalCount: number;
     cardCount: number;
     connected: boolean;
+    connectedAtEnd: boolean;
     surrendered: boolean;
     eliminated: boolean;
     troopsGained: number;
@@ -108,3 +109,39 @@ export interface ChatMessage {
   name: string;
   message: string;
 }
+
+export interface ReplayTerritory {
+  id: number;
+  ownerId: number;
+  troops: number;
+}
+
+export type ReplayAnimation =
+  | { type: 'deploy'; territoryId: number; troops: number; playerId: number }
+  | {
+      type: 'fortify';
+      fromTerritoryId: number;
+      toTerritoryId: number;
+      troops: number;
+      playerId: number;
+    }
+  | {
+      type: 'attack';
+      attackingTerritoryId: number;
+      defendingTerritoryId: number;
+      attackerId: number;
+      defenderId: number;
+      attackLosses: number;
+      defenceLosses: number;
+    };
+
+export interface ReplayFrame {
+  territories: ReplayTerritory[];
+  animation: ReplayAnimation;
+  turnNumber: number;
+  playerId: number;
+}
+
+export type ReplayAck =
+  | { ok: true; initial: ReplayTerritory[]; frames: ReplayFrame[] }
+  | { ok: false; error: string };

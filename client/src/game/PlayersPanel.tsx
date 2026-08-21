@@ -123,6 +123,7 @@ function PlayersPanel({
                     height={14}
                     alt="Team"
                     title="Team"
+                    className="align-middle"
                   />
                 </th>
               )}
@@ -133,6 +134,7 @@ function PlayersPanel({
                   height={14}
                   alt="Territories"
                   title="Territories"
+                  className="align-middle"
                 />
               </th>
               {isCapitals && (
@@ -143,6 +145,7 @@ function PlayersPanel({
                     height={14}
                     alt="Capitals"
                     title="Capitals"
+                    className="align-middle"
                   />
                 </th>
               )}
@@ -153,6 +156,7 @@ function PlayersPanel({
                   height={14}
                   alt="Troops"
                   title="Troops"
+                  className="align-middle"
                 />
               </th>
               <th className="text-center" style={{ width: 34 }}>
@@ -162,6 +166,7 @@ function PlayersPanel({
                   height={14}
                   alt="Cards"
                   title="Cards"
+                  className="align-middle"
                 />
               </th>
             </tr>
@@ -172,55 +177,60 @@ function PlayersPanel({
               const fg = contrastTextColor(bg);
               const rowStyle = { backgroundColor: bg, color: fg };
               const isDark = fg === '#ffffff';
+              const isConnected = gameEnded ? p.connectedAtEnd : p.connected;
               return (
                 <tr key={p.id}>
                   <td className="align-middle text-center" style={rowStyle}>
                     {p.id === turnPlayerId && '●'}
                   </td>
-                  <td className="align-middle text-truncate" style={rowStyle}>
-                    {p.name}
-                    {p.eliminated && (
-                      <img
-                        src={
-                          isDark
-                            ? (whiteDeathIcon ?? '/icons/death.svg')
-                            : '/icons/death.svg'
-                        }
-                        width={12}
-                        height={12}
-                        alt="Eliminated"
-                        title="Eliminated"
-                        className="ms-1"
-                      />
-                    )}
-                    {!p.connected && !p.eliminated && (
-                      <img
-                        src={
-                          isDark
-                            ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
-                            : '/icons/no-wifi.svg'
-                        }
-                        width={12}
-                        height={12}
-                        alt="Disconnected"
-                        title="Disconnected"
-                        className="ms-1"
-                      />
-                    )}
-                    {p.surrendered && (
-                      <img
-                        src={
-                          isDark
-                            ? (whiteFlagIcon ?? '/icons/flag.svg')
-                            : '/icons/flag.svg'
-                        }
-                        width={12}
-                        height={12}
-                        alt="Surrendered"
-                        title="Surrendered"
-                        className="ms-1"
-                      />
-                    )}
+                  <td className="align-middle" style={rowStyle}>
+                    <div className="d-flex align-items-center gap-1">
+                      <span className="text-truncate" style={{ minWidth: 0 }}>
+                        {p.name}
+                      </span>
+                      {p.eliminated && (
+                        <img
+                          src={
+                            isDark
+                              ? (whiteDeathIcon ?? '/icons/death.svg')
+                              : '/icons/death.svg'
+                          }
+                          width={12}
+                          height={12}
+                          alt="Eliminated"
+                          title="Eliminated"
+                          className="flex-shrink-0"
+                        />
+                      )}
+                      {!isConnected && !p.eliminated && (
+                        <img
+                          src={
+                            isDark
+                              ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
+                              : '/icons/no-wifi.svg'
+                          }
+                          width={12}
+                          height={12}
+                          alt="Disconnected"
+                          title="Disconnected"
+                          className="flex-shrink-0"
+                        />
+                      )}
+                      {p.surrendered && (
+                        <img
+                          src={
+                            isDark
+                              ? (whiteFlagIcon ?? '/icons/flag.svg')
+                              : '/icons/flag.svg'
+                          }
+                          width={12}
+                          height={12}
+                          alt="Surrendered"
+                          title="Surrendered"
+                          className="flex-shrink-0"
+                        />
+                      )}
+                    </div>
                   </td>
                   {isTeamDeathmatch && (
                     <td className="align-middle text-center" style={rowStyle}>

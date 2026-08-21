@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
 import SettingsMenu from '../common/SettingsMenu';
@@ -28,9 +28,20 @@ function Game({
   const [game, setGame] = useState<GameState | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
+  const receivedFirstStateRef = useRef(false);
 
   useEffect(() => {
     function onState(state: GameState) {
+      if (!receivedFirstStateRef.current) {
+        receivedFirstStateRef.current = true;
+        // Joining a game that's already over (spectating, navigating
+        // straight to its URL) should land on the results page immediately
+        // — batched with setGame below so it's there on the very first
+        // render, with no frame of the map showing first. The brief map
+        // peek before results is only for someone who was already watching
+        // it play out — see the effect below.
+        if (state.state === 'ended') setEndView('stats');
+      }
       setGame(state);
     }
     socket.on('game:state', onState);
@@ -111,6 +122,7 @@ function Game({
           nextSetBaseValues={game.nextSetBaseValues}
           upcomingSetValues={game.upcomingSetValues}
           gameEnded={game.state === 'ended'}
+          showReplay={endView === 'map'}
           setGame={setGame}
           setChatOpen={setChatOpen}
           navigate={navigate}
@@ -142,7 +154,7 @@ function Game({
           className="position-fixed bottom-0 end-0 m-3"
           onClick={() => setEndView('stats')}
         >
-          View Results
+          Results
         </Button>
       )}
       <Chat

@@ -25,6 +25,7 @@ import {
   shuffle,
   teamCount,
 } from '../logic/mechanics';
+import { snapshotTerritories } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { emptyPlayerStats } from '../logic/stats';
 import {
@@ -141,6 +142,9 @@ export function registerGameHandlers(
         deathOrder: [],
         teamDeathOrder: [],
         finalRanking: [],
+        replayInitial: [],
+        replayFrames: [],
+        connectivitySnapshotTaken: false,
       };
       games.set(game.name, game);
       player.gameName = game.name;
@@ -360,6 +364,8 @@ export function registerGameHandlers(
       game.playerIds = shuffle(game.playerIds);
     }
     assignTerritories(game);
+    game.replayInitial = snapshotTerritories(game);
+    game.replayFrames = [];
     const map = maps.get(game.mapName)!;
     game.deck = buildCardDeck(map.territories.map((t) => t.id));
     game.playerCards = new Map(game.playerIds.map((id) => [id, []]));

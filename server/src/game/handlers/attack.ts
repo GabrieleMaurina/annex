@@ -11,6 +11,7 @@ import {
   trueWinProbs,
 } from '../logic/dice';
 import { checkGameEnd } from '../logic/end';
+import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { recordElimination } from '../logic/stats';
 import { gameRoomName, games } from '../logic/store';
@@ -278,9 +279,19 @@ export function registerAttackHandlers(
       defenderStats.troopsKilled += attackLosses;
 
       const conquered = defenceLosses >= defendingTroops;
+      if (conquered) game.territoryOwners.set(endId, player.id);
+      recordReplayFrame(game, {
+        type: 'attack',
+        attackingTerritoryId: startId,
+        defendingTerritoryId: endId,
+        attackerId: player.id,
+        defenderId,
+        attackLosses,
+        defenceLosses,
+      });
+
       let blitzWinProbabilities: number[] = [];
       if (conquered) {
-        game.territoryOwners.set(endId, player.id);
         game.conqueredThisTurn = true;
         attackerStats.territoriesConquered++;
         defenderStats.territoriesLost++;
@@ -311,6 +322,13 @@ export function registerAttackHandlers(
                 remainingAttackers - minMoveTroops,
               );
               game.territoryTroops.set(endId, minMoveTroops);
+              recordReplayFrame(game, {
+                type: 'fortify',
+                fromTerritoryId: startId,
+                toTerritoryId: endId,
+                troops: minMoveTroops,
+                playerId: player.id,
+              });
               game.attackStartTerritoryId = null;
               game.attackEndTerritoryId = null;
               game.attackConquestMinTroops = null;
@@ -326,6 +344,13 @@ export function registerAttackHandlers(
           const remainingAttackers = attackingTroops - attackLosses;
           game.territoryTroops.set(startId, 0);
           game.territoryTroops.set(endId, remainingAttackers);
+          recordReplayFrame(game, {
+            type: 'fortify',
+            fromTerritoryId: startId,
+            toTerritoryId: endId,
+            troops: remainingAttackers,
+            playerId: player.id,
+          });
         }
       } else {
         const remainingAttackers = attackingTroops - attackLosses;
@@ -406,6 +431,13 @@ export function registerAttackHandlers(
 
       game.territoryTroops.set(startId, startTroops - troops);
       game.territoryTroops.set(endId, troops);
+      recordReplayFrame(game, {
+        type: 'fortify',
+        fromTerritoryId: startId,
+        toTerritoryId: endId,
+        troops,
+        playerId: player.id,
+      });
       game.attackStartTerritoryId = null;
       game.attackEndTerritoryId = null;
       game.attackConquestMinTroops = null;

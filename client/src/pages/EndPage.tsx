@@ -1,4 +1,5 @@
 import { Button, Container, Table } from 'react-bootstrap';
+import { useWhiteIcon } from '../common/icon';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 
@@ -19,6 +20,10 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
   const rankedPlayers = game.finalRanking
     .map((id) => playerById.get(id))
     .filter((p): p is GameState['players'][number] => !!p);
+
+  const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
+  const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
+  const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
 
   return (
     <Container fluid className="py-5 px-4">
@@ -63,6 +68,7 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
               const bg = playerColor(p.color);
               const fg = contrastTextColor(bg);
               const rowStyle = { backgroundColor: bg, color: fg };
+              const isDark = fg === '#ffffff';
               const killedNames = p.playersKilled
                 .map((id) => nameById.get(id) ?? '?')
                 .join(', ');
@@ -70,7 +76,53 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                 <tr key={p.id}>
                   <td style={rowStyle}>{index + 1}</td>
                   <td className="text-start" style={rowStyle}>
-                    {p.name}
+                    <div className="d-flex align-items-center gap-1">
+                      <span className="text-truncate" style={{ minWidth: 0 }}>
+                        {p.name}
+                      </span>
+                      {p.eliminated && (
+                        <img
+                          src={
+                            isDark
+                              ? (whiteDeathIcon ?? '/icons/death.svg')
+                              : '/icons/death.svg'
+                          }
+                          width={12}
+                          height={12}
+                          alt="Eliminated"
+                          title="Eliminated"
+                          className="flex-shrink-0"
+                        />
+                      )}
+                      {!p.connectedAtEnd && !p.eliminated && (
+                        <img
+                          src={
+                            isDark
+                              ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
+                              : '/icons/no-wifi.svg'
+                          }
+                          width={12}
+                          height={12}
+                          alt="Disconnected"
+                          title="Disconnected"
+                          className="flex-shrink-0"
+                        />
+                      )}
+                      {p.surrendered && (
+                        <img
+                          src={
+                            isDark
+                              ? (whiteFlagIcon ?? '/icons/flag.svg')
+                              : '/icons/flag.svg'
+                          }
+                          width={12}
+                          height={12}
+                          alt="Surrendered"
+                          title="Surrendered"
+                          className="flex-shrink-0"
+                        />
+                      )}
+                    </div>
                   </td>
                   <td style={rowStyle}>
                     {p.turnsPlayed}/{game.turnNumber + 1}
@@ -83,7 +135,9 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                   <td style={rowStyle}>{p.troopsLost}</td>
                   <td style={rowStyle}>{p.territoriesConquered}</td>
                   <td style={rowStyle}>{p.territoriesLost}</td>
-                  {isCapitals && <td style={rowStyle}>{p.capitalsConquered}</td>}
+                  {isCapitals && (
+                    <td style={rowStyle}>{p.capitalsConquered}</td>
+                  )}
                   {isCapitals && <td style={rowStyle}>{p.capitalsLost}</td>}
                   <td style={rowStyle}>{p.cardsGained}</td>
                   <td style={rowStyle}>{p.setsPlayed}</td>
@@ -95,10 +149,12 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
       </div>
 
       <div className="d-flex justify-content-center gap-2">
-        <Button variant="secondary" onClick={onViewMap}>
-          View Map
+        <Button variant="primary" onClick={onViewMap}>
+          Map
         </Button>
-        <Button onClick={() => navigate('/')}>Leave</Button>
+        <Button variant="secondary" onClick={() => navigate('/')}>
+          Leave
+        </Button>
       </div>
     </Container>
   );

@@ -37,6 +37,38 @@ export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode = 'Supremacy' | 'Capitals' | 'Team Deathmatch';
 export type TurnPhase = 'capital' | 'deploy' | 'attack' | 'fortify';
 
+export type ReplayAnimation =
+  | { type: 'deploy'; territoryId: number; troops: number; playerId: number }
+  | {
+      type: 'fortify';
+      fromTerritoryId: number;
+      toTerritoryId: number;
+      troops: number;
+      playerId: number;
+    }
+  | {
+      type: 'attack';
+      attackingTerritoryId: number;
+      defendingTerritoryId: number;
+      attackerId: number;
+      defenderId: number;
+      attackLosses: number;
+      defenceLosses: number;
+    };
+
+export interface ReplayTerritory {
+  id: number;
+  ownerId: number;
+  troops: number;
+}
+
+export interface ReplayFrame {
+  territories: ReplayTerritory[];
+  animation: ReplayAnimation;
+  turnNumber: number;
+  playerId: number;
+}
+
 export interface PlayerStats {
   troopsGained: number;
   troopsKilled: number;
@@ -49,6 +81,7 @@ export interface PlayerStats {
   playersKilled: number[];
   turnsPlayed: number;
   setsPlayed: number;
+  connectedAtEnd: boolean;
 }
 
 export interface Game {
@@ -95,4 +128,7 @@ export interface Game {
   deathOrder: number[];
   teamDeathOrder: number[];
   finalRanking: number[];
+  replayInitial: ReplayTerritory[];
+  replayFrames: ReplayFrame[];
+  connectivitySnapshotTaken: boolean;
 }

@@ -16,6 +16,7 @@ interface Animation {
   label?: string;
   labelColor?: string;
   particles?: Particle[];
+  arrowPath?: { x: number; y: number }[];
 }
 
 const DURATIONS: Record<AnimationType, number> = {
@@ -67,6 +68,7 @@ export function startAnimation(
   y: number,
   label?: string,
   labelColor?: string,
+  arrowPath?: { x: number; y: number }[],
 ) {
   if (disabled) return;
   animations.push({
@@ -77,6 +79,7 @@ export function startAnimation(
     label,
     labelColor,
     particles: type === 'explosion' ? makeExplosionParticles() : undefined,
+    arrowPath,
   });
 }
 
@@ -208,16 +211,25 @@ export function drawAnimations(
   const now = performance.now();
   for (const a of animations) {
     const p = toScreen({ x: a.x, y: a.y });
+    const progress = Math.min(1, (now - a.startedAt) / DURATIONS[a.type]);
 
     if (a.type === 'explosion') {
       drawExplosion(ctx, a, p, radius, now);
     } else {
-      const progress = Math.min(1, (now - a.startedAt) / DURATIONS[a.type]);
       ctx.beginPath();
       ctx.arc(p.x, p.y, radius * (1 + progress), 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(255, 255, 255, ${1 - progress})`;
       ctx.lineWidth = 4;
       ctx.stroke();
+    }
+
+    if (progress < 1 && a.arrowPath && a.arrowPath.length > 1) {
+      const screenPath = a.arrowPath.map(toScreen);
+      const segments: [{ x: number; y: number }, { x: number; y: number }][] =
+        [];
+      for (let i = 0; i < screenPath.length - 1; i++)
+        segments.push([screenPath[i], screenPath[i + 1]]);
+      drawFortifyPath(ctx, segments);
     }
 
     drawLabel(ctx, a, p, radius, now);

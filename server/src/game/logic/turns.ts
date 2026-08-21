@@ -4,6 +4,7 @@ import { hasAnyAttack, hasAnyFortify } from './autoSkip';
 import { pickBestSet, popRandomCard, returnCardsToDeck } from './cards';
 import { checkGameEnd } from './end';
 import { calculateDeployTroops, ownsAnyTerritory } from './mechanics';
+import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
 import { bumpStat } from './stats';
 
@@ -46,8 +47,12 @@ export function resumeTurnTimer(game: Game, io: Server) {
   game.pausedAt = null;
 
   clearTurnTimer(game.name);
-  const remaining = game.turnDuration * 1000 - (Date.now() - game.turnStartedAt);
-  const timer = setTimeout(() => forceEndTurn(game, io), Math.max(0, remaining));
+  const remaining =
+    game.turnDuration * 1000 - (Date.now() - game.turnStartedAt);
+  const timer = setTimeout(
+    () => forceEndTurn(game, io),
+    Math.max(0, remaining),
+  );
   turnTimers.set(game.name, timer);
 }
 
@@ -84,15 +89,25 @@ function dropRandomTroops(
   }
 
   bumpStat(game, playerId, 'troopsGained', amount);
+  const tally = new Map<number, number>();
   while (amount > 0) {
     const territoryId =
       territoryIds[Math.floor(Math.random() * territoryIds.length)];
+    tally.set(territoryId, (tally.get(territoryId) ?? 0) + 1);
+    amount--;
+  }
+  for (const [territoryId, troops] of tally) {
     game.territoryTroops.set(
       territoryId,
-      (game.territoryTroops.get(territoryId) ?? 0) + 1,
+      (game.territoryTroops.get(territoryId) ?? 0) + troops,
     );
-    deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + 1);
-    amount--;
+    deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + troops);
+    recordReplayFrame(game, {
+      type: 'deploy',
+      territoryId,
+      troops,
+      playerId,
+    });
   }
 }
 
@@ -129,6 +144,12 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
         (game.territoryTroops.get(territoryId) ?? 0) + 2,
       );
       deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + 2);
+      recordReplayFrame(game, {
+        type: 'deploy',
+        territoryId,
+        troops: 2,
+        playerId,
+      });
     }
     bumpStat(game, playerId, 'troopsGained', best.territoryBonusIds.length * 2);
     dropRandomTroops(game, playerId, best.baseValue, deposits);
@@ -182,6 +203,7 @@ export function startCapitalPlacement(game: Game, io: Server) {
 
 function completePendingAttackMove(
   game: Game,
+  playerId: number,
 ): { territoryId: number; troops: number } | null {
   if (game.attackConquestMinTroops === null) return null;
 
@@ -192,11 +214,19 @@ function completePendingAttackMove(
 
   game.territoryTroops.set(startId, startTroops - troops);
   game.territoryTroops.set(endId, troops);
+  recordReplayFrame(game, {
+    type: 'fortify',
+    fromTerritoryId: startId,
+    toTerritoryId: endId,
+    troops,
+    playerId,
+  });
   return { territoryId: endId, troops };
 }
 
 function completePendingFortify(
   game: Game,
+  playerId: number,
 ): { territoryId: number; troops: number } | null {
   if (
     game.fortifyStartTerritoryId === null ||
@@ -210,17 +240,30 @@ function completePendingFortify(
 
   game.territoryTroops.set(startId, startTroops - 1);
   game.territoryTroops.set(endId, (game.territoryTroops.get(endId) ?? 0) + 1);
+  recordReplayFrame(game, {
+    type: 'fortify',
+    fromTerritoryId: startId,
+    toTerritoryId: endId,
+    troops: 1,
+    playerId,
+  });
   return { territoryId: endId, troops: 1 };
 }
 
 export function forceEndTurn(game: Game, io: Server) {
   const room = gameRoomName(game.name);
+  const playerId = game.playerIds[game.turnPlayerIndex];
 
   if (game.turnPhase === 'capital') {
-    const playerId = game.playerIds[game.turnPlayerIndex];
     const territoryId = pickRandomOwnedTerritory(game, playerId);
     if (territoryId !== null) {
       assignCapital(game, territoryId);
+      recordReplayFrame(game, {
+        type: 'deploy',
+        territoryId,
+        troops: 3,
+        playerId,
+      });
       io.to(room).emit('game:deployed', { territoryId, troops: 3 });
     }
     advanceCapitalPlacement(game, io);
@@ -239,11 +282,11 @@ export function forceEndTurn(game: Game, io: Server) {
     }
   }
   if (game.turnPhase === 'attack') {
-    const move = completePendingAttackMove(game);
+    const move = completePendingAttackMove(game, playerId);
     if (move) io.to(room).emit('game:attackMoved', move);
   }
   if (game.turnPhase === 'fortify') {
-    const move = completePendingFortify(game);
+    const move = completePendingFortify(game, playerId);
     if (move) io.to(room).emit('game:fortified', move);
   }
   advanceToNextPlayer(game, io);
@@ -276,6 +319,15 @@ export function advanceToNextPlayer(game: Game, io: Server) {
   game.conqueredThisTurn = false;
 
   const nextIndex = nextAlivePlayerIndex(game);
+
+  // Advancing to a new round is the only place `turnNumber` itself can
+  // cross the Capitals-mode win gate (see `checkGameEnd`) without any
+  // territory changing hands — e.g. a player already holding every capital
+  // when the game enters its 3rd round. Re-check here so that win doesn't
+  // sit unnoticed until the next conquest or surrender happens to trigger it.
+  checkGameEnd(game, true);
+  if (game.state === 'ended') return;
+
   game.turnPlayerIndex = nextIndex;
   game.turnPhase = 'deploy';
   game.selectedTerritoryId = null;

@@ -10,6 +10,27 @@ export { gameRoomName } from './rooms';
 
 export const games = new Map<string, Game>();
 
+// A disconnect is often just a page refresh, followed almost immediately by
+// a reconnect — destroying a game the instant its last socket drops would
+// wipe it out from under a refreshing client. Instead, wait this long and
+// re-check: if everyone's still gone by then, destroy it for real.
+const DESTROY_GRACE_MS = 5000;
+const pendingInactiveDestroy = new Map<string, NodeJS.Timeout>();
+const pendingEndedDestroy = new Map<string, NodeJS.Timeout>();
+
+function scheduleDestroy(
+  pending: Map<string, NodeJS.Timeout>,
+  gameName: string,
+  check: () => void,
+) {
+  if (pending.has(gameName)) return;
+  const timer = setTimeout(() => {
+    pending.delete(gameName);
+    check();
+  }, DESTROY_GRACE_MS);
+  pending.set(gameName, timer);
+}
+
 function hasActivePlayer(game: Game, playersById: Map<number, Player>) {
   return game.playerIds.some(
     (id) =>
@@ -39,9 +60,19 @@ export function destroyIfInactive(
 ) {
   if (game.state !== 'playing' || hasActivePlayer(game, playersById)) return;
 
-  clearTurnTimer(game.name);
-  games.delete(game.name);
-  evictGameMembers(game, playersById, io);
+  scheduleDestroy(pendingInactiveDestroy, game.name, () => {
+    const current = games.get(game.name);
+    if (
+      !current ||
+      current.state !== 'playing' ||
+      hasActivePlayer(current, playersById)
+    )
+      return;
+
+    clearTurnTimer(current.name);
+    games.delete(current.name);
+    evictGameMembers(current, playersById, io);
+  });
 }
 
 function hasEndedGameViewer(game: Game, playersById: Map<number, Player>) {
@@ -58,8 +89,18 @@ export function destroyIfEnded(
 ) {
   if (game.state !== 'ended' || hasEndedGameViewer(game, playersById)) return;
 
-  games.delete(game.name);
-  evictGameMembers(game, playersById, io);
+  scheduleDestroy(pendingEndedDestroy, game.name, () => {
+    const current = games.get(game.name);
+    if (
+      !current ||
+      current.state !== 'ended' ||
+      hasEndedGameViewer(current, playersById)
+    )
+      return;
+
+    games.delete(current.name);
+    evictGameMembers(current, playersById, io);
+  });
 }
 
 export function removePlayerFromGame(

@@ -9,6 +9,7 @@ import {
   registerDeployHandlers,
   registerFortifyHandlers,
   registerGameHandlers,
+  registerReplayHandlers,
 } from './game';
 import { broadcastHomeGames, registerHomeHandlers } from './home';
 import { registerMapsHandlers } from './maps';
@@ -36,6 +37,7 @@ io.on('connection', (socket) => {
   registerFortifyHandlers(io, socket, playersBySocket, playersById);
   registerAttackHandlers(io, socket, playersBySocket, playersById);
   registerCardHandlers(io, socket, playersBySocket, playersById);
+  registerReplayHandlers(io, socket, playersBySocket);
 });
 
 setInterval(() => {

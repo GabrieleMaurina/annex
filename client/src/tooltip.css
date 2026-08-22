@@ -1,0 +1,12 @@
+.tooltip {
+  --bs-tooltip-bg: #000;
+  --bs-tooltip-color: #fff;
+}
+
+.help-tooltip {
+  --bs-tooltip-max-width: 320px;
+}
+
+.help-tooltip .tooltip-inner {
+  text-align: left;
+}

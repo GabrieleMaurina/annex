@@ -18,6 +18,16 @@ function linearValue(setNumber: number): number {
   return 30 + (setNumber - LINEAR_TABLE.length) * 5;
 }
 
+const GLOBAL_COUNTER_KEY = 0;
+
+function isPerPlayer(mode: Game['cards']): boolean {
+  return mode === 'Linear Per Player' || mode === 'Exponential Per Player';
+}
+
+export function counterKey(game: Game, playerId: number): number {
+  return isPerPlayer(game.cards) ? playerId : GLOBAL_COUNTER_KEY;
+}
+
 export function buildCardDeck(territoryIds: number[]): Card[] {
   const base = Math.floor(territoryIds.length / 3);
   const remainder = territoryIds.length - base * 3;
@@ -54,26 +64,35 @@ export function returnCardsToDeck(deck: Card[], cards: Card[]): void {
   deck.push(...cards);
 }
 
-export function nextSetBaseValues(game: Game): Record<SetKind, number> {
+export function nextSetBaseValues(
+  game: Game,
+  playerId: number,
+): Record<SetKind, number> {
   if (game.cards === 'Constant') return { ...CONSTANT_VALUES };
+  const key = counterKey(game, playerId);
   const value =
-    game.cards === 'Linear'
-      ? linearValue(game.cardSetsPlayed + 1)
-      : game.cardsLastSetValue === 0
+    game.cards === 'Linear' || game.cards === 'Linear Per Player'
+      ? linearValue((game.cardSetsPlayed.get(key) ?? 0) + 1)
+      : (game.cardsLastSetValue.get(key) ?? 0) === 0
         ? 5
-        : Math.ceil(game.cardsLastSetValue * 1.3);
+        : Math.ceil((game.cardsLastSetValue.get(key) ?? 0) * 1.3);
   return { soldier: value, humvee: value, tank: value, mixed: value };
 }
 
-export function upcomingSetValues(game: Game, count: number): number[] {
+export function upcomingSetValues(
+  game: Game,
+  playerId: number,
+  count: number,
+): number[] {
   if (game.cards === 'Constant') return [];
-  if (game.cards === 'Linear') {
+  const key = counterKey(game, playerId);
+  if (game.cards === 'Linear' || game.cards === 'Linear Per Player') {
     return Array.from({ length: count }, (_, i) =>
-      linearValue(game.cardSetsPlayed + 1 + i),
+      linearValue((game.cardSetsPlayed.get(key) ?? 0) + 1 + i),
     );
   }
   const values: number[] = [];
-  let last = game.cardsLastSetValue;
+  let last = game.cardsLastSetValue.get(key) ?? 0;
   for (let i = 0; i < count; i++) {
     last = last === 0 ? 5 : Math.ceil(last * 1.3);
     values.push(last);
@@ -109,7 +128,7 @@ function evaluateCombo(
   const candidates = setKindCandidates(realSymbols);
   if (candidates.length === 0) return null;
 
-  const values = nextSetBaseValues(game);
+  const values = nextSetBaseValues(game, playerId);
   let setKind = candidates[0];
   let baseValue = values[setKind];
   for (const candidate of candidates) {
@@ -155,10 +174,6 @@ export function evaluateCardSelection(
   return evaluateCombo(game, playerId, cardsUsed);
 }
 
-// Mirrors the client's own set ranking (enumerateCombos in
-// client/src/game/cards.ts): highest total value first, ties broken by
-// fewest wild cards used — so a forced auto-play (see turns.ts) picks the
-// same set a player would see proposed by default.
 export function pickBestSet(
   game: Game,
   hand: Card[],

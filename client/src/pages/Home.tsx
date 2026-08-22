@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container, Table } from 'react-bootstrap';
-import { useWhiteIcon } from '../common/icon';
 import PlayerNameEditor from '../common/PlayerNameEditor';
 import SettingsMenu from '../common/SettingsMenu';
+import Tip from '../common/Tip';
+import { useWhiteIcon } from '../common/icon';
 import { socket } from '../lib/socket';
 import type { Ack, GameSummary, Player } from '../lib/types';
 
@@ -74,30 +75,28 @@ function Home({
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
         <PlayerNameEditor player={player} onNameChange={onNameChange} />
       </div>
-      <Button
-        variant="secondary"
-        size="sm"
-        href="https://github.com/GabrieleMaurina/annex"
-        target="_blank"
-        rel="noreferrer"
-        title="View on GitHub"
-        className="position-fixed bottom-0 end-0 m-3"
-      >
-        <img
-          src={whiteGithubIcon ?? '/icons/github.svg'}
-          width={16}
-          height={16}
-          alt="GitHub"
-        />
-      </Button>
+      <Tip text="View on GitHub">
+        <Button
+          variant="secondary"
+          size="sm"
+          href="https://github.com/GabrieleMaurina/annex"
+          target="_blank"
+          rel="noreferrer"
+          className="position-fixed bottom-0 end-0 m-3"
+        >
+          <img
+            src={whiteGithubIcon ?? '/icons/github.svg'}
+            width={16}
+            height={16}
+            alt="GitHub"
+          />
+        </Button>
+      </Tip>
       <div className="d-flex justify-content-center align-items-center gap-5 mb-4">
         <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
-        <h1
-          className="mb-0"
-          title="/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission"
-        >
-          Annex
-        </h1>
+        <Tip text="/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission">
+          <h1 className="mb-0">Annex</h1>
+        </Tip>
         <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
       </div>
 

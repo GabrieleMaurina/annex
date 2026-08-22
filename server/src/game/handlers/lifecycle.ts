@@ -25,6 +25,7 @@ import {
   shuffle,
   teamCount,
 } from '../logic/mechanics';
+import { assignMissions } from '../logic/missions';
 import { snapshotTerritories } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { emptyPlayerStats } from '../logic/stats';
@@ -47,12 +48,24 @@ const MAX_GAME_NAME_LENGTH = 20;
 
 const GAME_MODE_VALUES: GameMode[] = [
   'Supremacy',
+  'Supremacy 3/4',
+  'Supremacy 2/3',
   'Capitals',
   'Team Deathmatch',
+  '5-Turn',
+  '10-Turn',
+  'Assassin',
+  'Mission',
 ];
 const BLITZ_VALUES: Blitz[] = ['Balanced', 'True'];
 const DEFENCE_DICE_VALUES: DefenceDice[] = [2, 3];
-const CARDS_VALUES: CardsMode[] = ['Constant', 'Linear', 'Exponential'];
+const CARDS_VALUES: CardsMode[] = [
+  'Constant',
+  'Linear',
+  'Exponential',
+  'Linear Per Player',
+  'Exponential Per Player',
+];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 
 function validateGameName(name: unknown): string | null {
@@ -130,14 +143,15 @@ export function registerGameHandlers(
         territoryOwners: new Map(),
         territoryTroops: new Map(),
         capitalTerritoryIds: new Set(),
+        playerMissions: new Map(),
         hostPriority: [player.id],
         surrenderedIds: new Set(),
         winnerIds: [],
         deck: [],
         playerCards: new Map(),
         conqueredThisTurn: false,
-        cardSetsPlayed: 0,
-        cardsLastSetValue: 0,
+        cardSetsPlayed: new Map(),
+        cardsLastSetValue: new Map(),
         stats: new Map(),
         deathOrder: [],
         teamDeathOrder: [],
@@ -364,13 +378,20 @@ export function registerGameHandlers(
       game.playerIds = shuffle(game.playerIds);
     }
     assignTerritories(game);
+    if (game.gameMode === 'Assassin') {
+      game.playerMissions = assignMissions(game, ['assassinate']);
+    } else if (game.gameMode === 'Mission') {
+      game.playerMissions = assignMissions(game);
+    } else {
+      game.playerMissions = new Map();
+    }
     game.replayInitial = snapshotTerritories(game);
     game.replayFrames = [];
     const map = maps.get(game.mapName)!;
     game.deck = buildCardDeck(map.territories.map((t) => t.id));
     game.playerCards = new Map(game.playerIds.map((id) => [id, []]));
-    game.cardSetsPlayed = 0;
-    game.cardsLastSetValue = 0;
+    game.cardSetsPlayed = new Map();
+    game.cardsLastSetValue = new Map();
     game.stats = new Map(game.playerIds.map((id) => [id, emptyPlayerStats()]));
     game.deathOrder = [];
     game.teamDeathOrder = [];

@@ -1,4 +1,5 @@
 import { Button } from 'react-bootstrap';
+import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
 import { contrastTextColor, withAlpha } from '../lib/palette';
 import { socket } from '../lib/socket';
@@ -49,15 +50,18 @@ function TurnPanel({
       </span>
       {turnPhase === 'deploy' && (
         <span className="d-flex align-items-center gap-1">
-          <img
-            src={
-              isDark ? (whiteTankIcon ?? '/icons/tank.svg') : '/icons/tank.svg'
-            }
-            width={14}
-            height={14}
-            alt="Troops to deploy"
-            title="Troops to deploy"
-          />
+          <Tip text="Troops to deploy">
+            <img
+              src={
+                isDark
+                  ? (whiteTankIcon ?? '/icons/tank.svg')
+                  : '/icons/tank.svg'
+              }
+              width={14}
+              height={14}
+              alt="Troops to deploy"
+            />
+          </Tip>
           {troopsToDeploy}
         </span>
       )}

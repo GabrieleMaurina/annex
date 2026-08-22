@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { preloadSounds } from './lib/sounds';
 import './scrollbar.css';
+import './tooltip.css';
 
 preloadSounds();
 

@@ -10,10 +10,6 @@ export { gameRoomName } from './rooms';
 
 export const games = new Map<string, Game>();
 
-// A disconnect is often just a page refresh, followed almost immediately by
-// a reconnect — destroying a game the instant its last socket drops would
-// wipe it out from under a refreshing client. Instead, wait this long and
-// re-check: if everyone's still gone by then, destroy it for real.
 const DESTROY_GRACE_MS = 5000;
 const pendingInactiveDestroy = new Map<string, NodeJS.Timeout>();
 const pendingEndedDestroy = new Map<string, NodeJS.Timeout>();
@@ -198,6 +194,10 @@ export function broadcastGameStates(
     for (const [playerId, cards] of game.playerCards) {
       const socketId = playersById.get(playerId)?.socketId;
       if (socketId) io.to(socketId).emit('game:cards', { cards });
+    }
+    for (const [playerId, mission] of game.playerMissions) {
+      const socketId = playersById.get(playerId)?.socketId;
+      if (socketId) io.to(socketId).emit('game:mission', { mission });
     }
   }
 }

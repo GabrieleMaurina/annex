@@ -79,9 +79,6 @@ function wrapSplitY(a: Point, b: Point, mapH: number): [Point, Point][] {
   ];
 }
 
-// Splits a world-space edge that crosses more than half the map's width or
-// height into the segments of its shorter, wrap-around path instead of a
-// single straight line — mirrors the mapper's edge-drawing logic.
 function wrapEdgeSegments(
   a: Point,
   b: Point,
@@ -95,9 +92,6 @@ function wrapEdgeSegments(
   return segments;
 }
 
-// Computes the convex hull of a set of points (Andrew's monotone chain),
-// returned in counter-clockwise order. Degenerates gracefully for fewer than
-// 3 points (returned as-is).
 export function convexHull(points: Point[]): Point[] {
   const pts = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
   if (pts.length <= 2) return pts;
@@ -131,9 +125,6 @@ export function convexHull(points: Point[]): Point[] {
   return [...lower, ...upper];
 }
 
-// Positions a fixed-size panel next to a screen-space anchor point (e.g. a
-// territory), preferring just below it, falling back to just above, and
-// clamped to stay within the screen (minus a reserved bottom strip).
 export function getAnchoredPanelPosition(
   anchor: Point,
   anchorRadius: number,
@@ -157,12 +148,6 @@ export function getAnchoredPanelPosition(
   };
 }
 
-// Builds the screen-space segments for an animated path across territory
-// centers (world coordinates), wrapping around the map where that's the
-// shorter route. Segments run all the way to each territory's true center
-// (not just to the edge of its vertex circle) — since vertices are drawn on
-// top of this path, that keeps the animation spawning and disappearing
-// underneath them instead of popping in/out right at their edge.
 export function buildWrappedPathSegments(
   path: Point[],
   toScreen: (p: Point) => Point,

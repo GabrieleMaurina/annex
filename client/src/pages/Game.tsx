@@ -5,7 +5,7 @@ import SettingsMenu from '../common/SettingsMenu';
 import GameMap from '../game/GameMap';
 import { useGameLogs } from '../game/useGameLogs';
 import { socket } from '../lib/socket';
-import type { Ack, GameState, Player } from '../lib/types';
+import type { Ack, GameState, Mission, Player } from '../lib/types';
 import Lobby from '../lobby/Lobby';
 import EndPage from './EndPage';
 
@@ -29,6 +29,7 @@ function Game({
   const [game, setGame] = useState<GameState | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
+  const [mission, setMission] = useState<Mission | null>(null);
   const receivedFirstStateRef = useRef(false);
   const logs = useGameLogs(game);
 
@@ -36,12 +37,6 @@ function Game({
     function onState(state: GameState) {
       if (!receivedFirstStateRef.current) {
         receivedFirstStateRef.current = true;
-        // Joining a game that's already over (spectating, navigating
-        // straight to its URL) should land on the results page immediately
-        // — batched with setGame below so it's there on the very first
-        // render, with no frame of the map showing first. The brief map
-        // peek before results is only for someone who was already watching
-        // it play out — see the effect below.
         if (state.state === 'ended') setEndView('stats');
       }
       setGame(state);
@@ -49,6 +44,16 @@ function Game({
     socket.on('game:state', onState);
     return () => {
       socket.off('game:state', onState);
+    };
+  }, []);
+
+  useEffect(() => {
+    function onMission(payload: { mission: Mission }) {
+      setMission(payload.mission);
+    }
+    socket.on('game:mission', onMission);
+    return () => {
+      socket.off('game:mission', onMission);
     };
   }, []);
 
@@ -103,8 +108,10 @@ function Game({
           players={game.players}
           spectators={game.spectators}
           ownership={game.territories}
+          gameMode={game.gameMode}
           isTeamDeathmatch={game.gameMode === 'Team Deathmatch'}
           isCapitals={game.gameMode === 'Capitals'}
+          mission={mission}
           selfId={selfId}
           turnNumber={game.turnNumber}
           turnPlayerIndex={game.turnPlayerIndex}

@@ -10,7 +10,7 @@ function App() {
   const [bonuses, setBonuses] = useState<number[]>([2]);
   const [imageSrc, setImageSrc] = useState<string>(() => createDefaultImage());
   const [collapsed, setCollapsed] = useState(false);
-  const [mapName, setMapName] = useState('map');
+  const [mapName, setMapName] = useState('Map');
   const [currentContinentId, setCurrentContinentId] = useState(0);
 
   return (

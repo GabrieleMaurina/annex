@@ -41,11 +41,6 @@ export function gameSummary(game: Game) {
   };
 }
 
-// The first time a client observes `state === 'ended'`, freeze each
-// player's connectedness right there — `connected` itself keeps tracking
-// the live socket forever, but the end screen's disconnected icon should
-// reflect whether they were connected *at the moment the game ended*, not
-// whatever it is now.
 function captureConnectivityAtEnd(
   game: Game,
   playersById: Map<number, Player>,
@@ -61,6 +56,7 @@ function captureConnectivityAtEnd(
 export function gameState(game: Game, playersById: Map<number, Player>) {
   captureConnectivityAtEnd(game, playersById);
   const stats = territoryStats(game);
+  const turnPlayerId = game.playerIds[game.turnPlayerIndex];
   return {
     name: game.name,
     mapName: game.mapName,
@@ -85,8 +81,8 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     attackEndTerritoryId: game.attackEndTerritoryId,
     attackConquestMinTroops: game.attackConquestMinTroops,
     winnerIds: game.winnerIds,
-    nextSetBaseValues: nextSetBaseValues(game),
-    upcomingSetValues: upcomingSetValues(game, 3),
+    nextSetBaseValues: nextSetBaseValues(game, turnPlayerId),
+    upcomingSetValues: upcomingSetValues(game, turnPlayerId, 3),
     finalRanking: game.finalRanking,
     players: toSummaries(game.playerIds, playersById).map((player) => {
       const territoryCount = stats.get(player.id)?.territoryCount ?? 0;

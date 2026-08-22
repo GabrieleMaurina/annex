@@ -1,4 +1,5 @@
 import { Button, Form } from 'react-bootstrap';
+import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
 
@@ -66,85 +67,87 @@ function ReplayPanel({
           border-radius: 1rem;
         }
       `}</style>
-      <span
-        className="d-inline-block rounded-circle flex-shrink-0"
-        style={{ width: 22, height: 22, backgroundColor: color }}
-        title="Current player"
-      />
+      <Tip text="Current player">
+        <span
+          className="d-inline-block rounded-circle flex-shrink-0"
+          style={{ width: 22, height: 22, backgroundColor: color }}
+        />
+      </Tip>
       <span className="fw-bold">Turn {turnNumber}</span>
-      <Button
-        size="sm"
-        variant="secondary"
-        title="Jump to start"
-        disabled={atStart}
-        onClick={onJumpStart}
-      >
-        <img
-          src={whiteSkipBackIcon ?? '/icons/skip-back.svg'}
-          width={14}
-          height={14}
-          alt="Jump to start"
-        />
-      </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        title="Rewind one frame"
-        disabled={atStart}
-        onClick={onStepBack}
-      >
-        <img
-          src={whiteStepBackIcon ?? '/icons/step-back.svg'}
-          width={14}
-          height={14}
-          alt="Rewind one frame"
-        />
-      </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        title={playing ? 'Pause' : 'Play'}
-        onClick={onTogglePlay}
-      >
-        <img
-          src={
-            playing
-              ? (whitePauseIcon ?? '/icons/pause.svg')
-              : (whitePlayIcon ?? '/icons/play.svg')
-          }
-          width={14}
-          height={14}
-          alt={playing ? 'Pause' : 'Play'}
-        />
-      </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        title="Advance one frame"
-        disabled={atEnd}
-        onClick={onStepForward}
-      >
-        <img
-          src={whiteStepForwardIcon ?? '/icons/step-forward.svg'}
-          width={14}
-          height={14}
-          alt="Advance one frame"
-        />
-      </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        title="Jump to end"
-        disabled={atEnd}
-        onClick={onJumpEnd}
-      >
-        <img
-          src={whiteSkipForwardIcon ?? '/icons/skip-forward.svg'}
-          width={14}
-          height={14}
-          alt="Jump to end"
-        />
-      </Button>
+      <Tip text="Jump to start">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={atStart}
+          onClick={onJumpStart}
+        >
+          <img
+            src={whiteSkipBackIcon ?? '/icons/skip-back.svg'}
+            width={14}
+            height={14}
+            alt="Jump to start"
+          />
+        </Button>
+      </Tip>
+      <Tip text="Rewind one frame">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={atStart}
+          onClick={onStepBack}
+        >
+          <img
+            src={whiteStepBackIcon ?? '/icons/step-back.svg'}
+            width={14}
+            height={14}
+            alt="Rewind one frame"
+          />
+        </Button>
+      </Tip>
+      <Tip text={playing ? 'Pause' : 'Play'}>
+        <Button size="sm" variant="secondary" onClick={onTogglePlay}>
+          <img
+            src={
+              playing
+                ? (whitePauseIcon ?? '/icons/pause.svg')
+                : (whitePlayIcon ?? '/icons/play.svg')
+            }
+            width={14}
+            height={14}
+            alt={playing ? 'Pause' : 'Play'}
+          />
+        </Button>
+      </Tip>
+      <Tip text="Advance one frame">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={atEnd}
+          onClick={onStepForward}
+        >
+          <img
+            src={whiteStepForwardIcon ?? '/icons/step-forward.svg'}
+            width={14}
+            height={14}
+            alt="Advance one frame"
+          />
+        </Button>
+      </Tip>
+      <Tip text="Jump to end">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={atEnd}
+          onClick={onJumpEnd}
+        >
+          <img
+            src={whiteSkipForwardIcon ?? '/icons/skip-forward.svg'}
+            width={14}
+            height={14}
+            alt="Jump to end"
+          />
+        </Button>
+      </Tip>
       <Form.Range
         className="replay-range"
         min={0}
@@ -158,15 +161,16 @@ function ReplayPanel({
           } as React.CSSProperties
         }
       />
-      <Button
-        size="sm"
-        variant="secondary"
-        title="Playback speed"
-        onClick={onCycleSpeed}
-        style={{ minWidth: 44 }}
-      >
-        {speed}x
-      </Button>
+      <Tip text="Playback speed">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={onCycleSpeed}
+          style={{ minWidth: 44 }}
+        >
+          {speed}x
+        </Button>
+      </Tip>
     </div>
   );
 }

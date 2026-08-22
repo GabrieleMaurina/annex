@@ -55,7 +55,13 @@ export function recordElimination(
   return eliminated;
 }
 
-function countTerritories(game: Game, playerId: number): number {
+export function findKillerId(game: Game, targetId: number): number | undefined {
+  return game.playerIds.find((id) =>
+    game.stats.get(id)!.playersKilled.includes(targetId),
+  );
+}
+
+export function countTerritories(game: Game, playerId: number): number {
   let count = 0;
   for (const ownerId of game.territoryOwners.values()) {
     if (ownerId === playerId) count++;
@@ -71,6 +77,23 @@ function compareBySurvivorTiebreak(game: Game, a: number, b: number): number {
   const territoriesA = countTerritories(game, a);
   const territoriesB = countTerritories(game, b);
   if (territoriesA !== territoriesB) return territoriesB - territoriesA;
+  if (sa.troopsKilled !== sb.troopsKilled)
+    return sb.troopsKilled - sa.troopsKilled;
+  return sb.troopsGained - sa.troopsGained;
+}
+
+export function compareByTerritoriesFirst(
+  game: Game,
+  a: number,
+  b: number,
+): number {
+  const territoriesA = countTerritories(game, a);
+  const territoriesB = countTerritories(game, b);
+  if (territoriesA !== territoriesB) return territoriesB - territoriesA;
+  const sa = game.stats.get(a)!;
+  const sb = game.stats.get(b)!;
+  if (sa.playersKilled.length !== sb.playersKilled.length)
+    return sb.playersKilled.length - sa.playersKilled.length;
   if (sa.troopsKilled !== sb.troopsKilled)
     return sb.troopsKilled - sa.troopsKilled;
   return sb.troopsGained - sa.troopsGained;
@@ -99,12 +122,17 @@ function computeTeamRanking(game: Game): number[] {
 export function computeFinalRanking(game: Game): number[] {
   if (game.gameMode === 'Team Deathmatch') return computeTeamRanking(game);
 
+  const tiebreak =
+    game.gameMode === '5-Turn' || game.gameMode === '10-Turn'
+      ? compareByTerritoriesFirst
+      : compareBySurvivorTiebreak;
+
   const deadRanked = [...game.deathOrder]
     .reverse()
     .filter((id) => !game.winnerIds.includes(id));
   const known = new Set([...game.winnerIds, ...deadRanked]);
   const aliveNonWinners = game.playerIds
     .filter((id) => !known.has(id))
-    .sort((a, b) => compareBySurvivorTiebreak(game, a, b));
+    .sort((a, b) => tiebreak(game, a, b));
   return [...game.winnerIds, ...aliveNonWinners, ...deadRanked];
 }

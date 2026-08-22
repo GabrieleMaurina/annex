@@ -1,15 +1,57 @@
+import type { ReactNode } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
+import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import { socket } from '../lib/socket';
-import type { Ack, GameState, TurnPhase } from '../lib/types';
+import type {
+  Ack,
+  GameMode,
+  GameState,
+  Mission,
+  TurnPhase,
+} from '../lib/types';
+
+function formatList(items: string[]): string {
+  if (items.length <= 1) return items.join('');
+  if (items.length === 2) return items.join(' and ');
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
+function formatMission(
+  mission: Mission,
+  players: GameState['players'],
+): ReactNode {
+  if (mission.type === 'territories') {
+    const percent = Math.round(mission.fraction * 100);
+    return mission.minTroopsPerTerritory >= 2
+      ? `Occupy ${percent}%+ of the territories, with ${mission.minTroopsPerTerritory}+ troops each.`
+      : `Occupy ${percent}%+ of the territories.`;
+  }
+  if (mission.type === 'continents') {
+    const names = formatList(mission.continentIds.map((id) => `#${id + 1}`));
+    return `Conquer continents ${names}.`;
+  }
+  const target = players.find((p) => p.id === mission.targetId);
+  return (
+    <>
+      Eliminate{' '}
+      <span style={{ color: target ? playerColor(target.color) : undefined }}>
+        {target?.name ?? 'your target'}
+      </span>
+      . If someone beats you to it, control 75%+ of the territories instead.
+    </>
+  );
+}
 
 interface Props {
   players: GameState['players'];
   spectators: GameState['spectators'];
+  gameMode: GameMode;
   isTeamDeathmatch: boolean;
   isCapitals: boolean;
+  mission: Mission | null;
   selfId: number | null;
   hostId: number;
   paused: boolean;
@@ -26,8 +68,10 @@ interface Props {
 function PlayersPanel({
   players,
   spectators,
+  gameMode,
   isTeamDeathmatch,
   isCapitals,
+  mission,
   selfId,
   hostId,
   paused,
@@ -59,6 +103,7 @@ function PlayersPanel({
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
+  const whiteTargetIcon = useWhiteIcon('/icons/target.svg');
   const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
   const whitePlayIcon = useWhiteIcon('/icons/play.svg');
 
@@ -90,7 +135,6 @@ function PlayersPanel({
       }}
     >
       <div
-        className="text-center fw-bold mb-3"
         role="button"
         tabIndex={0}
         onClick={() => setCollapsed(true)}
@@ -99,7 +143,23 @@ function PlayersPanel({
         }}
         style={{ cursor: 'pointer' }}
       >
-        Turn {turnPhase === 'capital' ? 0 : turnNumber + 1}
+        <div className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold">
+          <span>{gameMode}</span>
+          {mission && (
+            <Tip text={<>Your mission: {formatMission(mission, players)}</>}>
+              <img
+                src={whiteTargetIcon ?? '/icons/target.svg'}
+                width={14}
+                height={14}
+                alt="Your mission"
+                style={{ cursor: 'help' }}
+              />
+            </Tip>
+          )}
+        </div>
+        <div className="text-center fw-bold mb-3">
+          Turn {turnPhase === 'capital' ? 0 : turnNumber + 1}
+        </div>
       </div>
       <div
         className="overflow-auto no-scrollbar"
@@ -117,57 +177,62 @@ function PlayersPanel({
               <th>Player</th>
               {isTeamDeathmatch && (
                 <th className="text-center" style={{ width: 34 }}>
-                  <img
-                    src={whiteTeamIcon ?? '/icons/team.svg'}
-                    width={14}
-                    height={14}
-                    alt="Team"
-                    title="Team"
-                    className="align-middle"
-                  />
+                  <Tip text="Team">
+                    <img
+                      src={whiteTeamIcon ?? '/icons/team.svg'}
+                      width={14}
+                      height={14}
+                      alt="Team"
+                      className="align-middle"
+                    />
+                  </Tip>
                 </th>
               )}
               <th className="text-center" style={{ width: 34 }}>
-                <img
-                  src={whiteTerritoryIcon ?? '/icons/territory.svg'}
-                  width={14}
-                  height={14}
-                  alt="Territories"
-                  title="Territories"
-                  className="align-middle"
-                />
+                <Tip text="Territories">
+                  <img
+                    src={whiteTerritoryIcon ?? '/icons/territory.svg'}
+                    width={14}
+                    height={14}
+                    alt="Territories"
+                    className="align-middle"
+                  />
+                </Tip>
               </th>
               {isCapitals && (
                 <th className="text-center" style={{ width: 34 }}>
-                  <img
-                    src={whiteCapitalIcon ?? '/icons/capital.svg'}
-                    width={14}
-                    height={14}
-                    alt="Capitals"
-                    title="Capitals"
-                    className="align-middle"
-                  />
+                  <Tip text="Capitals">
+                    <img
+                      src={whiteCapitalIcon ?? '/icons/capital.svg'}
+                      width={14}
+                      height={14}
+                      alt="Capitals"
+                      className="align-middle"
+                    />
+                  </Tip>
                 </th>
               )}
               <th className="text-center" style={{ width: 34 }}>
-                <img
-                  src={whiteTankIcon ?? '/icons/tank.svg'}
-                  width={14}
-                  height={14}
-                  alt="Troops"
-                  title="Troops"
-                  className="align-middle"
-                />
+                <Tip text="Troops">
+                  <img
+                    src={whiteTankIcon ?? '/icons/tank.svg'}
+                    width={14}
+                    height={14}
+                    alt="Troops"
+                    className="align-middle"
+                  />
+                </Tip>
               </th>
               <th className="text-center" style={{ width: 34 }}>
-                <img
-                  src={whiteCardsIcon ?? '/icons/cards.svg'}
-                  width={14}
-                  height={14}
-                  alt="Cards"
-                  title="Cards"
-                  className="align-middle"
-                />
+                <Tip text="Cards">
+                  <img
+                    src={whiteCardsIcon ?? '/icons/cards.svg'}
+                    width={14}
+                    height={14}
+                    alt="Cards"
+                    className="align-middle"
+                  />
+                </Tip>
               </th>
             </tr>
           </thead>
@@ -189,46 +254,49 @@ function PlayersPanel({
                         {p.name}
                       </span>
                       {p.eliminated && (
-                        <img
-                          src={
-                            isDark
-                              ? (whiteDeathIcon ?? '/icons/death.svg')
-                              : '/icons/death.svg'
-                          }
-                          width={12}
-                          height={12}
-                          alt="Eliminated"
-                          title="Eliminated"
-                          className="flex-shrink-0"
-                        />
+                        <Tip text="Eliminated">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteDeathIcon ?? '/icons/death.svg')
+                                : '/icons/death.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Eliminated"
+                            className="flex-shrink-0"
+                          />
+                        </Tip>
                       )}
                       {!isConnected && !p.eliminated && (
-                        <img
-                          src={
-                            isDark
-                              ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
-                              : '/icons/no-wifi.svg'
-                          }
-                          width={12}
-                          height={12}
-                          alt="Disconnected"
-                          title="Disconnected"
-                          className="flex-shrink-0"
-                        />
+                        <Tip text="Disconnected">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
+                                : '/icons/no-wifi.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Disconnected"
+                            className="flex-shrink-0"
+                          />
+                        </Tip>
                       )}
                       {p.surrendered && (
-                        <img
-                          src={
-                            isDark
-                              ? (whiteFlagIcon ?? '/icons/flag.svg')
-                              : '/icons/flag.svg'
-                          }
-                          width={12}
-                          height={12}
-                          alt="Surrendered"
-                          title="Surrendered"
-                          className="flex-shrink-0"
-                        />
+                        <Tip text="Surrendered">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteFlagIcon ?? '/icons/flag.svg')
+                                : '/icons/flag.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Surrendered"
+                            className="flex-shrink-0"
+                          />
+                        </Tip>
                       )}
                     </div>
                   </td>

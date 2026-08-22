@@ -15,12 +15,8 @@ interface Props {
   onClose: () => void;
 }
 
-const SELECTED_BORDER_COLOR = '#0d6efd'; // Bootstrap's primary button blue
+const SELECTED_BORDER_COLOR = '#0d6efd';
 
-// Matches the 2:3 aspect ratio of the badges GameMap draws next to
-// territories on the map, so a card looks the same wherever it's shown.
-// `owned` marks a card whose territory gives +2 if played; `selected` marks
-// a card that's part of the currently-selected set.
 export function CardFace({
   card,
   size = 40,

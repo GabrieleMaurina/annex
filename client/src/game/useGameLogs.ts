@@ -96,7 +96,7 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
         lastConquestAttackerIdRef.current = payload.attackerId;
       pushLog(
         colorForPlayer(payload.attackerId),
-        `${payload.conquered ? 'Conquered' : 'Attacked'} territory #${payload.defendingTerritoryId + 1} from #${payload.attackingTerritoryId + 1} (${payload.attackingTroops} vs ${payload.defendingTroops} troops), losing ${payload.attackLosses} and killing ${payload.defenceLosses}`,
+        `${payload.conquered ? 'Conquered' : 'Attacked'} territory #${payload.defendingTerritoryId + 1} from #${payload.attackingTerritoryId + 1}: ${payload.attackingTroops} vs ${payload.defendingTroops} troops, lost ${payload.attackLosses} and killed ${payload.defenceLosses}`,
       );
     }
     socket.on('game:attacked', onAttacked);

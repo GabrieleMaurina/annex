@@ -275,8 +275,6 @@ function drawArrowHeads(
   }
 }
 
-// segments are already trimmed/wrap-split screen-space points — see
-// buildWrappedPathSegments in mapMath.ts.
 export function drawFortifyPath(
   ctx: CanvasRenderingContext2D,
   segments: [{ x: number; y: number }, { x: number; y: number }][],

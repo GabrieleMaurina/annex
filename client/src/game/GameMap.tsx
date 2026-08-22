@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { Badge, Button, Toast, ToastContainer } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
+import Tip from '../common/Tip';
 import { continentColor, contrastTextColor, playerColor } from '../lib/palette';
 import { socket } from '../lib/socket';
 import { playSound } from '../lib/sounds';
@@ -15,7 +16,9 @@ import type {
   Ack,
   Card,
   CardSymbol,
+  GameMode,
   GameState,
+  Mission,
   ReplayAnimation,
   TurnDuration,
   TurnPhase,
@@ -91,8 +94,10 @@ interface Props {
   players: GameState['players'];
   spectators: GameState['spectators'];
   ownership: GameState['territories'];
+  gameMode: GameMode;
   isTeamDeathmatch: boolean;
   isCapitals: boolean;
+  mission: Mission | null;
   selfId: number | null;
   turnNumber: number;
   turnPlayerIndex: number;
@@ -137,23 +142,12 @@ function normalizeAngle(angle: number): number {
   return ((angle % twoPi) + twoPi) % twoPi;
 }
 
-// Traces the true offset outline of a convex polygon (its Minkowski sum with
-// a disc of radius `pad`): each edge pushed outward along its own normal by
-// exactly `pad`, with the gaps between edges filled by an arc of radius
-// `pad` centered on the original vertex. Unlike padding each vertex outward
-// from the polygon's centroid, this keeps every point on the line exactly
-// `pad` away from the nearest original vertex/edge — so corners always sit
-// the same distance from the territory that produced them, however
-// irregular the hull's shape.
 function drawConvexOffsetPath(
   ctx: CanvasRenderingContext2D,
   hull: Point[],
   pad: number,
 ) {
   const n = hull.length;
-  // Outward normal per edge, found by flipping the perpendicular if it
-  // points toward the centroid — convex, so the true outward normal always
-  // points away from it, regardless of the hull's winding order.
   const centroid = {
     x: hull.reduce((s, p) => s + p.x, 0) / n,
     y: hull.reduce((s, p) => s + p.y, 0) / n,
@@ -176,9 +170,6 @@ function drawConvexOffsetPath(
     };
   });
 
-  // Whether arcs should sweep clockwise or counter-clockwise is constant
-  // for every vertex of a convex polygon — derive it once, from the first
-  // corner, by picking whichever direction is the short way round.
   const arcAngles = (i: number) => {
     const vertex = hull[i];
     const from = offsetEdges[(i - 1 + n) % n].b;
@@ -225,10 +216,6 @@ const ATTACK_PANEL_WIDTH = 460;
 const ATTACK_PANEL_HEIGHT = 160;
 const SCREEN_EDGE_MARGIN = 8;
 const TURN_PANEL_RESERVED_HEIGHT = 70;
-// Gap below the settings button (measured at runtime, see below) that the
-// Cards/Bonuses buttons are offset by — matches the gap between Cards and
-// Bonuses themselves, so all three read as evenly spaced regardless of the
-// settings button's actual rendered height.
 const TOP_BUTTON_GAP = 16;
 const DEFAULT_CARDS_BUTTONS_TOP = 63;
 
@@ -244,8 +231,10 @@ function GameMap({
   players,
   spectators,
   ownership,
+  gameMode,
   isTeamDeathmatch,
   isCapitals,
+  mission,
   selfId,
   turnNumber,
   turnPlayerIndex,
@@ -500,10 +489,6 @@ function GameMap({
     [],
   );
 
-  // A conquering attack and the move right after it into the just-conquered
-  // territory get a single persistent arrow spanning both frames instead
-  // (drawn in the canvas effect below, driven by replayConquestArrow) — so
-  // these one-shot, burst-tied arrows are skipped for that pair.
   const playFrameAnimation = useCallback(
     (animation: ReplayAnimation, partOfConquestPair: boolean) => {
       if (animation.type === 'deploy') {
@@ -936,10 +921,6 @@ function GameMap({
       : 1;
   const maxRegularTroops = Math.min(maxBlitzTroops, 3);
 
-  // Mirrors the server's own auto-skip: if the current player can't attack
-  // (or, in fortify, can't fortify) at all, move on without waiting for
-  // them to notice and click "Next Phase" — independent of the server
-  // having already done the same, in case it hasn't (yet).
   useEffect(() => {
     if (!isMyTurn || paused) return;
     const noAttackPossible =
@@ -1050,10 +1031,6 @@ function GameMap({
     function onAttackMoved(payload: { territoryId: number; troops: number }) {
       playTroopChangeEffect('fortify', payload);
     }
-    // The server force-completing an unattended deploy phase (troops
-    // dropped randomly, then any 5+-card hand auto-played) can touch many
-    // territories at once — one sound for the whole batch, one animation
-    // per territory, rather than replaying the sound for each.
     function onDeployedMany(payload: {
       deposits: { territoryId: number; troops: number }[];
     }) {
@@ -1233,9 +1210,6 @@ function GameMap({
     if (openPanel === null) return;
     function handleOutside(e: MouseEvent) {
       const target = e.target as Node;
-      // Either toggle button manages openPanel itself via its own onClick —
-      // never fight it here, or clicking one to switch panels would get
-      // undone by this handler closing the panel it just opened.
       if (cardsButtonRef.current?.contains(target)) return;
       if (bonusesButtonRef.current?.contains(target)) return;
       if (logsButtonRef.current?.contains(target)) return;
@@ -1907,6 +1881,29 @@ function GameMap({
             2;
         ctx.fillText(text, p.x, baselineY);
       }
+
+      if (bonusesOpen) {
+        const idText = `#${t.id + 1}`;
+        ctx.font = `bold ${11 * zoom}px sans-serif`;
+        const padX = 4 * zoom;
+        const boxW = ctx.measureText(idText).width + padX * 2;
+        const boxH = 15 * zoom;
+        const boxX = p.x - boxW / 2;
+        const boxY = p.y + VERTEX_RADIUS * zoom + 4 * zoom;
+
+        ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1 * zoom;
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 4 * zoom);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(idText, p.x, boxY + boxH / 2 + 1 * zoom);
+      }
     }
 
     if (continentGroups) {
@@ -1916,7 +1913,7 @@ function GameMap({
           screenPoints.reduce((s, p) => s + p.x, 0) / screenPoints.length;
         const cy =
           screenPoints.reduce((s, p) => s + p.y, 0) / screenPoints.length;
-        const text = `+${bonuses[continentId] ?? 0}`;
+        const text = `#${continentId + 1}:+${bonuses[continentId] ?? 0}`;
 
         ctx.font = `bold ${34 * zoom}px sans-serif`;
         const metrics = ctx.measureText(text);
@@ -2237,22 +2234,23 @@ function GameMap({
           ref={buttonColumnRef}
           className="d-flex flex-column align-items-start gap-3"
         >
-          <Button
-            ref={bonusesButtonRef}
-            variant="secondary"
-            size="sm"
-            title="Bonuses"
-            onClick={() =>
-              setOpenPanel((p) => (p === 'bonuses' ? null : 'bonuses'))
-            }
-          >
-            <img
-              src={whiteBonusIcon ?? '/icons/bonus.svg'}
-              width={16}
-              height={16}
-              alt="Continent Bonuses"
-            />
-          </Button>
+          <Tip text="Bonuses">
+            <Button
+              ref={bonusesButtonRef}
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                setOpenPanel((p) => (p === 'bonuses' ? null : 'bonuses'))
+              }
+            >
+              <img
+                src={whiteBonusIcon ?? '/icons/bonus.svg'}
+                width={16}
+                height={16}
+                alt="Continent Bonuses"
+              />
+            </Button>
+          </Tip>
           {cardsOpen ? (
             <div ref={cardsPanelRef}>
               <CardsPanel
@@ -2268,35 +2266,36 @@ function GameMap({
               />
             </div>
           ) : (
-            <Button
-              ref={cardsButtonRef}
-              variant="secondary"
-              size="sm"
-              className="position-relative"
-              title="Cards"
-              onClick={() => {
-                setOpenPanel('cards');
-                setAwardedCards([]);
-              }}
-            >
-              <img
-                src={whiteCardsIcon ?? '/icons/cards.svg'}
-                width={16}
-                height={16}
-                alt="Cards"
-              />
-              {!gameEnded && hand.length > 0 && (
-                <Badge
-                  bg={hasSetToPlay ? 'danger' : 'secondary'}
-                  pill
-                  className="position-absolute top-0 start-100 translate-middle"
-                  style={{ fontSize: 10 }}
-                >
-                  {hand.length}
-                  {hasSetToPlay && '!'}
-                </Badge>
-              )}
-            </Button>
+            <Tip text="Cards">
+              <Button
+                ref={cardsButtonRef}
+                variant="secondary"
+                size="sm"
+                className="position-relative"
+                onClick={() => {
+                  setOpenPanel('cards');
+                  setAwardedCards([]);
+                }}
+              >
+                <img
+                  src={whiteCardsIcon ?? '/icons/cards.svg'}
+                  width={16}
+                  height={16}
+                  alt="Cards"
+                />
+                {!gameEnded && hand.length > 0 && (
+                  <Badge
+                    bg={hasSetToPlay ? 'danger' : 'secondary'}
+                    pill
+                    className="position-absolute top-0 start-100 translate-middle"
+                    style={{ fontSize: 10 }}
+                  >
+                    {hand.length}
+                    {hasSetToPlay && '!'}
+                  </Badge>
+                )}
+              </Button>
+            </Tip>
           )}
           {logsOpen ? (
             <div ref={logsPanelRef}>
@@ -2307,20 +2306,21 @@ function GameMap({
               />
             </div>
           ) : (
-            <Button
-              ref={logsButtonRef}
-              variant="secondary"
-              size="sm"
-              title="Logs"
-              onClick={() => setOpenPanel('logs')}
-            >
-              <img
-                src={whiteLogsIcon ?? '/icons/logs.svg'}
-                width={16}
-                height={16}
-                alt="Logs"
-              />
-            </Button>
+            <Tip text="Logs">
+              <Button
+                ref={logsButtonRef}
+                variant="secondary"
+                size="sm"
+                onClick={() => setOpenPanel('logs')}
+              >
+                <img
+                  src={whiteLogsIcon ?? '/icons/logs.svg'}
+                  width={16}
+                  height={16}
+                  alt="Logs"
+                />
+              </Button>
+            </Tip>
           )}
         </div>
         {!gameEnded && awardedCards.length > 0 && (
@@ -2340,8 +2340,10 @@ function GameMap({
       <PlayersPanel
         players={players}
         spectators={spectators}
+        gameMode={gameMode}
         isTeamDeathmatch={isTeamDeathmatch}
         isCapitals={isCapitals}
+        mission={mission}
         selfId={selfId}
         turnNumber={turnNumber}
         turnPhase={turnPhase}

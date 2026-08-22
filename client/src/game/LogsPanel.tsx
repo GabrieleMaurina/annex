@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Table } from 'react-bootstrap';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
 import { contrastTextColor } from '../lib/palette';
@@ -16,15 +17,36 @@ interface Props {
 
 const BOTTOM_MARGIN = 72;
 
-function LogText({ text }: { text: string }) {
+function boldRanges(text: string): [number, number][] {
   const spaceIndex = text.indexOf(' ');
-  if (spaceIndex === -1) return <strong>{text}</strong>;
-  return (
-    <>
-      <strong>{text.slice(0, spaceIndex)}</strong>
-      {text.slice(spaceIndex)}
-    </>
-  );
+  const ranges: [number, number][] = [
+    [0, spaceIndex === -1 ? text.length : spaceIndex],
+  ];
+  const numberRegex = /\d+/g;
+  let match: RegExpExecArray | null;
+  while ((match = numberRegex.exec(text)))
+    ranges.push([match.index, match.index + match[0].length]);
+  ranges.sort((a, b) => a[0] - b[0]);
+
+  const merged: [number, number][] = [];
+  for (const [start, end] of ranges) {
+    const last = merged.at(-1);
+    if (last && start <= last[1]) last[1] = Math.max(last[1], end);
+    else merged.push([start, end]);
+  }
+  return merged;
+}
+
+function LogText({ text }: { text: string }) {
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  for (const [start, end] of boldRanges(text)) {
+    if (start > cursor) nodes.push(text.slice(cursor, start));
+    nodes.push(<strong key={start}>{text.slice(start, end)}</strong>);
+    cursor = end;
+  }
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return <>{nodes}</>;
 }
 
 function LogsPanel({ logs, top, onClose }: Props) {

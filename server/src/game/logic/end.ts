@@ -1,10 +1,14 @@
 import { Game } from '../../types';
 import { ownsAnyTerritory } from './mechanics';
-import { bumpStat, computeFinalRanking } from './stats';
+import { missionAccomplished } from './missions';
+import {
+  bumpStat,
+  compareByTerritoriesFirst,
+  computeFinalRanking,
+  countTerritories,
+} from './stats';
 import { clearTurnTimer } from './turns';
 
-// `turnNumber` counts full rounds completed, so `2` means the game is now
-// in its 3rd round.
 const CAPITALS_WIN_MIN_TURN_NUMBER = 2;
 
 export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
@@ -47,6 +51,32 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
       if (game.turnNumber < CAPITALS_WIN_MIN_TURN_NUMBER) return;
       winnerIds = [winnerId];
     }
+  } else if (
+    game.gameMode === 'Supremacy 3/4' ||
+    game.gameMode === 'Supremacy 2/3'
+  ) {
+    const fraction = game.gameMode === 'Supremacy 3/4' ? 3 / 4 : 2 / 3;
+    const threshold = Math.ceil(game.territoryOwners.size * fraction);
+    const winner = activePlayers.find(
+      (id) => countTerritories(game, id) >= threshold,
+    );
+    if (winner === undefined) return;
+    winnerIds = [winner];
+  } else if (game.gameMode === '5-Turn' || game.gameMode === '10-Turn') {
+    const turnLimit = game.gameMode === '5-Turn' ? 5 : 10;
+    if (game.turnNumber < turnLimit) return;
+    winnerIds = [
+      [...activePlayers].sort((a, b) =>
+        compareByTerritoriesFirst(game, a, b),
+      )[0],
+    ];
+  } else if (game.gameMode === 'Assassin' || game.gameMode === 'Mission') {
+    const winner = activePlayers.find((id) => {
+      const mission = game.playerMissions.get(id);
+      return mission !== undefined && missionAccomplished(game, id, mission);
+    });
+    if (winner === undefined) return;
+    winnerIds = [winner];
   } else {
     if (owners.length !== 1) return;
     winnerIds = owners;

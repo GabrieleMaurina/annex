@@ -1,7 +1,11 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
-import { evaluateCardSelection, returnCardsToDeck } from '../logic/cards';
+import {
+  counterKey,
+  evaluateCardSelection,
+  returnCardsToDeck,
+} from '../logic/cards';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { bumpStat } from '../logic/stats';
@@ -66,7 +70,8 @@ export function registerCardHandlers(
           playerId: player.id,
         });
       }
-      game.cardSetsPlayed++;
+      const key = counterKey(game, player.id);
+      game.cardSetsPlayed.set(key, (game.cardSetsPlayed.get(key) ?? 0) + 1);
       bumpStat(game, player.id, 'setsPlayed');
       bumpStat(
         game,
@@ -74,8 +79,11 @@ export function registerCardHandlers(
         'troopsGained',
         evaluated.territoryBonusIds.length * 2,
       );
-      if (game.cards === 'Exponential')
-        game.cardsLastSetValue = evaluated.baseValue;
+      if (
+        game.cards === 'Exponential' ||
+        game.cards === 'Exponential Per Player'
+      )
+        game.cardsLastSetValue.set(key, evaluated.baseValue);
 
       io.to(gameRoomName(game.name)).emit('game:cardSetPlayed', {
         playerId: player.id,

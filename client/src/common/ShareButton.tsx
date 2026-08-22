@@ -1,27 +1,22 @@
-import { useState } from 'react';
-import { Button, Toast, ToastContainer } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
+import Tip from './Tip';
 import { useWhiteIcon } from './icon';
 
 interface Props {
   url: string;
+  onCopied: () => void;
 }
 
-function ShareButton({ url }: Props) {
-  const [copied, setCopied] = useState(false);
+function ShareButton({ url, onCopied }: Props) {
   const whiteShareIcon = useWhiteIcon('/icons/share.svg');
 
   function share() {
-    navigator.clipboard.writeText(url).then(
-      () => {
-        setCopied(true);
-      },
-      () => {},
-    );
+    navigator.clipboard.writeText(url).then(onCopied, () => {});
   }
 
   return (
-    <>
-      <Button variant="secondary" size="sm" onClick={share} title="Copy link">
+    <Tip text="Copy link">
+      <Button variant="secondary" size="sm" onClick={share}>
         <img
           src={whiteShareIcon ?? '/icons/share.svg'}
           width={16}
@@ -29,21 +24,7 @@ function ShareButton({ url }: Props) {
           alt="Share"
         />
       </Button>
-      <ToastContainer
-        position="top-center"
-        className="position-fixed p-3"
-        style={{ zIndex: 3 }}
-      >
-        <Toast
-          show={copied}
-          onClose={() => setCopied(false)}
-          autohide
-          delay={3000}
-        >
-          <Toast.Body>Link copied to clipboard!</Toast.Body>
-        </Toast>
-      </ToastContainer>
-    </>
+    </Tip>
   );
 }
 

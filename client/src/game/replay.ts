@@ -20,10 +20,6 @@ export interface ConquestArrow {
   toTerritoryId: number;
 }
 
-// A conquering attack frame and the movement frame right after it (the
-// troops moving into the just-conquered territory) are a matched pair — see
-// PROTOCOL.md. While sitting on either one, the attack arrow should read as
-// a single continuous arrow spanning both, not two separate one-shot ones.
 function conquestArrowAt(
   replay: ReplayData,
   index: number,
@@ -136,11 +132,6 @@ export function useReplay(
       : replay.frames[index - 1]
     : undefined;
 
-  // While sitting exactly on a conquering attack frame, the conquered
-  // territory's snapshot troops are still 0 — the move-in only happens in
-  // the paired frame right after. Mirror how a non-attacking live client
-  // displays that same gap: show the troops the territory is about to end
-  // up with (here, known exactly, since the paired frame already happened).
   let territories = replay
     ? index <= 0
       ? replay.initial

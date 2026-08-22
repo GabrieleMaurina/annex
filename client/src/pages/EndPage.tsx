@@ -1,4 +1,5 @@
 import { Button, Container, Table } from 'react-bootstrap';
+import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
@@ -81,55 +82,62 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                         {p.name}
                       </span>
                       {p.eliminated && (
-                        <img
-                          src={
-                            isDark
-                              ? (whiteDeathIcon ?? '/icons/death.svg')
-                              : '/icons/death.svg'
-                          }
-                          width={12}
-                          height={12}
-                          alt="Eliminated"
-                          title="Eliminated"
-                          className="flex-shrink-0"
-                        />
+                        <Tip text="Eliminated">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteDeathIcon ?? '/icons/death.svg')
+                                : '/icons/death.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Eliminated"
+                            className="flex-shrink-0"
+                          />
+                        </Tip>
                       )}
                       {!p.connectedAtEnd && !p.eliminated && (
-                        <img
-                          src={
-                            isDark
-                              ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
-                              : '/icons/no-wifi.svg'
-                          }
-                          width={12}
-                          height={12}
-                          alt="Disconnected"
-                          title="Disconnected"
-                          className="flex-shrink-0"
-                        />
+                        <Tip text="Disconnected">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
+                                : '/icons/no-wifi.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Disconnected"
+                            className="flex-shrink-0"
+                          />
+                        </Tip>
                       )}
                       {p.surrendered && (
-                        <img
-                          src={
-                            isDark
-                              ? (whiteFlagIcon ?? '/icons/flag.svg')
-                              : '/icons/flag.svg'
-                          }
-                          width={12}
-                          height={12}
-                          alt="Surrendered"
-                          title="Surrendered"
-                          className="flex-shrink-0"
-                        />
+                        <Tip text="Surrendered">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteFlagIcon ?? '/icons/flag.svg')
+                                : '/icons/flag.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Surrendered"
+                            className="flex-shrink-0"
+                          />
+                        </Tip>
                       )}
                     </div>
                   </td>
                   <td style={rowStyle}>
                     {p.turnsPlayed}/{game.turnNumber + 1}
                   </td>
-                  <td style={rowStyle} title={killedNames || undefined}>
-                    {p.playersKilled.length}
-                  </td>
+                  {killedNames ? (
+                    <Tip text={killedNames}>
+                      <td style={rowStyle}>{p.playersKilled.length}</td>
+                    </Tip>
+                  ) : (
+                    <td style={rowStyle}>{p.playersKilled.length}</td>
+                  )}
                   <td style={rowStyle}>{p.troopsGained}</td>
                   <td style={rowStyle}>{p.troopsKilled}</td>
                   <td style={rowStyle}>{p.troopsLost}</td>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button } from 'react-bootstrap';
+import { Button, Toast, ToastContainer } from 'react-bootstrap';
 import {
   areAnimationsDisabled,
   toggleAnimationsDisabled,
@@ -8,6 +8,7 @@ import { isSoundMuted, toggleSoundMuted } from '../lib/sounds';
 import { useWhiteIcon } from './icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from './panelStyle';
 import ShareButton from './ShareButton';
+import Tip from './Tip';
 
 interface Props {
   shareUrl: string;
@@ -16,6 +17,7 @@ interface Props {
 function SettingsMenu({ shareUrl }: Props) {
   const [open, setOpen] = useState(false);
   const [, forceUpdate] = useState(0);
+  const [copied, setCopied] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const whiteGearIcon = useWhiteIcon('/icons/gear.svg');
@@ -47,74 +49,93 @@ function SettingsMenu({ shareUrl }: Props) {
       style={{ zIndex: 1 }}
     >
       {!open ? (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="d-flex align-items-center justify-content-center"
-          onClick={() => setOpen(true)}
-          title="Settings"
-        >
-          <img
-            src={whiteGearIcon ?? '/icons/gear.svg'}
-            width={16}
-            height={16}
-            alt="Settings"
-          />
-        </Button>
+        <Tip text="Settings">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="d-flex align-items-center justify-content-center"
+            onClick={() => setOpen(true)}
+          >
+            <img
+              src={whiteGearIcon ?? '/icons/gear.svg'}
+              width={16}
+              height={16}
+              alt="Settings"
+            />
+          </Button>
+        </Tip>
       ) : (
         <div
           ref={panelRef}
           className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex gap-2`}
         >
-          <Button
-            variant="secondary"
-            size="sm"
-            className="d-flex align-items-center justify-content-center"
-            onClick={() => {
-              toggleSoundMuted();
-              forceUpdate((n) => n + 1);
-            }}
-            title={isSoundMuted() ? 'Unmute sounds' : 'Mute sounds'}
-          >
-            <img
-              src={
-                isSoundMuted()
-                  ? (whiteSoundOffIcon ?? '/icons/sound-off.svg')
-                  : (whiteSoundOnIcon ?? '/icons/sound-on.svg')
-              }
-              width={16}
-              height={16}
-              alt="Sound"
-            />
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="d-flex align-items-center justify-content-center"
-            onClick={() => {
-              toggleAnimationsDisabled();
-              forceUpdate((n) => n + 1);
-            }}
-            title={
+          <Tip text={isSoundMuted() ? 'Unmute sounds' : 'Mute sounds'}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="d-flex align-items-center justify-content-center"
+              onClick={() => {
+                toggleSoundMuted();
+                forceUpdate((n) => n + 1);
+              }}
+            >
+              <img
+                src={
+                  isSoundMuted()
+                    ? (whiteSoundOffIcon ?? '/icons/sound-off.svg')
+                    : (whiteSoundOnIcon ?? '/icons/sound-on.svg')
+                }
+                width={16}
+                height={16}
+                alt="Sound"
+              />
+            </Button>
+          </Tip>
+          <Tip
+            text={
               areAnimationsDisabled()
                 ? 'Enable animations'
                 : 'Disable animations'
             }
           >
-            <img
-              src={
-                areAnimationsDisabled()
-                  ? (whiteAnimationOffIcon ?? '/icons/animation-off.svg')
-                  : (whiteAnimationOnIcon ?? '/icons/animation-on.svg')
-              }
-              width={16}
-              height={16}
-              alt="Animations"
-            />
-          </Button>
-          <ShareButton url={shareUrl} />
+            <Button
+              variant="secondary"
+              size="sm"
+              className="d-flex align-items-center justify-content-center"
+              onClick={() => {
+                toggleAnimationsDisabled();
+                forceUpdate((n) => n + 1);
+              }}
+            >
+              <img
+                src={
+                  areAnimationsDisabled()
+                    ? (whiteAnimationOffIcon ?? '/icons/animation-off.svg')
+                    : (whiteAnimationOnIcon ?? '/icons/animation-on.svg')
+                }
+                width={16}
+                height={16}
+                alt="Animations"
+              />
+            </Button>
+          </Tip>
+          <ShareButton url={shareUrl} onCopied={() => setCopied(true)} />
         </div>
       )}
+      <ToastContainer
+        position="top-center"
+        className="position-fixed p-3"
+        style={{ zIndex: 3 }}
+      >
+        <Toast
+          show={copied}
+          onClose={() => setCopied(false)}
+          autohide
+          delay={3000}
+        >
+          <Toast.Body>Link copied to clipboard!</Toast.Body>
+        </Toast>
+      </ToastContainer>
     </div>
   );
 }

@@ -83,8 +83,6 @@ export function comboKey(combo: EvaluatedCombo): string {
   return combo.cards.map((c) => c.territoryId).join('-');
 }
 
-// For display only — orders a hand or set by territory number, wild cards
-// (no territory) always last.
 export function sortForDisplay(cards: Card[]): Card[] {
   return [...cards].sort(
     (a, b) => (a.territoryId ?? Infinity) - (b.territoryId ?? Infinity),
@@ -95,9 +93,6 @@ function cardKey(card: Card): string {
   return card.territoryId !== null ? `t${card.territoryId}` : 'wild';
 }
 
-// Cards carry no id of their own, so newly-added ones are found by a
-// multiset diff keyed on territory (wilds all share one key) — any card
-// whose key now occurs more times than it did in `prev` is new.
 export function diffNewCards(prev: Card[], next: Card[]): Card[] {
   const prevCounts = new Map<string, number>();
   for (const card of prev) {

@@ -1,7 +1,12 @@
 import { Server } from 'socket.io';
 import { Game, TurnPhase } from '../../types';
 import { hasAnyAttack, hasAnyFortify } from './autoSkip';
-import { pickBestSet, popRandomCard, returnCardsToDeck } from './cards';
+import {
+  counterKey,
+  pickBestSet,
+  popRandomCard,
+  returnCardsToDeck,
+} from './cards';
 import { checkGameEnd } from './end';
 import { calculateDeployTroopsBreakdown, ownsAnyTerritory } from './mechanics';
 import { recordReplayFrame } from './replay';
@@ -70,10 +75,6 @@ export function rewindTurnTimerIfBelowHalf(game: Game, io: Server) {
   turnTimers.set(game.name, timer);
 }
 
-// Drops `amount` troops one at a time on random territories the player
-// owns, tallying how many landed on each — the tally is merged into
-// `deposits` so the whole forced deploy phase (leftover troops, plus any
-// troops from auto-played sets) ends up as a single batch of animations.
 function dropRandomTroops(
   game: Game,
   playerId: number,
@@ -111,12 +112,6 @@ function dropRandomTroops(
   }
 }
 
-// Finishes an unattended deploy phase: drops whatever's left in the pool,
-// then — same as a player who lets 5+ cards go untouched isn't normally
-// allowed to — keeps auto-playing the single best available set (see
-// pickBestSet in cards.ts) and dropping the troops it grants, until the
-// hand is back under 5. Returns every territory that received troops this
-// way, for one combined deploy animation/sound.
 function forceCompleteDeployPhase(game: Game): Map<number, number> {
   const playerId = game.playerIds[game.turnPlayerIndex];
   const deposits = new Map<number, number>();
@@ -134,9 +129,11 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
       if (index !== -1) hand.splice(index, 1);
     }
     returnCardsToDeck(game.deck, best.cards);
-    game.cardSetsPlayed++;
+    const key = counterKey(game, playerId);
+    game.cardSetsPlayed.set(key, (game.cardSetsPlayed.get(key) ?? 0) + 1);
     bumpStat(game, playerId, 'setsPlayed');
-    if (game.cards === 'Exponential') game.cardsLastSetValue = best.baseValue;
+    if (game.cards === 'Exponential' || game.cards === 'Exponential Per Player')
+      game.cardsLastSetValue.set(key, best.baseValue);
 
     for (const territoryId of best.territoryBonusIds) {
       game.territoryTroops.set(
@@ -334,11 +331,6 @@ export function advanceToNextPlayer(game: Game, io: Server) {
 
   const nextIndex = nextAlivePlayerIndex(game);
 
-  // Advancing to a new round is the only place `turnNumber` itself can
-  // cross the Capitals-mode win gate (see `checkGameEnd`) without any
-  // territory changing hands — e.g. a player already holding every capital
-  // when the game enters its 3rd round. Re-check here so that win doesn't
-  // sit unnoticed until the next conquest or surrender happens to trigger it.
   checkGameEnd(game, true);
   if (game.state === 'ended') return;
 

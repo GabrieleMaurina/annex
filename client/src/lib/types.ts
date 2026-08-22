@@ -22,10 +22,29 @@ export interface Card {
 
 export type Blitz = 'Balanced' | 'True';
 export type DefenceDice = 2 | 3;
-export type CardsMode = 'Constant' | 'Linear' | 'Exponential';
+export type CardsMode =
+  | 'Constant'
+  | 'Linear'
+  | 'Exponential'
+  | 'Linear Per Player'
+  | 'Exponential Per Player';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
-export type GameMode = 'Supremacy' | 'Capitals' | 'Team Deathmatch';
+export type GameMode =
+  | 'Supremacy'
+  | 'Supremacy 3/4'
+  | 'Supremacy 2/3'
+  | 'Capitals'
+  | 'Team Deathmatch'
+  | '5-Turn'
+  | '10-Turn'
+  | 'Assassin'
+  | 'Mission';
 export type TurnPhase = 'capital' | 'deploy' | 'attack' | 'fortify';
+
+export type Mission =
+  | { type: 'territories'; fraction: number; minTroopsPerTerritory: number }
+  | { type: 'continents'; continentIds: number[] }
+  | { type: 'assassinate'; targetId: number };
 
 export interface GameState {
   name: string;

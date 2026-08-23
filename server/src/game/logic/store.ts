@@ -182,6 +182,27 @@ export function listGameSummaries() {
   return [...games.values()].map(gameSummary);
 }
 
+export function sendToPlayer(
+  io: Server,
+  playersById: Map<number, Player>,
+  playerId: number,
+  event: string,
+  payload: unknown,
+) {
+  const socketId = playersById.get(playerId)?.socketId;
+  if (socketId) io.to(socketId).emit(event, payload);
+}
+
+export function broadcastMissions(
+  io: Server,
+  game: Game,
+  playersById: Map<number, Player>,
+) {
+  for (const [playerId, mission] of game.playerMissions) {
+    sendToPlayer(io, playersById, playerId, 'game:mission', { mission });
+  }
+}
+
 export function broadcastGameStates(
   io: Server,
   playersById: Map<number, Player>,
@@ -192,12 +213,8 @@ export function broadcastGameStates(
       gameState(game, playersById),
     );
     for (const [playerId, cards] of game.playerCards) {
-      const socketId = playersById.get(playerId)?.socketId;
-      if (socketId) io.to(socketId).emit('game:cards', { cards });
+      sendToPlayer(io, playersById, playerId, 'game:cards', { cards });
     }
-    for (const [playerId, mission] of game.playerMissions) {
-      const socketId = playersById.get(playerId)?.socketId;
-      if (socketId) io.to(socketId).emit('game:mission', { mission });
-    }
+    broadcastMissions(io, game, playersById);
   }
 }

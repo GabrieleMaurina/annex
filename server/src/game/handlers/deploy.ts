@@ -1,8 +1,8 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
-import { isInteger, isNullableInteger, isObject } from '../../validate';
+import { isNullableInteger, isObject } from '../../validate';
 import { hasPlayableSet } from '../logic/cards';
-import { recordReplayFrame } from '../logic/replay';
+import { depositTroopsOnOwnedTerritory } from '../logic/mechanics';
 import { gameState } from '../logic/state';
 import { bumpStat } from '../logic/stats';
 import { gameRoomName, games } from '../logic/store';
@@ -42,7 +42,7 @@ export function registerDeployHandlers(
         if (!game.territoryOwners.has(territoryId))
           return callback({ ok: false, error: 'invalid territory' });
         if (
-          game.turnPhase === 'deploy' &&
+          (game.turnPhase === 'deploy' || game.turnPhase === 'troop') &&
           game.territoryOwners.get(territoryId) !== player.id
         )
           return callback({ ok: false, error: 'territory not owned' });
@@ -73,31 +73,12 @@ export function registerDeployHandlers(
       if (game.turnPhase !== 'deploy')
         return callback({ ok: false, error: 'not deploy phase' });
 
-      const { territoryId, troops } = isObject(data)
-        ? data
-        : ({} as Record<string, unknown>);
-      if (!isInteger(territoryId))
-        return callback({ ok: false, error: 'territory not owned' });
-      if (game.territoryOwners.get(territoryId) !== player.id)
-        return callback({ ok: false, error: 'territory not owned' });
-      if (!isInteger(troops))
-        return callback({ ok: false, error: 'invalid troops' });
-      if (troops < 1 || troops > game.troopsToDeploy)
-        return callback({ ok: false, error: 'invalid troops' });
+      const result = depositTroopsOnOwnedTerritory(game, player.id, data);
+      if ('error' in result)
+        return callback({ ok: false, error: result.error });
+      const { territoryId, troops } = result;
 
-      game.territoryTroops.set(
-        territoryId,
-        (game.territoryTroops.get(territoryId) ?? 0) + troops,
-      );
-      recordReplayFrame(game, {
-        type: 'deploy',
-        territoryId,
-        troops,
-        playerId: player.id,
-      });
       bumpStat(game, player.id, 'troopsGained', troops);
-      game.troopsToDeploy -= troops;
-      game.selectedTerritoryId = null;
       io.to(gameRoomName(game.name)).emit('game:deployed', {
         territoryId,
         troops,

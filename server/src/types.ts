@@ -49,7 +49,15 @@ export type GameMode =
   | '10-Turn'
   | 'Assassin'
   | 'Mission';
-export type TurnPhase = 'capital' | 'deploy' | 'attack' | 'fortify';
+export type Placement = 'Random' | 'Semi' | 'Custom';
+export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
+export type TurnPhase =
+  'territory' | 'troop' | 'capital' | 'deploy' | 'attack' | 'fortify';
+
+export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '⚔️';
+export type EmojiAttackTarget =
+  | { type: 'player'; playerId: number }
+  | { type: 'territory'; territoryId: number };
 
 export type Mission =
   | { type: 'territories'; fraction: number; minTroopsPerTerritory: number }
@@ -114,11 +122,15 @@ export interface Game {
   blitz: Blitz;
   defenceDice: DefenceDice;
   cards: CardsMode;
+  placement: Placement;
+  fortification: Fortification;
   turnDuration: TurnDuration;
   turnNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
   troopsToDeploy: number;
+  remainingSpecialPhases: TurnPhase[];
+  placementTroopPools: Map<number, number>;
   turnStartedAt: number;
   paused: boolean;
   pausedAt: number | null;

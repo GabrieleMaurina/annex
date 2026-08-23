@@ -67,6 +67,8 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     blitz: game.blitz,
     defenceDice: game.defenceDice,
     cards: game.cards,
+    placement: game.placement,
+    fortification: game.fortification,
     turnDuration: game.turnDuration,
     turnNumber: game.turnNumber,
     turnPlayerIndex: game.turnPlayerIndex,
@@ -94,11 +96,18 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
         territoryCount,
         troopCount: stats.get(player.id)?.troopCount ?? 0,
         capitalCount: stats.get(player.id)?.capitalCount ?? 0,
+        troopsRemaining:
+          game.turnPhase === 'troop'
+            ? (game.placementTroopPools.get(player.id) ?? 0)
+            : 0,
         cardCount: game.playerCards.get(player.id)?.length ?? 0,
         connected: playersById.get(player.id)?.connected ?? false,
         connectedAtEnd: playerStats.connectedAtEnd,
         surrendered: game.surrenderedIds.has(player.id),
-        eliminated: game.state !== 'lobby' && territoryCount === 0,
+        eliminated:
+          game.state !== 'lobby' &&
+          game.turnPhase !== 'territory' &&
+          territoryCount === 0,
         troopsGained: playerStats.troopsGained,
         troopsKilled: playerStats.troopsKilled,
         troopsLost: playerStats.troopsLost,

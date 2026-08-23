@@ -117,6 +117,7 @@ function Game({
           turnPlayerIndex={game.turnPlayerIndex}
           turnPhase={game.turnPhase}
           turnDuration={game.turnDuration}
+          fortification={game.fortification}
           troopsToDeploy={game.troopsToDeploy}
           turnStartedAt={game.turnStartedAt}
           paused={game.paused}

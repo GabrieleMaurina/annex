@@ -1,4 +1,4 @@
-const SOUND_NAMES = ['deploy', 'select', 'fortify', 'explode'];
+const SOUND_NAMES = ['deploy', 'select', 'fortify', 'explode', 'emoji'];
 
 const audioByName = new Map<string, HTMLAudioElement>();
 let muted = false;

@@ -1,5 +1,7 @@
 import { maps } from '../../maps';
 import { Game } from '../../types';
+import { isInteger, isObject } from '../../validate';
+import { recordReplayFrame } from './replay';
 
 const COLOR_COUNT = 20;
 
@@ -113,25 +115,43 @@ export function interleaveTeams(game: Game): number[] {
   return order;
 }
 
-export function assignTerritories(game: Game) {
+export function turnOrderBonus(index: number): number {
+  return index >= 3 ? Math.min(index - 2, 6) : 0;
+}
+
+function splitTerritoriesAmongPlayers(game: Game): number[][] {
   const map = maps.get(game.mapName)!;
   const territoryIds = shuffle(map.territories.map((t) => t.id));
   const playerCount = game.playerIds.length;
   const base = Math.floor(territoryIds.length / playerCount);
   const remainder = territoryIds.length % playerCount;
 
+  const groups: number[][] = [];
   let index = 0;
-  game.playerIds.forEach((playerId, i) => {
+  game.playerIds.forEach((_, i) => {
     const count = base + (i >= playerCount - remainder ? 1 : 0);
-    const owned = territoryIds.slice(index, index + count);
+    groups.push(territoryIds.slice(index, index + count));
     index += count;
+  });
+  return groups;
+}
 
-    for (const territoryId of owned) {
+export function assignTerritoryOwners(game: Game): number[][] {
+  const groups = splitTerritoriesAmongPlayers(game);
+  game.playerIds.forEach((playerId, i) => {
+    for (const territoryId of groups[i]) {
       game.territoryOwners.set(territoryId, playerId);
       game.territoryTroops.set(territoryId, 1);
     }
+  });
+  return groups;
+}
 
-    let remainingTroops = count * 2;
+export function assignTerritories(game: Game) {
+  const groups = assignTerritoryOwners(game);
+  game.playerIds.forEach((_, i) => {
+    const owned = groups[i];
+    let remainingTroops = owned.length * 2 + turnOrderBonus(i);
     while (remainingTroops > 0) {
       const territoryId = owned[Math.floor(Math.random() * owned.length)];
       game.territoryTroops.set(
@@ -141,6 +161,36 @@ export function assignTerritories(game: Game) {
       remainingTroops--;
     }
   });
+}
+
+export interface TroopDeposit {
+  territoryId: number;
+  troops: number;
+}
+
+export function depositTroopsOnOwnedTerritory(
+  game: Game,
+  playerId: number,
+  data: unknown,
+): TroopDeposit | { error: string } {
+  const { territoryId, troops } = isObject(data)
+    ? data
+    : ({} as Record<string, unknown>);
+  if (!isInteger(territoryId)) return { error: 'territory not owned' };
+  if (game.territoryOwners.get(territoryId) !== playerId)
+    return { error: 'territory not owned' };
+  if (!isInteger(troops)) return { error: 'invalid troops' };
+  if (troops < 1 || troops > game.troopsToDeploy)
+    return { error: 'invalid troops' };
+
+  game.territoryTroops.set(
+    territoryId,
+    (game.territoryTroops.get(territoryId) ?? 0) + troops,
+  );
+  recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
+  game.troopsToDeploy -= troops;
+  game.selectedTerritoryId = null;
+  return { territoryId, troops };
 }
 
 export interface DeployTroopsBreakdown {

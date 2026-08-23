@@ -7,9 +7,12 @@ import {
   registerCapitalHandlers,
   registerCardHandlers,
   registerDeployHandlers,
+  registerEmojiHandlers,
   registerFortifyHandlers,
   registerGameHandlers,
   registerReplayHandlers,
+  registerTerritoryHandlers,
+  registerTroopHandlers,
 } from './game';
 import { broadcastHomeGames, registerHomeHandlers } from './home';
 import { registerMapsHandlers } from './maps';
@@ -32,8 +35,11 @@ io.on('connection', (socket) => {
   registerMapsHandlers(socket);
   registerHomeHandlers(io, socket, playersBySocket, playersByKey, playersById);
   registerGameHandlers(io, socket, playersBySocket, playersById);
+  registerTerritoryHandlers(io, socket, playersBySocket, playersById);
+  registerTroopHandlers(io, socket, playersBySocket, playersById);
   registerCapitalHandlers(io, socket, playersBySocket, playersById);
   registerDeployHandlers(io, socket, playersBySocket, playersById);
+  registerEmojiHandlers(io, socket, playersBySocket, playersById);
   registerFortifyHandlers(io, socket, playersBySocket, playersById);
   registerAttackHandlers(io, socket, playersBySocket, playersById);
   registerCardHandlers(io, socket, playersBySocket, playersById);

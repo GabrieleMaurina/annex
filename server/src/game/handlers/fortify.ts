@@ -34,12 +34,25 @@ function connectedOwnedTerritories(
   return visited;
 }
 
+function ownsOtherTerritory(
+  game: Game,
+  playerId: number,
+  territoryId: number,
+): boolean {
+  for (const [id, ownerId] of game.territoryOwners) {
+    if (id !== territoryId && ownerId === playerId) return true;
+  }
+  return false;
+}
+
 function isFortifyStartCandidate(
   game: Game,
   playerId: number,
   territoryId: number,
 ): boolean {
   if ((game.territoryTroops.get(territoryId) ?? 0) < 2) return false;
+  if (game.fortification === 'Unrestricted')
+    return ownsOtherTerritory(game, playerId, territoryId);
   const map = maps.get(game.mapName)!;
   const territory = map.territories.find((t) => t.id === territoryId);
   return (
@@ -47,6 +60,21 @@ function isFortifyStartCandidate(
       (n) => game.territoryOwners.get(n) === playerId,
     ) ?? false
   );
+}
+
+function isValidFortifyEnd(
+  game: Game,
+  playerId: number,
+  startId: number,
+  endId: number,
+): boolean {
+  if (game.fortification === 'Unrestricted') return true;
+  if (game.fortification === 'Neighboring') {
+    const map = maps.get(game.mapName)!;
+    const territory = map.territories.find((t) => t.id === startId);
+    return territory?.neighbors.includes(endId) ?? false;
+  }
+  return connectedOwnedTerritories(game, playerId, startId).has(endId);
 }
 
 export function registerFortifyHandlers(
@@ -124,12 +152,14 @@ export function registerFortifyHandlers(
       if (territoryId === game.fortifyStartTerritoryId)
         return callback({ ok: false, error: 'invalid end territory' });
 
-      const reachable = connectedOwnedTerritories(
-        game,
-        player.id,
-        game.fortifyStartTerritoryId,
-      );
-      if (!reachable.has(territoryId))
+      if (
+        !isValidFortifyEnd(
+          game,
+          player.id,
+          game.fortifyStartTerritoryId,
+          territoryId,
+        )
+      )
         return callback({ ok: false, error: 'invalid end territory' });
 
       game.fortifyEndTerritoryId = territoryId;

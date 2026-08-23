@@ -21,10 +21,6 @@ const CONTINENT_COLORS = [
   '#00897B',
 ];
 
-export function continentColor(continentId: number): string {
-  return CONTINENT_COLORS[continentId % CONTINENT_COLORS.length];
-}
-
 export const PLAYER_COLORS = CONTINENT_COLORS;
 
 export function playerColor(colorIndex: number): string {

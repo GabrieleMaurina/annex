@@ -161,6 +161,9 @@ function ReplayPanel({
           } as React.CSSProperties
         }
       />
+      <span className="text-nowrap">
+        {index}/{totalFrames}
+      </span>
       <Tip text="Playback speed">
         <Button
           size="sm"

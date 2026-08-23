@@ -176,5 +176,23 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     };
   }, [pushLog]);
 
+  useEffect(() => {
+    function onTerritoryClaimed(payload: {
+      territoryId: number;
+      playerId: number;
+    }) {
+      const color = colorForPlayer(payload.playerId);
+      pushLog(color, `Claimed territory #${payload.territoryId + 1}`);
+      pushLog(
+        color,
+        `Deployed 1 troops to territory #${payload.territoryId + 1}`,
+      );
+    }
+    socket.on('game:territoryClaimed', onTerritoryClaimed);
+    return () => {
+      socket.off('game:territoryClaimed', onTerritoryClaimed);
+    };
+  }, [colorForPlayer, pushLog]);
+
   return logs;
 }

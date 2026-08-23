@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { maps } from '../../maps';
 import { Game, TurnPhase } from '../../types';
 import { hasAnyAttack, hasAnyFortify } from './autoSkip';
 import {
@@ -8,12 +9,21 @@ import {
   returnCardsToDeck,
 } from './cards';
 import { checkGameEnd } from './end';
-import { calculateDeployTroopsBreakdown, ownsAnyTerritory } from './mechanics';
+import {
+  calculateDeployTroopsBreakdown,
+  ownsAnyTerritory,
+  turnOrderBonus,
+} from './mechanics';
 import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
 import { bumpStat } from './stats';
 
 const PHASE_ORDER: TurnPhase[] = ['deploy', 'attack', 'fortify'];
+
+export const PLACEMENT_PHASE_DURATION = 10;
+export const CAPITAL_PHASE_DURATION = 60;
+const TROOP_PHASE_TURN_MAX = 3;
+const TROOP_PHASE_PER_TERRITORY_POOL = 2;
 
 const turnTimers = new Map<string, NodeJS.Timeout>();
 
@@ -21,6 +31,13 @@ export function clearTurnTimer(gameName: string) {
   const timer = turnTimers.get(gameName);
   if (timer) clearTimeout(timer);
   turnTimers.delete(gameName);
+}
+
+function turnDurationSeconds(game: Game): number {
+  if (game.turnPhase === 'territory' || game.turnPhase === 'troop')
+    return PLACEMENT_PHASE_DURATION;
+  if (game.turnPhase === 'capital') return CAPITAL_PHASE_DURATION;
+  return game.turnDuration;
 }
 
 function scheduleTurnTimer(game: Game, io: Server) {
@@ -32,7 +49,7 @@ function scheduleTurnTimer(game: Game, io: Server) {
   }
   const timer = setTimeout(
     () => forceEndTurn(game, io),
-    game.turnDuration * 1000,
+    turnDurationSeconds(game) * 1000,
   );
   turnTimers.set(game.name, timer);
 }
@@ -53,7 +70,7 @@ export function resumeTurnTimer(game: Game, io: Server) {
 
   clearTurnTimer(game.name);
   const remaining =
-    game.turnDuration * 1000 - (Date.now() - game.turnStartedAt);
+    turnDurationSeconds(game) * 1000 - (Date.now() - game.turnStartedAt);
   const timer = setTimeout(
     () => forceEndTurn(game, io),
     Math.max(0, remaining),
@@ -75,21 +92,19 @@ export function rewindTurnTimerIfBelowHalf(game: Game, io: Server) {
   turnTimers.set(game.name, timer);
 }
 
-function dropRandomTroops(
+function dropTroopsRandomly(
   game: Game,
   playerId: number,
   amount: number,
   deposits: Map<number, number>,
+  countsAsGained: boolean,
 ) {
   const territoryIds = [...game.territoryOwners.entries()]
     .filter(([, ownerId]) => ownerId === playerId)
     .map(([territoryId]) => territoryId);
-  if (territoryIds.length === 0) {
-    game.troopsToDeploy = 0;
-    return;
-  }
+  if (territoryIds.length === 0) return;
 
-  bumpStat(game, playerId, 'troopsGained', amount);
+  if (countsAsGained) bumpStat(game, playerId, 'troopsGained', amount);
   const tally = new Map<number, number>();
   while (amount > 0) {
     const territoryId =
@@ -116,7 +131,7 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
   const playerId = game.playerIds[game.turnPlayerIndex];
   const deposits = new Map<number, number>();
 
-  dropRandomTroops(game, playerId, game.troopsToDeploy, deposits);
+  dropTroopsRandomly(game, playerId, game.troopsToDeploy, deposits, true);
   game.troopsToDeploy = 0;
 
   while ((game.playerCards.get(playerId)?.length ?? 0) >= 5) {
@@ -149,7 +164,7 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
       });
     }
     bumpStat(game, playerId, 'troopsGained', best.territoryBonusIds.length * 2);
-    dropRandomTroops(game, playerId, best.baseValue, deposits);
+    dropTroopsRandomly(game, playerId, best.baseValue, deposits, true);
   }
 
   return deposits;
@@ -177,13 +192,12 @@ export function advanceCapitalPlacement(game: Game, io: Server) {
   let index = game.turnPlayerIndex + 1;
   while (
     index < game.playerIds.length &&
-    game.surrenderedIds.has(game.playerIds[index])
+    game.deathOrder.includes(game.playerIds[index])
   )
     index++;
 
   if (index >= game.playerIds.length) {
-    startTurns(game, io);
-    checkGameEnd(game);
+    beginNextSpecialPhase(game, io);
   } else {
     game.turnPlayerIndex = index;
     scheduleTurnTimer(game, io);
@@ -192,11 +206,190 @@ export function advanceCapitalPlacement(game: Game, io: Server) {
 
 export function startCapitalPlacement(game: Game, io: Server) {
   game.turnNumber = 0;
-  game.turnPlayerIndex = 0;
+  game.turnPlayerIndex = firstAliveIndex(game);
   game.turnPhase = 'capital';
+  game.troopsToDeploy = 0;
   game.capitalTerritoryIds = new Set();
   io.to(gameRoomName(game.name)).emit('game:capitalPlacementStarted');
   scheduleTurnTimer(game, io);
+}
+
+function totalTerritoryCount(game: Game): number {
+  return maps.get(game.mapName)!.territories.length;
+}
+
+function countTerritoriesByOwner(game: Game): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const ownerId of game.territoryOwners.values()) {
+    counts.set(ownerId, (counts.get(ownerId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function nextIndexMatching(
+  game: Game,
+  fromIndex: number,
+  predicate: (playerId: number) => boolean,
+): number | null {
+  const n = game.playerIds.length;
+  let index = fromIndex;
+  for (let i = 0; i < n; i++) {
+    index = (index + 1) % n;
+    if (predicate(game.playerIds[index])) return index;
+  }
+  return null;
+}
+
+function firstAliveIndex(game: Game): number {
+  return (
+    nextIndexMatching(game, -1, (id) => !game.deathOrder.includes(id)) ?? 0
+  );
+}
+
+function nextAliveIndexFrom(game: Game, fromIndex: number): number {
+  return (
+    nextIndexMatching(game, fromIndex, (id) => !game.deathOrder.includes(id)) ??
+    fromIndex
+  );
+}
+
+export function startTerritoryPhase(game: Game, io: Server) {
+  game.turnPlayerIndex = firstAliveIndex(game);
+  game.turnPhase = 'territory';
+  scheduleTurnTimer(game, io);
+}
+
+export function advanceTerritoryPhase(game: Game, io: Server) {
+  if (game.territoryOwners.size >= totalTerritoryCount(game)) {
+    for (const id of game.playerIds) {
+      if (!ownsAnyTerritory(game, id) && !game.deathOrder.includes(id))
+        game.deathOrder.push(id);
+    }
+    beginNextSpecialPhase(game, io);
+    return;
+  }
+  game.turnPlayerIndex = nextAliveIndexFrom(game, game.turnPlayerIndex);
+  scheduleTurnTimer(game, io);
+}
+
+function nextTroopIndexFrom(game: Game, fromIndex: number): number | null {
+  return nextIndexMatching(
+    game,
+    fromIndex,
+    (id) =>
+      !game.deathOrder.includes(id) &&
+      (game.placementTroopPools.get(id) ?? 0) > 0,
+  );
+}
+
+export function startTroopPhase(game: Game, io: Server) {
+  game.placementTroopPools = new Map();
+  const territoryCounts = countTerritoriesByOwner(game);
+  game.playerIds.forEach((id, i) => {
+    if (game.deathOrder.includes(id)) return;
+    const count = territoryCounts.get(id) ?? 0;
+    game.placementTroopPools.set(
+      id,
+      count * TROOP_PHASE_PER_TERRITORY_POOL + turnOrderBonus(i),
+    );
+  });
+  game.turnPhase = 'troop';
+  let startIndex = 0;
+  for (let i = 0; i < game.playerIds.length; i++) {
+    const id = game.playerIds[i];
+    if (
+      !game.deathOrder.includes(id) &&
+      (game.placementTroopPools.get(id) ?? 0) > 0
+    ) {
+      startIndex = i;
+      break;
+    }
+  }
+  game.turnPlayerIndex = startIndex;
+  game.troopsToDeploy = Math.min(
+    TROOP_PHASE_TURN_MAX,
+    game.placementTroopPools.get(game.playerIds[startIndex]) ?? 0,
+  );
+  scheduleTurnTimer(game, io);
+}
+
+export function advanceTroopPhase(game: Game, io: Server) {
+  const nextIndex = nextTroopIndexFrom(game, game.turnPlayerIndex);
+  if (nextIndex === null) {
+    game.placementTroopPools = new Map();
+    game.troopsToDeploy = 0;
+    beginNextSpecialPhase(game, io);
+    return;
+  }
+  game.turnPlayerIndex = nextIndex;
+  game.troopsToDeploy = Math.min(
+    TROOP_PHASE_TURN_MAX,
+    game.placementTroopPools.get(game.playerIds[nextIndex]) ?? 0,
+  );
+  scheduleTurnTimer(game, io);
+}
+
+export function claimTerritory(
+  game: Game,
+  io: Server,
+  playerId: number,
+  territoryId: number,
+) {
+  game.territoryOwners.set(territoryId, playerId);
+  game.territoryTroops.set(territoryId, 1);
+  recordReplayFrame(game, {
+    type: 'deploy',
+    territoryId,
+    troops: 1,
+    playerId,
+  });
+  io.to(gameRoomName(game.name)).emit('game:territoryClaimed', {
+    territoryId,
+    playerId,
+  });
+}
+
+function autoClaimRandomTerritory(game: Game, io: Server, playerId: number) {
+  const map = maps.get(game.mapName)!;
+  const unclaimed = map.territories
+    .map((t) => t.id)
+    .filter((id) => !game.territoryOwners.has(id));
+  if (unclaimed.length > 0) {
+    const territoryId = unclaimed[Math.floor(Math.random() * unclaimed.length)];
+    claimTerritory(game, io, playerId, territoryId);
+  }
+  advanceTerritoryPhase(game, io);
+}
+
+function autoPlaceRemainingTroops(game: Game, io: Server, playerId: number) {
+  const amount = game.troopsToDeploy;
+  if (amount > 0) {
+    const deposits = new Map<number, number>();
+    dropTroopsRandomly(game, playerId, amount, deposits, false);
+    const pool = game.placementTroopPools.get(playerId) ?? 0;
+    game.placementTroopPools.set(playerId, Math.max(0, pool - amount));
+    game.troopsToDeploy = 0;
+    if (deposits.size > 0) {
+      io.to(gameRoomName(game.name)).emit('game:deployedMany', {
+        deposits: [...deposits.entries()].map(([territoryId, troops]) => ({
+          territoryId,
+          troops,
+        })),
+      });
+    }
+  }
+  advanceTroopPhase(game, io);
+}
+
+export function beginNextSpecialPhase(game: Game, io: Server) {
+  const next = game.remainingSpecialPhases.shift();
+  if (next === 'territory') startTerritoryPhase(game, io);
+  else if (next === 'troop') startTroopPhase(game, io);
+  else if (next === 'capital') startCapitalPlacement(game, io);
+  else {
+    startTurns(game, io);
+    checkGameEnd(game);
+  }
 }
 
 function startDeployPhase(game: Game, io: Server, playerId: number) {
@@ -265,6 +458,16 @@ export function forceEndTurn(game: Game, io: Server) {
   const room = gameRoomName(game.name);
   const playerId = game.playerIds[game.turnPlayerIndex];
 
+  if (game.turnPhase === 'territory') {
+    autoClaimRandomTerritory(game, io, playerId);
+    return;
+  }
+
+  if (game.turnPhase === 'troop') {
+    autoPlaceRemainingTroops(game, io, playerId);
+    return;
+  }
+
   if (game.turnPhase === 'capital') {
     const territoryId = pickRandomOwnedTerritory(game, playerId);
     if (territoryId !== null) {
@@ -304,16 +507,15 @@ export function forceEndTurn(game: Game, io: Server) {
 }
 
 function nextAlivePlayerIndex(game: Game): number {
-  const playerCount = game.playerIds.length;
-  let index = game.turnPlayerIndex;
-  for (let i = 0; i < playerCount; i++) {
-    index = (index + 1) % playerCount;
-    if (index === 0) game.turnNumber++;
-    const playerId = game.playerIds[index];
-    if (ownsAnyTerritory(game, playerId) && !game.surrenderedIds.has(playerId))
-      return index;
-  }
-  return game.turnPlayerIndex;
+  const fromIndex = game.turnPlayerIndex;
+  const nextIndex = nextIndexMatching(
+    game,
+    fromIndex,
+    (id) => ownsAnyTerritory(game, id) && !game.surrenderedIds.has(id),
+  );
+  if (nextIndex === null) return fromIndex;
+  if (nextIndex <= fromIndex) game.turnNumber++;
+  return nextIndex;
 }
 
 export function advanceToNextPlayer(game: Game, io: Server) {

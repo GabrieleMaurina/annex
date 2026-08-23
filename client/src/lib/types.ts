@@ -39,7 +39,21 @@ export type GameMode =
   | '10-Turn'
   | 'Assassin'
   | 'Mission';
-export type TurnPhase = 'capital' | 'deploy' | 'attack' | 'fortify';
+export type Placement = 'Random' | 'Semi' | 'Custom';
+export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
+export type TurnPhase =
+  'territory' | 'troop' | 'capital' | 'deploy' | 'attack' | 'fortify';
+
+export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '⚔️';
+export type EmojiAttackTarget =
+  | { type: 'player'; playerId: number }
+  | { type: 'territory'; territoryId: number };
+export interface EmojiSentPayload {
+  senderId: number;
+  targetPlayerId: number;
+  emoji: EmojiValue;
+  attackTarget?: EmojiAttackTarget;
+}
 
 export type Mission =
   | { type: 'territories'; fraction: number; minTroopsPerTerritory: number }
@@ -56,6 +70,8 @@ export interface GameState {
   blitz: Blitz;
   defenceDice: DefenceDice;
   cards: CardsMode;
+  placement: Placement;
+  fortification: Fortification;
   turnDuration: TurnDuration;
   turnNumber: number;
   turnPlayerIndex: number;
@@ -81,6 +97,7 @@ export interface GameState {
     territoryCount: number;
     troopCount: number;
     capitalCount: number;
+    troopsRemaining: number;
     cardCount: number;
     connected: boolean;
     connectedAtEnd: boolean;
@@ -118,6 +135,8 @@ export interface GameSettingsInput {
   blitz?: Blitz;
   defenceDice?: DefenceDice;
   cards?: CardsMode;
+  placement?: Placement;
+  fortification?: Fortification;
   turnDuration?: TurnDuration;
 }
 

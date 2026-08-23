@@ -8,14 +8,19 @@ import {
 } from 'react';
 import { Badge, Button, Toast, ToastContainer } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
+import { PANEL_BG_CLASS } from '../common/panelStyle';
 import Tip from '../common/Tip';
-import { continentColor, contrastTextColor, playerColor } from '../lib/palette';
+import { contrastTextColor, playerColor } from '../lib/palette';
 import { socket } from '../lib/socket';
 import { playSound } from '../lib/sounds';
 import type {
   Ack,
   Card,
   CardSymbol,
+  EmojiAttackTarget,
+  EmojiSentPayload,
+  EmojiValue,
+  Fortification,
   GameMode,
   GameState,
   Mission,
@@ -46,6 +51,15 @@ import {
   type EvaluatedCombo,
 } from './cards';
 import CardsPanel, { CardFace } from './CardsPanel';
+import {
+  ATTACK_EMOJI,
+  EMOJI_PANEL_EDGE_OFFSET,
+  EMOJI_POP_DURATION,
+  EMOJI_TERRITORY_SIDE_GAP,
+  emojiFlightDurations,
+  EMOJIS,
+  type EmojiPop,
+} from './emoji';
 import {
   getFortifyEndCandidates,
   getFortifyPath,
@@ -103,6 +117,7 @@ interface Props {
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
   turnDuration: TurnDuration;
+  fortification: Fortification;
   troopsToDeploy: number;
   turnStartedAt: number;
   paused: boolean;
@@ -218,6 +233,10 @@ const SCREEN_EDGE_MARGIN = 8;
 const TURN_PANEL_RESERVED_HEIGHT = 70;
 const TOP_BUTTON_GAP = 16;
 const DEFAULT_CARDS_BUTTONS_TOP = 63;
+const PLACEMENT_PHASE_DURATION = 10;
+const CAPITAL_PHASE_DURATION = 60;
+
+const UNCLAIMED_TERRITORY_COLOR = '#6c757d';
 
 const STATE_STYLE = {
   normal: { stroke: '#000000', width: 2 },
@@ -240,6 +259,7 @@ function GameMap({
   turnPlayerIndex,
   turnPhase,
   turnDuration,
+  fortification,
   troopsToDeploy,
   turnStartedAt,
   paused,
@@ -279,6 +299,24 @@ function GameMap({
     cards: Card[];
   } | null>(null);
   const cardSetFlashIdRef = useRef(0);
+  const [emojiPickerFor, setEmojiPickerFor] = useState<number | null>(null);
+  const [pendingAttackEmoji, setPendingAttackEmoji] = useState<{
+    targetPlayerId: number;
+  } | null>(null);
+  const [emojiPops, setEmojiPops] = useState<EmojiPop[]>([]);
+  const emojiPopIdRef = useRef(0);
+  const [emojiFlights, setEmojiFlights] = useState<
+    {
+      id: number;
+      emoji: EmojiValue;
+      from: Point;
+      to: Point;
+      totalDuration: number;
+      travelPercent: number;
+    }[]
+  >([]);
+  const emojiFlightIdRef = useRef(0);
+  const emojiTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
   const [selectedComboKey, setSelectedComboKey] = useState<string | null>(null);
   const [openPanel, setOpenPanel] = useState<
     'cards' | 'bonuses' | 'logs' | null
@@ -354,6 +392,14 @@ function GameMap({
   const territoriesRef = useRef<Territory[]>([]);
   const colorByPlayerIdRef = useRef(new Map<number, number>());
   const playersRef = useRef<GameState['players']>([]);
+  const selfIdRef = useRef<number | null>(null);
+  const getTerritoryScreenPosRef = useRef<(t: Territory) => Point>(() => ({
+    x: 0,
+    y: 0,
+  }));
+  const zoomRef = useRef(1);
+  const rowRefs = useRef(new Map<number, HTMLTableRowElement>());
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
   const attackOptionIndexRef = useRef(0);
   const autoAdvanceKeyRef = useRef<string | null>(null);
   const cardImagesRef = useRef<Record<CardSymbol, HTMLImageElement>>({
@@ -420,9 +466,11 @@ function GameMap({
       {
         territoryId,
         troops,
+        playerId,
       }: {
         territoryId: number;
         troops: number;
+        playerId?: number;
       },
       arrowPath?: { x: number; y: number }[],
     ) => {
@@ -430,7 +478,8 @@ function GameMap({
       const territory = territoriesRef.current.find(
         (t) => t.id === territoryId,
       );
-      const ownerId = ownerByIdRef.current.get(territoryId)?.ownerId;
+      const ownerId =
+        playerId ?? ownerByIdRef.current.get(territoryId)?.ownerId;
       if (territory)
         startAnimation(
           'deploy',
@@ -496,6 +545,7 @@ function GameMap({
         animateDeploy({
           territoryId: animation.territoryId,
           troops: animation.troops,
+          playerId: animation.playerId,
         });
       } else if (animation.type === 'fortify') {
         playSound('fortify');
@@ -507,6 +557,7 @@ function GameMap({
             animation.playerId,
             animation.fromTerritoryId,
             animation.toTerritoryId,
+            fortification,
           );
           arrowPath = territoryPoints(
             pathIds.length > 1
@@ -515,7 +566,11 @@ function GameMap({
           );
         }
         animateDeploy(
-          { territoryId: animation.toTerritoryId, troops: animation.troops },
+          {
+            territoryId: animation.toTerritoryId,
+            troops: animation.troops,
+            playerId: animation.playerId,
+          },
           arrowPath,
         );
       } else {
@@ -550,7 +605,7 @@ function GameMap({
       }
       startAnimationLoop();
     },
-    [animateDeploy, explode, territoryPoints],
+    [animateDeploy, explode, territoryPoints, fortification],
   );
 
   const {
@@ -633,6 +688,9 @@ function GameMap({
       players.map((pl) => [pl.id, pl.color]),
     );
     playersRef.current = players;
+    selfIdRef.current = selfId;
+    getTerritoryScreenPosRef.current = getTerritoryScreenPos;
+    zoomRef.current = transform.zoom;
   });
 
   const selectTerritory = useCallback(
@@ -647,6 +705,15 @@ function GameMap({
   const selectCapital = useCallback(
     (territoryId: number) => {
       socket.emit('game:selectCapital', { territoryId }, (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      });
+    },
+    [setGame],
+  );
+
+  const claimTerritory = useCallback(
+    (territoryId: number) => {
+      socket.emit('game:claimTerritory', { territoryId }, (res: Ack) => {
         if (res.ok) setGame(res.game);
       });
     },
@@ -863,9 +930,15 @@ function GameMap({
     performAttackMove(attackMoveTroops, attackEndTerritoryId);
   }, [attackMoveTroops, attackEndTerritoryId, performAttackMove]);
 
+  const territoryClaimCandidates =
+    turnPhase === 'territory' && isMyTurn
+      ? new Set(
+          territories.filter((t) => !ownerById.has(t.id)).map((t) => t.id),
+        )
+      : new Set<number>();
   const fortifyStartCandidates =
     turnPhase === 'fortify' && isMyTurn
-      ? getFortifyStartCandidates(territories, ownerById, selfId)
+      ? getFortifyStartCandidates(territories, ownerById, selfId, fortification)
       : new Set<number>();
   const fortifyEndCandidates =
     turnPhase === 'fortify' && isMyTurn && fortifyStartTerritoryId !== null
@@ -874,6 +947,7 @@ function GameMap({
           ownerById,
           selfId,
           fortifyStartTerritoryId,
+          fortification,
         )
       : new Set<number>();
   const fortifyMaxTroops =
@@ -894,6 +968,7 @@ function GameMap({
           fortifyPathOwnerId,
           fortifyStartTerritoryId,
           fortifyEndTerritoryId,
+          fortification,
         )
       : [];
 
@@ -1125,6 +1200,26 @@ function GameMap({
   }, []);
 
   useEffect(() => {
+    function onTerritoryClaimed(payload: {
+      territoryId: number;
+      playerId: number;
+    }) {
+      playSound('select');
+      playSound('deploy');
+      animateDeploy({
+        territoryId: payload.territoryId,
+        troops: 1,
+        playerId: payload.playerId,
+      });
+      startAnimationLoop();
+    }
+    socket.on('game:territoryClaimed', onTerritoryClaimed);
+    return () => {
+      socket.off('game:territoryClaimed', onTerritoryClaimed);
+    };
+  }, [animateDeploy]);
+
+  useEffect(() => {
     let receivedFirstHand = false;
     function onCards(payload: { cards: Card[] }) {
       if (receivedFirstHand) {
@@ -1179,6 +1274,136 @@ function GameMap({
   }, [selfId]);
 
   useEffect(() => {
+    const emojiTimers = emojiTimersRef.current;
+    function onEmojiSent(payload: EmojiSentPayload) {
+      playSound('emoji');
+      const id = ++emojiPopIdRef.current;
+      const rowPlayerId = payload.senderId;
+      let attackText: string | undefined;
+      let attackColor: string | undefined;
+
+      const attackTarget = payload.attackTarget;
+      if (attackTarget?.type === 'player') {
+        const target = playersRef.current.find(
+          (p) => p.id === attackTarget.playerId,
+        );
+        attackText = target?.name ?? '?';
+        attackColor = target ? playerColor(target.color) : undefined;
+      } else if (attackTarget?.type === 'territory') {
+        const territoryId = attackTarget.territoryId;
+        attackText = `#${territoryId + 1}`;
+        const ownerId = ownerByIdRef.current.get(territoryId)?.ownerId;
+        const owner = playersRef.current.find((p) => p.id === ownerId);
+        attackColor = owner ? playerColor(owner.color) : undefined;
+
+        const territory = territoriesRef.current.find(
+          (t) => t.id === territoryId,
+        );
+        const canvasRect = canvasRef.current?.getBoundingClientRect();
+        const rowRect = rowRefs.current
+          .get(rowPlayerId)
+          ?.getBoundingClientRect();
+        if (territory && canvasRect && rowRect) {
+          const local = getTerritoryScreenPosRef.current(territory);
+          const sideOffset =
+            VERTEX_RADIUS * zoomRef.current + EMOJI_TERRITORY_SIDE_GAP;
+          const to = {
+            x: canvasRect.left + local.x + sideOffset,
+            y: canvasRect.top + local.y,
+          };
+          const from = { x: rowRect.left, y: rowRect.top + rowRect.height / 2 };
+          const flightId = ++emojiFlightIdRef.current;
+          const distance = Math.hypot(to.x - from.x, to.y - from.y);
+          const { totalDuration, travelPercent } =
+            emojiFlightDurations(distance);
+          setEmojiFlights((prev) => [
+            ...prev,
+            {
+              id: flightId,
+              emoji: payload.emoji,
+              from,
+              to,
+              totalDuration,
+              travelPercent,
+            },
+          ]);
+          const flightTimer = setTimeout(() => {
+            emojiTimers.delete(flightTimer);
+            setEmojiFlights((prev) => prev.filter((f) => f.id !== flightId));
+          }, totalDuration);
+          emojiTimers.add(flightTimer);
+        }
+      }
+
+      setEmojiPops((prev) => [
+        ...prev.filter((p) => p.rowPlayerId !== rowPlayerId),
+        {
+          id,
+          rowPlayerId,
+          emoji: payload.emoji,
+          attackText,
+          attackColor,
+        },
+      ]);
+      const popTimer = setTimeout(() => {
+        emojiTimers.delete(popTimer);
+        setEmojiPops((prev) => prev.filter((p) => p.id !== id));
+      }, EMOJI_POP_DURATION);
+      emojiTimers.add(popTimer);
+    }
+    socket.on('game:emojiSent', onEmojiSent);
+    return () => {
+      socket.off('game:emojiSent', onEmojiSent);
+      emojiTimers.forEach(clearTimeout);
+      emojiTimers.clear();
+    };
+  }, []);
+
+  function sendEmoji(
+    targetPlayerId: number,
+    emoji: EmojiValue,
+    attackTarget?: EmojiAttackTarget,
+  ) {
+    socket.emit('game:sendEmoji', { targetPlayerId, emoji, attackTarget });
+  }
+
+  function handlePlayerRowClick(playerId: number) {
+    if (pendingAttackEmoji) {
+      sendEmoji(pendingAttackEmoji.targetPlayerId, ATTACK_EMOJI, {
+        type: 'player',
+        playerId,
+      });
+      setPendingAttackEmoji(null);
+      return;
+    }
+    if (playerId === selfId) return;
+    setEmojiPickerFor((prev) => (prev === playerId ? null : playerId));
+  }
+
+  function handleEmojiPick(targetPlayerId: number, emoji: EmojiValue) {
+    setEmojiPickerFor(null);
+    if (emoji === ATTACK_EMOJI) {
+      setPendingAttackEmoji({ targetPlayerId });
+      return;
+    }
+    sendEmoji(targetPlayerId, emoji);
+  }
+
+  useEffect(() => {
+    if (emojiPickerFor === null) return;
+    function handleOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (emojiPickerRef.current?.contains(target)) return;
+      for (const row of rowRefs.current.values()) {
+        if (row.contains(target)) return;
+      }
+      setEmojiPickerFor(null);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [emojiPickerFor]);
+
+  useEffect(() => {
     const settingsEl = document.getElementById('settings-toggle');
     if (!settingsEl) return;
     function measure() {
@@ -1226,7 +1451,7 @@ function GameMap({
   }, [openPanel]);
 
   const deployPanelOpen =
-    turnPhase === 'deploy' &&
+    (turnPhase === 'deploy' || turnPhase === 'troop') &&
     isMyTurn &&
     !paused &&
     selectedTerritoryId !== null;
@@ -1258,8 +1483,9 @@ function GameMap({
 
   const submitDeploy = useCallback(() => {
     if (selectedTerritoryId === null) return;
+    const event = turnPhase === 'troop' ? 'game:placeTroop' : 'game:deploy';
     socket.emit(
-      'game:deploy',
+      event,
       { territoryId: selectedTerritoryId, troops: deployTroops },
       (res: Ack) => {
         if (!res.ok) return;
@@ -1267,12 +1493,14 @@ function GameMap({
         frozenTroopsRef.current.delete(selectedTerritoryId);
       },
     );
-  }, [selectedTerritoryId, deployTroops, setGame]);
+  }, [selectedTerritoryId, deployTroops, setGame, turnPhase]);
 
   function isInteractable(t: Territory): boolean {
+    if (pendingAttackEmoji) return !gameEnded;
     if (gameEnded || !isMyTurn || paused) return false;
+    if (turnPhase === 'territory') return territoryClaimCandidates.has(t.id);
     if (turnPhase === 'capital') return ownerById.get(t.id)?.ownerId === selfId;
-    if (turnPhase === 'deploy')
+    if (turnPhase === 'deploy' || turnPhase === 'troop')
       return troopsToDeploy > 0 && ownerById.get(t.id)?.ownerId === selfId;
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId === null)
@@ -1301,6 +1529,14 @@ function GameMap({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        if (pendingAttackEmoji) {
+          setPendingAttackEmoji(null);
+          return;
+        }
+        if (emojiPickerFor !== null) {
+          setEmojiPickerFor(null);
+          return;
+        }
         if (openPanel !== null) {
           setOpenPanel(null);
           return;
@@ -1428,6 +1664,8 @@ function GameMap({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
+    pendingAttackEmoji,
+    emojiPickerFor,
     openPanel,
     isMyTurn,
     turnPhase,
@@ -1568,6 +1806,10 @@ function GameMap({
   function nodeState(
     id: number,
   ): 'normal' | 'selectable' | 'hovered' | 'selected' {
+    if (turnPhase === 'territory') {
+      if (id === hoveredId) return 'hovered';
+      return territoryClaimCandidates.has(id) ? 'selectable' : 'normal';
+    }
     if (turnPhase === 'fortify') {
       if (id === fortifyStartTerritoryId || id === fortifyEndTerritoryId)
         return 'selected';
@@ -1594,7 +1836,11 @@ function GameMap({
     }
     if (id === selectedTerritoryId) return 'selected';
     if (id === hoveredId) return 'hovered';
-    if (turnPhase !== 'deploy' && selectedTerritoryId !== null) {
+    if (
+      turnPhase !== 'deploy' &&
+      turnPhase !== 'troop' &&
+      selectedTerritoryId !== null
+    ) {
       const selected = territories.find((t) => t.id === selectedTerritoryId);
       if (selected?.neighbors.includes(id)) return 'selectable';
     }
@@ -1747,7 +1993,7 @@ function GameMap({
       const owner = ownerById.get(t.id);
       const fillColor = owner
         ? playerColor(colorByPlayerId.get(owner.ownerId) ?? 0)
-        : continentColor(t.continentId);
+        : UNCLAIMED_TERRITORY_COLOR;
 
       ctx.beginPath();
       if (owner?.isCapital) {
@@ -2019,9 +2265,26 @@ function GameMap({
   function handleMouseUp(e: React.MouseEvent) {
     const drag = dragRef.current;
     dragRef.current = null;
-    if (!drag || drag.moved || gameEnded || !isMyTurn || paused) return;
+    if (!drag || drag.moved) return;
     const pos = getPos(e);
     const vertex = hitVertex(pos);
+
+    if (pendingAttackEmoji) {
+      if (!gameEnded && vertex)
+        sendEmoji(pendingAttackEmoji.targetPlayerId, ATTACK_EMOJI, {
+          type: 'territory',
+          territoryId: vertex.id,
+        });
+      setPendingAttackEmoji(null);
+      return;
+    }
+
+    if (gameEnded || !isMyTurn || paused) return;
+
+    if (turnPhase === 'territory') {
+      if (vertex && isInteractable(vertex)) claimTerritory(vertex.id);
+      return;
+    }
 
     if (turnPhase === 'capital') {
       if (vertex && isInteractable(vertex)) selectCapital(vertex.id);
@@ -2106,6 +2369,10 @@ function GameMap({
 
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault();
+    if (pendingAttackEmoji) {
+      setPendingAttackEmoji(null);
+      return;
+    }
     if (gameEnded || !isMyTurn || paused) return;
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId !== null) cancelFortify();
@@ -2223,7 +2490,11 @@ function GameMap({
           display: 'block',
           width: size.w,
           height: size.h,
-          cursor: hoveredId !== null ? 'pointer' : 'default',
+          cursor: pendingAttackEmoji
+            ? 'crosshair'
+            : hoveredId !== null
+              ? 'pointer'
+              : 'default',
         }}
       />
       <div
@@ -2355,7 +2626,137 @@ function GameMap({
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}
         navigate={navigate}
+        rowRefs={rowRefs}
+        onRowClick={handlePlayerRowClick}
+        emojiTargeting={pendingAttackEmoji !== null}
+        emojiPops={emojiPops}
       />
+      {emojiPickerFor !== null &&
+        (() => {
+          const rect = rowRefs.current
+            .get(emojiPickerFor)
+            ?.getBoundingClientRect();
+          if (!rect) return null;
+          return (
+            <div
+              ref={emojiPickerRef}
+              className={`position-fixed ${PANEL_BG_CLASS} border rounded-start d-flex align-items-center`}
+              style={{
+                top: rect.top + rect.height / 2,
+                right: size.w - rect.left + EMOJI_PANEL_EDGE_OFFSET,
+                width: 'fit-content',
+                padding: 0,
+                transform: 'translateY(-50%)',
+                zIndex: 3,
+              }}
+            >
+              <style>{`
+                .annex-emoji-btn:hover {
+                  background-color: rgba(127, 127, 127, 0.35) !important;
+                  border-radius: 4px;
+                }
+              `}</style>
+              {EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="annex-emoji-btn border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
+                  style={{
+                    fontSize: 24,
+                    padding: '3px 4px 5px 4px',
+                  }}
+                  onClick={() => handleEmojiPick(emojiPickerFor, emoji)}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+      {emojiPops.map((pop) => {
+        const rect = rowRefs.current
+          .get(pop.rowPlayerId)
+          ?.getBoundingClientRect();
+        if (!rect) return null;
+        return (
+          <div
+            key={pop.id}
+            className="position-fixed"
+            style={{
+              top: rect.top + rect.height / 2,
+              right: size.w - rect.left + EMOJI_PANEL_EDGE_OFFSET,
+              width: 'fit-content',
+              zIndex: 3,
+              pointerEvents: 'none',
+              overflow: 'hidden',
+              transform: 'translateY(-50%)',
+            }}
+          >
+            <style>{`
+              @keyframes annexEmojiPop {
+                0% { transform: translateX(100%); opacity: 0; }
+                20% { transform: translateX(0); opacity: 1; }
+                80% { transform: translateX(0); opacity: 1; }
+                100% { transform: translateX(0); opacity: 0; }
+              }
+            `}</style>
+            <div
+              className={`${PANEL_BG_CLASS} border rounded-start d-flex align-items-center gap-1`}
+              style={{
+                padding: 0,
+                animation: `annexEmojiPop ${EMOJI_POP_DURATION}ms ease-out forwards`,
+              }}
+            >
+              <span
+                className="d-inline-flex align-items-center justify-content-center lh-1"
+                style={{
+                  fontSize: 24,
+                  padding: '3px 4px 5px 4px',
+                }}
+              >
+                {pop.emoji}
+              </span>
+              {pop.attackText && (
+                <strong
+                  className="text-truncate"
+                  style={{ color: pop.attackColor, fontSize: 14 }}
+                >
+                  {pop.attackText}
+                </strong>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      {emojiFlights.map((flight) => (
+        <div
+          key={flight.id}
+          className="position-fixed"
+          style={
+            {
+              left: flight.from.x,
+              top: flight.from.y,
+              fontSize: 28,
+              zIndex: 3,
+              pointerEvents: 'none',
+              transform: 'translate(-50%, -50%)',
+              animation: `annexEmojiFlight-${flight.id} ${flight.totalDuration}ms linear forwards`,
+              '--annex-emoji-dx': `${flight.to.x - flight.from.x}px`,
+              '--annex-emoji-dy': `${flight.to.y - flight.from.y}px`,
+            } as React.CSSProperties
+          }
+        >
+          <style>{`
+            @keyframes annexEmojiFlight-${flight.id} {
+              0% { transform: translate(-50%, -50%); opacity: 1; }
+              ${flight.travelPercent}% { transform: translate(calc(-50% + var(--annex-emoji-dx)), calc(-50% + var(--annex-emoji-dy))); opacity: 1; }
+              95% { transform: translate(calc(-50% + var(--annex-emoji-dx)), calc(-50% + var(--annex-emoji-dy))); opacity: 1; }
+              100% { transform: translate(calc(-50% + var(--annex-emoji-dx)), calc(-50% + var(--annex-emoji-dy))); opacity: 0; }
+            }
+          `}</style>
+          {flight.emoji}
+        </div>
+      ))}
       {showReplay && replayTerritories && (
         <ReplayPanel
           index={replayIndex}
@@ -2379,7 +2780,13 @@ function GameMap({
             <>
               <TurnProgressBar
                 turnStartedAt={turnStartedAt}
-                turnDuration={turnDuration}
+                turnDuration={
+                  turnPhase === 'territory' || turnPhase === 'troop'
+                    ? PLACEMENT_PHASE_DURATION
+                    : turnPhase === 'capital'
+                      ? CAPITAL_PHASE_DURATION
+                      : turnDuration
+                }
                 color={playerColor(currentTurnPlayer.color)}
                 paused={paused}
               />
@@ -2389,6 +2796,7 @@ function GameMap({
                 color={playerColor(currentTurnPlayer.color)}
                 isMyTurn={isMyTurn}
                 troopsToDeploy={troopsToDeploy}
+                troopsRemaining={currentTurnPlayer.troopsRemaining}
                 canLeaveDeploy={troopsToDeploy <= 0 && !mustPlaySet}
                 paused={paused}
                 setGame={setGame}
@@ -2397,8 +2805,8 @@ function GameMap({
           )}
           {deployPanelOpen && deployPanelStyle && (
             <TroopPanel
-              label="Deploy troops:"
-              buttonLabel="Deploy"
+              label={turnPhase === 'troop' ? 'Place troops:' : 'Deploy troops:'}
+              buttonLabel={turnPhase === 'troop' ? 'Place' : 'Deploy'}
               troops={deployTroops}
               maxTroops={troopsToDeploy}
               inputRef={deployInputRef}

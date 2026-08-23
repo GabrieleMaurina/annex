@@ -4,9 +4,11 @@ import type {
   Blitz,
   CardsMode,
   DefenceDice,
+  Fortification,
   GameMode,
   GameSettingsInput,
   GameState,
+  Placement,
   TurnDuration,
 } from '../lib/types';
 
@@ -108,6 +110,42 @@ const CARDS_HELP = (
         Exponential Per Player: same as Exponential, but each player has their
         own progression: playing a set only raises the value of your own next
         set.
+      </li>
+    </ul>
+  </>
+);
+
+const PLACEMENT_HELP = (
+  <>
+    How territories and starting troops are handed out at the start of the game.
+    <ul className="mb-0 ps-3">
+      <li>
+        Random: territories and starting troops are both assigned randomly.
+      </li>
+      <li>
+        Semi: territories are assigned randomly, but each player takes turns
+        choosing where to place their starting troops.
+      </li>
+      <li>
+        Custom: players take turns claiming territories one at a time, then take
+        turns placing their starting troops. If there aren&apos;t enough
+        territories for everyone, players who never get one are eliminated.
+      </li>
+    </ul>
+  </>
+);
+
+const FORTIFICATION_HELP = (
+  <>
+    Which territories troops can be moved between during the fortify phase.
+    <ul className="mb-0 ps-3">
+      <li>
+        Connected: any two of your territories joined by a path of territories
+        you own.
+      </li>
+      <li>Neighboring: only territories directly adjacent to each other.</li>
+      <li>
+        Unrestricted: any two of your territories, regardless of adjacency.
       </li>
     </ul>
   </>
@@ -254,6 +292,52 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               </Form.Select>
             ) : (
               <span>{game.cards}</span>
+            )}
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
+            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+              Placement
+              <Help>{PLACEMENT_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.placement}
+                onChange={(e) =>
+                  applySettings({ placement: e.target.value as Placement })
+                }
+              >
+                <option value="Random">Random</option>
+                <option value="Semi">Semi</option>
+                <option value="Custom">Custom</option>
+              </Form.Select>
+            ) : (
+              <span>{game.placement}</span>
+            )}
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
+            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+              Fortification
+              <Help>{FORTIFICATION_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.fortification}
+                onChange={(e) =>
+                  applySettings({
+                    fortification: e.target.value as Fortification,
+                  })
+                }
+              >
+                <option value="Connected">Connected</option>
+                <option value="Neighboring">Neighboring</option>
+                <option value="Unrestricted">Unrestricted</option>
+              </Form.Select>
+            ) : (
+              <span>{game.fortification}</span>
             )}
           </div>
 

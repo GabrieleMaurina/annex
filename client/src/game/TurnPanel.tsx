@@ -11,6 +11,7 @@ interface Props {
   color: string;
   isMyTurn: boolean;
   troopsToDeploy: number;
+  troopsRemaining: number;
   canLeaveDeploy: boolean;
   paused: boolean;
   setGame: (game: GameState) => void;
@@ -22,6 +23,7 @@ function TurnPanel({
   color,
   isMyTurn,
   troopsToDeploy,
+  troopsRemaining,
   canLeaveDeploy,
   paused,
   setGame,
@@ -48,9 +50,13 @@ function TurnPanel({
       <span className="text-capitalize fw-bold" style={{ fontSize: '1.4em' }}>
         {turnPhase}
       </span>
-      {turnPhase === 'deploy' && (
+      {(turnPhase === 'deploy' || turnPhase === 'troop') && (
         <span className="d-flex align-items-center gap-1">
-          <Tip text="Troops to deploy">
+          <Tip
+            text={
+              turnPhase === 'troop' ? 'Troops to place' : 'Troops to deploy'
+            }
+          >
             <img
               src={
                 isDark
@@ -62,11 +68,15 @@ function TurnPanel({
               alt="Troops to deploy"
             />
           </Tip>
-          {troopsToDeploy}
+          {turnPhase === 'troop'
+            ? `${troopsToDeploy}/${troopsRemaining}`
+            : troopsToDeploy}
         </span>
       )}
       {isMyTurn &&
         !paused &&
+        turnPhase !== 'territory' &&
+        turnPhase !== 'troop' &&
         turnPhase !== 'capital' &&
         (turnPhase !== 'deploy' || canLeaveDeploy) && (
           <Button size="sm" onClick={nextPhase}>

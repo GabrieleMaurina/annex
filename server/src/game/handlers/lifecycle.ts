@@ -4,9 +4,11 @@ import {
   Blitz,
   CardsMode,
   DefenceDice,
+  Fortification,
   Game,
   GameMode,
   HOME_ROOM,
+  Placement,
   Player,
   TurnDuration,
 } from '../../types';
@@ -17,6 +19,7 @@ import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
   assignRandomColor,
   assignTerritories,
+  assignTerritoryOwners,
   compactTeams,
   cycleColor,
   interleaveTeams,
@@ -30,6 +33,7 @@ import { snapshotTerritories } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { emptyPlayerStats } from '../logic/stats';
 import {
+  broadcastMissions,
   destroyIfInactive,
   gameRoomName,
   games,
@@ -37,11 +41,10 @@ import {
 } from '../logic/store';
 import {
   advanceTurnPhase,
+  beginNextSpecialPhase,
   forceEndTurn,
   pauseTurnTimer,
   resumeTurnTimer,
-  startCapitalPlacement,
-  startTurns,
 } from '../logic/turns';
 
 const MAX_GAME_NAME_LENGTH = 20;
@@ -65,6 +68,12 @@ const CARDS_VALUES: CardsMode[] = [
   'Exponential',
   'Linear Per Player',
   'Exponential Per Player',
+];
+const PLACEMENT_VALUES: Placement[] = ['Random', 'Semi', 'Custom'];
+const FORTIFICATION_VALUES: Fortification[] = [
+  'Connected',
+  'Neighboring',
+  'Unrestricted',
 ];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 
@@ -121,11 +130,15 @@ export function registerGameHandlers(
         blitz: 'Balanced',
         defenceDice: 2,
         cards: 'Constant',
+        placement: 'Random',
+        fortification: 'Connected',
         turnDuration: 120,
         turnNumber: 0,
         turnPlayerIndex: 0,
         turnPhase: 'deploy',
         troopsToDeploy: 0,
+        remainingSpecialPhases: [],
+        placementTroopPools: new Map(),
         turnStartedAt: 0,
         paused: false,
         pausedAt: null,
@@ -342,6 +355,20 @@ export function registerGameHandlers(
         game.cards = settings.cards as CardsMode;
       }
 
+      if (settings.placement !== undefined) {
+        if (!(PLACEMENT_VALUES as unknown[]).includes(settings.placement))
+          return callback({ ok: false, error: 'invalid placement' });
+        game.placement = settings.placement as Placement;
+      }
+
+      if (settings.fortification !== undefined) {
+        if (
+          !(FORTIFICATION_VALUES as unknown[]).includes(settings.fortification)
+        )
+          return callback({ ok: false, error: 'invalid fortification' });
+        game.fortification = settings.fortification as Fortification;
+      }
+
       if (settings.turnDuration !== undefined) {
         if (
           !(TURN_DURATION_VALUES as unknown[]).includes(settings.turnDuration)
@@ -377,7 +404,11 @@ export function registerGameHandlers(
     } else {
       game.playerIds = shuffle(game.playerIds);
     }
-    assignTerritories(game);
+    if (game.placement === 'Random') {
+      assignTerritories(game);
+    } else if (game.placement === 'Semi') {
+      assignTerritoryOwners(game);
+    }
     if (game.gameMode === 'Assassin') {
       game.playerMissions = assignMissions(game, ['assassinate']);
     } else if (game.gameMode === 'Mission') {
@@ -385,6 +416,7 @@ export function registerGameHandlers(
     } else {
       game.playerMissions = new Map();
     }
+    broadcastMissions(io, game, playersById);
     game.replayInitial = snapshotTerritories(game);
     game.replayFrames = [];
     const map = maps.get(game.mapName)!;
@@ -395,15 +427,18 @@ export function registerGameHandlers(
     game.stats = new Map(game.playerIds.map((id) => [id, emptyPlayerStats()]));
     game.deathOrder = [];
     game.teamDeathOrder = [];
-    for (const id of game.playerIds) {
-      if (!ownsAnyTerritory(game, id)) game.deathOrder.push(id);
+    if (game.placement !== 'Custom') {
+      for (const id of game.playerIds) {
+        if (!ownsAnyTerritory(game, id)) game.deathOrder.push(id);
+      }
     }
     game.state = 'playing';
-    if (game.gameMode === 'Capitals') {
-      startCapitalPlacement(game, io);
-    } else {
-      startTurns(game, io);
-    }
+    game.remainingSpecialPhases = [
+      ...(game.placement === 'Custom' ? (['territory'] as const) : []),
+      ...(game.placement !== 'Random' ? (['troop'] as const) : []),
+      ...(game.gameMode === 'Capitals' ? (['capital'] as const) : []),
+    ];
+    beginNextSpecialPhase(game, io);
     callback({ ok: true, game: gameState(game, playersById) });
   });
 
@@ -437,8 +472,15 @@ export function registerGameHandlers(
     if (game.paused) return callback({ ok: false, error: 'game paused' });
     if (game.playerIds[game.turnPlayerIndex] !== player.id)
       return callback({ ok: false, error: 'not your turn' });
-    if (game.turnPhase === 'capital')
-      return callback({ ok: false, error: 'cannot skip capital phase' });
+    if (
+      game.turnPhase === 'territory' ||
+      game.turnPhase === 'troop' ||
+      game.turnPhase === 'capital'
+    )
+      return callback({
+        ok: false,
+        error: `cannot skip ${game.turnPhase} phase`,
+      });
     if (game.turnPhase === 'deploy') {
       if (game.troopsToDeploy > 0)
         return callback({ ok: false, error: 'cannot skip deploy phase' });
@@ -483,7 +525,7 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'game not started' });
     if (!game.playerIds.includes(player.id))
       return callback({ ok: false, error: 'not a player' });
-    if (![...game.territoryOwners.values()].includes(player.id))
+    if (game.turnPhase !== 'territory' && !ownsAnyTerritory(game, player.id))
       return callback({ ok: false, error: 'already eliminated' });
 
     game.surrenderedIds.add(player.id);

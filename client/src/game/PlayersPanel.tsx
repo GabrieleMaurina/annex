@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MutableRefObject, ReactNode } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
 import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
@@ -12,6 +12,7 @@ import type {
   Mission,
   TurnPhase,
 } from '../lib/types';
+import { EMOJI_POP_DURATION, type EmojiPop } from './emoji';
 
 function formatList(items: string[]): string {
   if (items.length <= 1) return items.join('');
@@ -63,6 +64,10 @@ interface Props {
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   navigate: (path: string) => void;
+  rowRefs: MutableRefObject<Map<number, HTMLTableRowElement>>;
+  onRowClick: (playerId: number) => void;
+  emojiTargeting: boolean;
+  emojiPops: EmojiPop[];
 }
 
 function PlayersPanel({
@@ -83,9 +88,14 @@ function PlayersPanel({
   collapsed,
   setCollapsed,
   navigate,
+  rowRefs,
+  onRowClick,
+  emojiTargeting,
+  emojiPops,
 }: Props) {
   const isSpectator = spectators.some((s) => s.id === selfId);
   const self = players.find((p) => p.id === selfId);
+  const canSendEmoji = !gameEnded && !!self;
   const canSurrender =
     !gameEnded &&
     !isSpectator &&
@@ -134,6 +144,18 @@ function PlayersPanel({
         maxHeight: 'calc(100vh - 2rem)',
       }}
     >
+      <style>{`
+        @keyframes annexEmojiHighlight {
+          0% { filter: brightness(1); }
+          20% { filter: brightness(1.6); }
+          100% { filter: brightness(1); }
+        }
+        @keyframes annexEmojiHighlightAlt {
+          0% { filter: brightness(1); }
+          20% { filter: brightness(1.6); }
+          100% { filter: brightness(1); }
+        }
+      `}</style>
       <div
         role="button"
         tabIndex={0}
@@ -158,7 +180,10 @@ function PlayersPanel({
           )}
         </div>
         <div className="text-center fw-bold mb-3">
-          Turn {turnPhase === 'capital' ? 0 : turnNumber + 1}
+          Turn{' '}
+          {['territory', 'troop', 'capital'].includes(turnPhase)
+            ? 0
+            : turnNumber + 1}
         </div>
       </div>
       <div
@@ -243,8 +268,28 @@ function PlayersPanel({
               const rowStyle = { backgroundColor: bg, color: fg };
               const isDark = fg === '#ffffff';
               const isConnected = gameEnded ? p.connectedAtEnd : p.connected;
+              const pop = emojiPops.find((e) => e.rowPlayerId === p.id);
+              const rowClickable =
+                canSendEmoji && (emojiTargeting || p.id !== selfId);
               return (
-                <tr key={p.id}>
+                <tr
+                  key={p.id}
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(p.id, el);
+                    else rowRefs.current.delete(p.id);
+                  }}
+                  onClick={() => rowClickable && onRowClick(p.id)}
+                  style={{
+                    cursor: rowClickable
+                      ? emojiTargeting
+                        ? 'crosshair'
+                        : 'pointer'
+                      : undefined,
+                    animation: pop
+                      ? `annexEmojiHighlight${pop.id % 2 === 0 ? '' : 'Alt'} ${EMOJI_POP_DURATION}ms ease-out forwards`
+                      : undefined,
+                  }}
+                >
                   <td className="align-middle text-center" style={rowStyle}>
                     {p.id === turnPlayerId && '●'}
                   </td>

@@ -1,4 +1,5 @@
 import { Badge, Button, Form, Table } from 'react-bootstrap';
+import Tip from '../common/Tip';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 
@@ -15,6 +16,9 @@ interface Props {
   cycleColor: () => void;
   removeSlot: (index: number) => void;
   addSlot: () => void;
+  rowRefs: React.RefObject<Map<number, HTMLTableRowElement>>;
+  nameCellRefs: React.RefObject<Map<number, HTMLElement>>;
+  onEmojiRowClick: (playerId: number) => void;
 }
 
 function PlayerRoster({
@@ -27,6 +31,9 @@ function PlayerRoster({
   cycleColor,
   removeSlot,
   addSlot,
+  rowRefs,
+  nameCellRefs,
+  onEmojiRowClick,
 }: Props) {
   const slotRows = Array.from(
     { length: game.slots },
@@ -34,7 +41,7 @@ function PlayerRoster({
   );
 
   return (
-    <Table striped borderless hover>
+    <Table striped borderless hover size="sm">
       <thead>
         <tr>
           <th style={{ width: '100%' }}>Player</th>
@@ -48,21 +55,40 @@ function PlayerRoster({
             ? {
                 backgroundColor: playerColor(p.color),
                 color: contrastTextColor(playerColor(p.color)),
-                cursor: p.id === selfId ? 'pointer' : 'default',
+                cursor: 'pointer',
               }
             : undefined;
           return (
-            <tr key={i} onClick={p && p.id === selfId ? cycleColor : undefined}>
+            <tr
+              key={i}
+              ref={(el) => {
+                if (!p) return;
+                if (el) rowRefs.current.set(p.id, el);
+                else rowRefs.current.delete(p.id);
+              }}
+              onClick={
+                p
+                  ? p.id === selfId
+                    ? cycleColor
+                    : () => onEmojiRowClick(p.id)
+                  : undefined
+              }
+            >
               <td className="align-middle" style={rowStyle}>
                 {p ? (
-                  <>
+                  <span
+                    ref={(el) => {
+                      if (el) nameCellRefs.current.set(p.id, el);
+                      else nameCellRefs.current.delete(p.id);
+                    }}
+                  >
                     {p.name}
                     {p.id === game.hostId && (
                       <Badge bg="primary" className="ms-2">
                         Host
                       </Badge>
                     )}
-                  </>
+                  </span>
                 ) : (
                   <span className="text-muted">Empty</span>
                 )}
@@ -98,16 +124,23 @@ function PlayerRoster({
                 </td>
               )}
               {isHost && (
-                <td className="text-nowrap align-middle" style={rowStyle}>
+                <td
+                  className="text-nowrap align-middle"
+                  style={rowStyle}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {p?.id !== selfId && (
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => removeSlot(i)}
-                      disabled={!p && game.slots <= MIN_SLOTS}
-                    >
-                      ✕
-                    </Button>
+                    <Tip text="Kick/Ban">
+                      <Button
+                        variant="danger"
+                        className="d-inline-flex align-items-center justify-content-center"
+                        style={{ width: 24, height: 24, padding: 0 }}
+                        onClick={() => removeSlot(i)}
+                        disabled={!p && game.slots <= MIN_SLOTS}
+                      >
+                        ✕
+                      </Button>
+                    </Tip>
                   )}
                 </td>
               )}

@@ -46,7 +46,7 @@ export function registerTerritoryHandlers(
         return callback({ ok: false, error: 'territory already claimed' });
 
       claimTerritory(game, io, player.id, territoryId);
-      advanceTerritoryPhase(game, io);
+      advanceTerritoryPhase(game, io, playersById);
 
       callback({ ok: true, game: gameState(game, playersById) });
     },

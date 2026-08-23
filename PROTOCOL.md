@@ -437,13 +437,13 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 - **Ack:** none
 
 ### `game:sendEmoji`
-- **When sent:** a seated player sends a quick emoji to another player: right after clicking a player in the players list and picking one of the six fixed emojis (👍, 👎, ❤️, 🙂, 🙁, ⚔️), or, for the attack emoji (⚔️) specifically, after the follow-up click on a player or a territory that names its target.
-- **Purpose:** relay one emoji from the caller to `targetPlayerId`, delivered only to the two sockets involved (see `game:emojiSent` below), never broadcast to the rest of the room. The caller must be a seated player, and the game must be `playing`; `targetPlayerId` must be a currently seated player other than the caller (a player can't send themselves an emoji). `attackTarget` is required if and only if `emoji` is `'⚔️'`: `{ type: 'player'; playerId }` names any seated player, including the caller or `targetPlayerId`, as the attack's target — unlike `targetPlayerId`, this one may name the caller — `{ type: 'territory'; territoryId }` names any territory on the map, owned by anyone or no one. Silently ignored (no ack) on any invalid input, same as `game:chat`.
+- **When sent:** a seated player sends a quick emoji to another player: right after clicking a player in the players list (during a game) or the roster/results table (in the lobby or after the game ends) and picking one of the eight fixed emojis (👍, 👎, ❤️, 🙂, 🙁, 😲, 🙏, ⚔️), or, for the attack emoji (⚔️) specifically, after the follow-up click on a player or a territory that names its target. The attack emoji's follow-up targeting only exists in the in-game players list, since it relies on the map; the lobby and results tables only ever send it (if at all) without an `attackTarget`.
+- **Purpose:** relay one emoji from the caller to `targetPlayerId`, delivered only to the two sockets involved (see `game:emojiSent` below), never broadcast to the rest of the room. The caller must be a seated player, in any game state (`lobby`, `playing`, or `ended`); `targetPlayerId` must be a currently seated player other than the caller (a player can't send themselves an emoji). `attackTarget` is required if and only if `emoji` is `'⚔️'`: `{ type: 'player'; playerId }` names any seated player, including the caller or `targetPlayerId`, as the attack's target — unlike `targetPlayerId`, this one may name the caller — `{ type: 'territory'; territoryId }` names any territory on the map, owned by anyone or no one. Silently ignored (no ack) on any invalid input, same as `game:chat`.
 - **Content:**
   ```ts
   {
     targetPlayerId: number;
-    emoji: '👍' | '👎' | '❤️' | '🙂' | '🙁' | '⚔️';
+    emoji: '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
     attackTarget?:
       | { type: 'player'; playerId: number }
       | { type: 'territory'; territoryId: number };
@@ -472,7 +472,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:cards`
-- **When sent:** once per second, individually to each seated player's own socket (never broadcast to the room), for as long as the game is `playing`, including before they've been dealt their first card, so the hand (empty or not) is always current (see "Territory cards" above).
+- **When sent:** individually to each seated player's own socket (never broadcast to the room), only when that player's own hand actually changes: right after `game:start` deals empty hands (so the hand, empty or not, is always current from the start, see "Territory cards" above), whenever `game:playCardSet` or the turn timer's auto-play removes cards from the hand, whenever the end-of-turn conquest draw or an eliminated opponent's hand transfer adds cards to it, and once on reconnect (a fresh `player:identify` while seated in a `playing` game) so a client that just (re)connected is caught up without waiting on the next change.
 - **Purpose:** let a player see their own territory cards: the only place this ever reaches a client; `GameState` never includes any player's actual cards, only `cardCount`.
 - **Content:**
   ```ts
@@ -480,7 +480,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:mission`
-- **When sent:** once per second, individually to each player with an assigned mission (never broadcast to the room), i.e. every seated player, for as long as the game is `'Assassin'` or `'Mission'` and `playing` or `ended`.
+- **When sent:** individually to each player with an assigned mission (never broadcast to the room), i.e. every seated player, once right after `game:start` assigns missions, and once more on reconnect (a fresh `player:identify` while seated in a game that's `playing` or `ended`) so a client that just (re)connected is caught up. Never resent afterward: a mission is fixed for the whole game once assigned (see below), so there's nothing further to push.
 - **Purpose:** let a player see their own secret mission: the only place this ever reaches a client; `GameState` never exposes anyone's mission, including the caller's own to anyone else. See "Missions" above.
 - **Content:**
   ```ts
@@ -518,13 +518,13 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:emojiSent`
 - **When sent:** immediately, individually to the sender's own socket and `targetPlayerId`'s socket (a single event if they're the same player), whenever a `game:sendEmoji` call succeeds.
-- **Purpose:** let both clients play the emoji sound effect and show the emoji next to the sender's name in the players list, with a "pop" animation that also briefly highlights the sender's row; `GameState`/`game:state` never carries emojis, so this is the only way either client learns of one. For an attack emoji (`emoji: '⚔️'`) with a territory `attackTarget`, this is also what triggers the animation flying the emoji from the players list to that territory on the map.
+- **Purpose:** let both clients play the emoji sound effect and show the emoji as a "pop" next to the other party's row in the players list (during a game) or the roster/results table (in the lobby or after the game ends) — next to `targetPlayerId`'s row on the sender's own client, and next to `senderId`'s row on the recipient's client — with a brief highlight animation on that same row; `GameState`/`game:state` never carries emojis, so this is the only way either client learns of one. For an attack emoji (`emoji: '⚔️'`) with a territory `attackTarget`, this is also what triggers the animation flying the emoji from that row to the target territory on the map (only possible during a game, since the lobby and results tables have no map).
 - **Content:**
   ```ts
   {
     senderId: number;
     targetPlayerId: number;
-    emoji: '👍' | '👎' | '❤️' | '🙂' | '🙁' | '⚔️';
+    emoji: '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
     attackTarget?:
       | { type: 'player'; playerId: number }
       | { type: 'territory'; territoryId: number };

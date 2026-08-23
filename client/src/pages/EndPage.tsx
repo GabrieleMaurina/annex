@@ -1,6 +1,8 @@
 import { Button, Container, Table } from 'react-bootstrap';
+import EmojiTableOverlay from '../common/EmojiTableOverlay';
 import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
+import { useTableEmojiReactions } from '../common/useTableEmojiReactions';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 
@@ -25,6 +27,16 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
+
+  const {
+    emojiPickerFor,
+    emojiPops,
+    handleRowClick,
+    handleEmojiPick,
+    emojiPickerRef,
+    rowRefs,
+    nameCellRefs,
+  } = useTableEmojiReactions(selfId);
 
   return (
     <Container fluid className="py-5 px-4">
@@ -68,16 +80,31 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
             {rankedPlayers.map((p, index) => {
               const bg = playerColor(p.color);
               const fg = contrastTextColor(bg);
-              const rowStyle = { backgroundColor: bg, color: fg };
+              const rowStyle = {
+                backgroundColor: bg,
+                color: fg,
+                cursor: p.id === selfId ? 'default' : 'pointer',
+              };
               const isDark = fg === '#ffffff';
               const killedNames = p.playersKilled
                 .map((id) => nameById.get(id) ?? '?')
                 .join(', ');
               return (
-                <tr key={p.id}>
+                <tr
+                  key={p.id}
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(p.id, el);
+                  }}
+                  onClick={() => handleRowClick(p.id)}
+                >
                   <td style={rowStyle}>{index + 1}</td>
                   <td className="text-start" style={rowStyle}>
-                    <div className="d-flex align-items-center gap-1">
+                    <div
+                      ref={(el) => {
+                        if (el) nameCellRefs.current.set(p.id, el);
+                      }}
+                      className="d-inline-flex align-items-center gap-1"
+                    >
                       <span className="text-truncate" style={{ minWidth: 0 }}>
                         {p.name}
                       </span>
@@ -155,6 +182,15 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
           </tbody>
         </Table>
       </div>
+
+      <EmojiTableOverlay
+        emojiPickerFor={emojiPickerFor}
+        emojiPops={emojiPops}
+        rowRefs={rowRefs}
+        nameCellRefs={nameCellRefs}
+        emojiPickerRef={emojiPickerRef}
+        onPick={handleEmojiPick}
+      />
 
       <div className="d-flex justify-content-center gap-2">
         <Button variant="primary" onClick={onViewMap}>

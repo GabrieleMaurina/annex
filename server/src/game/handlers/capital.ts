@@ -51,7 +51,7 @@ export function registerCapitalHandlers(
         territoryId,
         troops: 3,
       });
-      advanceCapitalPlacement(game, io);
+      advanceCapitalPlacement(game, io, playersById);
 
       callback({ ok: true, game: gameState(game, playersById) });
     },

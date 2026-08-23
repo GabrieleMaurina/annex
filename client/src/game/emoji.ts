@@ -1,7 +1,26 @@
 import type { EmojiValue } from '../lib/types';
 
-export const EMOJIS: EmojiValue[] = ['👍', '👎', '❤️', '🙂', '🙁', '⚔️'];
+export const EMOJIS: EmojiValue[] = [
+  '👍',
+  '👎',
+  '❤️',
+  '🙂',
+  '🙁',
+  '😲',
+  '🙏',
+  '⚔️',
+];
 export const ATTACK_EMOJI: EmojiValue = '⚔️';
+export const EMOJI_LABELS: Record<EmojiValue, string> = {
+  '👍': 'Like',
+  '👎': 'Dislike',
+  '❤️': 'Love',
+  '🙂': 'Happy',
+  '🙁': 'Sad',
+  '😲': 'Surprised',
+  '🙏': 'Please\nSorry\nThanks',
+  '⚔️': 'Attack',
+};
 export const EMOJI_POP_DURATION = 2200;
 export const EMOJI_FLIGHT_SPEED = 1;
 export const EMOJI_FLIGHT_MIN_TRAVEL_DURATION = 200;

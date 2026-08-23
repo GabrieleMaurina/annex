@@ -87,10 +87,14 @@ export function areAnimationsDisabled(): boolean {
   return disabled;
 }
 
-export function toggleAnimationsDisabled() {
-  disabled = !disabled;
+export function setAnimationsDisabled(value: boolean) {
+  disabled = value;
   if (disabled) animations = [];
   toggleListeners.forEach((listener) => listener());
+}
+
+export function toggleAnimationsDisabled() {
+  setAnimationsDisabled(!disabled);
 }
 
 export function pruneAnimations() {

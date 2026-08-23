@@ -1,3 +1,13 @@
+import {
+  areAnimationsDisabled,
+  setAnimationsDisabled,
+} from '../game/animations';
+import {
+  getSoundVolume,
+  isSoundMuted,
+  setSoundMuted,
+  setSoundVolume,
+} from './sounds';
 import type { Player } from './types';
 
 const COOKIE_NAME = 'anx';
@@ -16,12 +26,28 @@ function randomName(): string {
   return `Player${Math.floor(Math.random() * 9000) + 1000}`;
 }
 
+function currentSettings(): Player['settings'] {
+  return {
+    muted: isSoundMuted(),
+    animationsDisabled: areAnimationsDisabled(),
+    volume: getSoundVolume(),
+  };
+}
+
 export function getPlayer(): Player {
   const raw = readCookie(COOKIE_NAME);
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      if (parsed.key && parsed.name) return parsed;
+      if (parsed.key && parsed.name) {
+        if (parsed.settings) {
+          setSoundMuted(!!parsed.settings.muted);
+          setAnimationsDisabled(!!parsed.settings.animationsDisabled);
+          if (typeof parsed.settings.volume === 'number')
+            setSoundVolume(parsed.settings.volume);
+        }
+        return parsed;
+      }
     } catch {}
   }
   const player: Player = { key: crypto.randomUUID(), name: randomName() };
@@ -30,5 +56,21 @@ export function getPlayer(): Player {
 }
 
 export function savePlayer(player: Player) {
-  writeCookie(COOKIE_NAME, JSON.stringify(player));
+  writeCookie(
+    COOKIE_NAME,
+    JSON.stringify({ ...player, settings: currentSettings() }),
+  );
+}
+
+export function saveSettings() {
+  const raw = readCookie(COOKIE_NAME);
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed.key || !parsed.name) return;
+    writeCookie(
+      COOKIE_NAME,
+      JSON.stringify({ ...parsed, settings: currentSettings() }),
+    );
+  } catch {}
 }

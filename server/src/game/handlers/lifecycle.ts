@@ -38,6 +38,7 @@ import {
   gameRoomName,
   games,
   removePlayerFromGame,
+  sendPlayerCards,
 } from '../logic/store';
 import {
   advanceTurnPhase,
@@ -422,6 +423,9 @@ export function registerGameHandlers(
     const map = maps.get(game.mapName)!;
     game.deck = buildCardDeck(map.territories.map((t) => t.id));
     game.playerCards = new Map(game.playerIds.map((id) => [id, []]));
+    for (const id of game.playerIds) {
+      sendPlayerCards(io, playersById, game, id);
+    }
     game.cardSetsPlayed = new Map();
     game.cardsLastSetValue = new Map();
     game.stats = new Map(game.playerIds.map((id) => [id, emptyPlayerStats()]));
@@ -438,7 +442,7 @@ export function registerGameHandlers(
       ...(game.placement !== 'Random' ? (['troop'] as const) : []),
       ...(game.gameMode === 'Capitals' ? (['capital'] as const) : []),
     ];
-    beginNextSpecialPhase(game, io);
+    beginNextSpecialPhase(game, io, playersById);
     callback({ ok: true, game: gameState(game, playersById) });
   });
 
@@ -490,7 +494,7 @@ export function registerGameHandlers(
     if (game.turnPhase === 'attack' && game.attackConquestMinTroops !== null)
       return callback({ ok: false, error: 'pending conquest move' });
 
-    advanceTurnPhase(game, io);
+    advanceTurnPhase(game, io, playersById);
     callback({ ok: true, game: gameState(game, playersById) });
   });
 
@@ -507,7 +511,7 @@ export function registerGameHandlers(
     if (game.state !== 'playing')
       return callback({ ok: false, error: 'game not started' });
 
-    if (game.paused) resumeTurnTimer(game, io);
+    if (game.paused) resumeTurnTimer(game, io, playersById);
     else pauseTurnTimer(game);
 
     callback({ ok: true, game: gameState(game, playersById) });
@@ -534,7 +538,7 @@ export function registerGameHandlers(
     player.gameName = null;
     socket.leave(gameRoomName(game.name));
     socket.join(HOME_ROOM);
-    if (wasTheirTurn) forceEndTurn(game, io);
+    if (wasTheirTurn) forceEndTurn(game, io, playersById);
     checkGameEnd(game, wasTheirTurn);
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);

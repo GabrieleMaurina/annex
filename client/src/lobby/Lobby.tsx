@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
+import EmojiTableOverlay from '../common/EmojiTableOverlay';
+import { useTableEmojiReactions } from '../common/useTableEmojiReactions';
 import { socket } from '../lib/socket';
 import type { Ack, GameSettingsInput, GameState, Player } from '../lib/types';
 import BannedList from './BannedList';
@@ -29,6 +31,15 @@ function Lobby({
 }: Props) {
   const [settingsError, setSettingsError] = useState('');
   const bannedIdsRef = useRef<number[]>([]);
+  const {
+    emojiPickerFor,
+    emojiPops,
+    handleRowClick,
+    handleEmojiPick,
+    emojiPickerRef,
+    rowRefs,
+    nameCellRefs,
+  } = useTableEmojiReactions(selfId);
 
   useEffect(() => {
     bannedIdsRef.current = game.bannedPlayers.map((p) => p.id);
@@ -150,6 +161,17 @@ function Lobby({
         cycleColor={cycleColor}
         removeSlot={removeSlot}
         addSlot={addSlot}
+        rowRefs={rowRefs}
+        nameCellRefs={nameCellRefs}
+        onEmojiRowClick={handleRowClick}
+      />
+      <EmojiTableOverlay
+        emojiPickerFor={emojiPickerFor}
+        emojiPops={emojiPops}
+        rowRefs={rowRefs}
+        nameCellRefs={nameCellRefs}
+        emojiPickerRef={emojiPickerRef}
+        onPick={handleEmojiPick}
       />
 
       <SpectatorList

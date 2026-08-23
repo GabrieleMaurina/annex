@@ -4,7 +4,16 @@ import { EmojiAttackTarget, EmojiValue, Game, Player } from '../../types';
 import { isInteger, isObject } from '../../validate';
 import { games, sendToPlayer } from '../logic/store';
 
-const EMOJI_VALUES: EmojiValue[] = ['👍', '👎', '❤️', '🙂', '🙁', '⚔️'];
+const EMOJI_VALUES: EmojiValue[] = [
+  '👍',
+  '👎',
+  '❤️',
+  '🙂',
+  '🙁',
+  '😲',
+  '🙏',
+  '⚔️',
+];
 const ATTACK_EMOJI: EmojiValue = '⚔️';
 
 function parseAttackTarget(raw: unknown, game: Game): EmojiAttackTarget | null {
@@ -41,7 +50,6 @@ export function registerEmojiHandlers(
 
     const game = games.get(player.gameName);
     if (!game) return;
-    if (game.state !== 'playing') return;
     if (!game.playerIds.includes(player.id)) return;
     if (!isObject(data)) return;
 

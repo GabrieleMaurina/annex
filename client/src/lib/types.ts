@@ -1,6 +1,13 @@
+export interface PlayerSettings {
+  muted: boolean;
+  animationsDisabled: boolean;
+  volume: number;
+}
+
 export interface Player {
   key: string;
   name: string;
+  settings?: PlayerSettings;
 }
 
 export interface GameSummary {
@@ -44,7 +51,7 @@ export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type TurnPhase =
   'territory' | 'troop' | 'capital' | 'deploy' | 'attack' | 'fortify';
 
-export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '⚔️';
+export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
 export type EmojiAttackTarget =
   | { type: 'player'; playerId: number }
   | { type: 'territory'; territoryId: number };

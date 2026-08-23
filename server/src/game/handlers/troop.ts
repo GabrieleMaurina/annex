@@ -44,7 +44,7 @@ export function registerTroopHandlers(
         territoryId,
         troops,
       });
-      if (game.troopsToDeploy <= 0) advanceTroopPhase(game, io);
+      if (game.troopsToDeploy <= 0) advanceTroopPhase(game, io, playersById);
 
       callback({ ok: true, game: gameState(game, playersById) });
     },

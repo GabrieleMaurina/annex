@@ -87,7 +87,7 @@ export function registerDeployHandlers(
         game.troopsToDeploy <= 0 &&
         !hasPlayableSet(game.playerCards.get(player.id) ?? [])
       )
-        advanceTurnPhase(game, io);
+        advanceTurnPhase(game, io, playersById);
 
       callback({ ok: true, game: gameState(game, playersById) });
     },

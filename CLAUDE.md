@@ -39,7 +39,15 @@ The test: Every changed line should trace directly to the user's request.
 
 ## 4. Stack
 
-Code for readability first, then simplicity, and finally performance. No comments in the code. Single quote string. No async/await.
+Code for readability first, then simplicity, and finally performance.
+- No comments in the code.
+- Single quote string.
+- No async/await.
+- No CSS or style, unless strictly necessary. Use Bootstrap classes instead.
+- No source files with more than 1000 lines. Split into smaller files if necessary.
+- No folders with more than 10 source files. Split into subfolders if necessary.
+- No sub-agents unless explicitly requested.
+- No browser verification/running unless explicitly requested.
 
 **Server**
 - Node.js, nodemon, Express, Socket.io, TypeScript, ESLint, Prettier.
@@ -47,10 +55,8 @@ Code for readability first, then simplicity, and finally performance. No comment
 
 **Client**
 - Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
-- No CSS or style, unless stictly necessary. Use Bootstrap classes.
 - Follow PROTOCOL.md for socket.io events and data structures.
 
 **Mapper**
 - Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
-- No CSS or style. Use Bootstrap classes.
 - Independent and disconnected from client and server.

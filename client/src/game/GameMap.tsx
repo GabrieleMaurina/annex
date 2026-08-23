@@ -53,6 +53,7 @@ import {
 import CardsPanel, { CardFace } from './CardsPanel';
 import {
   ATTACK_EMOJI,
+  EMOJI_LABELS,
   EMOJI_PANEL_EDGE_OFFSET,
   EMOJI_POP_DURATION,
   EMOJI_TERRITORY_SIDE_GAP,
@@ -1278,7 +1279,10 @@ function GameMap({
     function onEmojiSent(payload: EmojiSentPayload) {
       playSound('emoji');
       const id = ++emojiPopIdRef.current;
-      const rowPlayerId = payload.senderId;
+      const rowPlayerId =
+        payload.senderId === selfIdRef.current
+          ? payload.targetPlayerId
+          : payload.senderId;
       let attackText: string | undefined;
       let attackColor: string | undefined;
 
@@ -2657,18 +2661,19 @@ function GameMap({
                 }
               `}</style>
               {EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  className="annex-emoji-btn border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
-                  style={{
-                    fontSize: 24,
-                    padding: '3px 4px 5px 4px',
-                  }}
-                  onClick={() => handleEmojiPick(emojiPickerFor, emoji)}
-                >
-                  {emoji}
-                </button>
+                <Tip key={emoji} text={EMOJI_LABELS[emoji]} placement="bottom">
+                  <button
+                    type="button"
+                    className="annex-emoji-btn border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
+                    style={{
+                      fontSize: 24,
+                      padding: '3px 4px 5px 4px',
+                    }}
+                    onClick={() => handleEmojiPick(emojiPickerFor, emoji)}
+                  >
+                    {emoji}
+                  </button>
+                </Tip>
               ))}
             </div>
           );
@@ -2707,15 +2712,18 @@ function GameMap({
                 animation: `annexEmojiPop ${EMOJI_POP_DURATION}ms ease-out forwards`,
               }}
             >
-              <span
-                className="d-inline-flex align-items-center justify-content-center lh-1"
-                style={{
-                  fontSize: 24,
-                  padding: '3px 4px 5px 4px',
-                }}
-              >
-                {pop.emoji}
-              </span>
+              <Tip text={EMOJI_LABELS[pop.emoji]} placement="bottom">
+                <span
+                  className="d-inline-flex align-items-center justify-content-center lh-1"
+                  style={{
+                    fontSize: 24,
+                    padding: '3px 4px 5px 4px',
+                    pointerEvents: 'auto',
+                  }}
+                >
+                  {pop.emoji}
+                </span>
+              </Tip>
               {pop.attackText && (
                 <strong
                   className="text-truncate"

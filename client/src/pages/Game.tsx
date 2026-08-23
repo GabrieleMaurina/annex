@@ -5,6 +5,7 @@ import SettingsMenu from '../common/SettingsMenu';
 import GameMap from '../game/GameMap';
 import { useGameLogs } from '../game/useGameLogs';
 import { socket } from '../lib/socket';
+import { playSound } from '../lib/sounds';
 import type { Ack, GameState, Mission, Player } from '../lib/types';
 import Lobby from '../lobby/Lobby';
 import EndPage from './EndPage';
@@ -31,6 +32,7 @@ function Game({
   const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
   const [mission, setMission] = useState<Mission | null>(null);
   const receivedFirstStateRef = useRef(false);
+  const prevStateRef = useRef<GameState['state'] | null>(null);
   const logs = useGameLogs(game);
 
   useEffect(() => {
@@ -38,7 +40,13 @@ function Game({
       if (!receivedFirstStateRef.current) {
         receivedFirstStateRef.current = true;
         if (state.state === 'ended') setEndView('stats');
+      } else {
+        if (prevStateRef.current === 'lobby' && state.state === 'playing')
+          playSound('start');
+        if (prevStateRef.current === 'playing' && state.state === 'ended')
+          playSound('end');
       }
+      prevStateRef.current = state.state;
       setGame(state);
     }
     socket.on('game:state', onState);
@@ -77,10 +85,10 @@ function Game({
 
   if (!game) {
     return (
-      <Container fluid className="py-5 px-4">
+      <div className="position-fixed top-0 start-0 m-3 d-flex align-items-center">
         <Spinner size="sm" className="me-2" />
         Loading...
-      </Container>
+      </div>
     );
   }
 

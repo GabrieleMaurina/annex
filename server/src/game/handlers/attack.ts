@@ -14,7 +14,7 @@ import { checkGameEnd } from '../logic/end';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { recordElimination } from '../logic/stats';
-import { gameRoomName, games } from '../logic/store';
+import { gameRoomName, games, sendPlayerCards } from '../logic/store';
 import { advanceTurnPhase, rewindTurnTimerIfBelowHalf } from '../logic/turns';
 
 type GameResponse =
@@ -317,6 +317,10 @@ export function registerAttackHandlers(
             attackerHand.push(...defenderHand);
             game.playerCards.set(defenderId, []);
             attackerStats.cardsGained += defenderHand.length;
+            if (defenderHand.length > 0) {
+              sendPlayerCards(io, playersById, game, player.id);
+              sendPlayerCards(io, playersById, game, defenderId);
+            }
 
             if (attackerHand.length >= 5) {
               game.territoryTroops.set(
@@ -336,7 +340,7 @@ export function registerAttackHandlers(
               game.attackEndTerritoryId = null;
               game.attackConquestMinTroops = null;
               game.turnPhase = 'deploy';
-              rewindTurnTimerIfBelowHalf(game, io);
+              rewindTurnTimerIfBelowHalf(game, io, playersById);
             } else {
               game.attackConquestMinTroops = minMoveTroops;
             }
@@ -396,7 +400,7 @@ export function registerAttackHandlers(
         game.attackConquestMinTroops === null &&
         !hasAnyAttack(game, player.id)
       ) {
-        advanceTurnPhase(game, io);
+        advanceTurnPhase(game, io, playersById);
       }
 
       callback({
@@ -458,7 +462,8 @@ export function registerAttackHandlers(
         territoryId: endId,
         troops,
       });
-      if (!hasAnyAttack(game, player.id)) advanceTurnPhase(game, io);
+      if (!hasAnyAttack(game, player.id))
+        advanceTurnPhase(game, io, playersById);
 
       callback({ ok: true, game: gameState(game, playersById) });
     },

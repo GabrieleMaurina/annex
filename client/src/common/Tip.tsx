@@ -17,7 +17,11 @@ function Tip({ text, placement = 'auto', children }: Props) {
     <OverlayTrigger
       placement={placement}
       delay={{ show: 0, hide: 0 }}
-      overlay={<Tooltip id={id}>{text}</Tooltip>}
+      overlay={
+        <Tooltip id={id} style={{ whiteSpace: 'pre-line' }}>
+          {text}
+        </Tooltip>
+      }
     >
       {children}
     </OverlayTrigger>

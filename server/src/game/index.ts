@@ -11,7 +11,10 @@ export { registerTroopHandlers } from './handlers/troop';
 export {
   broadcastGameStates,
   gameRoomName,
+  games,
   handleReconnect,
   leaveGame,
   listGameSummaries,
+  sendPlayerCards,
+  sendPlayerMission,
 } from './logic/store';

@@ -1,9 +1,12 @@
 import { Server, Socket } from 'socket.io';
 import {
   gameRoomName,
+  games,
   handleReconnect,
   leaveGame,
   listGameSummaries,
+  sendPlayerCards,
+  sendPlayerMission,
 } from './game';
 import { HOME_ROOM, Player } from './types';
 import { isObject } from './validate';
@@ -58,6 +61,14 @@ export function registerHomeHandlers(
       if (room !== (player.gameName ?? HOME_ROOM))
         leaveGame(player, playersById, io);
       handleReconnect(player, playersById);
+
+      const game = player.gameName ? games.get(player.gameName) : undefined;
+      if (game && game.playerIds.includes(player.id)) {
+        if (game.state === 'playing')
+          sendPlayerCards(io, playersById, game, player.id);
+        if (game.state === 'playing' || game.state === 'ended')
+          sendPlayerMission(io, playersById, game, player.id);
+      }
 
       for (const joinedRoom of [...socket.rooms]) {
         if (joinedRoom !== socket.id) socket.leave(joinedRoom);

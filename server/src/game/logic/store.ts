@@ -203,6 +203,28 @@ export function broadcastMissions(
   }
 }
 
+export function sendPlayerMission(
+  io: Server,
+  playersById: Map<number, Player>,
+  game: Game,
+  playerId: number,
+) {
+  const mission = game.playerMissions.get(playerId);
+  if (mission)
+    sendToPlayer(io, playersById, playerId, 'game:mission', { mission });
+}
+
+export function sendPlayerCards(
+  io: Server,
+  playersById: Map<number, Player>,
+  game: Game,
+  playerId: number,
+) {
+  sendToPlayer(io, playersById, playerId, 'game:cards', {
+    cards: game.playerCards.get(playerId) ?? [],
+  });
+}
+
 export function broadcastGameStates(
   io: Server,
   playersById: Map<number, Player>,
@@ -212,9 +234,5 @@ export function broadcastGameStates(
       'game:state',
       gameState(game, playersById),
     );
-    for (const [playerId, cards] of game.playerCards) {
-      sendToPlayer(io, playersById, playerId, 'game:cards', { cards });
-    }
-    broadcastMissions(io, game, playersById);
   }
 }

@@ -219,7 +219,7 @@ export function registerFortifyHandlers(
         fromTerritoryId: startId,
         troops,
       });
-      advanceTurnPhase(game, io);
+      advanceTurnPhase(game, io, playersById);
 
       callback({ ok: true, game: gameState(game, playersById) });
     },

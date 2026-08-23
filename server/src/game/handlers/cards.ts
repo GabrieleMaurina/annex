@@ -9,7 +9,7 @@ import {
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { bumpStat } from '../logic/stats';
-import { gameRoomName, games } from '../logic/store';
+import { gameRoomName, games, sendPlayerCards } from '../logic/store';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }
@@ -56,6 +56,7 @@ export function registerCardHandlers(
         if (index !== -1) hand.splice(index, 1);
       }
       returnCardsToDeck(game.deck, evaluated.cards);
+      sendPlayerCards(io, playersById, game, player.id);
 
       game.troopsToDeploy += evaluated.baseValue;
       for (const territoryId of evaluated.territoryBonusIds) {

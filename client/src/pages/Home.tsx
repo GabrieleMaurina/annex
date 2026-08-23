@@ -4,11 +4,18 @@ import PlayerNameEditor from '../common/PlayerNameEditor';
 import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
+import { contrastTextColor, playerColor } from '../lib/palette';
 import { socket } from '../lib/socket';
 import type { Ack, GameSummary, Player } from '../lib/types';
 
 const MAX_GAME_NAME_LENGTH = 20;
 const MAX_CREATE_ATTEMPTS = 20;
+
+const GAME_STATE_COLORS: Record<GameSummary['state'], string> = {
+  lobby: playerColor(2),
+  playing: playerColor(3),
+  ended: playerColor(0),
+};
 
 interface Props {
   player: Player;
@@ -126,22 +133,27 @@ function Home({
         </thead>
         <tbody>
           {games.map((g) => {
-            const spectateOnly =
-              g.state !== 'lobby' || g.playerCount >= g.slots;
+            const isFullLobby = g.state === 'lobby' && g.playerCount >= g.slots;
+            const bg = isFullLobby
+              ? GAME_STATE_COLORS.playing
+              : GAME_STATE_COLORS[g.state];
+            const rowStyle = {
+              backgroundColor: bg,
+              color: contrastTextColor(bg),
+            };
             return (
               <tr
                 key={g.name}
                 onClick={() => joinGame(g.name)}
-                className={spectateOnly ? 'text-muted' : undefined}
                 style={{ cursor: 'pointer' }}
               >
-                <td>{g.name}</td>
-                <td>{g.mapName}</td>
-                <td>
+                <td style={rowStyle}>{g.name}</td>
+                <td style={rowStyle}>{g.mapName}</td>
+                <td style={rowStyle}>
                   {g.playerCount}/{g.slots}
                   {g.spectatorCount > 0 && ` · ${g.spectatorCount} spectating`}
                 </td>
-                <td>
+                <td style={rowStyle}>
                   {g.state === 'lobby'
                     ? 'Lobby'
                     : g.state === 'playing'

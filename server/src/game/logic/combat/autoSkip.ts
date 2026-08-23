@@ -1,5 +1,5 @@
-import { maps } from '../../maps';
-import { Game } from '../../types';
+import { maps } from '../../../maps';
+import { Game } from '../../../types';
 
 function ownedTerritoryIds(game: Game, playerId: number): number[] {
   return [...game.territoryOwners.entries()]

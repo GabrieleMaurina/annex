@@ -1,22 +1,22 @@
 import { Server } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player, TurnPhase } from '../../types';
-import { hasAnyAttack, hasAnyFortify } from './autoSkip';
-import {
-  counterKey,
-  pickBestSet,
-  popRandomCard,
-  returnCardsToDeck,
-} from './cards';
+import { hasAnyAttack, hasAnyFortify } from './combat/autoSkip';
 import { checkGameEnd } from './end';
 import {
   calculateDeployTroopsBreakdown,
   ownsAnyTerritory,
   turnOrderBonus,
 } from './mechanics';
+import {
+  counterKey,
+  pickBestSet,
+  popRandomCard,
+  returnCardsToDeck,
+} from './progression/cards';
+import { bumpStat } from './progression/stats';
 import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
-import { bumpStat } from './stats';
 import { sendPlayerCards } from './store';
 
 const PHASE_ORDER: TurnPhase[] = ['deploy', 'attack', 'fortify'];

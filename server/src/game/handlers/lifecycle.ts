@@ -13,7 +13,6 @@ import {
   TurnDuration,
 } from '../../types';
 import { isInteger, isObject } from '../../validate';
-import { buildCardDeck } from '../logic/cards';
 import { checkGameEnd } from '../logic/end';
 import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
@@ -28,10 +27,11 @@ import {
   shuffle,
   teamCount,
 } from '../logic/mechanics';
-import { assignMissions } from '../logic/missions';
+import { buildCardDeck } from '../logic/progression/cards';
+import { assignMissions } from '../logic/progression/missions';
+import { emptyPlayerStats } from '../logic/progression/stats';
 import { snapshotTerritories } from '../logic/replay';
 import { gameState } from '../logic/state';
-import { emptyPlayerStats } from '../logic/stats';
 import {
   broadcastMissions,
   destroyIfInactive,

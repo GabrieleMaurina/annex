@@ -1,5 +1,5 @@
-import { Game, PlayerStats } from '../../types';
-import { ownsAnyTerritory } from './mechanics';
+import { Game, PlayerStats } from '../../../types';
+import { ownsAnyTerritory } from '../mechanics';
 
 export function emptyPlayerStats(): PlayerStats {
   return {

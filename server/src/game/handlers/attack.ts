@@ -2,18 +2,18 @@ import { Server, Socket } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
-import { hasAnyAttack } from '../logic/autoSkip';
+import { hasAnyAttack } from '../logic/combat/autoSkip';
 import {
   balancedBlitz,
   balancedWinProbs,
   attack as rollAttack,
   trueBlitz,
   trueWinProbs,
-} from '../logic/dice';
+} from '../logic/combat/dice';
 import { checkGameEnd } from '../logic/end';
+import { recordElimination } from '../logic/progression/stats';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
-import { recordElimination } from '../logic/stats';
 import { gameRoomName, games, sendPlayerCards } from '../logic/store';
 import { advanceTurnPhase, rewindTurnTimerIfBelowHalf } from '../logic/turns';
 

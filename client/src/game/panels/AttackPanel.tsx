@@ -5,7 +5,7 @@ import {
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
   generateDiceRollSequence,
-} from './animations';
+} from '../animations';
 
 export type AttackType = 'regular' | 'blitz';
 

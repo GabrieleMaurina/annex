@@ -43,14 +43,12 @@ import {
   startAnimation,
 } from './animations';
 import { getAttackEndCandidates, getAttackStartCandidates } from './attack';
-import AttackPanel, { type AttackType, type DiceRoll } from './AttackPanel';
 import {
   comboKey,
   diffNewCards,
   enumerateCombos,
   type EvaluatedCombo,
 } from './cards';
-import CardsPanel, { CardFace } from './CardsPanel';
 import {
   ATTACK_EMOJI,
   EMOJI_LABELS,
@@ -66,7 +64,6 @@ import {
   getFortifyPath,
   getFortifyStartCandidates,
 } from './fortify';
-import LogsPanel from './LogsPanel';
 import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
@@ -82,12 +79,18 @@ import {
   convexHull,
   getAnchoredPanelPosition,
 } from './mapMath';
-import PlayersPanel from './PlayersPanel';
+import AttackPanel, {
+  type AttackType,
+  type DiceRoll,
+} from './panels/AttackPanel';
+import CardsPanel, { CardFace } from './panels/CardsPanel';
+import LogsPanel from './panels/LogsPanel';
+import PlayersPanel from './panels/PlayersPanel';
+import ReplayPanel from './panels/ReplayPanel';
+import TroopPanel from './panels/TroopPanel';
+import TurnPanel from './panels/TurnPanel';
+import TurnProgressBar from './panels/TurnProgressBar';
 import { useReplay } from './replay';
-import ReplayPanel from './ReplayPanel';
-import TroopPanel from './TroopPanel';
-import TurnPanel from './TurnPanel';
-import TurnProgressBar from './TurnProgressBar';
 import type { LogEntry } from './useGameLogs';
 
 type AttackSelectEndAck =

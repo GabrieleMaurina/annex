@@ -5,10 +5,10 @@ import {
   counterKey,
   evaluateCardSelection,
   returnCardsToDeck,
-} from '../logic/cards';
+} from '../logic/progression/cards';
+import { bumpStat } from '../logic/progression/stats';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
-import { bumpStat } from '../logic/stats';
 import { gameRoomName, games, sendPlayerCards } from '../logic/store';
 
 type GameResponse =

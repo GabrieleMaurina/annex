@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Table } from 'react-bootstrap';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
-import { contrastTextColor } from '../lib/palette';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
+import { contrastTextColor } from '../../lib/palette';
 
 interface LogEntry {
   id: number;

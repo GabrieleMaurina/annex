@@ -1,7 +1,7 @@
 import { Button, Form } from 'react-bootstrap';
-import Tip from '../common/Tip';
-import { useWhiteIcon } from '../common/icon';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
+import Tip from '../../common/Tip';
+import { useWhiteIcon } from '../../common/icon';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 
 interface Props {
   index: number;

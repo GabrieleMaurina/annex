@@ -1,10 +1,10 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
-import { hasPlayableSet } from '../logic/cards';
 import { depositTroopsOnOwnedTerritory } from '../logic/mechanics';
+import { hasPlayableSet } from '../logic/progression/cards';
+import { bumpStat } from '../logic/progression/stats';
 import { gameState } from '../logic/state';
-import { bumpStat } from '../logic/stats';
 import { gameRoomName, games } from '../logic/store';
 import { advanceTurnPhase } from '../logic/turns';
 

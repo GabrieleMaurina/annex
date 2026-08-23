@@ -1,5 +1,5 @@
-import { maps } from '../../maps';
-import { Game, GameMap, Mission, MissionType } from '../../types';
+import { maps } from '../../../maps';
+import { Game, GameMap, Mission, MissionType } from '../../../types';
 import { countTerritories, findKillerId } from './stats';
 
 const ALL_MISSION_TYPES: MissionType[] = [

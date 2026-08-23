@@ -1,12 +1,12 @@
 import { Game } from '../../types';
 import { ownsAnyTerritory } from './mechanics';
-import { missionAccomplished } from './missions';
+import { missionAccomplished } from './progression/missions';
 import {
   bumpStat,
   compareByTerritoriesFirst,
   computeFinalRanking,
   countTerritories,
-} from './stats';
+} from './progression/stats';
 import { clearTurnTimer } from './turns';
 
 const CAPITALS_WIN_MIN_TURN_NUMBER = 2;

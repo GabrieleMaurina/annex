@@ -1,9 +1,9 @@
 import { Button } from 'react-bootstrap';
-import Tip from '../common/Tip';
-import { useWhiteIcon } from '../common/icon';
-import { contrastTextColor, withAlpha } from '../lib/palette';
-import { socket } from '../lib/socket';
-import type { Ack, GameState, TurnPhase } from '../lib/types';
+import Tip from '../../common/Tip';
+import { useWhiteIcon } from '../../common/icon';
+import { contrastTextColor, withAlpha } from '../../lib/palette';
+import { socket } from '../../lib/socket';
+import type { Ack, GameState, TurnPhase } from '../../lib/types';
 
 interface Props {
   turnPhase: TurnPhase;

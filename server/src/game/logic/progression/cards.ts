@@ -1,4 +1,4 @@
-import { Card, CardSymbol, Game } from '../../types';
+import { Card, CardSymbol, Game } from '../../../types';
 
 const SYMBOLS: CardSymbol[] = ['soldier', 'humvee', 'tank'];
 

@@ -1,6 +1,6 @@
 import { Game, Player } from '../../types';
-import { nextSetBaseValues, upcomingSetValues } from './cards';
-import { emptyPlayerStats } from './stats';
+import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
+import { emptyPlayerStats } from './progression/stats';
 
 const EMPTY_STATS = emptyPlayerStats();
 

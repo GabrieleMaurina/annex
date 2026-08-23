@@ -1,18 +1,18 @@
 import type { MutableRefObject, ReactNode } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
-import Tip from '../common/Tip';
-import { useWhiteIcon } from '../common/icon';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
-import { contrastTextColor, playerColor } from '../lib/palette';
-import { socket } from '../lib/socket';
+import Tip from '../../common/Tip';
+import { useWhiteIcon } from '../../common/icon';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
+import { contrastTextColor, playerColor } from '../../lib/palette';
+import { socket } from '../../lib/socket';
 import type {
   Ack,
   GameMode,
   GameState,
   Mission,
   TurnPhase,
-} from '../lib/types';
-import { EMOJI_POP_DURATION, type EmojiPop } from './emoji';
+} from '../../lib/types';
+import { EMOJI_POP_DURATION, type EmojiPop } from '../emoji';
 
 function formatList(items: string[]): string {
   if (items.length <= 1) return items.join('');

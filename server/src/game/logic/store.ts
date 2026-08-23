@@ -154,6 +154,8 @@ export function leaveGame(
   }
 
   if (game.state === 'playing') {
+    if (game.surrenderedIds.has(player.id) && player.connected)
+      player.gameName = null;
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);
     return;
@@ -179,7 +181,9 @@ export function handleReconnect(
 }
 
 export function listGameSummaries() {
-  return [...games.values()].map(gameSummary);
+  return [...games.values()]
+    .filter((game) => game.visibility === 'public')
+    .map(gameSummary);
 }
 
 export function sendToPlayer(

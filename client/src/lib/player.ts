@@ -8,7 +8,7 @@ import {
   setSoundMuted,
   setSoundVolume,
 } from './sounds';
-import type { Player } from './types';
+import type { GameRulesSettings, Player } from './types';
 
 const COOKIE_NAME = 'anx';
 const MAX_AGE = 60 * 60 * 24 * 365 * 100;
@@ -72,5 +72,26 @@ export function saveSettings() {
       COOKIE_NAME,
       JSON.stringify({ ...parsed, settings: currentSettings() }),
     );
+  } catch {}
+}
+
+export function getGameSettings(): GameRulesSettings | null {
+  const raw = readCookie(COOKIE_NAME);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed.gameSettings ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveGameSettings(gameSettings: GameRulesSettings) {
+  const raw = readCookie(COOKIE_NAME);
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed.key || !parsed.name) return;
+    writeCookie(COOKIE_NAME, JSON.stringify({ ...parsed, gameSettings }));
   } catch {}
 }

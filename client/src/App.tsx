@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
 import { getPlayer, savePlayer } from './lib/player';
 import { socket } from './lib/socket';
@@ -19,6 +19,7 @@ function App() {
   const [player, setPlayer] = useState<Player>(() => getPlayer());
   const [path, setPath] = useState(window.location.pathname);
   const [joinError, setJoinError] = useState('');
+  const [needsPassword, setNeedsPassword] = useState(false);
   const [kickedMessage, setKickedMessage] = useState('');
   const [sessionTakenOver, setSessionTakenOver] = useState(false);
   const [mapNames, setMapNames] = useState<string[]>([]);
@@ -44,30 +45,16 @@ function App() {
     setPath(newPath);
   }
 
-  useEffect(() => {
-    function afterConnect() {
-      socket.emit('maps:list', (names: string[]) => {
-        setMapNames(names);
-      });
-      socket.emit(
-        'player:identify',
-        {
-          playerKey: playerRef.current.key,
-          playerName: playerRef.current.name,
-          room,
-        },
-        (res: { id: number }) => {
-          setSelfId(res.id);
-        },
-      );
-      if (room === 'home') {
-        setJoinError('');
-        return;
-      }
-
-      socket.emit('game:join', { gameName: room }, (res: Ack) => {
+  const attemptJoin = useCallback(
+    (password?: string) => {
+      socket.emit('game:join', { gameName: room, password }, (res: Ack) => {
         if (res.ok || res.error === 'already in a game') {
           setJoinError('');
+          setNeedsPassword(false);
+          return;
+        }
+        if (res.error === 'invalid password') {
+          setNeedsPassword(true);
           return;
         }
         if (res.error !== 'game not found') {
@@ -85,22 +72,58 @@ function App() {
             return;
           }
 
-          socket.emit('game:join', { gameName: room }, (retryRes: Ack) => {
-            if (retryRes.ok || retryRes.error === 'already in a game') {
-              setJoinError('');
-            } else {
-              setJoinError(retryRes.error);
-            }
-          });
+          socket.emit(
+            'game:join',
+            { gameName: room, password },
+            (retryRes: Ack) => {
+              if (retryRes.ok || retryRes.error === 'already in a game') {
+                setJoinError('');
+              } else if (retryRes.error === 'invalid password') {
+                setNeedsPassword(true);
+              } else {
+                setJoinError(retryRes.error);
+              }
+            },
+          );
         });
       });
+    },
+    [room],
+  );
+
+  useEffect(() => {
+    function afterConnect() {
+      socket.emit('maps:list', (names: string[]) => {
+        setMapNames(names);
+      });
+      socket.emit(
+        'player:identify',
+        {
+          playerKey: playerRef.current.key,
+          playerName: playerRef.current.name,
+          room,
+        },
+        (res: { id: number; gameName: string | null }) => {
+          setSelfId(res.id);
+          if (res.gameName && res.gameName !== room) {
+            navigate(`/${encodeURIComponent(res.gameName)}`);
+          }
+        },
+      );
+      setNeedsPassword(false);
+      if (room === 'home') {
+        setJoinError('');
+        return;
+      }
+
+      attemptJoin();
     }
     if (socket.connected) afterConnect();
     socket.on('connect', afterConnect);
     return () => {
       socket.off('connect', afterConnect);
     };
-  }, [room]);
+  }, [room, attemptJoin]);
 
   useEffect(() => {
     function onKicked(data: { gameName: string }) {
@@ -164,6 +187,8 @@ function App() {
       onNameChange={handleNameChange}
       selfId={selfId}
       joinError={joinError}
+      needsPassword={needsPassword}
+      onSubmitPassword={attemptJoin}
       mapNames={mapNames}
       navigate={navigate}
     />

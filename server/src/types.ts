@@ -53,6 +53,7 @@ export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type TurnPhase =
   'territory' | 'troop' | 'capital' | 'deploy' | 'attack' | 'fortify';
+export type Visibility = 'public' | 'private';
 
 export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
 export type EmojiAttackTarget =
@@ -109,7 +110,6 @@ export interface PlayerStats {
   playersKilled: number[];
   turnsPlayed: number;
   setsPlayed: number;
-  connectedAtEnd: boolean;
 }
 
 export interface Game {
@@ -125,6 +125,8 @@ export interface Game {
   placement: Placement;
   fortification: Fortification;
   turnDuration: TurnDuration;
+  password: string | null;
+  visibility: Visibility;
   turnNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
@@ -145,6 +147,7 @@ export interface Game {
   playerTeams: Map<number, number>;
   playerColors: Map<number, number>;
   bannedIds: Set<number>;
+  passwordExemptIds: Set<number>;
   territoryOwners: Map<number, number>;
   territoryTroops: Map<number, number>;
   capitalTerritoryIds: Set<number>;
@@ -163,5 +166,4 @@ export interface Game {
   finalRanking: number[];
   replayInitial: ReplayTerritory[];
   replayFrames: ReplayFrame[];
-  connectivitySnapshotTaken: boolean;
 }

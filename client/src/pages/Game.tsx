@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Container, Spinner } from 'react-bootstrap';
+import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
 import SettingsMenu from '../common/SettingsMenu';
 import GameMap from '../game/GameMap';
@@ -15,6 +15,8 @@ interface Props {
   onNameChange: (name: string) => void;
   selfId: number | null;
   joinError: string;
+  needsPassword: boolean;
+  onSubmitPassword: (password: string) => void;
   mapNames: string[];
   navigate: (path: string) => void;
 }
@@ -24,10 +26,13 @@ function Game({
   onNameChange,
   selfId,
   joinError,
+  needsPassword,
+  onSubmitPassword,
   mapNames,
   navigate,
 }: Props) {
   const [game, setGame] = useState<GameState | null>(null);
+  const [passwordInput, setPasswordInput] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
   const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
   const [mission, setMission] = useState<Mission | null>(null);
@@ -74,11 +79,42 @@ function Game({
     return () => clearTimeout(timer);
   }, [game?.state]);
 
+  if (needsPassword) {
+    return (
+      <Container
+        fluid
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: '100vh' }}
+      >
+        <Form
+          className="d-flex align-items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmitPassword(passwordInput);
+          }}
+        >
+          <span>Game Password</span>
+          <Form.Control
+            type="password"
+            autoFocus
+            className="w-auto"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+          />
+          <Button type="submit">Join</Button>
+          <Button variant="secondary" onClick={() => navigate('/')}>
+            Home
+          </Button>
+        </Form>
+      </Container>
+    );
+  }
+
   if (joinError) {
     return (
       <Container fluid className="py-5 px-4">
         <Alert variant="danger">{joinError}</Alert>
-        <Button onClick={() => navigate('/')}>Back to Home</Button>
+        <Button onClick={() => navigate('/')}>Home</Button>
       </Container>
     );
   }

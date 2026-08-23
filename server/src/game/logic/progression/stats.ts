@@ -14,7 +14,6 @@ export function emptyPlayerStats(): PlayerStats {
     playersKilled: [],
     turnsPlayed: 0,
     setsPlayed: 0,
-    connectedAtEnd: false,
   };
 }
 

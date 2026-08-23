@@ -30,7 +30,10 @@ export function registerHomeHandlers(
 ) {
   socket.on(
     'player:identify',
-    (data: unknown, callback: (response: { id: number }) => void) => {
+    (
+      data: unknown,
+      callback: (response: { id: number; gameName: string | null }) => void,
+    ) => {
       if (typeof callback !== 'function') return;
       if (!isObject(data)) return;
       const { playerKey, playerName, room } = data;
@@ -75,7 +78,7 @@ export function registerHomeHandlers(
       }
       socket.join(player.gameName ? gameRoomName(player.gameName) : HOME_ROOM);
 
-      callback({ id: player.id });
+      callback({ id: player.id, gameName: player.gameName });
     },
   );
 

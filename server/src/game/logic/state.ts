@@ -38,23 +38,11 @@ export function gameSummary(game: Game) {
     slots: game.slots,
     state: game.state,
     spectatorCount: game.spectatorIds.length,
+    hasPassword: game.password !== null,
   };
 }
 
-function captureConnectivityAtEnd(
-  game: Game,
-  playersById: Map<number, Player>,
-) {
-  if (game.state !== 'ended' || game.connectivitySnapshotTaken) return;
-  game.connectivitySnapshotTaken = true;
-  for (const id of game.playerIds) {
-    const stats = game.stats.get(id);
-    if (stats) stats.connectedAtEnd = playersById.get(id)?.connected ?? false;
-  }
-}
-
 export function gameState(game: Game, playersById: Map<number, Player>) {
-  captureConnectivityAtEnd(game, playersById);
   const stats = territoryStats(game);
   const turnPlayerId = game.playerIds[game.turnPlayerIndex];
   return {
@@ -70,6 +58,8 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     placement: game.placement,
     fortification: game.fortification,
     turnDuration: game.turnDuration,
+    hasPassword: game.password !== null,
+    visibility: game.visibility,
     turnNumber: game.turnNumber,
     turnPlayerIndex: game.turnPlayerIndex,
     turnPhase: game.turnPhase,
@@ -89,6 +79,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     players: toSummaries(game.playerIds, playersById).map((player) => {
       const territoryCount = stats.get(player.id)?.territoryCount ?? 0;
       const playerStats = game.stats.get(player.id) ?? EMPTY_STATS;
+      const member = playersById.get(player.id);
       return {
         ...player,
         team: game.playerTeams.get(player.id) ?? 0,
@@ -101,8 +92,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
             ? (game.placementTroopPools.get(player.id) ?? 0)
             : 0,
         cardCount: game.playerCards.get(player.id)?.length ?? 0,
-        connected: playersById.get(player.id)?.connected ?? false,
-        connectedAtEnd: playerStats.connectedAtEnd,
+        connected: !!member?.connected && member.gameName === game.name,
         surrendered: game.surrenderedIds.has(player.id),
         eliminated:
           game.state !== 'lobby' &&

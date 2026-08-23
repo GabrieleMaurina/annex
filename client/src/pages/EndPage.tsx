@@ -3,6 +3,7 @@ import EmojiTableOverlay from '../common/EmojiTableOverlay';
 import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
 import { useTableEmojiReactions } from '../common/useTableEmojiReactions';
+import { GLOBAL_TARGET_ID } from '../game/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 
@@ -27,6 +28,7 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
+  const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
 
   const {
     emojiPickerFor,
@@ -58,7 +60,7 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
       </div>
 
       <div className="table-responsive">
-        <Table size="sm" borderless className="mb-4 text-center align-middle">
+        <Table size="sm" borderless className="mb-0 text-center align-middle">
           <thead>
             <tr>
               <th>#</th>
@@ -123,21 +125,6 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                           />
                         </Tip>
                       )}
-                      {!p.connectedAtEnd && !p.eliminated && (
-                        <Tip text="Disconnected">
-                          <img
-                            src={
-                              isDark
-                                ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
-                                : '/icons/no-wifi.svg'
-                            }
-                            width={12}
-                            height={12}
-                            alt="Disconnected"
-                            className="flex-shrink-0"
-                          />
-                        </Tip>
-                      )}
                       {p.surrendered && (
                         <Tip text="Surrendered">
                           <img
@@ -149,6 +136,21 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                             width={12}
                             height={12}
                             alt="Surrendered"
+                            className="flex-shrink-0"
+                          />
+                        </Tip>
+                      )}
+                      {!p.connected && !p.eliminated && (
+                        <Tip text="Disconnected">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
+                                : '/icons/no-wifi.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Disconnected"
                             className="flex-shrink-0"
                           />
                         </Tip>
@@ -181,6 +183,34 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
             })}
           </tbody>
         </Table>
+      </div>
+
+      <div className="d-flex justify-content-start mt-1 mb-4">
+        <Tip text="Everyone" placement="bottom">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="d-inline-flex align-items-center justify-content-center"
+            style={{ width: 28, height: 28, padding: 0 }}
+            onClick={() => handleRowClick(GLOBAL_TARGET_ID)}
+            ref={(el) => {
+              if (el) {
+                rowRefs.current.set(GLOBAL_TARGET_ID, el);
+                nameCellRefs.current.set(GLOBAL_TARGET_ID, el);
+              } else {
+                rowRefs.current.delete(GLOBAL_TARGET_ID);
+                nameCellRefs.current.delete(GLOBAL_TARGET_ID);
+              }
+            }}
+          >
+            <img
+              src={whiteGlobeIcon ?? '/icons/globe.svg'}
+              width={14}
+              height={14}
+              alt="Everyone"
+            />
+          </Button>
+        </Tip>
       </div>
 
       <EmojiTableOverlay

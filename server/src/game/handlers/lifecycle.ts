@@ -11,6 +11,7 @@ import {
   Placement,
   Player,
   TurnDuration,
+  Visibility,
 } from '../../types';
 import { isInteger, isObject } from '../../validate';
 import { checkGameEnd } from '../logic/end';
@@ -77,6 +78,8 @@ const FORTIFICATION_VALUES: Fortification[] = [
   'Unrestricted',
 ];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
+const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
+const MAX_PASSWORD_LENGTH = 50;
 
 function validateGameName(name: unknown): string | null {
   if (typeof name !== 'string') return null;
@@ -134,6 +137,8 @@ export function registerGameHandlers(
         placement: 'Random',
         fortification: 'Connected',
         turnDuration: 120,
+        password: null,
+        visibility: 'public',
         turnNumber: 0,
         turnPlayerIndex: 0,
         turnPhase: 'deploy',
@@ -154,6 +159,7 @@ export function registerGameHandlers(
         playerTeams: new Map([[player.id, 0]]),
         playerColors: new Map(),
         bannedIds: new Set(),
+        passwordExemptIds: new Set([player.id]),
         territoryOwners: new Map(),
         territoryTroops: new Map(),
         capitalTerritoryIds: new Set(),
@@ -172,7 +178,6 @@ export function registerGameHandlers(
         finalRanking: [],
         replayInitial: [],
         replayFrames: [],
-        connectivitySnapshotTaken: false,
       };
       games.set(game.name, game);
       player.gameName = game.name;
@@ -201,6 +206,13 @@ export function registerGameHandlers(
       if (!game) return callback({ ok: false, error: 'game not found' });
       if (game.bannedIds.has(player.id))
         return callback({ ok: false, error: 'banned from this game' });
+
+      if (!game.passwordExemptIds.has(player.id) && game.password !== null) {
+        const password = isObject(data) ? data.password : undefined;
+        if (password !== game.password)
+          return callback({ ok: false, error: 'invalid password' });
+      }
+      game.passwordExemptIds.add(player.id);
 
       if (game.playerIds.includes(player.id)) {
         recomputeHost(game, playersById);
@@ -378,6 +390,25 @@ export function registerGameHandlers(
         game.turnDuration = settings.turnDuration as TurnDuration;
       }
 
+      if (settings.password !== undefined) {
+        if (settings.password === null) {
+          game.password = null;
+        } else {
+          if (typeof settings.password !== 'string')
+            return callback({ ok: false, error: 'invalid password' });
+          const trimmedPassword = settings.password.trim();
+          if (!trimmedPassword || trimmedPassword.length > MAX_PASSWORD_LENGTH)
+            return callback({ ok: false, error: 'invalid password' });
+          game.password = trimmedPassword;
+        }
+      }
+
+      if (settings.visibility !== undefined) {
+        if (!(VISIBILITY_VALUES as unknown[]).includes(settings.visibility))
+          return callback({ ok: false, error: 'invalid visibility' });
+        game.visibility = settings.visibility as Visibility;
+      }
+
       callback({ ok: true, game: gameState(game, playersById) });
     },
   );
@@ -535,9 +566,6 @@ export function registerGameHandlers(
     game.surrenderedIds.add(player.id);
     if (!game.deathOrder.includes(player.id)) game.deathOrder.push(player.id);
     const wasTheirTurn = game.playerIds[game.turnPlayerIndex] === player.id;
-    player.gameName = null;
-    socket.leave(gameRoomName(game.name));
-    socket.join(HOME_ROOM);
     if (wasTheirTurn) forceEndTurn(game, io, playersById);
     checkGameEnd(game, wasTheirTurn);
     recomputeHost(game, playersById);

@@ -1,4 +1,5 @@
-import { Form } from 'react-bootstrap';
+import { useState } from 'react';
+import { Button, Form } from 'react-bootstrap';
 import Help from '../common/Help';
 import type {
   Blitz,
@@ -10,6 +11,7 @@ import type {
   GameState,
   Placement,
   TurnDuration,
+  Visibility,
 } from '../lib/types';
 
 const TURN_DURATIONS: TurnDuration[] = [60, 90, 120, 150, 180, 300];
@@ -154,6 +156,22 @@ const FORTIFICATION_HELP = (
 const TURN_DURATION_HELP =
   "How long each player's turn can last. If time runs out, the game finishes it for them: leftover troops are dropped on random territories, any pending move is resolved automatically, and the turn ends.";
 
+const PASSWORD_HELP =
+  'If set, players must enter this password to join. Players already in the game are unaffected by changing it, and it is never sent to any client.';
+
+const VISIBILITY_HELP = (
+  <>
+    Whether this game is listed in the home page.
+    <ul className="mb-0 ps-3">
+      <li>Public: shown in the home page&apos;s game list.</li>
+      <li>
+        Private: hidden from the home page&apos;s game list; still joinable by
+        anyone with a direct link.
+      </li>
+    </ul>
+  </>
+);
+
 interface Props {
   game: GameState;
   isHost: boolean;
@@ -168,6 +186,8 @@ function formatDuration(seconds: number): string {
 }
 
 function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
+  const [passwordInput, setPasswordInput] = useState('');
+
   return (
     <div style={{ maxWidth: 400 }}>
       <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
@@ -364,6 +384,71 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               </Form.Select>
             ) : (
               <span>{formatDuration(game.turnDuration)}</span>
+            )}
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
+            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+              Visibility
+              <Help>{VISIBILITY_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.visibility}
+                onChange={(e) =>
+                  applySettings({ visibility: e.target.value as Visibility })
+                }
+              >
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </Form.Select>
+            ) : (
+              <span>
+                {game.visibility === 'private' ? 'Private' : 'Public'}
+              </span>
+            )}
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
+            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+              Password
+              <Help>{PASSWORD_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <div className="d-flex align-items-center gap-2">
+                <Form.Control
+                  type="text"
+                  className="w-auto"
+                  placeholder={
+                    game.hasPassword ? 'Change password' : 'No password'
+                  }
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  onBlur={() => {
+                    const trimmed = passwordInput.trim();
+                    if (!trimmed) return;
+                    applySettings({ password: trimmed });
+                    setPasswordInput('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur();
+                  }}
+                />
+                {game.hasPassword && (
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() => applySettings({ password: null })}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <span>
+                {game.hasPassword ? 'Password protected' : 'No password'}
+              </span>
             )}
           </div>
         </div>

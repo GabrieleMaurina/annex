@@ -56,13 +56,19 @@ export function registerEmojiHandlers(
     const emoji = data.emoji;
     if (!EMOJI_VALUES.includes(emoji as EmojiValue)) return;
 
-    const targetPlayerId = data.targetPlayerId;
-    if (
-      !isInteger(targetPlayerId) ||
-      !game.playerIds.includes(targetPlayerId) ||
-      targetPlayerId === player.id
-    )
-      return;
+    const rawTarget = data.targetPlayerId;
+    let targetPlayerId: number | undefined;
+    if (rawTarget !== undefined) {
+      if (
+        !isInteger(rawTarget) ||
+        !game.playerIds.includes(rawTarget) ||
+        rawTarget === player.id
+      )
+        return;
+      targetPlayerId = rawTarget;
+    }
+
+    if (emoji === ATTACK_EMOJI && targetPlayerId === undefined) return;
 
     let attackTarget: EmojiAttackTarget | undefined;
     if (emoji === ATTACK_EMOJI) {
@@ -79,7 +85,13 @@ export function registerEmojiHandlers(
       emoji: emoji as EmojiValue,
       attackTarget,
     };
-    socket.emit('game:emojiSent', payload);
-    sendToPlayer(io, playersById, targetPlayerId, 'game:emojiSent', payload);
+
+    if (targetPlayerId === undefined) {
+      for (const id of game.playerIds)
+        sendToPlayer(io, playersById, id, 'game:emojiSent', payload);
+    } else {
+      socket.emit('game:emojiSent', payload);
+      sendToPlayer(io, playersById, targetPlayerId, 'game:emojiSent', payload);
+    }
   });
 }

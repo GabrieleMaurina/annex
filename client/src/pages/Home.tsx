@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Container, Table } from 'react-bootstrap';
+import { Alert, Button, Container, Form, Table } from 'react-bootstrap';
 import PlayerNameEditor from '../common/PlayerNameEditor';
 import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
 import { contrastTextColor, playerColor } from '../lib/palette';
+import { getGameSettings } from '../lib/player';
 import { socket } from '../lib/socket';
 import type { Ack, GameSummary, Player } from '../lib/types';
 
@@ -43,6 +44,10 @@ function Home({
 }: Props) {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [error, setError] = useState('');
+  const [passwordPrompt, setPasswordPrompt] = useState<{
+    gameName: string;
+    password: string;
+  } | null>(null);
   const whiteGithubIcon = useWhiteIcon('/icons/github.svg');
 
   useEffect(() => {
@@ -59,8 +64,12 @@ function Home({
     const name =
       attempt === 0 ? undefined : suggestedGameName(player.name, attempt);
     socket.emit('game:create', { name }, (res: Ack) => {
-      if (res.ok) navigate(`/${encodeURIComponent(res.game.name)}`);
-      else if (
+      if (res.ok) {
+        const savedSettings = getGameSettings();
+        if (savedSettings)
+          socket.emit('game:settings', savedSettings, () => {});
+        navigate(`/${encodeURIComponent(res.game.name)}`);
+      } else if (
         res.error === 'game name already in use' &&
         attempt < MAX_CREATE_ATTEMPTS
       )
@@ -69,10 +78,17 @@ function Home({
     });
   }
 
-  function joinGame(gameName: string) {
-    socket.emit('game:join', { gameName }, (res: Ack) => {
-      if (res.ok) navigate(`/${encodeURIComponent(res.game.name)}`);
-      else setError(res.error);
+  function joinGame(gameName: string, password?: string) {
+    socket.emit('game:join', { gameName, password }, (res: Ack) => {
+      if (res.ok) {
+        setPasswordPrompt(null);
+        navigate(`/${encodeURIComponent(res.game.name)}`);
+      } else if (res.error === 'invalid password') {
+        setPasswordPrompt({ gameName, password: '' });
+      } else {
+        setPasswordPrompt(null);
+        setError(res.error);
+      }
     });
   }
 
@@ -118,6 +134,39 @@ function Home({
         </Alert>
       )}
 
+      {passwordPrompt && (
+        <Alert
+          variant="secondary"
+          dismissible
+          onClose={() => setPasswordPrompt(null)}
+        >
+          <Form
+            className="d-flex align-items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              joinGame(passwordPrompt.gameName, passwordPrompt.password);
+            }}
+          >
+            <span>Password for {passwordPrompt.gameName}:</span>
+            <Form.Control
+              type="password"
+              autoFocus
+              className="w-auto"
+              value={passwordPrompt.password}
+              onChange={(e) =>
+                setPasswordPrompt({
+                  ...passwordPrompt,
+                  password: e.target.value,
+                })
+              }
+            />
+            <Button type="submit" size="sm">
+              Join
+            </Button>
+          </Form>
+        </Alert>
+      )}
+
       <Button className="mb-4" onClick={() => createGame()}>
         Create Game
       </Button>
@@ -144,10 +193,17 @@ function Home({
             return (
               <tr
                 key={g.name}
-                onClick={() => joinGame(g.name)}
+                onClick={() =>
+                  g.hasPassword
+                    ? setPasswordPrompt({ gameName: g.name, password: '' })
+                    : joinGame(g.name)
+                }
                 style={{ cursor: 'pointer' }}
               >
-                <td style={rowStyle}>{g.name}</td>
+                <td style={rowStyle}>
+                  {g.name}
+                  {g.hasPassword && ' \u{1F512}'}
+                </td>
                 <td style={rowStyle}>{g.mapName}</td>
                 <td style={rowStyle}>
                   {g.playerCount}/{g.slots}

@@ -8,6 +8,7 @@ export interface Player {
   key: string;
   name: string;
   settings?: PlayerSettings;
+  gameSettings?: GameRulesSettings;
 }
 
 export interface GameSummary {
@@ -17,6 +18,7 @@ export interface GameSummary {
   slots: number;
   state: 'lobby' | 'playing' | 'ended';
   spectatorCount: number;
+  hasPassword: boolean;
 }
 
 export type CardSymbol = 'soldier' | 'humvee' | 'tank';
@@ -50,6 +52,7 @@ export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type TurnPhase =
   'territory' | 'troop' | 'capital' | 'deploy' | 'attack' | 'fortify';
+export type Visibility = 'public' | 'private';
 
 export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
 export type EmojiAttackTarget =
@@ -57,7 +60,7 @@ export type EmojiAttackTarget =
   | { type: 'territory'; territoryId: number };
 export interface EmojiSentPayload {
   senderId: number;
-  targetPlayerId: number;
+  targetPlayerId?: number;
   emoji: EmojiValue;
   attackTarget?: EmojiAttackTarget;
 }
@@ -80,6 +83,8 @@ export interface GameState {
   placement: Placement;
   fortification: Fortification;
   turnDuration: TurnDuration;
+  hasPassword: boolean;
+  visibility: Visibility;
   turnNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
@@ -107,7 +112,6 @@ export interface GameState {
     troopsRemaining: number;
     cardCount: number;
     connected: boolean;
-    connectedAtEnd: boolean;
     surrendered: boolean;
     eliminated: boolean;
     troopsGained: number;
@@ -145,7 +149,22 @@ export interface GameSettingsInput {
   placement?: Placement;
   fortification?: Fortification;
   turnDuration?: TurnDuration;
+  password?: string | null;
+  visibility?: Visibility;
 }
+
+export type GameRulesSettings = Pick<
+  GameSettingsInput,
+  | 'mapName'
+  | 'gameMode'
+  | 'blitz'
+  | 'defenceDice'
+  | 'cards'
+  | 'placement'
+  | 'fortification'
+  | 'turnDuration'
+  | 'visibility'
+>;
 
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 

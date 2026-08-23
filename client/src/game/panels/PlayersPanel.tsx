@@ -5,14 +5,8 @@ import { useWhiteIcon } from '../../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import { socket } from '../../lib/socket';
-import type {
-  Ack,
-  GameMode,
-  GameState,
-  Mission,
-  TurnPhase,
-} from '../../lib/types';
-import { EMOJI_POP_DURATION, type EmojiPop } from '../emoji';
+import type { GameMode, GameState, Mission, TurnPhase } from '../../lib/types';
+import { EMOJI_POP_DURATION, GLOBAL_TARGET_ID, type EmojiPop } from '../emoji';
 
 function formatList(items: string[]): string {
   if (items.length <= 1) return items.join('');
@@ -64,7 +58,7 @@ interface Props {
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   navigate: (path: string) => void;
-  rowRefs: MutableRefObject<Map<number, HTMLTableRowElement>>;
+  rowRefs: MutableRefObject<Map<number, HTMLElement>>;
   onRowClick: (playerId: number) => void;
   emojiTargeting: boolean;
   emojiPops: EmojiPop[];
@@ -116,11 +110,10 @@ function PlayersPanel({
   const whiteTargetIcon = useWhiteIcon('/icons/target.svg');
   const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
   const whitePlayIcon = useWhiteIcon('/icons/play.svg');
+  const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
 
   function surrender() {
-    socket.emit('game:surrender', (res: Ack) => {
-      if (res.ok) navigate('/');
-    });
+    socket.emit('game:surrender', () => {});
   }
 
   if (collapsed) {
@@ -267,7 +260,7 @@ function PlayersPanel({
               const fg = contrastTextColor(bg);
               const rowStyle = { backgroundColor: bg, color: fg };
               const isDark = fg === '#ffffff';
-              const isConnected = gameEnded ? p.connectedAtEnd : p.connected;
+              const isConnected = p.connected;
               const pop = emojiPops.find((e) => e.rowPlayerId === p.id);
               const rowClickable =
                 canSendEmoji && (emojiTargeting || p.id !== selfId);
@@ -313,21 +306,6 @@ function PlayersPanel({
                           />
                         </Tip>
                       )}
-                      {!isConnected && !p.eliminated && (
-                        <Tip text="Disconnected">
-                          <img
-                            src={
-                              isDark
-                                ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
-                                : '/icons/no-wifi.svg'
-                            }
-                            width={12}
-                            height={12}
-                            alt="Disconnected"
-                            className="flex-shrink-0"
-                          />
-                        </Tip>
-                      )}
                       {p.surrendered && (
                         <Tip text="Surrendered">
                           <img
@@ -339,6 +317,21 @@ function PlayersPanel({
                             width={12}
                             height={12}
                             alt="Surrendered"
+                            className="flex-shrink-0"
+                          />
+                        </Tip>
+                      )}
+                      {!isConnected && !p.eliminated && (
+                        <Tip text="Disconnected">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
+                                : '/icons/no-wifi.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Disconnected"
                             className="flex-shrink-0"
                           />
                         </Tip>
@@ -369,6 +362,31 @@ function PlayersPanel({
             })}
           </tbody>
         </Table>
+        {canSendEmoji && (
+          <div className="d-flex justify-content-start mt-1">
+            <Tip text="Everyone" placement="bottom">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="d-inline-flex align-items-center justify-content-center"
+                style={{ width: 28, height: 28, padding: 0 }}
+                disabled={emojiTargeting}
+                onClick={() => onRowClick(GLOBAL_TARGET_ID)}
+                ref={(el) => {
+                  if (el) rowRefs.current.set(GLOBAL_TARGET_ID, el);
+                  else rowRefs.current.delete(GLOBAL_TARGET_ID);
+                }}
+              >
+                <img
+                  src={whiteGlobeIcon ?? '/icons/globe.svg'}
+                  width={14}
+                  height={14}
+                  alt="Everyone"
+                />
+              </Button>
+            </Tip>
+          </div>
+        )}
         {spectators.length > 0 && (
           <>
             <div className="fw-bold mt-2 mb-1">Spectators</div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/useTableEmojiReactions';
+import { saveGameSettings } from '../lib/player';
 import { socket } from '../lib/socket';
 import type { Ack, GameSettingsInput, GameState, Player } from '../lib/types';
 import BannedList from './BannedList';
@@ -107,6 +108,17 @@ function Lobby({
         return;
       }
       setSettingsError('');
+      saveGameSettings({
+        mapName: res.game.mapName,
+        gameMode: res.game.gameMode,
+        blitz: res.game.blitz,
+        defenceDice: res.game.defenceDice,
+        cards: res.game.cards,
+        placement: res.game.placement,
+        fortification: res.game.fortification,
+        turnDuration: res.game.turnDuration,
+        visibility: res.game.visibility,
+      });
       setGame(res.game);
     });
   }

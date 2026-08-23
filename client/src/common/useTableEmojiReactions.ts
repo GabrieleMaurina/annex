@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { EMOJI_POP_DURATION } from '../game/emoji';
+import { EMOJI_POP_DURATION, GLOBAL_TARGET_ID } from '../game/emoji';
 import { socket } from '../lib/socket';
 import { playSound } from '../lib/sounds';
 import type { EmojiSentPayload, EmojiValue } from '../lib/types';
+import { isPlayerMuted } from './mutedPlayers';
 
 export interface TableEmojiPop {
   id: number;
   rowPlayerId: number;
   emoji: EmojiValue;
+  global?: boolean;
 }
 
 export function useTableEmojiReactions(selfId: number | null) {
@@ -16,19 +18,25 @@ export function useTableEmojiReactions(selfId: number | null) {
   const emojiPopIdRef = useRef(0);
   const emojiTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
   const emojiPickerRef = useRef<HTMLDivElement>(null);
-  const rowRefs = useRef(new Map<number, HTMLTableRowElement>());
+  const rowRefs = useRef(new Map<number, HTMLElement>());
   const nameCellRefs = useRef(new Map<number, HTMLElement>());
 
   useEffect(() => {
     const emojiTimers = emojiTimersRef.current;
     function onEmojiSent(payload: EmojiSentPayload) {
+      if (isPlayerMuted(payload.senderId)) return;
       playSound('emoji');
       const id = ++emojiPopIdRef.current;
-      const rowPlayerId =
-        payload.senderId === selfId ? payload.targetPlayerId : payload.senderId;
+      const targetPlayerId = payload.targetPlayerId;
+      const global = targetPlayerId === undefined;
+      const rowPlayerId = global
+        ? payload.senderId
+        : payload.senderId === selfId
+          ? targetPlayerId
+          : payload.senderId;
       setEmojiPops((prev) => [
         ...prev.filter((p) => p.rowPlayerId !== rowPlayerId),
-        { id, rowPlayerId, emoji: payload.emoji },
+        { id, rowPlayerId, emoji: payload.emoji, global },
       ]);
       const timer = setTimeout(() => {
         emojiTimers.delete(timer);
@@ -51,7 +59,11 @@ export function useTableEmojiReactions(selfId: number | null) {
 
   function handleEmojiPick(targetPlayerId: number, emoji: EmojiValue) {
     setEmojiPickerFor(null);
-    socket.emit('game:sendEmoji', { targetPlayerId, emoji });
+    socket.emit('game:sendEmoji', {
+      targetPlayerId:
+        targetPlayerId === GLOBAL_TARGET_ID ? undefined : targetPlayerId,
+      emoji,
+    });
   }
 
   useEffect(() => {

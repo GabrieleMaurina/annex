@@ -3,11 +3,13 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useReducer,
   useRef,
   useState,
 } from 'react';
 import { Badge, Button, Toast, ToastContainer } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
+import { isPlayerMuted, toggleMutePlayer } from '../common/mutedPlayers';
 import { PANEL_BG_CLASS } from '../common/panelStyle';
 import Tip from '../common/Tip';
 import { contrastTextColor, playerColor } from '../lib/palette';
@@ -57,6 +59,7 @@ import {
   EMOJI_TERRITORY_SIDE_GAP,
   emojiFlightDurations,
   EMOJIS,
+  GLOBAL_TARGET_ID,
   type EmojiPop,
 } from './emoji';
 import {
@@ -286,6 +289,9 @@ function GameMap({
 }: Props) {
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteBonusIcon = useWhiteIcon('/icons/bonus.svg');
+  const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
+  const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
+  const whiteUnmutedIcon = useWhiteIcon('/icons/unmuted.svg');
   const whiteLogsIcon = useWhiteIcon('/icons/logs.svg');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -388,6 +394,7 @@ function GameMap({
     h: DEFAULT_IMAGE_HEIGHT,
   });
   const [, forceRedraw] = useState(0);
+  const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
   const animationLoopActiveRef = useRef(false);
   const frozenTroopsRef = useRef<Map<number, number>>(new Map());
   const ownerByIdRef = useRef(
@@ -402,7 +409,7 @@ function GameMap({
     y: 0,
   }));
   const zoomRef = useRef(1);
-  const rowRefs = useRef(new Map<number, HTMLTableRowElement>());
+  const rowRefs = useRef(new Map<number, HTMLElement>());
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const attackOptionIndexRef = useRef(0);
   const autoAdvanceKeyRef = useRef<string | null>(null);
@@ -1280,11 +1287,15 @@ function GameMap({
   useEffect(() => {
     const emojiTimers = emojiTimersRef.current;
     function onEmojiSent(payload: EmojiSentPayload) {
+      if (isPlayerMuted(payload.senderId)) return;
       playSound('emoji');
       const id = ++emojiPopIdRef.current;
-      const rowPlayerId =
-        payload.senderId === selfIdRef.current
-          ? payload.targetPlayerId
+      const targetPlayerId = payload.targetPlayerId;
+      const global = targetPlayerId === undefined;
+      const rowPlayerId = global
+        ? payload.senderId
+        : payload.senderId === selfIdRef.current
+          ? targetPlayerId
           : payload.senderId;
       let attackText: string | undefined;
       let attackColor: string | undefined;
@@ -1350,6 +1361,7 @@ function GameMap({
           emoji: payload.emoji,
           attackText,
           attackColor,
+          global,
         },
       ]);
       const popTimer = setTimeout(() => {
@@ -1371,7 +1383,12 @@ function GameMap({
     emoji: EmojiValue,
     attackTarget?: EmojiAttackTarget,
   ) {
-    socket.emit('game:sendEmoji', { targetPlayerId, emoji, attackTarget });
+    socket.emit('game:sendEmoji', {
+      targetPlayerId:
+        targetPlayerId === GLOBAL_TARGET_ID ? undefined : targetPlayerId,
+      emoji,
+      attackTarget,
+    });
   }
 
   function handlePlayerRowClick(playerId: number) {
@@ -2663,14 +2680,17 @@ function GameMap({
                   border-radius: 4px;
                 }
               `}</style>
-              {EMOJIS.map((emoji) => (
+              {(emojiPickerFor === GLOBAL_TARGET_ID
+                ? EMOJIS.filter((emoji) => emoji !== ATTACK_EMOJI)
+                : EMOJIS
+              ).map((emoji) => (
                 <Tip key={emoji} text={EMOJI_LABELS[emoji]} placement="bottom">
                   <button
                     type="button"
                     className="annex-emoji-btn border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
                     style={{
                       fontSize: 24,
-                      padding: '3px 4px 5px 4px',
+                      padding: '3px 2px 5px 2px',
                     }}
                     onClick={() => handleEmojiPick(emojiPickerFor, emoji)}
                   >
@@ -2678,6 +2698,41 @@ function GameMap({
                   </button>
                 </Tip>
               ))}
+              {emojiPickerFor !== GLOBAL_TARGET_ID && (
+                <Tip
+                  text={isPlayerMuted(emojiPickerFor) ? 'Unmute' : 'Mute'}
+                  placement="bottom"
+                >
+                  <button
+                    type="button"
+                    className="annex-emoji-btn border-0 border-start d-inline-flex align-items-center justify-content-center lh-1"
+                    style={{
+                      fontSize: 24,
+                      padding: '3px 2px 5px 2px',
+                      backgroundColor: 'rgba(180, 180, 180, 0.35)',
+                      borderRadius: 4,
+                    }}
+                    onClick={() => {
+                      toggleMutePlayer(emojiPickerFor);
+                      bumpMuteVersion();
+                    }}
+                  >
+                    <img
+                      src={
+                        (isPlayerMuted(emojiPickerFor)
+                          ? whiteMutedIcon
+                          : whiteUnmutedIcon) ??
+                        (isPlayerMuted(emojiPickerFor)
+                          ? '/icons/muted.svg'
+                          : '/icons/unmuted.svg')
+                      }
+                      width={20}
+                      height={20}
+                      alt={isPlayerMuted(emojiPickerFor) ? 'Muted' : 'Unmuted'}
+                    />
+                  </button>
+                </Tip>
+              )}
             </div>
           );
         })()}
@@ -2720,13 +2775,25 @@ function GameMap({
                   className="d-inline-flex align-items-center justify-content-center lh-1"
                   style={{
                     fontSize: 24,
-                    padding: '3px 4px 5px 4px',
+                    padding: '3px 2px 5px 2px',
                     pointerEvents: 'auto',
                   }}
                 >
                   {pop.emoji}
                 </span>
               </Tip>
+              {pop.global && (
+                <Tip text="Sent to everyone" placement="bottom">
+                  <img
+                    src={whiteGlobeIcon ?? '/icons/globe.svg'}
+                    width={14}
+                    height={14}
+                    alt="Everyone"
+                    className="me-1 flex-shrink-0"
+                    style={{ pointerEvents: 'auto' }}
+                  />
+                </Tip>
+              )}
               {pop.attackText && (
                 <strong
                   className="text-truncate"

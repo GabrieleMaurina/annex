@@ -10,7 +10,7 @@
     "format": "prettier --write src",
     "types": "tsc --noEmit",
     "check": "npm run format && npm run lint && npm run types",
-    "kill": "node scripts/kill-port.js"
+    "kill": "ts-node -P scripts/tsconfig.json scripts/kill-port.ts"
   },
   "keywords": [],
   "author": "",

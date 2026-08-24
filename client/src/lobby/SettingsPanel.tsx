@@ -12,6 +12,7 @@ import type {
   GameState,
   Placement,
   Portals,
+  Starvation,
   TurnDuration,
   Visibility,
 } from '../lib/types';
@@ -177,6 +178,31 @@ const PORTALS_HELP = (
   </>
 );
 
+const STARVATION_HELP = (
+  <>
+    Whether players are penalized for stacking too many troops on one territory.
+    Either way, a territory&apos;s troops are never removed below 1.
+    <ul className="mb-0 ps-3">
+      <li>Off: no penalty.</li>
+      <li>
+        Territory: each territory is capped at 30 troops (shown in the players
+        panel). At the end of each player&apos;s turn, any territory over the
+        cap has its excess troops removed.
+      </li>
+      <li>
+        Total: each player&apos;s total troops across all territories are capped
+        at 3 times the map&apos;s territory count (shown in the players panel).
+        At the end of each player&apos;s turn, troops over the cap are removed
+        one at a time from whichever territory currently has the most.
+      </li>
+      <li>
+        Percent: at the end of each player&apos;s turn, their largest army (the
+        territory with the most troops) loses 30% of its troops.
+      </li>
+    </ul>
+  </>
+);
+
 const ENTRENCHMENT_HELP = (
   <>
     Adds an extra phase after fortifying where you can spend troops straight off
@@ -219,6 +245,21 @@ interface Props {
   mapNames: string[];
   applySettings: (settings: GameSettingsInput) => void;
 }
+
+const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
+  gameMode: 'Supremacy',
+  blitz: 'Balanced',
+  defenceDice: 2,
+  cards: 'Constant',
+  placement: 'Random',
+  fortification: 'Connected',
+  entrenchment: 'off',
+  portals: 'off',
+  starvation: 'off',
+  turnDuration: 120,
+  password: null,
+  visibility: 'public',
+};
 
 function formatDuration(seconds: number): string {
   const min = Math.floor(seconds / 60);
@@ -488,6 +529,40 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               className="mb-0 d-flex align-items-center gap-1"
               style={LABEL_STYLE}
             >
+              Starvation
+              <Help>{STARVATION_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.starvation}
+                onChange={(e) =>
+                  applySettings({ starvation: e.target.value as Starvation })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="territory">Territory</option>
+                <option value="total">Total</option>
+                <option value="percent">Percent</option>
+              </Form.Select>
+            ) : (
+              <span>
+                {game.starvation === 'off'
+                  ? 'Off'
+                  : game.starvation === 'territory'
+                    ? 'Territory'
+                    : game.starvation === 'total'
+                      ? 'Total'
+                      : 'Percent'}
+              </span>
+            )}
+          </div>
+
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Turn Duration
               <Help>{TURN_DURATION_HELP}</Help>
             </Form.Label>
@@ -583,6 +658,23 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               </span>
             )}
           </div>
+
+          {isHost && (
+            <div className="col d-flex align-items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                onClick={() =>
+                  applySettings({
+                    ...DEFAULT_SETTINGS,
+                    mapName: mapNames.includes('World') ? 'World' : mapNames[0],
+                  })
+                }
+              >
+                Reset
+              </Button>
+            </div>
+          )}
         </div>
       </details>
     </div>

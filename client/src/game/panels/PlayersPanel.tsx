@@ -4,7 +4,13 @@ import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor, playerColor } from '../../lib/palette';
-import type { GameMode, GameState, Mission, TurnPhase } from '../../lib/types';
+import type {
+  GameMode,
+  GameState,
+  Mission,
+  Starvation,
+  TurnPhase,
+} from '../../lib/types';
 import { EMOJI_POP_DURATION, GLOBAL_TARGET_ID, type EmojiPop } from '../emoji';
 
 function formatList(items: string[]): string {
@@ -45,6 +51,9 @@ interface Props {
   gameMode: GameMode;
   isTeamDeathmatch: boolean;
   isCapitals: boolean;
+  starvation: Starvation;
+  territoryTroopsCap: number;
+  totalTroopsCap: number;
   mission: Mission | null;
   selfId: number | null;
   hostId: number;
@@ -70,6 +79,9 @@ function PlayersPanel({
   gameMode,
   isTeamDeathmatch,
   isCapitals,
+  starvation,
+  territoryTroopsCap,
+  totalTroopsCap,
   mission,
   selfId,
   hostId,
@@ -176,6 +188,16 @@ function PlayersPanel({
             : turnNumber + 1}
         </div>
       </div>
+      {starvation === 'territory' && (
+        <div className="text-center small mb-2">
+          Territory troops cap: {territoryTroopsCap}
+        </div>
+      )}
+      {starvation === 'total' && (
+        <div className="text-center small mb-2">
+          Total troops cap: {totalTroopsCap}
+        </div>
+      )}
       <div
         className="overflow-auto no-scrollbar"
         style={{ maxHeight: 'calc(100vh - 8rem)' }}

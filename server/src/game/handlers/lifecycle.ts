@@ -12,6 +12,7 @@ import {
   Placement,
   Player,
   Portals,
+  Starvation,
   TurnDuration,
   Visibility,
 } from '../../types';
@@ -81,6 +82,12 @@ const FORTIFICATION_VALUES: Fortification[] = [
 ];
 const ENTRENCHMENT_VALUES: Entrenchment[] = ['off', 'on'];
 const PORTALS_VALUES: Portals[] = ['off', 'static', 'dynamic'];
+const STARVATION_VALUES: Starvation[] = [
+  'off',
+  'territory',
+  'total',
+  'percent',
+];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
 const MAX_PASSWORD_LENGTH = 50;
@@ -144,6 +151,7 @@ export function registerGameHandlers(
         portals: 'off',
         portalTerritoryIds: [],
         portalsEnabled: false,
+        starvation: 'off',
         turnDuration: 120,
         password: null,
         visibility: 'public',
@@ -405,6 +413,12 @@ export function registerGameHandlers(
         if (!(PORTALS_VALUES as unknown[]).includes(settings.portals))
           return callback({ ok: false, error: 'invalid portals' });
         game.portals = settings.portals as Portals;
+      }
+
+      if (settings.starvation !== undefined) {
+        if (!(STARVATION_VALUES as unknown[]).includes(settings.starvation))
+          return callback({ ok: false, error: 'invalid starvation' });
+        game.starvation = settings.starvation as Starvation;
       }
 
       if (settings.turnDuration !== undefined) {

@@ -1,6 +1,7 @@
 import { Game, Player } from '../../types';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats } from './progression/stats';
+import { TERRITORY_CAP, totalTroopsCap } from './starvation';
 
 const EMPTY_STATS = emptyPlayerStats();
 
@@ -62,6 +63,9 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     portals: game.portals,
     portalTerritoryIds: game.portalTerritoryIds,
     portalsEnabled: game.portalsEnabled,
+    starvation: game.starvation,
+    territoryTroopsCap: TERRITORY_CAP,
+    totalTroopsCap: totalTroopsCap(game),
     turnDuration: game.turnDuration,
     hasPassword: game.password !== null,
     visibility: game.visibility,

@@ -18,6 +18,7 @@ import {
 import { bumpStat } from './progression/stats';
 import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
+import { applyStarvation } from './starvation';
 import { sendPlayerCards } from './store';
 
 const PHASE_ORDER: TurnPhase[] = ['deploy', 'attack', 'fortify', 'entrench'];
@@ -491,7 +492,7 @@ function completePendingAttackMove(
 function completePendingFortify(
   game: Game,
   playerId: number,
-): { territoryId: number; troops: number } | null {
+): { territoryId: number; fromTerritoryId: number; troops: number } | null {
   if (
     game.fortifyStartTerritoryId === null ||
     game.fortifyEndTerritoryId === null
@@ -511,7 +512,7 @@ function completePendingFortify(
     troops: 1,
     playerId,
   });
-  return { territoryId: endId, troops: 1 };
+  return { territoryId: endId, fromTerritoryId: startId, troops: 1 };
 }
 
 export function forceEndTurn(
@@ -607,6 +608,16 @@ export function advanceToNextPlayer(
     }
   }
   game.conqueredThisTurn = false;
+
+  const starvationLosses = applyStarvation(game, endingPlayerId);
+  if (starvationLosses.size > 0) {
+    io.to(gameRoomName(game.name)).emit('game:starved', {
+      losses: [...starvationLosses.entries()].map(([territoryId, troops]) => ({
+        territoryId,
+        troops,
+      })),
+    });
+  }
 
   const previousTurnNumber = game.turnNumber;
   const nextIndex = nextAlivePlayerIndex(game);

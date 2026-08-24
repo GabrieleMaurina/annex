@@ -28,6 +28,7 @@ import type {
   GameState,
   Mission,
   ReplayAnimation,
+  Starvation,
   TurnDuration,
   TurnPhase,
 } from '../lib/types';
@@ -40,7 +41,6 @@ import {
   drawFortifyPath,
   drawPortal,
   ENTRENCHED_OCTAGON_SCALE,
-  getAnimationDuration,
   hasActiveAnimations,
   onAnimationsToggle,
   pruneAnimations,
@@ -134,6 +134,9 @@ interface Props {
   entrenchment: Entrenchment;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
+  starvation: Starvation;
+  territoryTroopsCap: number;
+  totalTroopsCap: number;
   troopsToDeploy: number;
   turnStartedAt: number;
   paused: boolean;
@@ -151,6 +154,9 @@ interface Props {
   showReplay: boolean;
   logs: LogEntry[];
   setGame: (game: GameState) => void;
+  adjustTerritoryTroops: (
+    deltas: { territoryId: number; delta: number; ownerId?: number }[],
+  ) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
 }
@@ -281,6 +287,9 @@ function GameMap({
   entrenchment,
   portalTerritoryIds,
   portalsEnabled,
+  starvation,
+  territoryTroopsCap,
+  totalTroopsCap,
   troopsToDeploy,
   turnStartedAt,
   paused,
@@ -298,6 +307,7 @@ function GameMap({
   showReplay,
   logs,
   setGame,
+  adjustTerritoryTroops,
   setChatOpen,
   navigate,
 }: Props) {
@@ -413,6 +423,8 @@ function GameMap({
   const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
   const animationLoopActiveRef = useRef(false);
   const frozenTroopsRef = useRef<Map<number, number>>(new Map());
+  const frozenOwnerRef = useRef<Map<number, number>>(new Map());
+  const attackRevealDeadlineRef = useRef<Map<number, number>>(new Map());
   const ownerByIdRef = useRef(
     new Map<number, GameState['territories'][number]>(),
   );
@@ -458,7 +470,11 @@ function GameMap({
 
   useEffect(() => {
     return onAnimationsToggle(() => {
-      if (!areAnimationsDisabled()) startAnimationLoop();
+      if (areAnimationsDisabled()) {
+        frozenTroopsRef.current.clear();
+        frozenOwnerRef.current.clear();
+      }
+      startAnimationLoop();
     });
   }, []);
 
@@ -488,8 +504,9 @@ function GameMap({
     return colorIndex !== undefined ? playerColor(colorIndex) : '#ffffff';
   }, []);
 
-  const animateDeploy = useCallback(
+  const animateTroopChange = useCallback(
     (
+      kind: 'add' | 'remove',
       {
         territoryId,
         troops,
@@ -509,72 +526,55 @@ function GameMap({
         playerId ?? ownerByIdRef.current.get(territoryId)?.ownerId;
       if (territory)
         startAnimation(
-          'deploy',
+          kind,
           territory.x,
           territory.y,
-          `+${troops}`,
+          `${kind === 'add' ? '+' : '-'}${troops}`,
           colorForPlayer(ownerId),
           arrowPath,
         );
-      const currentTroops = ownerByIdRef.current.get(territoryId)?.troops;
-      if (currentTroops !== undefined) {
-        frozenTroopsRef.current.set(territoryId, currentTroops);
-        setTimeout(() => {
-          frozenTroopsRef.current.delete(territoryId);
-        }, getAnimationDuration('deploy'));
-      }
     },
     [colorForPlayer],
   );
 
-  const explode = useCallback(
+  const animateAdd = useCallback(
     (
-      territoryId: number,
-      losses: number,
-      playerId: number,
+      payload: { territoryId: number; troops: number; playerId?: number },
       arrowPath?: { x: number; y: number }[],
-    ) => {
-      const territory = territoriesRef.current.find(
-        (t) => t.id === territoryId,
-      );
-      if (!territory) return;
-      startAnimation(
-        'explosion',
-        territory.x,
-        territory.y,
-        `-${losses}`,
-        colorForPlayer(playerId),
-        arrowPath,
-      );
-      const currentTroops = ownerByIdRef.current.get(territoryId)?.troops;
-      if (currentTroops === undefined) return;
-      frozenTroopsRef.current.set(territoryId, currentTroops);
-      setTimeout(() => {
-        frozenTroopsRef.current.delete(territoryId);
-      }, getAnimationDuration('explosion'));
-    },
-    [colorForPlayer],
+    ) => animateTroopChange('add', payload, arrowPath),
+    [animateTroopChange],
   );
 
-  const animateEntrench = useCallback(
-    ({
-      territoryId,
-      troops,
-      playerId,
-    }: {
-      territoryId: number;
-      troops: number;
-      playerId?: number;
-    }) => {
+  const animateRemove = useCallback(
+    (
+      payload: { territoryId: number; troops: number; playerId?: number },
+      arrowPath?: { x: number; y: number }[],
+    ) => animateTroopChange('remove', payload, arrowPath),
+    [animateTroopChange],
+  );
+
+  const explode = useCallback((territoryId: number) => {
+    const territory = territoriesRef.current.find((t) => t.id === territoryId);
+    if (!territory) return;
+    startAnimation('explosion', territory.x, territory.y);
+  }, []);
+
+  const entrenchEffect = useCallback((territoryId: number) => {
+    const territory = territoriesRef.current.find((t) => t.id === territoryId);
+    if (!territory) return;
+    startAnimation('entrench', territory.x, territory.y);
+  }, []);
+
+  const animateStarve = useCallback(
+    ({ territoryId, troops }: { territoryId: number; troops: number }) => {
       if (areAnimationsDisabled()) return;
       const territory = territoriesRef.current.find(
         (t) => t.id === territoryId,
       );
-      const ownerId =
-        playerId ?? ownerByIdRef.current.get(territoryId)?.ownerId;
+      const ownerId = ownerByIdRef.current.get(territoryId)?.ownerId;
       if (territory)
         startAnimation(
-          'entrench',
+          'starve',
           territory.x,
           territory.y,
           `-${troops}`,
@@ -593,11 +593,54 @@ function GameMap({
     [],
   );
 
+  const playAttackLossEffects = useCallback(
+    (
+      attackingTerritoryId: number,
+      defendingTerritoryId: number,
+      attackerId: number,
+      defenderId: number,
+      attackLosses: number,
+      defenceLosses: number,
+      arrowPath?: { x: number; y: number }[],
+    ) => {
+      if (defenceLosses > 0) {
+        explode(defendingTerritoryId);
+        animateRemove(
+          {
+            territoryId: defendingTerritoryId,
+            troops: defenceLosses,
+            playerId: defenderId,
+          },
+          arrowPath,
+        );
+        if (attackLosses > 0) {
+          explode(attackingTerritoryId);
+          animateRemove({
+            territoryId: attackingTerritoryId,
+            troops: attackLosses,
+            playerId: attackerId,
+          });
+        }
+      } else if (attackLosses > 0) {
+        explode(attackingTerritoryId);
+        animateRemove(
+          {
+            territoryId: attackingTerritoryId,
+            troops: attackLosses,
+            playerId: attackerId,
+          },
+          arrowPath,
+        );
+      }
+    },
+    [explode, animateRemove],
+  );
+
   const playFrameAnimation = useCallback(
     (animation: ReplayAnimation, partOfConquestPair: boolean) => {
       if (animation.type === 'deploy') {
         playSound('deploy');
-        animateDeploy({
+        animateAdd({
           territoryId: animation.territoryId,
           troops: animation.troops,
           playerId: animation.playerId,
@@ -622,7 +665,12 @@ function GameMap({
               : [animation.fromTerritoryId, animation.toTerritoryId],
           );
         }
-        animateDeploy(
+        animateRemove({
+          territoryId: animation.fromTerritoryId,
+          troops: animation.troops,
+          playerId: animation.playerId,
+        });
+        animateAdd(
           {
             territoryId: animation.toTerritoryId,
             troops: animation.troops,
@@ -632,10 +680,16 @@ function GameMap({
         );
       } else if (animation.type === 'entrench') {
         playSound('entrench');
-        animateEntrench({
+        entrenchEffect(animation.territoryId);
+        animateRemove({
           territoryId: animation.territoryId,
           troops: animation.troops,
           playerId: animation.playerId,
+        });
+      } else if (animation.type === 'starve') {
+        animateStarve({
+          territoryId: animation.territoryId,
+          troops: animation.troops,
         });
       } else {
         playSound('explode');
@@ -645,34 +699,24 @@ function GameMap({
               animation.attackingTerritoryId,
               animation.defendingTerritoryId,
             ]);
-        if (animation.defenceLosses > 0) {
-          explode(
-            animation.defendingTerritoryId,
-            animation.defenceLosses,
-            animation.defenderId,
-            arrowPath,
-          );
-          if (animation.attackLosses > 0)
-            explode(
-              animation.attackingTerritoryId,
-              animation.attackLosses,
-              animation.attackerId,
-            );
-        } else if (animation.attackLosses > 0) {
-          explode(
-            animation.attackingTerritoryId,
-            animation.attackLosses,
-            animation.attackerId,
-            arrowPath,
-          );
-        }
+        playAttackLossEffects(
+          animation.attackingTerritoryId,
+          animation.defendingTerritoryId,
+          animation.attackerId,
+          animation.defenderId,
+          animation.attackLosses,
+          animation.defenceLosses,
+          arrowPath,
+        );
       }
       startAnimationLoop();
     },
     [
-      animateDeploy,
-      animateEntrench,
-      explode,
+      animateAdd,
+      animateRemove,
+      entrenchEffect,
+      animateStarve,
+      playAttackLossEffects,
       territoryPoints,
       fortification,
       portalTerritoryIds,
@@ -825,12 +869,8 @@ function GameMap({
     socket.emit('game:fortify', { troops: fortifyTroops }, (res: Ack) => {
       if (!res.ok) return;
       setGame(res.game);
-      if (fortifyStartTerritoryId !== null)
-        frozenTroopsRef.current.delete(fortifyStartTerritoryId);
-      if (fortifyEndTerritoryId !== null)
-        frozenTroopsRef.current.delete(fortifyEndTerritoryId);
     });
-  }, [fortifyTroops, fortifyStartTerritoryId, fortifyEndTerritoryId, setGame]);
+  }, [fortifyTroops, setGame]);
 
   const selectAttackStart = useCallback(
     (territoryId: number | null) => {
@@ -894,10 +934,7 @@ function GameMap({
       socket.emit('game:attackMove', { troops }, (res: Ack) => {
         if (!res.ok) return;
         setGame(res.game);
-        if (attackStartTerritoryId !== null)
-          frozenTroopsRef.current.delete(attackStartTerritoryId);
         if (conqueredTerritoryId !== null) {
-          frozenTroopsRef.current.delete(conqueredTerritoryId);
           const freshOwnerById = new Map(
             res.game.territories.map((t) => [t.id, t]),
           );
@@ -915,7 +952,6 @@ function GameMap({
       });
     },
     [
-      attackStartTerritoryId,
       territories,
       selfId,
       portalTerritoryIds,
@@ -946,11 +982,6 @@ function GameMap({
           ? { ...res.game, state: 'playing' }
           : res.game,
       );
-      if (attackStartTerritoryId !== null)
-        frozenTroopsRef.current.delete(attackStartTerritoryId);
-      if (attackEndTerritoryId !== null)
-        frozenTroopsRef.current.delete(attackEndTerritoryId);
-
       const conqueredTerritoryId = res.game.attackEndTerritoryId;
       let autoMoveTroops: number | null = null;
       if (res.game.attackConquestMinTroops !== null) {
@@ -1217,28 +1248,64 @@ function GameMap({
   }
 
   useEffect(() => {
-    function playTroopChangeEffect(
+    function playAddEffect(
       sound: string,
       payload: { territoryId: number; troops: number },
     ) {
       playSound(sound);
-      animateDeploy(payload);
+      adjustTerritoryTroops([
+        { territoryId: payload.territoryId, delta: payload.troops },
+      ]);
+      animateAdd(payload);
       startAnimationLoop();
     }
     function onDeployed(payload: { territoryId: number; troops: number }) {
-      playTroopChangeEffect('deploy', payload);
+      playAddEffect('deploy', payload);
     }
-    function onFortified(payload: { territoryId: number; troops: number }) {
-      playTroopChangeEffect('fortify', payload);
+    function onFortified(payload: {
+      territoryId: number;
+      fromTerritoryId: number;
+      troops: number;
+    }) {
+      playSound('fortify');
+      adjustTerritoryTroops([
+        { territoryId: payload.fromTerritoryId, delta: -payload.troops },
+        { territoryId: payload.territoryId, delta: payload.troops },
+      ]);
+      animateRemove({
+        territoryId: payload.fromTerritoryId,
+        troops: payload.troops,
+      });
+      animateAdd({ territoryId: payload.territoryId, troops: payload.troops });
+      startAnimationLoop();
     }
     function onAttackMoved(payload: { territoryId: number; troops: number }) {
-      playTroopChangeEffect('fortify', payload);
+      adjustTerritoryTroops([
+        { territoryId: payload.territoryId, delta: payload.troops },
+      ]);
+      const deadline = attackRevealDeadlineRef.current.get(payload.territoryId);
+      const pendingDelay = deadline
+        ? Math.max(0, deadline - performance.now())
+        : 0;
+      const fireAnimation = () => {
+        playSound('fortify');
+        animateAdd(payload);
+        startAnimationLoop();
+      };
+      if (pendingDelay > 0) setTimeout(fireAnimation, pendingDelay);
+      else fireAnimation();
     }
     function onDeployedMany(payload: {
       deposits: { territoryId: number; troops: number }[];
     }) {
       playSound('deploy');
-      for (const deposit of payload.deposits) animateDeploy(deposit);
+      adjustTerritoryTroops(
+        payload.deposits.map((d) => ({
+          territoryId: d.territoryId,
+          delta: d.troops,
+        })),
+      );
+      for (const deposit of payload.deposits) animateAdd(deposit);
       startAnimationLoop();
     }
     function onEntrenched(payload: {
@@ -1247,7 +1314,23 @@ function GameMap({
       turnsRemaining: number;
     }) {
       playSound('entrench');
-      animateEntrench(payload);
+      adjustTerritoryTroops([
+        { territoryId: payload.territoryId, delta: -payload.troops },
+      ]);
+      entrenchEffect(payload.territoryId);
+      animateRemove(payload);
+      startAnimationLoop();
+    }
+    function onStarved(payload: {
+      losses: { territoryId: number; troops: number }[];
+    }) {
+      for (const loss of payload.losses) animateStarve(loss);
+      adjustTerritoryTroops(
+        payload.losses.map((l) => ({
+          territoryId: l.territoryId,
+          delta: -l.troops,
+        })),
+      );
       startAnimationLoop();
     }
     socket.on('game:deployed', onDeployed);
@@ -1255,14 +1338,22 @@ function GameMap({
     socket.on('game:attackMoved', onAttackMoved);
     socket.on('game:deployedMany', onDeployedMany);
     socket.on('game:entrenched', onEntrenched);
+    socket.on('game:starved', onStarved);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
       socket.off('game:attackMoved', onAttackMoved);
       socket.off('game:deployedMany', onDeployedMany);
       socket.off('game:entrenched', onEntrenched);
+      socket.off('game:starved', onStarved);
     };
-  }, [animateDeploy, animateEntrench]);
+  }, [
+    animateAdd,
+    animateRemove,
+    entrenchEffect,
+    animateStarve,
+    adjustTerritoryTroops,
+  ]);
 
   useEffect(() => {
     function onAttacked(payload: {
@@ -1272,27 +1363,86 @@ function GameMap({
       defenderId: number;
       attackLosses: number;
       defenceLosses: number;
+      conquered: boolean;
       type: 'regular' | 'blitz';
     }) {
       const delay =
         payload.type === 'regular'
           ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
           : 0;
-      setTimeout(() => {
-        playSound('explode');
-        if (areAnimationsDisabled()) return;
-        if (payload.attackLosses > 0)
-          explode(
-            payload.attackingTerritoryId,
-            payload.attackLosses,
-            payload.attackerId,
-          );
-        if (payload.defenceLosses > 0)
-          explode(
+
+      const deltas: {
+        territoryId: number;
+        delta: number;
+        ownerId?: number;
+      }[] = [];
+      if (payload.attackLosses > 0)
+        deltas.push({
+          territoryId: payload.attackingTerritoryId,
+          delta: -payload.attackLosses,
+        });
+      if (payload.defenceLosses > 0)
+        deltas.push({
+          territoryId: payload.defendingTerritoryId,
+          delta: -payload.defenceLosses,
+          ownerId: payload.conquered ? payload.attackerId : undefined,
+        });
+      if (deltas.length > 0) adjustTerritoryTroops(deltas);
+
+      if (payload.type === 'regular' && !areAnimationsDisabled()) {
+        const revealAt = performance.now() + delay;
+        attackRevealDeadlineRef.current.set(
+          payload.attackingTerritoryId,
+          revealAt,
+        );
+        attackRevealDeadlineRef.current.set(
+          payload.defendingTerritoryId,
+          revealAt,
+        );
+        if (payload.conquered)
+          frozenOwnerRef.current.set(
             payload.defendingTerritoryId,
-            payload.defenceLosses,
             payload.defenderId,
           );
+        const attackerTroops = ownerByIdRef.current.get(
+          payload.attackingTerritoryId,
+        )?.troops;
+        if (attackerTroops !== undefined)
+          frozenTroopsRef.current.set(
+            payload.attackingTerritoryId,
+            attackerTroops,
+          );
+        const defenderTroops = ownerByIdRef.current.get(
+          payload.defendingTerritoryId,
+        )?.troops;
+        if (defenderTroops !== undefined)
+          frozenTroopsRef.current.set(
+            payload.defendingTerritoryId,
+            defenderTroops,
+          );
+      }
+      setTimeout(() => {
+        playSound('explode');
+        if (payload.attackLosses > 0) {
+          frozenTroopsRef.current.delete(payload.attackingTerritoryId);
+          explode(payload.attackingTerritoryId);
+          animateRemove({
+            territoryId: payload.attackingTerritoryId,
+            troops: payload.attackLosses,
+            playerId: payload.attackerId,
+          });
+        }
+        if (payload.defenceLosses > 0) {
+          frozenTroopsRef.current.delete(payload.defendingTerritoryId);
+          if (payload.conquered)
+            frozenOwnerRef.current.delete(payload.defendingTerritoryId);
+          explode(payload.defendingTerritoryId);
+          animateRemove({
+            territoryId: payload.defendingTerritoryId,
+            troops: payload.defenceLosses,
+            playerId: payload.defenderId,
+          });
+        }
         startAnimationLoop();
       }, delay);
     }
@@ -1300,7 +1450,7 @@ function GameMap({
     return () => {
       socket.off('game:attacked', onAttacked);
     };
-  }, [explode]);
+  }, [explode, animateRemove, adjustTerritoryTroops]);
 
   useEffect(() => {
     const arrowActive =
@@ -1352,7 +1502,7 @@ function GameMap({
     }) {
       playSound('select');
       playSound('deploy');
-      animateDeploy({
+      animateAdd({
         territoryId: payload.territoryId,
         troops: 1,
         playerId: payload.playerId,
@@ -1363,7 +1513,7 @@ function GameMap({
     return () => {
       socket.off('game:territoryClaimed', onTerritoryClaimed);
     };
-  }, [animateDeploy]);
+  }, [animateAdd]);
 
   useEffect(() => {
     let receivedFirstHand = false;
@@ -1654,7 +1804,6 @@ function GameMap({
       (res: Ack) => {
         if (!res.ok) return;
         setGame(res.game);
-        frozenTroopsRef.current.delete(selectedTerritoryId);
       },
     );
   }, [selectedTerritoryId, deployTroops, setGame, turnPhase]);
@@ -2192,9 +2341,11 @@ function GameMap({
       const p = toScreen(t);
       const style = STATE_STYLE[nodeState(t.id)];
       const owner = ownerById.get(t.id);
-      const fillColor = owner
-        ? playerColor(colorByPlayerId.get(owner.ownerId) ?? 0)
-        : UNCLAIMED_TERRITORY_COLOR;
+      const displayOwnerId = frozenOwnerRef.current.get(t.id) ?? owner?.ownerId;
+      const fillColor =
+        displayOwnerId !== undefined
+          ? playerColor(colorByPlayerId.get(displayOwnerId) ?? 0)
+          : UNCLAIMED_TERRITORY_COLOR;
 
       if (portalTerritoryIdSet.has(t.id)) {
         drawPortal(
@@ -2854,6 +3005,9 @@ function GameMap({
         gameMode={gameMode}
         isTeamDeathmatch={isTeamDeathmatch}
         isCapitals={isCapitals}
+        starvation={starvation}
+        territoryTroopsCap={territoryTroopsCap}
+        totalTroopsCap={totalTroopsCap}
         mission={mission}
         selfId={selfId}
         turnNumber={turnNumber}

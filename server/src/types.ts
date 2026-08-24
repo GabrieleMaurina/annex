@@ -53,6 +53,7 @@ export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchment = 'off' | 'on';
 export type Portals = 'off' | 'static' | 'dynamic';
+export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -92,7 +93,8 @@ export type ReplayAnimation =
       attackLosses: number;
       defenceLosses: number;
     }
-  | { type: 'entrench'; territoryId: number; troops: number; playerId: number };
+  | { type: 'entrench'; territoryId: number; troops: number; playerId: number }
+  | { type: 'starve'; territoryId: number; troops: number; playerId: number };
 
 export interface ReplayTerritory {
   id: number;
@@ -138,6 +140,7 @@ export interface Game {
   portals: Portals;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
+  starvation: Starvation;
   turnDuration: TurnDuration;
   password: string | null;
   visibility: Visibility;

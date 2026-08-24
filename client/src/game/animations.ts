@@ -1,4 +1,5 @@
-export type AnimationType = 'deploy' | 'explosion' | 'entrench';
+export type AnimationType =
+  'add' | 'remove' | 'explosion' | 'entrench' | 'starve';
 
 interface Particle {
   angle: number;
@@ -26,9 +27,15 @@ interface Animation {
 }
 
 const DURATIONS: Record<AnimationType, number> = {
-  deploy: 400,
+  add: 400,
+  remove: 400,
   explosion: 1000,
   entrench: 700,
+  starve: 1000,
+};
+const TROOP_CHANGE_RING_COLORS: Record<'add' | 'remove', string> = {
+  add: '255, 255, 255',
+  remove: '229, 57, 53',
 };
 const LABEL_DURATION = 1500;
 export const CARD_SET_FLASH_DURATION = 2000;
@@ -673,10 +680,10 @@ export function drawAnimations(
       drawExplosion(ctx, a, p, radius, now);
     } else if (a.type === 'entrench') {
       drawEntrench(ctx, a, p, radius, now);
-    } else {
+    } else if (a.type === 'add' || a.type === 'remove') {
       ctx.beginPath();
       ctx.arc(p.x, p.y, radius * (1 + progress), 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(255, 255, 255, ${1 - progress})`;
+      ctx.strokeStyle = `rgba(${TROOP_CHANGE_RING_COLORS[a.type]}, ${1 - progress})`;
       ctx.lineWidth = 4;
       ctx.stroke();
     }

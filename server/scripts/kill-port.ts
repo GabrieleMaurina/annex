@@ -1,8 +1,8 @@
-const { execSync } = require('child_process');
+import { execSync } from 'child_process';
 
 const port = 3000;
 
-function run(command) {
+function run(command: string): string {
   try {
     return execSync(command, { encoding: 'utf8' });
   } catch {
@@ -15,8 +15,10 @@ if (process.platform === 'win32') {
   const pids = new Set(
     output
       .split('\n')
-      .map((line) => line.trim().split(/\s+/).pop())
-      .filter(Boolean),
+      .map((line) => line.trim().split(/\s+/))
+      .filter((parts) => parts[3] === 'LISTENING')
+      .map((parts) => parts[4])
+      .filter((pid) => pid && pid !== '0'),
   );
   for (const pid of pids) {
     run(`taskkill /F /PID ${pid}`);

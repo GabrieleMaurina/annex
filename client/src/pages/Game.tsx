@@ -142,6 +142,27 @@ function Game({
     });
   }
 
+  function adjustTerritoryTroops(
+    deltas: { territoryId: number; delta: number; ownerId?: number }[],
+  ) {
+    setGame((prev) => {
+      if (!prev) return prev;
+      const deltaById = new Map(deltas.map((d) => [d.territoryId, d]));
+      return {
+        ...prev,
+        territories: prev.territories.map((t) => {
+          const d = deltaById.get(t.id);
+          if (!d) return t;
+          return {
+            ...t,
+            troops: t.troops + d.delta,
+            ownerId: d.ownerId ?? t.ownerId,
+          };
+        }),
+      };
+    });
+  }
+
   const nameById = new Map(
     [...game.players, ...game.spectators].map((p) => [p.id, p.name]),
   );
@@ -171,6 +192,9 @@ function Game({
           entrenchment={game.entrenchment}
           portalTerritoryIds={game.portalTerritoryIds}
           portalsEnabled={game.portalsEnabled}
+          starvation={game.starvation}
+          territoryTroopsCap={game.territoryTroopsCap}
+          totalTroopsCap={game.totalTroopsCap}
           troopsToDeploy={game.troopsToDeploy}
           turnStartedAt={game.turnStartedAt}
           paused={game.paused}
@@ -188,6 +212,7 @@ function Game({
           showReplay={endView === 'map'}
           logs={logs}
           setGame={setGame}
+          adjustTerritoryTroops={adjustTerritoryTroops}
           setChatOpen={setChatOpen}
           navigate={navigate}
         />

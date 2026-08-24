@@ -118,6 +118,7 @@ function Lobby({
           fortification: res.game.fortification,
           entrenchment: res.game.entrenchment,
           portals: res.game.portals,
+          starvation: res.game.starvation,
           turnDuration: res.game.turnDuration,
           visibility: res.game.visibility,
         },

@@ -4,6 +4,7 @@ import {
   Blitz,
   CardsMode,
   DefenceDice,
+  Entrenchment,
   Fortification,
   Game,
   GameMode,
@@ -77,6 +78,7 @@ const FORTIFICATION_VALUES: Fortification[] = [
   'Neighboring',
   'Unrestricted',
 ];
+const ENTRENCHMENT_VALUES: Entrenchment[] = ['off', 'on'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
 const MAX_PASSWORD_LENGTH = 50;
@@ -136,6 +138,7 @@ export function registerGameHandlers(
         cards: 'Constant',
         placement: 'Random',
         fortification: 'Connected',
+        entrenchment: 'off',
         turnDuration: 120,
         password: null,
         visibility: 'public',
@@ -162,6 +165,7 @@ export function registerGameHandlers(
         passwordExemptIds: new Set([player.id]),
         territoryOwners: new Map(),
         territoryTroops: new Map(),
+        territoryEntrenchment: new Map(),
         capitalTerritoryIds: new Set(),
         playerMissions: new Map(),
         hostPriority: [player.id],
@@ -360,6 +364,7 @@ export function registerGameHandlers(
         if (!(DEFENCE_DICE_VALUES as unknown[]).includes(settings.defenceDice))
           return callback({ ok: false, error: 'invalid defence dice' });
         game.defenceDice = settings.defenceDice as DefenceDice;
+        if (game.defenceDice !== 2) game.entrenchment = 'off';
       }
 
       if (settings.cards !== undefined) {
@@ -380,6 +385,14 @@ export function registerGameHandlers(
         )
           return callback({ ok: false, error: 'invalid fortification' });
         game.fortification = settings.fortification as Fortification;
+      }
+
+      if (settings.entrenchment !== undefined) {
+        if (!(ENTRENCHMENT_VALUES as unknown[]).includes(settings.entrenchment))
+          return callback({ ok: false, error: 'invalid entrenchment' });
+        if (settings.entrenchment === 'on' && game.defenceDice !== 2)
+          return callback({ ok: false, error: 'invalid entrenchment' });
+        game.entrenchment = settings.entrenchment as Entrenchment;
       }
 
       if (settings.turnDuration !== undefined) {

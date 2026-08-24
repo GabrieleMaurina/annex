@@ -57,6 +57,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     cards: game.cards,
     placement: game.placement,
     fortification: game.fortification,
+    entrenchment: game.entrenchment,
     turnDuration: game.turnDuration,
     hasPassword: game.password !== null,
     visibility: game.visibility,
@@ -118,6 +119,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
       ownerId,
       troops: game.territoryTroops.get(id) ?? 0,
       isCapital: game.capitalTerritoryIds.has(id),
+      entrenchedTurns: game.territoryEntrenchment.get(id) ?? 0,
     })),
   };
 }

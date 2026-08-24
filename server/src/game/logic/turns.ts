@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player, TurnPhase } from '../../types';
-import { hasAnyAttack, hasAnyFortify } from './combat/autoSkip';
+import { hasAnyAttack, hasAnyEntrench, hasAnyFortify } from './combat/autoSkip';
 import { checkGameEnd } from './end';
 import {
   calculateDeployTroopsBreakdown,
@@ -19,7 +19,7 @@ import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
 import { sendPlayerCards } from './store';
 
-const PHASE_ORDER: TurnPhase[] = ['deploy', 'attack', 'fortify'];
+const PHASE_ORDER: TurnPhase[] = ['deploy', 'attack', 'fortify', 'entrench'];
 
 export const PLACEMENT_PHASE_DURATION = 10;
 export const CAPITAL_PHASE_DURATION = 60;
@@ -581,6 +581,14 @@ function nextAlivePlayerIndex(game: Game): number {
   return nextIndex;
 }
 
+function decrementEntrenchmentForPlayer(game: Game, playerId: number) {
+  for (const [territoryId, turnsRemaining] of [...game.territoryEntrenchment]) {
+    if (game.territoryOwners.get(territoryId) !== playerId) continue;
+    if (turnsRemaining <= 1) game.territoryEntrenchment.delete(territoryId);
+    else game.territoryEntrenchment.set(territoryId, turnsRemaining - 1);
+  }
+}
+
 export function advanceToNextPlayer(
   game: Game,
   io: Server,
@@ -612,6 +620,7 @@ export function advanceToNextPlayer(
   game.attackStartTerritoryId = null;
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
+  decrementEntrenchmentForPlayer(game, game.playerIds[nextIndex]);
   startDeployPhase(game, io, game.playerIds[nextIndex]);
   scheduleTurnTimer(game, io, playersById);
 }
@@ -635,6 +644,11 @@ export function advanceTurnPhase(
     if (game.turnPhase === 'attack' && !hasAnyAttack(game, playerId)) {
       advanceTurnPhase(game, io, playersById);
     } else if (game.turnPhase === 'fortify' && !hasAnyFortify(game, playerId)) {
+      advanceTurnPhase(game, io, playersById);
+    } else if (
+      game.turnPhase === 'entrench' &&
+      (game.entrenchment !== 'on' || !hasAnyEntrench(game, playerId))
+    ) {
       advanceTurnPhase(game, io, playersById);
     }
   } else {

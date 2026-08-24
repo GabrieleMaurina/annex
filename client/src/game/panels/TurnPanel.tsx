@@ -15,6 +15,7 @@ interface Props {
   canLeaveDeploy: boolean;
   paused: boolean;
   setGame: (game: GameState) => void;
+  endsTurn: boolean;
 }
 
 function TurnPanel({
@@ -27,6 +28,7 @@ function TurnPanel({
   canLeaveDeploy,
   paused,
   setGame,
+  endsTurn,
 }: Props) {
   const isDark = contrastTextColor(color) === '#ffffff';
   const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
@@ -80,7 +82,7 @@ function TurnPanel({
         turnPhase !== 'capital' &&
         (turnPhase !== 'deploy' || canLeaveDeploy) && (
           <Button size="sm" onClick={nextPhase}>
-            {turnPhase === 'fortify' ? 'End Turn' : 'Next Phase'}
+            {endsTurn ? 'End Turn' : 'Next Phase'}
           </Button>
         )}
     </div>

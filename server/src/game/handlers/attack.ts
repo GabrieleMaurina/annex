@@ -40,7 +40,9 @@ type AttackResultResponse =
   | { ok: false; error: string };
 
 function defenceDiceFor(game: Game, territoryId: number): number {
-  return game.capitalTerritoryIds.has(territoryId) ? 3 : game.defenceDice;
+  if (game.capitalTerritoryIds.has(territoryId)) return 3;
+  if ((game.territoryEntrenchment.get(territoryId) ?? 0) > 0) return 3;
+  return game.defenceDice;
 }
 
 function computeBlitzWinProbabilities(
@@ -279,7 +281,10 @@ export function registerAttackHandlers(
       defenderStats.troopsKilled += attackLosses;
 
       const conquered = defenceLosses >= defendingTroops;
-      if (conquered) game.territoryOwners.set(endId, player.id);
+      if (conquered) {
+        game.territoryOwners.set(endId, player.id);
+        game.territoryEntrenchment.delete(endId);
+      }
       recordReplayFrame(game, {
         type: 'attack',
         attackingTerritoryId: startId,

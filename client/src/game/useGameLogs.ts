@@ -69,15 +69,27 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     }) {
       for (const deposit of payload.deposits) logDeploy(deposit);
     }
+    function onEntrenched(payload: {
+      territoryId: number;
+      troops: number;
+      turnsRemaining: number;
+    }) {
+      pushLog(
+        colorForPlayer(ownerOfTerritory(payload.territoryId)),
+        `Entrenched territory #${payload.territoryId + 1} with ${payload.troops} troops (now ${payload.turnsRemaining} turns)`,
+      );
+    }
     socket.on('game:deployed', onDeployed);
     socket.on('game:fortified', onFortified);
     socket.on('game:attackMoved', onAttackMoved);
     socket.on('game:deployedMany', onDeployedMany);
+    socket.on('game:entrenched', onEntrenched);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
       socket.off('game:attackMoved', onAttackMoved);
       socket.off('game:deployedMany', onDeployedMany);
+      socket.off('game:entrenched', onEntrenched);
     };
   }, [colorForPlayer, ownerOfTerritory, pushLog]);
 

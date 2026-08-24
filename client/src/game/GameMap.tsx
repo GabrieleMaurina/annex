@@ -22,6 +22,7 @@ import type {
   EmojiAttackTarget,
   EmojiSentPayload,
   EmojiValue,
+  Entrenchment,
   Fortification,
   GameMode,
   GameState,
@@ -37,12 +38,14 @@ import {
   DICE_ROLL_STEPS,
   drawAnimations,
   drawFortifyPath,
+  ENTRENCHED_OCTAGON_SCALE,
   getAnimationDuration,
   hasActiveAnimations,
   onAnimationsToggle,
   pruneAnimations,
   setContinuousAnimation,
   startAnimation,
+  traceOctagon,
 } from './animations';
 import { getAttackEndCandidates, getAttackStartCandidates } from './attack';
 import {
@@ -62,6 +65,7 @@ import {
   GLOBAL_TARGET_ID,
   type EmojiPop,
 } from './emoji';
+import { getEntrenchCandidates } from './entrench';
 import {
   getFortifyEndCandidates,
   getFortifyPath,
@@ -125,6 +129,7 @@ interface Props {
   turnPhase: TurnPhase;
   turnDuration: TurnDuration;
   fortification: Fortification;
+  entrenchment: Entrenchment;
   troopsToDeploy: number;
   turnStartedAt: number;
   paused: boolean;
@@ -244,6 +249,8 @@ const PLACEMENT_PHASE_DURATION = 10;
 const CAPITAL_PHASE_DURATION = 60;
 
 const UNCLAIMED_TERRITORY_COLOR = '#6c757d';
+const ENTRENCHED_OCTAGON_FILL = '#495057';
+const ENTRENCHED_OCTAGON_STROKE = '#212529';
 
 const STATE_STYLE = {
   normal: { stroke: '#000000', width: 2 },
@@ -267,6 +274,7 @@ function GameMap({
   turnPhase,
   turnDuration,
   fortification,
+  entrenchment,
   troopsToDeploy,
   turnStartedAt,
   paused,
@@ -369,6 +377,8 @@ function GameMap({
   const [trackedFortifyEndTerritoryId, setTrackedFortifyEndTerritoryId] =
     useState<number | null>(null);
   const fortifyInputRef = useRef<HTMLInputElement>(null);
+  const [entrenchTroops, setEntrenchTroops] = useState(1);
+  const entrenchInputRef = useRef<HTMLInputElement>(null);
   const [attackWinProbabilities, setAttackWinProbabilities] = useState<
     number[] | null
   >(null);
@@ -540,6 +550,34 @@ function GameMap({
     [colorForPlayer],
   );
 
+  const animateEntrench = useCallback(
+    ({
+      territoryId,
+      troops,
+      playerId,
+    }: {
+      territoryId: number;
+      troops: number;
+      playerId?: number;
+    }) => {
+      if (areAnimationsDisabled()) return;
+      const territory = territoriesRef.current.find(
+        (t) => t.id === territoryId,
+      );
+      const ownerId =
+        playerId ?? ownerByIdRef.current.get(territoryId)?.ownerId;
+      if (territory)
+        startAnimation(
+          'entrench',
+          territory.x,
+          territory.y,
+          `-${troops}`,
+          colorForPlayer(ownerId),
+        );
+    },
+    [colorForPlayer],
+  );
+
   const territoryPoints = useCallback(
     (territoryIds: number[]): { x: number; y: number }[] =>
       territoryIds
@@ -584,6 +622,13 @@ function GameMap({
           },
           arrowPath,
         );
+      } else if (animation.type === 'entrench') {
+        playSound('entrench');
+        animateEntrench({
+          territoryId: animation.territoryId,
+          troops: animation.troops,
+          playerId: animation.playerId,
+        });
       } else {
         playSound('explode');
         const arrowPath = partOfConquestPair
@@ -616,7 +661,7 @@ function GameMap({
       }
       startAnimationLoop();
     },
-    [animateDeploy, explode, territoryPoints, fortification],
+    [animateDeploy, animateEntrench, explode, territoryPoints, fortification],
   );
 
   const {
@@ -983,6 +1028,22 @@ function GameMap({
         )
       : [];
 
+  const entrenchCandidates = isMyTurn
+    ? getEntrenchCandidates(territories, ownerById, selfId)
+    : new Set<number>();
+  const nextPhaseEndsTurn =
+    turnPhase === 'entrench' ||
+    (turnPhase === 'fortify' &&
+      (entrenchment !== 'on' || entrenchCandidates.size === 0));
+  const entrenchMaxTroops =
+    selectedTerritoryId !== null
+      ? (ownerById.get(selectedTerritoryId)?.troops ?? 1) - 1
+      : 1;
+  const entrenchCurrentTurns =
+    selectedTerritoryId !== null
+      ? (ownerById.get(selectedTerritoryId)?.entrenchedTurns ?? 0)
+      : 0;
+
   const attackPendingConquest = attackConquestMinTroops !== null;
   const attackStartCandidates =
     turnPhase === 'attack' && isMyTurn && !attackPendingConquest
@@ -1015,7 +1076,9 @@ function GameMap({
       attackStartCandidates.size === 0;
     const noFortifyPossible =
       turnPhase === 'fortify' && fortifyStartCandidates.size === 0;
-    if (!noAttackPossible && !noFortifyPossible) return;
+    const noEntrenchPossible =
+      turnPhase === 'entrench' && entrenchCandidates.size === 0;
+    if (!noAttackPossible && !noFortifyPossible && !noEntrenchPossible) return;
 
     const key = `${turnNumber}-${turnPlayerIndex}-${turnPhase}`;
     if (autoAdvanceKeyRef.current === key) return;
@@ -1091,7 +1154,10 @@ function GameMap({
 
   if (trackedSelectedTerritoryId !== selectedTerritoryId) {
     setTrackedSelectedTerritoryId(selectedTerritoryId);
-    if (selectedTerritoryId !== null) setDeployTroops(troopsToDeploy);
+    if (selectedTerritoryId !== null) {
+      if (turnPhase === 'entrench') setEntrenchTroops(1);
+      else setDeployTroops(troopsToDeploy);
+    }
   }
 
   if (trackedFortifyEndTerritoryId !== fortifyEndTerritoryId) {
@@ -1124,17 +1190,28 @@ function GameMap({
       for (const deposit of payload.deposits) animateDeploy(deposit);
       startAnimationLoop();
     }
+    function onEntrenched(payload: {
+      territoryId: number;
+      troops: number;
+      turnsRemaining: number;
+    }) {
+      playSound('entrench');
+      animateEntrench(payload);
+      startAnimationLoop();
+    }
     socket.on('game:deployed', onDeployed);
     socket.on('game:fortified', onFortified);
     socket.on('game:attackMoved', onAttackMoved);
     socket.on('game:deployedMany', onDeployedMany);
+    socket.on('game:entrenched', onEntrenched);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
       socket.off('game:attackMoved', onAttackMoved);
       socket.off('game:deployedMany', onDeployedMany);
+      socket.off('game:entrenched', onEntrenched);
     };
-  }, [animateDeploy]);
+  }, [animateDeploy, animateEntrench]);
 
   useEffect(() => {
     function onAttacked(payload: {
@@ -1484,6 +1561,11 @@ function GameMap({
     isMyTurn &&
     !paused &&
     fortifyEndTerritoryId !== null;
+  const entrenchPanelOpen =
+    turnPhase === 'entrench' &&
+    isMyTurn &&
+    !paused &&
+    selectedTerritoryId !== null;
   const attackRevealing = attackDiceRoll !== null && !attackDiceSettled;
   const attackDiceOnly =
     attackDiceSettled &&
@@ -1519,6 +1601,18 @@ function GameMap({
     );
   }, [selectedTerritoryId, deployTroops, setGame, turnPhase]);
 
+  const submitEntrench = useCallback(() => {
+    if (selectedTerritoryId === null) return;
+    socket.emit(
+      'game:entrench',
+      { territoryId: selectedTerritoryId, troops: entrenchTroops },
+      (res: Ack) => {
+        if (!res.ok) return;
+        setGame(res.game);
+      },
+    );
+  }, [selectedTerritoryId, entrenchTroops, setGame]);
+
   function isInteractable(t: Territory): boolean {
     if (pendingAttackEmoji) return !gameEnded;
     if (gameEnded || !isMyTurn || paused) return false;
@@ -1539,6 +1633,7 @@ function GameMap({
       if (attackEndTerritoryId === null) return attackEndCandidates.has(t.id);
       return false;
     }
+    if (turnPhase === 'entrench') return entrenchCandidates.has(t.id);
     return true;
   }
 
@@ -1622,6 +1717,16 @@ function GameMap({
           return;
         }
       }
+      if (isConfirmKey && entrenchPanelOpen) {
+        if (
+          !isTypingTarget(e.target) ||
+          e.target === entrenchInputRef.current
+        ) {
+          e.preventDefault();
+          submitEntrench();
+          return;
+        }
+      }
       if (isConfirmKey && attackPanelOpen && attackShowPendingConquest) {
         if (
           !isTypingTarget(e.target) ||
@@ -1702,6 +1807,8 @@ function GameMap({
     cancelFortify,
     fortifyPanelOpen,
     submitFortify,
+    entrenchPanelOpen,
+    submitEntrench,
     attackStartTerritoryId,
     attackPendingConquest,
     attackShowPendingConquest,
@@ -1767,6 +1874,13 @@ function GameMap({
         );
         return;
       }
+      if (entrenchPanelOpen) {
+        const delta = e.deltaY < 0 ? 1 : -1;
+        setEntrenchTroops((prev) =>
+          Math.min(entrenchMaxTroops, Math.max(1, prev + delta)),
+        );
+        return;
+      }
       if (attackPanelOpen && attackShowPendingConquest) {
         const delta = e.deltaY < 0 ? 1 : -1;
         setAttackMoveTroops((prev) =>
@@ -1819,6 +1933,8 @@ function GameMap({
     imgDims,
     fortifyPanelOpen,
     fortifyMaxTroops,
+    entrenchPanelOpen,
+    entrenchMaxTroops,
     attackPanelOpen,
     attackShowPendingConquest,
     attackDiceOnly,
@@ -1863,6 +1979,7 @@ function GameMap({
     if (
       turnPhase !== 'deploy' &&
       turnPhase !== 'troop' &&
+      turnPhase !== 'entrench' &&
       selectedTerritoryId !== null
     ) {
       const selected = territories.find((t) => t.id === selectedTerritoryId);
@@ -2018,6 +2135,20 @@ function GameMap({
       const fillColor = owner
         ? playerColor(colorByPlayerId.get(owner.ownerId) ?? 0)
         : UNCLAIMED_TERRITORY_COLOR;
+
+      if (owner && owner.entrenchedTurns > 0) {
+        traceOctagon(
+          ctx,
+          p.x,
+          p.y,
+          VERTEX_RADIUS * ENTRENCHED_OCTAGON_SCALE * zoom,
+        );
+        ctx.fillStyle = ENTRENCHED_OCTAGON_FILL;
+        ctx.fill();
+        ctx.strokeStyle = ENTRENCHED_OCTAGON_STROKE;
+        ctx.lineWidth = 2 * zoom;
+        ctx.stroke();
+      }
 
       ctx.beginPath();
       if (owner?.isCapital) {
@@ -2371,6 +2502,19 @@ function GameMap({
       } else {
         selectAttackEnd(vertex.id);
       }
+      return;
+    }
+
+    if (turnPhase === 'entrench') {
+      if (!vertex || !isInteractable(vertex)) {
+        if (selectedTerritoryId !== null) selectTerritory(null);
+        return;
+      }
+      if (selectedTerritoryId === vertex.id) {
+        submitEntrench();
+        return;
+      }
+      selectTerritory(vertex.id);
       return;
     }
 
@@ -2878,6 +3022,7 @@ function GameMap({
                 canLeaveDeploy={troopsToDeploy <= 0 && !mustPlaySet}
                 paused={paused}
                 setGame={setGame}
+                endsTurn={nextPhaseEndsTurn}
               />
             </>
           )}
@@ -2903,6 +3048,19 @@ function GameMap({
               onChange={setFortifyTroops}
               onConfirm={submitFortify}
               style={fortifyPanelStyle}
+            />
+          )}
+          {entrenchPanelOpen && deployPanelStyle && (
+            <TroopPanel
+              label="Entrench troops:"
+              buttonLabel="Entrench"
+              troops={entrenchTroops}
+              maxTroops={entrenchMaxTroops}
+              inputRef={entrenchInputRef}
+              onChange={setEntrenchTroops}
+              onConfirm={submitEntrench}
+              style={deployPanelStyle}
+              extra={`Entrenched: ${entrenchCurrentTurns} → ${entrenchCurrentTurns + entrenchTroops} turns`}
             />
           )}
           {attackPanelOpen && attackPanelStyle && (

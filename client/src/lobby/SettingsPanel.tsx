@@ -5,6 +5,7 @@ import type {
   Blitz,
   CardsMode,
   DefenceDice,
+  Entrenchment,
   Fortification,
   GameMode,
   GameSettingsInput,
@@ -153,6 +154,23 @@ const FORTIFICATION_HELP = (
   </>
 );
 
+const ENTRENCHMENT_HELP = (
+  <>
+    Adds an extra phase after fortifying where you can spend troops straight off
+    a territory to entrench it: 1 troop buys 1 turn of entrenchment, and an
+    entrenched territory always defends with 3 dice. Entrenchment decreases by 1
+    at the start of your next turn, and is lost if the territory is conquered.
+    Capitals can&apos;t be entrenched.
+    <ul className="mb-0 ps-3">
+      <li>Off: no entrench phase.</li>
+      <li>
+        On: only available when Defence Dice is 2 (otherwise entrenchment would
+        be redundant, since defenders already always roll 3).
+      </li>
+    </ul>
+  </>
+);
+
 const TURN_DURATION_HELP =
   "How long each player's turn can last. If time runs out, the game finishes it for them: leftover troops are dropped on random territories, any pending move is resolved automatically, and the turn ends.";
 
@@ -241,7 +259,7 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
       </div>
 
       <details className="mb-3">
-        <summary>Settings</summary>
+        <summary className="fw-bold">Settings</summary>
         <div className="mt-2">
           <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
             <Form.Label className="mb-0 d-flex align-items-center gap-1">
@@ -358,6 +376,30 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               </Form.Select>
             ) : (
               <span>{game.fortification}</span>
+            )}
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
+            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+              Entrenchment
+              <Help>{ENTRENCHMENT_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.entrenchment}
+                disabled={game.defenceDice !== 2}
+                onChange={(e) =>
+                  applySettings({
+                    entrenchment: e.target.value as Entrenchment,
+                  })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="on">On</option>
+              </Form.Select>
+            ) : (
+              <span>{game.entrenchment === 'on' ? 'On' : 'Off'}</span>
             )}
           </div>
 

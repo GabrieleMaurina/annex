@@ -11,6 +11,7 @@ interface Props {
   onChange: (troops: number) => void;
   onConfirm: () => void;
   style: React.CSSProperties;
+  extra?: React.ReactNode;
 }
 
 function TroopPanel({
@@ -23,37 +24,41 @@ function TroopPanel({
   onChange,
   onConfirm,
   style,
+  extra,
 }: Props) {
   return (
     <div
-      className="p-2 px-3 border rounded bg-body bg-opacity-75 d-flex align-items-center gap-2"
+      className="p-2 px-3 border rounded bg-body bg-opacity-75 d-flex flex-column gap-1"
       style={{
         ...style,
         zIndex: 1,
         whiteSpace: 'nowrap',
       }}
     >
-      <span>{label}</span>
-      <Form.Control
-        ref={inputRef}
-        type="number"
-        size="sm"
-        min={minTroops}
-        max={maxTroops}
-        value={troops}
-        onChange={(e) =>
-          onChange(
-            Math.min(
-              maxTroops,
-              Math.max(minTroops, Number(e.target.value) || minTroops),
-            ),
-          )
-        }
-        style={{ width: 70 }}
-      />
-      <Button size="sm" onClick={onConfirm}>
-        {buttonLabel}
-      </Button>
+      <div className="d-flex align-items-center gap-2">
+        <span>{label}</span>
+        <Form.Control
+          ref={inputRef}
+          type="number"
+          size="sm"
+          min={minTroops}
+          max={maxTroops}
+          value={troops}
+          onChange={(e) =>
+            onChange(
+              Math.min(
+                maxTroops,
+                Math.max(minTroops, Number(e.target.value) || minTroops),
+              ),
+            )
+          }
+          style={{ width: 70 }}
+        />
+        <Button size="sm" onClick={onConfirm}>
+          {buttonLabel}
+        </Button>
+      </div>
+      {extra && <span className="small text-body-secondary">{extra}</span>}
     </div>
   );
 }

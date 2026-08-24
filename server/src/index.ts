@@ -8,6 +8,7 @@ import {
   registerCardHandlers,
   registerDeployHandlers,
   registerEmojiHandlers,
+  registerEntrenchHandlers,
   registerFortifyHandlers,
   registerGameHandlers,
   registerReplayHandlers,
@@ -41,6 +42,7 @@ io.on('connection', (socket) => {
   registerDeployHandlers(io, socket, playersBySocket, playersById);
   registerEmojiHandlers(io, socket, playersBySocket, playersById);
   registerFortifyHandlers(io, socket, playersBySocket, playersById);
+  registerEntrenchHandlers(io, socket, playersBySocket, playersById);
   registerAttackHandlers(io, socket, playersBySocket, playersById);
   registerCardHandlers(io, socket, playersBySocket, playersById);
   registerReplayHandlers(io, socket, playersBySocket);

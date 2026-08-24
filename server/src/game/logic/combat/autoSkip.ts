@@ -34,3 +34,11 @@ export function hasAnyFortify(game: Game, playerId: number): boolean {
     );
   });
 }
+
+export function hasAnyEntrench(game: Game, playerId: number): boolean {
+  return ownedTerritoryIds(game, playerId).some(
+    (id) =>
+      (game.territoryTroops.get(id) ?? 0) >= 2 &&
+      !game.capitalTerritoryIds.has(id),
+  );
+}

@@ -116,6 +116,7 @@ function Lobby({
         cards: res.game.cards,
         placement: res.game.placement,
         fortification: res.game.fortification,
+        entrenchment: res.game.entrenchment,
         turnDuration: res.game.turnDuration,
         visibility: res.game.visibility,
       });

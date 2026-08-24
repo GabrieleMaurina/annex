@@ -50,8 +50,15 @@ export type GameMode =
   | 'Mission';
 export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
+export type Entrenchment = 'off' | 'on';
 export type TurnPhase =
-  'territory' | 'troop' | 'capital' | 'deploy' | 'attack' | 'fortify';
+  | 'territory'
+  | 'troop'
+  | 'capital'
+  | 'deploy'
+  | 'attack'
+  | 'fortify'
+  | 'entrench';
 export type Visibility = 'public' | 'private';
 
 export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
@@ -82,6 +89,7 @@ export interface GameState {
   cards: CardsMode;
   placement: Placement;
   fortification: Fortification;
+  entrenchment: Entrenchment;
   turnDuration: TurnDuration;
   hasPassword: boolean;
   visibility: Visibility;
@@ -133,6 +141,7 @@ export interface GameState {
     ownerId: number;
     troops: number;
     isCapital: boolean;
+    entrenchedTurns: number;
   }[];
 }
 
@@ -148,6 +157,7 @@ export interface GameSettingsInput {
   cards?: CardsMode;
   placement?: Placement;
   fortification?: Fortification;
+  entrenchment?: Entrenchment;
   turnDuration?: TurnDuration;
   password?: string | null;
   visibility?: Visibility;
@@ -162,6 +172,7 @@ export type GameRulesSettings = Pick<
   | 'cards'
   | 'placement'
   | 'fortification'
+  | 'entrenchment'
   | 'turnDuration'
   | 'visibility'
 >;
@@ -178,6 +189,7 @@ export interface ReplayTerritory {
   id: number;
   ownerId: number;
   troops: number;
+  entrenchedTurns: number;
 }
 
 export type ReplayAnimation =
@@ -197,7 +209,8 @@ export type ReplayAnimation =
       defenderId: number;
       attackLosses: number;
       defenceLosses: number;
-    };
+    }
+  | { type: 'entrench'; territoryId: number; troops: number; playerId: number };
 
 export interface ReplayFrame {
   territories: ReplayTerritory[];

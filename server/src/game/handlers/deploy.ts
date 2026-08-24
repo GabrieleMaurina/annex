@@ -42,7 +42,9 @@ export function registerDeployHandlers(
         if (!game.territoryOwners.has(territoryId))
           return callback({ ok: false, error: 'invalid territory' });
         if (
-          (game.turnPhase === 'deploy' || game.turnPhase === 'troop') &&
+          (game.turnPhase === 'deploy' ||
+            game.turnPhase === 'troop' ||
+            game.turnPhase === 'entrench') &&
           game.territoryOwners.get(territoryId) !== player.id
         )
           return callback({ ok: false, error: 'territory not owned' });

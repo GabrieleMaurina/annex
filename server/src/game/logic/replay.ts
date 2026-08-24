@@ -5,6 +5,7 @@ export function snapshotTerritories(game: Game): ReplayTerritory[] {
     id,
     ownerId,
     troops: game.territoryTroops.get(id) ?? 0,
+    entrenchedTurns: game.territoryEntrenchment.get(id) ?? 0,
   }));
 }
 

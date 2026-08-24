@@ -11,11 +11,14 @@ import type {
   GameSettingsInput,
   GameState,
   Placement,
+  Portals,
   TurnDuration,
   Visibility,
 } from '../lib/types';
 
 const TURN_DURATIONS: TurnDuration[] = [60, 90, 120, 150, 180, 300];
+
+const LABEL_STYLE = { minWidth: 130, flexShrink: 0 };
 
 const GAME_MODE_HELP = (
   <>
@@ -154,6 +157,26 @@ const FORTIFICATION_HELP = (
   </>
 );
 
+const PORTALS_HELP = (
+  <>
+    Whether the map has portals: pairs of territories linked as if they were
+    neighbors, letting attacks and troop movements pass between any two
+    territories that have one, no matter how far apart they are.
+    <ul className="mb-0 ps-3">
+      <li>Off: no portals.</li>
+      <li>
+        Static: a fixed number of portals (no two on adjacent territories) is
+        placed at random when the game starts and never changes.
+      </li>
+      <li>
+        Dynamic: the same number of portals is placed at the start, but they
+        alternate every other round between active and disabled, moving to new
+        random territories each time they go disabled.
+      </li>
+    </ul>
+  </>
+);
+
 const ENTRENCHMENT_HELP = (
   <>
     Adds an extra phase after fortifying where you can spend troops straight off
@@ -207,62 +230,73 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
   const [passwordInput, setPasswordInput] = useState('');
 
   return (
-    <div style={{ maxWidth: 400 }}>
-      <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-        <Form.Label className="mb-0 d-flex align-items-center gap-1">
-          Game Mode
-          <Help>{GAME_MODE_HELP}</Help>
-        </Form.Label>
-        {isHost ? (
-          <Form.Select
-            className="w-auto"
-            value={game.gameMode}
-            onChange={(e) =>
-              applySettings({ gameMode: e.target.value as GameMode })
-            }
+    <div className="flex-grow-1">
+      <div className="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2 mb-2">
+        <div className="col d-flex align-items-center gap-2">
+          <Form.Label
+            className="mb-0 d-flex align-items-center gap-1"
+            style={LABEL_STYLE}
           >
-            <option value="Supremacy">Supremacy</option>
-            <option value="Supremacy 3/4">Supremacy 3/4</option>
-            <option value="Supremacy 2/3">Supremacy 2/3</option>
-            <option value="Capitals">Capitals</option>
-            <option value="Team Deathmatch">Team Deathmatch</option>
-            <option value="5-Turn">5-Turn</option>
-            <option value="10-Turn">10-Turn</option>
-            <option value="Assassin">Assassin</option>
-            <option value="Mission">Mission</option>
-          </Form.Select>
-        ) : (
-          <span>{game.gameMode}</span>
-        )}
-      </div>
+            Game Mode
+            <Help>{GAME_MODE_HELP}</Help>
+          </Form.Label>
+          {isHost ? (
+            <Form.Select
+              className="w-auto"
+              value={game.gameMode}
+              onChange={(e) =>
+                applySettings({ gameMode: e.target.value as GameMode })
+              }
+            >
+              <option value="Supremacy">Supremacy</option>
+              <option value="Supremacy 3/4">Supremacy 3/4</option>
+              <option value="Supremacy 2/3">Supremacy 2/3</option>
+              <option value="Capitals">Capitals</option>
+              <option value="Team Deathmatch">Team Deathmatch</option>
+              <option value="5-Turn">5-Turn</option>
+              <option value="10-Turn">10-Turn</option>
+              <option value="Assassin">Assassin</option>
+              <option value="Mission">Mission</option>
+            </Form.Select>
+          ) : (
+            <span>{game.gameMode}</span>
+          )}
+        </div>
 
-      <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-        <Form.Label className="mb-0 d-flex align-items-center gap-1">
-          Map
-          <Help>{MAP_HELP}</Help>
-        </Form.Label>
-        {isHost ? (
-          <Form.Select
-            className="w-auto"
-            value={game.mapName}
-            onChange={(e) => applySettings({ mapName: e.target.value })}
+        <div className="col d-flex align-items-center gap-2">
+          <Form.Label
+            className="mb-0 d-flex align-items-center gap-1"
+            style={LABEL_STYLE}
           >
-            {mapNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Form.Select>
-        ) : (
-          <span>{game.mapName}</span>
-        )}
+            Map
+            <Help>{MAP_HELP}</Help>
+          </Form.Label>
+          {isHost ? (
+            <Form.Select
+              className="w-auto"
+              value={game.mapName}
+              onChange={(e) => applySettings({ mapName: e.target.value })}
+            >
+              {mapNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </Form.Select>
+          ) : (
+            <span>{game.mapName}</span>
+          )}
+        </div>
       </div>
 
       <details className="mb-3">
-        <summary className="fw-bold">Settings</summary>
-        <div className="mt-2">
-          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+        <summary className="fw-bold py-2">Settings</summary>
+        <div className="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2 mt-1">
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Blitz
               <Help>{BLITZ_HELP}</Help>
             </Form.Label>
@@ -284,8 +318,11 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
             )}
           </div>
 
-          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Defence Dice
               <Help>{DEFENCE_DICE_HELP}</Help>
             </Form.Label>
@@ -307,8 +344,11 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
             )}
           </div>
 
-          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Cards
               <Help>{CARDS_HELP}</Help>
             </Form.Label>
@@ -333,8 +373,11 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
             )}
           </div>
 
-          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Placement
               <Help>{PLACEMENT_HELP}</Help>
             </Form.Label>
@@ -355,8 +398,11 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
             )}
           </div>
 
-          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Fortification
               <Help>{FORTIFICATION_HELP}</Help>
             </Form.Label>
@@ -379,8 +425,42 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
             )}
           </div>
 
-          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Portals
+              <Help>{PORTALS_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.portals}
+                onChange={(e) =>
+                  applySettings({ portals: e.target.value as Portals })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="static">Static</option>
+                <option value="dynamic">Dynamic</option>
+              </Form.Select>
+            ) : (
+              <span>
+                {game.portals === 'off'
+                  ? 'Off'
+                  : game.portals === 'static'
+                    ? 'Static'
+                    : 'Dynamic'}
+              </span>
+            )}
+          </div>
+
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Entrenchment
               <Help>{ENTRENCHMENT_HELP}</Help>
             </Form.Label>
@@ -403,8 +483,11 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
             )}
           </div>
 
-          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Turn Duration
               <Help>{TURN_DURATION_HELP}</Help>
             </Form.Label>
@@ -429,8 +512,11 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
             )}
           </div>
 
-          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Visibility
               <Help>{VISIBILITY_HELP}</Help>
             </Form.Label>
@@ -452,8 +538,11 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
             )}
           </div>
 
-          <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-            <Form.Label className="mb-0 d-flex align-items-center gap-1">
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
               Password
               <Help>{PASSWORD_HELP}</Help>
             </Form.Label>
@@ -462,6 +551,7 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
                 <Form.Control
                   type="text"
                   className="w-auto"
+                  htmlSize={13}
                   placeholder={
                     game.hasPassword ? 'Change password' : 'No password'
                   }

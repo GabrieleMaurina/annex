@@ -30,10 +30,11 @@ function territoryStats(game: Game) {
   return stats;
 }
 
-export function gameSummary(game: Game) {
+export function gameSummary(game: Game, playersById: Map<number, Player>) {
   return {
     name: game.name,
     mapName: game.mapName,
+    hostName: playersById.get(game.hostId)?.name ?? '',
     playerCount: game.playerIds.length,
     slots: game.slots,
     state: game.state,
@@ -58,6 +59,9 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     placement: game.placement,
     fortification: game.fortification,
     entrenchment: game.entrenchment,
+    portals: game.portals,
+    portalTerritoryIds: game.portalTerritoryIds,
+    portalsEnabled: game.portalsEnabled,
     turnDuration: game.turnDuration,
     hasPassword: game.password !== null,
     visibility: game.visibility,

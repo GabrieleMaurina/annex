@@ -1,5 +1,6 @@
 import type { Fortification, GameState } from '../lib/types';
 import type { Territory } from './mapData';
+import { withPortalEdges } from './portals';
 
 type OwnerById = Map<number, GameState['territories'][number]>;
 
@@ -8,6 +9,8 @@ export function getFortifyStartCandidates(
   ownerById: OwnerById,
   selfId: number | null,
   fortification: Fortification,
+  portalTerritoryIds: number[],
+  portalsEnabled: boolean,
 ): Set<number> {
   const ownedCount = territories.filter(
     (t) => ownerById.get(t.id)?.ownerId === selfId,
@@ -18,8 +21,16 @@ export function getFortifyStartCandidates(
     if (!owner || owner.ownerId !== selfId || owner.troops < 2) continue;
     if (fortification === 'Unrestricted') {
       if (ownedCount > 1) candidates.add(t.id);
-    } else if (t.neighbors.some((n) => ownerById.get(n)?.ownerId === selfId)) {
-      candidates.add(t.id);
+    } else {
+      const neighbors = withPortalEdges(
+        t.neighbors,
+        t.id,
+        portalTerritoryIds,
+        portalsEnabled,
+      );
+      if (neighbors.some((n) => ownerById.get(n)?.ownerId === selfId)) {
+        candidates.add(t.id);
+      }
     }
   }
   return candidates;
@@ -31,6 +42,8 @@ export function getFortifyEndCandidates(
   selfId: number | null,
   startId: number,
   fortification: Fortification,
+  portalTerritoryIds: number[],
+  portalsEnabled: boolean,
 ): Set<number> {
   if (fortification === 'Unrestricted') {
     return new Set(
@@ -43,17 +56,27 @@ export function getFortifyEndCandidates(
   }
   const territoryById = new Map(territories.map((t) => [t.id, t]));
   if (fortification === 'Neighboring') {
+    const neighbors = withPortalEdges(
+      territoryById.get(startId)?.neighbors ?? [],
+      startId,
+      portalTerritoryIds,
+      portalsEnabled,
+    );
     return new Set(
-      (territoryById.get(startId)?.neighbors ?? []).filter(
-        (n) => ownerById.get(n)?.ownerId === selfId,
-      ),
+      neighbors.filter((n) => ownerById.get(n)?.ownerId === selfId),
     );
   }
   const visited = new Set<number>([startId]);
   const queue = [startId];
   while (queue.length > 0) {
     const current = queue.shift()!;
-    for (const neighborId of territoryById.get(current)?.neighbors ?? []) {
+    const neighbors = withPortalEdges(
+      territoryById.get(current)?.neighbors ?? [],
+      current,
+      portalTerritoryIds,
+      portalsEnabled,
+    );
+    for (const neighborId of neighbors) {
       if (visited.has(neighborId)) continue;
       if (ownerById.get(neighborId)?.ownerId !== selfId) continue;
       visited.add(neighborId);
@@ -71,6 +94,8 @@ export function getFortifyPath(
   startId: number,
   endId: number,
   fortification: Fortification,
+  portalTerritoryIds: number[],
+  portalsEnabled: boolean,
 ): number[] {
   if (fortification === 'Unrestricted') return [startId, endId];
   const territoryById = new Map(territories.map((t) => [t.id, t]));
@@ -80,7 +105,13 @@ export function getFortifyPath(
   while (queue.length > 0) {
     const current = queue.shift()!;
     if (current === endId) break;
-    for (const neighborId of territoryById.get(current)?.neighbors ?? []) {
+    const neighbors = withPortalEdges(
+      territoryById.get(current)?.neighbors ?? [],
+      current,
+      portalTerritoryIds,
+      portalsEnabled,
+    );
+    for (const neighborId of neighbors) {
       if (visited.has(neighborId)) continue;
       if (ownerById.get(neighborId)?.ownerId !== ownerId) continue;
       visited.add(neighborId);

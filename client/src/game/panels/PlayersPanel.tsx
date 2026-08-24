@@ -4,7 +4,6 @@ import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor, playerColor } from '../../lib/palette';
-import { socket } from '../../lib/socket';
 import type { GameMode, GameState, Mission, TurnPhase } from '../../lib/types';
 import { EMOJI_POP_DURATION, GLOBAL_TARGET_ID, type EmojiPop } from '../emoji';
 
@@ -51,6 +50,7 @@ interface Props {
   hostId: number;
   paused: boolean;
   onTogglePause: () => void;
+  onSurrender: () => void;
   turnNumber: number;
   turnPhase: TurnPhase;
   turnPlayerId: number | null;
@@ -75,6 +75,7 @@ function PlayersPanel({
   hostId,
   paused,
   onTogglePause,
+  onSurrender,
   turnNumber,
   turnPhase,
   turnPlayerId,
@@ -111,10 +112,6 @@ function PlayersPanel({
   const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
   const whitePlayIcon = useWhiteIcon('/icons/play.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
-
-  function surrender() {
-    socket.emit('game:surrender', () => {});
-  }
 
   if (collapsed) {
     return (
@@ -429,7 +426,7 @@ function PlayersPanel({
               variant="danger"
               size="sm"
               className="d-flex align-items-center gap-1"
-              onClick={surrender}
+              onClick={onSurrender}
             >
               <img
                 src={whiteFlagIcon ?? '/icons/flag.svg'}

@@ -38,12 +38,14 @@ import {
   DICE_ROLL_STEPS,
   drawAnimations,
   drawFortifyPath,
+  drawPortal,
   ENTRENCHED_OCTAGON_SCALE,
   getAnimationDuration,
   hasActiveAnimations,
   onAnimationsToggle,
   pruneAnimations,
   setContinuousAnimation,
+  setPortalsActive,
   startAnimation,
   traceOctagon,
 } from './animations';
@@ -130,6 +132,8 @@ interface Props {
   turnDuration: TurnDuration;
   fortification: Fortification;
   entrenchment: Entrenchment;
+  portalTerritoryIds: number[];
+  portalsEnabled: boolean;
   troopsToDeploy: number;
   turnStartedAt: number;
   paused: boolean;
@@ -275,6 +279,8 @@ function GameMap({
   turnDuration,
   fortification,
   entrenchment,
+  portalTerritoryIds,
+  portalsEnabled,
   troopsToDeploy,
   turnStartedAt,
   paused,
@@ -607,6 +613,8 @@ function GameMap({
             animation.fromTerritoryId,
             animation.toTerritoryId,
             fortification,
+            portalTerritoryIds,
+            portalsEnabled,
           );
           arrowPath = territoryPoints(
             pathIds.length > 1
@@ -661,7 +669,15 @@ function GameMap({
       }
       startAnimationLoop();
     },
-    [animateDeploy, animateEntrench, explode, territoryPoints, fortification],
+    [
+      animateDeploy,
+      animateEntrench,
+      explode,
+      territoryPoints,
+      fortification,
+      portalTerritoryIds,
+      portalsEnabled,
+    ],
   );
 
   const {
@@ -799,6 +815,12 @@ function GameMap({
     [setGame],
   );
 
+  const surrender = useCallback(() => {
+    socket.emit('game:surrender', (res: Ack) => {
+      if (res.ok) setGame(res.game);
+    });
+  }, [setGame]);
+
   const submitFortify = useCallback(() => {
     socket.emit('game:fortify', { troops: fortifyTroops }, (res: Ack) => {
       if (!res.ok) return;
@@ -883,6 +905,8 @@ function GameMap({
             territories,
             freshOwnerById,
             selfId,
+            portalTerritoryIds,
+            portalsEnabled,
           );
           if (candidates.has(conqueredTerritoryId)) {
             selectAttackStart(conqueredTerritoryId);
@@ -890,7 +914,15 @@ function GameMap({
         }
       });
     },
-    [attackStartTerritoryId, territories, selfId, setGame, selectAttackStart],
+    [
+      attackStartTerritoryId,
+      territories,
+      selfId,
+      portalTerritoryIds,
+      portalsEnabled,
+      setGame,
+      selectAttackStart,
+    ],
   );
 
   const submitAttack = useCallback(() => {
@@ -994,7 +1026,14 @@ function GameMap({
       : new Set<number>();
   const fortifyStartCandidates =
     turnPhase === 'fortify' && isMyTurn
-      ? getFortifyStartCandidates(territories, ownerById, selfId, fortification)
+      ? getFortifyStartCandidates(
+          territories,
+          ownerById,
+          selfId,
+          fortification,
+          portalTerritoryIds,
+          portalsEnabled,
+        )
       : new Set<number>();
   const fortifyEndCandidates =
     turnPhase === 'fortify' && isMyTurn && fortifyStartTerritoryId !== null
@@ -1004,6 +1043,8 @@ function GameMap({
           selfId,
           fortifyStartTerritoryId,
           fortification,
+          portalTerritoryIds,
+          portalsEnabled,
         )
       : new Set<number>();
   const fortifyMaxTroops =
@@ -1025,6 +1066,8 @@ function GameMap({
           fortifyStartTerritoryId,
           fortifyEndTerritoryId,
           fortification,
+          portalTerritoryIds,
+          portalsEnabled,
         )
       : [];
 
@@ -1047,7 +1090,13 @@ function GameMap({
   const attackPendingConquest = attackConquestMinTroops !== null;
   const attackStartCandidates =
     turnPhase === 'attack' && isMyTurn && !attackPendingConquest
-      ? getAttackStartCandidates(territories, ownerById, selfId)
+      ? getAttackStartCandidates(
+          territories,
+          ownerById,
+          selfId,
+          portalTerritoryIds,
+          portalsEnabled,
+        )
       : new Set<number>();
   const attackEndCandidates =
     turnPhase === 'attack' &&
@@ -1059,6 +1108,8 @@ function GameMap({
           ownerById,
           selfId,
           attackStartTerritoryId,
+          portalTerritoryIds,
+          portalsEnabled,
         )
       : new Set<number>();
   const attackMoveMinTroops = attackConquestMinTroops ?? 1;
@@ -1276,6 +1327,13 @@ function GameMap({
     if (arrowActive) startAnimationLoop();
     return () => setContinuousAnimation(false);
   }, [replayConquestArrow]);
+
+  useEffect(() => {
+    const active = portalsEnabled && portalTerritoryIds.length > 0;
+    setPortalsActive(active);
+    if (active) startAnimationLoop();
+    return () => setPortalsActive(false);
+  }, [portalsEnabled, portalTerritoryIds]);
 
   useEffect(() => {
     function onSelected() {
@@ -2127,6 +2185,8 @@ function GameMap({
     }
 
     const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
+    const portalTerritoryIdSet = new Set(portalTerritoryIds);
+    const now = performance.now();
 
     for (const t of territories) {
       const p = toScreen(t);
@@ -2135,6 +2195,18 @@ function GameMap({
       const fillColor = owner
         ? playerColor(colorByPlayerId.get(owner.ownerId) ?? 0)
         : UNCLAIMED_TERRITORY_COLOR;
+
+      if (portalTerritoryIdSet.has(t.id)) {
+        drawPortal(
+          ctx,
+          p.x,
+          p.y,
+          VERTEX_RADIUS * zoom,
+          now,
+          portalsEnabled,
+          t.id,
+        );
+      }
 
       if (owner && owner.entrenchedTurns > 0) {
         traceOctagon(
@@ -2790,6 +2862,7 @@ function GameMap({
         hostId={hostId}
         paused={paused}
         onTogglePause={onTogglePause}
+        onSurrender={surrender}
         gameEnded={gameEnded}
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}

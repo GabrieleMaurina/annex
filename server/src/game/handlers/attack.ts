@@ -11,6 +11,7 @@ import {
   trueWinProbs,
 } from '../logic/combat/dice';
 import { checkGameEnd } from '../logic/end';
+import { withPortalEdges } from '../logic/portals';
 import { recordElimination } from '../logic/progression/stats';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
@@ -64,12 +65,16 @@ function isAttackStartCandidate(
   if ((game.territoryTroops.get(territoryId) ?? 0) < 2) return false;
   const map = maps.get(game.mapName)!;
   const territory = map.territories.find((t) => t.id === territoryId);
-  return (
-    territory?.neighbors.some((n) => {
-      const ownerId = game.territoryOwners.get(n);
-      return ownerId !== undefined && ownerId !== playerId;
-    }) ?? false
+  const neighbors = withPortalEdges(
+    territory?.neighbors ?? [],
+    territoryId,
+    game.portalTerritoryIds,
+    game.portalsEnabled,
   );
+  return neighbors.some((n) => {
+    const ownerId = game.territoryOwners.get(n);
+    return ownerId !== undefined && ownerId !== playerId;
+  });
 }
 
 function isAttackEndCandidate(
@@ -82,7 +87,13 @@ function isAttackEndCandidate(
   if (ownerId === undefined || ownerId === playerId) return false;
   const map = maps.get(game.mapName)!;
   const territory = map.territories.find((t) => t.id === startId);
-  return territory?.neighbors.includes(territoryId) ?? false;
+  const neighbors = withPortalEdges(
+    territory?.neighbors ?? [],
+    startId,
+    game.portalTerritoryIds,
+    game.portalsEnabled,
+  );
+  return neighbors.includes(territoryId);
 }
 
 function hasPendingConquest(game: Game, playerId: number): boolean {

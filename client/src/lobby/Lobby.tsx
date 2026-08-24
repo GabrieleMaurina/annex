@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/useTableEmojiReactions';
-import { saveGameSettings } from '../lib/player';
+import { saveGameName, saveGameSettings } from '../lib/player';
 import { socket } from '../lib/socket';
 import type { Ack, GameSettingsInput, GameState, Player } from '../lib/types';
 import BannedList from './BannedList';
@@ -54,8 +54,7 @@ function Lobby({
       }
       setSettingsError('');
       setGame(res.game);
-      if (settings.name !== undefined)
-        navigate(`/${encodeURIComponent(res.game.name)}`);
+      if (settings.name !== undefined) saveGameName(res.game.name);
     });
   }
 
@@ -108,18 +107,22 @@ function Lobby({
         return;
       }
       setSettingsError('');
-      saveGameSettings({
-        mapName: res.game.mapName,
-        gameMode: res.game.gameMode,
-        blitz: res.game.blitz,
-        defenceDice: res.game.defenceDice,
-        cards: res.game.cards,
-        placement: res.game.placement,
-        fortification: res.game.fortification,
-        entrenchment: res.game.entrenchment,
-        turnDuration: res.game.turnDuration,
-        visibility: res.game.visibility,
-      });
+      saveGameSettings(
+        {
+          mapName: res.game.mapName,
+          gameMode: res.game.gameMode,
+          blitz: res.game.blitz,
+          defenceDice: res.game.defenceDice,
+          cards: res.game.cards,
+          placement: res.game.placement,
+          fortification: res.game.fortification,
+          entrenchment: res.game.entrenchment,
+          portals: res.game.portals,
+          turnDuration: res.game.turnDuration,
+          visibility: res.game.visibility,
+        },
+        res.game.slots,
+      );
       setGame(res.game);
     });
   }

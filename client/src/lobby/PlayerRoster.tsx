@@ -48,6 +48,7 @@ function PlayerRoster({
       <Table striped borderless hover size="sm" className="mb-0">
         <thead>
           <tr>
+            <th style={{ width: '1%' }} className="text-nowrap"></th>
             <th style={{ width: '100%' }}>Player</th>
             {isTeamDeathmatch && <th className="text-nowrap">Team</th>}
             {isHost && (
@@ -80,6 +81,9 @@ function PlayerRoster({
                     : undefined
                 }
               >
+                <td className="align-middle text-nowrap px-3" style={rowStyle}>
+                  {i + 1}
+                </td>
                 <td className="align-middle" style={rowStyle}>
                   {p ? (
                     <span
@@ -136,7 +140,7 @@ function PlayerRoster({
                     onClick={(e) => e.stopPropagation()}
                   >
                     {p?.id !== selfId && (
-                      <Tip text="Kick/Ban">
+                      <Tip text={p ? 'Kick/Ban' : 'Remove'}>
                         <Button
                           variant="danger"
                           className="d-inline-flex align-items-center justify-content-center"
@@ -156,17 +160,19 @@ function PlayerRoster({
           {isHost && (
             <tr>
               <td
-                colSpan={1 + (isTeamDeathmatch ? 1 : 0) + 1}
+                colSpan={2 + (isTeamDeathmatch ? 1 : 0) + 1}
                 className="text-center align-middle"
               >
-                <Button
-                  size="sm"
-                  variant="success"
-                  onClick={addSlot}
-                  disabled={game.slots >= MAX_SLOTS}
-                >
-                  +
-                </Button>
+                <Tip text="Add slot" placement="bottom">
+                  <Button
+                    size="sm"
+                    variant="success"
+                    onClick={addSlot}
+                    disabled={game.slots >= MAX_SLOTS}
+                  >
+                    +
+                  </Button>
+                </Tip>
               </td>
             </tr>
           )}

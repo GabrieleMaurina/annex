@@ -8,6 +8,7 @@ import {
   ownsAnyTerritory,
   turnOrderBonus,
 } from './mechanics';
+import { portalCount, selectPortalTerritories } from './portals';
 import {
   counterKey,
   pickBestSet,
@@ -607,10 +608,13 @@ export function advanceToNextPlayer(
   }
   game.conqueredThisTurn = false;
 
+  const previousTurnNumber = game.turnNumber;
   const nextIndex = nextAlivePlayerIndex(game);
 
   checkGameEnd(game, true);
   if (game.state === 'ended') return;
+
+  if (game.turnNumber !== previousTurnNumber) updatePortalsForNewTurn(game);
 
   game.turnPlayerIndex = nextIndex;
   game.turnPhase = 'deploy';
@@ -656,6 +660,32 @@ export function advanceTurnPhase(
   }
 }
 
+function initializePortals(game: Game) {
+  if (game.portals === 'off') {
+    game.portalTerritoryIds = [];
+    game.portalsEnabled = false;
+    return;
+  }
+  const map = maps.get(game.mapName)!;
+  game.portalTerritoryIds = selectPortalTerritories(map, portalCount(map));
+  game.portalsEnabled = game.portals === 'static';
+}
+
+function updatePortalsForNewTurn(game: Game) {
+  if (game.portals !== 'dynamic') return;
+  if (game.turnNumber % 2 === 1) {
+    game.portalsEnabled = true;
+    return;
+  }
+  const map = maps.get(game.mapName)!;
+  game.portalTerritoryIds = selectPortalTerritories(
+    map,
+    portalCount(map),
+    new Set(game.portalTerritoryIds),
+  );
+  game.portalsEnabled = false;
+}
+
 export function startTurns(
   game: Game,
   io: Server,
@@ -671,6 +701,7 @@ export function startTurns(
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
   game.conqueredThisTurn = false;
+  initializePortals(game);
   startDeployPhase(game, io, game.playerIds[0]);
   scheduleTurnTimer(game, io, playersById);
 }

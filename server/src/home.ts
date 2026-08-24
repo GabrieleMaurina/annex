@@ -62,7 +62,7 @@ export function registerHomeHandlers(
       playersBySocket.set(socket.id, player);
 
       if (room !== (player.gameName ?? HOME_ROOM))
-        leaveGame(player, playersById, io);
+        leaveGame(player, playersById, io, true);
       handleReconnect(player, playersById);
 
       const game = player.gameName ? games.get(player.gameName) : undefined;
@@ -96,11 +96,14 @@ export function registerHomeHandlers(
     playersBySocket.delete(socket.id);
     if (player) {
       player.connected = false;
-      leaveGame(player, playersById, io);
+      leaveGame(player, playersById, io, false);
     }
   });
 }
 
-export function broadcastHomeGames(io: Server) {
-  io.to(HOME_ROOM).emit('home:games', listGameSummaries());
+export function broadcastHomeGames(
+  io: Server,
+  playersById: Map<number, Player>,
+) {
+  io.to(HOME_ROOM).emit('home:games', listGameSummaries(playersById));
 }

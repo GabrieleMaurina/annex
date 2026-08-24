@@ -11,6 +11,7 @@ import {
   HOME_ROOM,
   Placement,
   Player,
+  Portals,
   TurnDuration,
   Visibility,
 } from '../../types';
@@ -79,6 +80,7 @@ const FORTIFICATION_VALUES: Fortification[] = [
   'Unrestricted',
 ];
 const ENTRENCHMENT_VALUES: Entrenchment[] = ['off', 'on'];
+const PORTALS_VALUES: Portals[] = ['off', 'static', 'dynamic'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
 const MAX_PASSWORD_LENGTH = 50;
@@ -139,6 +141,9 @@ export function registerGameHandlers(
         placement: 'Random',
         fortification: 'Connected',
         entrenchment: 'off',
+        portals: 'off',
+        portalTerritoryIds: [],
+        portalsEnabled: false,
         turnDuration: 120,
         password: null,
         visibility: 'public',
@@ -169,6 +174,7 @@ export function registerGameHandlers(
         capitalTerritoryIds: new Set(),
         playerMissions: new Map(),
         hostPriority: [player.id],
+        substituteFor: new Map(),
         surrenderedIds: new Set(),
         winnerIds: [],
         deck: [],
@@ -395,6 +401,12 @@ export function registerGameHandlers(
         game.entrenchment = settings.entrenchment as Entrenchment;
       }
 
+      if (settings.portals !== undefined) {
+        if (!(PORTALS_VALUES as unknown[]).includes(settings.portals))
+          return callback({ ok: false, error: 'invalid portals' });
+        game.portals = settings.portals as Portals;
+      }
+
       if (settings.turnDuration !== undefined) {
         if (
           !(TURN_DURATION_VALUES as unknown[]).includes(settings.turnDuration)
@@ -442,6 +454,12 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'not enough players' });
     if (game.gameMode === 'Team Deathmatch' && teamCount(game) < 2)
       return callback({ ok: false, error: 'not enough teams' });
+
+    for (const ownerId of game.substituteFor.values()) {
+      const owner = playersById.get(ownerId);
+      if (owner && owner.gameName === game.name) owner.gameName = null;
+    }
+    game.substituteFor.clear();
 
     if (game.gameMode === 'Team Deathmatch') {
       compactTeams(game);

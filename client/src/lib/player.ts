@@ -86,12 +86,50 @@ export function getGameSettings(): GameRulesSettings | null {
   }
 }
 
-export function saveGameSettings(gameSettings: GameRulesSettings) {
+export function saveGameSettings(
+  gameSettings: GameRulesSettings,
+  gameSlots: number,
+) {
   const raw = readCookie(COOKIE_NAME);
   if (!raw) return;
   try {
     const parsed = JSON.parse(raw);
     if (!parsed.key || !parsed.name) return;
-    writeCookie(COOKIE_NAME, JSON.stringify({ ...parsed, gameSettings }));
+    writeCookie(
+      COOKIE_NAME,
+      JSON.stringify({ ...parsed, gameSettings, gameSlots }),
+    );
+  } catch {}
+}
+
+export function getGameSlots(): number | null {
+  const raw = readCookie(COOKIE_NAME);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed.gameSlots === 'number' ? parsed.gameSlots : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getGameName(): string | null {
+  const raw = readCookie(COOKIE_NAME);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed.gameName === 'string' ? parsed.gameName : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveGameName(gameName: string) {
+  const raw = readCookie(COOKIE_NAME);
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed.key || !parsed.name) return;
+    writeCookie(COOKIE_NAME, JSON.stringify({ ...parsed, gameName }));
   } catch {}
 }

@@ -19,6 +19,7 @@ interface Props {
   onSubmitPassword: (password: string) => void;
   mapNames: string[];
   navigate: (path: string) => void;
+  onRename: (name: string) => void;
 }
 
 function Game({
@@ -30,6 +31,7 @@ function Game({
   onSubmitPassword,
   mapNames,
   navigate,
+  onRename,
 }: Props) {
   const [game, setGame] = useState<GameState | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
@@ -59,6 +61,10 @@ function Game({
       socket.off('game:state', onState);
     };
   }, []);
+
+  useEffect(() => {
+    if (game?.name) onRename(game.name);
+  }, [game?.name, onRename]);
 
   useEffect(() => {
     function onMission(payload: { mission: Mission }) {
@@ -163,6 +169,8 @@ function Game({
           turnDuration={game.turnDuration}
           fortification={game.fortification}
           entrenchment={game.entrenchment}
+          portalTerritoryIds={game.portalTerritoryIds}
+          portalsEnabled={game.portalsEnabled}
           troopsToDeploy={game.troopsToDeploy}
           turnStartedAt={game.turnStartedAt}
           paused={game.paused}

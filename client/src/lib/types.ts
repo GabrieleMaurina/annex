@@ -9,11 +9,14 @@ export interface Player {
   name: string;
   settings?: PlayerSettings;
   gameSettings?: GameRulesSettings;
+  gameSlots?: number;
+  gameName?: string;
 }
 
 export interface GameSummary {
   name: string;
   mapName: string;
+  hostName: string;
   playerCount: number;
   slots: number;
   state: 'lobby' | 'playing' | 'ended';
@@ -51,6 +54,7 @@ export type GameMode =
 export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchment = 'off' | 'on';
+export type Portals = 'off' | 'static' | 'dynamic';
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -90,6 +94,9 @@ export interface GameState {
   placement: Placement;
   fortification: Fortification;
   entrenchment: Entrenchment;
+  portals: Portals;
+  portalTerritoryIds: number[];
+  portalsEnabled: boolean;
   turnDuration: TurnDuration;
   hasPassword: boolean;
   visibility: Visibility;
@@ -158,6 +165,7 @@ export interface GameSettingsInput {
   placement?: Placement;
   fortification?: Fortification;
   entrenchment?: Entrenchment;
+  portals?: Portals;
   turnDuration?: TurnDuration;
   password?: string | null;
   visibility?: Visibility;
@@ -173,6 +181,7 @@ export type GameRulesSettings = Pick<
   | 'placement'
   | 'fortification'
   | 'entrenchment'
+  | 'portals'
   | 'turnDuration'
   | 'visibility'
 >;

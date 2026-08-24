@@ -23,7 +23,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: true,
+    origin: 'http://localhost:5000',
   },
 });
 
@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
 });
 
 setInterval(() => {
-  broadcastHomeGames(io);
+  broadcastHomeGames(io, playersById);
   broadcastGameStates(io, playersById);
 }, 1000);
 

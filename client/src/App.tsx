@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
-import { getPlayer, savePlayer } from './lib/player';
+import {
+  getGameSettings,
+  getGameSlots,
+  getPlayer,
+  savePlayer,
+} from './lib/player';
 import { socket } from './lib/socket';
 import type { Ack, Player } from './lib/types';
 import Game from './pages/Game';
@@ -45,6 +50,10 @@ function App() {
     setPath(newPath);
   }
 
+  const renameRoom = useCallback((newName: string) => {
+    window.history.replaceState(null, '', `/${encodeURIComponent(newName)}`);
+  }, []);
+
   const attemptJoin = useCallback(
     (password?: string) => {
       socket.emit('game:join', { gameName: room, password }, (res: Ack) => {
@@ -63,7 +72,17 @@ function App() {
         }
 
         socket.emit('game:create', { name: room }, (createRes: Ack) => {
-          if (createRes.ok || createRes.error === 'already in a game') {
+          if (createRes.ok) {
+            const savedSettings = getGameSettings();
+            if (savedSettings)
+              socket.emit('game:settings', savedSettings, () => {});
+            const savedSlots = getGameSlots();
+            if (savedSlots)
+              socket.emit('game:settings', { slots: savedSlots }, () => {});
+            setJoinError('');
+            return;
+          }
+          if (createRes.error === 'already in a game') {
             setJoinError('');
             return;
           }
@@ -191,6 +210,7 @@ function App() {
       onSubmitPassword={attemptJoin}
       mapNames={mapNames}
       navigate={navigate}
+      onRename={renameRoom}
     />
   );
 }

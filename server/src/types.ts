@@ -52,6 +52,7 @@ export type GameMode =
 export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchment = 'off' | 'on';
+export type Portals = 'off' | 'static' | 'dynamic';
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -134,6 +135,9 @@ export interface Game {
   placement: Placement;
   fortification: Fortification;
   entrenchment: Entrenchment;
+  portals: Portals;
+  portalTerritoryIds: number[];
+  portalsEnabled: boolean;
   turnDuration: TurnDuration;
   password: string | null;
   visibility: Visibility;
@@ -164,6 +168,7 @@ export interface Game {
   capitalTerritoryIds: Set<number>;
   playerMissions: Map<number, Mission>;
   hostPriority: number[];
+  substituteFor: Map<number, number>;
   surrenderedIds: Set<number>;
   winnerIds: number[];
   deck: Card[];

@@ -1,5 +1,6 @@
 import type { GameState } from '../lib/types';
 import type { Territory } from './mapData';
+import { withPortalEdges } from './portals';
 
 type OwnerById = Map<number, GameState['territories'][number]>;
 
@@ -7,13 +8,21 @@ export function getAttackStartCandidates(
   territories: Territory[],
   ownerById: OwnerById,
   selfId: number | null,
+  portalTerritoryIds: number[],
+  portalsEnabled: boolean,
 ): Set<number> {
   const candidates = new Set<number>();
   for (const t of territories) {
     const owner = ownerById.get(t.id);
     if (!owner || owner.ownerId !== selfId || owner.troops < 2) continue;
+    const neighbors = withPortalEdges(
+      t.neighbors,
+      t.id,
+      portalTerritoryIds,
+      portalsEnabled,
+    );
     if (
-      t.neighbors.some((n) => {
+      neighbors.some((n) => {
         const neighborOwner = ownerById.get(n);
         return neighborOwner && neighborOwner.ownerId !== selfId;
       })
@@ -29,10 +38,18 @@ export function getAttackEndCandidates(
   ownerById: OwnerById,
   selfId: number | null,
   startId: number,
+  portalTerritoryIds: number[],
+  portalsEnabled: boolean,
 ): Set<number> {
   const candidates = new Set<number>();
   const territory = territories.find((t) => t.id === startId);
-  for (const n of territory?.neighbors ?? []) {
+  const neighbors = withPortalEdges(
+    territory?.neighbors ?? [],
+    startId,
+    portalTerritoryIds,
+    portalsEnabled,
+  );
+  for (const n of neighbors) {
     const owner = ownerById.get(n);
     if (owner && owner.ownerId !== selfId) candidates.add(n);
   }

@@ -5,7 +5,12 @@ import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import { getGameSettings } from '../lib/player';
+import {
+  getGameName,
+  getGameSettings,
+  getGameSlots,
+  saveGameName,
+} from '../lib/player';
 import { socket } from '../lib/socket';
 import type { Ack, GameSummary, Player } from '../lib/types';
 
@@ -26,8 +31,7 @@ interface Props {
   clearKickedMessage: () => void;
 }
 
-function suggestedGameName(playerName: string, attempt: number): string {
-  const base = `Game with ${playerName}`;
+function suggestedGameName(base: string, attempt: number): string {
   if (attempt === 0) return base;
   const suffix = ` (${attempt})`;
   return base.length + suffix.length > MAX_GAME_NAME_LENGTH
@@ -61,13 +65,17 @@ function Home({
   }, []);
 
   function createGame(attempt = 0) {
-    const name =
-      attempt === 0 ? undefined : suggestedGameName(player.name, attempt);
+    const baseName = getGameName() || `Game with ${player.name}`;
+    const name = suggestedGameName(baseName, attempt);
     socket.emit('game:create', { name }, (res: Ack) => {
       if (res.ok) {
+        saveGameName(baseName);
         const savedSettings = getGameSettings();
         if (savedSettings)
           socket.emit('game:settings', savedSettings, () => {});
+        const savedSlots = getGameSlots();
+        if (savedSlots)
+          socket.emit('game:settings', { slots: savedSlots }, () => {});
         navigate(`/${encodeURIComponent(res.game.name)}`);
       } else if (
         res.error === 'game name already in use' &&
@@ -171,56 +179,64 @@ function Home({
         Create Game
       </Button>
 
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Map</th>
-            <th>Players</th>
-            <th>Phase</th>
-          </tr>
-        </thead>
-        <tbody>
-          {games.map((g) => {
-            const isFullLobby = g.state === 'lobby' && g.playerCount >= g.slots;
-            const bg = isFullLobby
-              ? GAME_STATE_COLORS.playing
-              : GAME_STATE_COLORS[g.state];
-            const rowStyle = {
-              backgroundColor: bg,
-              color: contrastTextColor(bg),
-            };
-            return (
-              <tr
-                key={g.name}
-                onClick={() =>
-                  g.hasPassword
-                    ? setPasswordPrompt({ gameName: g.name, password: '' })
-                    : joinGame(g.name)
-                }
-                style={{ cursor: 'pointer' }}
-              >
-                <td style={rowStyle}>
-                  {g.name}
-                  {g.hasPassword && ' \u{1F512}'}
-                </td>
-                <td style={rowStyle}>{g.mapName}</td>
-                <td style={rowStyle}>
-                  {g.playerCount}/{g.slots}
-                  {g.spectatorCount > 0 && ` · ${g.spectatorCount} spectating`}
-                </td>
-                <td style={rowStyle}>
-                  {g.state === 'lobby'
-                    ? 'Lobby'
-                    : g.state === 'playing'
-                      ? 'Playing'
-                      : 'Ended'}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </Table>
+      {games.length === 0 ? (
+        <p className="text-center">No Games Available</p>
+      ) : (
+        <Table striped hover borderless>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Map</th>
+              <th>Host</th>
+              <th>Players</th>
+              <th>Phase</th>
+            </tr>
+          </thead>
+          <tbody>
+            {games.map((g) => {
+              const isFullLobby =
+                g.state === 'lobby' && g.playerCount >= g.slots;
+              const bg = isFullLobby
+                ? GAME_STATE_COLORS.playing
+                : GAME_STATE_COLORS[g.state];
+              const rowStyle = {
+                backgroundColor: bg,
+                color: contrastTextColor(bg),
+              };
+              return (
+                <tr
+                  key={g.name}
+                  onClick={() =>
+                    g.hasPassword
+                      ? setPasswordPrompt({ gameName: g.name, password: '' })
+                      : joinGame(g.name)
+                  }
+                  style={{ cursor: 'pointer' }}
+                >
+                  <td style={rowStyle}>
+                    {g.name}
+                    {g.hasPassword && ' \u{1F512}'}
+                  </td>
+                  <td style={rowStyle}>{g.mapName}</td>
+                  <td style={rowStyle}>{g.hostName}</td>
+                  <td style={rowStyle}>
+                    {g.playerCount}/{g.slots}
+                    {g.spectatorCount > 0 &&
+                      ` · ${g.spectatorCount} spectating`}
+                  </td>
+                  <td style={rowStyle}>
+                    {g.state === 'lobby'
+                      ? 'Lobby'
+                      : g.state === 'playing'
+                        ? 'Playing'
+                        : 'Ended'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
+      )}
     </Container>
   );
 }

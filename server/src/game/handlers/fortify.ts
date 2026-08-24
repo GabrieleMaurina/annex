@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
+import { withPortalEdges } from '../logic/portals';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { gameRoomName, games } from '../logic/store';
@@ -24,7 +25,13 @@ function connectedOwnedTerritories(
   const queue = [startId];
   while (queue.length > 0) {
     const current = queue.shift()!;
-    for (const neighborId of neighborsById.get(current) ?? []) {
+    const neighbors = withPortalEdges(
+      neighborsById.get(current) ?? [],
+      current,
+      game.portalTerritoryIds,
+      game.portalsEnabled,
+    );
+    for (const neighborId of neighbors) {
       if (visited.has(neighborId)) continue;
       if (game.territoryOwners.get(neighborId) !== playerId) continue;
       visited.add(neighborId);
@@ -55,11 +62,13 @@ function isFortifyStartCandidate(
     return ownsOtherTerritory(game, playerId, territoryId);
   const map = maps.get(game.mapName)!;
   const territory = map.territories.find((t) => t.id === territoryId);
-  return (
-    territory?.neighbors.some(
-      (n) => game.territoryOwners.get(n) === playerId,
-    ) ?? false
+  const neighbors = withPortalEdges(
+    territory?.neighbors ?? [],
+    territoryId,
+    game.portalTerritoryIds,
+    game.portalsEnabled,
   );
+  return neighbors.some((n) => game.territoryOwners.get(n) === playerId);
 }
 
 function isValidFortifyEnd(
@@ -72,7 +81,13 @@ function isValidFortifyEnd(
   if (game.fortification === 'Neighboring') {
     const map = maps.get(game.mapName)!;
     const territory = map.territories.find((t) => t.id === startId);
-    return territory?.neighbors.includes(endId) ?? false;
+    const neighbors = withPortalEdges(
+      territory?.neighbors ?? [],
+      startId,
+      game.portalTerritoryIds,
+      game.portalsEnabled,
+    );
+    return neighbors.includes(endId);
   }
   return connectedOwnedTerritories(game, playerId, startId).has(endId);
 }

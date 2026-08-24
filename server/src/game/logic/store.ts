@@ -104,17 +104,19 @@ export function removePlayerFromGame(
   playerId: number,
   playersById: Map<number, Player>,
 ) {
+  const idx = game.playerIds.indexOf(playerId);
   game.playerIds = game.playerIds.filter((id) => id !== playerId);
   game.playerTeams.delete(playerId);
   game.playerColors.delete(playerId);
 
   if (
+    idx !== -1 &&
     game.state === 'lobby' &&
     game.playerIds.length < game.slots &&
     game.spectatorIds.length > 0
   ) {
     const promotedId = game.spectatorIds.shift()!;
-    game.playerIds.push(promotedId);
+    game.playerIds.splice(idx, 0, promotedId);
     game.playerTeams.set(promotedId, 0);
     assignRandomColor(game, promotedId);
     addHostCandidate(game, promotedId);
@@ -134,10 +136,78 @@ export function removePlayerFromGame(
   recomputeHost(game, playersById);
 }
 
+function cementSubstitute(game: Game, ownerId: number): boolean {
+  for (const [substituteId, owner] of game.substituteFor) {
+    if (owner === ownerId) {
+      game.substituteFor.delete(substituteId);
+      return true;
+    }
+  }
+  return false;
+}
+
+function handleLobbyDisconnect(
+  game: Game,
+  playerId: number,
+  playersById: Map<number, Player>,
+) {
+  const subIndex = game.spectatorIds.findIndex(
+    (id) => playersById.get(id)?.connected,
+  );
+  if (subIndex === -1) {
+    recomputeHost(game, playersById);
+    return;
+  }
+
+  const ownerId = game.substituteFor.get(playerId) ?? playerId;
+  game.substituteFor.delete(playerId);
+
+  const idx = game.playerIds.indexOf(playerId);
+  const substituteId = game.spectatorIds.splice(subIndex, 1)[0];
+  game.playerIds[idx] = substituteId;
+
+  const team = game.playerTeams.get(playerId) ?? 0;
+  game.playerTeams.set(substituteId, team);
+  game.playerTeams.delete(playerId);
+
+  const color = game.playerColors.get(playerId);
+  if (color !== undefined) game.playerColors.set(substituteId, color);
+  game.playerColors.delete(playerId);
+
+  addHostCandidate(game, substituteId);
+  game.substituteFor.set(substituteId, ownerId);
+  recomputeHost(game, playersById);
+}
+
+export function reclaimSubstitutedSeat(
+  game: Game,
+  ownerId: number,
+  playersById: Map<number, Player>,
+) {
+  const entry = [...game.substituteFor.entries()].find(
+    ([, owner]) => owner === ownerId,
+  );
+  if (!entry) return;
+
+  const [substituteId] = entry;
+  game.substituteFor.delete(substituteId);
+
+  const idx = game.playerIds.indexOf(substituteId);
+  if (idx === -1) return;
+
+  game.playerIds[idx] = ownerId;
+  game.playerTeams.delete(substituteId);
+  game.playerColors.delete(substituteId);
+  game.spectatorIds.unshift(substituteId);
+
+  recomputeHost(game, playersById);
+}
+
 export function leaveGame(
   player: Player,
   playersById: Map<number, Player>,
   io: Server,
+  permanent: boolean,
 ) {
   if (!player.gameName) return;
   const game = games.get(player.gameName);
@@ -147,6 +217,7 @@ export function leaveGame(
   }
 
   if (game.spectatorIds.includes(player.id)) {
+    if (!permanent) return;
     player.gameName = null;
     game.spectatorIds = game.spectatorIds.filter((id) => id !== player.id);
     if (game.state === 'ended') destroyIfEnded(game, playersById, io);
@@ -167,7 +238,18 @@ export function leaveGame(
     return;
   }
 
+  if (!permanent) {
+    if (game.playerIds.includes(player.id))
+      handleLobbyDisconnect(game, player.id, playersById);
+    else recomputeHost(game, playersById);
+    return;
+  }
+
   player.gameName = null;
+  if (!game.playerIds.includes(player.id)) {
+    cementSubstitute(game, player.id);
+    return;
+  }
   removePlayerFromGame(game, player.id, playersById);
 }
 
@@ -177,13 +259,24 @@ export function handleReconnect(
 ) {
   if (!player.gameName) return;
   const game = games.get(player.gameName);
-  if (game) recomputeHost(game, playersById);
+  if (!game) return;
+
+  if (game.state === 'lobby') {
+    reclaimSubstitutedSeat(game, player.id, playersById);
+    if (
+      !game.playerIds.includes(player.id) &&
+      !game.spectatorIds.includes(player.id)
+    )
+      game.spectatorIds.push(player.id);
+  }
+
+  recomputeHost(game, playersById);
 }
 
-export function listGameSummaries() {
+export function listGameSummaries(playersById: Map<number, Player>) {
   return [...games.values()]
     .filter((game) => game.visibility === 'public')
-    .map(gameSummary);
+    .map((game) => gameSummary(game, playersById));
 }
 
 export function sendToPlayer(

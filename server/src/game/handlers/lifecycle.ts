@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { defaultMapName, maps } from '../../maps';
 import {
   Blitz,
+  Bounties,
   CardsMode,
   DefenceDice,
   Entrenchment,
@@ -14,6 +15,7 @@ import {
   Portals,
   Starvation,
   TurnDuration,
+  TurnTroops,
   Visibility,
 } from '../../types';
 import { isInteger, isObject } from '../../validate';
@@ -88,6 +90,8 @@ const STARVATION_VALUES: Starvation[] = [
   'total',
   'percent',
 ];
+const TURN_TROOPS_VALUES: TurnTroops[] = ['off', 'on'];
+const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
 const MAX_PASSWORD_LENGTH = 50;
@@ -152,6 +156,8 @@ export function registerGameHandlers(
         portalTerritoryIds: [],
         portalsEnabled: false,
         starvation: 'off',
+        turnTroops: 'off',
+        bounties: 'off',
         turnDuration: 120,
         password: null,
         visibility: 'public',
@@ -419,6 +425,18 @@ export function registerGameHandlers(
         if (!(STARVATION_VALUES as unknown[]).includes(settings.starvation))
           return callback({ ok: false, error: 'invalid starvation' });
         game.starvation = settings.starvation as Starvation;
+      }
+
+      if (settings.turnTroops !== undefined) {
+        if (!(TURN_TROOPS_VALUES as unknown[]).includes(settings.turnTroops))
+          return callback({ ok: false, error: 'invalid turn troops' });
+        game.turnTroops = settings.turnTroops as TurnTroops;
+      }
+
+      if (settings.bounties !== undefined) {
+        if (!(BOUNTIES_VALUES as unknown[]).includes(settings.bounties))
+          return callback({ ok: false, error: 'invalid bounties' });
+        game.bounties = settings.bounties as Bounties;
       }
 
       if (settings.turnDuration !== undefined) {

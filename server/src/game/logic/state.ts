@@ -64,6 +64,8 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     portalTerritoryIds: game.portalTerritoryIds,
     portalsEnabled: game.portalsEnabled,
     starvation: game.starvation,
+    turnTroops: game.turnTroops,
+    bounties: game.bounties,
     territoryTroopsCap: TERRITORY_CAP,
     totalTroopsCap: totalTroopsCap(game),
     turnDuration: game.turnDuration,

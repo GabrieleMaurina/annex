@@ -17,6 +17,7 @@ import { socket } from '../lib/socket';
 import { playSound } from '../lib/sounds';
 import type {
   Ack,
+  Bounties,
   Card,
   CardSymbol,
   EmojiAttackTarget,
@@ -135,6 +136,7 @@ interface Props {
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
   starvation: Starvation;
+  bounties: Bounties;
   territoryTroopsCap: number;
   totalTroopsCap: number;
   troopsToDeploy: number;
@@ -288,6 +290,7 @@ function GameMap({
   portalTerritoryIds,
   portalsEnabled,
   starvation,
+  bounties,
   territoryTroopsCap,
   totalTroopsCap,
   troopsToDeploy,
@@ -3006,6 +3009,7 @@ function GameMap({
         isTeamDeathmatch={isTeamDeathmatch}
         isCapitals={isCapitals}
         starvation={starvation}
+        bounties={bounties}
         territoryTroopsCap={territoryTroopsCap}
         totalTroopsCap={totalTroopsCap}
         mission={mission}

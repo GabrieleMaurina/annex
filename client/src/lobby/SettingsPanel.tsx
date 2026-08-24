@@ -3,6 +3,7 @@ import { Button, Form } from 'react-bootstrap';
 import Help from '../common/Help';
 import type {
   Blitz,
+  Bounties,
   CardsMode,
   DefenceDice,
   Entrenchment,
@@ -14,6 +15,7 @@ import type {
   Portals,
   Starvation,
   TurnDuration,
+  TurnTroops,
   Visibility,
 } from '../lib/types';
 
@@ -220,6 +222,32 @@ const ENTRENCHMENT_HELP = (
   </>
 );
 
+const TURN_TROOPS_HELP = (
+  <>
+    Whether players get extra troops each turn on top of the normal deploy pool.
+    <ul className="mb-0 ps-3">
+      <li>Off: no extra troops.</li>
+      <li>
+        On: at the start of each turn, the player gets extra troops equal to the
+        current turn number (1 on turn 1, 2 on turn 2, and so on).
+      </li>
+    </ul>
+  </>
+);
+
+const BOUNTIES_HELP = (
+  <>
+    Whether eliminating another player pays off in troops.
+    <ul className="mb-0 ps-3">
+      <li>Off: no bounty.</li>
+      <li>
+        On: each player you&apos;ve eliminated is worth a permanent +10 troops
+        at the start of every one of your turns from then on.
+      </li>
+    </ul>
+  </>
+);
+
 const TURN_DURATION_HELP =
   "How long each player's turn can last. If time runs out, the game finishes it for them: leftover troops are dropped on random territories, any pending move is resolved automatically, and the turn ends.";
 
@@ -256,6 +284,8 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   entrenchment: 'off',
   portals: 'off',
   starvation: 'off',
+  turnTroops: 'off',
+  bounties: 'off',
   turnDuration: 120,
   password: null,
   visibility: 'public',
@@ -555,6 +585,56 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
                       ? 'Total'
                       : 'Percent'}
               </span>
+            )}
+          </div>
+
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Turn Troops
+              <Help>{TURN_TROOPS_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.turnTroops}
+                onChange={(e) =>
+                  applySettings({
+                    turnTroops: e.target.value as TurnTroops,
+                  })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="on">On</option>
+              </Form.Select>
+            ) : (
+              <span>{game.turnTroops === 'on' ? 'On' : 'Off'}</span>
+            )}
+          </div>
+
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Bounties
+              <Help>{BOUNTIES_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.bounties}
+                onChange={(e) =>
+                  applySettings({ bounties: e.target.value as Bounties })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="on">On</option>
+              </Form.Select>
+            ) : (
+              <span>{game.bounties === 'on' ? 'On' : 'Off'}</span>
             )}
           </div>
 

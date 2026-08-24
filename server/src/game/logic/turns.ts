@@ -456,13 +456,19 @@ export function beginNextSpecialPhase(
 function startDeployPhase(game: Game, io: Server, playerId: number) {
   const breakdown = calculateDeployTroopsBreakdown(game, playerId);
   game.troopsToDeploy =
-    breakdown.territories + breakdown.bonuses + breakdown.capitals;
+    breakdown.territories +
+    breakdown.bonuses +
+    breakdown.capitals +
+    breakdown.turnTroops +
+    breakdown.bounties;
   io.to(gameRoomName(game.name)).emit('game:turnStarted', {
     playerId,
     turnNumber: game.turnNumber,
     troopsFromTerritories: breakdown.territories,
     troopsFromBonuses: breakdown.bonuses,
     troopsFromCapitals: breakdown.capitals,
+    troopsFromTurnTroops: breakdown.turnTroops,
+    troopsFromBounties: breakdown.bounties,
   });
 }
 

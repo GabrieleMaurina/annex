@@ -147,6 +147,8 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
       troopsFromTerritories: number;
       troopsFromBonuses: number;
       troopsFromCapitals: number;
+      troopsFromTurnTroops: number;
+      troopsFromBounties: number;
     }) {
       if (
         lastLoggedTurnNumberRef.current === null ||
@@ -170,6 +172,16 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
         pushLog(
           color,
           `Received ${payload.troopsFromCapitals} troops from capitals`,
+        );
+      if (payload.troopsFromTurnTroops > 0)
+        pushLog(
+          color,
+          `Received ${payload.troopsFromTurnTroops} troops from turn troops`,
+        );
+      if (payload.troopsFromBounties > 0)
+        pushLog(
+          color,
+          `Received ${payload.troopsFromBounties} troops from bounties`,
         );
     }
     socket.on('game:turnStarted', onTurnStarted);

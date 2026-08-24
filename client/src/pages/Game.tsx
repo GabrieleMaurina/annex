@@ -40,6 +40,7 @@ function Game({
   const [mission, setMission] = useState<Mission | null>(null);
   const receivedFirstStateRef = useRef(false);
   const prevStateRef = useRef<GameState['state'] | null>(null);
+  const prevTurnPhaseRef = useRef<GameState['turnPhase'] | null>(null);
   const logs = useGameLogs(game);
 
   useEffect(() => {
@@ -47,13 +48,25 @@ function Game({
       if (!receivedFirstStateRef.current) {
         receivedFirstStateRef.current = true;
         if (state.state === 'ended') setEndView('stats');
-      } else {
-        if (prevStateRef.current === 'lobby' && state.state === 'playing')
-          playSound('start');
-        if (prevStateRef.current === 'playing' && state.state === 'ended')
-          playSound('end');
+      } else if (
+        prevStateRef.current === 'lobby' &&
+        state.state === 'playing'
+      ) {
+        playSound('start');
+      } else if (
+        prevStateRef.current === 'playing' &&
+        state.state === 'ended'
+      ) {
+        playSound('end');
+      } else if (
+        state.state === 'playing' &&
+        prevTurnPhaseRef.current !== null &&
+        prevTurnPhaseRef.current !== state.turnPhase
+      ) {
+        playSound('phase');
       }
       prevStateRef.current = state.state;
+      if (state.state === 'playing') prevTurnPhaseRef.current = state.turnPhase;
       setGame(state);
     }
     socket.on('game:state', onState);
@@ -61,6 +74,17 @@ function Game({
       socket.off('game:state', onState);
     };
   }, []);
+
+  useEffect(() => {
+    function onTurnStarted(payload: { playerId: number }) {
+      prevTurnPhaseRef.current = 'deploy';
+      playSound(payload.playerId === selfId ? 'turn' : 'phase');
+    }
+    socket.on('game:turnStarted', onTurnStarted);
+    return () => {
+      socket.off('game:turnStarted', onTurnStarted);
+    };
+  }, [selfId]);
 
   useEffect(() => {
     if (game?.name) onRename(game.name);
@@ -193,6 +217,7 @@ function Game({
           portalTerritoryIds={game.portalTerritoryIds}
           portalsEnabled={game.portalsEnabled}
           starvation={game.starvation}
+          bounties={game.bounties}
           territoryTroopsCap={game.territoryTroopsCap}
           totalTroopsCap={game.totalTroopsCap}
           troopsToDeploy={game.troopsToDeploy}

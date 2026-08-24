@@ -5,6 +5,7 @@ import { useWhiteIcon } from '../../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import type {
+  Bounties,
   GameMode,
   GameState,
   Mission,
@@ -52,6 +53,7 @@ interface Props {
   isTeamDeathmatch: boolean;
   isCapitals: boolean;
   starvation: Starvation;
+  bounties: Bounties;
   territoryTroopsCap: number;
   totalTroopsCap: number;
   mission: Mission | null;
@@ -80,6 +82,7 @@ function PlayersPanel({
   isTeamDeathmatch,
   isCapitals,
   starvation,
+  bounties,
   territoryTroopsCap,
   totalTroopsCap,
   mission,
@@ -115,6 +118,7 @@ function PlayersPanel({
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
   const whiteCapitalIcon = useWhiteIcon('/icons/capital.svg');
+  const whiteBountyIcon = useWhiteIcon('/icons/bounty.svg');
   const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
@@ -142,7 +146,11 @@ function PlayersPanel({
     <div
       className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3`}
       style={{
-        width: 270 + (isTeamDeathmatch ? 40 : 0) + (isCapitals ? 40 : 0),
+        width:
+          270 +
+          (isTeamDeathmatch ? 40 : 0) +
+          (isCapitals ? 40 : 0) +
+          (bounties === 'on' ? 40 : 0),
         maxHeight: 'calc(100vh - 2rem)',
       }}
     >
@@ -244,6 +252,19 @@ function PlayersPanel({
                       width={14}
                       height={14}
                       alt="Capitals"
+                      className="align-middle"
+                    />
+                  </Tip>
+                </th>
+              )}
+              {bounties === 'on' && (
+                <th className="text-center" style={{ width: 34 }}>
+                  <Tip text="Bounties">
+                    <img
+                      src={whiteBountyIcon ?? '/icons/bounty.svg'}
+                      width={14}
+                      height={14}
+                      alt="Bounties"
                       className="align-middle"
                     />
                   </Tip>
@@ -368,6 +389,11 @@ function PlayersPanel({
                   {isCapitals && (
                     <td className="align-middle text-center" style={rowStyle}>
                       {p.capitalCount}
+                    </td>
+                  )}
+                  {bounties === 'on' && (
+                    <td className="align-middle text-center" style={rowStyle}>
+                      {p.playersKilled.length}
                     </td>
                   )}
                   <td className="align-middle text-center" style={rowStyle}>

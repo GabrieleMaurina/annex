@@ -54,6 +54,8 @@ export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchment = 'off' | 'on';
 export type Portals = 'off' | 'static' | 'dynamic';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
+export type TurnTroops = 'off' | 'on';
+export type Bounties = 'off' | 'on';
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -141,6 +143,8 @@ export interface Game {
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
   starvation: Starvation;
+  turnTroops: TurnTroops;
+  bounties: Bounties;
   turnDuration: TurnDuration;
   password: string | null;
   visibility: Visibility;

@@ -119,6 +119,8 @@ function Lobby({
           entrenchment: res.game.entrenchment,
           portals: res.game.portals,
           starvation: res.game.starvation,
+          turnTroops: res.game.turnTroops,
+          bounties: res.game.bounties,
           turnDuration: res.game.turnDuration,
           visibility: res.game.visibility,
         },

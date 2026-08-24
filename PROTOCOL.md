@@ -87,6 +87,8 @@ A game with `visibility: 'private'` (see `GameState` below) is never included he
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
   starvation: 'off' | 'territory' | 'total' | 'percent';
+  turnTroops: 'off' | 'on';
+  bounties: 'off' | 'on';
   territoryTroopsCap: number; // 'territory' mode's per-territory troop cap
   totalTroopsCap: number; // 'total' mode's cap on this map (territory count-based)
   turnDuration: 60 | 90 | 120 | 150 | 180 | 300; // seconds
@@ -167,6 +169,8 @@ A player's own mission is pushed to them individually (see `game:mission` below)
 
 `starvation` (`'off'` by default) penalizes a player for massing troops on a single territory instead of spreading out; either way, a territory's troops are never reduced below `1` by it. It's checked once per player, whenever their turn ends (the same moment card-conquest draws and, once tracked, `nextAlivePlayerIndex`/`turnNumber` advance happen), regardless of whether the turn ended normally, via `game:nextPhase`, or via the turn timer. Under `'territory'`, every owned territory is capped individually at `30` troops; any territory over that, at the moment the check runs, has its excess removed. Under `'total'`, a player's troops across every territory they own are capped at `3` times the map's total territory count (`territoryCount`); if their total exceeds it, troops are removed one at a time from whichever owned territory currently has the most (which can change mid-removal as the largest shrinks) until the total is back at the cap or every owned territory is down to `1` troop. Under `'percent'`, the player's *largest army* (the owned territory with the most troops; the first one found if several tie) loses `30%` of its troops, rounded down. Any troops removed this way, under any of the three modes, are broadcast via `game:starved` below, one entry per territory actually touched, and recorded as `'starve'`-type `ReplayFrame`s (see above) the same way.
 
+`turnTroops` (`'off'` by default) grants every player extra troops each turn on top of their normal deploy pool (see `turnPhase` above): under `'on'`, entering `'deploy'` adds `turnNumber + 1` troops to that turn's `troopsToDeploy` (`1` on turn 1, `2` on turn 2, and so on), reflected in `game:turnStarted`'s `troopsFromTurnTroops` field below. `bounties` (`'off'` by default) rewards eliminating other players: under `'on'`, entering `'deploy'` adds `10` troops to that turn's `troopsToDeploy` for every player this player has ever eliminated by conquest (`playersKilled.length`, see `GameState.players` above), permanently and cumulatively for the rest of the game, reflected in `game:turnStarted`'s `troopsFromBounties` field below. Both are folded into `troopsToDeploy` the same way territory/continent/capital troops are, and neither applies to the `'territory'`, `'troop'`, or `'capital'` phases' own troop grants.
+
 `fortifyStartTerritoryId` and `fortifyEndTerritoryId` track the two-step territory selection specific to the `'fortify'` phase, set via `game:fortifySelectStart` / `game:fortifySelectEnd` below (both `null` outside an in-progress fortify selection). Like `selectedTerritoryId`, they're part of `GameState` so every client sees the same start/end highlighting and, once both are set, the same animated arrow between them; `game:selectTerritory` is not used during `'fortify'`. Both reset to `null` whenever the turn or phase changes and whenever a `game:fortify` succeeds.
 
 `attackStartTerritoryId` and `attackEndTerritoryId` track the same kind of two-step selection for the `'attack'` phase, set via `game:attackSelectStart` / `game:attackSelectEnd` below (both `null` outside an in-progress attack). Unlike fortify, they are **not** cleared once `game:attack` resolves an attack that fails to fully conquer the defending territory, nor once it does (`game:selectTerritory` is not used during `'attack'`, either). A failed or inconclusive attack (defender still owns the territory afterward) resets both to `null`, letting the player pick a fresh attack. A conquering attack (defender's territory reaches `0` troops) instead transfers `territoryOwners` for `attackEndTerritoryId` to the attacker immediately but leaves both ids set and populates `attackConquestMinTroops`: the game is now waiting on `game:attackMove` to finish moving troops in, and no other attack-phase action (including `game:nextPhase`) is accepted until it does. `attackConquestMinTroops` is `null` whenever no conquest is pending. All three reset to `null` whenever the turn or phase changes.
@@ -227,7 +231,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:create`
 - **When sent:** a player in `home` starts a new game.
-- **Purpose:** create a game with default settings: name `Game with <playerName>` unless `name` is given, map `World`, 2 slots, `Supremacy` game mode, `Balanced` blitz, 2 defence dice, `Constant` cards, `Random` placement, entrenchment off, portals off, starvation off, 120s turn duration; make the caller host and move their socket into the room.
+- **Purpose:** create a game with default settings: name `Game with <playerName>` unless `name` is given, map `World`, 2 slots, `Supremacy` game mode, `Balanced` blitz, 2 defence dice, `Constant` cards, `Random` placement, entrenchment off, portals off, starvation off, turn troops off, bounties off, 120s turn duration; make the caller host and move their socket into the room.
 - **Content:**
   ```ts
   { name?: string } // same validation as game:settings' name field; defaults to `Game with <playerName>` when omitted
@@ -245,7 +249,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:settings`
 - **When sent:** the host of a game changes any settings.
-- **Purpose:** single bundled message for every settings mutation: rename, change map, slot count, ban list, a player's team, game mode / blitz / defence dice / cards / placement / fortification / entrenchment / portals / starvation / turn duration / password / visibility. Only the fields present are applied; the caller must be host, and the game must still be `lobby`: nothing can change once `playing`. Fields apply in a fixed order: `mapName`, `gameMode`, `name`, `bannedPlayerIds`, `playerTeam`, `slots`, `blitz`, `defenceDice`, `cards`, `placement`, `fortification`, `entrenchment`, `portals`, `starvation`, `turnDuration`, `password`, `visibility`, so `slots`/`playerTeam` are validated against the roster *after* any kicks in the same request, and `entrenchment` is validated against the (possibly just-updated) `defenceDice` from the same call. `gameMode` and the last eleven fields are independent of the rest and each other; their position otherwise doesn't matter, except `entrenchment` must come after `defenceDice`: setting `defenceDice` to `3` in the same call always forces `entrenchment` to `'off'` first, and `entrenchment: 'on'` is rejected outright unless `defenceDice` ends up `2`.
+- **Purpose:** single bundled message for every settings mutation: rename, change map, slot count, ban list, a player's team, game mode / blitz / defence dice / cards / placement / fortification / entrenchment / portals / starvation / turn troops / bounties / turn duration / password / visibility. Only the fields present are applied; the caller must be host, and the game must still be `lobby`: nothing can change once `playing`. Fields apply in a fixed order: `mapName`, `gameMode`, `name`, `bannedPlayerIds`, `playerTeam`, `slots`, `blitz`, `defenceDice`, `cards`, `placement`, `fortification`, `entrenchment`, `portals`, `starvation`, `turnTroops`, `bounties`, `turnDuration`, `password`, `visibility`, so `slots`/`playerTeam` are validated against the roster *after* any kicks in the same request, and `entrenchment` is validated against the (possibly just-updated) `defenceDice` from the same call. `gameMode` and the last thirteen fields are independent of the rest and each other; their position otherwise doesn't matter, except `entrenchment` must come after `defenceDice`: setting `defenceDice` to `3` in the same call always forces `entrenchment` to `'off'` first, and `entrenchment: 'on'` is rejected outright unless `defenceDice` ends up `2`.
 - **Content:** (all fields optional, only send what changed)
   ```ts
   {
@@ -263,6 +267,8 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
     entrenchment?: 'off' | 'on'; // 'on' requires defenceDice to be (or become, in this same call) 2
     portals?: 'off' | 'static' | 'dynamic';
     starvation?: 'off' | 'territory' | 'total' | 'percent';
+    turnTroops?: 'off' | 'on';
+    bounties?: 'off' | 'on';
     turnDuration?: 60 | 90 | 120 | 150 | 180 | 300; // seconds
     password?: string | null;  // trimmed; empty/all-whitespace is rejected, over 50 characters is rejected; null clears it
     visibility?: 'public' | 'private';
@@ -271,7 +277,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   `bannedPlayerIds` replaces the whole ban list at once, not one id at a time: to kick, send the current `bannedPlayers` ids (from `game:state`) plus the new one; to unban, send them minus the id. Any newly-present id belonging to a current player or spectator is kicked (evicted, sent `game:kicked`); the host's own id is silently dropped rather than self-banning.
 
   `playerTeam` sets one player's `team` (see `GameState.players` above for its valid range); rejected with `invalid team` unless `playerId` is currently a player (not a spectator) and `team` is an integer within that range.
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid name`, `invalid map`, `invalid slots`, `invalid banned players`, `invalid team`, `invalid game mode`, `invalid blitz`, `invalid defence dice`, `invalid cards`, `invalid placement`, `invalid fortification`, `invalid entrenchment`, `invalid portals`, `invalid starvation`, `invalid turn duration`, `invalid password`, `invalid visibility`, `game name already in use`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid name`, `invalid map`, `invalid slots`, `invalid banned players`, `invalid team`, `invalid game mode`, `invalid blitz`, `invalid defence dice`, `invalid cards`, `invalid placement`, `invalid fortification`, `invalid entrenchment`, `invalid portals`, `invalid starvation`, `invalid turn troops`, `invalid bounties`, `invalid turn duration`, `invalid password`, `invalid visibility`, `game name already in use`.
 
 ### `game:cycleColor`
 - **When sent:** a player clicks their own color in the lobby's player table.
@@ -597,9 +603,11 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
     troopsFromTerritories: number;
     troopsFromBonuses: number;
     troopsFromCapitals: number; // always 0 outside 'Capitals'
+    troopsFromTurnTroops: number; // always 0 while turnTroops is 'off'
+    troopsFromBounties: number; // always 0 while bounties is 'off'
   }
   ```
-  `troopsFromTerritories + troopsFromBonuses + troopsFromCapitals` is the pool granted, matching `GameState.troopsToDeploy`'s value at that instant (see `turnPhase` above for how each is computed).
+  `troopsFromTerritories + troopsFromBonuses + troopsFromCapitals + troopsFromTurnTroops + troopsFromBounties` is the pool granted, matching `GameState.troopsToDeploy`'s value at that instant (see `turnPhase` above, and `turnTroops`/`bounties` above, for how each is computed).
 
 ### `game:deployed`
 - **When sent:** immediately, to every socket in a game's room, whenever a `game:deploy` or `game:placeTroop` call succeeds (including back to the acting player), once per territory for a `game:playCardSet` call's automatic 2-troop territory bonuses (see "Territory cards" above), and once for a capital's `3` troops, whether picked via `game:selectCapital` or assigned at random by the turn timer (see `turnPhase` above). Not sent for `game:claimTerritory`: its `1`-troop seed is folded into `game:territoryClaimed` instead (see below), since the claim already carries the acting player's id.

@@ -7,6 +7,8 @@ const SOUND_NAMES = [
   'emoji',
   'start',
   'end',
+  'phase',
+  'turn',
 ];
 
 const audioByName = new Map<string, HTMLAudioElement>();

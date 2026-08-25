@@ -39,7 +39,8 @@ export function registerTerritoryHandlers(
       if (
         !isInteger(territoryId) ||
         territoryId < 0 ||
-        territoryId >= map.territories.length
+        territoryId >= map.territories.length ||
+        game.radiationTerritoryIds.has(territoryId)
       )
         return callback({ ok: false, error: 'invalid territory' });
       if (game.territoryOwners.has(territoryId))

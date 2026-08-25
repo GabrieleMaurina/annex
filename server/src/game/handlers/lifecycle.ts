@@ -13,6 +13,7 @@ import {
   Placement,
   Player,
   Portals,
+  Radiation,
   Starvation,
   Toxins,
   TurnDuration,
@@ -37,6 +38,7 @@ import {
 import { buildCardDeck } from '../logic/progression/cards';
 import { assignMissions } from '../logic/progression/missions';
 import { emptyPlayerStats } from '../logic/progression/stats';
+import { initializeRadiation } from '../logic/radiation/radiation';
 import { snapshotTerritories } from '../logic/replay';
 import { gameState } from '../logic/state';
 import {
@@ -86,6 +88,7 @@ const FORTIFICATION_VALUES: Fortification[] = [
 const ENTRENCHMENT_VALUES: Entrenchment[] = ['off', 'on'];
 const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const PORTALS_VALUES: Portals[] = ['off', 'static', 'dynamic'];
+const RADIATION_VALUES: Radiation[] = ['off', 'static', 'dynamic', 'expanding'];
 const STARVATION_VALUES: Starvation[] = [
   'off',
   'territory',
@@ -158,6 +161,9 @@ export function registerGameHandlers(
         portals: 'off',
         portalTerritoryIds: [],
         portalsEnabled: false,
+        radiation: 'off',
+        radiationTerritoryIds: new Set(),
+        radiationUpcomingTerritoryIds: new Set(),
         starvation: 'off',
         turnTroops: 'off',
         bounties: 'off',
@@ -205,6 +211,7 @@ export function registerGameHandlers(
         teamDeathOrder: [],
         finalRanking: [],
         replayInitial: [],
+        replayInitialRadiation: [],
         replayFrames: [],
       };
       games.set(game.name, game);
@@ -422,6 +429,8 @@ export function registerGameHandlers(
       if (settings.toxins !== undefined) {
         if (!(TOXINS_VALUES as unknown[]).includes(settings.toxins))
           return callback({ ok: false, error: 'invalid toxins' });
+        if (settings.toxins !== 'off' && game.radiation !== 'off')
+          return callback({ ok: false, error: 'invalid toxins' });
         game.toxins = settings.toxins as Toxins;
       }
 
@@ -429,6 +438,14 @@ export function registerGameHandlers(
         if (!(PORTALS_VALUES as unknown[]).includes(settings.portals))
           return callback({ ok: false, error: 'invalid portals' });
         game.portals = settings.portals as Portals;
+      }
+
+      if (settings.radiation !== undefined) {
+        if (!(RADIATION_VALUES as unknown[]).includes(settings.radiation))
+          return callback({ ok: false, error: 'invalid radiation' });
+        if (settings.radiation !== 'off' && game.toxins !== 'off')
+          return callback({ ok: false, error: 'invalid radiation' });
+        game.radiation = settings.radiation as Radiation;
       }
 
       if (settings.starvation !== undefined) {
@@ -509,6 +526,8 @@ export function registerGameHandlers(
     } else {
       game.playerIds = shuffle(game.playerIds);
     }
+    initializeRadiation(game);
+    game.replayInitialRadiation = [...game.radiationTerritoryIds];
     if (game.placement === 'Random') {
       assignTerritories(game);
     } else if (game.placement === 'Semi') {

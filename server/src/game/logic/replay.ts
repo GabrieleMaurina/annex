@@ -22,6 +22,10 @@ function snapshotToxinTerritories(game: Game): ReplayToxinTerritory[] {
   }));
 }
 
+function snapshotRadiationTerritories(game: Game): number[] {
+  return [...game.radiationTerritoryIds];
+}
+
 function actingPlayerId(animation: ReplayAnimation): number {
   return animation.type === 'attack'
     ? animation.attackerId
@@ -32,6 +36,7 @@ export function recordReplayFrame(game: Game, animation: ReplayAnimation) {
   game.replayFrames.push({
     territories: snapshotTerritories(game),
     toxinTerritories: snapshotToxinTerritories(game),
+    radiationTerritories: snapshotRadiationTerritories(game),
     animation,
     turnNumber: game.turnNumber,
     playerId: actingPlayerId(animation),

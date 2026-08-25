@@ -92,12 +92,31 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
           : `Released toxins on territory #${payload.territoryId + 1} for ${payload.turnsRemaining} turns`,
       );
     }
+    function onRadiationChanged(payload: {
+      territoryIds: number[];
+      eliminatedPlayerIds: number[];
+    }) {
+      const previouslyRadiated = new Set(
+        gameRef.current?.radiationTerritoryIds ?? [],
+      );
+      const newlyRadiated = payload.territoryIds.filter(
+        (id) => !previouslyRadiated.has(id),
+      );
+      if (newlyRadiated.length > 0)
+        pushLog(
+          NEUTRAL_LOG_COLOR,
+          `Radiation spread to territor${newlyRadiated.length === 1 ? 'y' : 'ies'} ${newlyRadiated.map((id) => `#${id + 1}`).join(', ')}`,
+        );
+      for (const playerId of payload.eliminatedPlayerIds)
+        pushLog(colorForPlayer(playerId), 'Eliminated by radiation');
+    }
     socket.on('game:deployed', onDeployed);
     socket.on('game:fortified', onFortified);
     socket.on('game:attackMoved', onAttackMoved);
     socket.on('game:deployedMany', onDeployedMany);
     socket.on('game:entrenched', onEntrenched);
     socket.on('game:toxined', onToxined);
+    socket.on('game:radiationChanged', onRadiationChanged);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
@@ -105,6 +124,7 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
       socket.off('game:deployedMany', onDeployedMany);
       socket.off('game:entrenched', onEntrenched);
       socket.off('game:toxined', onToxined);
+      socket.off('game:radiationChanged', onRadiationChanged);
     };
   }, [colorForPlayer, ownerOfTerritory, pushLog]);
 

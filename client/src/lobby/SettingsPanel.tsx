@@ -13,6 +13,7 @@ import type {
   GameState,
   Placement,
   Portals,
+  Radiation,
   Starvation,
   Toxins,
   TurnDuration,
@@ -230,7 +231,8 @@ const TOXINS_HELP = (
     its owner, is wiped of every troop it held, and becomes inaccessible to
     everyone until the toxin clears. A territory can never be toxined if doing
     so would split the map into two or more disconnected groups, and capitals
-    can&apos;t be toxined.
+    can&apos;t be toxined. Mutually exclusive with Radiation: only one of the
+    two can be on at a time.
     <ul className="mb-0 ps-3">
       <li>Off: no toxins phase.</li>
       <li>
@@ -241,6 +243,37 @@ const TOXINS_HELP = (
       <li>
         Permanent: costs 10 troops (Constant cards) or 50% of the next card
         set&apos;s value, and never clears for the rest of the game.
+      </li>
+    </ul>
+  </>
+);
+
+const RADIATION_HELP = (
+  <>
+    Whether the map has radiation: territories with no owner, no troops, and
+    off-limits to everyone (not attackable, fortifiable, or selectable) until it
+    clears. Radiation is placed before territories are dealt out, so dealt
+    territories never include an irradiated one; radiation can never expand or
+    move into a capital, or into a territory that would split the map into two
+    or more disconnected groups. Any troops on a territory when radiation
+    reaches it are destroyed, and losing a player&apos;s last territory this way
+    eliminates them just like combat would. Mutually exclusive with Toxins: only
+    one of the two can be on at a time.
+    <ul className="mb-0 ps-3">
+      <li>Off: no radiation.</li>
+      <li>
+        Static: a fixed number of territories are irradiated at the start and
+        never change (1 per 10 territories on the map, capped at 8).
+      </li>
+      <li>
+        Dynamic: the same territories, and the same count, as Static, but every
+        2 rounds each one moves to a neighboring territory, clearing the one it
+        left. The move is shown one round in advance.
+      </li>
+      <li>
+        Expanding: a single territory is irradiated at the start, and every 2
+        rounds it permanently grows to engulf one more neighboring territory,
+        shown one round in advance.
       </li>
     </ul>
   </>
@@ -308,6 +341,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   entrenchment: 'off',
   toxins: 'off',
   portals: 'off',
+  radiation: 'off',
   starvation: 'off',
   turnTroops: 'off',
   bounties: 'off',
@@ -591,6 +625,7 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               <Form.Select
                 className="w-auto"
                 value={game.toxins}
+                disabled={game.radiation !== 'off'}
                 onChange={(e) =>
                   applySettings({ toxins: e.target.value as Toxins })
                 }
@@ -606,6 +641,41 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
                   : game.toxins === 'temporary'
                     ? 'Temporary'
                     : 'Permanent'}
+              </span>
+            )}
+          </div>
+
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Radiation
+              <Help>{RADIATION_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.radiation}
+                disabled={game.toxins !== 'off'}
+                onChange={(e) =>
+                  applySettings({ radiation: e.target.value as Radiation })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="static">Static</option>
+                <option value="dynamic">Dynamic</option>
+                <option value="expanding">Expanding</option>
+              </Form.Select>
+            ) : (
+              <span>
+                {game.radiation === 'off'
+                  ? 'Off'
+                  : game.radiation === 'static'
+                    ? 'Static'
+                    : game.radiation === 'dynamic'
+                      ? 'Dynamic'
+                      : 'Expanding'}
               </span>
             )}
           </div>

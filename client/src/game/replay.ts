@@ -12,6 +12,7 @@ const BASE_FRAME_INTERVAL_MS = 800;
 
 interface ReplayData {
   initial: ReplayTerritory[];
+  initialRadiation: number[];
   frames: ReplayFrame[];
 }
 
@@ -72,7 +73,11 @@ export function useReplay(
     if (!gameEnded) return;
     socket.emit('game:replay', (res: ReplayAck) => {
       if (!res.ok) return;
-      setReplay({ initial: res.initial, frames: res.frames });
+      setReplay({
+        initial: res.initial,
+        initialRadiation: res.initialRadiation,
+        frames: res.frames,
+      });
       setIndex(res.frames.length);
     });
   }, [gameEnded]);
@@ -132,7 +137,7 @@ export function useReplay(
       : replay.frames[index - 1]
     : undefined;
 
-  let territories = replay
+  const territories = replay
     ? index <= 0
       ? replay.initial
       : replay.frames[index - 1].territories
@@ -142,26 +147,11 @@ export function useReplay(
       ? []
       : replay.frames[index - 1].toxinTerritories
     : null;
-  if (replay && index > 0) {
-    const frame = replay.frames[index - 1];
-    if (frame.animation.type === 'attack') {
-      const { defendingTerritoryId, attackerId } = frame.animation;
-      const conquered = frame.territories.find(
-        (t) => t.id === defendingTerritoryId,
-      );
-      const nextFrame = replay.frames[index];
-      if (
-        conquered?.ownerId === attackerId &&
-        nextFrame?.animation.type === 'fortify' &&
-        nextFrame.animation.toTerritoryId === defendingTerritoryId
-      ) {
-        const moveInTroops = nextFrame.animation.troops;
-        territories = territories!.map((t) =>
-          t.id === defendingTerritoryId ? { ...t, troops: moveInTroops } : t,
-        );
-      }
-    }
-  }
+  const radiationTerritories = replay
+    ? index <= 0
+      ? replay.initialRadiation
+      : replay.frames[index - 1].radiationTerritories
+    : null;
 
   return {
     index,
@@ -170,6 +160,7 @@ export function useReplay(
     speed,
     territories,
     toxinTerritories,
+    radiationTerritories,
     turnNumber: currentFrame ? currentFrame.turnNumber : null,
     turnPlayerId: currentFrame ? currentFrame.playerId : null,
     conquestArrow:

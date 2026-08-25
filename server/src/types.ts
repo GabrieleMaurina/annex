@@ -54,6 +54,7 @@ export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchment = 'off' | 'on';
 export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
+export type Radiation = 'off' | 'static' | 'dynamic' | 'expanding';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type TurnTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
@@ -117,6 +118,7 @@ export interface ReplayToxinTerritory {
 export interface ReplayFrame {
   territories: ReplayTerritory[];
   toxinTerritories: ReplayToxinTerritory[];
+  radiationTerritories: number[];
   animation: ReplayAnimation;
   turnNumber: number;
   playerId: number;
@@ -153,6 +155,9 @@ export interface Game {
   portals: Portals;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
+  radiation: Radiation;
+  radiationTerritoryIds: Set<number>;
+  radiationUpcomingTerritoryIds: Set<number>;
   starvation: Starvation;
   turnTroops: TurnTroops;
   bounties: Bounties;
@@ -200,5 +205,6 @@ export interface Game {
   teamDeathOrder: number[];
   finalRanking: number[];
   replayInitial: ReplayTerritory[];
+  replayInitialRadiation: number[];
   replayFrames: ReplayFrame[];
 }

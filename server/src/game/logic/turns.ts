@@ -21,6 +21,7 @@ import {
   returnCardsToDeck,
 } from './progression/cards';
 import { bumpStat } from './progression/stats';
+import { updateRadiationForNewTurn } from './radiation/radiation';
 import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
 import { applyStarvation } from './starvation';
@@ -258,7 +259,9 @@ export function startCapitalPlacement(
 }
 
 function totalTerritoryCount(game: Game): number {
-  return maps.get(game.mapName)!.territories.length;
+  return (
+    maps.get(game.mapName)!.territories.length - game.radiationTerritoryIds.size
+  );
 }
 
 function countTerritoriesByOwner(game: Game): Map<number, number> {
@@ -417,7 +420,10 @@ function autoClaimRandomTerritory(
   const map = maps.get(game.mapName)!;
   const unclaimed = map.territories
     .map((t) => t.id)
-    .filter((id) => !game.territoryOwners.has(id));
+    .filter(
+      (id) =>
+        !game.territoryOwners.has(id) && !game.radiationTerritoryIds.has(id),
+    );
   if (unclaimed.length > 0) {
     const territoryId = unclaimed[Math.floor(Math.random() * unclaimed.length)];
     claimTerritory(game, io, playerId, territoryId);
@@ -589,13 +595,17 @@ export function forceEndTurn(
   advanceToNextPlayer(game, io, playersById);
 }
 
-function nextAlivePlayerIndex(game: Game): number {
-  const fromIndex = game.turnPlayerIndex;
-  const nextIndex = nextIndexMatching(
+function findNextAliveIndexFrom(game: Game, fromIndex: number): number | null {
+  return nextIndexMatching(
     game,
     fromIndex,
     (id) => ownsAnyTerritory(game, id) && !game.surrenderedIds.has(id),
   );
+}
+
+function nextAlivePlayerIndex(game: Game): number {
+  const fromIndex = game.turnPlayerIndex;
+  const nextIndex = findNextAliveIndexFrom(game, fromIndex);
   if (nextIndex === null) return fromIndex;
   if (nextIndex <= fromIndex) game.turnNumber++;
   return nextIndex;
@@ -638,7 +648,15 @@ export function advanceToNextPlayer(
   }
 
   const previousTurnNumber = game.turnNumber;
-  const nextIndex = nextAlivePlayerIndex(game);
+  let nextIndex = nextAlivePlayerIndex(game);
+
+  if (game.turnNumber !== previousTurnNumber) {
+    const eliminatedByRadiation = updateRadiationForNewTurn(game, io);
+    if (eliminatedByRadiation.includes(game.playerIds[nextIndex])) {
+      const reResolved = findNextAliveIndexFrom(game, game.turnPlayerIndex);
+      if (reResolved !== null) nextIndex = reResolved;
+    }
+  }
 
   checkGameEnd(game, true);
   if (game.state === 'ended') return;

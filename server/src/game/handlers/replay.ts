@@ -3,7 +3,12 @@ import { Player, ReplayFrame, ReplayTerritory } from '../../types';
 import { games } from '../logic/store';
 
 type ReplayResponse =
-  | { ok: true; initial: ReplayTerritory[]; frames: ReplayFrame[] }
+  | {
+      ok: true;
+      initial: ReplayTerritory[];
+      initialRadiation: number[];
+      frames: ReplayFrame[];
+    }
   | { ok: false; error: string };
 
 export function registerReplayHandlers(
@@ -25,6 +30,7 @@ export function registerReplayHandlers(
     callback({
       ok: true,
       initial: game.replayInitial,
+      initialRadiation: game.replayInitialRadiation,
       frames: game.replayFrames,
     });
   });

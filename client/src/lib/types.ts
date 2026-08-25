@@ -56,6 +56,7 @@ export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchment = 'off' | 'on';
 export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
+export type Radiation = 'off' | 'static' | 'dynamic' | 'expanding';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type TurnTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
@@ -103,6 +104,9 @@ export interface GameState {
   portals: Portals;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
+  radiation: Radiation;
+  radiationTerritoryIds: number[];
+  radiationUpcomingTerritoryIds: number[];
   starvation: Starvation;
   turnTroops: TurnTroops;
   bounties: Bounties;
@@ -179,6 +183,7 @@ export interface GameSettingsInput {
   entrenchment?: Entrenchment;
   toxins?: Toxins;
   portals?: Portals;
+  radiation?: Radiation;
   starvation?: Starvation;
   turnTroops?: TurnTroops;
   bounties?: Bounties;
@@ -199,6 +204,7 @@ export type GameRulesSettings = Pick<
   | 'entrenchment'
   | 'toxins'
   | 'portals'
+  | 'radiation'
   | 'starvation'
   | 'turnTroops'
   | 'bounties'
@@ -252,11 +258,17 @@ export type ReplayAnimation =
 export interface ReplayFrame {
   territories: ReplayTerritory[];
   toxinTerritories: ReplayToxinTerritory[];
+  radiationTerritories: number[];
   animation: ReplayAnimation;
   turnNumber: number;
   playerId: number;
 }
 
 export type ReplayAck =
-  | { ok: true; initial: ReplayTerritory[]; frames: ReplayFrame[] }
+  | {
+      ok: true;
+      initial: ReplayTerritory[];
+      initialRadiation: number[];
+      frames: ReplayFrame[];
+    }
   | { ok: false; error: string };

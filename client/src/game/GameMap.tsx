@@ -44,6 +44,7 @@ import {
   drawAnimations,
   drawFortifyPath,
   drawPortal,
+  drawRadiationCloud,
   drawToxinCloud,
   ENTRENCHED_OCTAGON_SCALE,
   hasActiveAnimations,
@@ -51,6 +52,7 @@ import {
   pruneAnimations,
   setContinuousAnimation,
   setPortalsActive,
+  setRadiationActive,
   setToxinsActive,
   startAnimation,
   traceOctagon,
@@ -145,6 +147,8 @@ interface Props {
   cards: CardsMode;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
+  radiationTerritoryIds: number[];
+  radiationUpcomingTerritoryIds: number[];
   starvation: Starvation;
   bounties: Bounties;
   territoryTroopsCap: number;
@@ -175,6 +179,8 @@ interface Props {
       | { territoryId: number; permanent: boolean; turnsRemaining: number }
     )[],
   ) => void;
+  setRadiationTerritoryIds: (territoryIds: number[]) => void;
+  setRadiationUpcomingTerritoryIds: (territoryIds: number[]) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
 }
@@ -308,6 +314,8 @@ function GameMap({
   cards,
   portalTerritoryIds,
   portalsEnabled,
+  radiationTerritoryIds,
+  radiationUpcomingTerritoryIds,
   starvation,
   bounties,
   territoryTroopsCap,
@@ -331,6 +339,8 @@ function GameMap({
   setGame,
   adjustTerritoryTroops,
   adjustToxinTerritories,
+  setRadiationTerritoryIds,
+  setRadiationUpcomingTerritoryIds,
   setChatOpen,
   navigate,
 }: Props) {
@@ -449,6 +459,7 @@ function GameMap({
   const frozenOwnerRef = useRef<Map<number, number>>(new Map());
   const attackRevealDeadlineRef = useRef<Map<number, number>>(new Map());
   const toxinPlacedAtRef = useRef<Map<number, number>>(new Map());
+  const radiationPlacedAtRef = useRef<Map<number, number>>(new Map());
   const ownerByIdRef = useRef(
     new Map<number, GameState['territories'][number]>(),
   );
@@ -591,6 +602,12 @@ function GameMap({
 
   const toxinPlaceEffect = useCallback((territoryId: number) => {
     toxinPlacedAtRef.current.set(territoryId, performance.now());
+  }, []);
+
+  const radiationPlaceEffect = useCallback((territoryIds: number[]) => {
+    const now = performance.now();
+    for (const territoryId of territoryIds)
+      radiationPlacedAtRef.current.set(territoryId, now);
   }, []);
 
   const animateStarve = useCallback(
@@ -763,6 +780,7 @@ function GameMap({
     speed: replaySpeed,
     territories: replayTerritories,
     toxinTerritories: replayToxinTerritories,
+    radiationTerritories: replayRadiationTerritories,
     turnNumber: replayTurnNumber,
     turnPlayerId: replayTurnPlayerId,
     conquestArrow: replayConquestArrow,
@@ -789,6 +807,27 @@ function GameMap({
   const toxinById = useMemo(
     () => new Set(displayedToxinTerritories.map((t) => t.id)),
     [displayedToxinTerritories],
+  );
+  const displayedRadiationTerritories =
+    replayRadiationTerritories ?? radiationTerritoryIds;
+  const radiationById = useMemo(
+    () => new Set(displayedRadiationTerritories),
+    [displayedRadiationTerritories],
+  );
+  const radiationUpcomingById = useMemo(
+    () =>
+      new Set(
+        showReplay
+          ? []
+          : radiationUpcomingTerritoryIds.filter(
+              (id) => !radiationById.has(id),
+            ),
+      ),
+    [showReplay, radiationUpcomingTerritoryIds, radiationById],
+  );
+  const unusableTerritoryById = useMemo(
+    () => new Set([...toxinById, ...radiationById]),
+    [toxinById, radiationById],
   );
   const replayPlayer = players.find((p) => p.id === replayTurnPlayerId);
   const replayPlayerColor = replayPlayer
@@ -941,15 +980,12 @@ function GameMap({
       setAttackWinProbabilities(blitzWinProbabilities);
       const newMaxBlitz = blitzWinProbabilities.length;
       const newMaxRegular = Math.min(newMaxBlitz, 3);
-      if (attackSelectedType === 'regular') {
-        setAttackRegularTroops(
-          (prev) => Math.min(prev, newMaxRegular) as 1 | 2 | 3,
-        );
-      } else {
-        setAttackBlitzTroops((prev) => Math.min(prev, newMaxBlitz));
-      }
+      setAttackRegularTroops(
+        (prev) => Math.min(prev, newMaxRegular) as 1 | 2 | 3,
+      );
+      setAttackBlitzTroops((prev) => Math.min(prev, newMaxBlitz));
     },
-    [attackSelectedType],
+    [],
   );
 
   const selectAttackEnd = useCallback(
@@ -982,7 +1018,7 @@ function GameMap({
             selfId,
             portalTerritoryIds,
             portalsEnabled,
-            toxinById,
+            unusableTerritoryById,
           );
           if (candidates.has(conqueredTerritoryId)) {
             selectAttackStart(conqueredTerritoryId);
@@ -995,7 +1031,7 @@ function GameMap({
       selfId,
       portalTerritoryIds,
       portalsEnabled,
-      toxinById,
+      unusableTerritoryById,
       setGame,
       selectAttackStart,
     ],
@@ -1092,7 +1128,9 @@ function GameMap({
   const territoryClaimCandidates =
     turnPhase === 'territory' && isMyTurn
       ? new Set(
-          territories.filter((t) => !ownerById.has(t.id)).map((t) => t.id),
+          territories
+            .filter((t) => !ownerById.has(t.id) && !radiationById.has(t.id))
+            .map((t) => t.id),
         )
       : new Set<number>();
   const fortifyStartCandidates =
@@ -1196,7 +1234,7 @@ function GameMap({
           selfId,
           portalTerritoryIds,
           portalsEnabled,
-          toxinById,
+          unusableTerritoryById,
         )
       : new Set<number>();
   const attackEndCandidates =
@@ -1211,7 +1249,7 @@ function GameMap({
           attackStartTerritoryId,
           portalTerritoryIds,
           portalsEnabled,
-          toxinById,
+          unusableTerritoryById,
         )
       : new Set<number>();
   const attackMoveMinTroops = attackConquestMinTroops ?? 1;
@@ -1436,6 +1474,22 @@ function GameMap({
         })),
       );
     }
+    function onRadiationUpcoming(payload: { territoryIds: number[] }) {
+      setRadiationUpcomingTerritoryIds(payload.territoryIds);
+    }
+    function onRadiationChanged(payload: {
+      territoryIds: number[];
+      eliminatedPlayerIds: number[];
+    }) {
+      const newlyRadiated = payload.territoryIds.filter(
+        (id) => !radiationTerritoryIds.includes(id),
+      );
+      if (newlyRadiated.length > 0) playSound('radiation');
+      radiationPlaceEffect(newlyRadiated);
+      setRadiationTerritoryIds(payload.territoryIds);
+      setRadiationUpcomingTerritoryIds([]);
+      startAnimationLoop();
+    }
     socket.on('game:deployed', onDeployed);
     socket.on('game:fortified', onFortified);
     socket.on('game:attackMoved', onAttackMoved);
@@ -1444,6 +1498,8 @@ function GameMap({
     socket.on('game:starved', onStarved);
     socket.on('game:toxined', onToxined);
     socket.on('game:toxinExpired', onToxinExpired);
+    socket.on('game:radiationUpcoming', onRadiationUpcoming);
+    socket.on('game:radiationChanged', onRadiationChanged);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
@@ -1453,6 +1509,8 @@ function GameMap({
       socket.off('game:starved', onStarved);
       socket.off('game:toxined', onToxined);
       socket.off('game:toxinExpired', onToxinExpired);
+      socket.off('game:radiationUpcoming', onRadiationUpcoming);
+      socket.off('game:radiationChanged', onRadiationChanged);
     };
   }, [
     animateAdd,
@@ -1462,6 +1520,10 @@ function GameMap({
     adjustTerritoryTroops,
     toxinPlaceEffect,
     adjustToxinTerritories,
+    radiationPlaceEffect,
+    radiationTerritoryIds,
+    setRadiationTerritoryIds,
+    setRadiationUpcomingTerritoryIds,
   ]);
 
   useEffect(() => {
@@ -1603,6 +1665,14 @@ function GameMap({
     if (hasToxinTerritories) startAnimationLoop();
     return () => setToxinsActive(false);
   }, [hasToxinTerritories]);
+
+  const hasRadiationTerritories =
+    radiationById.size > 0 || radiationUpcomingById.size > 0;
+  useEffect(() => {
+    setRadiationActive(hasRadiationTerritories);
+    if (hasRadiationTerritories) startAnimationLoop();
+    return () => setRadiationActive(false);
+  }, [hasRadiationTerritories]);
 
   useEffect(() => {
     function onSelected() {
@@ -2546,7 +2616,21 @@ function GameMap({
         );
       }
 
-      if (!toxin) {
+      const isRadiated = radiationById.has(t.id);
+      if (isRadiated) {
+        drawRadiationCloud(
+          ctx,
+          p.x,
+          p.y,
+          VERTEX_RADIUS * zoom,
+          now,
+          false,
+          t.id,
+          radiationPlacedAtRef.current.get(t.id) ?? -Infinity,
+        );
+      }
+
+      if (!toxin && !isRadiated) {
         ctx.beginPath();
         if (owner?.isCapital) {
           const half = VERTEX_RADIUS * zoom;
@@ -2559,6 +2643,19 @@ function GameMap({
         ctx.strokeStyle = style.stroke;
         ctx.lineWidth = style.width * zoom;
         ctx.stroke();
+
+        if (radiationUpcomingById.has(t.id)) {
+          drawRadiationCloud(
+            ctx,
+            p.x,
+            p.y,
+            VERTEX_RADIUS * zoom,
+            now,
+            true,
+            t.id,
+            -Infinity,
+          );
+        }
       }
 
       const territoryCard = cardByTerritoryId.get(t.id);
@@ -2657,17 +2754,13 @@ function GameMap({
                 attackPendingConquest &&
                 t.id === attackStartTerritoryId
               ? owner.troops - attackMoveTroops
-              : !isMyTurn &&
-                  attackPendingConquest &&
-                  t.id === attackEndTerritoryId
-                ? (attackConquestMinTroops ?? owner.troops)
-                : deployPanelOpen && t.id === selectedTerritoryId
-                  ? owner.troops + deployTroops
-                  : fortifyPanelOpen && t.id === fortifyEndTerritoryId
-                    ? owner.troops + fortifyTroops
-                    : fortifyPanelOpen && t.id === fortifyStartTerritoryId
-                      ? owner.troops - fortifyTroops
-                      : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
+              : deployPanelOpen && t.id === selectedTerritoryId
+                ? owner.troops + deployTroops
+                : fortifyPanelOpen && t.id === fortifyEndTerritoryId
+                  ? owner.troops + fortifyTroops
+                  : fortifyPanelOpen && t.id === fortifyStartTerritoryId
+                    ? owner.troops - fortifyTroops
+                    : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
         ctx.fillStyle = contrastTextColor(fillColor);
         ctx.font = `bold ${VERTEX_RADIUS * zoom}px sans-serif`;
         ctx.textAlign = 'center';

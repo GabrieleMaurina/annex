@@ -121,7 +121,11 @@ export function turnOrderBonus(index: number): number {
 
 function splitTerritoriesAmongPlayers(game: Game): number[][] {
   const map = maps.get(game.mapName)!;
-  const territoryIds = shuffle(map.territories.map((t) => t.id));
+  const territoryIds = shuffle(
+    map.territories
+      .map((t) => t.id)
+      .filter((id) => !game.radiationTerritoryIds.has(id)),
+  );
   const playerCount = game.playerIds.length;
   const base = Math.floor(territoryIds.length / playerCount);
   const remainder = territoryIds.length % playerCount;

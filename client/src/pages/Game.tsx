@@ -77,8 +77,11 @@ function Game({
 
   useEffect(() => {
     function onTurnStarted(payload: { playerId: number }) {
+      const isGameStart = prevStateRef.current !== 'playing';
       prevTurnPhaseRef.current = 'deploy';
-      playSound(payload.playerId === selfId ? 'turn' : 'phase');
+      if (!isGameStart) {
+        playSound(payload.playerId === selfId ? 'turn' : 'phase');
+      }
     }
     socket.on('game:turnStarted', onTurnStarted);
     return () => {
@@ -234,6 +237,18 @@ function Game({
     });
   }
 
+  function setRadiationTerritoryIds(territoryIds: number[]) {
+    setGame((prev) =>
+      prev ? { ...prev, radiationTerritoryIds: territoryIds } : prev,
+    );
+  }
+
+  function setRadiationUpcomingTerritoryIds(territoryIds: number[]) {
+    setGame((prev) =>
+      prev ? { ...prev, radiationUpcomingTerritoryIds: territoryIds } : prev,
+    );
+  }
+
   const nameById = new Map(
     [...game.players, ...game.spectators].map((p) => [p.id, p.name]),
   );
@@ -266,6 +281,8 @@ function Game({
           cards={game.cards}
           portalTerritoryIds={game.portalTerritoryIds}
           portalsEnabled={game.portalsEnabled}
+          radiationTerritoryIds={game.radiationTerritoryIds}
+          radiationUpcomingTerritoryIds={game.radiationUpcomingTerritoryIds}
           starvation={game.starvation}
           bounties={game.bounties}
           territoryTroopsCap={game.territoryTroopsCap}
@@ -289,6 +306,8 @@ function Game({
           setGame={setGame}
           adjustTerritoryTroops={adjustTerritoryTroops}
           adjustToxinTerritories={adjustToxinTerritories}
+          setRadiationTerritoryIds={setRadiationTerritoryIds}
+          setRadiationUpcomingTerritoryIds={setRadiationUpcomingTerritoryIds}
           setChatOpen={setChatOpen}
           navigate={navigate}
         />

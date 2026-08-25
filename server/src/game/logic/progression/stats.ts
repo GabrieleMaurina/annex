@@ -33,12 +33,13 @@ export function bumpStat(
 export function recordElimination(
   game: Game,
   defenderId: number,
-  attackerId: number,
+  attackerId?: number,
 ): boolean {
   const eliminated = !ownsAnyTerritory(game, defenderId);
   if (eliminated && !game.deathOrder.includes(defenderId)) {
     game.deathOrder.push(defenderId);
-    game.stats.get(attackerId)?.playersKilled.push(defenderId);
+    if (attackerId !== undefined)
+      game.stats.get(attackerId)?.playersKilled.push(defenderId);
   }
 
   if (game.gameMode === 'Team Deathmatch') {

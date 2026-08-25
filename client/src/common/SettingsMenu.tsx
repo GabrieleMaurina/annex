@@ -8,6 +8,7 @@ import { saveSettings } from '../lib/player';
 import {
   getSoundVolume,
   isSoundMuted,
+  playSound,
   setSoundVolume,
   toggleSoundMuted,
 } from '../lib/sounds';
@@ -80,6 +81,11 @@ function SettingsMenu({ shareUrl }: Props) {
         <div
           ref={panelRef}
           className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex flex-column gap-2`}
+          onClick={(e) => {
+            if (e.target !== e.currentTarget) return;
+            setOpen(false);
+            playSound('click');
+          }}
         >
           <div className="d-flex gap-2" ref={buttonRowRef}>
             <Tip text={isSoundMuted() ? 'Unmute sounds' : 'Mute sounds'}>

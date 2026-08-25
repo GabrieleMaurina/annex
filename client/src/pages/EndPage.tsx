@@ -97,6 +97,8 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                   ref={(el) => {
                     if (el) rowRefs.current.set(p.id, el);
                   }}
+                  role={p.id === selfId ? undefined : 'button'}
+                  data-no-click-sound
                   onClick={() => handleRowClick(p.id)}
                 >
                   <td style={rowStyle}>{index + 1}</td>

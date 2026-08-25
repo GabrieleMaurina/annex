@@ -206,6 +206,7 @@ function Home({
               return (
                 <tr
                   key={g.name}
+                  role="button"
                   onClick={() =>
                     g.hasPassword
                       ? setPasswordPrompt({ gameName: g.name, password: '' })

@@ -73,6 +73,7 @@ function PlayerRoster({
                   if (el) rowRefs.current.set(p.id, el);
                   else rowRefs.current.delete(p.id);
                 }}
+                role={p ? 'button' : undefined}
                 onClick={
                   p
                     ? p.id === selfId
@@ -94,7 +95,7 @@ function PlayerRoster({
                     >
                       {p.name}
                       {p.id === game.hostId && (
-                        <Badge bg="primary" className="ms-2">
+                        <Badge bg="primary" className="ms-2 align-middle">
                           Host
                         </Badge>
                       )}

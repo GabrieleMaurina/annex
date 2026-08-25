@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Form, ListGroup } from 'react-bootstrap';
 import { playerColor } from '../lib/palette';
 import { socket } from '../lib/socket';
+import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
 import { PANEL_CLASS } from './panelStyle';
 
@@ -46,6 +47,7 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
     const isOpen = e.currentTarget.open;
     setOpen(isOpen);
     if (isOpen) setUnreadCount(0);
+    playSound('click');
   }
 
   function send() {

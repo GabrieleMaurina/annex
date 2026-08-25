@@ -68,6 +68,7 @@ function EmojiTableOverlay({
                     type="button"
                     className="border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
                     style={{ fontSize: 24, padding: '3px 2px 5px 2px' }}
+                    data-no-click-sound
                     onClick={() => onPick(emojiPickerFor, emoji)}
                   >
                     {emoji}

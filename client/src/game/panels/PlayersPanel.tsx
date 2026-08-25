@@ -150,6 +150,11 @@ function PlayersPanel({
       document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
+  useEffect(() => {
+    document.body.classList.toggle('overflow-hidden', isFullscreen);
+    return () => document.body.classList.remove('overflow-hidden');
+  }, [isFullscreen]);
+
   function toggleFullscreen() {
     if (document.fullscreenElement) {
       document.exitFullscreen();
@@ -374,6 +379,8 @@ function PlayersPanel({
                     if (el) rowRefs.current.set(p.id, el);
                     else rowRefs.current.delete(p.id);
                   }}
+                  role={rowClickable ? 'button' : undefined}
+                  data-no-click-sound
                   onClick={() => rowClickable && onRowClick(p.id)}
                   style={{
                     cursor: rowClickable

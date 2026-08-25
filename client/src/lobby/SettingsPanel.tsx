@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import Help from '../common/Help';
+import { playSound } from '../lib/sounds';
 import type {
   Blitz,
   Bounties,
@@ -419,7 +420,7 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
         </div>
       </div>
 
-      <details className="mb-3">
+      <details className="mb-3" onToggle={() => playSound('click')}>
         <summary className="fw-bold py-2">Settings</summary>
         <div className="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2 mt-1">
           <div className="col d-flex align-items-center gap-2">

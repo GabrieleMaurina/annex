@@ -29,6 +29,7 @@ function TroopPanel({
   return (
     <div
       className="p-2 px-3 border rounded bg-body bg-opacity-75 d-flex flex-column gap-1"
+      data-no-click-sound
       style={{
         ...style,
         zIndex: 1,

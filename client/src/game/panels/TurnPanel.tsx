@@ -42,6 +42,7 @@ function TurnPanel({
   return (
     <div
       className="position-fixed bottom-0 start-50 translate-middle-x m-3 py-2 px-3 border rounded d-flex align-items-center gap-2"
+      data-no-click-sound
       style={{
         zIndex: 1,
         backgroundColor: withAlpha(color, 0.75),

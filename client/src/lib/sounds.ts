@@ -1,4 +1,5 @@
 const SOUND_NAMES = [
+  'click',
   'deploy',
   'select',
   'fortify',
@@ -56,4 +57,20 @@ export function getSoundVolume(): number {
 export function setSoundVolume(value: number) {
   volume = value;
   for (const audio of audioByName.values()) audio.volume = value;
+}
+
+const CLICK_SOUND_SELECTOR =
+  'button, a, input[type="checkbox"], input[type="radio"], select, [role="button"]';
+
+export function initUiClickSounds() {
+  document.addEventListener(
+    'click',
+    (e) => {
+      const target = e.target as HTMLElement | null;
+      const el = target?.closest(CLICK_SOUND_SELECTOR);
+      if (!el || el.closest('[data-no-click-sound]')) return;
+      playSound('click');
+    },
+    true,
+  );
 }

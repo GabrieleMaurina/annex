@@ -2563,7 +2563,7 @@ function GameMap({
     const toxinByTerritoryId = new Map(
       displayedToxinTerritories.map((t) => [t.id, t]),
     );
-    const now = performance.now();
+    const now = areAnimationsDisabled() ? 0 : performance.now();
 
     for (const t of territories) {
       const p = toScreen(t);
@@ -2612,7 +2612,9 @@ function GameMap({
           toxin.permanent,
           toxin.turnsRemaining,
           t.id,
-          toxinPlacedAtRef.current.get(t.id) ?? -Infinity,
+          areAnimationsDisabled()
+            ? -Infinity
+            : (toxinPlacedAtRef.current.get(t.id) ?? -Infinity),
         );
       }
 
@@ -2626,7 +2628,9 @@ function GameMap({
           now,
           false,
           t.id,
-          radiationPlacedAtRef.current.get(t.id) ?? -Infinity,
+          areAnimationsDisabled()
+            ? -Infinity
+            : (radiationPlacedAtRef.current.get(t.id) ?? -Infinity),
         );
       }
 
@@ -3347,6 +3351,7 @@ function GameMap({
                       fontSize: 24,
                       padding: '3px 2px 5px 2px',
                     }}
+                    data-no-click-sound
                     onClick={() => handleEmojiPick(emojiPickerFor, emoji)}
                   >
                     {emoji}

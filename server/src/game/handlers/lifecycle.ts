@@ -14,6 +14,7 @@ import {
   Player,
   Portals,
   Starvation,
+  Toxins,
   TurnDuration,
   TurnTroops,
   Visibility,
@@ -83,6 +84,7 @@ const FORTIFICATION_VALUES: Fortification[] = [
   'Unrestricted',
 ];
 const ENTRENCHMENT_VALUES: Entrenchment[] = ['off', 'on'];
+const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const PORTALS_VALUES: Portals[] = ['off', 'static', 'dynamic'];
 const STARVATION_VALUES: Starvation[] = [
   'off',
@@ -152,6 +154,7 @@ export function registerGameHandlers(
         placement: 'Random',
         fortification: 'Connected',
         entrenchment: 'off',
+        toxins: 'off',
         portals: 'off',
         portalTerritoryIds: [],
         portalsEnabled: false,
@@ -185,6 +188,7 @@ export function registerGameHandlers(
         territoryOwners: new Map(),
         territoryTroops: new Map(),
         territoryEntrenchment: new Map(),
+        territoryToxins: new Map(),
         capitalTerritoryIds: new Set(),
         playerMissions: new Map(),
         hostPriority: [player.id],
@@ -413,6 +417,12 @@ export function registerGameHandlers(
         if (settings.entrenchment === 'on' && game.defenceDice !== 2)
           return callback({ ok: false, error: 'invalid entrenchment' });
         game.entrenchment = settings.entrenchment as Entrenchment;
+      }
+
+      if (settings.toxins !== undefined) {
+        if (!(TOXINS_VALUES as unknown[]).includes(settings.toxins))
+          return callback({ ok: false, error: 'invalid toxins' });
+        game.toxins = settings.toxins as Toxins;
       }
 
       if (settings.portals !== undefined) {

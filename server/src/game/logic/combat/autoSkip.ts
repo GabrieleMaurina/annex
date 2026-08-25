@@ -1,5 +1,10 @@
 import { maps } from '../../../maps';
 import { Game } from '../../../types';
+import {
+  isFreeConquestTarget,
+  toxinsCost,
+  wouldSplitMap,
+} from '../toxins/toxins';
 
 function ownedTerritoryIds(game: Game, playerId: number): number[] {
   return [...game.territoryOwners.entries()]
@@ -15,9 +20,22 @@ export function hasAnyAttack(game: Game, playerId: number): boolean {
     return (
       territoryById.get(id)?.neighbors.some((n) => {
         const ownerId = game.territoryOwners.get(n);
-        return ownerId !== undefined && ownerId !== playerId;
+        if (ownerId !== undefined) return ownerId !== playerId;
+        return isFreeConquestTarget(game, n);
       }) ?? false
     );
+  });
+}
+
+export function hasAnyToxin(game: Game, playerId: number): boolean {
+  if (game.toxins === 'off') return false;
+  const owned = ownedTerritoryIds(game, playerId);
+  if (owned.length <= 1) return false;
+  const cost = toxinsCost(game, playerId);
+  return owned.some((id) => {
+    if (game.capitalTerritoryIds.has(id)) return false;
+    if ((game.territoryTroops.get(id) ?? 0) < cost) return false;
+    return !wouldSplitMap(game, id);
   });
 }
 

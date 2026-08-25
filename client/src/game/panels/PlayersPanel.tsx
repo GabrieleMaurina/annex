@@ -1,4 +1,5 @@
 import type { MutableRefObject, ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
 import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
@@ -10,6 +11,7 @@ import type {
   GameState,
   Mission,
   Starvation,
+  Toxins,
   TurnPhase,
 } from '../../lib/types';
 import { EMOJI_POP_DURATION, GLOBAL_TARGET_ID, type EmojiPop } from '../emoji';
@@ -56,6 +58,8 @@ interface Props {
   bounties: Bounties;
   territoryTroopsCap: number;
   totalTroopsCap: number;
+  toxins: Toxins;
+  toxinsCost: number;
   mission: Mission | null;
   selfId: number | null;
   hostId: number;
@@ -85,6 +89,8 @@ function PlayersPanel({
   bounties,
   territoryTroopsCap,
   totalTroopsCap,
+  toxins,
+  toxinsCost,
   mission,
   selfId,
   hostId,
@@ -128,6 +134,29 @@ function PlayersPanel({
   const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
   const whitePlayIcon = useWhiteIcon('/icons/play.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
+  const whiteFullscreenIcon = useWhiteIcon('/icons/fullscreen.svg');
+  const whiteNotFullscreenIcon = useWhiteIcon('/icons/not_fullscreen.svg');
+
+  const [isFullscreen, setIsFullscreen] = useState(
+    !!document.fullscreenElement,
+  );
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(!!document.fullscreenElement);
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () =>
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen();
+    }
+  }
 
   if (collapsed) {
     return (
@@ -175,7 +204,10 @@ function PlayersPanel({
         }}
         style={{ cursor: 'pointer' }}
       >
-        <div className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold">
+        <div
+          className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold"
+          style={{ position: 'relative' }}
+        >
           <span>{gameMode}</span>
           {mission && (
             <Tip text={<>Your mission: {formatMission(mission, players)}</>}>
@@ -188,6 +220,37 @@ function PlayersPanel({
               />
             </Tip>
           )}
+          <Tip text={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="d-flex align-items-center justify-content-center"
+              style={{
+                width: 24,
+                height: 24,
+                padding: 0,
+                position: 'absolute',
+                right: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFullscreen();
+              }}
+            >
+              <img
+                src={
+                  isFullscreen
+                    ? (whiteNotFullscreenIcon ?? '/icons/not_fullscreen.svg')
+                    : (whiteFullscreenIcon ?? '/icons/fullscreen.svg')
+                }
+                width={14}
+                height={14}
+                alt={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              />
+            </Button>
+          </Tip>
         </div>
         <div className="text-center fw-bold mb-3">
           Turn{' '}
@@ -407,29 +470,34 @@ function PlayersPanel({
             })}
           </tbody>
         </Table>
-        {canSendEmoji && (
-          <div className="d-flex justify-content-start mt-1">
-            <Tip text="Everyone" placement="bottom">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="d-inline-flex align-items-center justify-content-center"
-                style={{ width: 28, height: 28, padding: 0 }}
-                disabled={emojiTargeting}
-                onClick={() => onRowClick(GLOBAL_TARGET_ID)}
-                ref={(el) => {
-                  if (el) rowRefs.current.set(GLOBAL_TARGET_ID, el);
-                  else rowRefs.current.delete(GLOBAL_TARGET_ID);
-                }}
-              >
-                <img
-                  src={whiteGlobeIcon ?? '/icons/globe.svg'}
-                  width={14}
-                  height={14}
-                  alt="Everyone"
-                />
-              </Button>
-            </Tip>
+        {(canSendEmoji || toxins !== 'off') && (
+          <div className="d-flex align-items-center mt-1">
+            {canSendEmoji && (
+              <Tip text="Everyone" placement="bottom">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="d-inline-flex align-items-center justify-content-center"
+                  style={{ width: 28, height: 28, padding: 0 }}
+                  disabled={emojiTargeting}
+                  onClick={() => onRowClick(GLOBAL_TARGET_ID)}
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(GLOBAL_TARGET_ID, el);
+                    else rowRefs.current.delete(GLOBAL_TARGET_ID);
+                  }}
+                >
+                  <img
+                    src={whiteGlobeIcon ?? '/icons/globe.svg'}
+                    width={14}
+                    height={14}
+                    alt="Everyone"
+                  />
+                </Button>
+              </Tip>
+            )}
+            {toxins !== 'off' && (
+              <span className="small ms-auto">Toxins cost: {toxinsCost}</span>
+            )}
           </div>
         )}
         {spectators.length > 0 && (

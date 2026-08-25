@@ -172,17 +172,64 @@ function Game({
     setGame((prev) => {
       if (!prev) return prev;
       const deltaById = new Map(deltas.map((d) => [d.territoryId, d]));
+      const existingIds = new Set(prev.territories.map((t) => t.id));
+      const additions = deltas
+        .filter(
+          (d) => d.ownerId !== undefined && !existingIds.has(d.territoryId),
+        )
+        .map((d) => ({
+          id: d.territoryId,
+          ownerId: d.ownerId!,
+          troops: Math.max(0, d.delta),
+          isCapital: false,
+          entrenchedTurns: 0,
+        }));
       return {
         ...prev,
-        territories: prev.territories.map((t) => {
-          const d = deltaById.get(t.id);
-          if (!d) return t;
-          return {
-            ...t,
-            troops: t.troops + d.delta,
-            ownerId: d.ownerId ?? t.ownerId,
-          };
-        }),
+        territories: [
+          ...prev.territories.map((t) => {
+            const d = deltaById.get(t.id);
+            if (!d) return t;
+            return {
+              ...t,
+              troops: t.troops + d.delta,
+              ownerId: d.ownerId ?? t.ownerId,
+            };
+          }),
+          ...additions,
+        ],
+      };
+    });
+  }
+
+  function adjustToxinTerritories(
+    changes: (
+      | { territoryId: number; remove: true }
+      | { territoryId: number; permanent: boolean; turnsRemaining: number }
+    )[],
+  ) {
+    setGame((prev) => {
+      if (!prev) return prev;
+      const changedIds = new Set(changes.map((c) => c.territoryId));
+      const additions = changes.filter(
+        (
+          c,
+        ): c is {
+          territoryId: number;
+          permanent: boolean;
+          turnsRemaining: number;
+        } => !('remove' in c),
+      );
+      return {
+        ...prev,
+        toxinTerritories: [
+          ...prev.toxinTerritories.filter((t) => !changedIds.has(t.id)),
+          ...additions.map((a) => ({
+            id: a.territoryId,
+            permanent: a.permanent,
+            turnsRemaining: a.turnsRemaining,
+          })),
+        ],
       };
     });
   }
@@ -214,6 +261,9 @@ function Game({
           turnDuration={game.turnDuration}
           fortification={game.fortification}
           entrenchment={game.entrenchment}
+          toxins={game.toxins}
+          toxinTerritories={game.toxinTerritories}
+          cards={game.cards}
           portalTerritoryIds={game.portalTerritoryIds}
           portalsEnabled={game.portalsEnabled}
           starvation={game.starvation}
@@ -238,6 +288,7 @@ function Game({
           logs={logs}
           setGame={setGame}
           adjustTerritoryTroops={adjustTerritoryTroops}
+          adjustToxinTerritories={adjustToxinTerritories}
           setChatOpen={setChatOpen}
           navigate={navigate}
         />

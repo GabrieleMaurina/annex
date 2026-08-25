@@ -137,6 +137,11 @@ export function useReplay(
       ? replay.initial
       : replay.frames[index - 1].territories
     : null;
+  const toxinTerritories = replay
+    ? index <= 0
+      ? []
+      : replay.frames[index - 1].toxinTerritories
+    : null;
   if (replay && index > 0) {
     const frame = replay.frames[index - 1];
     if (frame.animation.type === 'attack') {
@@ -164,6 +169,7 @@ export function useReplay(
     playing,
     speed,
     territories,
+    toxinTerritories,
     turnNumber: currentFrame ? currentFrame.turnNumber : null,
     turnPlayerId: currentFrame ? currentFrame.playerId : null,
     conquestArrow:

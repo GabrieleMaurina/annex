@@ -10,6 +10,7 @@ export function getAttackStartCandidates(
   selfId: number | null,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
+  toxinById: Set<number>,
 ): Set<number> {
   const candidates = new Set<number>();
   for (const t of territories) {
@@ -24,7 +25,8 @@ export function getAttackStartCandidates(
     if (
       neighbors.some((n) => {
         const neighborOwner = ownerById.get(n);
-        return neighborOwner && neighborOwner.ownerId !== selfId;
+        if (neighborOwner) return neighborOwner.ownerId !== selfId;
+        return !toxinById.has(n);
       })
     ) {
       candidates.add(t.id);
@@ -40,6 +42,7 @@ export function getAttackEndCandidates(
   startId: number,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
+  toxinById: Set<number>,
 ): Set<number> {
   const candidates = new Set<number>();
   const territory = territories.find((t) => t.id === startId);
@@ -51,7 +54,11 @@ export function getAttackEndCandidates(
   );
   for (const n of neighbors) {
     const owner = ownerById.get(n);
-    if (owner && owner.ownerId !== selfId) candidates.add(n);
+    if (owner) {
+      if (owner.ownerId !== selfId) candidates.add(n);
+    } else if (!toxinById.has(n)) {
+      candidates.add(n);
+    }
   }
   return candidates;
 }

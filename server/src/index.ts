@@ -13,6 +13,7 @@ import {
   registerGameHandlers,
   registerReplayHandlers,
   registerTerritoryHandlers,
+  registerToxinsHandlers,
   registerTroopHandlers,
 } from './game';
 import { broadcastHomeGames, registerHomeHandlers } from './home';
@@ -43,6 +44,7 @@ io.on('connection', (socket) => {
   registerEmojiHandlers(io, socket, playersBySocket, playersById);
   registerFortifyHandlers(io, socket, playersBySocket, playersById);
   registerEntrenchHandlers(io, socket, playersBySocket, playersById);
+  registerToxinsHandlers(io, socket, playersBySocket, playersById);
   registerAttackHandlers(io, socket, playersBySocket, playersById);
   registerCardHandlers(io, socket, playersBySocket, playersById);
   registerReplayHandlers(io, socket, playersBySocket);

@@ -16,6 +16,7 @@ import { recordElimination } from '../logic/progression/stats';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
 import { gameRoomName, games, sendPlayerCards } from '../logic/store';
+import { isFreeConquestTarget } from '../logic/toxins/toxins';
 import { advanceTurnPhase, rewindTurnTimerIfBelowHalf } from '../logic/turns';
 
 type GameResponse =
@@ -73,7 +74,8 @@ function isAttackStartCandidate(
   );
   return neighbors.some((n) => {
     const ownerId = game.territoryOwners.get(n);
-    return ownerId !== undefined && ownerId !== playerId;
+    if (ownerId !== undefined) return ownerId !== playerId;
+    return isFreeConquestTarget(game, n);
   });
 }
 
@@ -84,7 +86,9 @@ function isAttackEndCandidate(
   territoryId: number,
 ): boolean {
   const ownerId = game.territoryOwners.get(territoryId);
-  if (ownerId === undefined || ownerId === playerId) return false;
+  if (ownerId === playerId) return false;
+  if (ownerId === undefined && !isFreeConquestTarget(game, territoryId))
+    return false;
   const map = maps.get(game.mapName)!;
   const territory = map.territories.find((t) => t.id === startId);
   const neighbors = withPortalEdges(
@@ -177,8 +181,6 @@ export function registerAttackHandlers(
       const territoryId = isObject(data) ? data.territoryId : undefined;
       if (!isInteger(territoryId))
         return callback({ ok: false, error: 'invalid territory' });
-      if (!game.territoryOwners.has(territoryId))
-        return callback({ ok: false, error: 'invalid territory' });
       if (
         !isAttackEndCandidate(
           game,
@@ -254,13 +256,16 @@ export function registerAttackHandlers(
         return callback({ ok: false, error: 'invalid troops' });
 
       const defendingTroops = game.territoryTroops.get(endId) ?? 0;
-      const defenderId = game.territoryOwners.get(endId)!;
+      const defenderId = game.territoryOwners.get(endId);
       let attackLosses: number;
       let defenceLosses: number;
       let attackerDice: number[] = [];
       let defenderDice: number[] = [];
       const defendingDice = defenceDiceFor(game, endId);
-      if (type === 'regular') {
+      if (defenderId === undefined) {
+        attackLosses = 0;
+        defenceLosses = 0;
+      } else if (type === 'regular') {
         const result = rollAttack(
           troops,
           Math.min(defendingTroops, defendingDice),
@@ -285,16 +290,20 @@ export function registerAttackHandlers(
         Math.max(0, defendingTroops - defenceLosses),
       );
       const attackerStats = game.stats.get(player.id)!;
-      const defenderStats = game.stats.get(defenderId)!;
+      const defenderStats =
+        defenderId !== undefined ? game.stats.get(defenderId) : undefined;
       attackerStats.troopsLost += attackLosses;
-      defenderStats.troopsLost += defenceLosses;
       attackerStats.troopsKilled += defenceLosses;
-      defenderStats.troopsKilled += attackLosses;
+      if (defenderStats) {
+        defenderStats.troopsLost += defenceLosses;
+        defenderStats.troopsKilled += attackLosses;
+      }
 
       const conquered = defenceLosses >= defendingTroops;
       if (conquered) {
         game.territoryOwners.set(endId, player.id);
         game.territoryEntrenchment.delete(endId);
+        game.territoryToxins.delete(endId);
       }
       recordReplayFrame(game, {
         type: 'attack',
@@ -312,22 +321,22 @@ export function registerAttackHandlers(
       if (conquered) {
         game.conqueredThisTurn = true;
         attackerStats.territoriesConquered++;
-        defenderStats.territoriesLost++;
-        if (game.capitalTerritoryIds.has(endId)) {
+        if (game.capitalTerritoryIds.has(endId))
           attackerStats.capitalsConquered++;
-          defenderStats.capitalsLost++;
+        if (defenderStats) {
+          defenderStats.territoriesLost++;
+          if (game.capitalTerritoryIds.has(endId)) defenderStats.capitalsLost++;
         }
-        const defenderEliminated = recordElimination(
-          game,
-          defenderId,
-          player.id,
-        );
+        const defenderEliminated =
+          defenderId !== undefined
+            ? recordElimination(game, defenderId, player.id)
+            : false;
         checkGameEnd(game);
         if (game.state === 'playing') {
           const remainingAttackers = attackingTroops - attackLosses;
           const minMoveTroops = Math.min(troops, 3, remainingAttackers - 1);
 
-          if (defenderEliminated) {
+          if (defenderEliminated && defenderId !== undefined) {
             const defenderHand = game.playerCards.get(defenderId) ?? [];
             const attackerHand = game.playerCards.get(player.id) ?? [];
             attackerHand.push(...defenderHand);

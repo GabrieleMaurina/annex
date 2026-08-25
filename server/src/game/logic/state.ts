@@ -60,6 +60,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     placement: game.placement,
     fortification: game.fortification,
     entrenchment: game.entrenchment,
+    toxins: game.toxins,
     portals: game.portals,
     portalTerritoryIds: game.portalTerritoryIds,
     portalsEnabled: game.portalsEnabled,
@@ -131,5 +132,12 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
       isCapital: game.capitalTerritoryIds.has(id),
       entrenchedTurns: game.territoryEntrenchment.get(id) ?? 0,
     })),
+    toxinTerritories: [...game.territoryToxins.entries()].map(
+      ([id, toxin]) => ({
+        id,
+        permanent: toxin.permanent,
+        turnsRemaining: toxin.turnsRemaining,
+      }),
+    ),
   };
 }

@@ -1,7 +1,12 @@
 import { Server } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player, TurnPhase } from '../../types';
-import { hasAnyAttack, hasAnyEntrench, hasAnyFortify } from './combat/autoSkip';
+import {
+  hasAnyAttack,
+  hasAnyEntrench,
+  hasAnyFortify,
+  hasAnyToxin,
+} from './combat/autoSkip';
 import { checkGameEnd } from './end';
 import {
   calculateDeployTroopsBreakdown,
@@ -20,8 +25,15 @@ import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
 import { applyStarvation } from './starvation';
 import { sendPlayerCards } from './store';
+import { decrementToxinsGlobally } from './toxins/toxins';
 
-const PHASE_ORDER: TurnPhase[] = ['deploy', 'attack', 'fortify', 'entrench'];
+const PHASE_ORDER: TurnPhase[] = [
+  'deploy',
+  'attack',
+  'fortify',
+  'entrench',
+  'toxins',
+];
 
 export const PLACEMENT_PHASE_DURATION = 10;
 export const CAPITAL_PHASE_DURATION = 60;
@@ -641,6 +653,14 @@ export function advanceToNextPlayer(
   game.attackStartTerritoryId = null;
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
+  if (game.turnNumber !== previousTurnNumber) {
+    const expiredToxinIds = decrementToxinsGlobally(game);
+    if (expiredToxinIds.length > 0) {
+      io.to(gameRoomName(game.name)).emit('game:toxinExpired', {
+        territoryIds: expiredToxinIds,
+      });
+    }
+  }
   decrementEntrenchmentForPlayer(game, game.playerIds[nextIndex]);
   startDeployPhase(game, io, game.playerIds[nextIndex]);
   scheduleTurnTimer(game, io, playersById);
@@ -669,6 +689,11 @@ export function advanceTurnPhase(
     } else if (
       game.turnPhase === 'entrench' &&
       (game.entrenchment !== 'on' || !hasAnyEntrench(game, playerId))
+    ) {
+      advanceTurnPhase(game, io, playersById);
+    } else if (
+      game.turnPhase === 'toxins' &&
+      (game.toxins === 'off' || !hasAnyToxin(game, playerId))
     ) {
       advanceTurnPhase(game, io, playersById);
     }

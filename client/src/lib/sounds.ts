@@ -4,6 +4,7 @@ const SOUND_NAMES = [
   'fortify',
   'explode',
   'entrench',
+  'toxins',
   'emoji',
   'start',
   'end',

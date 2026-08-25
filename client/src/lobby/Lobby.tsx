@@ -117,6 +117,7 @@ function Lobby({
           placement: res.game.placement,
           fortification: res.game.fortification,
           entrenchment: res.game.entrenchment,
+          toxins: res.game.toxins,
           portals: res.game.portals,
           starvation: res.game.starvation,
           turnTroops: res.game.turnTroops,

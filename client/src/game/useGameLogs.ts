@@ -79,17 +79,32 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
         `Entrenched territory #${payload.territoryId + 1} with ${payload.troops} troops (now ${payload.turnsRemaining} turns)`,
       );
     }
+    function onToxined(payload: {
+      territoryId: number;
+      permanent: boolean;
+      turnsRemaining: number;
+      playerId: number;
+    }) {
+      pushLog(
+        colorForPlayer(payload.playerId),
+        payload.permanent
+          ? `Released toxins on territory #${payload.territoryId + 1} permanently`
+          : `Released toxins on territory #${payload.territoryId + 1} for ${payload.turnsRemaining} turns`,
+      );
+    }
     socket.on('game:deployed', onDeployed);
     socket.on('game:fortified', onFortified);
     socket.on('game:attackMoved', onAttackMoved);
     socket.on('game:deployedMany', onDeployedMany);
     socket.on('game:entrenched', onEntrenched);
+    socket.on('game:toxined', onToxined);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
       socket.off('game:attackMoved', onAttackMoved);
       socket.off('game:deployedMany', onDeployedMany);
       socket.off('game:entrenched', onEntrenched);
+      socket.off('game:toxined', onToxined);
     };
   }, [colorForPlayer, ownerOfTerritory, pushLog]);
 

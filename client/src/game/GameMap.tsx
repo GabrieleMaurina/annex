@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -19,6 +20,7 @@ import type {
   Ack,
   Bounties,
   Card,
+  CardsMode,
   CardSymbol,
   EmojiAttackTarget,
   EmojiSentPayload,
@@ -30,6 +32,7 @@ import type {
   Mission,
   ReplayAnimation,
   Starvation,
+  Toxins,
   TurnDuration,
   TurnPhase,
 } from '../lib/types';
@@ -41,12 +44,14 @@ import {
   drawAnimations,
   drawFortifyPath,
   drawPortal,
+  drawToxinCloud,
   ENTRENCHED_OCTAGON_SCALE,
   hasActiveAnimations,
   onAnimationsToggle,
   pruneAnimations,
   setContinuousAnimation,
   setPortalsActive,
+  setToxinsActive,
   startAnimation,
   traceOctagon,
 } from './animations';
@@ -94,6 +99,7 @@ import AttackPanel, {
   type DiceRoll,
 } from './panels/AttackPanel';
 import CardsPanel, { CardFace } from './panels/CardsPanel';
+import ConfirmPanel from './panels/ConfirmPanel';
 import LogsPanel from './panels/LogsPanel';
 import PlayersPanel from './panels/PlayersPanel';
 import ReplayPanel from './panels/ReplayPanel';
@@ -101,6 +107,7 @@ import TroopPanel from './panels/TroopPanel';
 import TurnPanel from './panels/TurnPanel';
 import TurnProgressBar from './panels/TurnProgressBar';
 import { useReplay } from './replay';
+import { getToxinsCandidates, toxinsCost } from './toxins/toxins';
 import type { LogEntry } from './useGameLogs';
 
 type AttackSelectEndAck =
@@ -133,6 +140,9 @@ interface Props {
   turnDuration: TurnDuration;
   fortification: Fortification;
   entrenchment: Entrenchment;
+  toxins: Toxins;
+  toxinTerritories: GameState['toxinTerritories'];
+  cards: CardsMode;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
   starvation: Starvation;
@@ -158,6 +168,12 @@ interface Props {
   setGame: (game: GameState) => void;
   adjustTerritoryTroops: (
     deltas: { territoryId: number; delta: number; ownerId?: number }[],
+  ) => void;
+  adjustToxinTerritories: (
+    changes: (
+      | { territoryId: number; remove: true }
+      | { territoryId: number; permanent: boolean; turnsRemaining: number }
+    )[],
   ) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   navigate: (path: string) => void;
@@ -287,6 +303,9 @@ function GameMap({
   turnDuration,
   fortification,
   entrenchment,
+  toxins,
+  toxinTerritories,
+  cards,
   portalTerritoryIds,
   portalsEnabled,
   starvation,
@@ -311,6 +330,7 @@ function GameMap({
   logs,
   setGame,
   adjustTerritoryTroops,
+  adjustToxinTerritories,
   setChatOpen,
   navigate,
 }: Props) {
@@ -428,6 +448,7 @@ function GameMap({
   const frozenTroopsRef = useRef<Map<number, number>>(new Map());
   const frozenOwnerRef = useRef<Map<number, number>>(new Map());
   const attackRevealDeadlineRef = useRef<Map<number, number>>(new Map());
+  const toxinPlacedAtRef = useRef<Map<number, number>>(new Map());
   const ownerByIdRef = useRef(
     new Map<number, GameState['territories'][number]>(),
   );
@@ -568,6 +589,10 @@ function GameMap({
     startAnimation('entrench', territory.x, territory.y);
   }, []);
 
+  const toxinPlaceEffect = useCallback((territoryId: number) => {
+    toxinPlacedAtRef.current.set(territoryId, performance.now());
+  }, []);
+
   const animateStarve = useCallback(
     ({ territoryId, troops }: { territoryId: number; troops: number }) => {
       if (areAnimationsDisabled()) return;
@@ -601,7 +626,7 @@ function GameMap({
       attackingTerritoryId: number,
       defendingTerritoryId: number,
       attackerId: number,
-      defenderId: number,
+      defenderId: number | undefined,
       attackLosses: number,
       defenceLosses: number,
       arrowPath?: { x: number; y: number }[],
@@ -694,8 +719,11 @@ function GameMap({
           territoryId: animation.territoryId,
           troops: animation.troops,
         });
+      } else if (animation.type === 'toxins') {
+        playSound('toxins');
+        toxinPlaceEffect(animation.territoryId);
       } else {
-        playSound('explode');
+        if (animation.defenderId !== undefined) playSound('explode');
         const arrowPath = partOfConquestPair
           ? undefined
           : territoryPoints([
@@ -719,6 +747,7 @@ function GameMap({
       animateRemove,
       entrenchEffect,
       animateStarve,
+      toxinPlaceEffect,
       playAttackLossEffects,
       territoryPoints,
       fortification,
@@ -733,6 +762,7 @@ function GameMap({
     playing: replayPlaying,
     speed: replaySpeed,
     territories: replayTerritories,
+    toxinTerritories: replayToxinTerritories,
     turnNumber: replayTurnNumber,
     turnPlayerId: replayTurnPlayerId,
     conquestArrow: replayConquestArrow,
@@ -755,6 +785,11 @@ function GameMap({
       }))
     : ownership;
   const ownerById = new Map(displayedOwnership.map((o) => [o.id, o]));
+  const displayedToxinTerritories = replayToxinTerritories ?? toxinTerritories;
+  const toxinById = useMemo(
+    () => new Set(displayedToxinTerritories.map((t) => t.id)),
+    [displayedToxinTerritories],
+  );
   const replayPlayer = players.find((p) => p.id === replayTurnPlayerId);
   const replayPlayerColor = replayPlayer
     ? playerColor(replayPlayer.color)
@@ -947,6 +982,7 @@ function GameMap({
             selfId,
             portalTerritoryIds,
             portalsEnabled,
+            toxinById,
           );
           if (candidates.has(conqueredTerritoryId)) {
             selectAttackStart(conqueredTerritoryId);
@@ -959,6 +995,7 @@ function GameMap({
       selfId,
       portalTerritoryIds,
       portalsEnabled,
+      toxinById,
       setGame,
       selectAttackStart,
     ],
@@ -1108,10 +1145,39 @@ function GameMap({
   const entrenchCandidates = isMyTurn
     ? getEntrenchCandidates(territories, ownerById, selfId)
     : new Set<number>();
+  const toxinsCostValue = toxinsCost(toxins, cards, nextSetBaseValues);
+  const toxinsWastedTroops =
+    selectedTerritoryId !== null
+      ? Math.max(
+          0,
+          (ownerById.get(selectedTerritoryId)?.troops ?? 0) - toxinsCostValue,
+        )
+      : 0;
+  const toxinsCandidates = isMyTurn
+    ? getToxinsCandidates(
+        territories,
+        ownerById,
+        selfId,
+        toxinsCostValue,
+        toxinById,
+        portalTerritoryIds,
+        portalsEnabled,
+      )
+    : new Set<number>();
+  const canAdvancePhase =
+    isMyTurn &&
+    !paused &&
+    turnPhase !== 'territory' &&
+    turnPhase !== 'troop' &&
+    turnPhase !== 'capital' &&
+    (turnPhase !== 'deploy' || (troopsToDeploy <= 0 && !mustPlaySet));
   const nextPhaseEndsTurn =
-    turnPhase === 'entrench' ||
+    turnPhase === 'toxins' ||
+    (turnPhase === 'entrench' &&
+      (toxins === 'off' || toxinsCandidates.size === 0)) ||
     (turnPhase === 'fortify' &&
-      (entrenchment !== 'on' || entrenchCandidates.size === 0));
+      (entrenchment !== 'on' || entrenchCandidates.size === 0) &&
+      (toxins === 'off' || toxinsCandidates.size === 0));
   const entrenchMaxTroops =
     selectedTerritoryId !== null
       ? (ownerById.get(selectedTerritoryId)?.troops ?? 1) - 1
@@ -1130,6 +1196,7 @@ function GameMap({
           selfId,
           portalTerritoryIds,
           portalsEnabled,
+          toxinById,
         )
       : new Set<number>();
   const attackEndCandidates =
@@ -1144,6 +1211,7 @@ function GameMap({
           attackStartTerritoryId,
           portalTerritoryIds,
           portalsEnabled,
+          toxinById,
         )
       : new Set<number>();
   const attackMoveMinTroops = attackConquestMinTroops ?? 1;
@@ -1163,7 +1231,15 @@ function GameMap({
       turnPhase === 'fortify' && fortifyStartCandidates.size === 0;
     const noEntrenchPossible =
       turnPhase === 'entrench' && entrenchCandidates.size === 0;
-    if (!noAttackPossible && !noFortifyPossible && !noEntrenchPossible) return;
+    const noToxinsPossible =
+      turnPhase === 'toxins' && toxinsCandidates.size === 0;
+    if (
+      !noAttackPossible &&
+      !noFortifyPossible &&
+      !noEntrenchPossible &&
+      !noToxinsPossible
+    )
+      return;
 
     const key = `${turnNumber}-${turnPlayerIndex}-${turnPhase}`;
     if (autoAdvanceKeyRef.current === key) return;
@@ -1336,12 +1412,38 @@ function GameMap({
       );
       startAnimationLoop();
     }
+    function onToxined(payload: {
+      territoryId: number;
+      permanent: boolean;
+      turnsRemaining: number;
+    }) {
+      playSound('toxins');
+      toxinPlaceEffect(payload.territoryId);
+      adjustToxinTerritories([
+        {
+          territoryId: payload.territoryId,
+          permanent: payload.permanent,
+          turnsRemaining: payload.turnsRemaining,
+        },
+      ]);
+      startAnimationLoop();
+    }
+    function onToxinExpired(payload: { territoryIds: number[] }) {
+      adjustToxinTerritories(
+        payload.territoryIds.map((territoryId) => ({
+          territoryId,
+          remove: true,
+        })),
+      );
+    }
     socket.on('game:deployed', onDeployed);
     socket.on('game:fortified', onFortified);
     socket.on('game:attackMoved', onAttackMoved);
     socket.on('game:deployedMany', onDeployedMany);
     socket.on('game:entrenched', onEntrenched);
     socket.on('game:starved', onStarved);
+    socket.on('game:toxined', onToxined);
+    socket.on('game:toxinExpired', onToxinExpired);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
@@ -1349,6 +1451,8 @@ function GameMap({
       socket.off('game:deployedMany', onDeployedMany);
       socket.off('game:entrenched', onEntrenched);
       socket.off('game:starved', onStarved);
+      socket.off('game:toxined', onToxined);
+      socket.off('game:toxinExpired', onToxinExpired);
     };
   }, [
     animateAdd,
@@ -1356,6 +1460,8 @@ function GameMap({
     entrenchEffect,
     animateStarve,
     adjustTerritoryTroops,
+    toxinPlaceEffect,
+    adjustToxinTerritories,
   ]);
 
   useEffect(() => {
@@ -1363,14 +1469,15 @@ function GameMap({
       attackingTerritoryId: number;
       defendingTerritoryId: number;
       attackerId: number;
-      defenderId: number;
+      defenderId: number | undefined;
       attackLosses: number;
       defenceLosses: number;
       conquered: boolean;
       type: 'regular' | 'blitz';
     }) {
+      const freeConquest = payload.defenderId === undefined;
       const delay =
-        payload.type === 'regular'
+        payload.type === 'regular' && !freeConquest
           ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
           : 0;
 
@@ -1384,7 +1491,7 @@ function GameMap({
           territoryId: payload.attackingTerritoryId,
           delta: -payload.attackLosses,
         });
-      if (payload.defenceLosses > 0)
+      if (payload.defenceLosses > 0 || payload.conquered)
         deltas.push({
           territoryId: payload.defendingTerritoryId,
           delta: -payload.defenceLosses,
@@ -1392,7 +1499,12 @@ function GameMap({
         });
       if (deltas.length > 0) adjustTerritoryTroops(deltas);
 
-      if (payload.type === 'regular' && !areAnimationsDisabled()) {
+      if (
+        payload.type === 'regular' &&
+        payload.defenderId !== undefined &&
+        !areAnimationsDisabled()
+      ) {
+        const defenderId = payload.defenderId;
         const revealAt = performance.now() + delay;
         attackRevealDeadlineRef.current.set(
           payload.attackingTerritoryId,
@@ -1403,10 +1515,7 @@ function GameMap({
           revealAt,
         );
         if (payload.conquered)
-          frozenOwnerRef.current.set(
-            payload.defendingTerritoryId,
-            payload.defenderId,
-          );
+          frozenOwnerRef.current.set(payload.defendingTerritoryId, defenderId);
         const attackerTroops = ownerByIdRef.current.get(
           payload.attackingTerritoryId,
         )?.troops;
@@ -1425,7 +1534,7 @@ function GameMap({
           );
       }
       setTimeout(() => {
-        playSound('explode');
+        if (!freeConquest) playSound('explode');
         if (payload.attackLosses > 0) {
           frozenTroopsRef.current.delete(payload.attackingTerritoryId);
           explode(payload.attackingTerritoryId);
@@ -1487,6 +1596,13 @@ function GameMap({
     if (active) startAnimationLoop();
     return () => setPortalsActive(false);
   }, [portalsEnabled, portalTerritoryIds]);
+
+  const hasToxinTerritories = displayedToxinTerritories.length > 0;
+  useEffect(() => {
+    setToxinsActive(hasToxinTerritories);
+    if (hasToxinTerritories) startAnimationLoop();
+    return () => setToxinsActive(false);
+  }, [hasToxinTerritories]);
 
   useEffect(() => {
     function onSelected() {
@@ -1777,6 +1893,11 @@ function GameMap({
     isMyTurn &&
     !paused &&
     selectedTerritoryId !== null;
+  const toxinsPanelOpen =
+    turnPhase === 'toxins' &&
+    isMyTurn &&
+    !paused &&
+    selectedTerritoryId !== null;
   const attackRevealing = attackDiceRoll !== null && !attackDiceSettled;
   const attackDiceOnly =
     attackDiceSettled &&
@@ -1823,6 +1944,18 @@ function GameMap({
     );
   }, [selectedTerritoryId, entrenchTroops, setGame]);
 
+  const submitToxins = useCallback(() => {
+    if (selectedTerritoryId === null) return;
+    socket.emit(
+      'game:toxins',
+      { territoryId: selectedTerritoryId },
+      (res: Ack) => {
+        if (!res.ok) return;
+        setGame(res.game);
+      },
+    );
+  }, [selectedTerritoryId, setGame]);
+
   function isInteractable(t: Territory): boolean {
     if (pendingAttackEmoji) return !gameEnded;
     if (gameEnded || !isMyTurn || paused) return false;
@@ -1844,6 +1977,7 @@ function GameMap({
       return false;
     }
     if (turnPhase === 'entrench') return entrenchCandidates.has(t.id);
+    if (turnPhase === 'toxins') return toxinsCandidates.has(t.id);
     return true;
   }
 
@@ -1937,6 +2071,13 @@ function GameMap({
           return;
         }
       }
+      if (isConfirmKey && toxinsPanelOpen) {
+        if (!isTypingTarget(e.target)) {
+          e.preventDefault();
+          submitToxins();
+          return;
+        }
+      }
       if (isConfirmKey && attackPanelOpen && attackShowPendingConquest) {
         if (
           !isTypingTarget(e.target) ||
@@ -1995,7 +2136,13 @@ function GameMap({
       if (isTypingTarget(e.target)) return;
       if (e.key === 'Tab') {
         e.preventDefault();
-        setPanelCollapsed((prev) => !prev);
+        if (canAdvancePhase) {
+          socket.emit('game:nextPhase', (res: Ack) => {
+            if (res.ok) setGame(res.game);
+          });
+        } else {
+          setPanelCollapsed((prev) => !prev);
+        }
       } else if (e.key.toLowerCase() === 't') {
         setChatOpen((prev) => !prev);
       }
@@ -2019,6 +2166,8 @@ function GameMap({
     submitFortify,
     entrenchPanelOpen,
     submitEntrench,
+    toxinsPanelOpen,
+    submitToxins,
     attackStartTerritoryId,
     attackPendingConquest,
     attackShowPendingConquest,
@@ -2033,6 +2182,8 @@ function GameMap({
     cardsOpen,
     selectedCombo,
     playCardSet,
+    canAdvancePhase,
+    setGame,
   ]);
 
   function getImageDims(): { w: number; h: number } {
@@ -2190,6 +2341,7 @@ function GameMap({
       turnPhase !== 'deploy' &&
       turnPhase !== 'troop' &&
       turnPhase !== 'entrench' &&
+      turnPhase !== 'toxins' &&
       selectedTerritoryId !== null
     ) {
       const selected = territories.find((t) => t.id === selectedTerritoryId);
@@ -2338,6 +2490,9 @@ function GameMap({
 
     const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
     const portalTerritoryIdSet = new Set(portalTerritoryIds);
+    const toxinByTerritoryId = new Map(
+      displayedToxinTerritories.map((t) => [t.id, t]),
+    );
     const now = performance.now();
 
     for (const t of territories) {
@@ -2376,18 +2531,35 @@ function GameMap({
         ctx.stroke();
       }
 
-      ctx.beginPath();
-      if (owner?.isCapital) {
-        const half = VERTEX_RADIUS * zoom;
-        ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
-      } else {
-        ctx.arc(p.x, p.y, VERTEX_RADIUS * zoom, 0, Math.PI * 2);
+      const toxin = toxinByTerritoryId.get(t.id);
+      if (toxin) {
+        drawToxinCloud(
+          ctx,
+          p.x,
+          p.y,
+          VERTEX_RADIUS * zoom,
+          now,
+          toxin.permanent,
+          toxin.turnsRemaining,
+          t.id,
+          toxinPlacedAtRef.current.get(t.id) ?? -Infinity,
+        );
       }
-      ctx.fillStyle = fillColor;
-      ctx.fill();
-      ctx.strokeStyle = style.stroke;
-      ctx.lineWidth = style.width * zoom;
-      ctx.stroke();
+
+      if (!toxin) {
+        ctx.beginPath();
+        if (owner?.isCapital) {
+          const half = VERTEX_RADIUS * zoom;
+          ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
+        } else {
+          ctx.arc(p.x, p.y, VERTEX_RADIUS * zoom, 0, Math.PI * 2);
+        }
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+        ctx.strokeStyle = style.stroke;
+        ctx.lineWidth = style.width * zoom;
+        ctx.stroke();
+      }
 
       const territoryCard = cardByTerritoryId.get(t.id);
       if (territoryCard) {
@@ -2744,6 +2916,19 @@ function GameMap({
       return;
     }
 
+    if (turnPhase === 'toxins') {
+      if (!vertex || !isInteractable(vertex)) {
+        if (selectedTerritoryId !== null) selectTerritory(null);
+        return;
+      }
+      if (selectedTerritoryId === vertex.id) {
+        submitToxins();
+        return;
+      }
+      selectTerritory(vertex.id);
+      return;
+    }
+
     if (!vertex || !isInteractable(vertex)) {
       if (selectedTerritoryId !== null) selectTerritory(null);
       return;
@@ -3012,6 +3197,8 @@ function GameMap({
         bounties={bounties}
         territoryTroopsCap={territoryTroopsCap}
         totalTroopsCap={totalTroopsCap}
+        toxins={toxins}
+        toxinsCost={toxinsCostValue}
         mission={mission}
         selfId={selfId}
         turnNumber={turnNumber}
@@ -3292,6 +3479,19 @@ function GameMap({
               onConfirm={submitEntrench}
               style={deployPanelStyle}
               extra={`Entrenched: ${entrenchCurrentTurns} → ${entrenchCurrentTurns + entrenchTroops} turns`}
+            />
+          )}
+          {toxinsPanelOpen && deployPanelStyle && (
+            <ConfirmPanel
+              label="Release toxins:"
+              buttonLabel="Confirm"
+              onConfirm={submitToxins}
+              style={deployPanelStyle}
+              extra={
+                toxinsWastedTroops > 0
+                  ? `Warning: ${toxinsWastedTroops} troops wasted`
+                  : undefined
+              }
             />
           )}
           {attackPanelOpen && attackPanelStyle && (

@@ -8,6 +8,7 @@ export { registerFortifyHandlers } from './handlers/fortify';
 export { registerGameHandlers } from './handlers/lifecycle';
 export { registerReplayHandlers } from './handlers/replay';
 export { registerTerritoryHandlers } from './handlers/territory';
+export { registerToxinsHandlers } from './handlers/toxins/toxins';
 export { registerTroopHandlers } from './handlers/troop';
 export {
   broadcastGameStates,

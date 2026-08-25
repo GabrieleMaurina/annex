@@ -111,6 +111,20 @@ function jaggedPolygonPath(
   ctx.closePath();
 }
 
+function makeSmokeBurst(count: number): Particle[] {
+  return Array.from({ length: count }, () => ({
+    angle: 0,
+    speed: 0,
+    size: SMOKE_SIZE_MIN + Math.random() * SMOKE_SIZE_RANGE,
+    kind: 'smoke',
+    rotation0: Math.random() * Math.PI * 2,
+    maxLife: SMOKE_LIFE_MIN + Math.random() * SMOKE_LIFE_RANGE,
+    vx0: (Math.random() * 2 - 1) * SMOKE_DRIFT_X_RANGE,
+    vy0: SMOKE_DRIFT_Y_MIN + Math.random() * SMOKE_DRIFT_Y_RANGE,
+    jitters: makeJitters(7),
+  }));
+}
+
 function makeExplosionParticles(): Particle[] {
   const fire: Particle[] = Array.from({ length: EXPLOSION_FIRE_COUNT }, () => ({
     angle: Math.random() * Math.PI * 2,
@@ -123,20 +137,7 @@ function makeExplosionParticles(): Particle[] {
     maxLife: FIRE_LIFE_MIN + Math.random() * FIRE_LIFE_RANGE,
     jitters: makeJitters(5),
   }));
-  const smoke: Particle[] = Array.from(
-    { length: EXPLOSION_SMOKE_COUNT },
-    () => ({
-      angle: 0,
-      speed: 0,
-      size: SMOKE_SIZE_MIN + Math.random() * SMOKE_SIZE_RANGE,
-      kind: 'smoke',
-      rotation0: Math.random() * Math.PI * 2,
-      maxLife: SMOKE_LIFE_MIN + Math.random() * SMOKE_LIFE_RANGE,
-      vx0: (Math.random() * 2 - 1) * SMOKE_DRIFT_X_RANGE,
-      vy0: SMOKE_DRIFT_Y_MIN + Math.random() * SMOKE_DRIFT_Y_RANGE,
-      jitters: makeJitters(7),
-    }),
-  );
+  const smoke: Particle[] = makeSmokeBurst(EXPLOSION_SMOKE_COUNT);
   const sparks: Particle[] = Array.from(
     { length: EXPLOSION_SPARK_COUNT },
     () => ({
@@ -275,6 +276,7 @@ let animations: Animation[] = [];
 let disabled = false;
 let continuousAnimationActive = false;
 let portalsActive = false;
+let toxinsActive = false;
 const toggleListeners = new Set<() => void>();
 
 export function onAnimationsToggle(listener: () => void): () => void {
@@ -337,11 +339,16 @@ export function setPortalsActive(active: boolean) {
   portalsActive = active && !disabled;
 }
 
+export function setToxinsActive(active: boolean) {
+  toxinsActive = active && !disabled;
+}
+
 export function hasActiveAnimations(): boolean {
   return (
     animations.length > 0 ||
     (continuousAnimationActive && !disabled) ||
-    (portalsActive && !disabled)
+    (portalsActive && !disabled) ||
+    (toxinsActive && !disabled)
   );
 }
 
@@ -380,6 +387,38 @@ function drawLabel(
   ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
   ctx.fillText(a.label, x, y);
   ctx.restore();
+}
+
+function drawSmokeParticles(
+  ctx: CanvasRenderingContext2D,
+  particles: Particle[],
+  p: { x: number; y: number },
+  scale: number,
+  elapsedSeconds: number,
+) {
+  ctx.fillStyle = SMOKE_COLOR;
+  for (const particle of particles) {
+    if (particle.kind !== 'smoke') continue;
+    const maxLife = particle.maxLife!;
+    const t = Math.min(elapsedSeconds, maxLife);
+    if (t >= maxLife) continue;
+    const px = p.x + (particle.vx0 ?? 0) * t * scale;
+    const py = p.y + (particle.vy0 ?? 0) * t * scale;
+    const size = (particle.size + SMOKE_GROWTH_RATE * t) * scale;
+    ctx.globalAlpha = Math.min(
+      SMOKE_MAX_ALPHA,
+      (1 - t / maxLife) * SMOKE_MAX_ALPHA,
+    );
+    jaggedPolygonPath(
+      ctx,
+      px,
+      py,
+      size,
+      particle.rotation0 ?? 0,
+      particle.jitters!,
+    );
+    ctx.fill();
+  }
 }
 
 function drawExplosion(
@@ -436,29 +475,7 @@ function drawExplosion(
     ctx.fill();
   }
 
-  ctx.fillStyle = SMOKE_COLOR;
-  for (const particle of particles) {
-    if (particle.kind !== 'smoke') continue;
-    const maxLife = particle.maxLife!;
-    const t = Math.min(elapsedSeconds, maxLife);
-    if (t >= maxLife) continue;
-    const px = p.x + (particle.vx0 ?? 0) * t * scale;
-    const py = p.y + (particle.vy0 ?? 0) * t * scale;
-    const size = (particle.size + SMOKE_GROWTH_RATE * t) * scale;
-    ctx.globalAlpha = Math.min(
-      SMOKE_MAX_ALPHA,
-      (1 - t / maxLife) * SMOKE_MAX_ALPHA,
-    );
-    jaggedPolygonPath(
-      ctx,
-      px,
-      py,
-      size,
-      particle.rotation0 ?? 0,
-      particle.jitters!,
-    );
-    ctx.fill();
-  }
+  drawSmokeParticles(ctx, particles, p, scale, elapsedSeconds);
 
   ctx.strokeStyle = SPARK_COLOR;
   ctx.lineWidth = Math.max(1, 2 * scale);
@@ -524,6 +541,160 @@ function drawEntrench(
   }
 
   ctx.restore();
+}
+
+const TOXIN_CLOUD_SCALE = 1.4;
+const TOXIN_CLOUD_COLOR = '65, 70, 75';
+const TOXIN_CLOUD_COUNTDOWN_COLOR = '#f8f9fa';
+
+const TOXIN_PARTICLE_REFERENCE_RADIUS = 20;
+const TOXIN_PARTICLE_COUNT = 22;
+const TOXIN_PARTICLE_SIDES = 5;
+const TOXIN_PARTICLE_SIZE_MIN = 3.5;
+const TOXIN_PARTICLE_SIZE_RANGE = 3;
+const TOXIN_PARTICLE_RADIUS_MIN = 0.15;
+const TOXIN_PARTICLE_RADIUS_RANGE = 0.9;
+const TOXIN_PARTICLE_ORBIT_SPEED_MIN = 0.00025;
+const TOXIN_PARTICLE_ORBIT_SPEED_RANGE = 0.00055;
+const TOXIN_PARTICLE_WANDER_SPEED_MIN = 0.0009;
+const TOXIN_PARTICLE_WANDER_SPEED_RANGE = 0.0018;
+const TOXIN_PARTICLE_WANDER_AMOUNT = 0.4;
+const TOXIN_PARTICLE_ROTATION_SPEED_MIN = 0.0006;
+const TOXIN_PARTICLE_ROTATION_SPEED_RANGE = 0.0016;
+const TOXIN_PARTICLE_ALPHA_MIN = 0.4;
+const TOXIN_PARTICLE_ALPHA_RANGE = 0.4;
+const TOXIN_PARTICLE_ALPHA_PERMANENT_BOOST = 1.35;
+const TOXIN_PLACE_BURST_DURATION = 900;
+
+interface ToxinParticlePosition {
+  x: number;
+  y: number;
+  size: number;
+  alpha: number;
+  rotation: number;
+}
+
+function toxinParticlePosition(
+  now: number,
+  seed: number,
+  index: number,
+  cloudRadius: number,
+  expansion: number,
+): ToxinParticlePosition {
+  const r = (k: number) => pseudoRandom(seed * 11.31 + index * 7.919 + k);
+
+  const orbitSpeed =
+    (TOXIN_PARTICLE_ORBIT_SPEED_MIN + r(1) * TOXIN_PARTICLE_ORBIT_SPEED_RANGE) *
+    (r(2) < 0.5 ? 1 : -1);
+  const baseAngle =
+    (index / TOXIN_PARTICLE_COUNT) * Math.PI * 2 + r(3) * Math.PI * 2;
+  const angle = baseAngle + now * orbitSpeed;
+
+  const wanderSpeed1 =
+    TOXIN_PARTICLE_WANDER_SPEED_MIN + r(4) * TOXIN_PARTICLE_WANDER_SPEED_RANGE;
+  const wanderSpeed2 =
+    TOXIN_PARTICLE_WANDER_SPEED_MIN + r(5) * TOXIN_PARTICLE_WANDER_SPEED_RANGE;
+  const wanderPhase1 = r(6) * Math.PI * 2;
+  const wanderPhase2 = r(7) * Math.PI * 2;
+
+  const baseRadiusFrac =
+    TOXIN_PARTICLE_RADIUS_MIN + r(8) * TOXIN_PARTICLE_RADIUS_RANGE;
+  const radiusWander =
+    TOXIN_PARTICLE_WANDER_AMOUNT *
+    (0.6 * Math.sin(now * wanderSpeed1 + wanderPhase1) +
+      0.4 * Math.sin(now * wanderSpeed2 * 1.9 + wanderPhase2));
+  const radiusFrac = Math.min(1, Math.max(0.05, baseRadiusFrac + radiusWander));
+  const angleWobble = 0.5 * Math.sin(now * wanderSpeed2 + wanderPhase1);
+
+  const dist = cloudRadius * radiusFrac * expansion;
+
+  const rotationSpeed =
+    (TOXIN_PARTICLE_ROTATION_SPEED_MIN +
+      r(9) * TOXIN_PARTICLE_ROTATION_SPEED_RANGE) *
+    (r(10) < 0.5 ? 1 : -1);
+  const rotationPhase = r(11) * Math.PI * 2;
+
+  return {
+    x: Math.cos(angle + angleWobble) * dist,
+    y: Math.sin(angle + angleWobble) * dist,
+    size: TOXIN_PARTICLE_SIZE_MIN + r(12) * TOXIN_PARTICLE_SIZE_RANGE,
+    alpha: TOXIN_PARTICLE_ALPHA_MIN + r(13) * TOXIN_PARTICLE_ALPHA_RANGE,
+    rotation: now * rotationSpeed + rotationPhase,
+  };
+}
+
+function drawToxinParticle(
+  ctx: CanvasRenderingContext2D,
+  particle: ToxinParticlePosition,
+  sizeScale: number,
+  alphaBoost: number,
+) {
+  const size = Math.max(0.5, particle.size * sizeScale);
+  ctx.save();
+  ctx.translate(particle.x, particle.y);
+  ctx.rotate(particle.rotation);
+  ctx.beginPath();
+  for (let i = 0; i < TOXIN_PARTICLE_SIDES; i++) {
+    const angle = (i / TOXIN_PARTICLE_SIDES) * Math.PI * 2;
+    const px = Math.cos(angle) * size;
+    const py = Math.sin(angle) * size;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = `rgba(${TOXIN_CLOUD_COLOR}, ${Math.min(1, particle.alpha * alphaBoost)})`;
+  ctx.fill();
+  ctx.restore();
+}
+
+export function drawToxinCloud(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  now: number,
+  permanent: boolean,
+  turnsRemaining: number,
+  seed: number,
+  placedAt: number,
+) {
+  const cloudRadius = radius * TOXIN_CLOUD_SCALE;
+  const sizeScale = radius / TOXIN_PARTICLE_REFERENCE_RADIUS;
+  const alphaBoost = permanent ? TOXIN_PARTICLE_ALPHA_PERMANENT_BOOST : 1;
+  const burstProgress = Math.min(
+    1,
+    Math.max(0, (now - placedAt) / TOXIN_PLACE_BURST_DURATION),
+  );
+  const expansion = 1 - (1 - burstProgress) ** 3;
+
+  ctx.save();
+  ctx.translate(x, y);
+  for (let i = 0; i < TOXIN_PARTICLE_COUNT; i++) {
+    const particle = toxinParticlePosition(
+      now,
+      seed,
+      i,
+      cloudRadius,
+      expansion,
+    );
+    drawToxinParticle(ctx, particle, sizeScale, alphaBoost);
+  }
+  ctx.restore();
+
+  if (!permanent) {
+    ctx.save();
+    ctx.font = `bold ${Math.max(10, radius * 0.8)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const tx = x + cloudRadius * 0.7;
+    const ty = y - cloudRadius * 0.7;
+    ctx.lineWidth = Math.max(2, radius * 0.15);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.strokeText(String(turnsRemaining), tx, ty);
+    ctx.fillStyle = TOXIN_CLOUD_COUNTDOWN_COLOR;
+    ctx.fillText(String(turnsRemaining), tx, ty);
+    ctx.restore();
+  }
 }
 
 function portalBlobPath(

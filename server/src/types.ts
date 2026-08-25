@@ -52,6 +52,7 @@ export type GameMode =
 export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchment = 'off' | 'on';
+export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type TurnTroops = 'off' | 'on';
@@ -63,7 +64,8 @@ export type TurnPhase =
   | 'deploy'
   | 'attack'
   | 'fortify'
-  | 'entrench';
+  | 'entrench'
+  | 'toxins';
 export type Visibility = 'public' | 'private';
 
 export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
@@ -91,12 +93,13 @@ export type ReplayAnimation =
       attackingTerritoryId: number;
       defendingTerritoryId: number;
       attackerId: number;
-      defenderId: number;
+      defenderId: number | undefined;
       attackLosses: number;
       defenceLosses: number;
     }
   | { type: 'entrench'; territoryId: number; troops: number; playerId: number }
-  | { type: 'starve'; territoryId: number; troops: number; playerId: number };
+  | { type: 'starve'; territoryId: number; troops: number; playerId: number }
+  | { type: 'toxins'; territoryId: number; playerId: number };
 
 export interface ReplayTerritory {
   id: number;
@@ -105,8 +108,15 @@ export interface ReplayTerritory {
   entrenchedTurns: number;
 }
 
+export interface ReplayToxinTerritory {
+  id: number;
+  permanent: boolean;
+  turnsRemaining: number;
+}
+
 export interface ReplayFrame {
   territories: ReplayTerritory[];
+  toxinTerritories: ReplayToxinTerritory[];
   animation: ReplayAnimation;
   turnNumber: number;
   playerId: number;
@@ -139,6 +149,7 @@ export interface Game {
   placement: Placement;
   fortification: Fortification;
   entrenchment: Entrenchment;
+  toxins: Toxins;
   portals: Portals;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
@@ -172,6 +183,7 @@ export interface Game {
   territoryOwners: Map<number, number>;
   territoryTroops: Map<number, number>;
   territoryEntrenchment: Map<number, number>;
+  territoryToxins: Map<number, { permanent: boolean; turnsRemaining: number }>;
   capitalTerritoryIds: Set<number>;
   playerMissions: Map<number, Mission>;
   hostPriority: number[];

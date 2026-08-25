@@ -14,6 +14,7 @@ import type {
   Placement,
   Portals,
   Starvation,
+  Toxins,
   TurnDuration,
   TurnTroops,
   Visibility,
@@ -222,6 +223,29 @@ const ENTRENCHMENT_HELP = (
   </>
 );
 
+const TOXINS_HELP = (
+  <>
+    Adds an extra phase after fortifying (and entrenching) where you can spend
+    troops straight off a territory you own to release toxins on it: it loses
+    its owner, is wiped of every troop it held, and becomes inaccessible to
+    everyone until the toxin clears. A territory can never be toxined if doing
+    so would split the map into two or more disconnected groups, and capitals
+    can&apos;t be toxined.
+    <ul className="mb-0 ps-3">
+      <li>Off: no toxins phase.</li>
+      <li>
+        Temporary: costs 5 troops (Constant cards) or 25% of the next card
+        set&apos;s value, and clears itself after 3 turns; once cleared, the
+        territory can be freely conquered by anyone with no dice roll.
+      </li>
+      <li>
+        Permanent: costs 10 troops (Constant cards) or 50% of the next card
+        set&apos;s value, and never clears for the rest of the game.
+      </li>
+    </ul>
+  </>
+);
+
 const TURN_TROOPS_HELP = (
   <>
     Whether players get extra troops each turn on top of the normal deploy pool.
@@ -282,6 +306,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   placement: 'Random',
   fortification: 'Connected',
   entrenchment: 'off',
+  toxins: 'off',
   portals: 'off',
   starvation: 'off',
   turnTroops: 'off',
@@ -551,6 +576,37 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               </Form.Select>
             ) : (
               <span>{game.entrenchment === 'on' ? 'On' : 'Off'}</span>
+            )}
+          </div>
+
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Toxins
+              <Help>{TOXINS_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.toxins}
+                onChange={(e) =>
+                  applySettings({ toxins: e.target.value as Toxins })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="temporary">Temporary</option>
+                <option value="permanent">Permanent</option>
+              </Form.Select>
+            ) : (
+              <span>
+                {game.toxins === 'off'
+                  ? 'Off'
+                  : game.toxins === 'temporary'
+                    ? 'Temporary'
+                    : 'Permanent'}
+              </span>
             )}
           </div>
 

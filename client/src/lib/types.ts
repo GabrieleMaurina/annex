@@ -54,6 +54,7 @@ export type GameMode =
 export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchment = 'off' | 'on';
+export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type TurnTroops = 'off' | 'on';
@@ -65,7 +66,8 @@ export type TurnPhase =
   | 'deploy'
   | 'attack'
   | 'fortify'
-  | 'entrench';
+  | 'entrench'
+  | 'toxins';
 export type Visibility = 'public' | 'private';
 
 export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
@@ -97,6 +99,7 @@ export interface GameState {
   placement: Placement;
   fortification: Fortification;
   entrenchment: Entrenchment;
+  toxins: Toxins;
   portals: Portals;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
@@ -158,6 +161,7 @@ export interface GameState {
     isCapital: boolean;
     entrenchedTurns: number;
   }[];
+  toxinTerritories: ReplayToxinTerritory[];
 }
 
 export interface GameSettingsInput {
@@ -173,6 +177,7 @@ export interface GameSettingsInput {
   placement?: Placement;
   fortification?: Fortification;
   entrenchment?: Entrenchment;
+  toxins?: Toxins;
   portals?: Portals;
   starvation?: Starvation;
   turnTroops?: TurnTroops;
@@ -192,6 +197,7 @@ export type GameRulesSettings = Pick<
   | 'placement'
   | 'fortification'
   | 'entrenchment'
+  | 'toxins'
   | 'portals'
   | 'starvation'
   | 'turnTroops'
@@ -215,6 +221,12 @@ export interface ReplayTerritory {
   entrenchedTurns: number;
 }
 
+export interface ReplayToxinTerritory {
+  id: number;
+  permanent: boolean;
+  turnsRemaining: number;
+}
+
 export type ReplayAnimation =
   | { type: 'deploy'; territoryId: number; troops: number; playerId: number }
   | {
@@ -229,15 +241,17 @@ export type ReplayAnimation =
       attackingTerritoryId: number;
       defendingTerritoryId: number;
       attackerId: number;
-      defenderId: number;
+      defenderId: number | undefined;
       attackLosses: number;
       defenceLosses: number;
     }
   | { type: 'entrench'; territoryId: number; troops: number; playerId: number }
-  | { type: 'starve'; territoryId: number; troops: number; playerId: number };
+  | { type: 'starve'; territoryId: number; troops: number; playerId: number }
+  | { type: 'toxins'; territoryId: number; playerId: number };
 
 export interface ReplayFrame {
   territories: ReplayTerritory[];
+  toxinTerritories: ReplayToxinTerritory[];
   animation: ReplayAnimation;
   turnNumber: number;
   playerId: number;

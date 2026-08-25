@@ -44,7 +44,8 @@ export function registerDeployHandlers(
         if (
           (game.turnPhase === 'deploy' ||
             game.turnPhase === 'troop' ||
-            game.turnPhase === 'entrench') &&
+            game.turnPhase === 'entrench' ||
+            game.turnPhase === 'toxins') &&
           game.territoryOwners.get(territoryId) !== player.id
         )
           return callback({ ok: false, error: 'territory not owned' });

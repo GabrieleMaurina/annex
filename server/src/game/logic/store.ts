@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { Game, HOME_ROOM, Player } from '../../types';
+import { filterGameStateForViewer } from './fog';
 import { addHostCandidate, recomputeHost } from './host';
 import { assignRandomColor, maxTeam } from './mechanics';
 import { gameRoomName } from './rooms';
@@ -327,9 +328,15 @@ export function broadcastGameStates(
   playersById: Map<number, Player>,
 ) {
   for (const game of games.values()) {
-    io.to(gameRoomName(game.name)).emit(
-      'game:state',
-      gameState(game, playersById),
-    );
+    const base = gameState(game, playersById);
+    for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
+      sendToPlayer(
+        io,
+        playersById,
+        viewerId,
+        'game:state',
+        filterGameStateForViewer(base, game, viewerId),
+      );
+    }
   }
 }

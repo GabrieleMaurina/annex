@@ -1,8 +1,13 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
+import {
+  filterGameStateForViewer,
+  fogFilterEmit,
+  visibleTerritoryIdsOrAll,
+} from '../logic/fog';
 import { depositTroopsOnOwnedTerritory } from '../logic/mechanics';
 import { gameState } from '../logic/state';
-import { gameRoomName, games } from '../logic/store';
+import { games } from '../logic/store';
 import { advanceTroopPhase } from '../logic/turns';
 
 type GameResponse =
@@ -40,13 +45,21 @@ export function registerTroopHandlers(
 
       const pool = game.placementTroopPools.get(player.id) ?? 0;
       game.placementTroopPools.set(player.id, pool - troops);
-      io.to(gameRoomName(game.name)).emit('game:deployed', {
-        territoryId,
-        troops,
+      fogFilterEmit(io, game, playersById, 'game:deployed', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (visible !== null && !visible.has(territoryId)) return null;
+        return { territoryId, troops };
       });
       if (game.troopsToDeploy <= 0) advanceTroopPhase(game, io, playersById);
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 }

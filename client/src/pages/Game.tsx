@@ -265,6 +265,7 @@ function Game({
           players={game.players}
           spectators={game.spectators}
           ownership={game.territories}
+          visibleTerritoryIds={game.visibleTerritoryIds}
           gameMode={game.gameMode}
           isTeamDeathmatch={game.gameMode === 'Team Deathmatch'}
           isCapitals={game.gameMode === 'Capitals'}

@@ -6,6 +6,7 @@ import {
   CardsMode,
   DefenceDice,
   Entrenchment,
+  FogOfWar,
   Fortification,
   Game,
   GameMode,
@@ -24,6 +25,7 @@ import {
 import { isInteger, isObject } from '../../validate';
 import { initializeContinent } from '../logic/continent';
 import { checkGameEnd } from '../logic/end';
+import { filterGameStateForViewer } from '../logic/fog';
 import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
   assignRandomColor,
@@ -37,6 +39,7 @@ import {
   shuffle,
   teamCount,
 } from '../logic/mechanics';
+import { initializePortals } from '../logic/portals';
 import { buildCardDeck } from '../logic/progression/cards';
 import { assignMissions } from '../logic/progression/missions';
 import { emptyPlayerStats } from '../logic/progression/stats';
@@ -103,6 +106,7 @@ const STARVATION_VALUES: Starvation[] = [
 const TURN_TROOPS_VALUES: TurnTroops[] = ['off', 'on'];
 const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
 const SUPPLY_LINES_VALUES: SupplyLines[] = ['off', 'on'];
+const FOG_OF_WAR_VALUES: FogOfWar[] = ['off', 'on'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
 const MAX_PASSWORD_LENGTH = 50;
@@ -175,6 +179,7 @@ export function registerGameHandlers(
         turnTroops: 'off',
         bounties: 'off',
         supplyLines: 'off',
+        fogOfWar: 'off',
         turnDuration: 120,
         password: null,
         visibility: 'public',
@@ -228,7 +233,14 @@ export function registerGameHandlers(
 
       socket.leave(HOME_ROOM);
       socket.join(gameRoomName(game.name));
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 
@@ -272,7 +284,14 @@ export function registerGameHandlers(
 
       socket.leave(HOME_ROOM);
       socket.join(gameRoomName(game.name));
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 
@@ -480,6 +499,12 @@ export function registerGameHandlers(
         game.supplyLines = settings.supplyLines as SupplyLines;
       }
 
+      if (settings.fogOfWar !== undefined) {
+        if (!(FOG_OF_WAR_VALUES as unknown[]).includes(settings.fogOfWar))
+          return callback({ ok: false, error: 'invalid fog of war' });
+        game.fogOfWar = settings.fogOfWar as FogOfWar;
+      }
+
       if (settings.turnDuration !== undefined) {
         if (
           !(TURN_DURATION_VALUES as unknown[]).includes(settings.turnDuration)
@@ -507,7 +532,14 @@ export function registerGameHandlers(
         game.visibility = settings.visibility as Visibility;
       }
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 
@@ -542,6 +574,7 @@ export function registerGameHandlers(
     }
     initializeRadiation(game);
     game.replayInitialRadiation = [...game.radiationTerritoryIds];
+    initializePortals(game);
     initializeContinent(game);
     if (game.placement === 'Random') {
       assignTerritories(game);
@@ -581,7 +614,14 @@ export function registerGameHandlers(
       ...(game.gameMode === 'Capitals' ? (['capital'] as const) : []),
     ];
     beginNextSpecialPhase(game, io, playersById);
-    callback({ ok: true, game: gameState(game, playersById) });
+    callback({
+      ok: true,
+      game: filterGameStateForViewer(
+        gameState(game, playersById),
+        game,
+        player.id,
+      ),
+    });
   });
 
   socket.on('game:cycleColor', (callback: (response: GameResponse) => void) => {
@@ -598,7 +638,14 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'game already started' });
 
     cycleColor(game, player.id);
-    callback({ ok: true, game: gameState(game, playersById) });
+    callback({
+      ok: true,
+      game: filterGameStateForViewer(
+        gameState(game, playersById),
+        game,
+        player.id,
+      ),
+    });
   });
 
   socket.on('game:nextPhase', (callback: (response: GameResponse) => void) => {
@@ -633,7 +680,14 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'pending conquest move' });
 
     advanceTurnPhase(game, io, playersById);
-    callback({ ok: true, game: gameState(game, playersById) });
+    callback({
+      ok: true,
+      game: filterGameStateForViewer(
+        gameState(game, playersById),
+        game,
+        player.id,
+      ),
+    });
   });
 
   socket.on('game:pause', (callback: (response: GameResponse) => void) => {
@@ -652,7 +706,14 @@ export function registerGameHandlers(
     if (game.paused) resumeTurnTimer(game, io, playersById);
     else pauseTurnTimer(game);
 
-    callback({ ok: true, game: gameState(game, playersById) });
+    callback({
+      ok: true,
+      game: filterGameStateForViewer(
+        gameState(game, playersById),
+        game,
+        player.id,
+      ),
+    });
   });
 
   socket.on('game:surrender', (callback: (response: GameResponse) => void) => {
@@ -678,7 +739,14 @@ export function registerGameHandlers(
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);
 
-    callback({ ok: true, game: gameState(game, playersById) });
+    callback({
+      ok: true,
+      game: filterGameStateForViewer(
+        gameState(game, playersById),
+        game,
+        player.id,
+      ),
+    });
   });
 
   socket.on('game:chat', (data: unknown) => {

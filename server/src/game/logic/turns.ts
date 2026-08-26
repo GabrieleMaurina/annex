@@ -8,6 +8,7 @@ import {
   hasAnyToxin,
 } from './combat/autoSkip';
 import { checkGameEnd } from './end';
+import { fogFilterEmit, visibleTerritoryIdsOrAll } from './fog';
 import {
   calculateDeployTroopsBreakdown,
   ownsAnyTerritory,
@@ -445,11 +446,17 @@ function autoPlaceRemainingTroops(
     game.placementTroopPools.set(playerId, Math.max(0, pool - amount));
     game.troopsToDeploy = 0;
     if (deposits.size > 0) {
-      io.to(gameRoomName(game.name)).emit('game:deployedMany', {
-        deposits: [...deposits.entries()].map(([territoryId, troops]) => ({
-          territoryId,
-          troops,
-        })),
+      const entries = [...deposits.entries()].map(([territoryId, troops]) => ({
+        territoryId,
+        troops,
+      }));
+      fogFilterEmit(io, game, playersById, 'game:deployedMany', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        const filtered =
+          visible === null
+            ? entries
+            : entries.filter((e) => visible.has(e.territoryId));
+        return filtered.length > 0 ? { deposits: filtered } : null;
       });
     }
   }
@@ -493,7 +500,7 @@ function startDeployPhase(game: Game, io: Server, playerId: number) {
 function completePendingAttackMove(
   game: Game,
   playerId: number,
-): { territoryId: number; troops: number } | null {
+): { territoryId: number; fromTerritoryId: number; troops: number } | null {
   if (game.attackConquestMinTroops === null) return null;
 
   const startId = game.attackStartTerritoryId!;
@@ -510,7 +517,7 @@ function completePendingAttackMove(
     troops,
     playerId,
   });
-  return { territoryId: endId, troops };
+  return { territoryId: endId, fromTerritoryId: startId, troops };
 }
 
 function completePendingFortify(
@@ -544,7 +551,6 @@ export function forceEndTurn(
   io: Server,
   playersById: Map<number, Player>,
 ) {
-  const room = gameRoomName(game.name);
   const playerId = game.playerIds[game.turnPlayerIndex];
 
   if (game.turnPhase === 'territory') {
@@ -567,7 +573,11 @@ export function forceEndTurn(
         troops: 3,
         playerId,
       });
-      io.to(room).emit('game:deployed', { territoryId, troops: 3 });
+      fogFilterEmit(io, game, playersById, 'game:deployed', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (visible !== null && !visible.has(territoryId)) return null;
+        return { territoryId, troops: 3 };
+      });
     }
     advanceCapitalPlacement(game, io, playersById);
     return;
@@ -576,21 +586,47 @@ export function forceEndTurn(
   if (game.turnPhase === 'deploy') {
     const deposits = forceCompleteDeployPhase(game, io, playersById);
     if (deposits.size > 0) {
-      io.to(room).emit('game:deployedMany', {
-        deposits: [...deposits.entries()].map(([territoryId, troops]) => ({
-          territoryId,
-          troops,
-        })),
+      const entries = [...deposits.entries()].map(([territoryId, troops]) => ({
+        territoryId,
+        troops,
+      }));
+      fogFilterEmit(io, game, playersById, 'game:deployedMany', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        const filtered =
+          visible === null
+            ? entries
+            : entries.filter((e) => visible.has(e.territoryId));
+        return filtered.length > 0 ? { deposits: filtered } : null;
       });
     }
   }
   if (game.turnPhase === 'attack') {
     const move = completePendingAttackMove(game, playerId);
-    if (move) io.to(room).emit('game:attackMoved', move);
+    if (move)
+      fogFilterEmit(io, game, playersById, 'game:attackMoved', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (
+          visible !== null &&
+          !visible.has(move.territoryId) &&
+          !visible.has(move.fromTerritoryId)
+        )
+          return null;
+        return move;
+      });
   }
   if (game.turnPhase === 'fortify') {
     const move = completePendingFortify(game, playerId);
-    if (move) io.to(room).emit('game:fortified', move);
+    if (move)
+      fogFilterEmit(io, game, playersById, 'game:fortified', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (
+          visible !== null &&
+          !visible.has(move.territoryId) &&
+          !visible.has(move.fromTerritoryId)
+        )
+          return null;
+        return move;
+      });
   }
   advanceToNextPlayer(game, io, playersById);
 }
@@ -639,11 +675,16 @@ export function advanceToNextPlayer(
 
   const starvationLosses = applyStarvation(game, endingPlayerId);
   if (starvationLosses.size > 0) {
-    io.to(gameRoomName(game.name)).emit('game:starved', {
-      losses: [...starvationLosses.entries()].map(([territoryId, troops]) => ({
-        territoryId,
-        troops,
-      })),
+    const entries = [...starvationLosses.entries()].map(
+      ([territoryId, troops]) => ({ territoryId, troops }),
+    );
+    fogFilterEmit(io, game, playersById, 'game:starved', (viewerId) => {
+      const visible = visibleTerritoryIdsOrAll(game, viewerId);
+      const filtered =
+        visible === null
+          ? entries
+          : entries.filter((e) => visible.has(e.territoryId));
+      return filtered.length > 0 ? { losses: filtered } : null;
     });
   }
 
@@ -720,17 +761,6 @@ export function advanceTurnPhase(
   }
 }
 
-function initializePortals(game: Game) {
-  if (game.portals === 'off') {
-    game.portalTerritoryIds = [];
-    game.portalsEnabled = false;
-    return;
-  }
-  const map = maps.get(game.mapName)!;
-  game.portalTerritoryIds = selectPortalTerritories(map, portalCount(map));
-  game.portalsEnabled = game.portals === 'static';
-}
-
 function updatePortalsForNewTurn(game: Game) {
   if (game.portals !== 'dynamic') return;
   if (game.turnNumber % 2 === 1) {
@@ -738,10 +768,15 @@ function updatePortalsForNewTurn(game: Game) {
     return;
   }
   const map = maps.get(game.mapName)!;
+  const exclude = new Set([
+    ...game.portalTerritoryIds,
+    ...game.radiationTerritoryIds,
+    ...game.territoryToxins.keys(),
+  ]);
   game.portalTerritoryIds = selectPortalTerritories(
     map,
     portalCount(map),
-    new Set(game.portalTerritoryIds),
+    exclude,
   );
   game.portalsEnabled = false;
 }
@@ -761,7 +796,6 @@ export function startTurns(
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
   game.conqueredThisTurn = false;
-  initializePortals(game);
   startDeployPhase(game, io, game.playerIds[0]);
   scheduleTurnTimer(game, io, playersById);
 }

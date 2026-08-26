@@ -161,11 +161,12 @@ function MapCanvas({
 
   function getScales(canvasW: number, canvasH: number, zoom: number) {
     const { w: imgW, h: imgH } = getImageDims();
+    const scale = Math.min(canvasW / imgW, canvasH / imgH) * zoom;
     return {
       imgW,
       imgH,
-      scaleX: (canvasW / imgW) * zoom,
-      scaleY: (canvasH / imgH) * zoom,
+      scaleX: scale,
+      scaleY: scale,
     };
   }
 
@@ -179,9 +180,11 @@ function MapCanvas({
     x: number,
     y: number,
   ) {
+    const scaledW = imgW * scaleX;
+    const scaledH = imgH * scaleY;
     return {
-      x: clamp(x, canvasW - imgW * scaleX, 0),
-      y: clamp(y, canvasH - imgH * scaleY, 0),
+      x: scaledW <= canvasW ? (canvasW - scaledW) / 2 : clamp(x, canvasW - scaledW, 0),
+      y: scaledH <= canvasH ? (canvasH - scaledH) / 2 : clamp(y, canvasH - scaledH, 0),
     };
   }
 
@@ -253,13 +256,12 @@ function MapCanvas({
       const { w: imgW, h: imgH } = getImageDims();
       const factor = e.deltaY < 0 ? 1.1 : 0.9;
       setTransform((prev) => {
-        const oldScaleX = (canvasW / imgW) * prev.zoom;
-        const oldScaleY = (canvasH / imgH) * prev.zoom;
-        const worldX = (pos.x - prev.offsetX) / oldScaleX;
-        const worldY = (pos.y - prev.offsetY) / oldScaleY;
+        const oldScale = Math.min(canvasW / imgW, canvasH / imgH) * prev.zoom;
+        const worldX = (pos.x - prev.offsetX) / oldScale;
+        const worldY = (pos.y - prev.offsetY) / oldScale;
         const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
-        const newScaleX = (canvasW / imgW) * newZoom;
-        const newScaleY = (canvasH / imgH) * newZoom;
+        const newScaleX = Math.min(canvasW / imgW, canvasH / imgH) * newZoom;
+        const newScaleY = newScaleX;
         const { x, y } = clampOffset(
           canvasW,
           canvasH,
@@ -287,7 +289,7 @@ function MapCanvas({
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = '#212529';
     ctx.fillRect(0, 0, size.w, size.h);
 
     const { zoom } = transform;

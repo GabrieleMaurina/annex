@@ -11,6 +11,11 @@ import {
   trueWinProbs,
 } from '../logic/combat/dice';
 import { checkGameEnd } from '../logic/end';
+import {
+  filterGameStateForViewer,
+  fogFilterEmit,
+  visibleTerritoryIdsOrAll,
+} from '../logic/fog';
 import { withPortalEdges } from '../logic/portals';
 import { recordElimination } from '../logic/progression/stats';
 import { recordReplayFrame } from '../logic/replay';
@@ -151,7 +156,14 @@ export function registerAttackHandlers(
       game.attackConquestMinTroops = null;
       if (territoryId !== null)
         io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 
@@ -206,7 +218,11 @@ export function registerAttackHandlers(
       io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
       callback({
         ok: true,
-        game: gameState(game, playersById),
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
         blitzWinProbabilities,
       });
     },
@@ -316,8 +332,11 @@ export function registerAttackHandlers(
       });
 
       let blitzWinProbabilities: number[] = [];
-      let autoConquestMove: { territoryId: number; troops: number } | null =
-        null;
+      let autoConquestMove: {
+        territoryId: number;
+        fromTerritoryId: number;
+        troops: number;
+      } | null = null;
       if (conquered) {
         game.conqueredThisTurn = true;
         attackerStats.territoriesConquered++;
@@ -360,7 +379,11 @@ export function registerAttackHandlers(
                 troops: minMoveTroops,
                 playerId: player.id,
               });
-              autoConquestMove = { territoryId: endId, troops: minMoveTroops };
+              autoConquestMove = {
+                territoryId: endId,
+                fromTerritoryId: startId,
+                troops: minMoveTroops,
+              };
               game.attackStartTerritoryId = null;
               game.attackEndTerritoryId = null;
               game.attackConquestMinTroops = null;
@@ -383,7 +406,11 @@ export function registerAttackHandlers(
             troops: remainingAttackers,
             playerId: player.id,
           });
-          autoConquestMove = { territoryId: endId, troops: remainingAttackers };
+          autoConquestMove = {
+            territoryId: endId,
+            fromTerritoryId: startId,
+            troops: remainingAttackers,
+          };
         }
       } else {
         const remainingAttackers = attackingTroops - attackLosses;
@@ -401,23 +428,35 @@ export function registerAttackHandlers(
         }
       }
 
-      io.to(gameRoomName(game.name)).emit('game:attacked', {
-        attackingTerritoryId: startId,
-        defendingTerritoryId: endId,
-        attackerId: player.id,
-        defenderId,
-        attackingTroops: troops,
-        defendingTroops,
-        attackLosses,
-        defenceLosses,
-        conquered,
-        type,
+      fogFilterEmit(io, game, playersById, 'game:attacked', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        const sourceVisible = visible === null || visible.has(startId);
+        const targetVisible = visible === null || visible.has(endId);
+        if (!sourceVisible && !targetVisible) return null;
+        return {
+          attackingTerritoryId: startId,
+          defendingTerritoryId: endId,
+          attackerId: player.id,
+          type,
+          ...(sourceVisible ? { attackingTroops: troops, attackLosses } : {}),
+          ...(targetVisible
+            ? { defenderId, defendingTroops, defenceLosses, conquered }
+            : {}),
+        };
       });
-      if (autoConquestMove)
-        io.to(gameRoomName(game.name)).emit(
-          'game:attackMoved',
-          autoConquestMove,
-        );
+      if (autoConquestMove) {
+        const move = autoConquestMove;
+        fogFilterEmit(io, game, playersById, 'game:attackMoved', (viewerId) => {
+          const visible = visibleTerritoryIdsOrAll(game, viewerId);
+          if (
+            visible !== null &&
+            !visible.has(move.territoryId) &&
+            !visible.has(move.fromTerritoryId)
+          )
+            return null;
+          return move;
+        });
+      }
 
       if (
         game.state === 'playing' &&
@@ -430,7 +469,11 @@ export function registerAttackHandlers(
 
       callback({
         ok: true,
-        game: gameState(game, playersById),
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
         blitzWinProbabilities,
         attackerDice,
         defenderDice,
@@ -483,14 +526,23 @@ export function registerAttackHandlers(
       game.attackEndTerritoryId = null;
       game.attackConquestMinTroops = null;
 
-      io.to(gameRoomName(game.name)).emit('game:attackMoved', {
-        territoryId: endId,
-        troops,
+      fogFilterEmit(io, game, playersById, 'game:attackMoved', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (visible !== null && !visible.has(endId) && !visible.has(startId))
+          return null;
+        return { territoryId: endId, fromTerritoryId: startId, troops };
       });
       if (!hasAnyAttack(game, player.id))
         advanceTurnPhase(game, io, playersById);
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 }

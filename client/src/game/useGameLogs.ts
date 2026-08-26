@@ -133,18 +133,25 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
       attackingTerritoryId: number;
       defendingTerritoryId: number;
       attackerId: number;
-      attackingTroops: number;
-      defendingTroops: number;
-      attackLosses: number;
-      defenceLosses: number;
-      conquered: boolean;
+      attackingTroops?: number;
+      defendingTroops?: number;
+      attackLosses?: number;
+      defenceLosses?: number;
+      conquered?: boolean;
     }) {
       if (payload.conquered)
         lastConquestAttackerIdRef.current = payload.attackerId;
-      pushLog(
-        colorForPlayer(payload.attackerId),
-        `${payload.conquered ? 'Conquered' : 'Attacked'} territory #${payload.defendingTerritoryId + 1} from #${payload.attackingTerritoryId + 1}: ${payload.attackingTroops} vs ${payload.defendingTroops} troops, lost ${payload.attackLosses} and killed ${payload.defenceLosses}`,
-      );
+      let text = `${payload.conquered ? 'Conquered' : 'Attacked'} territory #${payload.defendingTerritoryId + 1} from #${payload.attackingTerritoryId + 1}`;
+      if (
+        payload.attackingTroops !== undefined &&
+        payload.defendingTroops !== undefined
+      )
+        text += `: ${payload.attackingTroops} vs ${payload.defendingTroops} troops`;
+      if (payload.attackLosses !== undefined)
+        text += `, lost ${payload.attackLosses}`;
+      if (payload.defenceLosses !== undefined)
+        text += ` and killed ${payload.defenceLosses}`;
+      pushLog(colorForPlayer(payload.attackerId), text);
     }
     socket.on('game:attacked', onAttacked);
     return () => {

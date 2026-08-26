@@ -14,11 +14,12 @@ export function getScales(
   imgW: number,
   imgH: number,
 ) {
+  const scale = Math.min(canvasW / imgW, canvasH / imgH) * zoom;
   return {
     imgW,
     imgH,
-    scaleX: (canvasW / imgW) * zoom,
-    scaleY: (canvasH / imgH) * zoom,
+    scaleX: scale,
+    scaleY: scale,
   };
 }
 
@@ -32,9 +33,17 @@ export function clampOffset(
   x: number,
   y: number,
 ) {
+  const scaledW = imgW * scaleX;
+  const scaledH = imgH * scaleY;
   return {
-    x: clamp(x, canvasW - imgW * scaleX, 0),
-    y: clamp(y, canvasH - imgH * scaleY, 0),
+    x:
+      scaledW <= canvasW
+        ? (canvasW - scaledW) / 2
+        : clamp(x, canvasW - scaledW, 0),
+    y:
+      scaledH <= canvasH
+        ? (canvasH - scaledH) / 2
+        : clamp(y, canvasH - scaledH, 0),
   };
 }
 

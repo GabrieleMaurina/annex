@@ -62,6 +62,7 @@ export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type TurnTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
+export type FogOfWar = 'off' | 'on';
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -167,6 +168,7 @@ export interface Game {
   turnTroops: TurnTroops;
   bounties: Bounties;
   supplyLines: SupplyLines;
+  fogOfWar: FogOfWar;
   turnDuration: TurnDuration;
   password: string | null;
   visibility: Visibility;

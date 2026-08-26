@@ -81,6 +81,10 @@ function PlayerRoster({
                       : () => onEmojiRowClick(p.id)
                     : undefined
                 }
+                style={{
+                  outline: p?.id === selfId ? '2px solid #fff' : undefined,
+                  outlineOffset: p?.id === selfId ? '-2px' : undefined,
+                }}
               >
                 <td className="align-middle text-nowrap px-3" style={rowStyle}>
                   {i + 1}
@@ -93,7 +97,7 @@ function PlayerRoster({
                         else nameCellRefs.current.delete(p.id);
                       }}
                     >
-                      {p.name}
+                      {p.id === selfId ? 'You' : p.name}
                       {p.id === game.hostId && (
                         <Badge bg="primary" className="ms-2 align-middle">
                           Host

@@ -137,6 +137,7 @@ interface Props {
   players: GameState['players'];
   spectators: GameState['spectators'];
   ownership: GameState['territories'];
+  visibleTerritoryIds: GameState['visibleTerritoryIds'];
   gameMode: GameMode;
   isTeamDeathmatch: boolean;
   isCapitals: boolean;
@@ -336,6 +337,7 @@ function GameMap({
   players,
   spectators,
   ownership,
+  visibleTerritoryIds,
   gameMode,
   isTeamDeathmatch,
   isCapitals,
@@ -592,6 +594,7 @@ function GameMap({
         playerId?: number;
       },
       arrowPath?: { x: number; y: number }[],
+      arrowFade?: 'start' | 'end',
     ) => {
       if (areAnimationsDisabled()) return;
       const territory = territoriesRef.current.find(
@@ -607,6 +610,7 @@ function GameMap({
           `${kind === 'add' ? '+' : '-'}${troops}`,
           colorForPlayer(ownerId),
           arrowPath,
+          arrowFade,
         );
     },
     [colorForPlayer],
@@ -616,7 +620,8 @@ function GameMap({
     (
       payload: { territoryId: number; troops: number; playerId?: number },
       arrowPath?: { x: number; y: number }[],
-    ) => animateTroopChange('add', payload, arrowPath),
+      arrowFade?: 'start' | 'end',
+    ) => animateTroopChange('add', payload, arrowPath, arrowFade),
     [animateTroopChange],
   );
 
@@ -624,7 +629,8 @@ function GameMap({
     (
       payload: { territoryId: number; troops: number; playerId?: number },
       arrowPath?: { x: number; y: number }[],
-    ) => animateTroopChange('remove', payload, arrowPath),
+      arrowFade?: 'start' | 'end',
+    ) => animateTroopChange('remove', payload, arrowPath, arrowFade),
     [animateTroopChange],
   );
 
@@ -676,6 +682,46 @@ function GameMap({
         .filter((t): t is Territory => !!t)
         .map((t) => ({ x: t.x, y: t.y })),
     [],
+  );
+
+  const arrowForHop = useCallback(
+    (
+      fromId: number,
+      toId: number,
+    ): {
+      path?: { x: number; y: number }[];
+      fade?: 'start' | 'end';
+    } => {
+      const path = territoryPoints([fromId, toId]);
+      if (path.length < 2) return {};
+      if (!visibleTerritoryIds) return { path };
+      const visible = new Set(visibleTerritoryIds);
+      const fromVisible = visible.has(fromId);
+      const toVisible = visible.has(toId);
+      if (!fromVisible && !toVisible) return {};
+      if (fromVisible && toVisible) return { path };
+      return { path, fade: fromVisible ? 'end' : 'start' };
+    },
+    [territoryPoints, visibleTerritoryIds],
+  );
+
+  const flashArrow = useCallback(
+    (fromId: number, toId: number) => {
+      if (areAnimationsDisabled()) return;
+      const arrow = arrowForHop(fromId, toId);
+      if (!arrow.path || arrow.path.length < 2) return;
+      const anchor = arrow.path[arrow.path.length - 1];
+      startAnimation(
+        'arrow',
+        anchor.x,
+        anchor.y,
+        undefined,
+        undefined,
+        arrow.path,
+        arrow.fade,
+      );
+    },
+    [arrowForHop],
   );
 
   const playAttackLossEffects = useCallback(
@@ -872,28 +918,33 @@ function GameMap({
     () => new Set([...toxinById, ...radiationById]),
     [toxinById, radiationById],
   );
-  const supplyLineEdgesByPlayer = useMemo(
-    () =>
-      supplyLines === 'on' && territories.length > 0
-        ? computeSupplyLineEdges(
-            territories,
-            ownerById,
-            portalTerritoryIds,
-            portalsEnabled,
-            imgDims.w,
-            imgDims.h,
-          )
-        : new Map(),
-    [
-      supplyLines,
+  const supplyLineEdgesByPlayer = useMemo(() => {
+    if (supplyLines !== 'on' || territories.length === 0) return new Map();
+    const edges = computeSupplyLineEdges(
       territories,
       ownerById,
       portalTerritoryIds,
       portalsEnabled,
       imgDims.w,
       imgDims.h,
-    ],
-  );
+    );
+    if (!showReplay && visibleTerritoryIds && selfId !== null) {
+      const ownEdges = edges.get(selfId);
+      return ownEdges ? new Map([[selfId, ownEdges]]) : new Map();
+    }
+    return edges;
+  }, [
+    supplyLines,
+    territories,
+    ownerById,
+    portalTerritoryIds,
+    portalsEnabled,
+    imgDims.w,
+    imgDims.h,
+    showReplay,
+    visibleTerritoryIds,
+    selfId,
+  ]);
   const supplyConnectedTerritoryIds = useMemo(
     () =>
       supplyLines === 'on' && selfId !== null
@@ -1474,6 +1525,7 @@ function GameMap({
         { territoryId: payload.fromTerritoryId, delta: -payload.troops },
         { territoryId: payload.territoryId, delta: payload.troops },
       ]);
+      flashArrow(payload.fromTerritoryId, payload.territoryId);
       animateRemove({
         territoryId: payload.fromTerritoryId,
         troops: payload.troops,
@@ -1481,7 +1533,11 @@ function GameMap({
       animateAdd({ territoryId: payload.territoryId, troops: payload.troops });
       startAnimationLoop();
     }
-    function onAttackMoved(payload: { territoryId: number; troops: number }) {
+    function onAttackMoved(payload: {
+      territoryId: number;
+      fromTerritoryId: number;
+      troops: number;
+    }) {
       adjustTerritoryTroops([
         { territoryId: payload.territoryId, delta: payload.troops },
       ]);
@@ -1491,6 +1547,7 @@ function GameMap({
         : 0;
       const fireAnimation = () => {
         playSound('fortify');
+        flashArrow(payload.fromTerritoryId, payload.territoryId);
         animateAdd(payload);
         startAnimationLoop();
       };
@@ -1609,6 +1666,7 @@ function GameMap({
     radiationTerritoryIds,
     setRadiationTerritoryIds,
     setRadiationUpcomingTerritoryIds,
+    flashArrow,
   ]);
 
   useEffect(() => {
@@ -1616,12 +1674,17 @@ function GameMap({
       attackingTerritoryId: number;
       defendingTerritoryId: number;
       attackerId: number;
-      defenderId: number | undefined;
-      attackLosses: number;
-      defenceLosses: number;
-      conquered: boolean;
+      defenderId?: number;
+      attackingTroops?: number;
+      defendingTroops?: number;
+      attackLosses?: number;
+      defenceLosses?: number;
+      conquered?: boolean;
       type: 'regular' | 'blitz';
     }) {
+      const attackLosses = payload.attackLosses ?? 0;
+      const defenceLosses = payload.defenceLosses ?? 0;
+      const conquered = payload.conquered ?? false;
       const freeConquest = payload.defenderId === undefined;
       const delay =
         payload.type === 'regular' && !freeConquest
@@ -1633,16 +1696,16 @@ function GameMap({
         delta: number;
         ownerId?: number;
       }[] = [];
-      if (payload.attackLosses > 0)
+      if (attackLosses > 0)
         deltas.push({
           territoryId: payload.attackingTerritoryId,
-          delta: -payload.attackLosses,
+          delta: -attackLosses,
         });
-      if (payload.defenceLosses > 0 || payload.conquered)
+      if (defenceLosses > 0 || conquered)
         deltas.push({
           territoryId: payload.defendingTerritoryId,
-          delta: -payload.defenceLosses,
-          ownerId: payload.conquered ? payload.attackerId : undefined,
+          delta: -defenceLosses,
+          ownerId: conquered ? payload.attackerId : undefined,
         });
       if (deltas.length > 0) adjustTerritoryTroops(deltas);
 
@@ -1661,7 +1724,7 @@ function GameMap({
           payload.defendingTerritoryId,
           revealAt,
         );
-        if (payload.conquered)
+        if (conquered)
           frozenOwnerRef.current.set(payload.defendingTerritoryId, defenderId);
         const attackerTroops = ownerByIdRef.current.get(
           payload.attackingTerritoryId,
@@ -1682,23 +1745,24 @@ function GameMap({
       }
       setTimeout(() => {
         if (!freeConquest) playSound('explode');
-        if (payload.attackLosses > 0) {
+        flashArrow(payload.attackingTerritoryId, payload.defendingTerritoryId);
+        if (attackLosses > 0) {
           frozenTroopsRef.current.delete(payload.attackingTerritoryId);
           explode(payload.attackingTerritoryId);
           animateRemove({
             territoryId: payload.attackingTerritoryId,
-            troops: payload.attackLosses,
+            troops: attackLosses,
             playerId: payload.attackerId,
           });
         }
-        if (payload.defenceLosses > 0) {
+        if (defenceLosses > 0) {
           frozenTroopsRef.current.delete(payload.defendingTerritoryId);
-          if (payload.conquered)
+          if (conquered)
             frozenOwnerRef.current.delete(payload.defendingTerritoryId);
           explode(payload.defendingTerritoryId);
           animateRemove({
             territoryId: payload.defendingTerritoryId,
-            troops: payload.defenceLosses,
+            troops: defenceLosses,
             playerId: payload.defenderId,
           });
         }
@@ -1709,7 +1773,7 @@ function GameMap({
     return () => {
       socket.off('game:attacked', onAttacked);
     };
-  }, [explode, animateRemove, adjustTerritoryTroops]);
+  }, [explode, animateRemove, adjustTerritoryTroops, flashArrow]);
 
   useEffect(() => {
     const arrowActive =
@@ -2426,13 +2490,23 @@ function GameMap({
       const { w: imgW, h: imgH } = imgDims;
       const factor = e.deltaY < 0 ? 1.1 : 0.9;
       setTransform((prev) => {
-        const oldScaleX = (canvasW / imgW) * prev.zoom;
-        const oldScaleY = (canvasH / imgH) * prev.zoom;
+        const { scaleX: oldScaleX, scaleY: oldScaleY } = computeScales(
+          canvasW,
+          canvasH,
+          prev.zoom,
+          imgW,
+          imgH,
+        );
         const worldX = (pos.x - prev.offsetX) / oldScaleX;
         const worldY = (pos.y - prev.offsetY) / oldScaleY;
         const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
-        const newScaleX = (canvasW / imgW) * newZoom;
-        const newScaleY = (canvasH / imgH) * newZoom;
+        const { scaleX: newScaleX, scaleY: newScaleY } = computeScales(
+          canvasW,
+          canvasH,
+          newZoom,
+          imgW,
+          imgH,
+        );
         const { x, y } = clampOffset(
           canvasW,
           canvasH,
@@ -2563,19 +2637,39 @@ function GameMap({
 
     drawAnimations(ctx, toScreen, VERTEX_RADIUS * zoom);
 
+    const visibleSet = visibleTerritoryIds
+      ? new Set(visibleTerritoryIds)
+      : null;
+    const fadeForPair = (
+      fromId: number,
+      toId: number,
+    ): 'start' | 'end' | undefined => {
+      if (!visibleSet) return undefined;
+      const fromVisible = visibleSet.has(fromId);
+      const toVisible = visibleSet.has(toId);
+      if (fromVisible && toVisible) return undefined;
+      return fromVisible ? 'end' : 'start';
+    };
+
     if (fortifyPath.length > 1) {
       const territoryById = new Map(territories.map((t) => [t.id, t]));
       const worldPath = fortifyPath
         .map((id) => territoryById.get(id))
         .filter((t): t is Territory => !!t);
       if (worldPath.length === fortifyPath.length) {
-        const segments = buildWrappedPathSegments(
-          worldPath,
-          toScreen,
-          imgW,
-          imgH,
-        );
-        drawFortifyPath(ctx, segments);
+        for (let i = 0; i < worldPath.length - 1; i++) {
+          const segments = buildWrappedPathSegments(
+            [worldPath[i], worldPath[i + 1]],
+            toScreen,
+            imgW,
+            imgH,
+          );
+          drawFortifyPath(
+            ctx,
+            segments,
+            fadeForPair(worldPath[i].id, worldPath[i + 1].id),
+          );
+        }
       }
     }
 
@@ -2590,7 +2684,11 @@ function GameMap({
           imgW,
           imgH,
         );
-        drawFortifyPath(ctx, segments);
+        drawFortifyPath(
+          ctx,
+          segments,
+          fadeForPair(attackStartTerritoryId, attackEndTerritoryId),
+        );
       }
     }
 
@@ -2665,14 +2763,8 @@ function GameMap({
     const now = areAnimationsDisabled() ? 0 : performance.now();
 
     for (const t of territories) {
+      const isVisible = visibleSet === null || visibleSet.has(t.id);
       const p = toScreen(t);
-      const style = STATE_STYLE[nodeState(t.id)];
-      const owner = ownerById.get(t.id);
-      const displayOwnerId = frozenOwnerRef.current.get(t.id) ?? owner?.ownerId;
-      const fillColor =
-        displayOwnerId !== undefined
-          ? playerColor(colorByPlayerId.get(displayOwnerId) ?? 0)
-          : UNCLAIMED_TERRITORY_COLOR;
 
       if (portalTerritoryIdSet.has(t.id)) {
         drawPortal(
@@ -2685,6 +2777,46 @@ function GameMap({
           t.id,
         );
       }
+
+      const isRadiated = radiationById.has(t.id);
+      if (isRadiated) {
+        drawRadiationCloud(
+          ctx,
+          p.x,
+          p.y,
+          VERTEX_RADIUS * zoom,
+          now,
+          false,
+          t.id,
+          areAnimationsDisabled()
+            ? -Infinity
+            : (radiationPlacedAtRef.current.get(t.id) ?? -Infinity),
+        );
+      }
+
+      if (!isVisible) {
+        if (!isRadiated && radiationUpcomingById.has(t.id)) {
+          drawRadiationCloud(
+            ctx,
+            p.x,
+            p.y,
+            VERTEX_RADIUS * zoom,
+            now,
+            true,
+            t.id,
+            -Infinity,
+          );
+        }
+        continue;
+      }
+
+      const style = STATE_STYLE[nodeState(t.id)];
+      const owner = ownerById.get(t.id);
+      const displayOwnerId = frozenOwnerRef.current.get(t.id) ?? owner?.ownerId;
+      const fillColor =
+        displayOwnerId !== undefined
+          ? playerColor(colorByPlayerId.get(displayOwnerId) ?? 0)
+          : UNCLAIMED_TERRITORY_COLOR;
 
       if (owner && owner.entrenchedTurns > 0) {
         traceOctagon(
@@ -2714,22 +2846,6 @@ function GameMap({
           areAnimationsDisabled()
             ? -Infinity
             : (toxinPlacedAtRef.current.get(t.id) ?? -Infinity),
-        );
-      }
-
-      const isRadiated = radiationById.has(t.id);
-      if (isRadiated) {
-        drawRadiationCloud(
-          ctx,
-          p.x,
-          p.y,
-          VERTEX_RADIUS * zoom,
-          now,
-          false,
-          t.id,
-          areAnimationsDisabled()
-            ? -Infinity
-            : (radiationPlacedAtRef.current.get(t.id) ?? -Infinity),
         );
       }
 

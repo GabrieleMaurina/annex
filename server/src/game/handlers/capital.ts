@@ -1,9 +1,14 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isInteger, isObject } from '../../validate';
+import {
+  filterGameStateForViewer,
+  fogFilterEmit,
+  visibleTerritoryIdsOrAll,
+} from '../logic/fog';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
-import { gameRoomName, games } from '../logic/store';
+import { games } from '../logic/store';
 import { advanceCapitalPlacement, assignCapital } from '../logic/turns';
 
 type GameResponse =
@@ -47,13 +52,21 @@ export function registerCapitalHandlers(
         troops: 3,
         playerId: player.id,
       });
-      io.to(gameRoomName(game.name)).emit('game:deployed', {
-        territoryId,
-        troops: 3,
+      fogFilterEmit(io, game, playersById, 'game:deployed', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (visible !== null && !visible.has(territoryId)) return null;
+        return { territoryId, troops: 3 };
       });
       advanceCapitalPlacement(game, io, playersById);
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 }

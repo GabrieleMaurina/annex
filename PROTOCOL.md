@@ -98,6 +98,7 @@ A game with `visibility: 'private'` (see `GameState` below) is never included he
   turnTroops: 'off' | 'on';
   bounties: 'off' | 'on';
   supplyLines: 'off' | 'on';
+  fogOfWar: 'off' | 'on';
   territoryTroopsCap: number; // 'territory' mode's per-territory troop cap
   totalTroopsCap: number; // 'total' mode's cap on this map (territory count-based)
   turnDuration: 60 | 90 | 120 | 150 | 180 | 300; // seconds
@@ -124,9 +125,12 @@ A game with `visibility: 'private'` (see `GameState` below) is never included he
   bannedPlayers: { id: number; name: string }[];
   territories: { id: number; ownerId: number; troops: number; isCapital: boolean; entrenchedTurns: number }[];
   toxinTerritories: { id: number; permanent: boolean; turnsRemaining: number }[];
+  visibleTerritoryIds?: number[];
 }
 ```
 `radiationTerritoryIds` and `radiationUpcomingTerritoryIds` are described under `radiation` below.
+
+`fogOfWar` is described in its own paragraph further below, alongside `supplyLines`. Unlike every other field on `GameState`, once `fogOfWar` is `'on'` and in effect for a given recipient, `GameState` itself is no longer one single ground truth shared by everyone in the room: `game:state` (and the `game` field of every ack) is computed separately per recipient, and `territories`/`toxinTerritories` are filtered down to only the territories that recipient can currently see (an unlisted territory is indistinguishable on the wire from one that's simply unclaimed; the client tells the two apart using `visibleTerritoryIds`, see below). `selectedTerritoryId` is nulled out for a recipient who can't see the territory it references. `fortifyStartTerritoryId`/`fortifyEndTerritoryId` and `attackStartTerritoryId`/`attackEndTerritoryId` are each treated as a pair: both stay populated as long as the recipient can see *either* endpoint (so the client always has both ids needed to draw the preview arrow between them, fading it toward whichever end it can't see, the same way it fades the arrow for `game:attacked`/`game:fortified`/`game:attackMoved` below), and both are nulled together only when the recipient can see neither. `attackConquestMinTroops` is nulled independently of that pair, whenever `attackEndTerritoryId`'s own territory specifically isn't visible to the recipient (it's the pending conquest-move amount, tied to the target territory alone). `visibleTerritoryIds` itself is present only when fog of war is currently restricting this recipient's view; it's the complete set of territory ids they can currently see (their own territories plus every territory directly adjacent to one of them, portal edges included when active), and its absence means this recipient's view is unrestricted (fog of war off, game not `playing`, still in the `'territory'`/`'troop'` phase, or this recipient is a spectator, eliminated, or surrendered). Every other field — including every `players[]` entry's status fields (`connected`, `surrendered`, `eliminated`, and every stat) — is always the same for every recipient regardless of fog of war, with one exception: a `players[]` entry's own `territoryCount`/`troopCount` are nulled to `null` for every player other than the recipient themselves whenever fog of war is restricting that recipient's view (a recipient always sees their own row's numbers). `radiationTerritoryIds`, `radiationUpcomingTerritoryIds`, and `portalTerritoryIds` are map-hazard/structure fields, not ownership, and are never filtered by fog of war.
 
 `hostId` is the id of the game's current host: the only player who may call `game:settings` or `game:start`. The server recomputes it whenever it might need to change (a leave, kick, join, or reconnect) from the game's host-priority list (every player who's ever held a seat, in the order they first got one, never reordered or shortened by a leave), picking the first one still seated, connected, and not surrendered (see "Leaving and reconnecting" above, `game:surrender` below). So host passes to the next eligible player when the current one disconnects or leaves, and passes back the moment a higher-priority former host reconnects, cascading through however many stand-ins came in between. If no players remain, the game is deleted.
 
@@ -194,6 +198,8 @@ Whenever a territory becomes newly radiated (initial placement never applies her
 `turnTroops` (`'off'` by default) grants every player extra troops each turn on top of their normal deploy pool (see `turnPhase` above): under `'on'`, entering `'deploy'` adds `turnNumber + 1` troops to that turn's `troopsToDeploy` (`1` on turn 1, `2` on turn 2, and so on), reflected in `game:turnStarted`'s `troopsFromTurnTroops` field below. `bounties` (`'off'` by default) rewards eliminating other players: under `'on'`, entering `'deploy'` adds `10` troops to that turn's `troopsToDeploy` for every player this player has ever eliminated by conquest (`playersKilled.length`, see `GameState.players` above), permanently and cumulatively for the rest of the game, reflected in `game:turnStarted`'s `troopsFromBounties` field below. Both are folded into `troopsToDeploy` the same way territory/continent/capital troops are, and neither applies to the `'territory'`, `'troop'`, or `'capital'` phases' own troop grants.
 
 `supplyLines` (`'off'` by default) restricts which of a player's own territories `game:selectTerritory` (during `'deploy'`/`'troop'` only) and `game:deploy`/`game:placeTroop` will accept: under `'on'`, a deposit is only accepted on a territory reachable from one of the caller's supply hubs by a path of territories the caller owns (the same connectivity `fortification: 'Connected'` uses, see the `fortification` paragraph above, portal edges included when active). A player's hubs are every capital they currently own (`isCapital: true`, see `turnPhase` above) if they own at least one, *regardless of `gameMode`* (a non-`'Capitals'` game simply never has any capitals, so this case never applies there); otherwise, their own territories are split into clusters connected only through territories they themselves own (the same connectivity notion as above), and the sole hub is the single highest-troop territory within whichever one cluster ranks highest by, in order: combined troop count across the whole cluster, then territory count, then that cluster's own single highest troop count, then (to break a tie at that highest troop count) the lowest territory id — every other cluster gets no hub at all and stays entirely unreachable for deposits until reconnected to the hub's cluster. Capitals and armies are never combined as hubs; the army-cluster fallback only ever applies when the player owns zero capitals. A territory that is itself a hub always qualifies trivially. This has no effect on troops placed any other way: a capital's own `3`-troop grant (`game:selectCapital`), a card set's automatic 2-troop territory bonuses (`game:playCardSet`), or the turn timer dropping leftover troops at random, are never subject to it, even onto a territory the path check would otherwise reject.
+
+`fogOfWar` (`'off'` by default) restricts each player's own view of the board once in effect: a player sees only their own territories and every territory directly adjacent to one of them (portal edges included when active) — everything else is indistinguishable from unclaimed to them, both in `GameState` and in every action broadcast (see `GameState` above and the affected events below). It has no effect during the `'territory'` or `'troop'` phases (every territory is still being assigned or is not yet reachable from anyone's holdings, so full visibility applies to everyone regardless of this setting), taking effect starting with `'capital'` and remaining in effect for the rest of the match. It never restricts spectators, and never restricts a player once they're eliminated or have surrendered — both see the board exactly as if `fogOfWar` were `'off'`. It has no effect on `game:replay` (always full-fidelity, see "Shared types" above), `game:cards`/`game:mission` (already private per-player), `game:turnStarted` (carries no territory ids), or chat/emoji.
 
 `fortifyStartTerritoryId` and `fortifyEndTerritoryId` track the two-step territory selection specific to the `'fortify'` phase, set via `game:fortifySelectStart` / `game:fortifySelectEnd` below (both `null` outside an in-progress fortify selection). Like `selectedTerritoryId`, they're part of `GameState` so every client sees the same start/end highlighting and, once both are set, the same animated arrow between them; `game:selectTerritory` is not used during `'fortify'`. Both reset to `null` whenever the turn or phase changes and whenever a `game:fortify` succeeds.
 
@@ -275,7 +281,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:settings`
 - **When sent:** the host of a game changes any settings.
-- **Purpose:** single bundled message for every settings mutation: rename, change map, slot count, ban list, a player's team, game mode / blitz / defence dice / cards / placement / fortification / entrenchment / toxins / portals / radiation / starvation / turn troops / bounties / supply lines / turn duration / password / visibility. Only the fields present are applied; the caller must be host, and the game must still be `lobby`: nothing can change once `playing`. Fields apply in a fixed order: `mapName`, `gameMode`, `name`, `bannedPlayerIds`, `playerTeam`, `slots`, `blitz`, `defenceDice`, `cards`, `placement`, `fortification`, `entrenchment`, `toxins`, `portals`, `radiation`, `starvation`, `turnTroops`, `bounties`, `supplyLines`, `turnDuration`, `password`, `visibility`, so `slots`/`playerTeam` are validated against the roster *after* any kicks in the same request, and `entrenchment` is validated against the (possibly just-updated) `defenceDice` from the same call. `gameMode` and the last sixteen fields are independent of the rest; their position otherwise doesn't matter, except `entrenchment` must come after `defenceDice`: setting `defenceDice` to `3` in the same call always forces `entrenchment` to `'off'` first, and `entrenchment: 'on'` is rejected outright unless `defenceDice` ends up `2`; and `radiation` must come after `toxins` (as it already does in this fixed order), since the two are mutually exclusive (see the `radiation` paragraph above): setting either one to anything other than `'off'` is rejected outright (`invalid toxins` / `invalid radiation`) unless the other is `'off'` at the moment it's checked, so a single call turning both on at once is caught when `radiation` is validated, seeing `toxins`'s already-applied new value from earlier in the same call.
+- **Purpose:** single bundled message for every settings mutation: rename, change map, slot count, ban list, a player's team, game mode / blitz / defence dice / cards / placement / fortification / entrenchment / toxins / portals / radiation / starvation / turn troops / bounties / supply lines / fog of war / turn duration / password / visibility. Only the fields present are applied; the caller must be host, and the game must still be `lobby`: nothing can change once `playing`. Fields apply in a fixed order: `mapName`, `gameMode`, `name`, `bannedPlayerIds`, `playerTeam`, `slots`, `blitz`, `defenceDice`, `cards`, `placement`, `fortification`, `entrenchment`, `toxins`, `portals`, `radiation`, `starvation`, `turnTroops`, `bounties`, `supplyLines`, `fogOfWar`, `turnDuration`, `password`, `visibility`, so `slots`/`playerTeam` are validated against the roster *after* any kicks in the same request, and `entrenchment` is validated against the (possibly just-updated) `defenceDice` from the same call. `gameMode` and the last seventeen fields are independent of the rest; their position otherwise doesn't matter, except `entrenchment` must come after `defenceDice`: setting `defenceDice` to `3` in the same call always forces `entrenchment` to `'off'` first, and `entrenchment: 'on'` is rejected outright unless `defenceDice` ends up `2`; and `radiation` must come after `toxins` (as it already does in this fixed order), since the two are mutually exclusive (see the `radiation` paragraph above): setting either one to anything other than `'off'` is rejected outright (`invalid toxins` / `invalid radiation`) unless the other is `'off'` at the moment it's checked, so a single call turning both on at once is caught when `radiation` is validated, seeing `toxins`'s already-applied new value from earlier in the same call.
 - **Content:** (all fields optional, only send what changed)
   ```ts
   {
@@ -298,6 +304,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
     turnTroops?: 'off' | 'on';
     bounties?: 'off' | 'on';
     supplyLines?: 'off' | 'on';
+    fogOfWar?: 'off' | 'on';
     turnDuration?: 60 | 90 | 120 | 150 | 180 | 300; // seconds
     password?: string | null;  // trimmed; empty/all-whitespace is rejected, over 50 characters is rejected; null clears it
     visibility?: 'public' | 'private';
@@ -550,8 +557,8 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:state`
-- **When sent:** once per second, to every socket currently in a given game's room.
-- **Purpose:** keep everyone in a game synced on its settings, roster, ban list, and (once `playing`) turn progress (including for the host's own settings UI, and so clients can offer an "unban" action from `bannedPlayers`).
+- **When sent:** once per second, individually to every socket currently in a given game's room (every seated player and every spectator each get their own emission, rather than one shared room broadcast).
+- **Purpose:** keep everyone in a game synced on its settings, roster, ban list, and (once `playing`) turn progress (including for the host's own settings UI, and so clients can offer an "unban" action from `bannedPlayers`). While `fogOfWar` is `'on'` and in effect for a given recipient, the `GameState` they receive is filtered down to what they can currently see (see `GameState` and the `fogOfWar` paragraph above); every other recipient in the same room may receive a differently-filtered payload for the same tick.
 - **Content:**
   ```ts
   GameState
@@ -648,7 +655,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   `troopsFromTerritories + troopsFromBonuses + troopsFromCapitals + troopsFromTurnTroops + troopsFromBounties` is the pool granted, matching `GameState.troopsToDeploy`'s value at that instant (see `turnPhase` above, and `turnTroops`/`bounties` above, for how each is computed).
 
 ### `game:deployed`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:deploy` or `game:placeTroop` call succeeds (including back to the acting player), once per territory for a `game:playCardSet` call's automatic 2-troop territory bonuses (see "Territory cards" above), and once for a capital's `3` troops, whether picked via `game:selectCapital` or assigned at random by the turn timer (see `turnPhase` above). Not sent for `game:claimTerritory`: its `1`-troop seed is folded into `game:territoryClaimed` instead (see below), since the claim already carries the acting player's id.
+- **When sent:** immediately, individually to every socket in a game's room whenever a `game:deploy` or `game:placeTroop` call succeeds (including back to the acting player), once per territory for a `game:playCardSet` call's automatic 2-troop territory bonuses (see "Territory cards" above), and once for a capital's `3` troops, whether picked via `game:selectCapital` or assigned at random by the turn timer (see `turnPhase` above). Not sent for `game:claimTerritory`: its `1`-troop seed is folded into `game:territoryClaimed` instead (see below), since the claim already carries the acting player's id. While `fogOfWar` is in effect for a given recipient (see the `fogOfWar` paragraph above), this event is withheld entirely from them unless `territoryId` is currently visible to them.
 - **Purpose:** let every client play the deploy sound effect in sync, rather than inferring it from the next `game:state` tick.
 - **Content:**
   ```ts
@@ -656,7 +663,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:deployedMany`
-- **When sent:** immediately, to every socket in a game's room, whenever the turn timer force-completes an unattended `'deploy'` phase and it touched at least one territory (see `turnDuration` above): covering both the leftover troop pool and any troops granted by auto-played card sets, as one batch. Also sent, the same way, whenever the turn timer force-completes an unattended `'troop'` turn and the player still had troops left in that turn's `troopsToDeploy` allotment (see `turnPhase` above).
+- **When sent:** immediately, individually to every socket in a game's room whenever the turn timer force-completes an unattended `'deploy'` phase and it touched at least one territory (see `turnDuration` above): covering both the leftover troop pool and any troops granted by auto-played card sets, as one batch. Also sent, the same way, whenever the turn timer force-completes an unattended `'troop'` turn and the player still had troops left in that turn's `troopsToDeploy` allotment (see `turnPhase` above). While `fogOfWar` is in effect for a given recipient, `deposits` is filtered down to only the entries currently visible to them, and the whole event is withheld if that leaves it empty.
 - **Purpose:** let every client play the deploy sound effect exactly once for the whole batch, while still animating every territory that received troops, instead of either replaying the sound per territory or inferring the change from the next `game:state` tick.
 - **Content:**
   ```ts
@@ -664,7 +671,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:fortified`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:fortify` call succeeds (including back to the moving player), or the turn timer force-completes a pending `'fortify'` move.
+- **When sent:** immediately, individually to every socket in a game's room whenever a `game:fortify` call succeeds (including back to the moving player), or the turn timer force-completes a pending `'fortify'` move. While `fogOfWar` is in effect for a given recipient, this event is withheld entirely from them unless at least one of `territoryId`/`fromTerritoryId` is currently visible to them (neither territory's ownership ever changes here, so there's nothing to redact field-by-field the way `game:attacked` needs to, see below — a recipient who can see either end gets the whole payload).
 - **Purpose:** let every client play the fortify sound effect and the deploy animation on the destination territory in sync, rather than inferring it from the next `game:state` tick.
 - **Content:**
   ```ts
@@ -672,7 +679,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:entrenched`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:entrench` call succeeds (including back to the entrenching player).
+- **When sent:** immediately, individually to every socket in a game's room whenever a `game:entrench` call succeeds (including back to the entrenching player). While `fogOfWar` is in effect for a given recipient, this event is withheld entirely from them unless `territoryId` is currently visible to them.
 - **Purpose:** let every client play a cost animation on the entrenched territory in sync, rather than inferring it from the next `game:state` tick. `turnsRemaining` is the territory's resulting `entrenchedTurns` (see `GameState.territories` above) after adding `troops`, so a client doesn't need to separately track what it was before this call.
 - **Content:**
   ```ts
@@ -680,7 +687,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:toxined`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:toxins` call succeeds (including back to the toxining player).
+- **When sent:** immediately, individually to every socket in a game's room whenever a `game:toxins` call succeeds (including back to the toxining player). While `fogOfWar` is in effect for a given recipient, this event is withheld from them unless `territoryId` is currently visible to them or they are the toxining player themselves (toxining a territory releases its ownership, which can immediately drop it out of the acting player's own visible set too if it wasn't otherwise adjacent to one of their remaining territories; the acting player is always told the outcome of their own action regardless).
 - **Purpose:** let every client play a placement effect on the newly-toxined territory in sync, rather than inferring it from the next `game:state` tick. `playerId` is the caller, included since `territoryId` no longer has an owner to attribute the action to once it's toxined.
 - **Content:**
   ```ts
@@ -689,7 +696,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:toxinExpired`
 - **When sent:** immediately, to every socket in a game's room, whenever at least one temporary toxin's `turnsRemaining` reaches `0` as a player's turn ends.
-- **Purpose:** let every client clear the toxin cloud/countdown for each affected territory in sync, rather than inferring it from the next `game:state` tick. Batches every territory whose toxin expired in that same turn transition into one event, the same way `game:deployedMany`/`game:starved` batch their own multi-territory changes.
+- **Purpose:** let every client clear the toxin cloud/countdown for each affected territory in sync, rather than inferring it from the next `game:state` tick. Batches every territory whose toxin expired in that same turn transition into one event, the same way `game:deployedMany`/`game:starved` batch their own multi-territory changes. Never filtered by `fogOfWar`: like `radiationTerritoryIds`, a toxin's presence/expiry is map-hazard state, not ownership.
 - **Content:**
   ```ts
   { territoryIds: number[] }
@@ -712,7 +719,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:starved`
-- **When sent:** immediately, to every socket in a game's room, whenever a player's turn ends with `starvation` (see above) removing at least one troop from at least one of their territories.
+- **When sent:** immediately, individually to every socket in a game's room whenever a player's turn ends with `starvation` (see above) removing at least one troop from at least one of their territories. While `fogOfWar` is in effect for a given recipient, `losses` is filtered down to only the entries currently visible to them, and the whole event is withheld if that leaves it empty.
 - **Purpose:** let every client play a troop-loss animation (the same floating loss number as `game:attacked`'s explosion, but without the explosion itself) on each affected territory in sync, rather than inferring it from the next `game:state` tick. `losses` has one entry per territory that lost troops, `troops` being the total lost from that territory this turn (so a client plays the animation once per territory even if `starvation: 'total'` removed several 1-troop increments from it).
 - **Content:**
   ```ts
@@ -720,34 +727,36 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:attacked`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:attack` call resolves a battle (including back to the attacking player).
+- **When sent:** immediately, individually to every socket in a game's room whenever a `game:attack` call resolves a battle (including back to the attacking player).
 - **Purpose:** let every client play the explosion sound effect and animation on whichever side(s) lost troops, in sync, rather than inferring it from the next `game:state` tick. `attackerId` and `defenderId` are the owners of the two territories at the moment of the attack (`defenderId` in particular is captured before a conquering attack transfers ownership); `defenderId` is `undefined` for a free-conquest attack against an unowned territory (see the `toxins` paragraph above), since there's no real defending player. `type` echoes the `game:attack` call's own `type`: the client uses it to delay the explosion until its dice-roll animation (`type: 'regular'` only, and only when there was an actual roll — a free conquest never rolls dice regardless of `type`) finishes, so the explosion lands right as the dice settle instead of overlapping them.
+
+  While `fogOfWar` is in effect for a given recipient, this event's fields split into three groups: `attackingTerritoryId`, `defendingTerritoryId`, `attackerId`, and `type` are always sent (they're either public territory ids/geometry or already-public turn-player identity, and the client needs both ids regardless to draw the connecting arrow, fading it toward whichever end it can't see — see `GameState.visibleTerritoryIds` above); `attackingTroops` and `attackLosses` are included only if `attackingTerritoryId` is currently visible to the recipient; `defenderId`, `defendingTroops`, `defenceLosses`, and `conquered` are included only if `defendingTerritoryId` is currently visible to them. The whole event is withheld if neither territory is visible to them.
 - **Content:**
   ```ts
   {
     attackingTerritoryId: number;
     defendingTerritoryId: number;
     attackerId: number;
-    defenderId: number | undefined;
-    attackingTroops: number; // troops committed to this exchange (the game:attack call's own `troops`)
-    defendingTroops: number; // defending territory's troop count immediately before this exchange
-    attackLosses: number;
-    defenceLosses: number;
-    conquered: boolean;
+    defenderId?: number;
+    attackingTroops?: number; // troops committed to this exchange (the game:attack call's own `troops`)
+    defendingTroops?: number; // defending territory's troop count immediately before this exchange
+    attackLosses?: number;
+    defenceLosses?: number;
+    conquered?: boolean;
     type: 'regular' | 'blitz';
   }
   ```
 
 ### `game:attackMoved`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:attackMove` call succeeds (including back to the moving player), the turn timer force-completes a pending conquest move, a conquest eliminates the defender and the attacker's hand hits `5+` cards (auto-resolving the move at the minimum troop count, see `turnPhase` and "Territory cards" above), or a conquest ends the game outright (auto-resolving the move with every surviving attacking troop, since no further turn is left to choose a smaller amount).
+- **When sent:** immediately, individually to every socket in a game's room whenever a `game:attackMove` call succeeds (including back to the moving player), the turn timer force-completes a pending conquest move, a conquest eliminates the defender and the attacker's hand hits `5+` cards (auto-resolving the move at the minimum troop count, see `turnPhase` and "Territory cards" above), or a conquest ends the game outright (auto-resolving the move with every surviving attacking troop, since no further turn is left to choose a smaller amount). While `fogOfWar` is in effect for a given recipient, this event is withheld entirely from them unless at least one of `territoryId`/`fromTerritoryId` is currently visible to them (same reasoning as `game:fortified` above: no ownership field here to redact piecemeal).
 - **Purpose:** let every client play the fortify sound effect and the deploy animation on the newly-conquered territory in sync, rather than inferring it from the next `game:state` tick.
 - **Content:**
   ```ts
-  { territoryId: number; troops: number }
+  { territoryId: number; fromTerritoryId: number; troops: number }
   ```
 
 ### `game:selected`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:selectTerritory`, `game:fortifySelectStart`, `game:fortifySelectEnd`, `game:attackSelectStart`, or `game:attackSelectEnd` call succeeds with a non-`null` `territoryId` (including back to the selecting player). Not sent for a deselection.
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:selectTerritory`, `game:fortifySelectStart`, `game:fortifySelectEnd`, `game:attackSelectStart`, or `game:attackSelectEnd` call succeeds with a non-`null` `territoryId` (including back to the selecting player). Not sent for a deselection. Never filtered by `fogOfWar`: it carries only a territory id, no ownership or troop data.
 - **Purpose:** let every client play the territory-selection sound effect in sync, rather than inferring it from the next `game:state` tick.
 - **Content:**
   ```ts

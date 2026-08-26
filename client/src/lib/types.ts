@@ -64,6 +64,7 @@ export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type TurnTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
+export type FogOfWar = 'off' | 'on';
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -116,6 +117,7 @@ export interface GameState {
   turnTroops: TurnTroops;
   bounties: Bounties;
   supplyLines: SupplyLines;
+  fogOfWar: FogOfWar;
   territoryTroopsCap: number;
   totalTroopsCap: number;
   turnDuration: TurnDuration;
@@ -142,8 +144,8 @@ export interface GameState {
     name: string;
     team: number;
     color: number;
-    territoryCount: number;
-    troopCount: number;
+    territoryCount: number | null;
+    troopCount: number | null;
     capitalCount: number;
     troopsRemaining: number;
     cardCount: number;
@@ -172,6 +174,7 @@ export interface GameState {
     entrenchedTurns: number;
   }[];
   toxinTerritories: ReplayToxinTerritory[];
+  visibleTerritoryIds?: number[];
 }
 
 export interface GameSettingsInput {
@@ -194,6 +197,7 @@ export interface GameSettingsInput {
   turnTroops?: TurnTroops;
   bounties?: Bounties;
   supplyLines?: SupplyLines;
+  fogOfWar?: FogOfWar;
   turnDuration?: TurnDuration;
   password?: string | null;
   visibility?: Visibility;
@@ -216,6 +220,7 @@ export type GameRulesSettings = Pick<
   | 'turnTroops'
   | 'bounties'
   | 'supplyLines'
+  | 'fogOfWar'
   | 'turnDuration'
   | 'visibility'
 >;

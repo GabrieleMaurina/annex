@@ -8,6 +8,7 @@ import type {
   CardsMode,
   DefenceDice,
   Entrenchment,
+  FogOfWar,
   Fortification,
   GameMode,
   GameSettingsInput,
@@ -337,6 +338,22 @@ const SUPPLY_LINES_HELP = (
   </>
 );
 
+const FOG_OF_WAR_HELP = (
+  <>
+    Whether players can only see part of the map.
+    <ul className="mb-0 ps-3">
+      <li>Off: every territory is fully visible to everyone.</li>
+      <li>
+        On: once capitals are placed (or turns begin), each player only sees
+        territories they own and the territories adjacent to them. Everything
+        else is hidden: gray on the map, and hidden as &quot;?&quot; in the
+        players table. Actions entirely outside a player&apos;s view are not
+        shown to them.
+      </li>
+    </ul>
+  </>
+);
+
 const TURN_DURATION_HELP =
   "How long each player's turn can last. If time runs out, the game finishes it for them: leftover troops are dropped on random territories, any pending move is resolved automatically, and the turn ends.";
 
@@ -378,6 +395,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   turnTroops: 'off',
   bounties: 'off',
   supplyLines: 'off',
+  fogOfWar: 'off',
   turnDuration: 120,
   password: null,
   visibility: 'public',
@@ -821,6 +839,30 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               </Form.Select>
             ) : (
               <span>{game.supplyLines === 'on' ? 'On' : 'Off'}</span>
+            )}
+          </div>
+
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Fog Of War
+              <Help>{FOG_OF_WAR_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.fogOfWar}
+                onChange={(e) =>
+                  applySettings({ fogOfWar: e.target.value as FogOfWar })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="on">On</option>
+              </Form.Select>
+            ) : (
+              <span>{game.fogOfWar === 'on' ? 'On' : 'Off'}</span>
             )}
           </div>
 

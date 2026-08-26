@@ -100,6 +100,10 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                   role={p.id === selfId ? undefined : 'button'}
                   data-no-click-sound
                   onClick={() => handleRowClick(p.id)}
+                  style={{
+                    outline: p.id === selfId ? '2px solid #fff' : undefined,
+                    outlineOffset: p.id === selfId ? '-2px' : undefined,
+                  }}
                 >
                   <td style={rowStyle}>{index + 1}</td>
                   <td className="text-start" style={rowStyle}>
@@ -110,7 +114,7 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                       className="d-inline-flex align-items-center gap-1"
                     >
                       <span className="text-truncate" style={{ minWidth: 0 }}>
-                        {p.name}
+                        {p.id === selfId ? 'You' : p.name}
                       </span>
                       {p.eliminated && (
                         <Tip text="Eliminated">

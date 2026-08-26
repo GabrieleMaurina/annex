@@ -2,6 +2,11 @@ import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
 import {
+  filterGameStateForViewer,
+  fogFilterEmit,
+  visibleTerritoryIdsOrAll,
+} from '../logic/fog';
+import {
   counterKey,
   evaluateCardSelection,
   returnCardsToDeck,
@@ -92,13 +97,21 @@ export function registerCardHandlers(
         cards: evaluated.cards,
       });
       for (const territoryId of evaluated.territoryBonusIds) {
-        io.to(gameRoomName(game.name)).emit('game:deployed', {
-          territoryId,
-          troops: 2,
+        fogFilterEmit(io, game, playersById, 'game:deployed', (viewerId) => {
+          const visible = visibleTerritoryIdsOrAll(game, viewerId);
+          if (visible !== null && !visible.has(territoryId)) return null;
+          return { territoryId, troops: 2 };
         });
       }
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 }

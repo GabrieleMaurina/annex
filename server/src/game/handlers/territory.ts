@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { maps } from '../../maps';
 import { Player } from '../../types';
 import { isInteger, isObject } from '../../validate';
+import { filterGameStateForViewer } from '../logic/fog';
 import { gameState } from '../logic/state';
 import { games } from '../logic/store';
 import { advanceTerritoryPhase, claimTerritory } from '../logic/turns';
@@ -49,7 +50,14 @@ export function registerTerritoryHandlers(
       claimTerritory(game, io, player.id, territoryId);
       advanceTerritoryPhase(game, io, playersById);
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 }

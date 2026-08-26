@@ -1,5 +1,5 @@
 export type AnimationType =
-  'add' | 'remove' | 'explosion' | 'entrench' | 'starve';
+  'add' | 'remove' | 'explosion' | 'entrench' | 'starve' | 'arrow';
 
 interface Particle {
   angle: number;
@@ -24,6 +24,7 @@ interface Animation {
   labelColor?: string;
   particles?: Particle[];
   arrowPath?: { x: number; y: number }[];
+  arrowFade?: 'start' | 'end';
 }
 
 const DURATIONS: Record<AnimationType, number> = {
@@ -32,6 +33,7 @@ const DURATIONS: Record<AnimationType, number> = {
   explosion: 1000,
   entrench: 700,
   starve: 1000,
+  arrow: 500,
 };
 const TROOP_CHANGE_RING_COLOR = '255, 255, 255';
 const LABEL_DURATION = 1500;
@@ -289,6 +291,7 @@ export function startAnimation(
   label?: string,
   labelColor?: string,
   arrowPath?: { x: number; y: number }[],
+  arrowFade?: 'start' | 'end',
 ) {
   if (disabled) return;
   animations.push({
@@ -305,6 +308,7 @@ export function startAnimation(
           ? makeEntrenchParticles()
           : undefined,
     arrowPath,
+    arrowFade,
   });
 }
 
@@ -1061,7 +1065,7 @@ export function drawAnimations(
         [];
       for (let i = 0; i < screenPath.length - 1; i++)
         segments.push([screenPath[i], screenPath[i + 1]]);
-      drawFortifyPath(ctx, segments);
+      drawFortifyPath(ctx, segments, a.arrowFade);
     }
 
     drawLabel(ctx, a, p, radius, now);
@@ -1076,6 +1080,7 @@ function drawArrowHeads(
   ctx: CanvasRenderingContext2D,
   from: { x: number; y: number },
   to: { x: number; y: number },
+  fade?: 'start' | 'end',
 ) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
@@ -1091,6 +1096,8 @@ function drawArrowHeads(
     ? 0
     : (performance.now() * ARROW_CHEVRON_SPEED) % ARROW_CHEVRON_SPACING;
   for (let d = offset; d < length; d += ARROW_CHEVRON_SPACING) {
+    const t = d / length;
+    ctx.globalAlpha = fade === 'start' ? t : fade === 'end' ? 1 - t : 1;
     const cx = from.x + ux * d;
     const cy = from.y + uy * d;
     ctx.beginPath();
@@ -1110,13 +1117,14 @@ function drawArrowHeads(
 export function drawFortifyPath(
   ctx: CanvasRenderingContext2D,
   segments: [{ x: number; y: number }, { x: number; y: number }][],
+  fade?: 'start' | 'end',
 ) {
   ctx.save();
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 4;
   ctx.lineCap = 'round';
   for (const [a, b] of segments) {
-    drawArrowHeads(ctx, a, b);
+    drawArrowHeads(ctx, a, b, fade);
   }
   ctx.restore();
 }

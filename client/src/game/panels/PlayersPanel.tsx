@@ -391,6 +391,8 @@ function PlayersPanel({
                     animation: pop
                       ? `annexEmojiHighlight${pop.id % 2 === 0 ? '' : 'Alt'} ${EMOJI_POP_DURATION}ms ease-out forwards`
                       : undefined,
+                    outline: p.id === selfId ? '2px solid #fff' : undefined,
+                    outlineOffset: p.id === selfId ? '-2px' : undefined,
                   }}
                 >
                   <td className="align-middle text-center" style={rowStyle}>
@@ -399,7 +401,7 @@ function PlayersPanel({
                   <td className="align-middle" style={rowStyle}>
                     <div className="d-flex align-items-center gap-1">
                       <span className="text-truncate" style={{ minWidth: 0 }}>
-                        {p.name}
+                        {p.id === selfId ? 'You' : p.name}
                       </span>
                       {p.eliminated && (
                         <Tip text="Eliminated">
@@ -454,7 +456,7 @@ function PlayersPanel({
                     </td>
                   )}
                   <td className="align-middle text-center" style={rowStyle}>
-                    {p.territoryCount}
+                    {p.territoryCount ?? '?'}
                   </td>
                   {isCapitals && (
                     <td className="align-middle text-center" style={rowStyle}>
@@ -467,7 +469,7 @@ function PlayersPanel({
                     </td>
                   )}
                   <td className="align-middle text-center" style={rowStyle}>
-                    {p.troopCount}
+                    {p.troopCount ?? '?'}
                   </td>
                   <td className="align-middle text-center" style={rowStyle}>
                     {p.cardCount}

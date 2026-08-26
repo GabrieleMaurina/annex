@@ -12,7 +12,7 @@ function toSummaries(ids: number[], playersById: Map<number, Player>) {
     .map((player) => ({ id: player.id, name: player.name }));
 }
 
-function territoryStats(game: Game) {
+export function territoryStats(game: Game) {
   const stats = new Map<
     number,
     { territoryCount: number; troopCount: number; capitalCount: number }
@@ -29,6 +29,14 @@ function territoryStats(game: Game) {
     stats.set(ownerId, entry);
   }
   return stats;
+}
+
+export function isEliminated(game: Game, territoryCount: number): boolean {
+  return (
+    game.state !== 'lobby' &&
+    game.turnPhase !== 'territory' &&
+    territoryCount === 0
+  );
 }
 
 export function gameSummary(game: Game, playersById: Map<number, Player>) {
@@ -72,6 +80,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     turnTroops: game.turnTroops,
     bounties: game.bounties,
     supplyLines: game.supplyLines,
+    fogOfWar: game.fogOfWar,
     territoryTroopsCap: TERRITORY_CAP,
     totalTroopsCap: totalTroopsCap(game),
     turnDuration: game.turnDuration,
@@ -101,8 +110,8 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
         ...player,
         team: game.playerTeams.get(player.id) ?? 0,
         color: game.playerColors.get(player.id) ?? 0,
-        territoryCount,
-        troopCount: stats.get(player.id)?.troopCount ?? 0,
+        territoryCount: territoryCount as number | null,
+        troopCount: (stats.get(player.id)?.troopCount ?? 0) as number | null,
         capitalCount: stats.get(player.id)?.capitalCount ?? 0,
         troopsRemaining:
           game.turnPhase === 'troop'
@@ -111,10 +120,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
         cardCount: game.playerCards.get(player.id)?.length ?? 0,
         connected: !!member?.connected && member.gameName === game.name,
         surrendered: game.surrenderedIds.has(player.id),
-        eliminated:
-          game.state !== 'lobby' &&
-          game.turnPhase !== 'territory' &&
-          territoryCount === 0,
+        eliminated: isEliminated(game, territoryCount),
         troopsGained: playerStats.troopsGained,
         troopsKilled: playerStats.troopsKilled,
         troopsLost: playerStats.troopsLost,
@@ -144,5 +150,6 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
         turnsRemaining: toxin.turnsRemaining,
       }),
     ),
+    visibleTerritoryIds: undefined as number[] | undefined,
   };
 }

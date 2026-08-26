@@ -1,4 +1,5 @@
-import { GameMap } from '../../types';
+import { maps } from '../../maps';
+import { Game, GameMap } from '../../types';
 import { shuffle } from './mechanics';
 
 const MAX_PORTALS = 6;
@@ -53,6 +54,29 @@ export function selectPortalTerritories(
     if (chosen.length > best.length) best = chosen;
   }
   return best;
+}
+
+export function initializePortals(game: Game) {
+  if (game.portals === 'off') {
+    game.portalTerritoryIds = [];
+    game.portalsEnabled = false;
+    return;
+  }
+  const map = maps.get(game.mapName)!;
+  game.portalTerritoryIds = selectPortalTerritories(
+    map,
+    portalCount(map),
+    game.radiationTerritoryIds,
+  );
+  game.portalsEnabled = game.portals === 'static';
+}
+
+export function removePortalTerritory(game: Game, territoryId: number): void {
+  if (!game.portalTerritoryIds.includes(territoryId)) return;
+  game.portalTerritoryIds = game.portalTerritoryIds.filter(
+    (id) => id !== territoryId,
+  );
+  if (game.portalTerritoryIds.length === 1) game.portalTerritoryIds = [];
 }
 
 export function withPortalEdges(

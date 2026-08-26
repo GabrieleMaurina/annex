@@ -3,6 +3,11 @@ import { maps } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
 import { connectedOwnedTerritories } from '../logic/connectivity';
+import {
+  filterGameStateForViewer,
+  fogFilterEmit,
+  visibleTerritoryIdsOrAll,
+} from '../logic/fog';
 import { withPortalEdges } from '../logic/portals';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
@@ -105,7 +110,14 @@ export function registerFortifyHandlers(
       game.fortifyEndTerritoryId = null;
       if (territoryId !== null)
         io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 
@@ -151,7 +163,14 @@ export function registerFortifyHandlers(
 
       game.fortifyEndTerritoryId = territoryId;
       io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 
@@ -201,14 +220,22 @@ export function registerFortifyHandlers(
         playerId: player.id,
       });
 
-      io.to(gameRoomName(game.name)).emit('game:fortified', {
-        territoryId: endId,
-        fromTerritoryId: startId,
-        troops,
+      fogFilterEmit(io, game, playersById, 'game:fortified', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (visible !== null && !visible.has(endId) && !visible.has(startId))
+          return null;
+        return { territoryId: endId, fromTerritoryId: startId, troops };
       });
       advanceTurnPhase(game, io, playersById);
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 }

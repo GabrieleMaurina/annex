@@ -2,10 +2,16 @@ import { Server, Socket } from 'socket.io';
 import { Player } from '../../../types';
 import { isInteger, isObject } from '../../../validate';
 import { hasAnyToxin } from '../../logic/combat/autoSkip';
+import {
+  filterGameStateForViewer,
+  fogFilterEmit,
+  visibleTerritoryIdsOrAll,
+} from '../../logic/fog';
+import { removePortalTerritory } from '../../logic/portals';
 import { countTerritories } from '../../logic/progression/stats';
 import { recordReplayFrame } from '../../logic/replay';
 import { gameState } from '../../logic/state';
-import { gameRoomName, games } from '../../logic/store';
+import { games } from '../../logic/store';
 import { toxinsCost, wouldSplitMap } from '../../logic/toxins/toxins';
 import { advanceTurnPhase } from '../../logic/turns';
 
@@ -65,6 +71,7 @@ export function registerToxinsHandlers(
       const permanent = game.toxins === 'permanent';
       const turnsRemaining = permanent ? 0 : 3;
       game.territoryToxins.set(territoryId, { permanent, turnsRemaining });
+      if (permanent) removePortalTerritory(game, territoryId);
       if (game.selectedTerritoryId === territoryId)
         game.selectedTerritoryId = null;
 
@@ -74,17 +81,28 @@ export function registerToxinsHandlers(
         playerId: player.id,
       });
 
-      io.to(gameRoomName(game.name)).emit('game:toxined', {
-        territoryId,
-        permanent,
-        turnsRemaining,
-        playerId: player.id,
+      fogFilterEmit(io, game, playersById, 'game:toxined', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (
+          viewerId !== player.id &&
+          visible !== null &&
+          !visible.has(territoryId)
+        )
+          return null;
+        return { territoryId, permanent, turnsRemaining, playerId: player.id };
       });
 
       if (!hasAnyToxin(game, player.id))
         advanceTurnPhase(game, io, playersById);
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 }

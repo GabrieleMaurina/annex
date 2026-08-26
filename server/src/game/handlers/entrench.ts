@@ -2,9 +2,14 @@ import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isInteger, isObject } from '../../validate';
 import { hasAnyEntrench } from '../logic/combat/autoSkip';
+import {
+  filterGameStateForViewer,
+  fogFilterEmit,
+  visibleTerritoryIdsOrAll,
+} from '../logic/fog';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
-import { gameRoomName, games } from '../logic/store';
+import { games } from '../logic/store';
 import { advanceTurnPhase } from '../logic/turns';
 
 type GameResponse =
@@ -63,16 +68,23 @@ export function registerEntrenchHandlers(
         playerId: player.id,
       });
 
-      io.to(gameRoomName(game.name)).emit('game:entrenched', {
-        territoryId,
-        troops,
-        turnsRemaining,
+      fogFilterEmit(io, game, playersById, 'game:entrenched', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (visible !== null && !visible.has(territoryId)) return null;
+        return { territoryId, troops, turnsRemaining };
       });
 
       if (!hasAnyEntrench(game, player.id))
         advanceTurnPhase(game, io, playersById);
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 }

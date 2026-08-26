@@ -3,6 +3,7 @@ import { maps } from '../../../maps';
 import { Game, Radiation } from '../../../types';
 import { wouldSplitMap } from '../connectivity';
 import { ownsAnyTerritory, shuffle } from '../mechanics';
+import { removePortalTerritory } from '../portals';
 import { recordElimination } from '../progression/stats';
 import { gameRoomName } from '../rooms';
 import { selectRadiationTerritories } from './selection';
@@ -96,6 +97,9 @@ function applyRadiation(game: Game): number[] {
 
   const eliminatedPlayerIds: number[] = [];
   for (const territoryId of newlyRadiated) {
+    if (game.radiation === 'expanding')
+      removePortalTerritory(game, territoryId);
+
     const ownerId = game.territoryOwners.get(territoryId);
     if (ownerId === undefined) continue;
     game.territoryOwners.delete(territoryId);

@@ -123,6 +123,8 @@ function Lobby({
           starvation: res.game.starvation,
           turnTroops: res.game.turnTroops,
           bounties: res.game.bounties,
+          supplyLines: res.game.supplyLines,
+          fogOfWar: res.game.fogOfWar,
           turnDuration: res.game.turnDuration,
           visibility: res.game.visibility,
         },

@@ -3,6 +3,11 @@ import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
 import { connectedOwnedTerritories } from '../logic/connectivity';
 import {
+  filterGameStateForViewer,
+  fogFilterEmit,
+  visibleTerritoryIdsOrAll,
+} from '../logic/fog';
+import {
   depositTroopsOnOwnedTerritory,
   supplyHubTerritoryIds,
 } from '../logic/mechanics';
@@ -71,7 +76,14 @@ export function registerDeployHandlers(
       game.selectedTerritoryId = territoryId;
       if (territoryId !== null)
         io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 
@@ -99,9 +111,10 @@ export function registerDeployHandlers(
       const { territoryId, troops } = result;
 
       bumpStat(game, player.id, 'troopsGained', troops);
-      io.to(gameRoomName(game.name)).emit('game:deployed', {
-        territoryId,
-        troops,
+      fogFilterEmit(io, game, playersById, 'game:deployed', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (visible !== null && !visible.has(territoryId)) return null;
+        return { territoryId, troops };
       });
       if (
         game.troopsToDeploy <= 0 &&
@@ -109,7 +122,14 @@ export function registerDeployHandlers(
       )
         advanceTurnPhase(game, io, playersById);
 
-      callback({ ok: true, game: gameState(game, playersById) });
+      callback({
+        ok: true,
+        game: filterGameStateForViewer(
+          gameState(game, playersById),
+          game,
+          player.id,
+        ),
+      });
     },
   );
 }

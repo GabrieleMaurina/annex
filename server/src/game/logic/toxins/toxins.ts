@@ -23,7 +23,7 @@ export function wouldSplitMap(
 ): boolean {
   return wouldSplitMapShared(
     game,
-    new Set(game.territoryToxins.keys()),
+    new Set([...game.territoryToxins.keys(), ...game.radiationTerritoryIds]),
     candidateTerritoryId,
   );
 }

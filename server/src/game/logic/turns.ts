@@ -692,7 +692,11 @@ export function advanceToNextPlayer(
   let nextIndex = nextAlivePlayerIndex(game);
 
   if (game.turnNumber !== previousTurnNumber) {
-    const eliminatedByRadiation = updateRadiationForNewTurn(game, io);
+    const eliminatedByRadiation = updateRadiationForNewTurn(
+      game,
+      io,
+      playersById,
+    );
     if (eliminatedByRadiation.includes(game.playerIds[nextIndex])) {
       const reResolved = findNextAliveIndexFrom(game, game.turnPlayerIndex);
       if (reResolved !== null) nextIndex = reResolved;
@@ -715,8 +719,13 @@ export function advanceToNextPlayer(
   if (game.turnNumber !== previousTurnNumber) {
     const expiredToxinIds = decrementToxinsGlobally(game);
     if (expiredToxinIds.length > 0) {
-      io.to(gameRoomName(game.name)).emit('game:toxinExpired', {
-        territoryIds: expiredToxinIds,
+      fogFilterEmit(io, game, playersById, 'game:toxinExpired', (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        const territoryIds =
+          visible === null
+            ? expiredToxinIds
+            : expiredToxinIds.filter((id) => visible.has(id));
+        return territoryIds.length > 0 ? { territoryIds } : null;
       });
     }
   }
@@ -747,7 +756,7 @@ export function advanceTurnPhase(
       advanceTurnPhase(game, io, playersById);
     } else if (
       game.turnPhase === 'entrench' &&
-      (game.entrenchment !== 'on' || !hasAnyEntrench(game, playerId))
+      (game.entrenchments !== 'on' || !hasAnyEntrench(game, playerId))
     ) {
       advanceTurnPhase(game, io, playersById);
     } else if (

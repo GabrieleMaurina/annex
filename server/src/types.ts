@@ -54,10 +54,10 @@ export type GameMode =
   | 'Troop Kills';
 export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
-export type Entrenchment = 'off' | 'on';
+export type Entrenchments = 'off' | 'on';
 export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
-export type Radiation = 'off' | 'static' | 'dynamic' | 'expanding';
+export type Radiations = 'off' | 'static' | 'dynamic' | 'expanding';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type TurnTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
@@ -156,12 +156,12 @@ export interface Game {
   cards: CardsMode;
   placement: Placement;
   fortification: Fortification;
-  entrenchment: Entrenchment;
+  entrenchments: Entrenchments;
   toxins: Toxins;
   portals: Portals;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
-  radiation: Radiation;
+  radiations: Radiations;
   radiationTerritoryIds: Set<number>;
   radiationUpcomingTerritoryIds: Set<number>;
   starvation: Starvation;

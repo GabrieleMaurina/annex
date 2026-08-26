@@ -25,7 +25,7 @@ import type {
   EmojiAttackTarget,
   EmojiSentPayload,
   EmojiValue,
-  Entrenchment,
+  Entrenchments,
   Fortification,
   GameMode,
   GameState,
@@ -43,6 +43,7 @@ import {
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
   drawAnimations,
+  drawFogCloud,
   drawFortifyPath,
   drawPortal,
   drawRadiationCloud,
@@ -52,6 +53,7 @@ import {
   onAnimationsToggle,
   pruneAnimations,
   setContinuousAnimation,
+  setFogActive,
   setPortalsActive,
   setRadiationActive,
   setToxinsActive,
@@ -109,6 +111,7 @@ import ReplayPanel from './panels/ReplayPanel';
 import TroopPanel from './panels/TroopPanel';
 import TurnPanel from './panels/TurnPanel';
 import TurnProgressBar from './panels/TurnProgressBar';
+import { isPortalHop } from './portals';
 import { useReplay } from './replay';
 import {
   computeSupplyConnectedTerritoryIds,
@@ -149,7 +152,7 @@ interface Props {
   turnPhase: TurnPhase;
   turnDuration: TurnDuration;
   fortification: Fortification;
-  entrenchment: Entrenchment;
+  entrenchments: Entrenchments;
   toxins: Toxins;
   toxinTerritories: GameState['toxinTerritories'];
   cards: CardsMode;
@@ -304,8 +307,8 @@ type DragState = {
   moved: boolean;
 } | null;
 
-const VERTEX_RADIUS = 20;
 const HIT_TOLERANCE = 6;
+const HIT_RADIUS_MULTIPLIER = 2;
 const DRAG_THRESHOLD = 4;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
@@ -349,7 +352,7 @@ function GameMap({
   turnPhase,
   turnDuration,
   fortification,
-  entrenchment,
+  entrenchments,
   toxins,
   toxinTerritories,
   cards,
@@ -449,6 +452,10 @@ function GameMap({
     offsetY: 0,
   });
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [tooltipTerritoryId, setTooltipTerritoryId] = useState<number | null>(
+    null,
+  );
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [size, setSize] = useState({
     w: window.innerWidth,
@@ -494,6 +501,9 @@ function GameMap({
     w: DEFAULT_IMAGE_WIDTH,
     h: DEFAULT_IMAGE_HEIGHT,
   });
+  const vertexDiametersPerLongestSide = 50;
+  const VERTEX_RADIUS =
+    Math.max(imgDims.w, imgDims.h) / (vertexDiametersPerLongestSide * 2);
   const [, forceRedraw] = useState(0);
   const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
   const animationLoopActiveRef = useRef(false);
@@ -513,7 +523,7 @@ function GameMap({
     x: 0,
     y: 0,
   }));
-  const zoomRef = useRef(1);
+  const vertexScreenRadiusRef = useRef(0);
   const rowRefs = useRef(new Map<number, HTMLElement>());
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const attackOptionIndexRef = useRef(0);
@@ -593,7 +603,7 @@ function GameMap({
         troops: number;
         playerId?: number;
       },
-      arrowPath?: { x: number; y: number }[],
+      arrowPath?: { x: number; y: number }[][],
       arrowFade?: 'start' | 'end',
     ) => {
       if (areAnimationsDisabled()) return;
@@ -619,7 +629,7 @@ function GameMap({
   const animateAdd = useCallback(
     (
       payload: { territoryId: number; troops: number; playerId?: number },
-      arrowPath?: { x: number; y: number }[],
+      arrowPath?: { x: number; y: number }[][],
       arrowFade?: 'start' | 'end',
     ) => animateTroopChange('add', payload, arrowPath, arrowFade),
     [animateTroopChange],
@@ -628,7 +638,7 @@ function GameMap({
   const animateRemove = useCallback(
     (
       payload: { territoryId: number; troops: number; playerId?: number },
-      arrowPath?: { x: number; y: number }[],
+      arrowPath?: { x: number; y: number }[][],
       arrowFade?: 'start' | 'end',
     ) => animateTroopChange('remove', payload, arrowPath, arrowFade),
     [animateTroopChange],
@@ -684,44 +694,73 @@ function GameMap({
     [],
   );
 
-  const arrowForHop = useCallback(
+  const arrowRunsForPath = useCallback(
+    (territoryIds: number[]): { x: number; y: number }[][] => {
+      const runs: number[][] = [];
+      let current: number[] = [];
+      for (let i = 0; i < territoryIds.length; i++) {
+        if (
+          i > 0 &&
+          isPortalHop(
+            territoryIds[i - 1],
+            territoryIds[i],
+            portalTerritoryIds,
+            portalsEnabled,
+          )
+        ) {
+          if (current.length > 1) runs.push(current);
+          current = [];
+        }
+        current.push(territoryIds[i]);
+      }
+      if (current.length > 1) runs.push(current);
+      return runs
+        .map((run) => territoryPoints(run))
+        .filter((points) => points.length > 1);
+    },
+    [territoryPoints, portalTerritoryIds, portalsEnabled],
+  );
+
+  const arrowForPath = useCallback(
     (
-      fromId: number,
-      toId: number,
+      territoryIds: number[],
     ): {
-      path?: { x: number; y: number }[];
+      runs?: { x: number; y: number }[][];
       fade?: 'start' | 'end';
     } => {
-      const path = territoryPoints([fromId, toId]);
-      if (path.length < 2) return {};
-      if (!visibleTerritoryIds) return { path };
+      const runs = arrowRunsForPath(territoryIds);
+      if (runs.length === 0) return {};
+      if (!visibleTerritoryIds) return { runs };
       const visible = new Set(visibleTerritoryIds);
+      const fromId = territoryIds[0];
+      const toId = territoryIds[territoryIds.length - 1];
       const fromVisible = visible.has(fromId);
       const toVisible = visible.has(toId);
       if (!fromVisible && !toVisible) return {};
-      if (fromVisible && toVisible) return { path };
-      return { path, fade: fromVisible ? 'end' : 'start' };
+      if (fromVisible && toVisible) return { runs };
+      return { runs, fade: fromVisible ? 'end' : 'start' };
     },
-    [territoryPoints, visibleTerritoryIds],
+    [arrowRunsForPath, visibleTerritoryIds],
   );
 
   const flashArrow = useCallback(
-    (fromId: number, toId: number) => {
+    (territoryIds: number[]) => {
       if (areAnimationsDisabled()) return;
-      const arrow = arrowForHop(fromId, toId);
-      if (!arrow.path || arrow.path.length < 2) return;
-      const anchor = arrow.path[arrow.path.length - 1];
+      const arrow = arrowForPath(territoryIds);
+      if (!arrow.runs || arrow.runs.length === 0) return;
+      const lastRun = arrow.runs[arrow.runs.length - 1];
+      const anchor = lastRun[lastRun.length - 1];
       startAnimation(
         'arrow',
         anchor.x,
         anchor.y,
         undefined,
         undefined,
-        arrow.path,
+        arrow.runs,
         arrow.fade,
       );
     },
-    [arrowForHop],
+    [arrowForPath],
   );
 
   const playAttackLossEffects = useCallback(
@@ -732,7 +771,7 @@ function GameMap({
       defenderId: number | undefined,
       attackLosses: number,
       defenceLosses: number,
-      arrowPath?: { x: number; y: number }[],
+      arrowPath?: { x: number; y: number }[][],
     ) => {
       if (defenceLosses > 0) {
         explode(defendingTerritoryId);
@@ -778,7 +817,7 @@ function GameMap({
         });
       } else if (animation.type === 'fortify') {
         playSound('fortify');
-        let arrowPath: { x: number; y: number }[] | undefined;
+        let arrowPath: { x: number; y: number }[][] | undefined;
         if (!partOfConquestPair) {
           const pathIds = getFortifyPath(
             territoriesRef.current,
@@ -790,7 +829,7 @@ function GameMap({
             portalTerritoryIds,
             portalsEnabled,
           );
-          arrowPath = territoryPoints(
+          arrowPath = arrowRunsForPath(
             pathIds.length > 1
               ? pathIds
               : [animation.fromTerritoryId, animation.toTerritoryId],
@@ -829,7 +868,7 @@ function GameMap({
         if (animation.defenderId !== undefined) playSound('explode');
         const arrowPath = partOfConquestPair
           ? undefined
-          : territoryPoints([
+          : arrowRunsForPath([
               animation.attackingTerritoryId,
               animation.defendingTerritoryId,
             ]);
@@ -852,7 +891,7 @@ function GameMap({
       animateStarve,
       toxinPlaceEffect,
       playAttackLossEffects,
-      territoryPoints,
+      arrowRunsForPath,
       fortification,
       portalTerritoryIds,
       portalsEnabled,
@@ -918,6 +957,28 @@ function GameMap({
     () => new Set([...toxinById, ...radiationById]),
     [toxinById, radiationById],
   );
+  const visibleTerritoryById = useMemo(
+    () => (visibleTerritoryIds ? new Set(visibleTerritoryIds) : null),
+    [visibleTerritoryIds],
+  );
+  const tooltipLabels: string[] = [];
+  if (tooltipTerritoryId !== null) {
+    if (portalTerritoryIds.includes(tooltipTerritoryId))
+      tooltipLabels.push('Portal');
+    if (radiationById.has(tooltipTerritoryId)) tooltipLabels.push('Radiation');
+    if (
+      visibleTerritoryById === null ||
+      visibleTerritoryById.has(tooltipTerritoryId)
+    ) {
+      const tooltipOwner = ownerById.get(tooltipTerritoryId);
+      if (tooltipOwner?.isCapital) tooltipLabels.push('Capital');
+      if ((tooltipOwner?.entrenchedTurns ?? 0) > 0)
+        tooltipLabels.push('Entrenched');
+      if (toxinById.has(tooltipTerritoryId)) tooltipLabels.push('Toxin');
+    } else {
+      tooltipLabels.push('Fog');
+    }
+  }
   const supplyLineEdgesByPlayer = useMemo(() => {
     if (supplyLines !== 'on' || territories.length === 0) return new Map();
     const edges = computeSupplyLineEdges(
@@ -1019,7 +1080,8 @@ function GameMap({
     playersRef.current = players;
     selfIdRef.current = selfId;
     getTerritoryScreenPosRef.current = getTerritoryScreenPos;
-    zoomRef.current = transform.zoom;
+    vertexScreenRadiusRef.current =
+      VERTEX_RADIUS * getScales(size.w, size.h, transform.zoom).scaleX;
   });
 
   const selectTerritory = useCallback(
@@ -1350,7 +1412,7 @@ function GameMap({
     (turnPhase === 'entrench' &&
       (toxins === 'off' || toxinsCandidates.size === 0)) ||
     (turnPhase === 'fortify' &&
-      (entrenchment !== 'on' || entrenchCandidates.size === 0) &&
+      (entrenchments !== 'on' || entrenchCandidates.size === 0) &&
       (toxins === 'off' || toxinsCandidates.size === 0));
   const entrenchMaxTroops =
     selectedTerritoryId !== null
@@ -1525,7 +1587,23 @@ function GameMap({
         { territoryId: payload.fromTerritoryId, delta: -payload.troops },
         { territoryId: payload.territoryId, delta: payload.troops },
       ]);
-      flashArrow(payload.fromTerritoryId, payload.territoryId);
+      const fortifyOwnerId =
+        ownerByIdRef.current.get(payload.fromTerritoryId)?.ownerId ?? null;
+      const fortifyPathIds = getFortifyPath(
+        territoriesRef.current,
+        ownerByIdRef.current,
+        fortifyOwnerId,
+        payload.fromTerritoryId,
+        payload.territoryId,
+        fortification,
+        portalTerritoryIds,
+        portalsEnabled,
+      );
+      flashArrow(
+        fortifyPathIds.length > 1
+          ? fortifyPathIds
+          : [payload.fromTerritoryId, payload.territoryId],
+      );
       animateRemove({
         territoryId: payload.fromTerritoryId,
         troops: payload.troops,
@@ -1547,7 +1625,7 @@ function GameMap({
         : 0;
       const fireAnimation = () => {
         playSound('fortify');
-        flashArrow(payload.fromTerritoryId, payload.territoryId);
+        flashArrow([payload.fromTerritoryId, payload.territoryId]);
         animateAdd(payload);
         startAnimationLoop();
       };
@@ -1667,6 +1745,9 @@ function GameMap({
     setRadiationTerritoryIds,
     setRadiationUpcomingTerritoryIds,
     flashArrow,
+    fortification,
+    portalTerritoryIds,
+    portalsEnabled,
   ]);
 
   useEffect(() => {
@@ -1745,7 +1826,10 @@ function GameMap({
       }
       setTimeout(() => {
         if (!freeConquest) playSound('explode');
-        flashArrow(payload.attackingTerritoryId, payload.defendingTerritoryId);
+        flashArrow([
+          payload.attackingTerritoryId,
+          payload.defendingTerritoryId,
+        ]);
         if (attackLosses > 0) {
           frozenTroopsRef.current.delete(payload.attackingTerritoryId);
           explode(payload.attackingTerritoryId);
@@ -1822,6 +1906,17 @@ function GameMap({
     if (hasRadiationTerritories) startAnimationLoop();
     return () => setRadiationActive(false);
   }, [hasRadiationTerritories]);
+
+  const hasFogTerritories = useMemo(() => {
+    if (!visibleTerritoryIds) return false;
+    const visible = new Set(visibleTerritoryIds);
+    return territories.some((t) => !visible.has(t.id));
+  }, [visibleTerritoryIds, territories]);
+  useEffect(() => {
+    setFogActive(hasFogTerritories);
+    if (hasFogTerritories) startAnimationLoop();
+    return () => setFogActive(false);
+  }, [hasFogTerritories]);
 
   useEffect(() => {
     function onSelected() {
@@ -1947,7 +2042,7 @@ function GameMap({
         if (territory && canvasRect && rowRect) {
           const local = getTerritoryScreenPosRef.current(territory);
           const sideOffset =
-            VERTEX_RADIUS * zoomRef.current + EMOJI_TERRITORY_SIDE_GAP;
+            vertexScreenRadiusRef.current + EMOJI_TERRITORY_SIDE_GAP;
           const to = {
             x: canvasRect.left + local.x + sideOffset,
             y: canvasRect.top + local.y,
@@ -2635,7 +2730,7 @@ function GameMap({
       );
     }
 
-    drawAnimations(ctx, toScreen, VERTEX_RADIUS * zoom);
+    drawAnimations(ctx, toScreen, VERTEX_RADIUS * scaleX);
 
     const visibleSet = visibleTerritoryIds
       ? new Set(visibleTerritoryIds)
@@ -2658,6 +2753,15 @@ function GameMap({
         .filter((t): t is Territory => !!t);
       if (worldPath.length === fortifyPath.length) {
         for (let i = 0; i < worldPath.length - 1; i++) {
+          if (
+            isPortalHop(
+              worldPath[i].id,
+              worldPath[i + 1].id,
+              portalTerritoryIds,
+              portalsEnabled,
+            )
+          )
+            continue;
           const segments = buildWrappedPathSegments(
             [worldPath[i], worldPath[i + 1]],
             toScreen,
@@ -2673,7 +2777,16 @@ function GameMap({
       }
     }
 
-    if (attackStartTerritoryId !== null && attackEndTerritoryId !== null) {
+    if (
+      attackStartTerritoryId !== null &&
+      attackEndTerritoryId !== null &&
+      !isPortalHop(
+        attackStartTerritoryId,
+        attackEndTerritoryId,
+        portalTerritoryIds,
+        portalsEnabled,
+      )
+    ) {
       const territoryById = new Map(territories.map((t) => [t.id, t]));
       const start = territoryById.get(attackStartTerritoryId);
       const end = territoryById.get(attackEndTerritoryId);
@@ -2692,7 +2805,15 @@ function GameMap({
       }
     }
 
-    if (replayConquestArrow) {
+    if (
+      replayConquestArrow &&
+      !isPortalHop(
+        replayConquestArrow.fromTerritoryId,
+        replayConquestArrow.toTerritoryId,
+        portalTerritoryIds,
+        portalsEnabled,
+      )
+    ) {
       const territoryById = new Map(territories.map((t) => [t.id, t]));
       const start = territoryById.get(replayConquestArrow.fromTerritoryId);
       const end = territoryById.get(replayConquestArrow.toTerritoryId);
@@ -2720,7 +2841,7 @@ function GameMap({
       : null;
 
     if (continentGroups) {
-      const hullPad = (VERTEX_RADIUS + 30) * zoom;
+      const hullPad = (VERTEX_RADIUS + 30) * scaleX;
       ctx.save();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.lineWidth = 2.5 * zoom;
@@ -2741,7 +2862,7 @@ function GameMap({
         (t) => t.continentId === continentId,
       );
       if (targetTerritories.length > 0) {
-        const hullPad = (VERTEX_RADIUS + 30) * zoom;
+        const hullPad = (VERTEX_RADIUS + 30) * scaleX;
         ctx.save();
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 3.5 * zoom;
@@ -2771,7 +2892,7 @@ function GameMap({
           ctx,
           p.x,
           p.y,
-          VERTEX_RADIUS * zoom,
+          VERTEX_RADIUS * scaleX,
           now,
           portalsEnabled,
           t.id,
@@ -2784,7 +2905,7 @@ function GameMap({
           ctx,
           p.x,
           p.y,
-          VERTEX_RADIUS * zoom,
+          VERTEX_RADIUS * scaleX,
           now,
           false,
           t.id,
@@ -2800,13 +2921,14 @@ function GameMap({
             ctx,
             p.x,
             p.y,
-            VERTEX_RADIUS * zoom,
+            VERTEX_RADIUS * scaleX,
             now,
             true,
             t.id,
             -Infinity,
           );
         }
+        drawFogCloud(ctx, p.x, p.y, VERTEX_RADIUS * scaleX, now, t.id);
         continue;
       }
 
@@ -2823,7 +2945,7 @@ function GameMap({
           ctx,
           p.x,
           p.y,
-          VERTEX_RADIUS * ENTRENCHED_OCTAGON_SCALE * zoom,
+          VERTEX_RADIUS * ENTRENCHED_OCTAGON_SCALE * scaleX,
         );
         ctx.fillStyle = ENTRENCHED_OCTAGON_FILL;
         ctx.fill();
@@ -2838,7 +2960,7 @@ function GameMap({
           ctx,
           p.x,
           p.y,
-          VERTEX_RADIUS * zoom,
+          VERTEX_RADIUS * scaleX,
           now,
           toxin.permanent,
           toxin.turnsRemaining,
@@ -2852,10 +2974,10 @@ function GameMap({
       if (!toxin && !isRadiated) {
         ctx.beginPath();
         if (owner?.isCapital) {
-          const half = VERTEX_RADIUS * zoom;
+          const half = VERTEX_RADIUS * scaleX;
           ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
         } else {
-          ctx.arc(p.x, p.y, VERTEX_RADIUS * zoom, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
         }
         ctx.fillStyle = fillColor;
         ctx.fill();
@@ -2868,7 +2990,7 @@ function GameMap({
             ctx,
             p.x,
             p.y,
-            VERTEX_RADIUS * zoom,
+            VERTEX_RADIUS * scaleX,
             now,
             true,
             t.id,
@@ -2887,10 +3009,10 @@ function GameMap({
         if (inSelectedCombo) {
           ctx.beginPath();
           if (owner?.isCapital) {
-            const half = (VERTEX_RADIUS + 6) * zoom;
+            const half = (VERTEX_RADIUS + 6) * scaleX;
             ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
           } else {
-            ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * zoom, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * scaleX, 0, Math.PI * 2);
           }
           ctx.strokeStyle = '#0d6efd'; // Bootstrap's primary button blue
           ctx.lineWidth = 3 * zoom;
@@ -2906,7 +3028,7 @@ function GameMap({
             const badgeGap = 1 * zoom;
             const badgeW = iconSize + badgePad * 2;
             const badgeH = iconSize + badgeGap + textHeight + badgePad * 2;
-            const dist = (VERTEX_RADIUS + 6) * zoom + badgeH / 2 + 4;
+            const dist = (VERTEX_RADIUS + 6) * scaleX + badgeH / 2 + 4;
             const cx = p.x + dist * Math.SQRT1_2;
             const cy = p.y - dist * Math.SQRT1_2;
 
@@ -2981,7 +3103,7 @@ function GameMap({
                     ? owner.troops - fortifyTroops
                     : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
         ctx.fillStyle = contrastTextColor(fillColor);
-        ctx.font = `bold ${VERTEX_RADIUS * zoom}px sans-serif`;
+        ctx.font = `bold ${VERTEX_RADIUS * scaleX}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
         const text = String(troops);
@@ -3000,7 +3122,7 @@ function GameMap({
         const boxW = ctx.measureText(idText).width + padX * 2;
         const boxH = 15 * zoom;
         const boxX = p.x - boxW / 2;
-        const boxY = p.y + VERTEX_RADIUS * zoom + 4 * zoom;
+        const boxY = p.y + VERTEX_RADIUS * scaleX + 4 * zoom;
 
         ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
         ctx.strokeStyle = '#ffffff';
@@ -3069,15 +3191,21 @@ function GameMap({
       transform.offsetX,
       transform.offsetY,
     );
-    for (let i = territories.length - 1; i >= 0; i--) {
-      const t = territories[i];
+    const hitRadius =
+      VERTEX_RADIUS * HIT_RADIUS_MULTIPLIER * scaleX + HIT_TOLERANCE;
+    let nearest: Territory | null = null;
+    let nearestDist = Infinity;
+    for (const t of territories) {
       const d = Math.hypot(
         pos.x - (t.x * scaleX + offsetX),
         pos.y - (t.y * scaleY + offsetY),
       );
-      if (d <= VERTEX_RADIUS * transform.zoom + HIT_TOLERANCE) return t;
+      if (d <= hitRadius && d < nearestDist) {
+        nearest = t;
+        nearestDist = d;
+      }
     }
-    return null;
+    return nearest;
   }
 
   function handleMouseDown(e: React.MouseEvent) {
@@ -3100,6 +3228,7 @@ function GameMap({
     if (!drag) {
       const vertex = hitVertex(pos);
       setHoveredId(vertex && isInteractable(vertex) ? vertex.id : null);
+      setTooltipTerritoryId(vertex ? vertex.id : null);
       return;
     }
     const dx = pos.x - drag.startPos.x;
@@ -3124,12 +3253,15 @@ function GameMap({
       );
       setTransform((t) => ({ ...t, offsetX: x, offsetY: y }));
       setHoveredId(null);
+      setTooltipTerritoryId(null);
+      setIsDragging(true);
     }
   }
 
   function handleMouseUp(e: React.MouseEvent) {
     const drag = dragRef.current;
     dragRef.current = null;
+    setIsDragging(false);
     if (!drag || drag.moved) return;
     const pos = getPos(e);
     const vertex = hitVertex(pos);
@@ -3256,6 +3388,8 @@ function GameMap({
   function handleMouseLeave() {
     dragRef.current = null;
     setHoveredId(null);
+    setTooltipTerritoryId(null);
+    setIsDragging(false);
   }
 
   function handleContextMenu(e: React.MouseEvent) {
@@ -3281,7 +3415,16 @@ function GameMap({
     if (selectedTerritoryId !== null) selectTerritory(null);
   }
 
-  const zoomedRadius = VERTEX_RADIUS * transform.zoom;
+  const zoomedRadius =
+    VERTEX_RADIUS * getScales(size.w, size.h, transform.zoom).scaleX;
+
+  const tooltipTerritory =
+    tooltipTerritoryId !== null
+      ? territories.find((t) => t.id === tooltipTerritoryId)
+      : undefined;
+  const tooltipScreenPos = tooltipTerritory
+    ? getTerritoryScreenPos(tooltipTerritory)
+    : null;
 
   const selectedTerritory =
     selectedTerritoryId !== null
@@ -3385,9 +3528,27 @@ function GameMap({
             ? 'crosshair'
             : hoveredId !== null
               ? 'pointer'
-              : 'default',
+              : isDragging
+                ? 'grabbing'
+                : 'grab',
         }}
       />
+      {tooltipScreenPos && tooltipLabels.length > 0 && (
+        <div
+          className="position-absolute px-2 py-1 rounded text-white small"
+          style={{
+            left: tooltipScreenPos.x,
+            top: tooltipScreenPos.y - zoomedRadius - 8,
+            transform: 'translate(-50%, -100%)',
+            background: 'rgba(0, 0, 0, 0.85)',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            zIndex: 3,
+          }}
+        >
+          {tooltipLabels.join(' · ')}
+        </div>
+      )}
       <div
         className="position-absolute start-0 ms-3 d-flex flex-column align-items-start gap-2"
         style={{ zIndex: 2, top: cardsButtonsTop }}
@@ -3796,7 +3957,7 @@ function GameMap({
           )}
           {toxinsPanelOpen && deployPanelStyle && (
             <ConfirmPanel
-              label="Release toxins:"
+              label="Release toxin:"
               buttonLabel="Confirm"
               onConfirm={submitToxins}
               style={deployPanelStyle}

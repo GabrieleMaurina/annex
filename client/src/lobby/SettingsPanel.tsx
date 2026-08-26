@@ -7,7 +7,7 @@ import type {
   Bounties,
   CardsMode,
   DefenceDice,
-  Entrenchment,
+  Entrenchments,
   FogOfWar,
   Fortification,
   GameMode,
@@ -15,7 +15,7 @@ import type {
   GameState,
   Placement,
   Portals,
-  Radiation,
+  Radiations,
   Starvation,
   SupplyLines,
   Toxins,
@@ -224,7 +224,7 @@ const STARVATION_HELP = (
   </>
 );
 
-const ENTRENCHMENT_HELP = (
+const ENTRENCHMENTS_HELP = (
   <>
     Adds an extra phase after fortifying where you can spend troops straight off
     a territory to entrench it: 1 troop buys 1 turn of entrenchment, and an
@@ -244,12 +244,11 @@ const ENTRENCHMENT_HELP = (
 const TOXINS_HELP = (
   <>
     Adds an extra phase after fortifying (and entrenching) where you can spend
-    troops straight off a territory you own to release toxins on it: it loses
+    troops straight off a territory you own to release a toxin on it: it loses
     its owner, is wiped of every troop it held, and becomes inaccessible to
     everyone until the toxin clears. A territory can never be toxined if doing
     so would split the map into two or more disconnected groups, and capitals
-    can&apos;t be toxined. Mutually exclusive with Radiation: only one of the
-    two can be on at a time.
+    can&apos;t be toxined.
     <ul className="mb-0 ps-3">
       <li>Off: no toxins phase.</li>
       <li>
@@ -265,7 +264,7 @@ const TOXINS_HELP = (
   </>
 );
 
-const RADIATION_HELP = (
+const RADIATIONS_HELP = (
   <>
     Whether the map has radiation: territories with no owner, no troops, and
     off-limits to everyone (not attackable, fortifiable, or selectable) until it
@@ -274,8 +273,7 @@ const RADIATION_HELP = (
     move into a capital, or into a territory that would split the map into two
     or more disconnected groups. Any troops on a territory when radiation
     reaches it are destroyed, and losing a player&apos;s last territory this way
-    eliminates them just like combat would. Mutually exclusive with Toxins: only
-    one of the two can be on at a time.
+    eliminates them just like combat would.
     <ul className="mb-0 ps-3">
       <li>Off: no radiation.</li>
       <li>
@@ -387,10 +385,10 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   cards: 'Constant',
   placement: 'Random',
   fortification: 'Connected',
-  entrenchment: 'off',
+  entrenchments: 'off',
   toxins: 'off',
   portals: 'off',
-  radiation: 'off',
+  radiations: 'off',
   starvation: 'off',
   turnTroops: 'off',
   bounties: 'off',
@@ -645,17 +643,17 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               className="mb-0 d-flex align-items-center gap-1"
               style={LABEL_STYLE}
             >
-              Entrenchment
-              <Help>{ENTRENCHMENT_HELP}</Help>
+              Entrenchments
+              <Help>{ENTRENCHMENTS_HELP}</Help>
             </Form.Label>
             {isHost ? (
               <Form.Select
                 className="w-auto"
-                value={game.entrenchment}
+                value={game.entrenchments}
                 disabled={game.defenceDice !== 2}
                 onChange={(e) =>
                   applySettings({
-                    entrenchment: e.target.value as Entrenchment,
+                    entrenchments: e.target.value as Entrenchments,
                   })
                 }
               >
@@ -663,7 +661,7 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
                 <option value="on">On</option>
               </Form.Select>
             ) : (
-              <span>{game.entrenchment === 'on' ? 'On' : 'Off'}</span>
+              <span>{game.entrenchments === 'on' ? 'On' : 'Off'}</span>
             )}
           </div>
 
@@ -679,7 +677,6 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               <Form.Select
                 className="w-auto"
                 value={game.toxins}
-                disabled={game.radiation !== 'off'}
                 onChange={(e) =>
                   applySettings({ toxins: e.target.value as Toxins })
                 }
@@ -704,16 +701,15 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               className="mb-0 d-flex align-items-center gap-1"
               style={LABEL_STYLE}
             >
-              Radiation
-              <Help>{RADIATION_HELP}</Help>
+              Radiations
+              <Help>{RADIATIONS_HELP}</Help>
             </Form.Label>
             {isHost ? (
               <Form.Select
                 className="w-auto"
-                value={game.radiation}
-                disabled={game.toxins !== 'off'}
+                value={game.radiations}
                 onChange={(e) =>
-                  applySettings({ radiation: e.target.value as Radiation })
+                  applySettings({ radiations: e.target.value as Radiations })
                 }
               >
                 <option value="off">Off</option>
@@ -723,11 +719,11 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               </Form.Select>
             ) : (
               <span>
-                {game.radiation === 'off'
+                {game.radiations === 'off'
                   ? 'Off'
-                  : game.radiation === 'static'
+                  : game.radiations === 'static'
                     ? 'Static'
-                    : game.radiation === 'dynamic'
+                    : game.radiations === 'dynamic'
                       ? 'Dynamic'
                       : 'Expanding'}
               </span>

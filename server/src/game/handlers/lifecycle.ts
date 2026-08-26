@@ -5,7 +5,7 @@ import {
   Bounties,
   CardsMode,
   DefenceDice,
-  Entrenchment,
+  Entrenchments,
   FogOfWar,
   Fortification,
   Game,
@@ -14,7 +14,7 @@ import {
   Placement,
   Player,
   Portals,
-  Radiation,
+  Radiations,
   Starvation,
   SupplyLines,
   Toxins,
@@ -93,10 +93,15 @@ const FORTIFICATION_VALUES: Fortification[] = [
   'Neighboring',
   'Unrestricted',
 ];
-const ENTRENCHMENT_VALUES: Entrenchment[] = ['off', 'on'];
+const ENTRENCHMENTS_VALUES: Entrenchments[] = ['off', 'on'];
 const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const PORTALS_VALUES: Portals[] = ['off', 'static', 'dynamic'];
-const RADIATION_VALUES: Radiation[] = ['off', 'static', 'dynamic', 'expanding'];
+const RADIATIONS_VALUES: Radiations[] = [
+  'off',
+  'static',
+  'dynamic',
+  'expanding',
+];
 const STARVATION_VALUES: Starvation[] = [
   'off',
   'territory',
@@ -167,12 +172,12 @@ export function registerGameHandlers(
         cards: 'Constant',
         placement: 'Random',
         fortification: 'Connected',
-        entrenchment: 'off',
+        entrenchments: 'off',
         toxins: 'off',
         portals: 'off',
         portalTerritoryIds: [],
         portalsEnabled: false,
-        radiation: 'off',
+        radiations: 'off',
         radiationTerritoryIds: new Set(),
         radiationUpcomingTerritoryIds: new Set(),
         starvation: 'off',
@@ -422,7 +427,7 @@ export function registerGameHandlers(
         if (!(DEFENCE_DICE_VALUES as unknown[]).includes(settings.defenceDice))
           return callback({ ok: false, error: 'invalid defence dice' });
         game.defenceDice = settings.defenceDice as DefenceDice;
-        if (game.defenceDice !== 2) game.entrenchment = 'off';
+        if (game.defenceDice !== 2) game.entrenchments = 'off';
       }
 
       if (settings.cards !== undefined) {
@@ -445,18 +450,18 @@ export function registerGameHandlers(
         game.fortification = settings.fortification as Fortification;
       }
 
-      if (settings.entrenchment !== undefined) {
-        if (!(ENTRENCHMENT_VALUES as unknown[]).includes(settings.entrenchment))
-          return callback({ ok: false, error: 'invalid entrenchment' });
-        if (settings.entrenchment === 'on' && game.defenceDice !== 2)
-          return callback({ ok: false, error: 'invalid entrenchment' });
-        game.entrenchment = settings.entrenchment as Entrenchment;
+      if (settings.entrenchments !== undefined) {
+        if (
+          !(ENTRENCHMENTS_VALUES as unknown[]).includes(settings.entrenchments)
+        )
+          return callback({ ok: false, error: 'invalid entrenchments' });
+        if (settings.entrenchments === 'on' && game.defenceDice !== 2)
+          return callback({ ok: false, error: 'invalid entrenchments' });
+        game.entrenchments = settings.entrenchments as Entrenchments;
       }
 
       if (settings.toxins !== undefined) {
         if (!(TOXINS_VALUES as unknown[]).includes(settings.toxins))
-          return callback({ ok: false, error: 'invalid toxins' });
-        if (settings.toxins !== 'off' && game.radiation !== 'off')
           return callback({ ok: false, error: 'invalid toxins' });
         game.toxins = settings.toxins as Toxins;
       }
@@ -467,12 +472,10 @@ export function registerGameHandlers(
         game.portals = settings.portals as Portals;
       }
 
-      if (settings.radiation !== undefined) {
-        if (!(RADIATION_VALUES as unknown[]).includes(settings.radiation))
-          return callback({ ok: false, error: 'invalid radiation' });
-        if (settings.radiation !== 'off' && game.toxins !== 'off')
-          return callback({ ok: false, error: 'invalid radiation' });
-        game.radiation = settings.radiation as Radiation;
+      if (settings.radiations !== undefined) {
+        if (!(RADIATIONS_VALUES as unknown[]).includes(settings.radiations))
+          return callback({ ok: false, error: 'invalid radiations' });
+        game.radiations = settings.radiations as Radiations;
       }
 
       if (settings.starvation !== undefined) {

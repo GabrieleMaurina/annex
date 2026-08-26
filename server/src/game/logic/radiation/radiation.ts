@@ -1,22 +1,22 @@
 import { Server } from 'socket.io';
 import { maps } from '../../../maps';
-import { Game, Radiation } from '../../../types';
+import { Game, Player, Radiations } from '../../../types';
 import { wouldSplitMap } from '../connectivity';
+import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../fog';
 import { ownsAnyTerritory, shuffle } from '../mechanics';
 import { removePortalTerritory } from '../portals';
 import { recordElimination } from '../progression/stats';
-import { gameRoomName } from '../rooms';
 import { selectRadiationTerritories } from './selection';
 
 const TERRITORIES_PER_RADIATION = 10;
 const MAX_RADIATION_TERRITORIES = 8;
 
 export function radiationInitialCount(
-  radiation: Radiation,
+  radiations: Radiations,
   territoryCount: number,
 ): number {
-  if (radiation === 'off') return 0;
-  if (radiation === 'expanding') return 1;
+  if (radiations === 'off') return 0;
+  if (radiations === 'expanding') return 1;
   return Math.min(
     MAX_RADIATION_TERRITORIES,
     Math.ceil(territoryCount / TERRITORIES_PER_RADIATION),
@@ -24,13 +24,13 @@ export function radiationInitialCount(
 }
 
 export function initializeRadiation(game: Game) {
-  if (game.radiation === 'off') {
+  if (game.radiations === 'off') {
     game.radiationTerritoryIds = new Set();
     game.radiationUpcomingTerritoryIds = new Set();
     return;
   }
   const map = maps.get(game.mapName)!;
-  const count = radiationInitialCount(game.radiation, map.territories.length);
+  const count = radiationInitialCount(game.radiations, map.territories.length);
   game.radiationTerritoryIds = new Set(
     selectRadiationTerritories(map.territories, count),
   );
@@ -44,7 +44,10 @@ function isValidRadiationTarget(
 ): boolean {
   if (working.has(candidateId)) return false;
   if (game.capitalTerritoryIds.has(candidateId)) return false;
-  return !wouldSplitMap(game, working, candidateId);
+  if (game.radiations === 'dynamic' && game.territoryToxins.has(candidateId))
+    return false;
+  const holes = new Set([...working, ...game.territoryToxins.keys()]);
+  return !wouldSplitMap(game, holes, candidateId);
 }
 
 function computeDynamicTarget(game: Game): Set<number> {
@@ -83,7 +86,7 @@ function computeExpandingTarget(game: Game): Set<number> {
 
 function computeUpcomingRadiation(game: Game) {
   game.radiationUpcomingTerritoryIds =
-    game.radiation === 'dynamic'
+    game.radiations === 'dynamic'
       ? computeDynamicTarget(game)
       : computeExpandingTarget(game);
 }
@@ -97,8 +100,9 @@ function applyRadiation(game: Game): number[] {
 
   const eliminatedPlayerIds: number[] = [];
   for (const territoryId of newlyRadiated) {
-    if (game.radiation === 'expanding')
+    if (game.radiations === 'expanding')
       removePortalTerritory(game, territoryId);
+    game.territoryToxins.delete(territoryId);
 
     const ownerId = game.territoryOwners.get(territoryId);
     if (ownerId === undefined) continue;
@@ -113,21 +117,38 @@ function applyRadiation(game: Game): number[] {
   return eliminatedPlayerIds;
 }
 
-export function updateRadiationForNewTurn(game: Game, io: Server): number[] {
-  if (game.radiation === 'off' || game.radiation === 'static') return [];
+export function updateRadiationForNewTurn(
+  game: Game,
+  io: Server,
+  playersById: Map<number, Player>,
+): number[] {
+  if (game.radiations === 'off' || game.radiations === 'static') return [];
 
   if (game.turnNumber % 2 === 1) {
     computeUpcomingRadiation(game);
-    io.to(gameRoomName(game.name)).emit('game:radiationUpcoming', {
-      territoryIds: [...game.radiationUpcomingTerritoryIds],
-    });
+    fogFilterEmit(
+      io,
+      game,
+      playersById,
+      'game:radiationUpcoming',
+      (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        const territoryIds = [...game.radiationUpcomingTerritoryIds].filter(
+          (id) => visible === null || visible.has(id),
+        );
+        return { territoryIds };
+      },
+    );
     return [];
   }
 
   const eliminatedPlayerIds = applyRadiation(game);
-  io.to(gameRoomName(game.name)).emit('game:radiationChanged', {
-    territoryIds: [...game.radiationTerritoryIds],
-    eliminatedPlayerIds,
+  fogFilterEmit(io, game, playersById, 'game:radiationChanged', (viewerId) => {
+    const visible = visibleTerritoryIdsOrAll(game, viewerId);
+    const territoryIds = [...game.radiationTerritoryIds].filter(
+      (id) => visible === null || visible.has(id),
+    );
+    return { territoryIds, eliminatedPlayerIds };
   });
   return eliminatedPlayerIds;
 }

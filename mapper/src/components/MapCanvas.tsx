@@ -39,8 +39,9 @@ type DragState =
     }
   | null;
 
-const VERTEX_RADIUS = 20;
+const VERTEX_DIAMETERS_PER_LONGEST_SIDE = 50;
 const HIT_TOLERANCE = 6;
+const HIT_RADIUS_MULTIPLIER = 2;
 const DRAG_THRESHOLD = 4;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
@@ -142,6 +143,7 @@ function MapCanvas({
   });
   const [selectedVertexId, setSelectedVertexId] = useState<number | null>(null);
   const [hoveredVertexId, setHoveredVertexId] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [mouseWorldPos, setMouseWorldPos] = useState<Point | null>(null);
   const [rejectedEdge, setRejectedEdge] = useState<[Point, Point][] | null>(
     null,
@@ -157,6 +159,10 @@ function MapCanvas({
     return img
       ? { w: img.naturalWidth, h: img.naturalHeight }
       : { w: DEFAULT_IMAGE_WIDTH, h: DEFAULT_IMAGE_HEIGHT };
+  }
+
+  function getVertexRadius(imgW: number, imgH: number): number {
+    return Math.max(imgW, imgH) / (VERTEX_DIAMETERS_PER_LONGEST_SIDE * 2);
   }
 
   function getScales(canvasW: number, canvasH: number, zoom: number) {
@@ -183,8 +189,14 @@ function MapCanvas({
     const scaledW = imgW * scaleX;
     const scaledH = imgH * scaleY;
     return {
-      x: scaledW <= canvasW ? (canvasW - scaledW) / 2 : clamp(x, canvasW - scaledW, 0),
-      y: scaledH <= canvasH ? (canvasH - scaledH) / 2 : clamp(y, canvasH - scaledH, 0),
+      x:
+        scaledW <= canvasW
+          ? (canvasW - scaledW) / 2
+          : clamp(x, canvasW - scaledW, 0),
+      y:
+        scaledH <= canvasH
+          ? (canvasH - scaledH) / 2
+          : clamp(y, canvasH - scaledH, 0),
     };
   }
 
@@ -384,12 +396,13 @@ function MapCanvas({
       }
     }
 
+    const vertexRadius = getVertexRadius(imgW, imgH);
     for (const t of territories) {
       const p = toScreen(t);
       const isSelected = selectedVertexId === t.id;
       const isHovered = hoveredVertexId === t.id;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, VERTEX_RADIUS * zoom, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, vertexRadius * scaleX, 0, Math.PI * 2);
       ctx.fillStyle = continentColor(t.continentId);
       ctx.fill();
       ctx.strokeStyle = isSelected
@@ -409,7 +422,7 @@ function MapCanvas({
 
   function hitVertex(pos: Point): Territory | null {
     const canvas = canvasRef.current!;
-    const { scaleX, scaleY } = getScales(
+    const { imgW, imgH, scaleX, scaleY } = getScales(
       canvas.clientWidth,
       canvas.clientHeight,
       transform.zoom,
@@ -421,15 +434,22 @@ function MapCanvas({
       transform.offsetX,
       transform.offsetY,
     );
-    for (let i = territories.length - 1; i >= 0; i--) {
-      const t = territories[i];
+    const hitRadius =
+      getVertexRadius(imgW, imgH) * HIT_RADIUS_MULTIPLIER * scaleX +
+      HIT_TOLERANCE;
+    let nearest: Territory | null = null;
+    let nearestDist = Infinity;
+    for (const t of territories) {
       const d = Math.hypot(
         pos.x - (t.x * scaleX + offsetX),
         pos.y - (t.y * scaleY + offsetY),
       );
-      if (d <= VERTEX_RADIUS * transform.zoom + HIT_TOLERANCE) return t;
+      if (d <= hitRadius && d < nearestDist) {
+        nearest = t;
+        nearestDist = d;
+      }
     }
-    return null;
+    return nearest;
   }
 
   function addVertexAt(pos: Point) {
@@ -491,7 +511,7 @@ function MapCanvas({
         ([p1, p2]) => [toScreenPos(p1), toScreenPos(p2)] as [Point, Point],
       );
     const candidateSegments = toScreenSegments(from, to);
-    const radius = VERTEX_RADIUS * transform.zoom;
+    const radius = getVertexRadius(imgW, imgH) * scaleX;
     const byId = new Map(territories.map((t) => [t.id, t]));
 
     for (const v of territories) {
@@ -661,6 +681,7 @@ function MapCanvas({
           drag.startTransform.y + dy,
         );
         setTransform((t) => ({ ...t, offsetX: x, offsetY: y }));
+        setIsDragging(true);
       }
     } else {
       const dx = pos.x - drag.lastPos.x;
@@ -694,6 +715,7 @@ function MapCanvas({
   function handleMouseUp(e: React.MouseEvent) {
     const drag = dragRef.current;
     dragRef.current = null;
+    setIsDragging(false);
     if (!drag) return;
     const pos = getPos(e);
     if (drag.type === 'pan') {
@@ -713,6 +735,7 @@ function MapCanvas({
     dragRef.current = null;
     setHoveredVertexId(null);
     setMouseWorldPos(null);
+    setIsDragging(false);
   }
 
   function handleContextMenu(e: React.MouseEvent) {
@@ -749,7 +772,12 @@ function MapCanvas({
         display: 'block',
         width: size.w,
         height: size.h,
-        cursor: hoveredVertexId !== null ? 'pointer' : 'default',
+        cursor:
+          hoveredVertexId !== null
+            ? 'pointer'
+            : isDragging
+              ? 'grabbing'
+              : 'grab',
       }}
     />
   );

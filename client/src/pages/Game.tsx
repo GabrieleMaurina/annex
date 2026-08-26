@@ -277,7 +277,7 @@ function Game({
           turnPhase={game.turnPhase}
           turnDuration={game.turnDuration}
           fortification={game.fortification}
-          entrenchment={game.entrenchment}
+          entrenchments={game.entrenchments}
           toxins={game.toxins}
           toxinTerritories={game.toxinTerritories}
           cards={game.cards}

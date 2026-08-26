@@ -11,3 +11,16 @@ export function withPortalEdges(
     ...portalTerritoryIds.filter((id) => id !== territoryId),
   ];
 }
+
+export function isPortalHop(
+  fromId: number,
+  toId: number,
+  portalTerritoryIds: number[],
+  portalsEnabled: boolean,
+): boolean {
+  return (
+    portalsEnabled &&
+    portalTerritoryIds.includes(fromId) &&
+    portalTerritoryIds.includes(toId)
+  );
+}

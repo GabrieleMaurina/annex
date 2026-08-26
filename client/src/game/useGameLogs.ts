@@ -88,8 +88,8 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
       pushLog(
         colorForPlayer(payload.playerId),
         payload.permanent
-          ? `Released toxins on territory #${payload.territoryId + 1} permanently`
-          : `Released toxins on territory #${payload.territoryId + 1} for ${payload.turnsRemaining} turns`,
+          ? `Released toxin on territory #${payload.territoryId + 1} permanently`
+          : `Released toxin on territory #${payload.territoryId + 1} for ${payload.turnsRemaining} turns`,
       );
     }
     function onRadiationChanged(payload: {

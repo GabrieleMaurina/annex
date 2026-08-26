@@ -95,6 +95,13 @@ export function filterGameStateForViewer(
     ...base,
     territories: base.territories.filter((t) => visible.has(t.id)),
     toxinTerritories: base.toxinTerritories.filter((t) => visible.has(t.id)),
+    portalTerritoryIds: base.portalTerritoryIds.filter((id) => visible.has(id)),
+    radiationTerritoryIds: base.radiationTerritoryIds.filter((id) =>
+      visible.has(id),
+    ),
+    radiationUpcomingTerritoryIds: base.radiationUpcomingTerritoryIds.filter(
+      (id) => visible.has(id),
+    ),
     visibleTerritoryIds: [...visible],
     selectedTerritoryId:
       base.selectedTerritoryId !== null && visible.has(base.selectedTerritoryId)

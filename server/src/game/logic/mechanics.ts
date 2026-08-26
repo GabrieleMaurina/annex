@@ -1,6 +1,10 @@
 import { maps } from '../../maps';
 import { Game } from '../../types';
 import { isInteger, isObject } from '../../validate';
+import {
+  connectedOwnedTerritories,
+  ownedTerritoryClusters,
+} from './connectivity';
 import { recordReplayFrame } from './replay';
 
 const COLOR_COUNT = 20;
@@ -167,6 +171,51 @@ export function assignTerritories(game: Game) {
   });
 }
 
+export function supplyHubTerritoryIds(game: Game, playerId: number): number[] {
+  const ownedCapitals = [...game.capitalTerritoryIds].filter(
+    (id) => game.territoryOwners.get(id) === playerId,
+  );
+  if (ownedCapitals.length > 0) return ownedCapitals;
+
+  const clusters = ownedTerritoryClusters(game, playerId);
+  if (clusters.length === 0) return [];
+
+  let best: {
+    totalTroops: number;
+    size: number;
+    maxTroops: number;
+    minId: number;
+    hubId: number;
+  } | null = null;
+  for (const cluster of clusters) {
+    let totalTroops = 0;
+    let maxTroops = -Infinity;
+    let minId = Infinity;
+    let hubId = -1;
+    for (const id of cluster) {
+      const troops = game.territoryTroops.get(id) ?? 0;
+      totalTroops += troops;
+      minId = Math.min(minId, id);
+      if (troops > maxTroops || (troops === maxTroops && id < hubId)) {
+        maxTroops = troops;
+        hubId = id;
+      }
+    }
+    if (
+      best === null ||
+      totalTroops > best.totalTroops ||
+      (totalTroops === best.totalTroops &&
+        (cluster.length > best.size ||
+          (cluster.length === best.size &&
+            (maxTroops > best.maxTroops ||
+              (maxTroops === best.maxTroops && minId < best.minId)))))
+    ) {
+      best = { totalTroops, size: cluster.length, maxTroops, minId, hubId };
+    }
+  }
+  return [best!.hubId];
+}
+
 export interface TroopDeposit {
   territoryId: number;
   troops: number;
@@ -186,6 +235,15 @@ export function depositTroopsOnOwnedTerritory(
   if (!isInteger(troops)) return { error: 'invalid troops' };
   if (troops < 1 || troops > game.troopsToDeploy)
     return { error: 'invalid troops' };
+  if (
+    game.supplyLines === 'on' &&
+    !connectedOwnedTerritories(
+      game,
+      playerId,
+      supplyHubTerritoryIds(game, playerId),
+    ).has(territoryId)
+  )
+    return { error: 'territory not connected to supply hub' };
 
   game.territoryTroops.set(
     territoryId,

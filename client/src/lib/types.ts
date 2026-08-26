@@ -47,10 +47,13 @@ export type GameMode =
   | 'Supremacy 2/3'
   | 'Capitals'
   | 'Team Deathmatch'
+  | 'Continent'
   | '5-Turn'
   | '10-Turn'
   | 'Assassin'
-  | 'Mission';
+  | 'Mission'
+  | 'Player Kills'
+  | 'Troop Kills';
 export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchment = 'off' | 'on';
@@ -60,6 +63,7 @@ export type Radiation = 'off' | 'static' | 'dynamic' | 'expanding';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type TurnTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
+export type SupplyLines = 'off' | 'on';
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -94,6 +98,7 @@ export interface GameState {
   hostId: number;
   state: 'lobby' | 'playing' | 'ended';
   gameMode: GameMode;
+  continentId: number | null;
   blitz: Blitz;
   defenceDice: DefenceDice;
   cards: CardsMode;
@@ -110,6 +115,7 @@ export interface GameState {
   starvation: Starvation;
   turnTroops: TurnTroops;
   bounties: Bounties;
+  supplyLines: SupplyLines;
   territoryTroopsCap: number;
   totalTroopsCap: number;
   turnDuration: TurnDuration;
@@ -187,6 +193,7 @@ export interface GameSettingsInput {
   starvation?: Starvation;
   turnTroops?: TurnTroops;
   bounties?: Bounties;
+  supplyLines?: SupplyLines;
   turnDuration?: TurnDuration;
   password?: string | null;
   visibility?: Visibility;
@@ -208,6 +215,7 @@ export type GameRulesSettings = Pick<
   | 'starvation'
   | 'turnTroops'
   | 'bounties'
+  | 'supplyLines'
   | 'turnDuration'
   | 'visibility'
 >;

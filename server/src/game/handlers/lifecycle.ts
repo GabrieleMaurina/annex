@@ -15,12 +15,14 @@ import {
   Portals,
   Radiation,
   Starvation,
+  SupplyLines,
   Toxins,
   TurnDuration,
   TurnTroops,
   Visibility,
 } from '../../types';
 import { isInteger, isObject } from '../../validate';
+import { initializeContinent } from '../logic/continent';
 import { checkGameEnd } from '../logic/end';
 import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
@@ -65,10 +67,13 @@ const GAME_MODE_VALUES: GameMode[] = [
   'Supremacy 2/3',
   'Capitals',
   'Team Deathmatch',
+  'Continent',
   '5-Turn',
   '10-Turn',
   'Assassin',
   'Mission',
+  'Player Kills',
+  'Troop Kills',
 ];
 const BLITZ_VALUES: Blitz[] = ['Balanced', 'True'];
 const DEFENCE_DICE_VALUES: DefenceDice[] = [2, 3];
@@ -97,6 +102,7 @@ const STARVATION_VALUES: Starvation[] = [
 ];
 const TURN_TROOPS_VALUES: TurnTroops[] = ['off', 'on'];
 const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
+const SUPPLY_LINES_VALUES: SupplyLines[] = ['off', 'on'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
 const MAX_PASSWORD_LENGTH = 50;
@@ -151,6 +157,7 @@ export function registerGameHandlers(
         hostId: player.id,
         state: 'lobby',
         gameMode: 'Supremacy',
+        continentId: null,
         blitz: 'Balanced',
         defenceDice: 2,
         cards: 'Constant',
@@ -167,6 +174,7 @@ export function registerGameHandlers(
         starvation: 'off',
         turnTroops: 'off',
         bounties: 'off',
+        supplyLines: 'off',
         turnDuration: 120,
         password: null,
         visibility: 'public',
@@ -466,6 +474,12 @@ export function registerGameHandlers(
         game.bounties = settings.bounties as Bounties;
       }
 
+      if (settings.supplyLines !== undefined) {
+        if (!(SUPPLY_LINES_VALUES as unknown[]).includes(settings.supplyLines))
+          return callback({ ok: false, error: 'invalid supply lines' });
+        game.supplyLines = settings.supplyLines as SupplyLines;
+      }
+
       if (settings.turnDuration !== undefined) {
         if (
           !(TURN_DURATION_VALUES as unknown[]).includes(settings.turnDuration)
@@ -528,6 +542,7 @@ export function registerGameHandlers(
     }
     initializeRadiation(game);
     game.replayInitialRadiation = [...game.radiationTerritoryIds];
+    initializeContinent(game);
     if (game.placement === 'Random') {
       assignTerritories(game);
     } else if (game.placement === 'Semi') {

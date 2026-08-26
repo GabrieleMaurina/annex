@@ -99,6 +99,46 @@ export function compareByTerritoriesFirst(
   return sb.troopsGained - sa.troopsGained;
 }
 
+function compareByDeathOrder(game: Game, a: number, b: number): number {
+  const rank = (id: number) => {
+    const index = game.deathOrder.indexOf(id);
+    return index === -1 ? -1 : game.deathOrder.length - index;
+  };
+  return rank(a) - rank(b);
+}
+
+function compareByPlayerKillsFirst(game: Game, a: number, b: number): number {
+  const sa = game.stats.get(a)!;
+  const sb = game.stats.get(b)!;
+  if (sa.playersKilled.length !== sb.playersKilled.length)
+    return sb.playersKilled.length - sa.playersKilled.length;
+  const deathCmp = compareByDeathOrder(game, a, b);
+  if (deathCmp !== 0) return deathCmp;
+  return compareBySurvivorTiebreak(game, a, b);
+}
+
+function compareByTroopKillsFirst(game: Game, a: number, b: number): number {
+  const sa = game.stats.get(a)!;
+  const sb = game.stats.get(b)!;
+  if (sa.troopsKilled !== sb.troopsKilled)
+    return sb.troopsKilled - sa.troopsKilled;
+  const deathCmp = compareByDeathOrder(game, a, b);
+  if (deathCmp !== 0) return deathCmp;
+  return compareBySurvivorTiebreak(game, a, b);
+}
+
+function killsComparator(game: Game): (a: number, b: number) => number {
+  const compare =
+    game.gameMode === 'Troop Kills'
+      ? compareByTroopKillsFirst
+      : compareByPlayerKillsFirst;
+  return (a, b) => compare(game, a, b);
+}
+
+export function computeKillsWinner(game: Game): number {
+  return [...game.playerIds].sort(killsComparator(game))[0];
+}
+
 function computeTeamRanking(game: Game): number[] {
   const winningTeam = game.playerTeams.get(game.winnerIds[0]) ?? 0;
   const teamOrder = [winningTeam, ...[...game.teamDeathOrder].reverse()];
@@ -121,6 +161,8 @@ function computeTeamRanking(game: Game): number[] {
 
 export function computeFinalRanking(game: Game): number[] {
   if (game.gameMode === 'Team Deathmatch') return computeTeamRanking(game);
+  if (game.gameMode === 'Player Kills' || game.gameMode === 'Troop Kills')
+    return [...game.playerIds].sort(killsComparator(game));
 
   const tiebreak =
     game.gameMode === '5-Turn' || game.gameMode === '10-Turn'

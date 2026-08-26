@@ -268,6 +268,7 @@ function Game({
           gameMode={game.gameMode}
           isTeamDeathmatch={game.gameMode === 'Team Deathmatch'}
           isCapitals={game.gameMode === 'Capitals'}
+          continentId={game.continentId}
           mission={mission}
           selfId={selfId}
           turnNumber={game.turnNumber}
@@ -285,6 +286,7 @@ function Game({
           radiationUpcomingTerritoryIds={game.radiationUpcomingTerritoryIds}
           starvation={game.starvation}
           bounties={game.bounties}
+          supplyLines={game.supplyLines}
           territoryTroopsCap={game.territoryTroopsCap}
           totalTroopsCap={game.totalTroopsCap}
           troopsToDeploy={game.troopsToDeploy}

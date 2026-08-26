@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
+import { connectedOwnedTerritories } from '../logic/connectivity';
 import { withPortalEdges } from '../logic/portals';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
@@ -11,35 +12,6 @@ import { advanceTurnPhase } from '../logic/turns';
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }
   | { ok: false; error: string };
-
-function connectedOwnedTerritories(
-  game: Game,
-  playerId: number,
-  startId: number,
-): Set<number> {
-  const map = maps.get(game.mapName)!;
-  const neighborsById = new Map(
-    map.territories.map((t) => [t.id, t.neighbors]),
-  );
-  const visited = new Set<number>([startId]);
-  const queue = [startId];
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const neighbors = withPortalEdges(
-      neighborsById.get(current) ?? [],
-      current,
-      game.portalTerritoryIds,
-      game.portalsEnabled,
-    );
-    for (const neighborId of neighbors) {
-      if (visited.has(neighborId)) continue;
-      if (game.territoryOwners.get(neighborId) !== playerId) continue;
-      visited.add(neighborId);
-      queue.push(neighborId);
-    }
-  }
-  return visited;
-}
 
 function ownsOtherTerritory(
   game: Game,
@@ -89,7 +61,7 @@ function isValidFortifyEnd(
     );
     return neighbors.includes(endId);
   }
-  return connectedOwnedTerritories(game, playerId, startId).has(endId);
+  return connectedOwnedTerritories(game, playerId, [startId]).has(endId);
 }
 
 export function registerFortifyHandlers(

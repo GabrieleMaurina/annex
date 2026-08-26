@@ -1,24 +1,29 @@
 import { Game } from '../../types';
+import { continentTerritoryIds } from './continent';
 import { ownsAnyTerritory } from './mechanics';
 import { missionAccomplished } from './progression/missions';
 import {
   bumpStat,
   compareByTerritoriesFirst,
   computeFinalRanking,
+  computeKillsWinner,
   countTerritories,
 } from './progression/stats';
 import { clearTurnTimer } from './turns';
 
-const CAPITALS_WIN_MIN_TURN_NUMBER = 2;
+const EARLY_WIN_GATE_TURN_NUMBER = 2;
 
 function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
-  return game.gameMode === 'Team Deathmatch'
-    ? game.playerIds.filter(
-        (id) =>
-          (game.playerTeams.get(id) ?? 0) ===
-          (game.playerTeams.get(winner) ?? 0),
-      )
-    : [winner];
+  if (game.gameMode === 'Team Deathmatch') {
+    return game.playerIds.filter(
+      (id) =>
+        (game.playerTeams.get(id) ?? 0) === (game.playerTeams.get(winner) ?? 0),
+    );
+  }
+  if (game.gameMode === 'Player Kills' || game.gameMode === 'Troop Kills') {
+    return [computeKillsWinner(game)];
+  }
+  return [winner];
 }
 
 export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
@@ -85,9 +90,24 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
       const winnerId =
         uniqueOwners.size === 1 ? [...uniqueOwners][0] : undefined;
       if (winnerId === undefined) return null;
-      if (game.turnNumber < CAPITALS_WIN_MIN_TURN_NUMBER) return null;
+      if (game.turnNumber < EARLY_WIN_GATE_TURN_NUMBER) return null;
       winnerIds = [winnerId];
     }
+  } else if (game.gameMode === 'Continent') {
+    const ids = continentTerritoryIds(game, game.continentId!).filter(
+      (id) =>
+        !game.territoryToxins.has(id) && !game.radiationTerritoryIds.has(id),
+    );
+    const continentOwners = new Set(
+      ids.map((id) => game.territoryOwners.get(id)),
+    );
+    const continentWinnerId =
+      ids.length > 0 && continentOwners.size === 1
+        ? [...continentOwners][0]
+        : undefined;
+    if (continentWinnerId === undefined) return null;
+    if (game.turnNumber < EARLY_WIN_GATE_TURN_NUMBER) return null;
+    winnerIds = [continentWinnerId];
   } else if (
     game.gameMode === 'Supremacy 3/4' ||
     game.gameMode === 'Supremacy 2/3'

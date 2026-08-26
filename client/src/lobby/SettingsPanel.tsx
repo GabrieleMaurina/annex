@@ -16,6 +16,7 @@ import type {
   Portals,
   Radiation,
   Starvation,
+  SupplyLines,
   Toxins,
   TurnDuration,
   TurnTroops,
@@ -28,9 +29,9 @@ const LABEL_STYLE = { minWidth: 130, flexShrink: 0 };
 
 const GAME_MODE_HELP = (
   <>
-    How the game is won. In every mode, if everyone else surrenders or is
-    eliminated, the last player (or team) standing wins immediately, regardless
-    of the mode.
+    How the game is won. In every mode except Player Kills and Troop Kills, if
+    everyone else surrenders or is eliminated, the last player (or team)
+    standing wins immediately, regardless of the mode.
     <ul className="mb-0 ps-3">
       <li>Supremacy: own every territory on the map.</li>
       <li>
@@ -41,11 +42,17 @@ const GAME_MODE_HELP = (
       </li>
       <li>
         Capitals: everyone places a capital at the start; win by owning every
-        territory, or every capital for 2 full rounds or more.
+        territory, or by owning every capital from turn 3 onward.
       </li>
       <li>
         Team Deathmatch: players are split into teams; your team wins by owning
         every territory.
+      </li>
+      <li>
+        Continent: the server picks one continent (at least 7 territories if the
+        map has one, otherwise its largest) for everyone to fight over. Win by
+        owning every territory of that continent (ignoring any currently toxined
+        or radiated) from turn 3 onward.
       </li>
       <li>
         5-Turn: the game ends after 5 full rounds, whoever holds the most
@@ -63,6 +70,14 @@ const GAME_MODE_HELP = (
       <li>
         Mission: everyone secretly draws one hidden mission at the start.
         Complete your mission to win.
+      </li>
+      <li>
+        Player Kills: play until only one player is left standing; whoever
+        eliminated the most opponents wins, even if it wasn&apos;t them.
+      </li>
+      <li>
+        Troop Kills: play until only one player is left standing; whoever
+        destroyed the most enemy troops wins, even if it wasn&apos;t them.
       </li>
     </ul>
   </>
@@ -306,6 +321,22 @@ const BOUNTIES_HELP = (
   </>
 );
 
+const SUPPLY_LINES_HELP = (
+  <>
+    Whether troop placement is restricted by supply lines.
+    <ul className="mb-0 ps-3">
+      <li>Off: troops can be placed on any territory you own.</li>
+      <li>
+        On: troops can only be placed on a territory connected, by a path of
+        territories you own, to one of your supply hubs. Your capitals (if you
+        have any) are your hubs; otherwise your territory (or territories, if
+        tied) with the most troops acts as your hub instead. This never affects
+        troops a card set drops automatically.
+      </li>
+    </ul>
+  </>
+);
+
 const TURN_DURATION_HELP =
   "How long each player's turn can last. If time runs out, the game finishes it for them: leftover troops are dropped on random territories, any pending move is resolved automatically, and the turn ends.";
 
@@ -346,6 +377,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   starvation: 'off',
   turnTroops: 'off',
   bounties: 'off',
+  supplyLines: 'off',
   turnDuration: 120,
   password: null,
   visibility: 'public',
@@ -384,10 +416,13 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               <option value="Supremacy 2/3">Supremacy 2/3</option>
               <option value="Capitals">Capitals</option>
               <option value="Team Deathmatch">Team Deathmatch</option>
+              <option value="Continent">Continent</option>
               <option value="5-Turn">5-Turn</option>
               <option value="10-Turn">10-Turn</option>
               <option value="Assassin">Assassin</option>
               <option value="Mission">Mission</option>
+              <option value="Player Kills">Player Kills</option>
+              <option value="Troop Kills">Troop Kills</option>
             </Form.Select>
           ) : (
             <span>{game.gameMode}</span>
@@ -762,6 +797,30 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               </Form.Select>
             ) : (
               <span>{game.bounties === 'on' ? 'On' : 'Off'}</span>
+            )}
+          </div>
+
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Supply Lines
+              <Help>{SUPPLY_LINES_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.supplyLines}
+                onChange={(e) =>
+                  applySettings({ supplyLines: e.target.value as SupplyLines })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="on">On</option>
+              </Form.Select>
+            ) : (
+              <span>{game.supplyLines === 'on' ? 'On' : 'Off'}</span>
             )}
           </div>
 

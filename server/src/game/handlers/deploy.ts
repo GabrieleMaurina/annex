@@ -1,7 +1,11 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
-import { depositTroopsOnOwnedTerritory } from '../logic/mechanics';
+import { connectedOwnedTerritories } from '../logic/connectivity';
+import {
+  depositTroopsOnOwnedTerritory,
+  supplyHubTerritoryIds,
+} from '../logic/mechanics';
 import { hasPlayableSet } from '../logic/progression/cards';
 import { bumpStat } from '../logic/progression/stats';
 import { gameState } from '../logic/state';
@@ -49,6 +53,19 @@ export function registerDeployHandlers(
           game.territoryOwners.get(territoryId) !== player.id
         )
           return callback({ ok: false, error: 'territory not owned' });
+        if (
+          (game.turnPhase === 'deploy' || game.turnPhase === 'troop') &&
+          game.supplyLines === 'on' &&
+          !connectedOwnedTerritories(
+            game,
+            player.id,
+            supplyHubTerritoryIds(game, player.id),
+          ).has(territoryId)
+        )
+          return callback({
+            ok: false,
+            error: 'territory not connected to supply hub',
+          });
       }
 
       game.selectedTerritoryId = territoryId;

@@ -32,6 +32,7 @@ import type {
   Mission,
   ReplayAnimation,
   Starvation,
+  SupplyLines,
   Toxins,
   TurnDuration,
   TurnPhase,
@@ -109,6 +110,11 @@ import TroopPanel from './panels/TroopPanel';
 import TurnPanel from './panels/TurnPanel';
 import TurnProgressBar from './panels/TurnProgressBar';
 import { useReplay } from './replay';
+import {
+  computeSupplyConnectedTerritoryIds,
+  computeSupplyLineEdges,
+  drawSupplyLines,
+} from './supplyLines';
 import { getToxinsCandidates, toxinsCost } from './toxins/toxins';
 import type { LogEntry } from './useGameLogs';
 
@@ -134,6 +140,7 @@ interface Props {
   gameMode: GameMode;
   isTeamDeathmatch: boolean;
   isCapitals: boolean;
+  continentId: number | null;
   mission: Mission | null;
   selfId: number | null;
   turnNumber: number;
@@ -151,6 +158,7 @@ interface Props {
   radiationUpcomingTerritoryIds: number[];
   starvation: Starvation;
   bounties: Bounties;
+  supplyLines: SupplyLines;
   territoryTroopsCap: number;
   totalTroopsCap: number;
   troopsToDeploy: number;
@@ -253,6 +261,36 @@ function drawConvexOffsetPath(
   ctx.closePath();
 }
 
+function strokeContinentOutline(
+  ctx: CanvasRenderingContext2D,
+  screenPoints: Point[],
+  pad: number,
+) {
+  if (screenPoints.length === 1) {
+    ctx.beginPath();
+    ctx.arc(screenPoints[0].x, screenPoints[0].y, pad, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
+  }
+  if (screenPoints.length === 2) {
+    const savedLineWidth = ctx.lineWidth;
+    const savedLineCap = ctx.lineCap;
+    ctx.beginPath();
+    ctx.lineCap = 'round';
+    ctx.lineWidth = pad * 2;
+    ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+    ctx.lineTo(screenPoints[1].x, screenPoints[1].y);
+    ctx.stroke();
+    ctx.lineWidth = savedLineWidth;
+    ctx.lineCap = savedLineCap;
+    return;
+  }
+  const hull = convexHull(screenPoints);
+  ctx.beginPath();
+  drawConvexOffsetPath(ctx, hull, pad);
+  ctx.stroke();
+}
+
 interface Transform {
   zoom: number;
   offsetX: number;
@@ -301,6 +339,7 @@ function GameMap({
   gameMode,
   isTeamDeathmatch,
   isCapitals,
+  continentId,
   mission,
   selfId,
   turnNumber,
@@ -318,6 +357,7 @@ function GameMap({
   radiationUpcomingTerritoryIds,
   starvation,
   bounties,
+  supplyLines,
   territoryTroopsCap,
   totalTroopsCap,
   troopsToDeploy,
@@ -802,7 +842,10 @@ function GameMap({
         isCapital: isCapitalById.get(t.id) ?? false,
       }))
     : ownership;
-  const ownerById = new Map(displayedOwnership.map((o) => [o.id, o]));
+  const ownerById = useMemo(
+    () => new Map(displayedOwnership.map((o) => [o.id, o])),
+    [displayedOwnership],
+  );
   const displayedToxinTerritories = replayToxinTerritories ?? toxinTerritories;
   const toxinById = useMemo(
     () => new Set(displayedToxinTerritories.map((t) => t.id)),
@@ -828,6 +871,48 @@ function GameMap({
   const unusableTerritoryById = useMemo(
     () => new Set([...toxinById, ...radiationById]),
     [toxinById, radiationById],
+  );
+  const supplyLineEdgesByPlayer = useMemo(
+    () =>
+      supplyLines === 'on' && territories.length > 0
+        ? computeSupplyLineEdges(
+            territories,
+            ownerById,
+            portalTerritoryIds,
+            portalsEnabled,
+            imgDims.w,
+            imgDims.h,
+          )
+        : new Map(),
+    [
+      supplyLines,
+      territories,
+      ownerById,
+      portalTerritoryIds,
+      portalsEnabled,
+      imgDims.w,
+      imgDims.h,
+    ],
+  );
+  const supplyConnectedTerritoryIds = useMemo(
+    () =>
+      supplyLines === 'on' && selfId !== null
+        ? computeSupplyConnectedTerritoryIds(
+            territories,
+            ownerById,
+            selfId,
+            portalTerritoryIds,
+            portalsEnabled,
+          )
+        : null,
+    [
+      supplyLines,
+      territories,
+      ownerById,
+      selfId,
+      portalTerritoryIds,
+      portalsEnabled,
+    ],
   );
   const replayPlayer = players.find((p) => p.id === replayTurnPlayerId);
   const replayPlayerColor = replayPlayer
@@ -2032,7 +2117,12 @@ function GameMap({
     if (turnPhase === 'territory') return territoryClaimCandidates.has(t.id);
     if (turnPhase === 'capital') return ownerById.get(t.id)?.ownerId === selfId;
     if (turnPhase === 'deploy' || turnPhase === 'troop')
-      return troopsToDeploy > 0 && ownerById.get(t.id)?.ownerId === selfId;
+      return (
+        troopsToDeploy > 0 &&
+        ownerById.get(t.id)?.ownerId === selfId &&
+        (supplyConnectedTerritoryIds === null ||
+          supplyConnectedTerritoryIds.has(t.id))
+      );
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId === null)
         return fortifyStartCandidates.has(t.id);
@@ -2458,6 +2548,19 @@ function GameMap({
       y: p.y * scaleY + offsetY,
     });
 
+    if (supplyLineEdgesByPlayer.size > 0) {
+      const supplyTerritoryById = new Map(territories.map((t) => [t.id, t]));
+      drawSupplyLines(
+        ctx,
+        supplyLineEdgesByPlayer,
+        supplyTerritoryById,
+        toScreen,
+        imgW,
+        imgH,
+        zoom,
+      );
+    }
+
     drawAnimations(ctx, toScreen, VERTEX_RADIUS * zoom);
 
     if (fortifyPath.length > 1) {
@@ -2526,36 +2629,32 @@ function GameMap({
       ctx.lineJoin = 'round';
       ctx.setLineDash([6 * zoom, 5 * zoom]);
       for (const group of continentGroups.values()) {
-        const screenPoints = group.map((t) => toScreen(t));
-        if (screenPoints.length === 1) {
-          ctx.beginPath();
-          ctx.arc(
-            screenPoints[0].x,
-            screenPoints[0].y,
-            hullPad,
-            0,
-            Math.PI * 2,
-          );
-          ctx.stroke();
-          continue;
-        }
-        if (screenPoints.length === 2) {
-          ctx.beginPath();
-          ctx.lineCap = 'round';
-          ctx.lineWidth = hullPad * 2;
-          ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
-          ctx.lineTo(screenPoints[1].x, screenPoints[1].y);
-          ctx.stroke();
-          ctx.lineWidth = 2.5 * zoom;
-          ctx.lineCap = 'butt';
-          continue;
-        }
-        const hull = convexHull(screenPoints);
-        ctx.beginPath();
-        drawConvexOffsetPath(ctx, hull, hullPad);
-        ctx.stroke();
+        strokeContinentOutline(
+          ctx,
+          group.map((t) => toScreen(t)),
+          hullPad,
+        );
       }
       ctx.restore();
+    }
+
+    if (gameMode === 'Continent' && continentId !== null) {
+      const targetTerritories = territories.filter(
+        (t) => t.continentId === continentId,
+      );
+      if (targetTerritories.length > 0) {
+        const hullPad = (VERTEX_RADIUS + 30) * zoom;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 3.5 * zoom;
+        ctx.lineJoin = 'round';
+        strokeContinentOutline(
+          ctx,
+          targetTerritories.map((t) => toScreen(t)),
+          hullPad,
+        );
+        ctx.restore();
+      }
     }
 
     const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));

@@ -34,3 +34,72 @@ export function wouldSplitMap(
   }
   return visited.size !== remaining.length;
 }
+
+export function ownedTerritoryClusters(
+  game: Game,
+  playerId: number,
+): number[][] {
+  const map = maps.get(game.mapName)!;
+  const neighborsById = new Map(
+    map.territories.map((t) => [t.id, t.neighbors]),
+  );
+  const ownedIds: number[] = [];
+  for (const [id, ownerId] of game.territoryOwners) {
+    if (ownerId === playerId) ownedIds.push(id);
+  }
+  const ownedSet = new Set(ownedIds);
+  const visited = new Set<number>();
+  const clusters: number[][] = [];
+  for (const start of ownedIds) {
+    if (visited.has(start)) continue;
+    const cluster: number[] = [];
+    const queue = [start];
+    visited.add(start);
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      cluster.push(current);
+      const neighbors = withPortalEdges(
+        neighborsById.get(current) ?? [],
+        current,
+        game.portalTerritoryIds,
+        game.portalsEnabled,
+      );
+      for (const neighborId of neighbors) {
+        if (visited.has(neighborId) || !ownedSet.has(neighborId)) continue;
+        visited.add(neighborId);
+        queue.push(neighborId);
+      }
+    }
+    clusters.push(cluster);
+  }
+  return clusters;
+}
+
+export function connectedOwnedTerritories(
+  game: Game,
+  playerId: number,
+  startIds: number[],
+): Set<number> {
+  const map = maps.get(game.mapName)!;
+  const neighborsById = new Map(
+    map.territories.map((t) => [t.id, t.neighbors]),
+  );
+  const visited = new Set<number>(startIds);
+  const queue = [...startIds];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const neighbors = withPortalEdges(
+      neighborsById.get(current) ?? [],
+      current,
+      game.portalTerritoryIds,
+      game.portalsEnabled,
+    );
+    for (const neighborId of neighbors) {
+      if (visited.has(neighborId)) continue;
+      if (game.territoryOwners.get(neighborId) !== playerId) continue;
+      visited.add(neighborId);
+      queue.push(neighborId);
+    }
+  }
+  return visited;
+}

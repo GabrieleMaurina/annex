@@ -4,7 +4,7 @@ import { filterGameStateForViewer } from './fog';
 import { addHostCandidate, recomputeHost } from './host';
 import { assignRandomColor, maxTeam } from './mechanics';
 import { gameRoomName } from './rooms';
-import { gameState, gameSummary } from './state';
+import { gameResultsStats, gameState, gameSummary } from './state';
 import { clearTurnTimer } from './turns';
 
 export { gameRoomName } from './rooms';
@@ -69,6 +69,7 @@ export function destroyIfInactive(
     clearTurnTimer(current.name);
     games.delete(current.name);
     evictGameMembers(current, playersById, io);
+    broadcastHomeGames(io, playersById);
   });
 }
 
@@ -97,6 +98,7 @@ export function destroyIfEnded(
 
     games.delete(current.name);
     evictGameMembers(current, playersById, io);
+    broadcastHomeGames(io, playersById);
   });
 }
 
@@ -210,6 +212,20 @@ export function leaveGame(
   io: Server,
   permanent: boolean,
 ) {
+  const gameName = player.gameName;
+  leaveGameImpl(player, playersById, io, permanent);
+  if (!gameName) return;
+  broadcastHomeGames(io, playersById);
+  const game = games.get(gameName);
+  if (game) broadcastGameState(io, game, playersById);
+}
+
+function leaveGameImpl(
+  player: Player,
+  playersById: Map<number, Player>,
+  io: Server,
+  permanent: boolean,
+) {
   if (!player.gameName) return;
   const game = games.get(player.gameName);
   if (!game) {
@@ -257,6 +273,7 @@ export function leaveGame(
 export function handleReconnect(
   player: Player,
   playersById: Map<number, Player>,
+  io: Server,
 ) {
   if (!player.gameName) return;
   const game = games.get(player.gameName);
@@ -272,12 +289,21 @@ export function handleReconnect(
   }
 
   recomputeHost(game, playersById);
+  broadcastHomeGames(io, playersById);
+  broadcastGameState(io, game, playersById);
 }
 
 export function listGameSummaries(playersById: Map<number, Player>) {
   return [...games.values()]
     .filter((game) => game.visibility === 'public')
     .map((game) => gameSummary(game, playersById));
+}
+
+export function broadcastHomeGames(
+  io: Server,
+  playersById: Map<number, Player>,
+) {
+  io.to(HOME_ROOM).emit('home:games', listGameSummaries(playersById));
 }
 
 export function sendToPlayer(
@@ -323,20 +349,106 @@ export function sendPlayerCards(
   });
 }
 
-export function broadcastGameStates(
+export function sendPlayerLogs(
   io: Server,
   playersById: Map<number, Player>,
+  game: Game,
+  playerId: number,
 ) {
-  for (const game of games.values()) {
-    const base = gameState(game, playersById);
-    for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
-      sendToPlayer(
-        io,
-        playersById,
-        viewerId,
-        'game:state',
-        filterGameStateForViewer(base, game, viewerId),
-      );
-    }
+  sendToPlayer(io, playersById, playerId, 'game:logs', {
+    entries: game.logs.get(playerId) ?? [],
+  });
+}
+
+export function sendGameResults(
+  io: Server,
+  playersById: Map<number, Player>,
+  game: Game,
+  playerId: number,
+) {
+  sendToPlayer(io, playersById, playerId, 'game:results', {
+    stats: gameResultsStats(game),
+  });
+}
+
+export function broadcastGameResults(
+  io: Server,
+  game: Game,
+  playersById: Map<number, Player>,
+) {
+  for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
+    sendGameResults(io, playersById, game, viewerId);
   }
+}
+
+export function sendGameState(
+  io: Server,
+  playersById: Map<number, Player>,
+  game: Game,
+  playerId: number,
+) {
+  sendToPlayer(
+    io,
+    playersById,
+    playerId,
+    'game:state',
+    filterGameStateForViewer(gameState(game, playersById), game, playerId),
+  );
+}
+
+export function broadcastGameState(
+  io: Server,
+  game: Game,
+  playersById: Map<number, Player>,
+) {
+  const base = gameState(game, playersById);
+  for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
+    sendToPlayer(
+      io,
+      playersById,
+      viewerId,
+      'game:state',
+      filterGameStateForViewer(base, game, viewerId),
+    );
+  }
+}
+
+export function broadcastGameStateExcept(
+  io: Server,
+  playersById: Map<number, Player>,
+  game: Game,
+  excludePlayerId: number,
+) {
+  const base = gameState(game, playersById);
+  for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
+    if (viewerId === excludePlayerId) continue;
+    sendToPlayer(
+      io,
+      playersById,
+      viewerId,
+      'game:state',
+      filterGameStateForViewer(base, game, viewerId),
+    );
+  }
+}
+
+export function respondWithGameState(
+  io: Server,
+  playersById: Map<number, Player>,
+  game: Game,
+  playerId: number,
+  callback: (response: {
+    ok: true;
+    game: ReturnType<typeof gameState>;
+  }) => void,
+) {
+  callback({
+    ok: true,
+    game: filterGameStateForViewer(
+      gameState(game, playersById),
+      game,
+      playerId,
+    ),
+  });
+  broadcastGameStateExcept(io, playersById, game, playerId);
 }

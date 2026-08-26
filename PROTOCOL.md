@@ -120,7 +120,7 @@ A game with `visibility: 'private'` (see `GameState` below) is never included he
   finalRanking: number[];
   nextSetBaseValues: { soldier: number; humvee: number; tank: number; mixed: number };
   upcomingSetValues: number[];
-  players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number; capitalCount: number; troopsRemaining: number; cardCount: number; connected: boolean; surrendered: boolean; eliminated: boolean; troopsGained: number; troopsKilled: number; troopsLost: number; territoriesConquered: number; territoriesLost: number; capitalsConquered: number; capitalsLost: number; cardsGained: number; playersKilled: number[]; turnsPlayed: number; setsPlayed: number }[];
+  players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number; capitalCount: number; troopsRemaining: number; cardCount: number; connected: boolean; surrendered: boolean; eliminated: boolean; playersKilled: number[] }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
   territories: { id: number; ownerId: number; troops: number; isCapital: boolean; entrenchedTurns: number }[];
@@ -130,7 +130,9 @@ A game with `visibility: 'private'` (see `GameState` below) is never included he
 ```
 `radiationTerritoryIds` and `radiationUpcomingTerritoryIds` are described under `radiations` below.
 
-`fogOfWar` is described in its own paragraph further below, alongside `supplyLines`. Unlike every other field on `GameState`, once `fogOfWar` is `'on'` and in effect for a given recipient, `GameState` itself is no longer one single ground truth shared by everyone in the room: `game:state` (and the `game` field of every ack) is computed separately per recipient, and `territories`/`toxinTerritories`/`portalTerritoryIds`/`radiationTerritoryIds`/`radiationUpcomingTerritoryIds` are all filtered down to only the ids that recipient can currently see (an unlisted territory is indistinguishable on the wire from one that's simply unclaimed, or from one that isn't a portal/radiated; the client tells territories apart from unclaimed ones using `visibleTerritoryIds`, see below). `selectedTerritoryId` is nulled out for a recipient who can't see the territory it references. `fortifyStartTerritoryId`/`fortifyEndTerritoryId` and `attackStartTerritoryId`/`attackEndTerritoryId` are each treated as a pair: both stay populated as long as the recipient can see *either* endpoint (so the client always has both ids needed to draw the preview arrow between them, fading it toward whichever end it can't see, the same way it fades the arrow for `game:attacked`/`game:fortified`/`game:attackMoved` below), and both are nulled together only when the recipient can see neither. `attackConquestMinTroops` is nulled independently of that pair, whenever `attackEndTerritoryId`'s own territory specifically isn't visible to the recipient (it's the pending conquest-move amount, tied to the target territory alone). `visibleTerritoryIds` itself is present only when fog of war is currently restricting this recipient's view; it's the complete set of territory ids they can currently see (their own territories plus every territory directly adjacent to one of them, portal edges included when active — so a recipient who owns a portal always sees every other portal, however far away, since owning one makes every other portal a direct neighbor for this purpose), and its absence means this recipient's view is unrestricted (fog of war off, game not `playing`, still in the `'territory'`/`'troop'` phase, or this recipient is a spectator, eliminated, or surrendered). Every other field — including every `players[]` entry's status fields (`connected`, `surrendered`, `eliminated`, and every stat) — is always the same for every recipient regardless of fog of war, with one exception: a `players[]` entry's own `territoryCount`/`troopCount` are nulled to `null` for every player other than the recipient themselves whenever fog of war is restricting that recipient's view (a recipient always sees their own row's numbers).
+A `players[]` entry carries only what's needed live: current standing (`territoryCount`, `troopCount`, `capitalCount`, `troopsRemaining`, `cardCount`) and status (`connected`, `surrendered`, `eliminated`). `playersKilled` also lives here, since `bounties: 'on'` shows a live kill count during play (see `bounties` below). A player's cumulative lifetime stats for the just-finished game (troops gained/killed/lost, territories/capitals conquered/lost, cards gained, sets played, turns played) are never part of `GameState` at all: they're irrelevant until the results table after the game ends, so they're pushed once via `game:results` instead of riding along on every `game:state` push for the whole game (see below).
+
+`fogOfWar` is described in its own paragraph further below, alongside `supplyLines`. Unlike every other field on `GameState`, once `fogOfWar` is `'on'` and in effect for a given recipient, `GameState` itself is no longer one single ground truth shared by everyone in the room: `game:state` (and the `game` field of every ack) is computed separately per recipient, and `territories`/`toxinTerritories`/`portalTerritoryIds`/`radiationTerritoryIds`/`radiationUpcomingTerritoryIds` are all filtered down to only the ids that recipient can currently see (an unlisted territory is indistinguishable on the wire from one that's simply unclaimed, or from one that isn't a portal/radiated; the client tells territories apart from unclaimed ones using `visibleTerritoryIds`, see below). `selectedTerritoryId` is nulled out for a recipient who can't see the territory it references. `fortifyStartTerritoryId`/`fortifyEndTerritoryId` and `attackStartTerritoryId`/`attackEndTerritoryId` are each treated as a pair: both stay populated as long as the recipient can see *either* endpoint (so the client always has both ids needed to draw the preview arrow between them, fading it toward whichever end it can't see, the same way it fades the arrow for `game:attacked`/`game:fortified`/`game:attackMoved` below), and both are nulled together only when the recipient can see neither. `attackConquestMinTroops` is nulled independently of that pair, whenever `attackEndTerritoryId`'s own territory specifically isn't visible to the recipient (it's the pending conquest-move amount, tied to the target territory alone). `visibleTerritoryIds` itself is present only when fog of war is currently restricting this recipient's view; it's the complete set of territory ids they can currently see (their own territories plus every territory directly adjacent to one of them, portal edges included when active — so a recipient who owns a portal always sees every other portal, however far away, since owning one makes every other portal a direct neighbor for this purpose), and its absence means this recipient's view is unrestricted (fog of war off, game not `playing`, still in the `'territory'`/`'troop'` phase, or this recipient is a spectator, eliminated, or surrendered). Every other field — including every `players[]` entry's status fields (`connected`, `surrendered`, `eliminated`, `playersKilled`) — is always the same for every recipient regardless of fog of war, with one exception: a `players[]` entry's own `territoryCount`/`troopCount` are nulled to `null` for every player other than the recipient themselves whenever fog of war is restricting that recipient's view (a recipient always sees their own row's numbers).
 
 `hostId` is the id of the game's current host: the only player who may call `game:settings` or `game:start`. The server recomputes it whenever it might need to change (a leave, kick, join, or reconnect) from the game's host-priority list (every player who's ever held a seat, in the order they first got one, never reordered or shortened by a leave), picking the first one still seated, connected, and not surrendered (see "Leaving and reconnecting" above, `game:surrender` below). So host passes to the next eligible player when the current one disconnects or leaves, and passes back the moment a higher-priority former host reconnects, cascading through however many stand-ins came in between. If no players remain, the game is deleted.
 
@@ -384,6 +386,24 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not deploy phase`, `territory not owned`, `invalid troops`, `territory not connected to supply hub`.
 
+### `game:requestCards`
+- **When sent:** a seated player's client, whenever it (re)mounts the UI that displays the caller's hand. This exists because the reconnect push described under `game:cards` below fires on `player:identify`, before that UI may have mounted (e.g. right after a page refresh, while waiting on the first `game:state`), so a client can't rely on the push alone to always catch it.
+- **Purpose:** have the server resend the caller's current hand via `game:cards` (see below). No-op if the caller isn't a seated player in a `playing` game.
+- **Content:** none.
+- **Ack:** none.
+
+### `game:requestState`
+- **When sent:** the game view's client, every time it mounts. `game:create` and `game:join`'s own broadcast (see `game:state` below) deliberately excludes the acting player — they get their copy folded into that call's own ack instead — but the Game view doesn't read `game` off that ack: it only mounts (and starts listening for `game:state`) after the ack already came back and triggered navigation, by which point that one excluded broadcast is long gone. This request exists to close that gap, the same way `game:requestCards` closes it for hands.
+- **Purpose:** have the server resend the caller's current `GameState` via `game:state` (see below). No-op if the caller isn't in a game.
+- **Content:** none.
+- **Ack:** none.
+
+### `game:requestResults`
+- **When sent:** the game view's client, every time it mounts, for the same reason as `game:requestState` above — a fresh spectator joining an already-`ended` game, or the Home page's own create/join flow, can easily mount after the one-time `game:results` push (see below) already fired.
+- **Purpose:** have the server resend the caller's results via `game:results` (see below). No-op if the caller isn't in a game that's `ended`.
+- **Content:** none.
+- **Ack:** none.
+
 ### `game:playCardSet`
 - **When sent:** the player whose turn it currently is, during `'deploy'`, plays 3 cards from their own hand as a set.
 - **Purpose:** validate and resolve a set (see "Territory cards" above): remove the 3 cards from the caller's hand and return them to the deck, add the set's base value (per `nextSetBaseValues`) to `troopsToDeploy`, and add 2 troops directly to any of the 3 cards' territories the caller currently owns (each such territory also gets a `game:deployed` broadcast, see below). The caller must be the player at `turnPlayerIndex`, and the game must be `playing` and in `'deploy'`. `cards` must reference exactly 3 cards actually in the caller's hand: a `territoryId` for a specific non-wild card, or `null` for "any wild card" (so two `null`s require two wild cards in hand), forming a valid set (3-of-a-kind or one of each symbol, wilds filling in); the server, never the client, decides the resulting value and territory bonuses. A successful call also broadcasts `game:cardSetPlayed` (see below) to everyone in the room, ahead of any `game:deployed` broadcasts for the territory bonuses.
@@ -549,7 +569,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 ## Server → Client
 
 ### `home:games`
-- **When sent:** once per second, to every socket currently in the `home` room.
+- **When sent:** event-driven, not polled: to every socket currently in the `home` room, whenever a change could affect the list — a game created, destroyed, or ended, or a `game:join`/`game:settings`/leave/reconnect changing a public game's roster, name, map, slots, host, or password.
 - **Purpose:** keep the lobby's list of joinable games current.
 - **Content:**
   ```ts
@@ -557,15 +577,15 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 
 ### `game:state`
-- **When sent:** once per second, individually to every socket currently in a given game's room (every seated player and every spectator each get their own emission, rather than one shared room broadcast).
-- **Purpose:** keep everyone in a game synced on its settings, roster, ban list, and (once `playing`) turn progress (including for the host's own settings UI, and so clients can offer an "unban" action from `bannedPlayers`). While `fogOfWar` is `'on'` and in effect for a given recipient, the `GameState` they receive is filtered down to what they can currently see (see `GameState` and the `fogOfWar` paragraph above); every other recipient in the same room may receive a differently-filtered payload for the same tick.
+- **When sent:** event-driven, not polled: individually to every socket currently in a given game's room (every seated player and every spectator each get their own emission, rather than one shared room broadcast), immediately after any server-side mutation of that game — every successful `game:*` action, the turn timer force-completing a phase or turn, a join/leave/kick/reconnect/disconnect affecting the room, and the game ending. The acting player (where there is one) always gets their own copy folded into that action's own ack instead of a second, separate emission — including for `game:create`/`game:join`, even though the client doesn't happen to read `game` off either of those two acks (see `game:requestState` above for why that matters). Also individually resent to a single socket on `game:requestState` (see above).
+- **Purpose:** keep everyone in a game synced on its settings, roster, ban list, and (once `playing`) turn progress (including for the host's own settings UI, and so clients can offer an "unban" action from `bannedPlayers`). While `fogOfWar` is `'on'` and in effect for a given recipient, the `GameState` they receive is filtered down to what they can currently see (see `GameState` and the `fogOfWar` paragraph above); every other recipient in the same room may receive a differently-filtered payload for the same emission.
 - **Content:**
   ```ts
   GameState
   ```
 
 ### `game:cards`
-- **When sent:** individually to each seated player's own socket (never broadcast to the room), only when that player's own hand actually changes: right after `game:start` deals empty hands (so the hand, empty or not, is always current from the start, see "Territory cards" above), whenever `game:playCardSet` or the turn timer's auto-play removes cards from the hand, whenever the end-of-turn conquest draw or an eliminated opponent's hand transfer adds cards to it, and once on reconnect (a fresh `player:identify` while seated in a `playing` game) so a client that just (re)connected is caught up without waiting on the next change.
+- **When sent:** individually to each seated player's own socket (never broadcast to the room), only when that player's own hand actually changes: right after `game:start` deals empty hands (so the hand, empty or not, is always current from the start, see "Territory cards" above), whenever `game:playCardSet` or the turn timer's auto-play removes cards from the hand, whenever the end-of-turn conquest draw or an eliminated opponent's hand transfer adds cards to it, once on reconnect (a fresh `player:identify` while seated in a `playing` game) so a client that just (re)connected is caught up without waiting on the next change, and whenever the caller sends `game:requestCards` (see above).
 - **Purpose:** let a player see their own territory cards: the only place this ever reaches a client; `GameState` never includes any player's actual cards, only `cardCount`.
 - **Content:**
   ```ts
@@ -585,12 +605,44 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   }
   ```
 
-### `game:cardSetPlayed`
-- **When sent:** immediately, to every socket in a game's room, whenever a `game:playCardSet` call succeeds (including back to the playing player).
-- **Purpose:** let every client show which 3 cards were just played and by whom: `GameState` never exposes anyone's hand, so this is the only way other clients learn a set's actual cards. `troops` is the set's total value (`nextSetBaseValues` entry played, plus `2` per territory bonus, i.e. everything the play added to the caller's `troopsToDeploy` pool and territories combined).
+### `game:logs`
+- **When sent:** individually to each seated player's or spectator's own socket (never broadcast to the room), once on reconnect (a fresh `player:identify` while seated in a game that's `playing` or `ended`) so a client that just (re)connected can rebuild its activity log without having lived through the events that produced it — same motivation as `game:cards`/`game:mission` above, but for the log rather than hand/mission state. Never sent otherwise: a client already connected simply keeps accumulating its log from the individual events below as they happen.
+- **Purpose:** replay every event this recipient would have received so far that useGameLogs.ts's log turns into human-readable lines — `game:deployed`, `game:deployedMany`, `game:fortified`, `game:attackMoved`, `game:entrenched`, `game:toxined`, `game:radiationChanged`, `game:attacked`, `game:cardSetPlayed`, `game:turnStarted`, `game:capitalPlacementStarted`, and `game:territoryClaimed` — in the exact order and with the exact payload this recipient was originally sent (or would have been sent, for the events among those that are `fogOfWar`-filtered): the server records a copy of each such event into that recipient's own history as it sends it, so replaying it later reproduces exactly what they'd have seen live, fog of war included. `entries` is empty for anyone who (re)connects before the game has produced any loggable event yet.
 - **Content:**
   ```ts
-  { playerId: number; troops: number; cards: { territoryId: number | null; symbol: 'soldier' | 'humvee' | 'tank' | null }[] }
+  { entries: { type: string; payload: unknown }[] }
+  ```
+  Each `type` is one of the twelve event names above, and its `payload` is that event's own documented content.
+
+### `game:results`
+- **When sent:** to every socket in a game's room, once, the instant the game's `state` becomes `'ended'` (see `checkGameEnd` under `turnPhase` above — covers every way a game can end, not just one). Individually resent to a single socket, the same way `game:cards`/`game:mission`/`game:logs` are, on reconnect (a fresh `player:identify` while seated or spectating in a game that's `ended`), and on `game:requestResults` (see above) — which is what actually covers a fresh `game:join` to a game that's already `ended`, since that join's own ack isn't read for this either.
+- **Purpose:** deliver each player's final cumulative stats for the results table (see `players[]` above for why these live here and not in `GameState`).
+- **Content:**
+  ```ts
+  {
+    stats: {
+      id: number;
+      troopsGained: number;
+      troopsKilled: number;
+      troopsLost: number;
+      territoriesConquered: number;
+      territoriesLost: number;
+      capitalsConquered: number;
+      capitalsLost: number;
+      cardsGained: number;
+      turnsPlayed: number;
+      setsPlayed: number;
+    }[]
+  }
+  ```
+  One entry per `id` in `GameState.players[]`.
+
+### `game:cardSetPlayed`
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:playCardSet` call succeeds (including back to the playing player).
+- **Purpose:** let every client show which 3 cards were just played and by whom: `GameState` never exposes anyone's hand, so this is the only way other clients learn a set's actual cards. `troops` is the set's total value (`nextSetBaseValues` entry played, plus `2` per territory bonus, i.e. everything the play added to the caller's `troopsToDeploy` pool and territories combined). `territoryBonusCount` is how many of `cards`' territories the caller owned at the moment of play (each worth that `2`-troop bonus baked into `troops`); the server sends it rather than leaving a client to recompute it from current territory ownership, which would only be reliable live, not for one replaying `game:logs` after reconnecting much later.
+- **Content:**
+  ```ts
+  { playerId: number; troops: number; cards: { territoryId: number | null; symbol: 'soldier' | 'humvee' | 'tank' | null }[]; territoryBonusCount: number }
   ```
 
 ### `game:kicked`
@@ -626,12 +678,12 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:capitalPlacementStarted`
 - **When sent:** immediately, to every socket in a game's room, once, when a `'Capitals'` game's `'capital'` phase begins (see `turnPhase` above).
-- **Purpose:** let every client announce that capital placement has started, without waiting for the next `game:state` tick.
+- **Purpose:** let every client announce that capital placement has started; `GameState` itself carries no record of this transition happening, only the resulting `turnPhase`.
 - **Content:** none
 
 ### `game:territoryClaimed`
 - **When sent:** immediately, to every socket in a game's room, whenever a `game:claimTerritory` call succeeds (including back to the claiming player) or the turn timer auto-claims one on a player's behalf (see `turnPhase` above).
-- **Purpose:** let every client show the newly-claimed territory in `playerId`'s color right away, rather than waiting for the next `game:state` tick. Also covers the `1`-troop seed the claim always carries (see `game:claimTerritory` above): clients play the usual deploy sound/animation for it here, keyed off this event's own `playerId` rather than `game:deployed`, since at the instant this fires the territory's ownership hasn't reached the rest of the room yet.
+- **Purpose:** let every client show the newly-claimed territory in `playerId`'s color right away, since `GameState`'s `territories` array alone doesn't say which entry just changed or who claimed it. Also covers the `1`-troop seed the claim always carries (see `game:claimTerritory` above): clients play the usual deploy sound/animation for it here, keyed off this event's own `playerId` rather than `game:deployed`, since at the instant this fires the territory's ownership hasn't reached the rest of the room yet.
 - **Content:**
   ```ts
   { territoryId: number; playerId: number }
@@ -639,7 +691,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:turnStarted`
 - **When sent:** immediately, to every socket in a game's room, whenever a player's deploy pool is granted: the start of a normal turn (`advanceToNextPlayer`, including via the turn timer) or, in `'Capitals'`, the first turn right after the last player picks a capital (see `turnPhase` above).
-- **Purpose:** announce the new turn and its troop grant in real time, rather than leaving clients to infer it from the next `game:state` tick (up to a second later). A client that only learns of the grant after the fact could otherwise log this player's later, real-time actions (`game:deployed`, etc.) before it, out of order.
+- **Purpose:** announce the new turn and its troop grant, and the breakdown behind it, none of which `GameState` records anywhere. A dedicated event also guarantees this arrives before whatever `game:state` push reflects the new turn, so a client logging this player's later, real-time actions (`game:deployed`, etc.) never has to reorder them after the fact.
 - **Content:**
   ```ts
   {
@@ -656,39 +708,39 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:deployed`
 - **When sent:** immediately, individually to every socket in a game's room whenever a `game:deploy` or `game:placeTroop` call succeeds (including back to the acting player), once per territory for a `game:playCardSet` call's automatic 2-troop territory bonuses (see "Territory cards" above), and once for a capital's `3` troops, whether picked via `game:selectCapital` or assigned at random by the turn timer (see `turnPhase` above). Not sent for `game:claimTerritory`: its `1`-troop seed is folded into `game:territoryClaimed` instead (see below), since the claim already carries the acting player's id. While `fogOfWar` is in effect for a given recipient (see the `fogOfWar` paragraph above), this event is withheld entirely from them unless `territoryId` is currently visible to them.
-- **Purpose:** let every client play the deploy sound effect in sync, rather than inferring it from the next `game:state` tick.
+- **Purpose:** let every client play the deploy sound effect in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives. `playerId` is the acting player, included so a reconnecting client can attribute this entry correctly when replaying `game:logs` (see below) without depending on `territoryId`'s current owner, who may no longer be `playerId` by the time of a later reconnect.
 - **Content:**
   ```ts
-  { territoryId: number; troops: number }
+  { territoryId: number; troops: number; playerId: number }
   ```
 
 ### `game:deployedMany`
 - **When sent:** immediately, individually to every socket in a game's room whenever the turn timer force-completes an unattended `'deploy'` phase and it touched at least one territory (see `turnDuration` above): covering both the leftover troop pool and any troops granted by auto-played card sets, as one batch. Also sent, the same way, whenever the turn timer force-completes an unattended `'troop'` turn and the player still had troops left in that turn's `troopsToDeploy` allotment (see `turnPhase` above). While `fogOfWar` is in effect for a given recipient, `deposits` is filtered down to only the entries currently visible to them, and the whole event is withheld if that leaves it empty.
-- **Purpose:** let every client play the deploy sound effect exactly once for the whole batch, while still animating every territory that received troops, instead of either replaying the sound per territory or inferring the change from the next `game:state` tick.
+- **Purpose:** let every client play the deploy sound effect exactly once for the whole batch, while still animating every territory that received troops, instead of either replaying the sound per territory or depending on `GameState`, which carries no record of this batch happening at all. `playerId` is the player whose auto-deploy this batch belongs to (every entry in one batch always belongs to the same player), included for the same `game:logs` replay-attribution reason as `game:deployed` above.
 - **Content:**
   ```ts
-  { deposits: { territoryId: number; troops: number }[] }
+  { deposits: { territoryId: number; troops: number }[]; playerId: number }
   ```
 
 ### `game:fortified`
 - **When sent:** immediately, individually to every socket in a game's room whenever a `game:fortify` call succeeds (including back to the moving player), or the turn timer force-completes a pending `'fortify'` move. While `fogOfWar` is in effect for a given recipient, this event is withheld entirely from them unless at least one of `territoryId`/`fromTerritoryId` is currently visible to them (neither territory's ownership ever changes here, so there's nothing to redact field-by-field the way `game:attacked` needs to, see below — a recipient who can see either end gets the whole payload).
-- **Purpose:** let every client play the fortify sound effect and the deploy animation on the destination territory in sync, rather than inferring it from the next `game:state` tick.
+- **Purpose:** let every client play the fortify sound effect and the deploy animation on the destination territory in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives. `playerId` is the acting player, included for the same `game:logs` replay-attribution reason as `game:deployed` above.
 - **Content:**
   ```ts
-  { territoryId: number; fromTerritoryId: number; troops: number }
+  { territoryId: number; fromTerritoryId: number; troops: number; playerId: number }
   ```
 
 ### `game:entrenched`
 - **When sent:** immediately, individually to every socket in a game's room whenever a `game:entrench` call succeeds (including back to the entrenching player). While `fogOfWar` is in effect for a given recipient, this event is withheld entirely from them unless `territoryId` is currently visible to them.
-- **Purpose:** let every client play a cost animation on the entrenched territory in sync, rather than inferring it from the next `game:state` tick. `turnsRemaining` is the territory's resulting `entrenchedTurns` (see `GameState.territories` above) after adding `troops`, so a client doesn't need to separately track what it was before this call.
+- **Purpose:** let every client play a cost animation on the entrenched territory in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives. `turnsRemaining` is the territory's resulting `entrenchedTurns` (see `GameState.territories` above) after adding `troops`, so a client doesn't need to separately track what it was before this call. `playerId` is the acting player, included for the same `game:logs` replay-attribution reason as `game:deployed` above.
 - **Content:**
   ```ts
-  { territoryId: number; troops: number; turnsRemaining: number }
+  { territoryId: number; troops: number; turnsRemaining: number; playerId: number }
   ```
 
 ### `game:toxined`
 - **When sent:** immediately, individually to every socket in a game's room whenever a `game:toxins` call succeeds (including back to the toxining player). While `fogOfWar` is in effect for a given recipient, this event is withheld from them unless `territoryId` is currently visible to them or they are the toxining player themselves (toxining a territory releases its ownership, which can immediately drop it out of the acting player's own visible set too if it wasn't otherwise adjacent to one of their remaining territories; the acting player is always told the outcome of their own action regardless).
-- **Purpose:** let every client play a placement effect on the newly-toxined territory in sync, rather than inferring it from the next `game:state` tick. `playerId` is the caller, included since `territoryId` no longer has an owner to attribute the action to once it's toxined.
+- **Purpose:** let every client play a placement effect on the newly-toxined territory in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives. `playerId` is the caller, included since `territoryId` no longer has an owner to attribute the action to once it's toxined.
 - **Content:**
   ```ts
   { territoryId: number; permanent: boolean; turnsRemaining: number; playerId: number }
@@ -696,7 +748,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:toxinExpired`
 - **When sent:** immediately, individually to every socket in a game's room, whenever at least one temporary toxin's `turnsRemaining` reaches `0` as a player's turn ends.
-- **Purpose:** let every client clear the toxin cloud/countdown for each affected territory in sync, rather than inferring it from the next `game:state` tick. Batches every territory whose toxin expired in that same turn transition into one event, the same way `game:deployedMany`/`game:starved` batch their own multi-territory changes. While `fogOfWar` is in effect for a given recipient, `territoryIds` is filtered down to only the ones currently visible to them, and the whole event is withheld if that leaves it empty.
+- **Purpose:** let every client clear the toxin cloud/countdown for each affected territory in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives. Batches every territory whose toxin expired in that same turn transition into one event, the same way `game:deployedMany`/`game:starved` batch their own multi-territory changes. While `fogOfWar` is in effect for a given recipient, `territoryIds` is filtered down to only the ones currently visible to them, and the whole event is withheld if that leaves it empty.
 - **Content:**
   ```ts
   { territoryIds: number[] }
@@ -704,7 +756,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:radiationUpcoming`
 - **When sent:** immediately, individually to every socket in a game's room, whenever `radiations` is `'dynamic'` or `'expanding'` and `turnNumber` becomes odd, publishing that round's preview (see the `radiations` paragraph above).
-- **Purpose:** let every client show the lighter, "about to be irradiated" version of the radiation animation one full round ahead of it actually happening, rather than inferring it from the next `game:state` tick. `territoryIds` is the complete resulting `radiationTerritoryIds` the following `game:radiationChanged` will apply (see above for why it's the complete set, not just the changed entries), same as this event's payload lands in `GameState.radiationUpcomingTerritoryIds`. Sent individually per recipient: while `fogOfWar` is in effect for a given recipient, `territoryIds` is filtered down to only the ones currently visible to them (the event is still sent even if that leaves it empty, unlike `game:toxinExpired`/`game:starved`, since an empty array is itself meaningful here — it clears a stale preview).
+- **Purpose:** let every client show the lighter, "about to be irradiated" version of the radiation animation one full round ahead of it actually happening, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives. `territoryIds` is the complete resulting `radiationTerritoryIds` the following `game:radiationChanged` will apply (see above for why it's the complete set, not just the changed entries), same as this event's payload lands in `GameState.radiationUpcomingTerritoryIds`. Sent individually per recipient: while `fogOfWar` is in effect for a given recipient, `territoryIds` is filtered down to only the ones currently visible to them (the event is still sent even if that leaves it empty, unlike `game:toxinExpired`/`game:starved`, since an empty array is itself meaningful here — it clears a stale preview).
 - **Content:**
   ```ts
   { territoryIds: number[] }
@@ -712,15 +764,15 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:radiationChanged`
 - **When sent:** immediately, individually to every socket in a game's room, whenever `radiations` is `'dynamic'` or `'expanding'` and `turnNumber` becomes even (2 or higher), applying that cycle's previously-previewed move or growth.
-- **Purpose:** let every client update the radiation clouds (and clear any now-stale "upcoming" preview) in sync, rather than inferring it from the next `game:state` tick. `territoryIds` is the new, complete `radiationTerritoryIds` (a client diffs it against what it already had to find which territories were freshly irradiated versus which were vacated, exactly as it would for `radiationUpcomingTerritoryIds`). `eliminatedPlayerIds` lists any player eliminated by this change (see the `radiations` paragraph above), in no particular order; empty most of the time. Sent individually per recipient: while `fogOfWar` is in effect for a given recipient, `territoryIds` is filtered down to only the ones currently visible to them (still sent when that leaves it empty, same reasoning as `game:radiationUpcoming` above), but `eliminatedPlayerIds` is never filtered — an elimination is player status, not territory ownership, and (like every other `players[]` status field) is always visible to everyone regardless of fog of war.
+- **Purpose:** let every client update the radiation clouds (and clear any now-stale "upcoming" preview) in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives. `territoryIds` is the new, complete `radiationTerritoryIds`. `newlyRadiatedIds` is the subset of `territoryIds` that just became irradiated this change (the server computes this directly rather than leaving it to a client-side diff against its previously-known set, since that diff would only be reliable for a client processing events live in order — it'd be wrong for one replaying `game:logs` after reconnecting much later, by which point its "previous" set is really just whatever the game looks like today). `eliminatedPlayerIds` lists any player eliminated by this change (see the `radiations` paragraph above), in no particular order; empty most of the time. Sent individually per recipient: while `fogOfWar` is in effect for a given recipient, `territoryIds` and `newlyRadiatedIds` are filtered down to only the ones currently visible to them (still sent when that leaves it empty, same reasoning as `game:radiationUpcoming` above), but `eliminatedPlayerIds` is never filtered — an elimination is player status, not territory ownership, and (like every other `players[]` status field) is always visible to everyone regardless of fog of war.
 - **Content:**
   ```ts
-  { territoryIds: number[]; eliminatedPlayerIds: number[] }
+  { territoryIds: number[]; newlyRadiatedIds: number[]; eliminatedPlayerIds: number[] }
   ```
 
 ### `game:starved`
 - **When sent:** immediately, individually to every socket in a game's room whenever a player's turn ends with `starvation` (see above) removing at least one troop from at least one of their territories. While `fogOfWar` is in effect for a given recipient, `losses` is filtered down to only the entries currently visible to them, and the whole event is withheld if that leaves it empty.
-- **Purpose:** let every client play a troop-loss animation (the same floating loss number as `game:attacked`'s explosion, but without the explosion itself) on each affected territory in sync, rather than inferring it from the next `game:state` tick. `losses` has one entry per territory that lost troops, `troops` being the total lost from that territory this turn (so a client plays the animation once per territory even if `starvation: 'total'` removed several 1-troop increments from it).
+- **Purpose:** let every client play a troop-loss animation (the same floating loss number as `game:attacked`'s explosion, but without the explosion itself) on each affected territory in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives. `losses` has one entry per territory that lost troops, `troops` being the total lost from that territory this turn (so a client plays the animation once per territory even if `starvation: 'total'` removed several 1-troop increments from it).
 - **Content:**
   ```ts
   { losses: { territoryId: number; troops: number }[] }
@@ -728,7 +780,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:attacked`
 - **When sent:** immediately, individually to every socket in a game's room whenever a `game:attack` call resolves a battle (including back to the attacking player).
-- **Purpose:** let every client play the explosion sound effect and animation on whichever side(s) lost troops, in sync, rather than inferring it from the next `game:state` tick. `attackerId` and `defenderId` are the owners of the two territories at the moment of the attack (`defenderId` in particular is captured before a conquering attack transfers ownership); `defenderId` is `undefined` for a free-conquest attack against an unowned territory (see the `toxins` paragraph above), since there's no real defending player. `type` echoes the `game:attack` call's own `type`: the client uses it to delay the explosion until its dice-roll animation (`type: 'regular'` only, and only when there was an actual roll — a free conquest never rolls dice regardless of `type`) finishes, so the explosion lands right as the dice settle instead of overlapping them.
+- **Purpose:** let every client play the explosion sound effect and animation on whichever side(s) lost troops, in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives. `attackerId` and `defenderId` are the owners of the two territories at the moment of the attack (`defenderId` in particular is captured before a conquering attack transfers ownership); `defenderId` is `undefined` for a free-conquest attack against an unowned territory (see the `toxins` paragraph above), since there's no real defending player. `type` echoes the `game:attack` call's own `type`: the client uses it to delay the explosion until its dice-roll animation (`type: 'regular'` only, and only when there was an actual roll — a free conquest never rolls dice regardless of `type`) finishes, so the explosion lands right as the dice settle instead of overlapping them.
 
   While `fogOfWar` is in effect for a given recipient, this event's fields split into three groups: `attackingTerritoryId`, `defendingTerritoryId`, `attackerId`, and `type` are always sent (they're either public territory ids/geometry or already-public turn-player identity, and the client needs both ids regardless to draw the connecting arrow, fading it toward whichever end it can't see — see `GameState.visibleTerritoryIds` above); `attackingTroops` and `attackLosses` are included only if `attackingTerritoryId` is currently visible to the recipient; `defenderId`, `defendingTroops`, `defenceLosses`, and `conquered` are included only if `defendingTerritoryId` is currently visible to them. The whole event is withheld if neither territory is visible to them.
 - **Content:**
@@ -747,9 +799,17 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   }
   ```
 
+### `game:tankFired`
+- **When sent:** immediately, to every socket in a game's room, whenever a `game:attack` call resolves a battle (alongside `game:attacked` above). Never filtered by `fogOfWar`: it carries no territory or player data.
+- **Purpose:** let every client play a tank-recoil animation in the turn panel in sync, regardless of whether they can see the attacked territory. `type` and `hasDefender` (`false` for a free-conquest attack against an unowned territory) let the client delay the recoil the same way `game:attacked`'s `type` delays the map explosion, so the two animations land together for clients that can see both.
+- **Content:**
+  ```ts
+  { type: 'regular' | 'blitz'; hasDefender: boolean }
+  ```
+
 ### `game:attackMoved`
 - **When sent:** immediately, individually to every socket in a game's room whenever a `game:attackMove` call succeeds (including back to the moving player), the turn timer force-completes a pending conquest move, a conquest eliminates the defender and the attacker's hand hits `5+` cards (auto-resolving the move at the minimum troop count, see `turnPhase` and "Territory cards" above), or a conquest ends the game outright (auto-resolving the move with every surviving attacking troop, since no further turn is left to choose a smaller amount). While `fogOfWar` is in effect for a given recipient, this event is withheld entirely from them unless at least one of `territoryId`/`fromTerritoryId` is currently visible to them (same reasoning as `game:fortified` above: no ownership field here to redact piecemeal).
-- **Purpose:** let every client play the fortify sound effect and the deploy animation on the newly-conquered territory in sync, rather than inferring it from the next `game:state` tick.
+- **Purpose:** let every client play the fortify sound effect and the deploy animation on the newly-conquered territory in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives.
 - **Content:**
   ```ts
   { territoryId: number; fromTerritoryId: number; troops: number }
@@ -757,7 +817,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:selected`
 - **When sent:** immediately, to every socket in a game's room, whenever a `game:selectTerritory`, `game:fortifySelectStart`, `game:fortifySelectEnd`, `game:attackSelectStart`, or `game:attackSelectEnd` call succeeds with a non-`null` `territoryId` (including back to the selecting player). Not sent for a deselection. Never filtered by `fogOfWar`: it carries only a territory id, no ownership or troop data.
-- **Purpose:** let every client play the territory-selection sound effect in sync, rather than inferring it from the next `game:state` tick.
+- **Purpose:** let every client play the territory-selection sound effect in sync, since `GameState` is a snapshot, not a record of individual actions, so a client has nothing to infer this from even once its next push arrives.
 - **Content:**
   ```ts
   { territoryId: number }

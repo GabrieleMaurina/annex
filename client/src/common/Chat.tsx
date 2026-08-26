@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Form, ListGroup } from 'react-bootstrap';
 import { playerColor } from '../lib/palette';
+import { containsProfanity } from '../lib/profanity';
 import { socket } from '../lib/socket';
 import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
@@ -17,6 +18,7 @@ interface Props {
 function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
+  const [hasProfanity, setHasProfanity] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const summaryRef = useRef<HTMLElement>(null);
@@ -53,6 +55,10 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
   function send() {
     const trimmed = text.trim();
     if (!trimmed) return;
+    if (containsProfanity(trimmed)) {
+      setHasProfanity(true);
+      return;
+    }
     socket.emit('game:chat', { message: trimmed });
     setText('');
   }
@@ -113,12 +119,21 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
             })}
           </ListGroup>
         </div>
-        <Form.Group className="d-flex gap-2">
-          <Form.Control
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && send()}
-          />
+        <Form.Group className="d-flex gap-2 align-items-start">
+          <div className="flex-grow-1">
+            <Form.Control
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                setHasProfanity(false);
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && send()}
+              isInvalid={hasProfanity}
+            />
+            <Form.Control.Feedback type="invalid">
+              Message contains profanity
+            </Form.Control.Feedback>
+          </div>
           <Button onClick={send}>Send</Button>
         </Form.Group>
       </details>

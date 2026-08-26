@@ -120,6 +120,43 @@ export function filterGameStateForViewer(
   };
 }
 
+const LOGGED_EVENTS = new Set([
+  'game:deployed',
+  'game:fortified',
+  'game:attackMoved',
+  'game:deployedMany',
+  'game:entrenched',
+  'game:toxined',
+  'game:radiationChanged',
+  'game:attacked',
+  'game:cardSetPlayed',
+  'game:turnStarted',
+  'game:capitalPlacementStarted',
+  'game:territoryClaimed',
+]);
+
+export function recordLog(
+  game: Game,
+  viewerId: number,
+  type: string,
+  payload: unknown,
+): void {
+  if (!LOGGED_EVENTS.has(type)) return;
+  const entries = game.logs.get(viewerId);
+  if (entries) entries.push({ type, payload });
+  else game.logs.set(viewerId, [{ type, payload }]);
+}
+
+export function recordLogForAll(
+  game: Game,
+  type: string,
+  payload: unknown,
+): void {
+  for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
+    recordLog(game, viewerId, type, payload);
+  }
+}
+
 export function fogFilterEmit<T>(
   io: Server,
   game: Game,
@@ -132,5 +169,6 @@ export function fogFilterEmit<T>(
     if (payload === null) continue;
     const socketId = playersById.get(viewerId)?.socketId;
     if (socketId) io.to(socketId).emit(event, payload);
+    recordLog(game, viewerId, event, payload);
   }
 }

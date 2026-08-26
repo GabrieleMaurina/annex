@@ -1,4 +1,5 @@
-import { Game } from '../../types';
+import { Server } from 'socket.io';
+import { Game, Player } from '../../types';
 import { continentTerritoryIds } from './continent';
 import { ownsAnyTerritory } from './mechanics';
 import { missionAccomplished } from './progression/missions';
@@ -9,6 +10,7 @@ import {
   computeKillsWinner,
   countTerritories,
 } from './progression/stats';
+import { broadcastGameResults, broadcastHomeGames } from './store';
 import { clearTurnTimer } from './turns';
 
 const EARLY_WIN_GATE_TURN_NUMBER = 2;
@@ -26,7 +28,12 @@ function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
   return [winner];
 }
 
-export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
+export function checkGameEnd(
+  game: Game,
+  io: Server,
+  playersById: Map<number, Player>,
+  turnAlreadyEnded = false,
+): void {
   if (game.state === 'ended') return;
 
   let winnerIds: number[];
@@ -61,6 +68,8 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   game.attackConquestMinTroops = null;
   clearTurnTimer(game.name);
   game.finalRanking = computeFinalRanking(game);
+  broadcastHomeGames(io, playersById);
+  broadcastGameResults(io, game, playersById);
 }
 
 function checkNonTerritoryPhaseWinner(game: Game): number[] | null {

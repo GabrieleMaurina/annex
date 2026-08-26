@@ -5,16 +5,30 @@ import { useWhiteIcon } from '../common/icon';
 import { useTableEmojiReactions } from '../common/useTableEmojiReactions';
 import { GLOBAL_TARGET_ID } from '../game/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import type { GameState } from '../lib/types';
+import type { GameState, PlayerResultStats } from '../lib/types';
+
+const EMPTY_STATS: Omit<PlayerResultStats, 'id'> = {
+  troopsGained: 0,
+  troopsKilled: 0,
+  troopsLost: 0,
+  territoriesConquered: 0,
+  territoriesLost: 0,
+  capitalsConquered: 0,
+  capitalsLost: 0,
+  cardsGained: 0,
+  turnsPlayed: 0,
+  setsPlayed: 0,
+};
 
 interface Props {
   game: GameState;
+  results: Map<number, PlayerResultStats> | null;
   selfId: number | null;
   navigate: (path: string) => void;
   onViewMap: () => void;
 }
 
-function EndPage({ game, selfId, navigate, onViewMap }: Props) {
+function EndPage({ game, results, selfId, navigate, onViewMap }: Props) {
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
   const won = selfId !== null && game.winnerIds.includes(selfId);
   const isTeamDeathmatch = game.gameMode === 'Team Deathmatch';
@@ -91,6 +105,7 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
               const killedNames = p.playersKilled
                 .map((id) => nameById.get(id) ?? '?')
                 .join(', ');
+              const stats = results?.get(p.id) ?? EMPTY_STATS;
               return (
                 <tr
                   key={p.id}
@@ -164,7 +179,7 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                     </div>
                   </td>
                   <td style={rowStyle}>
-                    {p.turnsPlayed}/{game.turnNumber + 1}
+                    {stats.turnsPlayed}/{game.turnNumber + 1}
                   </td>
                   {killedNames ? (
                     <Tip text={killedNames}>
@@ -173,17 +188,17 @@ function EndPage({ game, selfId, navigate, onViewMap }: Props) {
                   ) : (
                     <td style={rowStyle}>{p.playersKilled.length}</td>
                   )}
-                  <td style={rowStyle}>{p.troopsGained}</td>
-                  <td style={rowStyle}>{p.troopsKilled}</td>
-                  <td style={rowStyle}>{p.troopsLost}</td>
-                  <td style={rowStyle}>{p.territoriesConquered}</td>
-                  <td style={rowStyle}>{p.territoriesLost}</td>
+                  <td style={rowStyle}>{stats.troopsGained}</td>
+                  <td style={rowStyle}>{stats.troopsKilled}</td>
+                  <td style={rowStyle}>{stats.troopsLost}</td>
+                  <td style={rowStyle}>{stats.territoriesConquered}</td>
+                  <td style={rowStyle}>{stats.territoriesLost}</td>
                   {isCapitals && (
-                    <td style={rowStyle}>{p.capitalsConquered}</td>
+                    <td style={rowStyle}>{stats.capitalsConquered}</td>
                   )}
-                  {isCapitals && <td style={rowStyle}>{p.capitalsLost}</td>}
-                  <td style={rowStyle}>{p.cardsGained}</td>
-                  <td style={rowStyle}>{p.setsPlayed}</td>
+                  {isCapitals && <td style={rowStyle}>{stats.capitalsLost}</td>}
+                  <td style={rowStyle}>{stats.cardsGained}</td>
+                  <td style={rowStyle}>{stats.setsPlayed}</td>
                 </tr>
               );
             })}

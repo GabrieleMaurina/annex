@@ -1,14 +1,10 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isInteger, isObject } from '../../validate';
-import {
-  filterGameStateForViewer,
-  fogFilterEmit,
-  visibleTerritoryIdsOrAll,
-} from '../logic/fog';
+import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../logic/fog';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
-import { games } from '../logic/store';
+import { games, respondWithGameState } from '../logic/store';
 import { advanceCapitalPlacement, assignCapital } from '../logic/turns';
 
 type GameResponse =
@@ -55,18 +51,11 @@ export function registerCapitalHandlers(
       fogFilterEmit(io, game, playersById, 'game:deployed', (viewerId) => {
         const visible = visibleTerritoryIdsOrAll(game, viewerId);
         if (visible !== null && !visible.has(territoryId)) return null;
-        return { territoryId, troops: 3 };
+        return { territoryId, troops: 3, playerId: player.id };
       });
       advanceCapitalPlacement(game, io, playersById);
 
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
 }

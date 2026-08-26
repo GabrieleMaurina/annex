@@ -2,8 +2,8 @@ import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
 import {
-  filterGameStateForViewer,
   fogFilterEmit,
+  recordLogForAll,
   visibleTerritoryIdsOrAll,
 } from '../logic/fog';
 import {
@@ -14,7 +14,12 @@ import {
 import { bumpStat } from '../logic/progression/stats';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
-import { gameRoomName, games, sendPlayerCards } from '../logic/store';
+import {
+  gameRoomName,
+  games,
+  respondWithGameState,
+  sendPlayerCards,
+} from '../logic/store';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }
@@ -26,6 +31,16 @@ export function registerCardHandlers(
   playersBySocket: Map<string, Player>,
   playersById: Map<number, Player>,
 ) {
+  socket.on('game:requestCards', () => {
+    const player = playersBySocket.get(socket.id);
+    if (!player || !player.gameName) return;
+
+    const game = games.get(player.gameName);
+    if (!game || game.state !== 'playing') return;
+
+    sendPlayerCards(io, playersById, game, player.id);
+  });
+
   socket.on(
     'game:playCardSet',
     (data: unknown, callback: (response: GameResponse) => void) => {
@@ -91,27 +106,26 @@ export function registerCardHandlers(
       )
         game.cardsLastSetValue.set(key, evaluated.baseValue);
 
-      io.to(gameRoomName(game.name)).emit('game:cardSetPlayed', {
+      const cardSetPlayedPayload = {
         playerId: player.id,
         troops: evaluated.totalValue,
         cards: evaluated.cards,
-      });
+        territoryBonusCount: evaluated.territoryBonusIds.length,
+      };
+      io.to(gameRoomName(game.name)).emit(
+        'game:cardSetPlayed',
+        cardSetPlayedPayload,
+      );
+      recordLogForAll(game, 'game:cardSetPlayed', cardSetPlayedPayload);
       for (const territoryId of evaluated.territoryBonusIds) {
         fogFilterEmit(io, game, playersById, 'game:deployed', (viewerId) => {
           const visible = visibleTerritoryIdsOrAll(game, viewerId);
           if (visible !== null && !visible.has(territoryId)) return null;
-          return { territoryId, troops: 2 };
+          return { territoryId, troops: 2, playerId: player.id };
         });
       }
 
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
 }

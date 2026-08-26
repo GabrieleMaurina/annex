@@ -6,7 +6,14 @@ import GameMap from '../game/GameMap';
 import { useGameLogs } from '../game/useGameLogs';
 import { socket } from '../lib/socket';
 import { playSound } from '../lib/sounds';
-import type { Ack, GameState, Mission, Player } from '../lib/types';
+import type {
+  Ack,
+  GameResults,
+  GameState,
+  Mission,
+  Player,
+  PlayerResultStats,
+} from '../lib/types';
 import Lobby from '../lobby/Lobby';
 import EndPage from './EndPage';
 
@@ -38,6 +45,9 @@ function Game({
   const [chatOpen, setChatOpen] = useState(false);
   const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
   const [mission, setMission] = useState<Mission | null>(null);
+  const [results, setResults] = useState<Map<number, PlayerResultStats> | null>(
+    null,
+  );
   const receivedFirstStateRef = useRef(false);
   const prevStateRef = useRef<GameState['state'] | null>(null);
   const prevTurnPhaseRef = useRef<GameState['turnPhase'] | null>(null);
@@ -70,6 +80,7 @@ function Game({
       setGame(state);
     }
     socket.on('game:state', onState);
+    socket.emit('game:requestState');
     return () => {
       socket.off('game:state', onState);
     };
@@ -100,6 +111,17 @@ function Game({
     socket.on('game:mission', onMission);
     return () => {
       socket.off('game:mission', onMission);
+    };
+  }, []);
+
+  useEffect(() => {
+    function onResults(payload: GameResults) {
+      setResults(new Map(payload.stats.map((s) => [s.id, s])));
+    }
+    socket.on('game:results', onResults);
+    socket.emit('game:requestResults');
+    return () => {
+      socket.off('game:results', onResults);
     };
   }, []);
 
@@ -317,6 +339,7 @@ function Game({
       ) : game.state === 'ended' ? (
         <EndPage
           game={game}
+          results={results}
           selfId={selfId}
           navigate={navigate}
           onViewMap={() => setEndView('map')}

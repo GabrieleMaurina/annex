@@ -20,7 +20,13 @@ import { withPortalEdges } from '../logic/portals';
 import { recordElimination } from '../logic/progression/stats';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
-import { gameRoomName, games, sendPlayerCards } from '../logic/store';
+import {
+  broadcastGameStateExcept,
+  gameRoomName,
+  games,
+  respondWithGameState,
+  sendPlayerCards,
+} from '../logic/store';
 import { isFreeConquestTarget } from '../logic/toxins/toxins';
 import { advanceTurnPhase, rewindTurnTimerIfBelowHalf } from '../logic/turns';
 
@@ -156,14 +162,7 @@ export function registerAttackHandlers(
       game.attackConquestMinTroops = null;
       if (territoryId !== null)
         io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
 
@@ -225,6 +224,7 @@ export function registerAttackHandlers(
         ),
         blitzWinProbabilities,
       });
+      broadcastGameStateExcept(io, playersById, game, player.id);
     },
   );
 
@@ -350,7 +350,7 @@ export function registerAttackHandlers(
           defenderId !== undefined
             ? recordElimination(game, defenderId, player.id)
             : false;
-        checkGameEnd(game);
+        checkGameEnd(game, io, playersById);
         if (game.state === 'playing') {
           const remainingAttackers = attackingTroops - attackLosses;
           const minMoveTroops = Math.min(troops, 3, remainingAttackers - 1);
@@ -444,6 +444,10 @@ export function registerAttackHandlers(
             : {}),
         };
       });
+      io.to(gameRoomName(game.name)).emit('game:tankFired', {
+        type,
+        hasDefender: defenderId !== undefined,
+      });
       if (autoConquestMove) {
         const move = autoConquestMove;
         fogFilterEmit(io, game, playersById, 'game:attackMoved', (viewerId) => {
@@ -478,6 +482,7 @@ export function registerAttackHandlers(
         attackerDice,
         defenderDice,
       });
+      broadcastGameStateExcept(io, playersById, game, player.id);
     },
   );
 
@@ -535,14 +540,7 @@ export function registerAttackHandlers(
       if (!hasAnyAttack(game, player.id))
         advanceTurnPhase(game, io, playersById);
 
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
 }

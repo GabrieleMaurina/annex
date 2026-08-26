@@ -152,17 +152,7 @@ export interface GameState {
     connected: boolean;
     surrendered: boolean;
     eliminated: boolean;
-    troopsGained: number;
-    troopsKilled: number;
-    troopsLost: number;
-    territoriesConquered: number;
-    territoriesLost: number;
-    capitalsConquered: number;
-    capitalsLost: number;
-    cardsGained: number;
     playersKilled: number[];
-    turnsPlayed: number;
-    setsPlayed: number;
   }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
@@ -175,6 +165,24 @@ export interface GameState {
   }[];
   toxinTerritories: ReplayToxinTerritory[];
   visibleTerritoryIds?: number[];
+}
+
+export interface PlayerResultStats {
+  id: number;
+  troopsGained: number;
+  troopsKilled: number;
+  troopsLost: number;
+  territoriesConquered: number;
+  territoriesLost: number;
+  capitalsConquered: number;
+  capitalsLost: number;
+  cardsGained: number;
+  turnsPlayed: number;
+  setsPlayed: number;
+}
+
+export interface GameResults {
+  stats: PlayerResultStats[];
 }
 
 export interface GameSettingsInput {

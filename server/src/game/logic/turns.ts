@@ -8,7 +8,11 @@ import {
   hasAnyToxin,
 } from './combat/autoSkip';
 import { checkGameEnd } from './end';
-import { fogFilterEmit, visibleTerritoryIdsOrAll } from './fog';
+import {
+  fogFilterEmit,
+  recordLogForAll,
+  visibleTerritoryIdsOrAll,
+} from './fog';
 import {
   calculateDeployTroopsBreakdown,
   ownsAnyTerritory,
@@ -26,7 +30,7 @@ import { updateRadiationForNewTurn } from './radiation/radiation';
 import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
 import { applyStarvation } from './starvation';
-import { sendPlayerCards } from './store';
+import { broadcastGameState, sendPlayerCards } from './store';
 import { decrementToxinsGlobally } from './toxins/toxins';
 
 const PHASE_ORDER: TurnPhase[] = [
@@ -256,6 +260,7 @@ export function startCapitalPlacement(
   game.troopsToDeploy = 0;
   game.capitalTerritoryIds = new Set();
   io.to(gameRoomName(game.name)).emit('game:capitalPlacementStarted');
+  recordLogForAll(game, 'game:capitalPlacementStarted', {});
   scheduleTurnTimer(game, io, playersById);
 }
 
@@ -410,6 +415,7 @@ export function claimTerritory(
     territoryId,
     playerId,
   });
+  recordLogForAll(game, 'game:territoryClaimed', { territoryId, playerId });
 }
 
 function autoClaimRandomTerritory(
@@ -456,7 +462,7 @@ function autoPlaceRemainingTroops(
           visible === null
             ? entries
             : entries.filter((e) => visible.has(e.territoryId));
-        return filtered.length > 0 ? { deposits: filtered } : null;
+        return filtered.length > 0 ? { deposits: filtered, playerId } : null;
       });
     }
   }
@@ -474,7 +480,7 @@ export function beginNextSpecialPhase(
   else if (next === 'capital') startCapitalPlacement(game, io, playersById);
   else {
     startTurns(game, io, playersById);
-    checkGameEnd(game);
+    checkGameEnd(game, io, playersById);
   }
 }
 
@@ -486,7 +492,7 @@ function startDeployPhase(game: Game, io: Server, playerId: number) {
     breakdown.capitals +
     breakdown.turnTroops +
     breakdown.bounties;
-  io.to(gameRoomName(game.name)).emit('game:turnStarted', {
+  const turnStartedPayload = {
     playerId,
     turnNumber: game.turnNumber,
     troopsFromTerritories: breakdown.territories,
@@ -494,7 +500,9 @@ function startDeployPhase(game: Game, io: Server, playerId: number) {
     troopsFromCapitals: breakdown.capitals,
     troopsFromTurnTroops: breakdown.turnTroops,
     troopsFromBounties: breakdown.bounties,
-  });
+  };
+  io.to(gameRoomName(game.name)).emit('game:turnStarted', turnStartedPayload);
+  recordLogForAll(game, 'game:turnStarted', turnStartedPayload);
 }
 
 function completePendingAttackMove(
@@ -551,6 +559,15 @@ export function forceEndTurn(
   io: Server,
   playersById: Map<number, Player>,
 ) {
+  forceEndTurnImpl(game, io, playersById);
+  broadcastGameState(io, game, playersById);
+}
+
+export function forceEndTurnImpl(
+  game: Game,
+  io: Server,
+  playersById: Map<number, Player>,
+) {
   const playerId = game.playerIds[game.turnPlayerIndex];
 
   if (game.turnPhase === 'territory') {
@@ -576,7 +593,7 @@ export function forceEndTurn(
       fogFilterEmit(io, game, playersById, 'game:deployed', (viewerId) => {
         const visible = visibleTerritoryIdsOrAll(game, viewerId);
         if (visible !== null && !visible.has(territoryId)) return null;
-        return { territoryId, troops: 3 };
+        return { territoryId, troops: 3, playerId };
       });
     }
     advanceCapitalPlacement(game, io, playersById);
@@ -596,7 +613,7 @@ export function forceEndTurn(
           visible === null
             ? entries
             : entries.filter((e) => visible.has(e.territoryId));
-        return filtered.length > 0 ? { deposits: filtered } : null;
+        return filtered.length > 0 ? { deposits: filtered, playerId } : null;
       });
     }
   }
@@ -625,7 +642,7 @@ export function forceEndTurn(
           !visible.has(move.fromTerritoryId)
         )
           return null;
-        return move;
+        return { ...move, playerId };
       });
   }
   advanceToNextPlayer(game, io, playersById);
@@ -703,7 +720,7 @@ export function advanceToNextPlayer(
     }
   }
 
-  checkGameEnd(game, true);
+  checkGameEnd(game, io, playersById, true);
   if (game.state === 'ended') return;
 
   if (game.turnNumber !== previousTurnNumber) updatePortalsForNewTurn(game);

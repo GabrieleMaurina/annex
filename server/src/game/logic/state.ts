@@ -52,6 +52,25 @@ export function gameSummary(game: Game, playersById: Map<number, Player>) {
   };
 }
 
+export function gameResultsStats(game: Game) {
+  return game.playerIds.map((id) => {
+    const stats = game.stats.get(id) ?? EMPTY_STATS;
+    return {
+      id,
+      troopsGained: stats.troopsGained,
+      troopsKilled: stats.troopsKilled,
+      troopsLost: stats.troopsLost,
+      territoriesConquered: stats.territoriesConquered,
+      territoriesLost: stats.territoriesLost,
+      capitalsConquered: stats.capitalsConquered,
+      capitalsLost: stats.capitalsLost,
+      cardsGained: stats.cardsGained,
+      turnsPlayed: stats.turnsPlayed,
+      setsPlayed: stats.setsPlayed,
+    };
+  });
+}
+
 export function gameState(game: Game, playersById: Map<number, Player>) {
   const stats = territoryStats(game);
   const turnPlayerId = game.playerIds[game.turnPlayerIndex];
@@ -121,17 +140,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
         connected: !!member?.connected && member.gameName === game.name,
         surrendered: game.surrenderedIds.has(player.id),
         eliminated: isEliminated(game, territoryCount),
-        troopsGained: playerStats.troopsGained,
-        troopsKilled: playerStats.troopsKilled,
-        troopsLost: playerStats.troopsLost,
-        territoriesConquered: playerStats.territoriesConquered,
-        territoriesLost: playerStats.territoriesLost,
-        capitalsConquered: playerStats.capitalsConquered,
-        capitalsLost: playerStats.capitalsLost,
-        cardsGained: playerStats.cardsGained,
         playersKilled: playerStats.playersKilled,
-        turnsPlayed: playerStats.turnsPlayed,
-        setsPlayed: playerStats.setsPlayed,
       };
     }),
     spectators: toSummaries(game.spectatorIds, playersById),

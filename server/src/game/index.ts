@@ -11,12 +11,12 @@ export { registerTerritoryHandlers } from './handlers/territory';
 export { registerToxinsHandlers } from './handlers/toxins/toxins';
 export { registerTroopHandlers } from './handlers/troop';
 export {
-  broadcastGameStates,
   gameRoomName,
   games,
   handleReconnect,
   leaveGame,
-  listGameSummaries,
+  sendGameResults,
   sendPlayerCards,
+  sendPlayerLogs,
   sendPlayerMission,
 } from './logic/store';

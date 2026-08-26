@@ -4,8 +4,9 @@ import {
   games,
   handleReconnect,
   leaveGame,
-  listGameSummaries,
+  sendGameResults,
   sendPlayerCards,
+  sendPlayerLogs,
   sendPlayerMission,
 } from './game';
 import { HOME_ROOM, Player } from './types';
@@ -63,7 +64,6 @@ export function registerHomeHandlers(
 
       if (room !== (player.gameName ?? HOME_ROOM))
         leaveGame(player, playersById, io, true);
-      handleReconnect(player, playersById);
 
       const game = player.gameName ? games.get(player.gameName) : undefined;
       if (game && game.playerIds.includes(player.id)) {
@@ -72,6 +72,24 @@ export function registerHomeHandlers(
         if (game.state === 'playing' || game.state === 'ended')
           sendPlayerMission(io, playersById, game, player.id);
       }
+      if (
+        game &&
+        (game.playerIds.includes(player.id) ||
+          game.spectatorIds.includes(player.id)) &&
+        (game.state === 'playing' || game.state === 'ended')
+      ) {
+        sendPlayerLogs(io, playersById, game, player.id);
+      }
+      if (
+        game &&
+        game.state === 'ended' &&
+        (game.playerIds.includes(player.id) ||
+          game.spectatorIds.includes(player.id))
+      ) {
+        sendGameResults(io, playersById, game, player.id);
+      }
+
+      handleReconnect(player, playersById, io);
 
       for (const joinedRoom of [...socket.rooms]) {
         if (joinedRoom !== socket.id) socket.leave(joinedRoom);
@@ -99,11 +117,4 @@ export function registerHomeHandlers(
       leaveGame(player, playersById, io, false);
     }
   });
-}
-
-export function broadcastHomeGames(
-  io: Server,
-  playersById: Map<number, Player>,
-) {
-  io.to(HOME_ROOM).emit('home:games', listGameSummaries(playersById));
 }

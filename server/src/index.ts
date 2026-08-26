@@ -2,7 +2,6 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import {
-  broadcastGameStates,
   registerAttackHandlers,
   registerCapitalHandlers,
   registerCardHandlers,
@@ -16,7 +15,7 @@ import {
   registerToxinsHandlers,
   registerTroopHandlers,
 } from './game';
-import { broadcastHomeGames, registerHomeHandlers } from './home';
+import { registerHomeHandlers } from './home';
 import { registerMapsHandlers } from './maps';
 import { HOME_ROOM, Player } from './types';
 
@@ -49,11 +48,6 @@ io.on('connection', (socket) => {
   registerCardHandlers(io, socket, playersBySocket, playersById);
   registerReplayHandlers(io, socket, playersBySocket);
 });
-
-setInterval(() => {
-  broadcastHomeGames(io, playersById);
-  broadcastGameStates(io, playersById);
-}, 1000);
 
 const port = 3000;
 httpServer.listen(port, () => {

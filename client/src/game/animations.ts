@@ -24,7 +24,7 @@ interface Animation {
   labelColor?: string;
   particles?: Particle[];
   arrowPath?: { x: number; y: number }[][];
-  arrowFade?: 'start' | 'end';
+  arrowFades?: ('start' | 'end' | undefined)[][];
 }
 
 const DURATIONS: Record<AnimationType, number> = {
@@ -292,7 +292,7 @@ export function startAnimation(
   label?: string,
   labelColor?: string,
   arrowPath?: { x: number; y: number }[][],
-  arrowFade?: 'start' | 'end',
+  arrowFades?: ('start' | 'end' | undefined)[][],
 ) {
   if (disabled) return;
   animations.push({
@@ -309,7 +309,7 @@ export function startAnimation(
           ? makeEntrenchParticles()
           : undefined,
     arrowPath,
-    arrowFade,
+    arrowFades,
   });
 }
 
@@ -1193,14 +1193,17 @@ export function drawAnimations(
     }
 
     if (progress < 1 && a.arrowPath) {
-      for (const run of a.arrowPath) {
+      for (let r = 0; r < a.arrowPath.length; r++) {
+        const run = a.arrowPath[r];
         if (run.length < 2) continue;
         const screenPath = run.map(toScreen);
-        const segments: [{ x: number; y: number }, { x: number; y: number }][] =
-          [];
+        const runFades = a.arrowFades?.[r];
         for (let i = 0; i < screenPath.length - 1; i++)
-          segments.push([screenPath[i], screenPath[i + 1]]);
-        drawFortifyPath(ctx, segments, a.arrowFade);
+          drawFortifyPath(
+            ctx,
+            [[screenPath[i], screenPath[i + 1]]],
+            runFades?.[i],
+          );
       }
     }
 

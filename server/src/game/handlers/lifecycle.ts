@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { defaultMapName, maps } from '../../maps';
+import { containsProfanity } from '../../profanity';
 import {
   Blitz,
   Bounties,
@@ -25,7 +26,6 @@ import {
 import { isInteger, isObject } from '../../validate';
 import { initializeContinent } from '../logic/continent';
 import { checkGameEnd } from '../logic/end';
-import { filterGameStateForViewer } from '../logic/fog';
 import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
   assignRandomColor,
@@ -47,17 +47,21 @@ import { initializeRadiation } from '../logic/radiation/radiation';
 import { snapshotTerritories } from '../logic/replay';
 import { gameState } from '../logic/state';
 import {
+  broadcastHomeGames,
   broadcastMissions,
   destroyIfInactive,
   gameRoomName,
   games,
   removePlayerFromGame,
+  respondWithGameState,
+  sendGameResults,
+  sendGameState,
   sendPlayerCards,
 } from '../logic/store';
 import {
   advanceTurnPhase,
   beginNextSpecialPhase,
-  forceEndTurn,
+  forceEndTurnImpl,
   pauseTurnTimer,
   resumeTurnTimer,
 } from '../logic/turns';
@@ -231,6 +235,7 @@ export function registerGameHandlers(
         replayInitial: [],
         replayInitialRadiation: [],
         replayFrames: [],
+        logs: new Map(),
       };
       games.set(game.name, game);
       player.gameName = game.name;
@@ -238,14 +243,8 @@ export function registerGameHandlers(
 
       socket.leave(HOME_ROOM);
       socket.join(gameRoomName(game.name));
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      broadcastHomeGames(io, playersById);
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
 
@@ -289,16 +288,26 @@ export function registerGameHandlers(
 
       socket.leave(HOME_ROOM);
       socket.join(gameRoomName(game.name));
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      broadcastHomeGames(io, playersById);
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
+
+  socket.on('game:requestState', () => {
+    const player = playersBySocket.get(socket.id);
+    if (!player || !player.gameName) return;
+    const game = games.get(player.gameName);
+    if (!game) return;
+    sendGameState(io, playersById, game, player.id);
+  });
+
+  socket.on('game:requestResults', () => {
+    const player = playersBySocket.get(socket.id);
+    if (!player || !player.gameName) return;
+    const game = games.get(player.gameName);
+    if (!game || game.state !== 'ended') return;
+    sendGameResults(io, playersById, game, player.id);
+  });
 
   socket.on(
     'game:settings',
@@ -535,14 +544,8 @@ export function registerGameHandlers(
         game.visibility = settings.visibility as Visibility;
       }
 
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      broadcastHomeGames(io, playersById);
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
 
@@ -617,14 +620,8 @@ export function registerGameHandlers(
       ...(game.gameMode === 'Capitals' ? (['capital'] as const) : []),
     ];
     beginNextSpecialPhase(game, io, playersById);
-    callback({
-      ok: true,
-      game: filterGameStateForViewer(
-        gameState(game, playersById),
-        game,
-        player.id,
-      ),
-    });
+    broadcastHomeGames(io, playersById);
+    respondWithGameState(io, playersById, game, player.id, callback);
   });
 
   socket.on('game:cycleColor', (callback: (response: GameResponse) => void) => {
@@ -641,14 +638,7 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'game already started' });
 
     cycleColor(game, player.id);
-    callback({
-      ok: true,
-      game: filterGameStateForViewer(
-        gameState(game, playersById),
-        game,
-        player.id,
-      ),
-    });
+    respondWithGameState(io, playersById, game, player.id, callback);
   });
 
   socket.on('game:nextPhase', (callback: (response: GameResponse) => void) => {
@@ -683,14 +673,7 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'pending conquest move' });
 
     advanceTurnPhase(game, io, playersById);
-    callback({
-      ok: true,
-      game: filterGameStateForViewer(
-        gameState(game, playersById),
-        game,
-        player.id,
-      ),
-    });
+    respondWithGameState(io, playersById, game, player.id, callback);
   });
 
   socket.on('game:pause', (callback: (response: GameResponse) => void) => {
@@ -709,14 +692,7 @@ export function registerGameHandlers(
     if (game.paused) resumeTurnTimer(game, io, playersById);
     else pauseTurnTimer(game);
 
-    callback({
-      ok: true,
-      game: filterGameStateForViewer(
-        gameState(game, playersById),
-        game,
-        player.id,
-      ),
-    });
+    respondWithGameState(io, playersById, game, player.id, callback);
   });
 
   socket.on('game:surrender', (callback: (response: GameResponse) => void) => {
@@ -737,19 +713,13 @@ export function registerGameHandlers(
     game.surrenderedIds.add(player.id);
     if (!game.deathOrder.includes(player.id)) game.deathOrder.push(player.id);
     const wasTheirTurn = game.playerIds[game.turnPlayerIndex] === player.id;
-    if (wasTheirTurn) forceEndTurn(game, io, playersById);
-    checkGameEnd(game, wasTheirTurn);
+    if (wasTheirTurn) forceEndTurnImpl(game, io, playersById);
+    checkGameEnd(game, io, playersById, wasTheirTurn);
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);
+    broadcastHomeGames(io, playersById);
 
-    callback({
-      ok: true,
-      game: filterGameStateForViewer(
-        gameState(game, playersById),
-        game,
-        player.id,
-      ),
-    });
+    respondWithGameState(io, playersById, game, player.id, callback);
   });
 
   socket.on('game:chat', (data: unknown) => {
@@ -763,6 +733,7 @@ export function registerGameHandlers(
     if (typeof message !== 'string') return;
     const trimmed = message.trim();
     if (!trimmed) return;
+    if (containsProfanity(trimmed)) return;
 
     const payload = { id: player.id, name: player.name, message: trimmed };
     io.to(gameRoomName(game.name)).emit('game:chatMessage', payload);

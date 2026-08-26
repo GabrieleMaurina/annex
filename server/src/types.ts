@@ -215,4 +215,10 @@ export interface Game {
   replayInitial: ReplayTerritory[];
   replayInitialRadiation: number[];
   replayFrames: ReplayFrame[];
+  logs: Map<number, GameLogEvent[]>;
+}
+
+export interface GameLogEvent {
+  type: string;
+  payload: unknown;
 }

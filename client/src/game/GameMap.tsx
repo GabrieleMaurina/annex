@@ -510,6 +510,7 @@ function GameMap({
   const frozenTroopsRef = useRef<Map<number, number>>(new Map());
   const frozenOwnerRef = useRef<Map<number, number>>(new Map());
   const attackRevealDeadlineRef = useRef<Map<number, number>>(new Map());
+  const [tankFireId, setTankFireId] = useState(0);
   const toxinPlacedAtRef = useRef<Map<number, number>>(new Map());
   const radiationPlacedAtRef = useRef<Map<number, number>>(new Map());
   const ownerByIdRef = useRef(
@@ -604,7 +605,7 @@ function GameMap({
         playerId?: number;
       },
       arrowPath?: { x: number; y: number }[][],
-      arrowFade?: 'start' | 'end',
+      arrowFades?: ('start' | 'end' | undefined)[][],
     ) => {
       if (areAnimationsDisabled()) return;
       const territory = territoriesRef.current.find(
@@ -620,7 +621,7 @@ function GameMap({
           `${kind === 'add' ? '+' : '-'}${troops}`,
           colorForPlayer(ownerId),
           arrowPath,
-          arrowFade,
+          arrowFades,
         );
     },
     [colorForPlayer],
@@ -630,8 +631,8 @@ function GameMap({
     (
       payload: { territoryId: number; troops: number; playerId?: number },
       arrowPath?: { x: number; y: number }[][],
-      arrowFade?: 'start' | 'end',
-    ) => animateTroopChange('add', payload, arrowPath, arrowFade),
+      arrowFades?: ('start' | 'end' | undefined)[][],
+    ) => animateTroopChange('add', payload, arrowPath, arrowFades),
     [animateTroopChange],
   );
 
@@ -639,8 +640,8 @@ function GameMap({
     (
       payload: { territoryId: number; troops: number; playerId?: number },
       arrowPath?: { x: number; y: number }[][],
-      arrowFade?: 'start' | 'end',
-    ) => animateTroopChange('remove', payload, arrowPath, arrowFade),
+      arrowFades?: ('start' | 'end' | undefined)[][],
+    ) => animateTroopChange('remove', payload, arrowPath, arrowFades),
     [animateTroopChange],
   );
 
@@ -694,8 +695,8 @@ function GameMap({
     [],
   );
 
-  const arrowRunsForPath = useCallback(
-    (territoryIds: number[]): { x: number; y: number }[][] => {
+  const idRunsForPath = useCallback(
+    (territoryIds: number[]): number[][] => {
       const runs: number[][] = [];
       let current: number[] = [];
       for (let i = 0; i < territoryIds.length; i++) {
@@ -714,11 +715,17 @@ function GameMap({
         current.push(territoryIds[i]);
       }
       if (current.length > 1) runs.push(current);
-      return runs
-        .map((run) => territoryPoints(run))
-        .filter((points) => points.length > 1);
+      return runs;
     },
-    [territoryPoints, portalTerritoryIds, portalsEnabled],
+    [portalTerritoryIds, portalsEnabled],
+  );
+
+  const arrowRunsForPath = useCallback(
+    (territoryIds: number[]): { x: number; y: number }[][] =>
+      idRunsForPath(territoryIds)
+        .map((run) => territoryPoints(run))
+        .filter((points) => points.length > 1),
+    [idRunsForPath, territoryPoints],
   );
 
   const arrowForPath = useCallback(
@@ -726,21 +733,46 @@ function GameMap({
       territoryIds: number[],
     ): {
       runs?: { x: number; y: number }[][];
-      fade?: 'start' | 'end';
+      fades?: ('start' | 'end' | undefined)[][];
     } => {
-      const runs = arrowRunsForPath(territoryIds);
+      const visible = visibleTerritoryIds ? new Set(visibleTerritoryIds) : null;
+      const runs: { x: number; y: number }[][] = [];
+      const fades: ('start' | 'end' | undefined)[][] = [];
+      for (const idRun of idRunsForPath(territoryIds)) {
+        let currentIds: number[] = [idRun[0]];
+        let currentFades: ('start' | 'end' | undefined)[] = [];
+        const flush = () => {
+          if (currentIds.length > 1) {
+            runs.push(territoryPoints(currentIds));
+            fades.push(currentFades);
+          }
+        };
+        for (let i = 1; i < idRun.length; i++) {
+          const fromId = idRun[i - 1];
+          const toId = idRun[i];
+          const fromVisible = !visible || visible.has(fromId);
+          const toVisible = !visible || visible.has(toId);
+          if (!fromVisible && !toVisible) {
+            flush();
+            currentIds = [toId];
+            currentFades = [];
+            continue;
+          }
+          currentIds.push(toId);
+          currentFades.push(
+            fromVisible && toVisible
+              ? undefined
+              : fromVisible
+                ? 'end'
+                : 'start',
+          );
+        }
+        flush();
+      }
       if (runs.length === 0) return {};
-      if (!visibleTerritoryIds) return { runs };
-      const visible = new Set(visibleTerritoryIds);
-      const fromId = territoryIds[0];
-      const toId = territoryIds[territoryIds.length - 1];
-      const fromVisible = visible.has(fromId);
-      const toVisible = visible.has(toId);
-      if (!fromVisible && !toVisible) return {};
-      if (fromVisible && toVisible) return { runs };
-      return { runs, fade: fromVisible ? 'end' : 'start' };
+      return { runs, fades };
     },
-    [arrowRunsForPath, visibleTerritoryIds],
+    [idRunsForPath, territoryPoints, visibleTerritoryIds],
   );
 
   const flashArrow = useCallback(
@@ -757,7 +789,7 @@ function GameMap({
         undefined,
         undefined,
         arrow.runs,
-        arrow.fade,
+        arrow.fades,
       );
     },
     [arrowForPath],
@@ -1860,6 +1892,23 @@ function GameMap({
   }, [explode, animateRemove, adjustTerritoryTroops, flashArrow]);
 
   useEffect(() => {
+    function onTankFired(payload: {
+      type: 'regular' | 'blitz';
+      hasDefender: boolean;
+    }) {
+      const delay =
+        payload.type === 'regular' && payload.hasDefender
+          ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
+          : 0;
+      setTimeout(() => setTankFireId((id) => id + 1), delay);
+    }
+    socket.on('game:tankFired', onTankFired);
+    return () => {
+      socket.off('game:tankFired', onTankFired);
+    };
+  }, []);
+
+  useEffect(() => {
     const arrowActive =
       (turnPhase === 'fortify' &&
         fortifyStartTerritoryId !== null &&
@@ -1966,6 +2015,7 @@ function GameMap({
       setHand(payload.cards);
     }
     socket.on('game:cards', onCards);
+    socket.emit('game:requestCards');
     return () => {
       socket.off('game:cards', onCards);
     };
@@ -3915,6 +3965,7 @@ function GameMap({
                 paused={paused}
                 setGame={setGame}
                 endsTurn={nextPhaseEndsTurn}
+                tankFireId={tankFireId}
               />
             </>
           )}

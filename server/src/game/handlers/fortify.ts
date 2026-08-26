@@ -3,15 +3,11 @@ import { maps } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
 import { connectedOwnedTerritories } from '../logic/connectivity';
-import {
-  filterGameStateForViewer,
-  fogFilterEmit,
-  visibleTerritoryIdsOrAll,
-} from '../logic/fog';
+import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../logic/fog';
 import { withPortalEdges } from '../logic/portals';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
-import { gameRoomName, games } from '../logic/store';
+import { gameRoomName, games, respondWithGameState } from '../logic/store';
 import { advanceTurnPhase } from '../logic/turns';
 
 type GameResponse =
@@ -110,14 +106,7 @@ export function registerFortifyHandlers(
       game.fortifyEndTerritoryId = null;
       if (territoryId !== null)
         io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
 
@@ -163,14 +152,7 @@ export function registerFortifyHandlers(
 
       game.fortifyEndTerritoryId = territoryId;
       io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
 
@@ -224,18 +206,16 @@ export function registerFortifyHandlers(
         const visible = visibleTerritoryIdsOrAll(game, viewerId);
         if (visible !== null && !visible.has(endId) && !visible.has(startId))
           return null;
-        return { territoryId: endId, fromTerritoryId: startId, troops };
+        return {
+          territoryId: endId,
+          fromTerritoryId: startId,
+          troops,
+          playerId: player.id,
+        };
       });
       advanceTurnPhase(game, io, playersById);
 
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-      });
+      respondWithGameState(io, playersById, game, player.id, callback);
     },
   );
 }

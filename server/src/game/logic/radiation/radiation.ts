@@ -91,7 +91,10 @@ function computeUpcomingRadiation(game: Game) {
       : computeExpandingTarget(game);
 }
 
-function applyRadiation(game: Game): number[] {
+function applyRadiation(game: Game): {
+  eliminatedPlayerIds: number[];
+  newlyRadiated: number[];
+} {
   const newlyRadiated = [...game.radiationUpcomingTerritoryIds].filter(
     (id) => !game.radiationTerritoryIds.has(id),
   );
@@ -114,7 +117,7 @@ function applyRadiation(game: Game): number[] {
       if (wasNewlyEliminated) eliminatedPlayerIds.push(ownerId);
     }
   }
-  return eliminatedPlayerIds;
+  return { eliminatedPlayerIds, newlyRadiated };
 }
 
 export function updateRadiationForNewTurn(
@@ -142,13 +145,16 @@ export function updateRadiationForNewTurn(
     return [];
   }
 
-  const eliminatedPlayerIds = applyRadiation(game);
+  const { eliminatedPlayerIds, newlyRadiated } = applyRadiation(game);
   fogFilterEmit(io, game, playersById, 'game:radiationChanged', (viewerId) => {
     const visible = visibleTerritoryIdsOrAll(game, viewerId);
     const territoryIds = [...game.radiationTerritoryIds].filter(
       (id) => visible === null || visible.has(id),
     );
-    return { territoryIds, eliminatedPlayerIds };
+    const newlyRadiatedIds = newlyRadiated.filter(
+      (id) => visible === null || visible.has(id),
+    );
+    return { territoryIds, eliminatedPlayerIds, newlyRadiatedIds };
   });
   return eliminatedPlayerIds;
 }

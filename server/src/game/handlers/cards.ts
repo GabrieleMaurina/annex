@@ -2,11 +2,6 @@ import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
 import {
-  fogFilterEmit,
-  recordLogForAll,
-  visibleTerritoryIdsOrAll,
-} from '../logic/fog';
-import {
   counterKey,
   evaluateCardSelection,
   returnCardsToDeck,
@@ -20,6 +15,11 @@ import {
   respondWithGameState,
   sendPlayerCards,
 } from '../logic/store';
+import {
+  fogFilterEmit,
+  recordLogForAll,
+  visibleTerritoryIdsOrAll,
+} from '../logic/world/fog';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }

@@ -16,8 +16,12 @@ import type {
   Toxins,
   TurnPhase,
 } from '../../lib/types';
-import { ALLIANCE_CELL_LABELS, ALLIANCE_ICONS } from '../alliance';
-import { EMOJI_POP_DURATION, GLOBAL_TARGET_ID, type EmojiPop } from '../emoji';
+import { ALLIANCE_CELL_LABELS, ALLIANCE_ICONS } from '../logic/alliance';
+import {
+  EMOJI_POP_DURATION,
+  GLOBAL_TARGET_ID,
+  type EmojiPop,
+} from '../logic/emoji';
 
 function formatList(items: string[]): string {
   if (items.length <= 1) return items.join('');

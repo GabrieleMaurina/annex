@@ -2,14 +2,14 @@ import { Server, Socket } from 'socket.io';
 import { Player } from '../../../types';
 import { isInteger, isObject } from '../../../validate';
 import { hasAnyToxin } from '../../logic/combat/autoSkip';
-import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../../logic/fog';
-import { removePortalTerritory } from '../../logic/portals';
 import { countTerritories } from '../../logic/progression/stats';
 import { recordReplayFrame } from '../../logic/replay';
 import { gameState } from '../../logic/state';
 import { games, respondWithGameState } from '../../logic/store';
 import { toxinsCost, wouldSplitMap } from '../../logic/toxins/toxins';
 import { advanceTurnPhase } from '../../logic/turns';
+import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../../logic/world/fog';
+import { removePortalTerritory } from '../../logic/world/portals';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }

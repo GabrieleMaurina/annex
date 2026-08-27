@@ -1,16 +1,16 @@
 export { registerAllianceHandlers } from './handlers/alliance';
 export { registerAttackHandlers } from './handlers/attack';
-export { registerCapitalHandlers } from './handlers/capital';
 export { registerCardHandlers } from './handlers/cards';
 export { registerDeployHandlers } from './handlers/deploy';
 export { registerEmojiHandlers } from './handlers/emoji';
-export { registerEntrenchHandlers } from './handlers/entrench';
 export { registerFortifyHandlers } from './handlers/fortify';
 export { registerGameHandlers } from './handlers/lifecycle';
 export { registerReplayHandlers } from './handlers/replay';
-export { registerTerritoryHandlers } from './handlers/territory';
+export { registerCapitalHandlers } from './handlers/territory/capital';
+export { registerEntrenchHandlers } from './handlers/territory/entrench';
+export { registerTerritoryHandlers } from './handlers/territory/territory';
+export { registerTroopHandlers } from './handlers/territory/troop';
 export { registerToxinsHandlers } from './handlers/toxins/toxins';
-export { registerTroopHandlers } from './handlers/troop';
 export {
   gameRoomName,
   games,

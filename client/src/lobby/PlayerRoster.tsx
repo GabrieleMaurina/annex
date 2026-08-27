@@ -1,7 +1,7 @@
 import { Badge, Button, Form, Table } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/Tip';
-import { GLOBAL_TARGET_ID } from '../game/emoji';
+import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 

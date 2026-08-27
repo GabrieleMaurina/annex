@@ -1,6 +1,5 @@
 import { Server } from 'socket.io';
 import { Game, Player } from '../../types';
-import { continentTerritoryIds } from './continent';
 import { ownsAnyTerritory } from './mechanics';
 import { missionAccomplished } from './progression/missions';
 import {
@@ -12,6 +11,7 @@ import {
 } from './progression/stats';
 import { broadcastGameResults, broadcastHomeGames } from './store';
 import { clearTurnTimer } from './turns';
+import { continentTerritoryIds } from './world/continent';
 
 const EARLY_WIN_GATE_TURN_NUMBER = 2;
 

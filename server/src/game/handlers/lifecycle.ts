@@ -25,7 +25,6 @@ import {
   Visibility,
 } from '../../types';
 import { isInteger, isObject } from '../../validate';
-import { initializeContinent } from '../logic/continent';
 import { checkGameEnd, computeGameEndWinnerIds } from '../logic/end';
 import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
@@ -40,7 +39,6 @@ import {
   shuffle,
   teamCount,
 } from '../logic/mechanics';
-import { initializePortals } from '../logic/portals';
 import { buildCardDeck } from '../logic/progression/cards';
 import { assignMissions } from '../logic/progression/missions';
 import { emptyPlayerStats } from '../logic/progression/stats';
@@ -66,6 +64,8 @@ import {
   pauseTurnTimer,
   resumeTurnTimer,
 } from '../logic/turns';
+import { initializeContinent } from '../logic/world/continent';
+import { initializePortals } from '../logic/world/portals';
 
 const MAX_GAME_NAME_LENGTH = 20;
 

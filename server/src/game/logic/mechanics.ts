@@ -1,11 +1,11 @@
 import { maps } from '../../maps';
 import { Game } from '../../types';
 import { isInteger, isObject } from '../../validate';
+import { recordReplayFrame } from './replay';
 import {
   connectedOwnedTerritories,
   ownedTerritoryClusters,
-} from './connectivity';
-import { recordReplayFrame } from './replay';
+} from './world/connectivity';
 
 const COLOR_COUNT = 20;
 

@@ -1,8 +1,8 @@
 import { AllianceViewState, Game, Player } from '../../types';
-import { fortifyFullPath } from './connectivity';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats } from './progression/stats';
-import { TERRITORY_CAP, totalTroopsCap } from './starvation';
+import { fortifyFullPath } from './world/connectivity';
+import { TERRITORY_CAP, totalTroopsCap } from './world/starvation';
 
 const EMPTY_STATS = emptyPlayerStats();
 

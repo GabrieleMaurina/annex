@@ -7,21 +7,12 @@ import {
   hasAnyFortify,
   hasAnyToxin,
 } from './combat/autoSkip';
-import { fortifyFullPath } from './connectivity';
 import { checkGameEnd } from './end';
-import {
-  fogFilterEmit,
-  pathRunsForViewer,
-  recordLogForAll,
-  troopMoveFields,
-  visibleTerritoryIdsOrAll,
-} from './fog';
 import {
   calculateDeployTroopsBreakdown,
   ownsAnyTerritory,
   turnOrderBonus,
 } from './mechanics';
-import { portalCount, selectPortalTerritories } from './portals';
 import {
   counterKey,
   pickBestSet,
@@ -32,9 +23,18 @@ import { bumpStat } from './progression/stats';
 import { updateRadiationForNewTurn } from './radiation/radiation';
 import { recordReplayFrame } from './replay';
 import { gameRoomName } from './rooms';
-import { applyStarvation } from './starvation';
 import { broadcastGameState, sendPlayerCards } from './store';
 import { decrementToxinsGlobally } from './toxins/toxins';
+import { fortifyFullPath } from './world/connectivity';
+import {
+  fogFilterEmit,
+  pathRunsForViewer,
+  recordLogForAll,
+  troopMoveFields,
+  visibleTerritoryIdsOrAll,
+} from './world/fog';
+import { portalCount, selectPortalTerritories } from './world/portals';
+import { applyStarvation } from './world/starvation';
 
 const PHASE_ORDER: TurnPhase[] = [
   'deploy',

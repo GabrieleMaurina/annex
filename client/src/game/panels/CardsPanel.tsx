@@ -1,7 +1,7 @@
 import { Badge, Button, ListGroup } from 'react-bootstrap';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import type { Card } from '../../lib/types';
-import { comboKey, sortForDisplay, type EvaluatedCombo } from '../cards';
+import { comboKey, sortForDisplay, type EvaluatedCombo } from '../logic/cards';
 
 interface Props {
   hand: Card[];

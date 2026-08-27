@@ -1,11 +1,11 @@
 import { Server } from 'socket.io';
 import { maps } from '../../../maps';
 import { Game, Player, Radiations } from '../../../types';
-import { wouldSplitMap } from '../connectivity';
-import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../fog';
 import { ownsAnyTerritory, shuffle } from '../mechanics';
-import { removePortalTerritory } from '../portals';
 import { recordElimination } from '../progression/stats';
+import { wouldSplitMap } from '../world/connectivity';
+import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../world/fog';
+import { removePortalTerritory } from '../world/portals';
 import { selectRadiationTerritories } from './selection';
 
 const TERRITORIES_PER_RADIATION = 10;

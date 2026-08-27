@@ -13,8 +13,8 @@ import {
   scheduleAllianceRequestExpiry,
   startAllianceCooldown,
 } from '../logic/alliances';
-import { recordLog } from '../logic/fog';
 import { games, sendGameState, sendToPlayer } from '../logic/store';
+import { recordLog } from '../logic/world/fog';
 
 function getAllianceContext(
   socket: Socket,

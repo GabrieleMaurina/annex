@@ -2,21 +2,21 @@ import { Server, Socket } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
+import { recordReplayFrame } from '../logic/replay';
+import { gameState } from '../logic/state';
+import { gameRoomName, games, respondWithGameState } from '../logic/store';
+import { advanceTurnPhase } from '../logic/turns';
 import {
   connectedOwnedTerritories,
   fortifyFullPath,
-} from '../logic/connectivity';
+} from '../logic/world/connectivity';
 import {
   fogFilterEmit,
   pathRunsForViewer,
   troopMoveFields,
   visibleTerritoryIdsOrAll,
-} from '../logic/fog';
-import { withPortalEdges } from '../logic/portals';
-import { recordReplayFrame } from '../logic/replay';
-import { gameState } from '../logic/state';
-import { gameRoomName, games, respondWithGameState } from '../logic/store';
-import { advanceTurnPhase } from '../logic/turns';
+} from '../logic/world/fog';
+import { withPortalEdges } from '../logic/world/portals';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }

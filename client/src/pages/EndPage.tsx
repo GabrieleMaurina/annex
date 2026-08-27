@@ -1,9 +1,9 @@
 import { Button, Container, Table } from 'react-bootstrap';
-import EmojiTableOverlay from '../common/EmojiTableOverlay';
-import Tip from '../common/Tip';
+import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
+import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { useWhiteIcon } from '../common/icon';
-import { useTableEmojiReactions } from '../common/useTableEmojiReactions';
-import { GLOBAL_TARGET_ID } from '../game/emoji';
+import Tip from '../common/Tip';
+import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState, PlayerResultStats } from '../lib/types';
 

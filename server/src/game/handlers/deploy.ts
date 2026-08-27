@@ -1,8 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from '../../types';
 import { isNullableInteger, isObject } from '../../validate';
-import { connectedOwnedTerritories } from '../logic/connectivity';
-import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../logic/fog';
 import {
   depositTroopsOnOwnedTerritory,
   supplyHubTerritoryIds,
@@ -12,6 +10,8 @@ import { bumpStat } from '../logic/progression/stats';
 import { gameState } from '../logic/state';
 import { gameRoomName, games, respondWithGameState } from '../logic/store';
 import { advanceTurnPhase } from '../logic/turns';
+import { connectedOwnedTerritories } from '../logic/world/connectivity';
+import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../logic/world/fog';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }

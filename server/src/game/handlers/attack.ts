@@ -11,13 +11,6 @@ import {
   trueWinProbs,
 } from '../logic/combat/dice';
 import { checkGameEnd } from '../logic/end';
-import {
-  filterGameStateForViewer,
-  fogFilterEmit,
-  troopMoveFields,
-  visibleTerritoryIdsOrAll,
-} from '../logic/fog';
-import { withPortalEdges } from '../logic/portals';
 import { recordElimination } from '../logic/progression/stats';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
@@ -30,6 +23,13 @@ import {
 } from '../logic/store';
 import { isFreeConquestTarget } from '../logic/toxins/toxins';
 import { advanceTurnPhase, rewindTurnTimerIfBelowHalf } from '../logic/turns';
+import {
+  filterGameStateForViewer,
+  fogFilterEmit,
+  troopMoveFields,
+  visibleTerritoryIdsOrAll,
+} from '../logic/world/fog';
+import { withPortalEdges } from '../logic/world/portals';
 
 type GameResponse =
   | { ok: true; game: ReturnType<typeof gameState> }

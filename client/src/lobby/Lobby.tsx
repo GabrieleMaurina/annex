@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
-import EmojiTableOverlay from '../common/EmojiTableOverlay';
-import { useTableEmojiReactions } from '../common/useTableEmojiReactions';
+import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
+import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { saveGameName, saveGameSettings } from '../lib/player';
 import { socket } from '../lib/socket';
 import type { Ack, GameSettingsInput, GameState, Player } from '../lib/types';

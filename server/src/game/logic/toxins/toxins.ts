@@ -1,6 +1,6 @@
 import { Game } from '../../../types';
-import { wouldSplitMap as wouldSplitMapShared } from '../connectivity';
 import { nextSetBaseValues } from '../progression/cards';
+import { wouldSplitMap as wouldSplitMapShared } from '../world/connectivity';
 
 export function toxinsCost(game: Game, playerId: number): number {
   if (game.toxins === 'off') return Infinity;

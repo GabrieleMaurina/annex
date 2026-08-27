@@ -1,11 +1,11 @@
 import { Server } from 'socket.io';
 import { Game, HOME_ROOM, Player } from '../../types';
-import { filterGameStateForViewer } from './fog';
 import { addHostCandidate, recomputeHost } from './host';
 import { assignRandomColor, maxTeam } from './mechanics';
 import { gameRoomName } from './rooms';
 import { gameResultsStats, gameState, gameSummary } from './state';
 import { clearTurnTimer } from './turns';
+import { filterGameStateForViewer } from './world/fog';
 
 export { gameRoomName } from './rooms';
 

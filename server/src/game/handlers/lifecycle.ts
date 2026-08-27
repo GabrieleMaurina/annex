@@ -69,6 +69,24 @@ import { initializePortals } from '../logic/world/portals';
 
 const MAX_GAME_NAME_LENGTH = 20;
 
+const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
+const BLITZ_VALUES: Blitz[] = ['Balanced', 'True'];
+const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
+const CARDS_VALUES: CardsMode[] = [
+  'Constant',
+  'Linear',
+  'Exponential',
+  'Linear Per Player',
+  'Exponential Per Player',
+];
+const DEFENCE_DICE_VALUES: DefenceDice[] = [2, 3];
+const ENTRENCHMENTS_VALUES: Entrenchments[] = ['off', 'on'];
+const FOG_OF_WAR_VALUES: FogOfWar[] = ['off', 'on'];
+const FORTIFICATION_VALUES: Fortification[] = [
+  'Connected',
+  'Neighboring',
+  'Unrestricted',
+];
 const GAME_MODE_VALUES: GameMode[] = [
   'Supremacy',
   'Supremacy 3/4',
@@ -83,23 +101,7 @@ const GAME_MODE_VALUES: GameMode[] = [
   'Player Kills',
   'Troop Kills',
 ];
-const BLITZ_VALUES: Blitz[] = ['Balanced', 'True'];
-const DEFENCE_DICE_VALUES: DefenceDice[] = [2, 3];
-const CARDS_VALUES: CardsMode[] = [
-  'Constant',
-  'Linear',
-  'Exponential',
-  'Linear Per Player',
-  'Exponential Per Player',
-];
 const PLACEMENT_VALUES: Placement[] = ['Random', 'Semi', 'Custom'];
-const FORTIFICATION_VALUES: Fortification[] = [
-  'Connected',
-  'Neighboring',
-  'Unrestricted',
-];
-const ENTRENCHMENTS_VALUES: Entrenchments[] = ['off', 'on'];
-const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const PORTALS_VALUES: Portals[] = ['off', 'static', 'dynamic'];
 const RADIATIONS_VALUES: Radiations[] = [
   'off',
@@ -113,12 +115,10 @@ const STARVATION_VALUES: Starvation[] = [
   'total',
   'percent',
 ];
-const TURN_TROOPS_VALUES: TurnTroops[] = ['off', 'on'];
-const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
 const SUPPLY_LINES_VALUES: SupplyLines[] = ['off', 'on'];
-const FOG_OF_WAR_VALUES: FogOfWar[] = ['off', 'on'];
-const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
+const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
+const TURN_TROOPS_VALUES: TurnTroops[] = ['off', 'on'];
 const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
 const MAX_PASSWORD_LENGTH = 50;
 
@@ -170,6 +170,7 @@ export function registerGameHandlers(
         mapName: defaultMapName,
         slots: 2,
         hostId: player.id,
+        originalHostId: player.id,
         state: 'lobby',
         gameMode: 'Supremacy',
         continentId: null,
@@ -333,41 +334,17 @@ export function registerGameHandlers(
 
       const settings: Record<string, unknown> = isObject(data) ? data : {};
 
-      if (settings.mapName !== undefined) {
-        if (typeof settings.mapName !== 'string' || !maps.has(settings.mapName))
-          return callback({ ok: false, error: 'invalid map' });
-        game.mapName = settings.mapName;
-      }
-
-      if (settings.gameMode !== undefined) {
-        if (!(GAME_MODE_VALUES as unknown[]).includes(settings.gameMode))
-          return callback({ ok: false, error: 'invalid game mode' });
-        game.gameMode = settings.gameMode as GameMode;
-        if (game.gameMode === 'Team Deathmatch') game.alliances = 'off';
-      }
-
-      if (settings.name !== undefined) {
-        const trimmedName = validateGameName(settings.name);
-        if (!trimmedName) return callback({ ok: false, error: 'invalid name' });
-
-        if (trimmedName !== game.name) {
-          if (games.has(trimmedName))
-            return callback({ ok: false, error: 'game name already in use' });
-
-          const oldRoom = gameRoomName(game.name);
-          const newRoom = gameRoomName(trimmedName);
-          games.delete(game.name);
-          for (const id of [...game.playerIds, ...game.spectatorIds]) {
-            const member = playersById.get(id);
-            if (member) member.gameName = trimmedName;
-            const memberSocket =
-              member && io.sockets.sockets.get(member.socketId);
-            memberSocket?.leave(oldRoom);
-            memberSocket?.join(newRoom);
-          }
-          game.name = trimmedName;
-          games.set(game.name, game);
-        }
+      if (settings.alliances !== undefined) {
+        if (!(ALLIANCES_VALUES as unknown[]).includes(settings.alliances))
+          return callback({ ok: false, error: 'invalid alliances' });
+        const effectiveGameMode =
+          settings.gameMode !== undefined ? settings.gameMode : game.gameMode;
+        if (
+          settings.alliances === 'on' &&
+          effectiveGameMode === 'Team Deathmatch'
+        )
+          return callback({ ok: false, error: 'invalid alliances' });
+        game.alliances = settings.alliances as Alliances;
       }
 
       if (settings.bannedPlayerIds !== undefined) {
@@ -404,6 +381,111 @@ export function registerGameHandlers(
         game.bannedIds = newBannedIds;
       }
 
+      if (settings.blitz !== undefined) {
+        if (!(BLITZ_VALUES as unknown[]).includes(settings.blitz))
+          return callback({ ok: false, error: 'invalid blitz' });
+        game.blitz = settings.blitz as Blitz;
+      }
+
+      if (settings.bounties !== undefined) {
+        if (!(BOUNTIES_VALUES as unknown[]).includes(settings.bounties))
+          return callback({ ok: false, error: 'invalid bounties' });
+        game.bounties = settings.bounties as Bounties;
+      }
+
+      if (settings.cards !== undefined) {
+        if (!(CARDS_VALUES as unknown[]).includes(settings.cards))
+          return callback({ ok: false, error: 'invalid cards' });
+        game.cards = settings.cards as CardsMode;
+      }
+
+      if (settings.defenceDice !== undefined) {
+        if (!(DEFENCE_DICE_VALUES as unknown[]).includes(settings.defenceDice))
+          return callback({ ok: false, error: 'invalid defence dice' });
+        game.defenceDice = settings.defenceDice as DefenceDice;
+        if (game.defenceDice !== 2) game.entrenchments = 'off';
+      }
+
+      if (settings.entrenchments !== undefined) {
+        if (
+          !(ENTRENCHMENTS_VALUES as unknown[]).includes(settings.entrenchments)
+        )
+          return callback({ ok: false, error: 'invalid entrenchments' });
+        if (settings.entrenchments === 'on' && game.defenceDice !== 2)
+          return callback({ ok: false, error: 'invalid entrenchments' });
+        game.entrenchments = settings.entrenchments as Entrenchments;
+      }
+
+      if (settings.fogOfWar !== undefined) {
+        if (!(FOG_OF_WAR_VALUES as unknown[]).includes(settings.fogOfWar))
+          return callback({ ok: false, error: 'invalid fog of war' });
+        game.fogOfWar = settings.fogOfWar as FogOfWar;
+      }
+
+      if (settings.fortification !== undefined) {
+        if (
+          !(FORTIFICATION_VALUES as unknown[]).includes(settings.fortification)
+        )
+          return callback({ ok: false, error: 'invalid fortification' });
+        game.fortification = settings.fortification as Fortification;
+      }
+
+      if (settings.gameMode !== undefined) {
+        if (!(GAME_MODE_VALUES as unknown[]).includes(settings.gameMode))
+          return callback({ ok: false, error: 'invalid game mode' });
+        game.gameMode = settings.gameMode as GameMode;
+        if (game.gameMode === 'Team Deathmatch') game.alliances = 'off';
+      }
+
+      if (settings.mapName !== undefined) {
+        if (typeof settings.mapName !== 'string' || !maps.has(settings.mapName))
+          return callback({ ok: false, error: 'invalid map' });
+        game.mapName = settings.mapName;
+      }
+
+      if (settings.name !== undefined) {
+        const trimmedName = validateGameName(settings.name);
+        if (!trimmedName) return callback({ ok: false, error: 'invalid name' });
+
+        if (trimmedName !== game.name) {
+          if (games.has(trimmedName))
+            return callback({ ok: false, error: 'game name already in use' });
+
+          const oldRoom = gameRoomName(game.name);
+          const newRoom = gameRoomName(trimmedName);
+          games.delete(game.name);
+          for (const id of [...game.playerIds, ...game.spectatorIds]) {
+            const member = playersById.get(id);
+            if (member) member.gameName = trimmedName;
+            const memberSocket =
+              member && io.sockets.sockets.get(member.socketId);
+            memberSocket?.leave(oldRoom);
+            memberSocket?.join(newRoom);
+          }
+          game.name = trimmedName;
+          games.set(game.name, game);
+        }
+      }
+
+      if (settings.password !== undefined) {
+        if (settings.password === null) {
+          game.password = null;
+        } else {
+          if (typeof settings.password !== 'string')
+            return callback({ ok: false, error: 'invalid password' });
+          const trimmedPassword = settings.password.trim();
+          if (!trimmedPassword || trimmedPassword.length > MAX_PASSWORD_LENGTH)
+            return callback({ ok: false, error: 'invalid password' });
+          game.password = trimmedPassword;
+        }
+      }
+
+      if (settings.placement !== undefined) {
+        if (!(PLACEMENT_VALUES as unknown[]).includes(settings.placement))
+          return callback({ ok: false, error: 'invalid placement' });
+        game.placement = settings.placement as Placement;
+      }
+
       if (settings.playerTeam !== undefined) {
         const playerTeam = settings.playerTeam;
         if (!isObject(playerTeam))
@@ -422,67 +504,6 @@ export function registerGameHandlers(
         game.playerTeams.set(playerId, team);
       }
 
-      if (settings.slots !== undefined) {
-        if (
-          !isInteger(settings.slots) ||
-          settings.slots < 2 ||
-          settings.slots < game.playerIds.length ||
-          settings.slots > 20
-        ) {
-          return callback({ ok: false, error: 'invalid slots' });
-        }
-        game.slots = settings.slots;
-      }
-
-      if (settings.blitz !== undefined) {
-        if (!(BLITZ_VALUES as unknown[]).includes(settings.blitz))
-          return callback({ ok: false, error: 'invalid blitz' });
-        game.blitz = settings.blitz as Blitz;
-      }
-
-      if (settings.defenceDice !== undefined) {
-        if (!(DEFENCE_DICE_VALUES as unknown[]).includes(settings.defenceDice))
-          return callback({ ok: false, error: 'invalid defence dice' });
-        game.defenceDice = settings.defenceDice as DefenceDice;
-        if (game.defenceDice !== 2) game.entrenchments = 'off';
-      }
-
-      if (settings.cards !== undefined) {
-        if (!(CARDS_VALUES as unknown[]).includes(settings.cards))
-          return callback({ ok: false, error: 'invalid cards' });
-        game.cards = settings.cards as CardsMode;
-      }
-
-      if (settings.placement !== undefined) {
-        if (!(PLACEMENT_VALUES as unknown[]).includes(settings.placement))
-          return callback({ ok: false, error: 'invalid placement' });
-        game.placement = settings.placement as Placement;
-      }
-
-      if (settings.fortification !== undefined) {
-        if (
-          !(FORTIFICATION_VALUES as unknown[]).includes(settings.fortification)
-        )
-          return callback({ ok: false, error: 'invalid fortification' });
-        game.fortification = settings.fortification as Fortification;
-      }
-
-      if (settings.entrenchments !== undefined) {
-        if (
-          !(ENTRENCHMENTS_VALUES as unknown[]).includes(settings.entrenchments)
-        )
-          return callback({ ok: false, error: 'invalid entrenchments' });
-        if (settings.entrenchments === 'on' && game.defenceDice !== 2)
-          return callback({ ok: false, error: 'invalid entrenchments' });
-        game.entrenchments = settings.entrenchments as Entrenchments;
-      }
-
-      if (settings.toxins !== undefined) {
-        if (!(TOXINS_VALUES as unknown[]).includes(settings.toxins))
-          return callback({ ok: false, error: 'invalid toxins' });
-        game.toxins = settings.toxins as Toxins;
-      }
-
       if (settings.portals !== undefined) {
         if (!(PORTALS_VALUES as unknown[]).includes(settings.portals))
           return callback({ ok: false, error: 'invalid portals' });
@@ -495,22 +516,22 @@ export function registerGameHandlers(
         game.radiations = settings.radiations as Radiations;
       }
 
+      if (settings.slots !== undefined) {
+        if (
+          !isInteger(settings.slots) ||
+          settings.slots < 2 ||
+          settings.slots < game.playerIds.length ||
+          settings.slots > 20
+        ) {
+          return callback({ ok: false, error: 'invalid slots' });
+        }
+        game.slots = settings.slots;
+      }
+
       if (settings.starvation !== undefined) {
         if (!(STARVATION_VALUES as unknown[]).includes(settings.starvation))
           return callback({ ok: false, error: 'invalid starvation' });
         game.starvation = settings.starvation as Starvation;
-      }
-
-      if (settings.turnTroops !== undefined) {
-        if (!(TURN_TROOPS_VALUES as unknown[]).includes(settings.turnTroops))
-          return callback({ ok: false, error: 'invalid turn troops' });
-        game.turnTroops = settings.turnTroops as TurnTroops;
-      }
-
-      if (settings.bounties !== undefined) {
-        if (!(BOUNTIES_VALUES as unknown[]).includes(settings.bounties))
-          return callback({ ok: false, error: 'invalid bounties' });
-        game.bounties = settings.bounties as Bounties;
       }
 
       if (settings.supplyLines !== undefined) {
@@ -519,18 +540,10 @@ export function registerGameHandlers(
         game.supplyLines = settings.supplyLines as SupplyLines;
       }
 
-      if (settings.fogOfWar !== undefined) {
-        if (!(FOG_OF_WAR_VALUES as unknown[]).includes(settings.fogOfWar))
-          return callback({ ok: false, error: 'invalid fog of war' });
-        game.fogOfWar = settings.fogOfWar as FogOfWar;
-      }
-
-      if (settings.alliances !== undefined) {
-        if (!(ALLIANCES_VALUES as unknown[]).includes(settings.alliances))
-          return callback({ ok: false, error: 'invalid alliances' });
-        if (settings.alliances === 'on' && game.gameMode === 'Team Deathmatch')
-          return callback({ ok: false, error: 'invalid alliances' });
-        game.alliances = settings.alliances as Alliances;
+      if (settings.toxins !== undefined) {
+        if (!(TOXINS_VALUES as unknown[]).includes(settings.toxins))
+          return callback({ ok: false, error: 'invalid toxins' });
+        game.toxins = settings.toxins as Toxins;
       }
 
       if (settings.turnDuration !== undefined) {
@@ -541,17 +554,10 @@ export function registerGameHandlers(
         game.turnDuration = settings.turnDuration as TurnDuration;
       }
 
-      if (settings.password !== undefined) {
-        if (settings.password === null) {
-          game.password = null;
-        } else {
-          if (typeof settings.password !== 'string')
-            return callback({ ok: false, error: 'invalid password' });
-          const trimmedPassword = settings.password.trim();
-          if (!trimmedPassword || trimmedPassword.length > MAX_PASSWORD_LENGTH)
-            return callback({ ok: false, error: 'invalid password' });
-          game.password = trimmedPassword;
-        }
+      if (settings.turnTroops !== undefined) {
+        if (!(TURN_TROOPS_VALUES as unknown[]).includes(settings.turnTroops))
+          return callback({ ok: false, error: 'invalid turn troops' });
+        game.turnTroops = settings.turnTroops as TurnTroops;
       }
 
       if (settings.visibility !== undefined) {
@@ -634,6 +640,7 @@ export function registerGameHandlers(
         if (!ownsAnyTerritory(game, id)) game.deathOrder.push(id);
       }
     }
+    game.originalHostId = game.hostId;
     game.state = 'playing';
     game.remainingSpecialPhases = [
       ...(game.placement === 'Custom' ? (['territory'] as const) : []),

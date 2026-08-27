@@ -57,6 +57,7 @@ import MapButtonsColumn from './overlays/MapButtonsColumn';
 import TurnActionPanels from './overlays/TurnActionPanels';
 
 interface Props {
+  game: GameState;
   mapName: string;
   players: GameState['players'];
   spectators: GameState['spectators'];
@@ -122,6 +123,7 @@ interface Props {
 }
 
 function GameMap({
+  game,
   mapName,
   players,
   spectators,
@@ -184,6 +186,7 @@ function GameMap({
   const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
   const whiteUnmutedIcon = useWhiteIcon('/icons/unmuted.svg');
   const whiteLogsIcon = useWhiteIcon('/icons/logs.svg');
+  const whiteSettingsIcon = useWhiteIcon('/icons/sliders.svg');
 
   const {
     canvasRef,
@@ -370,14 +373,18 @@ function GameMap({
     cardsOpen,
     bonusesOpen,
     logsOpen,
+    settingsOpen,
     cardsButtonsTop,
     cardsPanelRef,
     cardsButtonRef,
     bonusesButtonRef,
     logsButtonRef,
     logsPanelRef,
+    settingsButtonRef,
+    settingsPanelRef,
     buttonColumnRef,
     logsPanelTop,
+    settingsPanelTop,
     panelCollapsed,
     setPanelCollapsed,
   } = usePanelsUI();
@@ -808,6 +815,12 @@ function GameMap({
         logsPanelTop={logsPanelTop}
         logsButtonRef={logsButtonRef}
         whiteLogsIcon={whiteLogsIcon}
+        settingsOpen={settingsOpen}
+        settingsPanelRef={settingsPanelRef}
+        settingsPanelTop={settingsPanelTop}
+        settingsButtonRef={settingsButtonRef}
+        whiteSettingsIcon={whiteSettingsIcon}
+        game={game}
         awardedCards={cardsFlow.awardedCards}
       />
       <PlayersPanel

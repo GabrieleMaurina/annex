@@ -170,8 +170,10 @@ export function useCanvasInteractions({
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   setPanelCollapsed: Dispatch<SetStateAction<boolean>>;
-  openPanel: 'cards' | 'bonuses' | 'logs' | null;
-  setOpenPanel: (panel: 'cards' | 'bonuses' | 'logs' | null) => void;
+  openPanel: 'cards' | 'bonuses' | 'logs' | 'settings' | null;
+  setOpenPanel: (
+    panel: 'cards' | 'bonuses' | 'logs' | 'settings' | null,
+  ) => void;
   cardsOpen: boolean;
   selectedCombo: EvaluatedCombo | undefined;
   playCardSet: (combo: EvaluatedCombo) => void;

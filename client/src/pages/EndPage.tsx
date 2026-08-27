@@ -1,11 +1,13 @@
-import { Button, Container, Table } from 'react-bootstrap';
+import { Badge, Button, Container, Table } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { useWhiteIcon } from '../common/icon';
+import PlayerNameEditor from '../common/PlayerNameEditor';
 import Tip from '../common/Tip';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import type { GameState, PlayerResultStats } from '../lib/types';
+import type { GameState, Player, PlayerResultStats } from '../lib/types';
+import SettingsPanel from '../lobby/SettingsPanel';
 
 const EMPTY_STATS: Omit<PlayerResultStats, 'id'> = {
   troopsGained: 0,
@@ -24,11 +26,23 @@ interface Props {
   game: GameState;
   results: Map<number, PlayerResultStats> | null;
   selfId: number | null;
+  mapNames: string[];
   navigate: (path: string) => void;
   onViewMap: () => void;
+  player: Player;
+  onNameChange: (name: string) => void;
 }
 
-function EndPage({ game, results, selfId, navigate, onViewMap }: Props) {
+function EndPage({
+  game,
+  results,
+  selfId,
+  mapNames,
+  navigate,
+  onViewMap,
+  player,
+  onNameChange,
+}: Props) {
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
   const won = selfId !== null && game.winnerIds.includes(selfId);
   const isTeamDeathmatch = game.gameMode === 'Team Deathmatch';
@@ -56,6 +70,9 @@ function EndPage({ game, results, selfId, navigate, onViewMap }: Props) {
 
   return (
     <Container fluid className="py-5 px-4">
+      <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
+        <PlayerNameEditor player={player} onNameChange={onNameChange} />
+      </div>
       <div className="text-center mb-4">
         <h1 className="mb-4">{won ? 'You Win!' : 'Game Over'}</h1>
         {isTeamDeathmatch ? (
@@ -131,6 +148,11 @@ function EndPage({ game, results, selfId, navigate, onViewMap }: Props) {
                       <span className="text-truncate" style={{ minWidth: 0 }}>
                         {p.id === selfId ? 'You' : p.name}
                       </span>
+                      {p.id === game.originalHostId && (
+                        <Badge bg="primary" className="flex-shrink-0">
+                          Host
+                        </Badge>
+                      )}
                       {p.eliminated && (
                         <Tip text="Eliminated">
                           <img
@@ -250,6 +272,15 @@ function EndPage({ game, results, selfId, navigate, onViewMap }: Props) {
         <Button variant="secondary" onClick={() => navigate('/')}>
           Leave
         </Button>
+      </div>
+
+      <div className="mt-4">
+        <SettingsPanel
+          game={game}
+          isHost={false}
+          mapNames={mapNames}
+          applySettings={() => {}}
+        />
       </div>
     </Container>
   );

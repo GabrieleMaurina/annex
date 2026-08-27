@@ -149,6 +149,7 @@ export interface Game {
   mapName: string;
   slots: number;
   hostId: number;
+  originalHostId: number;
   state: 'lobby' | 'playing' | 'ended';
   gameMode: GameMode;
   continentId: number | null;

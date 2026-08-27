@@ -278,6 +278,7 @@ function Game({
       <SettingsMenu shareUrl={window.location.href} />
       {showMap ? (
         <GameMap
+          game={game}
           mapName={game.mapName}
           players={game.players}
           spectators={game.spectators}
@@ -339,8 +340,11 @@ function Game({
           game={game}
           results={results}
           selfId={selfId}
+          mapNames={mapNames}
           navigate={navigate}
           onViewMap={() => setEndView('map')}
+          player={player}
+          onNameChange={onNameChange}
         />
       ) : (
         <Container fluid className="pt-3 pb-5 px-4">

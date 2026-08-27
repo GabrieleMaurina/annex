@@ -4,7 +4,7 @@
 }
 
 .help-tooltip {
-  --bs-tooltip-max-width: 320px;
+  --bs-tooltip-max-width: 480px;
 }
 
 .help-tooltip .tooltip-inner {

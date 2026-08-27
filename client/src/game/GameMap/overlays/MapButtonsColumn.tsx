@@ -4,6 +4,7 @@ import Tip from '../../../common/Tip';
 import type { Card, GameState, TurnPhase } from '../../../lib/types';
 import { comboKey, type EvaluatedCombo } from '../../logic/cards';
 import CardsPanel, { CardFace } from '../../panels/CardsPanel';
+import GameSettingsPanel from '../../panels/GameSettingsPanel';
 import LogsPanel from '../../panels/LogsPanel';
 import type { LogEntry } from '../../useGameLogs';
 
@@ -35,13 +36,21 @@ export default function MapButtonsColumn({
   logsPanelTop,
   logsButtonRef,
   whiteLogsIcon,
+  settingsOpen,
+  settingsPanelRef,
+  settingsPanelTop,
+  settingsButtonRef,
+  whiteSettingsIcon,
+  game,
   awardedCards,
 }: {
   cardsButtonsTop: number;
   buttonColumnRef: RefObject<HTMLDivElement | null>;
   bonusesButtonRef: RefObject<HTMLButtonElement | null>;
   whiteBonusIcon: string | undefined;
-  setOpenPanel: Dispatch<SetStateAction<'cards' | 'bonuses' | 'logs' | null>>;
+  setOpenPanel: Dispatch<
+    SetStateAction<'cards' | 'bonuses' | 'logs' | 'settings' | null>
+  >;
   cardsOpen: boolean;
   cardsPanelRef: RefObject<HTMLDivElement | null>;
   hand: Card[];
@@ -64,6 +73,12 @@ export default function MapButtonsColumn({
   logsPanelTop: number;
   logsButtonRef: RefObject<HTMLButtonElement | null>;
   whiteLogsIcon: string | undefined;
+  settingsOpen: boolean;
+  settingsPanelRef: RefObject<HTMLDivElement | null>;
+  settingsPanelTop: number;
+  settingsButtonRef: RefObject<HTMLButtonElement | null>;
+  whiteSettingsIcon: string | undefined;
+  game: GameState;
   awardedCards: { id: number; card: Card }[];
 }) {
   return (
@@ -80,6 +95,8 @@ export default function MapButtonsColumn({
             ref={bonusesButtonRef}
             variant="secondary"
             size="sm"
+            className="d-flex align-items-center justify-content-center"
+            style={{ width: 28, height: 28, padding: 0 }}
             onClick={() =>
               setOpenPanel((p) => (p === 'bonuses' ? null : 'bonuses'))
             }
@@ -112,7 +129,8 @@ export default function MapButtonsColumn({
               ref={cardsButtonRef}
               variant="secondary"
               size="sm"
-              className="position-relative"
+              className="position-relative d-flex align-items-center justify-content-center"
+              style={{ width: 28, height: 28, padding: 0 }}
               onClick={() => {
                 setOpenPanel('cards');
                 setAwardedCards([]);
@@ -152,6 +170,8 @@ export default function MapButtonsColumn({
               ref={logsButtonRef}
               variant="secondary"
               size="sm"
+              className="d-flex align-items-center justify-content-center"
+              style={{ width: 28, height: 28, padding: 0 }}
               onClick={() => setOpenPanel('logs')}
             >
               <img
@@ -159,6 +179,33 @@ export default function MapButtonsColumn({
                 width={16}
                 height={16}
                 alt="Logs"
+              />
+            </Button>
+          </Tip>
+        )}
+        {settingsOpen ? (
+          <div ref={settingsPanelRef}>
+            <GameSettingsPanel
+              game={game}
+              top={settingsPanelTop}
+              onClose={() => setOpenPanel(null)}
+            />
+          </div>
+        ) : (
+          <Tip text="Game Settings">
+            <Button
+              ref={settingsButtonRef}
+              variant="secondary"
+              size="sm"
+              className="d-flex align-items-center justify-content-center"
+              style={{ width: 28, height: 28, padding: 0 }}
+              onClick={() => setOpenPanel('settings')}
+            >
+              <img
+                src={whiteSettingsIcon ?? '/icons/sliders.svg'}
+                width={16}
+                height={16}
+                alt="Settings"
               />
             </Button>
           </Tip>

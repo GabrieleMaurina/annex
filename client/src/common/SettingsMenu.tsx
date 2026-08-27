@@ -67,6 +67,7 @@ function SettingsMenu({ shareUrl }: Props) {
             variant="secondary"
             size="sm"
             className="d-flex align-items-center justify-content-center"
+            style={{ width: 28, height: 28, padding: 0 }}
             onClick={() => setOpen(true)}
           >
             <img

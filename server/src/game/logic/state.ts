@@ -96,6 +96,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     mapName: game.mapName,
     slots: game.slots,
     hostId: game.hostId,
+    originalHostId: game.originalHostId,
     state: game.state,
     gameMode: game.gameMode,
     continentId: game.continentId,

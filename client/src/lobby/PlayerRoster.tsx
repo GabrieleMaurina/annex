@@ -96,13 +96,10 @@ function PlayerRoster({
                         if (el) nameCellRefs.current.set(p.id, el);
                         else nameCellRefs.current.delete(p.id);
                       }}
+                      className="d-inline-flex align-items-center gap-2"
                     >
                       {p.id === selfId ? 'You' : p.name}
-                      {p.id === game.hostId && (
-                        <Badge bg="primary" className="ms-2 align-middle">
-                          Host
-                        </Badge>
-                      )}
+                      {p.id === game.hostId && <Badge bg="primary">Host</Badge>}
                     </span>
                   ) : (
                     <span className="text-muted">Empty</span>

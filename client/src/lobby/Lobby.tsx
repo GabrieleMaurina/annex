@@ -157,24 +157,25 @@ function Lobby({
         </Alert>
       )}
 
-      <div className="d-flex justify-content-between align-items-start mb-4">
+      <div className="mb-1">
         <SettingsPanel
           game={game}
           isHost={isHost}
           mapNames={mapNames}
           applySettings={applySettings}
+          headerActions={
+            <div className="d-flex gap-2">
+              {isHost && (
+                <Button disabled={!canStart} onClick={startGame}>
+                  Start
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => navigate('/')}>
+                Leave
+              </Button>
+            </div>
+          }
         />
-
-        <div className="d-flex flex-column gap-2">
-          {isHost && (
-            <Button disabled={!canStart} onClick={startGame}>
-              Start
-            </Button>
-          )}
-          <Button variant="secondary" onClick={() => navigate('/')}>
-            Leave
-          </Button>
-        </div>
       </div>
 
       <PlayerRoster

@@ -35,7 +35,9 @@ export function useCardsAndDeploy({
   selfId: number | null;
   playersRef: RefObject<GameState['players']>;
   cardsOpen: boolean;
-  setOpenPanel: (panel: 'cards' | 'bonuses' | 'logs' | null) => void;
+  setOpenPanel: (
+    panel: 'cards' | 'bonuses' | 'logs' | 'settings' | null,
+  ) => void;
   setToasts: (
     update: (prev: { id: number; message: string }[]) => {
       id: number;

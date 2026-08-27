@@ -78,6 +78,7 @@ A game with `visibility: 'private'` (see `GameState` below) is never included he
   mapName: string;
   slots: number;
   hostId: number;
+  originalHostId: number; // whoever was host when `game:start` was called; unlike `hostId`, never reassigned after that, so the results table can always flag the same player
   state: 'lobby' | 'playing' | 'ended';
   gameMode: 'Supremacy' | 'Supremacy 3/4' | 'Supremacy 2/3' | 'Capitals' | 'Team Deathmatch' | 'Continent' | '5-Turn' | '10-Turn' | 'Assassin' | 'Mission' | 'Player Kills' | 'Troop Kills';
   continentId: number | null; // only set in 'Continent', otherwise null; see below
@@ -288,40 +289,40 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:settings`
 - **When sent:** the host of a game changes any settings.
-- **Purpose:** single bundled message for every settings mutation: rename, change map, slot count, ban list, a player's team, game mode / blitz / defence dice / cards / placement / fortification / entrenchments / toxins / portals / radiations / starvation / turn troops / bounties / supply lines / fog of war / alliances / turn duration / password / visibility. Only the fields present are applied; the caller must be host, and the game must still be `lobby`: nothing can change once `playing`. Fields apply in a fixed order: `mapName`, `gameMode`, `name`, `bannedPlayerIds`, `playerTeam`, `slots`, `blitz`, `defenceDice`, `cards`, `placement`, `fortification`, `entrenchments`, `toxins`, `portals`, `radiations`, `starvation`, `turnTroops`, `bounties`, `supplyLines`, `fogOfWar`, `alliances`, `turnDuration`, `password`, `visibility`, so `slots`/`playerTeam` are validated against the roster *after* any kicks in the same request, `entrenchments` is validated against the (possibly just-updated) `defenceDice` from the same call, and `alliances` is validated against the (possibly just-updated) `gameMode` from the same call. `gameMode` and the last eighteen fields are independent of the rest; their position otherwise doesn't matter, except `entrenchments` must come after `defenceDice` (setting `defenceDice` to `3` in the same call always forces `entrenchments` to `'off'` first, and `entrenchments: 'on'` is rejected outright unless `defenceDice` ends up `2`) and `alliances` must come after `gameMode` (setting `gameMode` to `'Team Deathmatch'` in the same call always forces `alliances` to `'off'` first, and `alliances: 'on'` is rejected outright unless `gameMode` ends up something other than `'Team Deathmatch'`).
+- **Purpose:** single bundled message for every settings mutation: rename, change map, slot count, ban list, a player's team, game mode / blitz / defence dice / cards / placement / fortification / entrenchments / toxins / portals / radiations / starvation / turn troops / bounties / supply lines / fog of war / alliances / turn duration / password / visibility. Only the fields present are applied; the caller must be host, and the game must still be `lobby`: nothing can change once `playing`. Fields are applied in alphabetical order, so `bannedPlayerIds` is always applied (and any kicks resolved) before `slots`/`playerTeam` are validated against the resulting roster. `entrenchments` and `alliances` each depend on another field from the same call: `entrenchments: 'on'` is rejected unless `defenceDice` ends up `2` (and setting `defenceDice` to `3` always forces `entrenchments` back to `'off'`), and `alliances: 'on'` is rejected unless `gameMode` ends up something other than `'Team Deathmatch'` (and setting `gameMode` to `'Team Deathmatch'` always forces `alliances` back to `'off'`); both checks use the value being set in the same call when present, falling back to the game's current value otherwise, regardless of the two fields' relative order.
 - **Content:** (all fields optional, only send what changed)
   ```ts
   {
-    name?: string;              // trimmed; empty, all-whitespace, over 20 characters, or the reserved name `home` is rejected
-    mapName?: string;
-    slots?: number;            // 2–20, and never below the player count once bannedPlayerIds (if present) has been applied
+    alliances?: 'off' | 'on'; // 'on' is rejected while gameMode is (or becomes, in this same call) 'Team Deathmatch'
     bannedPlayerIds?: number[]; // replaces the game's entire ban list
-    playerTeam?: { playerId: number; team: number };
-    gameMode?: 'Supremacy' | 'Supremacy 3/4' | 'Supremacy 2/3' | 'Capitals' | 'Team Deathmatch' | 'Continent' | '5-Turn' | '10-Turn' | 'Assassin' | 'Mission' | 'Player Kills' | 'Troop Kills';
     blitz?: 'Balanced' | 'True';
-    defenceDice?: 2 | 3;
+    bounties?: 'off' | 'on';
     cards?: 'Constant' | 'Linear' | 'Exponential' | 'Linear Per Player' | 'Exponential Per Player';
-    placement?: 'Random' | 'Semi' | 'Custom';
-    fortification?: 'Connected' | 'Neighboring' | 'Unrestricted';
+    defenceDice?: 2 | 3;
     entrenchments?: 'off' | 'on'; // 'on' requires defenceDice to be (or become, in this same call) 2
-    toxins?: 'off' | 'temporary' | 'permanent';
+    fogOfWar?: 'off' | 'on';
+    fortification?: 'Connected' | 'Neighboring' | 'Unrestricted';
+    gameMode?: 'Supremacy' | 'Supremacy 3/4' | 'Supremacy 2/3' | 'Capitals' | 'Team Deathmatch' | 'Continent' | '5-Turn' | '10-Turn' | 'Assassin' | 'Mission' | 'Player Kills' | 'Troop Kills';
+    mapName?: string;
+    name?: string;              // trimmed; empty, all-whitespace, over 20 characters, or the reserved name `home` is rejected
+    password?: string | null;  // trimmed; empty/all-whitespace is rejected, over 50 characters is rejected; null clears it
+    placement?: 'Random' | 'Semi' | 'Custom';
+    playerTeam?: { playerId: number; team: number };
     portals?: 'off' | 'static' | 'dynamic';
     radiations?: 'off' | 'static' | 'dynamic' | 'expanding';
+    slots?: number;            // 2–20, and never below the player count once bannedPlayerIds (if present) has been applied
     starvation?: 'off' | 'territory' | 'total' | 'percent';
-    turnTroops?: 'off' | 'on';
-    bounties?: 'off' | 'on';
     supplyLines?: 'off' | 'on';
-    fogOfWar?: 'off' | 'on';
-    alliances?: 'off' | 'on'; // 'on' is rejected while gameMode is (or becomes, in this same call) 'Team Deathmatch'
+    toxins?: 'off' | 'temporary' | 'permanent';
     turnDuration?: 60 | 90 | 120 | 150 | 180 | 300; // seconds
-    password?: string | null;  // trimmed; empty/all-whitespace is rejected, over 50 characters is rejected; null clears it
+    turnTroops?: 'off' | 'on';
     visibility?: 'public' | 'private';
   }
   ```
   `bannedPlayerIds` replaces the whole ban list at once, not one id at a time: to kick, send the current `bannedPlayers` ids (from `game:state`) plus the new one; to unban, send them minus the id. Any newly-present id belonging to a current player or spectator is kicked (evicted, sent `game:kicked`); the host's own id is silently dropped rather than self-banning.
 
   `playerTeam` sets one player's `team` (see `GameState.players` above for its valid range); rejected with `invalid team` unless `playerId` is currently a player (not a spectator) and `team` is an integer within that range.
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid name`, `invalid map`, `invalid slots`, `invalid banned players`, `invalid team`, `invalid game mode`, `invalid blitz`, `invalid defence dice`, `invalid cards`, `invalid placement`, `invalid fortification`, `invalid entrenchments`, `invalid toxins`, `invalid portals`, `invalid radiations`, `invalid starvation`, `invalid turn troops`, `invalid bounties`, `invalid supply lines`, `invalid fog of war`, `invalid alliances`, `invalid turn duration`, `invalid password`, `invalid visibility`, `game name already in use`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid alliances`, `invalid banned players`, `invalid blitz`, `invalid bounties`, `invalid cards`, `invalid defence dice`, `invalid entrenchments`, `invalid fog of war`, `invalid fortification`, `invalid game mode`, `invalid map`, `invalid name`, `invalid password`, `invalid placement`, `invalid team`, `invalid portals`, `invalid radiations`, `invalid slots`, `invalid starvation`, `invalid supply lines`, `invalid toxins`, `invalid turn duration`, `invalid turn troops`, `invalid visibility`, `game name already in use`.
 
 ### `game:cycleColor`
 - **When sent:** a player clicks their own color in the lobby's player table.

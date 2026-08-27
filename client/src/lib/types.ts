@@ -116,6 +116,7 @@ export interface GameState {
   mapName: string;
   slots: number;
   hostId: number;
+  originalHostId: number;
   state: 'lobby' | 'playing' | 'ended';
   gameMode: GameMode;
   continentId: number | null;
@@ -212,52 +213,52 @@ export interface GameResults {
 }
 
 export interface GameSettingsInput {
-  name?: string;
-  mapName?: string;
-  slots?: number;
+  alliances?: Alliances;
   bannedPlayerIds?: number[];
-  playerTeam?: { playerId: number; team: number };
-  gameMode?: GameMode;
   blitz?: Blitz;
-  defenceDice?: DefenceDice;
+  bounties?: Bounties;
   cards?: CardsMode;
-  placement?: Placement;
-  fortification?: Fortification;
+  defenceDice?: DefenceDice;
   entrenchments?: Entrenchments;
-  toxins?: Toxins;
+  fogOfWar?: FogOfWar;
+  fortification?: Fortification;
+  gameMode?: GameMode;
+  mapName?: string;
+  name?: string;
+  password?: string | null;
+  placement?: Placement;
+  playerTeam?: { playerId: number; team: number };
   portals?: Portals;
   radiations?: Radiations;
+  slots?: number;
   starvation?: Starvation;
-  turnTroops?: TurnTroops;
-  bounties?: Bounties;
   supplyLines?: SupplyLines;
-  fogOfWar?: FogOfWar;
-  alliances?: Alliances;
+  toxins?: Toxins;
   turnDuration?: TurnDuration;
-  password?: string | null;
+  turnTroops?: TurnTroops;
   visibility?: Visibility;
 }
 
 export type GameRulesSettings = Pick<
   GameSettingsInput,
-  | 'mapName'
-  | 'gameMode'
+  | 'alliances'
   | 'blitz'
-  | 'defenceDice'
+  | 'bounties'
   | 'cards'
-  | 'placement'
-  | 'fortification'
+  | 'defenceDice'
   | 'entrenchments'
-  | 'toxins'
+  | 'fogOfWar'
+  | 'fortification'
+  | 'gameMode'
+  | 'mapName'
+  | 'placement'
   | 'portals'
   | 'radiations'
   | 'starvation'
-  | 'turnTroops'
-  | 'bounties'
   | 'supplyLines'
-  | 'fogOfWar'
-  | 'alliances'
+  | 'toxins'
   | 'turnDuration'
+  | 'turnTroops'
   | 'visibility'
 >;
 

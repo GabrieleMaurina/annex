@@ -224,6 +224,32 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     pushLog(NEUTRAL_LOG_COLOR, 'Started capital placement');
   }, [pushLog]);
 
+  const onAllianceFormed = useCallback(
+    (payload: { withId: number }) => {
+      const name =
+        gameRef.current?.players.find((p) => p.id === payload.withId)?.name ??
+        'a player';
+      pushLog(
+        colorForPlayer(payload.withId),
+        `Formed an alliance with ${name}`,
+      );
+    },
+    [colorForPlayer, pushLog],
+  );
+
+  const onAllianceTerminated = useCallback(
+    (payload: { withId: number }) => {
+      const name =
+        gameRef.current?.players.find((p) => p.id === payload.withId)?.name ??
+        'a player';
+      pushLog(
+        colorForPlayer(payload.withId),
+        `Terminated the alliance with ${name}`,
+      );
+    },
+    [colorForPlayer, pushLog],
+  );
+
   const onTerritoryClaimed = useCallback(
     (payload: { territoryId: number; playerId: number }) => {
       const color = colorForPlayer(payload.playerId);
@@ -249,6 +275,8 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     socket.on('game:turnStarted', onTurnStarted);
     socket.on('game:capitalPlacementStarted', onCapitalPlacementStarted);
     socket.on('game:territoryClaimed', onTerritoryClaimed);
+    socket.on('game:allianceFormed', onAllianceFormed);
+    socket.on('game:allianceTerminated', onAllianceTerminated);
     return () => {
       socket.off('game:deployed', onDeployed);
       socket.off('game:fortified', onFortified);
@@ -262,6 +290,8 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
       socket.off('game:turnStarted', onTurnStarted);
       socket.off('game:capitalPlacementStarted', onCapitalPlacementStarted);
       socket.off('game:territoryClaimed', onTerritoryClaimed);
+      socket.off('game:allianceFormed', onAllianceFormed);
+      socket.off('game:allianceTerminated', onAllianceTerminated);
     };
   }, [
     onDeployed,
@@ -276,6 +306,8 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     onTurnStarted,
     onCapitalPlacementStarted,
     onTerritoryClaimed,
+    onAllianceFormed,
+    onAllianceTerminated,
   ]);
 
   const applyLogEntry = useCallback(
@@ -323,6 +355,16 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
             entry.payload as Parameters<typeof onTerritoryClaimed>[0],
           );
           break;
+        case 'game:allianceFormed':
+          onAllianceFormed(
+            entry.payload as Parameters<typeof onAllianceFormed>[0],
+          );
+          break;
+        case 'game:allianceTerminated':
+          onAllianceTerminated(
+            entry.payload as Parameters<typeof onAllianceTerminated>[0],
+          );
+          break;
       }
     },
     [
@@ -338,6 +380,8 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
       onTurnStarted,
       onCapitalPlacementStarted,
       onTerritoryClaimed,
+      onAllianceFormed,
+      onAllianceTerminated,
     ],
   );
 

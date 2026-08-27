@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player } from '../../types';
+import { allianceStatesForViewer, alliedIds } from './alliances';
 import { withPortalEdges } from './portals';
 import { gameState, isEliminated, territoryStats } from './state';
 
@@ -13,8 +14,9 @@ export function computeVisibleTerritoryIds(
     map.territories.map((t) => [t.id, t.neighbors]),
   );
   const visible = new Set<number>();
+  const ownersToInclude = new Set([playerId, ...alliedIds(game, playerId)]);
   for (const [territoryId, ownerId] of game.territoryOwners) {
-    if (ownerId !== playerId) continue;
+    if (!ownersToInclude.has(ownerId)) continue;
     visible.add(territoryId);
     for (const n of withPortalEdges(
       neighborsById.get(territoryId) ?? [],
@@ -103,7 +105,11 @@ export function filterGameStateForViewer(
   game: Game,
   viewerId: number,
 ): ReturnType<typeof gameState> {
-  if (!isFogActive(game, viewerId)) return base;
+  const withAlliances = {
+    ...base,
+    allianceStates: allianceStatesForViewer(game, viewerId),
+  };
+  if (!isFogActive(game, viewerId)) return withAlliances;
 
   const visible = computeVisibleTerritoryIds(game, viewerId);
   const attackEndVisible =
@@ -137,8 +143,10 @@ export function filterGameStateForViewer(
       base.attackEndTerritoryId,
     );
 
+  const allies = alliedIds(game, viewerId);
+
   return {
-    ...base,
+    ...withAlliances,
     territories: base.territories.filter((t) => visible.has(t.id)),
     toxinTerritories: base.toxinTerritories.filter((t) => visible.has(t.id)),
     portalTerritoryIds: base.portalTerritoryIds.filter((id) => visible.has(id)),
@@ -165,7 +173,9 @@ export function filterGameStateForViewer(
       visible,
     ),
     players: base.players.map((p) =>
-      p.id === viewerId ? p : { ...p, territoryCount: null, troopCount: null },
+      p.id === viewerId || allies.has(p.id)
+        ? p
+        : { ...p, territoryCount: null, troopCount: null },
     ),
   };
 }
@@ -181,6 +191,8 @@ const LOGGED_EVENTS = new Set([
   'game:attacked',
   'game:cardSetPlayed',
   'game:turnStarted',
+  'game:allianceFormed',
+  'game:allianceTerminated',
   'game:capitalPlacementStarted',
   'game:territoryClaimed',
 ]);

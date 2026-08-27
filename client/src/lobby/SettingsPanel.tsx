@@ -3,6 +3,7 @@ import { Button, Form } from 'react-bootstrap';
 import Help from '../common/Help';
 import { playSound } from '../lib/sounds';
 import type {
+  Alliances,
   Blitz,
   Bounties,
   CardsMode,
@@ -352,6 +353,22 @@ const FOG_OF_WAR_HELP = (
   </>
 );
 
+const ALLIANCES_HELP = (
+  <>
+    Whether players can form private alliances with each other.
+    <ul className="mb-0 ps-3">
+      <li>Off: no alliances; direct emojis can be sent to anyone.</li>
+      <li>
+        On: players can offer, accept, and terminate alliances with each other.
+        Allies can always send each other direct emojis (others can&apos;t),
+        and, with Fog Of War on, see each other&apos;s vision as if it were
+        their own. Not available in Team Deathmatch, where teammates already get
+        these benefits automatically.
+      </li>
+    </ul>
+  </>
+);
+
 const TURN_DURATION_HELP =
   "How long each player's turn can last. If time runs out, the game finishes it for them: leftover troops are dropped on random territories, any pending move is resolved automatically, and the turn ends.";
 
@@ -394,6 +411,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   bounties: 'off',
   supplyLines: 'off',
   fogOfWar: 'off',
+  alliances: 'off',
   turnDuration: 120,
   password: null,
   visibility: 'public',
@@ -859,6 +877,31 @@ function SettingsPanel({ game, isHost, mapNames, applySettings }: Props) {
               </Form.Select>
             ) : (
               <span>{game.fogOfWar === 'on' ? 'On' : 'Off'}</span>
+            )}
+          </div>
+
+          <div className="col d-flex align-items-center gap-2">
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Alliances
+              <Help>{ALLIANCES_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                value={game.alliances}
+                disabled={game.gameMode === 'Team Deathmatch'}
+                onChange={(e) =>
+                  applySettings({ alliances: e.target.value as Alliances })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="on">On</option>
+              </Form.Select>
+            ) : (
+              <span>{game.alliances === 'on' ? 'On' : 'Off'}</span>
             )}
           </div>
 

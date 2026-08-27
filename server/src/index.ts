@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import {
+  registerAllianceHandlers,
   registerAttackHandlers,
   registerCapitalHandlers,
   registerCardHandlers,
@@ -46,6 +47,7 @@ io.on('connection', (socket) => {
   registerToxinsHandlers(io, socket, playersBySocket, playersById);
   registerAttackHandlers(io, socket, playersBySocket, playersById);
   registerCardHandlers(io, socket, playersBySocket, playersById);
+  registerAllianceHandlers(io, socket, playersBySocket, playersById);
   registerReplayHandlers(io, socket, playersBySocket);
 });
 

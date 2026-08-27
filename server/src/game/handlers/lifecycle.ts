@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { defaultMapName, maps } from '../../maps';
 import { containsProfanity } from '../../profanity';
 import {
+  Alliances,
   Blitz,
   Bounties,
   CardsMode,
@@ -116,6 +117,7 @@ const TURN_TROOPS_VALUES: TurnTroops[] = ['off', 'on'];
 const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
 const SUPPLY_LINES_VALUES: SupplyLines[] = ['off', 'on'];
 const FOG_OF_WAR_VALUES: FogOfWar[] = ['off', 'on'];
+const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
 const MAX_PASSWORD_LENGTH = 50;
@@ -189,6 +191,11 @@ export function registerGameHandlers(
         bounties: 'off',
         supplyLines: 'off',
         fogOfWar: 'off',
+        alliances: 'off',
+        allianceIds: new Set(),
+        allianceRequests: new Map(),
+        allianceCooldowns: new Map(),
+        allianceInitiators: new Map(),
         turnDuration: 120,
         password: null,
         visibility: 'public',
@@ -336,6 +343,7 @@ export function registerGameHandlers(
         if (!(GAME_MODE_VALUES as unknown[]).includes(settings.gameMode))
           return callback({ ok: false, error: 'invalid game mode' });
         game.gameMode = settings.gameMode as GameMode;
+        if (game.gameMode === 'Team Deathmatch') game.alliances = 'off';
       }
 
       if (settings.name !== undefined) {
@@ -517,6 +525,14 @@ export function registerGameHandlers(
         game.fogOfWar = settings.fogOfWar as FogOfWar;
       }
 
+      if (settings.alliances !== undefined) {
+        if (!(ALLIANCES_VALUES as unknown[]).includes(settings.alliances))
+          return callback({ ok: false, error: 'invalid alliances' });
+        if (settings.alliances === 'on' && game.gameMode === 'Team Deathmatch')
+          return callback({ ok: false, error: 'invalid alliances' });
+        game.alliances = settings.alliances as Alliances;
+      }
+
       if (settings.turnDuration !== undefined) {
         if (
           !(TURN_DURATION_VALUES as unknown[]).includes(settings.turnDuration)
@@ -565,6 +581,11 @@ export function registerGameHandlers(
       return callback({ ok: false, error: 'not enough players' });
     if (game.gameMode === 'Team Deathmatch' && teamCount(game) < 2)
       return callback({ ok: false, error: 'not enough teams' });
+    if (game.gameMode === 'Team Deathmatch' && game.alliances === 'on')
+      return callback({
+        ok: false,
+        error: 'alliances not allowed in team deathmatch',
+      });
 
     for (const ownerId of game.substituteFor.values()) {
       const owner = playersById.get(ownerId);

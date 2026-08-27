@@ -18,6 +18,11 @@ import { socket } from '../lib/socket';
 import { playSound } from '../lib/sounds';
 import type {
   Ack,
+  AllianceDeclinedPayload,
+  AllianceFormedPayload,
+  AllianceRequestedPayload,
+  Alliances,
+  AllianceTerminatedPayload,
   Bounties,
   Card,
   CardsMode,
@@ -164,6 +169,8 @@ interface Props {
   starvation: Starvation;
   bounties: Bounties;
   supplyLines: SupplyLines;
+  alliances: Alliances;
+  allianceStates: GameState['allianceStates'];
   territoryTroopsCap: number;
   totalTroopsCap: number;
   troopsToDeploy: number;
@@ -337,6 +344,43 @@ const STATE_STYLE = {
   selected: { stroke: '#ffffff', width: 7 },
 };
 
+function AlliancePopupButtons({
+  confirmText,
+  denyText,
+  onConfirm,
+  onDeny,
+}: {
+  confirmText: string;
+  denyText: string;
+  onConfirm: () => void;
+  onDeny: () => void;
+}) {
+  return (
+    <>
+      <Tip text={confirmText} placement="bottom">
+        <button
+          type="button"
+          className="border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
+          style={{ fontSize: 18, padding: '3px 6px', color: 'green' }}
+          onClick={onConfirm}
+        >
+          ✔️
+        </button>
+      </Tip>
+      <Tip text={denyText} placement="bottom">
+        <button
+          type="button"
+          className="border-0 border-start bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
+          style={{ fontSize: 18, padding: '3px 6px', color: 'red' }}
+          onClick={onDeny}
+        >
+          ❌
+        </button>
+      </Tip>
+    </>
+  );
+}
+
 function GameMap({
   mapName,
   players,
@@ -365,6 +409,8 @@ function GameMap({
   starvation,
   bounties,
   supplyLines,
+  alliances,
+  allianceStates,
   territoryTroopsCap,
   totalTroopsCap,
   troopsToDeploy,
@@ -415,6 +461,7 @@ function GameMap({
   } | null>(null);
   const cardSetFlashIdRef = useRef(0);
   const [emojiPickerFor, setEmojiPickerFor] = useState<number | null>(null);
+  const [alliancePopupFor, setAlliancePopupFor] = useState<number | null>(null);
   const [pendingAttackEmoji, setPendingAttackEmoji] = useState<{
     targetPlayerId: number;
   } | null>(null);
@@ -536,6 +583,8 @@ function GameMap({
   const vertexScreenRadiusRef = useRef(0);
   const rowRefs = useRef(new Map<number, HTMLElement>());
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const allianceCellRefs = useRef(new Map<number, HTMLElement>());
+  const alliancePopupRef = useRef<HTMLDivElement>(null);
   const attackOptionIndexRef = useRef(0);
   const autoAdvanceKeyRef = useRef<string | null>(null);
   const cardImagesRef = useRef<Record<CardSymbol, HTMLImageElement>>({
@@ -2219,6 +2268,144 @@ function GameMap({
     return () => document.removeEventListener('mousedown', handleOutside);
   }, [emojiPickerFor]);
 
+  const emojiAllowedIds = useMemo(() => {
+    if (selfId === null) return null;
+    if (isTeamDeathmatch) {
+      const selfTeam = players.find((p) => p.id === selfId)?.team;
+      return new Set(
+        players
+          .filter((p) => p.id !== selfId && p.team === selfTeam)
+          .map((p) => p.id),
+      );
+    }
+    if (alliances === 'on') {
+      return new Set(
+        allianceStates
+          .filter((a) => a.state === 'allied')
+          .map((a) => a.playerId),
+      );
+    }
+    return null;
+  }, [isTeamDeathmatch, alliances, players, allianceStates, selfId]);
+
+  function allianceStateWith(playerId: number) {
+    return allianceStates.find((a) => a.playerId === playerId)?.state ?? 'none';
+  }
+
+  function handleAllianceCellClick(playerId: number) {
+    const state = allianceStateWith(playerId);
+    if (state === 'none') {
+      if (allianceCooldownIds.has(playerId)) return;
+      setAlliancePopupFor(null);
+      socket.emit('game:offerAlliance', { targetPlayerId: playerId });
+    } else if (state === 'requestSent') {
+      setAlliancePopupFor(null);
+      socket.emit('game:revokeAllianceRequest', { targetPlayerId: playerId });
+    } else {
+      setAlliancePopupFor((prev) => (prev === playerId ? null : playerId));
+    }
+  }
+
+  function respondAllianceRequest(fromPlayerId: number, accept: boolean) {
+    setAlliancePopupFor(null);
+    socket.emit('game:respondAllianceRequest', { fromPlayerId, accept });
+  }
+
+  function terminateAlliance(targetPlayerId: number) {
+    setAlliancePopupFor(null);
+    socket.emit('game:terminateAlliance', { targetPlayerId });
+  }
+
+  const [allianceCooldownIds, setAllianceCooldownIds] = useState<Set<number>>(
+    new Set(),
+  );
+
+  useEffect(() => {
+    function recomputeCooldowns() {
+      const now = Date.now();
+      setAllianceCooldownIds(
+        new Set(
+          allianceStates
+            .filter(
+              (a) => a.cooldownUntil !== undefined && a.cooldownUntil > now,
+            )
+            .map((a) => a.playerId),
+        ),
+      );
+      return now;
+    }
+    const now = recomputeCooldowns();
+    const timers = allianceStates
+      .map((a) => a.cooldownUntil)
+      .filter((until): until is number => until !== undefined && until > now)
+      .map((until) => setTimeout(recomputeCooldowns, until - now + 50));
+    return () => timers.forEach(clearTimeout);
+  }, [allianceStates]);
+
+  useEffect(() => {
+    function onAllianceRequested(payload: AllianceRequestedPayload) {
+      playSound('emoji');
+      const name =
+        playersRef.current.find((p) => p.id === payload.fromId)?.name ??
+        'A player';
+      setToasts((prev) => [
+        ...prev,
+        { id: Date.now(), message: `${name} sent you an alliance request` },
+      ]);
+    }
+    function onAllianceFormed(payload: AllianceFormedPayload) {
+      const name =
+        playersRef.current.find((p) => p.id === payload.withId)?.name ??
+        'A player';
+      setToasts((prev) => [
+        ...prev,
+        { id: Date.now(), message: `Allied with ${name}` },
+      ]);
+    }
+    function onAllianceTerminated(payload: AllianceTerminatedPayload) {
+      const name =
+        playersRef.current.find((p) => p.id === payload.withId)?.name ??
+        'A player';
+      setToasts((prev) => [
+        ...prev,
+        { id: Date.now(), message: `Alliance with ${name} terminated` },
+      ]);
+    }
+    function onAllianceDeclined(payload: AllianceDeclinedPayload) {
+      const name =
+        playersRef.current.find((p) => p.id === payload.withId)?.name ??
+        'A player';
+      setToasts((prev) => [
+        ...prev,
+        { id: Date.now(), message: `${name} declined your alliance request` },
+      ]);
+    }
+    socket.on('game:allianceRequested', onAllianceRequested);
+    socket.on('game:allianceFormed', onAllianceFormed);
+    socket.on('game:allianceTerminated', onAllianceTerminated);
+    socket.on('game:allianceDeclined', onAllianceDeclined);
+    return () => {
+      socket.off('game:allianceRequested', onAllianceRequested);
+      socket.off('game:allianceFormed', onAllianceFormed);
+      socket.off('game:allianceTerminated', onAllianceTerminated);
+      socket.off('game:allianceDeclined', onAllianceDeclined);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (alliancePopupFor === null) return;
+    function handleOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (alliancePopupRef.current?.contains(target)) return;
+      for (const cell of allianceCellRefs.current.values()) {
+        if (cell.contains(target)) return;
+      }
+      setAlliancePopupFor(null);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [alliancePopupFor]);
+
   useEffect(() => {
     const settingsEl = document.getElementById('settings-toggle');
     if (!settingsEl) return;
@@ -2402,6 +2589,10 @@ function GameMap({
           setEmojiPickerFor(null);
           return;
         }
+        if (alliancePopupFor !== null) {
+          setAlliancePopupFor(null);
+          return;
+        }
         if (openPanel !== null) {
           setOpenPanel(null);
           return;
@@ -2554,6 +2745,7 @@ function GameMap({
   }, [
     pendingAttackEmoji,
     emojiPickerFor,
+    alliancePopupFor,
     openPanel,
     isMyTurn,
     turnPhase,
@@ -3786,7 +3978,53 @@ function GameMap({
         onRowClick={handlePlayerRowClick}
         emojiTargeting={pendingAttackEmoji !== null}
         emojiPops={emojiPops}
+        emojiAllowedIds={emojiAllowedIds}
+        alliances={alliances}
+        allianceStates={allianceStates}
+        allianceCellRefs={allianceCellRefs}
+        onAllianceCellClick={handleAllianceCellClick}
+        allianceCooldownIds={allianceCooldownIds}
       />
+      {alliancePopupFor !== null &&
+        (() => {
+          const state = allianceStateWith(alliancePopupFor);
+          if (state !== 'allied' && state !== 'requestReceived') return null;
+          const rect = allianceCellRefs.current
+            .get(alliancePopupFor)
+            ?.getBoundingClientRect();
+          if (!rect) return null;
+          return (
+            <div
+              ref={alliancePopupRef}
+              className={`position-fixed ${PANEL_BG_CLASS} border rounded d-flex align-items-center`}
+              style={{
+                top: rect.bottom + 4,
+                left: rect.left,
+                width: 'fit-content',
+                padding: 0,
+                zIndex: 3,
+              }}
+            >
+              {state === 'requestReceived' ? (
+                <AlliancePopupButtons
+                  confirmText="Accept alliance"
+                  denyText="Decline alliance"
+                  onConfirm={() =>
+                    respondAllianceRequest(alliancePopupFor, true)
+                  }
+                  onDeny={() => respondAllianceRequest(alliancePopupFor, false)}
+                />
+              ) : (
+                <AlliancePopupButtons
+                  confirmText="Keep alliance"
+                  denyText="Terminate alliance"
+                  onConfirm={() => setAlliancePopupFor(null)}
+                  onDeny={() => terminateAlliance(alliancePopupFor)}
+                />
+              )}
+            </div>
+          );
+        })()}
       {emojiPickerFor !== null &&
         (() => {
           const rect = rowRefs.current

@@ -305,6 +305,8 @@ function Game({
           starvation={game.starvation}
           bounties={game.bounties}
           supplyLines={game.supplyLines}
+          alliances={game.alliances}
+          allianceStates={game.allianceStates}
           territoryTroopsCap={game.territoryTroopsCap}
           totalTroopsCap={game.totalTroopsCap}
           troopsToDeploy={game.troopsToDeploy}

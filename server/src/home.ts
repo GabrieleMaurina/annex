@@ -4,6 +4,7 @@ import {
   games,
   handleReconnect,
   leaveGame,
+  listGameSummaries,
   sendGameResults,
   sendPlayerCards,
   sendPlayerLogs,
@@ -95,6 +96,8 @@ export function registerHomeHandlers(
         if (joinedRoom !== socket.id) socket.leave(joinedRoom);
       }
       socket.join(player.gameName ? gameRoomName(player.gameName) : HOME_ROOM);
+      if (!player.gameName)
+        socket.emit('home:games', listGameSummaries(playersById));
 
       callback({ id: player.id, gameName: player.gameName });
     },

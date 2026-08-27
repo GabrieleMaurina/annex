@@ -65,6 +65,9 @@ export type TurnTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
+export type Alliances = 'off' | 'on';
+export type AllianceViewState =
+  'allied' | 'requestSent' | 'requestReceived' | 'none';
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -85,6 +88,22 @@ export interface EmojiSentPayload {
   targetPlayerId?: number;
   emoji: EmojiValue;
   attackTarget?: EmojiAttackTarget;
+}
+
+export interface AllianceRequestedPayload {
+  fromId: number;
+}
+
+export interface AllianceFormedPayload {
+  withId: number;
+}
+
+export interface AllianceTerminatedPayload {
+  withId: number;
+}
+
+export interface AllianceDeclinedPayload {
+  withId: number;
 }
 
 export type Mission =
@@ -118,6 +137,12 @@ export interface GameState {
   bounties: Bounties;
   supplyLines: SupplyLines;
   fogOfWar: FogOfWar;
+  alliances: Alliances;
+  allianceStates: {
+    playerId: number;
+    state: AllianceViewState;
+    cooldownUntil?: number;
+  }[];
   territoryTroopsCap: number;
   totalTroopsCap: number;
   turnDuration: TurnDuration;
@@ -207,6 +232,7 @@ export interface GameSettingsInput {
   bounties?: Bounties;
   supplyLines?: SupplyLines;
   fogOfWar?: FogOfWar;
+  alliances?: Alliances;
   turnDuration?: TurnDuration;
   password?: string | null;
   visibility?: Visibility;
@@ -230,6 +256,7 @@ export type GameRulesSettings = Pick<
   | 'bounties'
   | 'supplyLines'
   | 'fogOfWar'
+  | 'alliances'
   | 'turnDuration'
   | 'visibility'
 >;

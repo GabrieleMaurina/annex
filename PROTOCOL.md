@@ -99,6 +99,8 @@ A game with `visibility: 'private'` (see `GameState` below) is never included he
   bounties: 'off' | 'on';
   supplyLines: 'off' | 'on';
   fogOfWar: 'off' | 'on';
+  alliances: 'off' | 'on';
+  allianceStates: { playerId: number; state: 'allied' | 'requestSent' | 'requestReceived' | 'none'; cooldownUntil?: number }[];
   territoryTroopsCap: number; // 'territory' mode's per-territory troop cap
   totalTroopsCap: number; // 'total' mode's cap on this map (territory count-based)
   turnDuration: 60 | 90 | 120 | 150 | 180 | 300; // seconds
@@ -202,13 +204,15 @@ Whenever a territory becomes newly radiated (initial placement never applies her
 
 `supplyLines` (`'off'` by default) restricts which of a player's own territories `game:selectTerritory` (during `'deploy'`/`'troop'` only) and `game:deploy`/`game:placeTroop` will accept: under `'on'`, a deposit is only accepted on a territory reachable from one of the caller's supply hubs by a path of territories the caller owns (the same connectivity `fortification: 'Connected'` uses, see the `fortification` paragraph above, portal edges included when active). A player's hubs are every capital they currently own (`isCapital: true`, see `turnPhase` above) if they own at least one, *regardless of `gameMode`* (a non-`'Capitals'` game simply never has any capitals, so this case never applies there); otherwise, their own territories are split into clusters connected only through territories they themselves own (the same connectivity notion as above), and the sole hub is the single highest-troop territory within whichever one cluster ranks highest by, in order: combined troop count across the whole cluster, then territory count, then that cluster's own single highest troop count, then (to break a tie at that highest troop count) the lowest territory id — every other cluster gets no hub at all and stays entirely unreachable for deposits until reconnected to the hub's cluster. Capitals and armies are never combined as hubs; the army-cluster fallback only ever applies when the player owns zero capitals. A territory that is itself a hub always qualifies trivially. This has no effect on troops placed any other way: a capital's own `3`-troop grant (`game:selectCapital`), a card set's automatic 2-troop territory bonuses (`game:playCardSet`), or the turn timer dropping leftover troops at random, are never subject to it, even onto a territory the path check would otherwise reject.
 
-`fogOfWar` (`'off'` by default) restricts each player's own view of the board once in effect: a player sees only their own territories and every territory directly adjacent to one of them (portal edges included when active) — everything else is indistinguishable from unclaimed to them, both in `GameState` and in every action broadcast (see `GameState` above and the affected events below). It has no effect during the `'territory'` or `'troop'` phases (every territory is still being assigned or is not yet reachable from anyone's holdings, so full visibility applies to everyone regardless of this setting), taking effect starting with `'capital'` and remaining in effect for the rest of the match. It never restricts spectators, and never restricts a player once they're eliminated or have surrendered — both see the board exactly as if `fogOfWar` were `'off'`. It has no effect on `game:replay` (always full-fidelity, see "Shared types" above), `game:cards`/`game:mission` (already private per-player), `game:turnStarted` (carries no territory ids), or chat/emoji.
+`fogOfWar` (`'off'` by default) restricts each player's own view of the board once in effect: a player sees only their own territories and every territory directly adjacent to one of them (portal edges included when active) — everything else is indistinguishable from unclaimed to them, both in `GameState` and in every action broadcast (see `GameState` above and the affected events below). A player allied with another (see `alliances` below, or a teammate in `'Team Deathmatch'`) has their vision extended to include that ally's own vision: an ally's territories count as if they were the viewer's own for this purpose (both the territories themselves and their neighbors), and that ally's `territoryCount`/`troopCount` stay visible in `players[]` instead of being nulled out. It has no effect during the `'territory'` or `'troop'` phases (every territory is still being assigned or is not yet reachable from anyone's holdings, so full visibility applies to everyone regardless of this setting), taking effect starting with `'capital'` and remaining in effect for the rest of the match. It never restricts spectators, and never restricts a player once they're eliminated or have surrendered — both see the board exactly as if `fogOfWar` were `'off'`. It has no effect on `game:replay` (always full-fidelity, see "Shared types" above), `game:cards`/`game:mission` (already private per-player), `game:turnStarted` (carries no territory ids), or chat/emoji.
+
+`alliances` (`'off'` by default) lets any two seated players form a private, symmetric alliance with each other via `game:offerAlliance`/`game:respondAllianceRequest`/`game:terminateAlliance` below (see those for the full flow); it can never be `'on'` at the same time as `gameMode` is `'Team Deathmatch'` (`game:settings` forces it back to `'off'` the instant `gameMode` is set to `'Team Deathmatch'` in the same or an earlier call, and rejects `alliances: 'on'` outright while `gameMode` is already `'Team Deathmatch'`; `game:start` also refuses to start a game where both are true, as a last resort). While allied, two players count as allies for `fogOfWar` (see above) and for targeted `game:sendEmoji` (see below); an alliance never affects anything else (attacks, fortifies, turn order, victory conditions). `'Team Deathmatch'` teammates get the exact same two benefits automatically, without ever forming a real alliance (`allianceStates` below stays empty for everyone in that mode, and no alliance ever shows as formed). `allianceStates` is computed individually per recipient (spectators always get `[]`): one entry per other seated player, `'allied'` once mutual, `'requestSent'`/`'requestReceived'` while one side's offer awaits the other's response (unaccepted for 60 seconds, it expires and reverts to `'none'` on its own), `'none'` otherwise. Since it's inherently private per pair, it's never broadcast as a shared value the way most of `GameState` is: it's computed the same individualized way `visibleTerritoryIds` is, regardless of whether `fogOfWar` is even on. Declining a request (`game:respondAllianceRequest` with `accept: false`), rescinding one (`game:revokeAllianceRequest`), or terminating an alliance that came from one (`game:terminateAlliance` below) all start a 60-second cooldown in one direction only, and it's always the same direction: whoever originally sent that request is the one who can't re-offer to that same recipient until it elapses, no matter which of the two players actually declined, rescinded, or terminated. The other player (who never initiated it) is never restricted from offering in return at any time — e.g. a recipient who declined by mistake can immediately re-propose it themselves, and terminating an alliance you didn't originally propose costs you nothing. `game:offerAlliance` silently refuses a new request from the blocked direction until its cooldown elapses, and a viewer's own `cooldownUntil` (ms since epoch, present only on a `'none'` entry they're currently blocked from re-offering to) tells them exactly when they'll be able to try again — a client is expected to disable that cell's offer button until then, purely as a UX nicety, since the server enforces the cooldown regardless; it's never present on the other player's own view of that same pair. Accepting a request never starts a cooldown by itself, and letting one expire unanswered never starts one either.
 
 `fortifyStartTerritoryId` and `fortifyEndTerritoryId` track the two-step territory selection specific to the `'fortify'` phase, set via `game:fortifySelectStart` / `game:fortifySelectEnd` below (both `null` outside an in-progress fortify selection). Like `selectedTerritoryId`, they're part of `GameState` so every client sees the same start/end highlighting and, once both are set, the same animated arrow between them; `game:selectTerritory` is not used during `'fortify'`. Both reset to `null` whenever the turn or phase changes and whenever a `game:fortify` succeeds.
 
 `attackStartTerritoryId` and `attackEndTerritoryId` track the same kind of two-step selection for the `'attack'` phase, set via `game:attackSelectStart` / `game:attackSelectEnd` below (both `null` outside an in-progress attack). Unlike fortify, they are **not** cleared once `game:attack` resolves an attack that fails to fully conquer the defending territory, nor once it does (`game:selectTerritory` is not used during `'attack'`, either). A failed or inconclusive attack (defender still owns the territory afterward) resets both to `null`, letting the player pick a fresh attack. A conquering attack (defender's territory reaches `0` troops) instead transfers `territoryOwners` for `attackEndTerritoryId` to the attacker immediately but leaves both ids set and populates `attackConquestMinTroops`: the game is now waiting on `game:attackMove` to finish moving troops in, and no other attack-phase action (including `game:nextPhase`) is accepted until it does. `attackConquestMinTroops` is `null` whenever no conquest is pending. All three reset to `null` whenever the turn or phase changes.
 
-`team` is only meaningful when `gameMode` is `'Team Deathmatch'`; it always defaults to `0` otherwise and is ignored by the client. Its valid range is `0` to `max(0, players.length - 1)`, one value per player, so team counts from a single shared team up to every player on their own team are all valid. The client displays teams 1-based (`team + 1`); the wire value stays 0-based.
+`team` is only meaningful when `gameMode` is `'Team Deathmatch'`; it always defaults to `0` otherwise and is ignored by the client. Its valid range is `0` to `max(0, players.length - 1)`, one value per player, so team counts from a single shared team up to every player on their own team are all valid. The client displays teams 1-based (`team + 1`); the wire value stays 0-based. Teammates automatically receive the same `fogOfWar`/`game:sendEmoji` benefits real allies get via `alliances` above (extended vision, direct emojis to each other only) without ever forming a real alliance; players on different teams are never allied this way, so a targeted `game:sendEmoji` between them is always rejected.
 
 `color` is an index into a 20-entry palette the client owns: the server sends only the index, never actual color values. Assigned at random when seated (`game:create`, `game:join`, spectator promotion), always unique among current players. To keep early joiners' colors nicer (palette ordered nicest-first), both random assignment and `game:cycleColor` are restricted to the first `min(20, players.length + 3)` indices. Spectators have no color.
 
@@ -266,7 +270,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:create`
 - **When sent:** a player in `home` starts a new game.
-- **Purpose:** create a game with default settings: name `Game with <playerName>` unless `name` is given, map `World`, 2 slots, `Supremacy` game mode, `Balanced` blitz, 2 defence dice, `Constant` cards, `Random` placement, entrenchments off, toxins off, portals off, radiations off, starvation off, turn troops off, bounties off, supply lines off, 120s turn duration; make the caller host and move their socket into the room.
+- **Purpose:** create a game with default settings: name `Game with <playerName>` unless `name` is given, map `World`, 2 slots, `Supremacy` game mode, `Balanced` blitz, 2 defence dice, `Constant` cards, `Random` placement, entrenchments off, toxins off, portals off, radiations off, starvation off, turn troops off, bounties off, supply lines off, fog of war off, alliances off, 120s turn duration; make the caller host and move their socket into the room.
 - **Content:**
   ```ts
   { name?: string } // same validation as game:settings' name field; defaults to `Game with <playerName>` when omitted
@@ -284,7 +288,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:settings`
 - **When sent:** the host of a game changes any settings.
-- **Purpose:** single bundled message for every settings mutation: rename, change map, slot count, ban list, a player's team, game mode / blitz / defence dice / cards / placement / fortification / entrenchments / toxins / portals / radiations / starvation / turn troops / bounties / supply lines / fog of war / turn duration / password / visibility. Only the fields present are applied; the caller must be host, and the game must still be `lobby`: nothing can change once `playing`. Fields apply in a fixed order: `mapName`, `gameMode`, `name`, `bannedPlayerIds`, `playerTeam`, `slots`, `blitz`, `defenceDice`, `cards`, `placement`, `fortification`, `entrenchments`, `toxins`, `portals`, `radiations`, `starvation`, `turnTroops`, `bounties`, `supplyLines`, `fogOfWar`, `turnDuration`, `password`, `visibility`, so `slots`/`playerTeam` are validated against the roster *after* any kicks in the same request, and `entrenchments` is validated against the (possibly just-updated) `defenceDice` from the same call. `gameMode` and the last seventeen fields are independent of the rest; their position otherwise doesn't matter, except `entrenchments` must come after `defenceDice`: setting `defenceDice` to `3` in the same call always forces `entrenchments` to `'off'` first, and `entrenchments: 'on'` is rejected outright unless `defenceDice` ends up `2`.
+- **Purpose:** single bundled message for every settings mutation: rename, change map, slot count, ban list, a player's team, game mode / blitz / defence dice / cards / placement / fortification / entrenchments / toxins / portals / radiations / starvation / turn troops / bounties / supply lines / fog of war / alliances / turn duration / password / visibility. Only the fields present are applied; the caller must be host, and the game must still be `lobby`: nothing can change once `playing`. Fields apply in a fixed order: `mapName`, `gameMode`, `name`, `bannedPlayerIds`, `playerTeam`, `slots`, `blitz`, `defenceDice`, `cards`, `placement`, `fortification`, `entrenchments`, `toxins`, `portals`, `radiations`, `starvation`, `turnTroops`, `bounties`, `supplyLines`, `fogOfWar`, `alliances`, `turnDuration`, `password`, `visibility`, so `slots`/`playerTeam` are validated against the roster *after* any kicks in the same request, `entrenchments` is validated against the (possibly just-updated) `defenceDice` from the same call, and `alliances` is validated against the (possibly just-updated) `gameMode` from the same call. `gameMode` and the last eighteen fields are independent of the rest; their position otherwise doesn't matter, except `entrenchments` must come after `defenceDice` (setting `defenceDice` to `3` in the same call always forces `entrenchments` to `'off'` first, and `entrenchments: 'on'` is rejected outright unless `defenceDice` ends up `2`) and `alliances` must come after `gameMode` (setting `gameMode` to `'Team Deathmatch'` in the same call always forces `alliances` to `'off'` first, and `alliances: 'on'` is rejected outright unless `gameMode` ends up something other than `'Team Deathmatch'`).
 - **Content:** (all fields optional, only send what changed)
   ```ts
   {
@@ -308,6 +312,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
     bounties?: 'off' | 'on';
     supplyLines?: 'off' | 'on';
     fogOfWar?: 'off' | 'on';
+    alliances?: 'off' | 'on'; // 'on' is rejected while gameMode is (or becomes, in this same call) 'Team Deathmatch'
     turnDuration?: 60 | 90 | 120 | 150 | 180 | 300; // seconds
     password?: string | null;  // trimmed; empty/all-whitespace is rejected, over 50 characters is rejected; null clears it
     visibility?: 'public' | 'private';
@@ -316,7 +321,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   `bannedPlayerIds` replaces the whole ban list at once, not one id at a time: to kick, send the current `bannedPlayers` ids (from `game:state`) plus the new one; to unban, send them minus the id. Any newly-present id belonging to a current player or spectator is kicked (evicted, sent `game:kicked`); the host's own id is silently dropped rather than self-banning.
 
   `playerTeam` sets one player's `team` (see `GameState.players` above for its valid range); rejected with `invalid team` unless `playerId` is currently a player (not a spectator) and `team` is an integer within that range.
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid name`, `invalid map`, `invalid slots`, `invalid banned players`, `invalid team`, `invalid game mode`, `invalid blitz`, `invalid defence dice`, `invalid cards`, `invalid placement`, `invalid fortification`, `invalid entrenchments`, `invalid toxins`, `invalid portals`, `invalid radiations`, `invalid starvation`, `invalid turn troops`, `invalid bounties`, `invalid supply lines`, `invalid turn duration`, `invalid password`, `invalid visibility`, `game name already in use`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid name`, `invalid map`, `invalid slots`, `invalid banned players`, `invalid team`, `invalid game mode`, `invalid blitz`, `invalid defence dice`, `invalid cards`, `invalid placement`, `invalid fortification`, `invalid entrenchments`, `invalid toxins`, `invalid portals`, `invalid radiations`, `invalid starvation`, `invalid turn troops`, `invalid bounties`, `invalid supply lines`, `invalid fog of war`, `invalid alliances`, `invalid turn duration`, `invalid password`, `invalid visibility`, `game name already in use`.
 
 ### `game:cycleColor`
 - **When sent:** a player clicks their own color in the lobby's player table.
@@ -326,9 +331,9 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:start`
 - **When sent:** the host of a game starts it from the lobby.
-- **Purpose:** move the game from `lobby` to `playing`, switching every client from the Lobby subpage to the Map subpage. The caller must be host, with at least 2 players; if `gameMode` is `'Team Deathmatch'`, at least 2 distinct teams must be represented among them too. If it is `'Team Deathmatch'`, `team` values are also compacted to remove gaps left by the host skipping numbers (e.g. teams `0` and `2` but no `1` become `0` and `1`), preserving their relative order. Player order (`players`) is then set at random to establish turn order: plain random shuffle normally, but for `'Team Deathmatch'` it's randomized *and* interleaved so two teammates never end up back-to-back (wrapping from the last player to the first counts too) unless a team's size makes that unavoidable, in which case it's kept to the minimum number of forced adjacencies. Territories and starting troops are then handed out according to `placement` (see `turnPhase` above): under `'Random'`, the map's territories are dealt out as evenly as possible (if they don't divide evenly, the last players in turn order get one extra each), each starting with 1 troop plus `territoryCount * 2` more (and a turn-order bonus) dropped at random; under `'Semi'`, territories are dealt out the same way but no troops are placed yet; under `'Custom'`, no territories are dealt out at all. Turn tracking starts here too: `turnNumber`/`turnPlayerIndex` set to `0`, `turnPhase` set to whichever of `'territory'`, `'troop'`, `'capital'`, `'deploy'` is first in the sequence `placement` and `gameMode` call for (see `turnPhase` above), and the server begins counting down the first player's turn (`turnDuration`, or the fixed timer `'territory'`/`'troop'`/`'capital'` use instead, whichever phase it started in; see `turnNumber` above).
+- **Purpose:** move the game from `lobby` to `playing`, switching every client from the Lobby subpage to the Map subpage. The caller must be host, with at least 2 players; if `gameMode` is `'Team Deathmatch'`, at least 2 distinct teams must be represented among them too, and `alliances` must not be `'on'` (redundant with `game:settings` already refusing that combination, kept as a last-resort server-side check). If it is `'Team Deathmatch'`, `team` values are also compacted to remove gaps left by the host skipping numbers (e.g. teams `0` and `2` but no `1` become `0` and `1`), preserving their relative order. Player order (`players`) is then set at random to establish turn order: plain random shuffle normally, but for `'Team Deathmatch'` it's randomized *and* interleaved so two teammates never end up back-to-back (wrapping from the last player to the first counts too) unless a team's size makes that unavoidable, in which case it's kept to the minimum number of forced adjacencies. Territories and starting troops are then handed out according to `placement` (see `turnPhase` above): under `'Random'`, the map's territories are dealt out as evenly as possible (if they don't divide evenly, the last players in turn order get one extra each), each starting with 1 troop plus `territoryCount * 2` more (and a turn-order bonus) dropped at random; under `'Semi'`, territories are dealt out the same way but no troops are placed yet; under `'Custom'`, no territories are dealt out at all. Turn tracking starts here too: `turnNumber`/`turnPlayerIndex` set to `0`, `turnPhase` set to whichever of `'territory'`, `'troop'`, `'capital'`, `'deploy'` is first in the sequence `placement` and `gameMode` call for (see `turnPhase` above), and the server begins counting down the first player's turn (`turnDuration`, or the fixed timer `'territory'`/`'troop'`/`'capital'` use instead, whichever phase it started in; see `turnNumber` above).
 - **Content:** none
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `already started`, `not enough players`, `not enough teams`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `already started`, `not enough players`, `not enough teams`, `alliances not allowed in team deathmatch`.
 
 ### `game:pause`
 - **When sent:** the host of a `playing` game toggles pause, from the players panel.
@@ -552,7 +557,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:sendEmoji`
 - **When sent:** a seated player sends a quick emoji to another player, or to every player in the game: right after clicking a player (or the "Everyone" row) in the players list (during a game) or the roster/results table (in the lobby or after the game ends) and picking one of the eight fixed emojis (👍, 👎, ❤️, 🙂, 🙁, 😲, 🙏, ⚔️), or, for the attack emoji (⚔️) specifically, after the follow-up click on a player or a territory that names its target. The attack emoji's follow-up targeting only exists in the in-game players list, since it relies on the map; the lobby and results tables only ever send it (if at all) without an `attackTarget`. The attack emoji can't be sent to everyone — it always requires a specific `targetPlayerId`.
-- **Purpose:** relay one emoji from the caller to `targetPlayerId`, or, if `targetPlayerId` is omitted, to every seated player in the game (an emoji sent to everyone). A targeted emoji is delivered only to the two sockets involved; one sent to everyone is delivered individually to every seated player's own socket (see `game:emojiSent` below) — neither is ever broadcast to spectators. The caller must be a seated player, in any game state (`lobby`, `playing`, or `ended`); if given, `targetPlayerId` must be a currently seated player other than the caller (a player can't send themselves an emoji). `attackTarget` is required if and only if `emoji` is `'⚔️'`, which also requires `targetPlayerId` to be given: `{ type: 'player'; playerId }` names any seated player, including the caller or `targetPlayerId`, as the attack's target — unlike `targetPlayerId`, this one may name the caller — `{ type: 'territory'; territoryId }` names any territory on the map, owned by anyone or no one. Silently ignored (no ack) on any invalid input, same as `game:chat`.
+- **Purpose:** relay one emoji from the caller to `targetPlayerId`, or, if `targetPlayerId` is omitted, to every seated player in the game (an emoji sent to everyone). A targeted emoji is delivered only to the two sockets involved; one sent to everyone is delivered individually to every seated player's own socket (see `game:emojiSent` below) — neither is ever broadcast to spectators. The caller must be a seated player, in any game state (`lobby`, `playing`, or `ended`); if given, `targetPlayerId` must be a currently seated player other than the caller (a player can't send themselves an emoji). Whenever `gameMode` is `'Team Deathmatch'` or `alliances` is `'on'` (see `GameState` above), a given `targetPlayerId` is additionally rejected unless it names a player currently allied with the caller (a teammate, in `'Team Deathmatch'`) — this has no effect on an emoji sent to everyone, which is always allowed regardless. `attackTarget` is required if and only if `emoji` is `'⚔️'`, which also requires `targetPlayerId` to be given: `{ type: 'player'; playerId }` names any seated player, including the caller or `targetPlayerId`, as the attack's target — unlike `targetPlayerId`, this one may name the caller — `{ type: 'territory'; territoryId }` names any territory on the map, owned by anyone or no one. Silently ignored (no ack) on any invalid input, same as `game:chat`.
 - **Content:**
   ```ts
   {
@@ -565,12 +570,48 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   ```
 - **Ack:** none
 
+### `game:offerAlliance`
+- **When sent:** a seated player clicks another player's ⚔ alliance cell in the players table.
+- **Purpose:** offer an alliance to `targetPlayerId`. Silently ignored unless: the game is `playing` with `alliances: 'on'`; the caller is a seated player; `targetPlayerId` names a different seated player; the two aren't already allied; neither already has a pending alliance request with the other in either direction; and the caller isn't currently under the 60-second cooldown a prior decline or rescission of a request from the caller to `targetPlayerId` started (see `allianceStates`' `cooldownUntil` under `GameState` above; this never blocks the reverse direction). On success, a pending request is recorded (see `allianceStates` under `GameState` above), `targetPlayerId` alone is sent `game:allianceRequested` (see below), and both the caller and `targetPlayerId` are individually sent a refreshed `game:state`; no other socket is told anything. If untouched for 60 seconds, the request expires on its own (silently reverting `allianceStates` to `'none'` for both, again via a `game:state` refresh to just the two of them, with no further event sent) exactly as if the sender had called `game:revokeAllianceRequest`.
+- **Content:**
+  ```ts
+  { targetPlayerId: number }
+  ```
+- **Ack:** none
+
+### `game:revokeAllianceRequest`
+- **When sent:** a seated player clicks the ⏳ cell for a player they've already offered an alliance to, to cancel it before it's answered.
+- **Purpose:** cancel the caller's own pending outgoing alliance request to `targetPlayerId`. Silently ignored unless such a request (sent by the caller, to `targetPlayerId`) currently exists. On success, a 60-second cooldown starts for the caller re-offering to `targetPlayerId` specifically (see `allianceStates`' `cooldownUntil` under `GameState` above; `targetPlayerId` remains free to offer back to the caller at any time), and both the caller and `targetPlayerId` are individually sent a refreshed `game:state`.
+- **Content:**
+  ```ts
+  { targetPlayerId: number }
+  ```
+- **Ack:** none
+
+### `game:respondAllianceRequest`
+- **When sent:** a seated player clicks the green checkmark or red X in the small popup shown after clicking a ❓ cell (an incoming alliance request from `fromPlayerId`).
+- **Purpose:** accept or decline an alliance request from `fromPlayerId`. Silently ignored unless such a request (sent by `fromPlayerId`, to the caller) currently exists. Either way the pending request is cleared and a refreshed `game:state` is sent to each; if `accept` is `true`, the two players become allied (see `allianceStates` under `GameState` above) and each is additionally sent `game:allianceFormed` (see below); if `false`, a 60-second cooldown starts for `fromPlayerId` re-offering to the caller specifically (see `allianceStates`' `cooldownUntil` under `GameState` above; the caller remains free to offer back to `fromPlayerId` at any time, e.g. if they declined by mistake) and `fromPlayerId` alone is additionally sent `game:allianceDeclined` (see below) so the player who made the offer learns it was turned down.
+- **Content:**
+  ```ts
+  { fromPlayerId: number; accept: boolean }
+  ```
+- **Ack:** none
+
+### `game:terminateAlliance`
+- **When sent:** a seated player clicks their 🤝 cell for an ally, then confirms with the red X in the popup that appears.
+- **Purpose:** end an existing alliance with `targetPlayerId`, which either allied player may do at any time. Silently ignored unless the caller and `targetPlayerId` are currently allied. On success, a 60-second cooldown starts for whichever of the two players originally sent the request this alliance came from, re-offering to the other (see `allianceStates`' `cooldownUntil` under `GameState` above) — this is unaffected by which of the two actually calls `game:terminateAlliance`: terminating an alliance you didn't originally propose costs you nothing. Each of the two is individually sent `game:allianceTerminated` (see below) in addition to a refreshed `game:state`.
+- **Content:**
+  ```ts
+  { targetPlayerId: number }
+  ```
+- **Ack:** none
+
 ---
 
 ## Server → Client
 
 ### `home:games`
-- **When sent:** event-driven, not polled: to every socket currently in the `home` room, whenever a change could affect the list — a game created, destroyed, or ended, or a `game:join`/`game:settings`/leave/reconnect changing a public game's roster, name, map, slots, host, or password.
+- **When sent:** event-driven, not polled: to every socket currently in the `home` room, whenever a change could affect the list — a game created, destroyed, or ended, or a `game:join`/`game:settings`/leave/reconnect changing a public game's roster, name, map, slots, host, or password. Also sent individually to a socket the instant its own `player:identify` puts it in the `home` room, so it has the current list without waiting for the next change.
 - **Purpose:** keep the lobby's list of joinable games current.
 - **Content:**
   ```ts
@@ -608,12 +649,12 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:logs`
 - **When sent:** individually to each seated player's or spectator's own socket (never broadcast to the room), once on reconnect (a fresh `player:identify` while seated in a game that's `playing` or `ended`) so a client that just (re)connected can rebuild its activity log without having lived through the events that produced it — same motivation as `game:cards`/`game:mission` above, but for the log rather than hand/mission state. Never sent otherwise: a client already connected simply keeps accumulating its log from the individual events below as they happen.
-- **Purpose:** replay every event this recipient would have received so far that useGameLogs.ts's log turns into human-readable lines — `game:deployed`, `game:deployedMany`, `game:fortified`, `game:attackMoved`, `game:entrenched`, `game:toxined`, `game:radiationChanged`, `game:attacked`, `game:cardSetPlayed`, `game:turnStarted`, `game:capitalPlacementStarted`, and `game:territoryClaimed` — in the exact order and with the exact payload this recipient was originally sent (or would have been sent, for the events among those that are `fogOfWar`-filtered): the server records a copy of each such event into that recipient's own history as it sends it, so replaying it later reproduces exactly what they'd have seen live, fog of war included. `entries` is empty for anyone who (re)connects before the game has produced any loggable event yet.
+- **Purpose:** replay every event this recipient would have received so far that useGameLogs.ts's log turns into human-readable lines — `game:deployed`, `game:deployedMany`, `game:fortified`, `game:attackMoved`, `game:entrenched`, `game:toxined`, `game:radiationChanged`, `game:attacked`, `game:cardSetPlayed`, `game:turnStarted`, `game:allianceFormed`, `game:allianceTerminated`, `game:capitalPlacementStarted`, and `game:territoryClaimed` — in the exact order and with the exact payload this recipient was originally sent (or would have been sent, for the events among those that are `fogOfWar`-filtered): the server records a copy of each such event into that recipient's own history as it sends it, so replaying it later reproduces exactly what they'd have seen live, fog of war included. `entries` is empty for anyone who (re)connects before the game has produced any loggable event yet.
 - **Content:**
   ```ts
   { entries: { type: string; payload: unknown }[] }
   ```
-  Each `type` is one of the twelve event names above, and its `payload` is that event's own documented content.
+  Each `type` is one of the fourteen event names above, and its `payload` is that event's own documented content.
 
 ### `game:results`
 - **When sent:** to every socket in a game's room, once, the instant the game's `state` becomes `'ended'` (see `checkGameEnd` under `turnPhase` above — covers every way a game can end, not just one). Individually resent to a single socket, the same way `game:cards`/`game:mission`/`game:logs` are, on reconnect (a fresh `player:identify` while seated or spectating in a game that's `ended`), and on `game:requestResults` (see above) — which is what actually covers a fresh `game:join` to a game that's already `ended`, since that join's own ack isn't read for this either.
@@ -675,6 +716,38 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
       | { type: 'player'; playerId: number }
       | { type: 'territory'; territoryId: number };
   }
+  ```
+
+### `game:allianceRequested`
+- **When sent:** immediately, only to the socket of the player being asked, whenever a `game:offerAlliance` call succeeds. Never sent to the offering player (who already knows they just sent it) or anyone else.
+- **Purpose:** let the recipient show a toast announcing the incoming request. Like `game:allianceDeclined` below, this isn't added to the players log or replayed via `game:logs`: a still-pending or already-resolved request is fully described by `allianceStates` (see `GameState` above) on reconnect, with nothing further to replay.
+- **Content:**
+  ```ts
+  { fromId: number } // the player who sent the request
+  ```
+
+### `game:allianceFormed`
+- **When sent:** immediately, individually to each of the two newly-allied players' own sockets, whenever a `game:respondAllianceRequest` call accepts a request. Never sent to anyone else: alliances are always private between the two players involved.
+- **Purpose:** let each of the two players show a toast announcing the new alliance and add an entry to their own players log (see `game:logs` above); `GameState`/`game:state` never says *why* `allianceStates` changed, only its current value, so this is the only way a client learns an alliance was just formed (as opposed to, say, reconnecting into one that already existed).
+- **Content:**
+  ```ts
+  { withId: number } // the other player now allied with the recipient
+  ```
+
+### `game:allianceDeclined`
+- **When sent:** immediately, only to the socket of the player who originally sent the alliance request, whenever the recipient declines it via `game:respondAllianceRequest`. Never sent to the decliner (who already knows their own choice) or anyone else.
+- **Purpose:** let the requester show a toast announcing the decline; unlike `game:allianceFormed`/`game:allianceTerminated`, this isn't added to the players log or replayed via `game:logs`, since it's a live-only notice about an offer that never became a real alliance.
+- **Content:**
+  ```ts
+  { withId: number } // the player who declined the recipient's request
+  ```
+
+### `game:allianceTerminated`
+- **When sent:** immediately, individually to each of the two formerly-allied players' own sockets, whenever a `game:terminateAlliance` call succeeds. Never sent to anyone else, for the same reason as `game:allianceFormed` above.
+- **Purpose:** let each of the two players show a toast announcing the alliance's end and add an entry to their own players log (see `game:logs` above).
+- **Content:**
+  ```ts
+  { withId: number } // the other player no longer allied with the recipient
   ```
 
 ### `game:capitalPlacementStarted`

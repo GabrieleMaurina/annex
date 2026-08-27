@@ -5,7 +5,9 @@ import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor, playerColor } from '../../lib/palette';
+import { playSound } from '../../lib/sounds';
 import type {
+  Alliances,
   Bounties,
   GameMode,
   GameState,
@@ -14,6 +16,7 @@ import type {
   Toxins,
   TurnPhase,
 } from '../../lib/types';
+import { ALLIANCE_CELL_LABELS, ALLIANCE_ICONS } from '../alliance';
 import { EMOJI_POP_DURATION, GLOBAL_TARGET_ID, type EmojiPop } from '../emoji';
 
 function formatList(items: string[]): string {
@@ -77,6 +80,12 @@ interface Props {
   onRowClick: (playerId: number) => void;
   emojiTargeting: boolean;
   emojiPops: EmojiPop[];
+  emojiAllowedIds: Set<number> | null;
+  alliances: Alliances;
+  allianceStates: GameState['allianceStates'];
+  allianceCellRefs: MutableRefObject<Map<number, HTMLElement>>;
+  onAllianceCellClick: (playerId: number) => void;
+  allianceCooldownIds: Set<number>;
 }
 
 function PlayersPanel({
@@ -108,6 +117,12 @@ function PlayersPanel({
   onRowClick,
   emojiTargeting,
   emojiPops,
+  emojiAllowedIds,
+  alliances,
+  allianceStates,
+  allianceCellRefs,
+  onAllianceCellClick,
+  allianceCooldownIds,
 }: Props) {
   const isSpectator = spectators.some((s) => s.id === selfId);
   const self = players.find((p) => p.id === selfId);
@@ -120,6 +135,7 @@ function PlayersPanel({
     !self.surrendered;
   const canLeave = isSpectator || (!!self && (gameEnded || self.surrendered));
   const isHost = !gameEnded && selfId === hostId;
+  const showAllianceColumn = alliances === 'on' && !isSpectator;
 
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
@@ -184,7 +200,8 @@ function PlayersPanel({
           270 +
           (isTeamDeathmatch ? 40 : 0) +
           (isCapitals ? 40 : 0) +
-          (bounties === 'on' ? 40 : 0),
+          (bounties === 'on' ? 40 : 0) +
+          (showAllianceColumn ? 24 : 0),
         maxHeight: 'calc(100vh - 2rem)',
       }}
     >
@@ -287,6 +304,7 @@ function PlayersPanel({
           <thead>
             <tr>
               <th style={{ width: 16 }}></th>
+              {showAllianceColumn && <th style={{ width: 24 }}></th>}
               <th>Player</th>
               {isTeamDeathmatch && (
                 <th className="text-center" style={{ width: 34 }}>
@@ -371,7 +389,14 @@ function PlayersPanel({
               const isConnected = p.connected;
               const pop = emojiPops.find((e) => e.rowPlayerId === p.id);
               const rowClickable =
-                canSendEmoji && (emojiTargeting || p.id !== selfId);
+                canSendEmoji &&
+                (emojiTargeting ||
+                  (p.id !== selfId &&
+                    (emojiAllowedIds === null || emojiAllowedIds.has(p.id))));
+              const allianceState =
+                allianceStates.find((a) => a.playerId === p.id)?.state ??
+                'none';
+              const allianceOnCooldown = allianceCooldownIds.has(p.id);
               return (
                 <tr
                   key={p.id}
@@ -398,6 +423,35 @@ function PlayersPanel({
                   <td className="align-middle text-center" style={rowStyle}>
                     {p.id === turnPlayerId && '●'}
                   </td>
+                  {showAllianceColumn && (
+                    <td
+                      className="align-middle text-center p-0"
+                      style={rowStyle}
+                      ref={(el) => {
+                        if (el) allianceCellRefs.current.set(p.id, el);
+                        else allianceCellRefs.current.delete(p.id);
+                      }}
+                    >
+                      {p.id !== selfId && (
+                        <Tip text={ALLIANCE_CELL_LABELS[allianceState]}>
+                          <button
+                            type="button"
+                            className="border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
+                            style={{ fontSize: 13, width: '100%' }}
+                            data-no-click-sound
+                            disabled={allianceOnCooldown}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              playSound('click');
+                              onAllianceCellClick(p.id);
+                            }}
+                          >
+                            {ALLIANCE_ICONS[allianceState]}
+                          </button>
+                        </Tip>
+                      )}
+                    </td>
+                  )}
                   <td className="align-middle" style={rowStyle}>
                     <div className="d-flex align-items-center gap-1">
                       <span className="text-truncate" style={{ minWidth: 0 }}>

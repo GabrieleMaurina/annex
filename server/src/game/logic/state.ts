@@ -1,4 +1,4 @@
-import { Game, Player } from '../../types';
+import { AllianceViewState, Game, Player } from '../../types';
 import { fortifyFullPath } from './connectivity';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats } from './progression/stats';
@@ -117,6 +117,12 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     bounties: game.bounties,
     supplyLines: game.supplyLines,
     fogOfWar: game.fogOfWar,
+    alliances: game.alliances,
+    allianceStates: [] as {
+      playerId: number;
+      state: AllianceViewState;
+      cooldownUntil?: number;
+    }[],
     territoryTroopsCap: TERRITORY_CAP,
     totalTroopsCap: totalTroopsCap(game),
     turnDuration: game.turnDuration,

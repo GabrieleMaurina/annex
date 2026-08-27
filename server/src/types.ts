@@ -63,6 +63,7 @@ export type TurnTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
+export type Alliances = 'off' | 'on';
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -169,6 +170,11 @@ export interface Game {
   bounties: Bounties;
   supplyLines: SupplyLines;
   fogOfWar: FogOfWar;
+  alliances: Alliances;
+  allianceIds: Set<string>;
+  allianceRequests: Map<string, AllianceRequest>;
+  allianceCooldowns: Map<string, number>;
+  allianceInitiators: Map<string, number>;
   turnDuration: TurnDuration;
   password: string | null;
   visibility: Visibility;
@@ -222,3 +228,11 @@ export interface GameLogEvent {
   type: string;
   payload: unknown;
 }
+
+export interface AllianceRequest {
+  fromId: number;
+  toId: number;
+}
+
+export type AllianceViewState =
+  'allied' | 'requestSent' | 'requestReceived' | 'none';

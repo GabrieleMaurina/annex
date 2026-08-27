@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { maps } from '../../maps';
 import { EmojiAttackTarget, EmojiValue, Game, Player } from '../../types';
 import { isInteger, isObject } from '../../validate';
+import { emojiTargetAllowed } from '../logic/alliances';
 import { games, sendToPlayer } from '../logic/store';
 
 const EMOJI_VALUES: EmojiValue[] = [
@@ -62,7 +63,8 @@ export function registerEmojiHandlers(
       if (
         !isInteger(rawTarget) ||
         !game.playerIds.includes(rawTarget) ||
-        rawTarget === player.id
+        rawTarget === player.id ||
+        !emojiTargetAllowed(game, player.id, rawTarget)
       )
         return;
       targetPlayerId = rawTarget;

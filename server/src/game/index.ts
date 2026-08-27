@@ -1,3 +1,4 @@
+export { registerAllianceHandlers } from './handlers/alliance';
 export { registerAttackHandlers } from './handlers/attack';
 export { registerCapitalHandlers } from './handlers/capital';
 export { registerCardHandlers } from './handlers/cards';
@@ -15,6 +16,7 @@ export {
   games,
   handleReconnect,
   leaveGame,
+  listGameSummaries,
   sendGameResults,
   sendPlayerCards,
   sendPlayerLogs,

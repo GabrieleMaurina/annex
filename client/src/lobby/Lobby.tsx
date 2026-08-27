@@ -63,7 +63,9 @@ function Lobby({
   const maxTeams = game.players.length;
   const teamCount = new Set(game.players.map((p) => p.team)).size;
   const canStart =
-    game.players.length >= 2 && (!isTeamDeathmatch || teamCount >= 2);
+    game.players.length >= 2 &&
+    (!isTeamDeathmatch || teamCount >= 2) &&
+    !(isTeamDeathmatch && game.alliances === 'on');
 
   function banId(id: number) {
     bannedIdsRef.current = [...bannedIdsRef.current, id];
@@ -125,6 +127,7 @@ function Lobby({
           bounties: res.game.bounties,
           supplyLines: res.game.supplyLines,
           fogOfWar: res.game.fogOfWar,
+          alliances: res.game.alliances,
           turnDuration: res.game.turnDuration,
           visibility: res.game.visibility,
         },

@@ -135,6 +135,7 @@ export interface GameState {
   attackStartTerritoryId: number | null;
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
+  fortifyPathTerritoryIds: number[][];
   winnerIds: number[];
   finalRanking: number[];
   nextSetBaseValues: Record<SetKind, number>;

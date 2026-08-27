@@ -383,7 +383,7 @@ export function drawSupplyLines(
         mapW,
         mapH,
       );
-      for (const [a, b] of segments) drawRailwaySegment(ctx, a, b, zoom);
+      for (const { a, b } of segments) drawRailwaySegment(ctx, a, b, zoom);
     }
   }
 }

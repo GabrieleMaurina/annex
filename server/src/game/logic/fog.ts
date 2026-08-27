@@ -52,6 +52,52 @@ export function visibleTerritoryIdsOrAll(
   return computeVisibleTerritoryIds(game, viewerId);
 }
 
+// Splits a territory-id path into runs, dropping any hop where neither
+// endpoint is visible so a client never learns two hidden territories are
+// connected by a fortify chain. Each remaining hop keeps at least one
+// visible endpoint, which is enough for the client to draw a full or
+// half-faded arrow using its own visibleTerritoryIds.
+export function pathRunsForViewer(
+  path: number[],
+  visible: Set<number> | null,
+): number[][] {
+  if (path.length < 2) return [];
+  if (visible === null) return [path];
+  const runs: number[][] = [];
+  let current: number[] = [path[0]];
+  for (let i = 1; i < path.length; i++) {
+    const fromId = path[i - 1];
+    const toId = path[i];
+    if (!visible.has(fromId) && !visible.has(toId)) {
+      if (current.length > 1) runs.push(current);
+      current = [toId];
+      continue;
+    }
+    current.push(toId);
+  }
+  if (current.length > 1) runs.push(current);
+  return runs;
+}
+
+// Troop-move events (fortify, attack-move) transfer the same amount out of
+// one territory and into another with no loss. Revealing that amount for a
+// territory the recipient can't see would tell them exactly how many troops
+// just left (or arrived at) a hidden territory, so each side is only
+// included when that specific territory is visible to this recipient.
+export function troopMoveFields(
+  visible: Set<number> | null,
+  fromTerritoryId: number,
+  territoryId: number,
+  troops: number,
+): { troopsRemoved?: number; troopsAdded?: number } {
+  const fromVisible = visible === null || visible.has(fromTerritoryId);
+  const toVisible = visible === null || visible.has(territoryId);
+  return {
+    ...(fromVisible ? { troopsRemoved: troops } : {}),
+    ...(toVisible ? { troopsAdded: troops } : {}),
+  };
+}
+
 export function filterGameStateForViewer(
   base: ReturnType<typeof gameState>,
   game: Game,
@@ -114,6 +160,10 @@ export function filterGameStateForViewer(
     attackConquestMinTroops: attackEndVisible
       ? base.attackConquestMinTroops
       : null,
+    fortifyPathTerritoryIds: pathRunsForViewer(
+      base.fortifyPathTerritoryIds[0] ?? [],
+      visible,
+    ),
     players: base.players.map((p) =>
       p.id === viewerId ? p : { ...p, territoryCount: null, troopCount: null },
     ),

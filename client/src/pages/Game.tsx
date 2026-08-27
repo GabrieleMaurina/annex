@@ -53,36 +53,31 @@ function Game({
   const prevTurnPhaseRef = useRef<GameState['turnPhase'] | null>(null);
   const logs = useGameLogs(game);
 
-  useEffect(() => {
-    function onState(state: GameState) {
-      if (!receivedFirstStateRef.current) {
-        receivedFirstStateRef.current = true;
-        if (state.state === 'ended') setEndView('stats');
-      } else if (
-        prevStateRef.current === 'lobby' &&
-        state.state === 'playing'
-      ) {
-        playSound('start');
-      } else if (
-        prevStateRef.current === 'playing' &&
-        state.state === 'ended'
-      ) {
-        playSound('end');
-      } else if (
-        state.state === 'playing' &&
-        prevTurnPhaseRef.current !== null &&
-        prevTurnPhaseRef.current !== state.turnPhase
-      ) {
-        playSound('phase');
-      }
-      prevStateRef.current = state.state;
-      if (state.state === 'playing') prevTurnPhaseRef.current = state.turnPhase;
-      setGame(state);
+  function applyGameState(state: GameState) {
+    if (!receivedFirstStateRef.current) {
+      receivedFirstStateRef.current = true;
+      if (state.state === 'ended') setEndView('stats');
+    } else if (prevStateRef.current === 'lobby' && state.state === 'playing') {
+      playSound('start');
+    } else if (prevStateRef.current === 'playing' && state.state === 'ended') {
+      playSound('end');
+    } else if (
+      state.state === 'playing' &&
+      prevTurnPhaseRef.current !== null &&
+      prevTurnPhaseRef.current !== state.turnPhase
+    ) {
+      playSound('phase');
     }
-    socket.on('game:state', onState);
+    prevStateRef.current = state.state;
+    if (state.state === 'playing') prevTurnPhaseRef.current = state.turnPhase;
+    setGame(state);
+  }
+
+  useEffect(() => {
+    socket.on('game:state', applyGameState);
     socket.emit('game:requestState');
     return () => {
-      socket.off('game:state', onState);
+      socket.off('game:state', applyGameState);
     };
   }, []);
 
@@ -320,6 +315,7 @@ function Game({
           selectedTerritoryId={game.selectedTerritoryId}
           fortifyStartTerritoryId={game.fortifyStartTerritoryId}
           fortifyEndTerritoryId={game.fortifyEndTerritoryId}
+          fortifyPathTerritoryIds={game.fortifyPathTerritoryIds}
           attackStartTerritoryId={game.attackStartTerritoryId}
           attackEndTerritoryId={game.attackEndTerritoryId}
           attackConquestMinTroops={game.attackConquestMinTroops}
@@ -348,7 +344,7 @@ function Game({
         <Container fluid className="pt-3 pb-5 px-4">
           <Lobby
             game={game}
-            setGame={setGame}
+            setGame={applyGameState}
             player={player}
             onNameChange={onNameChange}
             selfId={selfId}

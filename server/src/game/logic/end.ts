@@ -28,6 +28,17 @@ function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
   return [winner];
 }
 
+export function computeGameEndWinnerIds(game: Game): number[] | null {
+  if (game.turnPhase === 'territory') {
+    const remaining = game.playerIds.filter(
+      (id) => !game.surrenderedIds.has(id) && !game.deathOrder.includes(id),
+    );
+    if (remaining.length !== 1) return null;
+    return soleSurvivorWinnerIds(game, remaining[0]);
+  }
+  return checkNonTerritoryPhaseWinner(game);
+}
+
 export function checkGameEnd(
   game: Game,
   io: Server,
@@ -36,18 +47,8 @@ export function checkGameEnd(
 ): void {
   if (game.state === 'ended') return;
 
-  let winnerIds: number[];
-  if (game.turnPhase === 'territory') {
-    const remaining = game.playerIds.filter(
-      (id) => !game.surrenderedIds.has(id) && !game.deathOrder.includes(id),
-    );
-    if (remaining.length !== 1) return;
-    winnerIds = soleSurvivorWinnerIds(game, remaining[0]);
-  } else {
-    const winners = checkNonTerritoryPhaseWinner(game);
-    if (winners === null) return;
-    winnerIds = winners;
-  }
+  const winnerIds = computeGameEndWinnerIds(game);
+  if (winnerIds === null) return;
 
   game.state = 'ended';
   game.winnerIds = winnerIds;

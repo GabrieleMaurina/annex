@@ -75,6 +75,48 @@ export function ownedTerritoryClusters(
   return clusters;
 }
 
+export function fortifyFullPath(
+  game: Game,
+  playerId: number,
+  startId: number,
+  endId: number,
+): number[] {
+  if (game.fortification === 'Unrestricted') return [startId, endId];
+  const map = maps.get(game.mapName)!;
+  const territoryById = new Map(map.territories.map((t) => [t.id, t]));
+  const visited = new Set<number>([startId]);
+  const parentOf = new Map<number, number>();
+  const queue = [startId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current === endId) break;
+    const neighbors = withPortalEdges(
+      territoryById.get(current)?.neighbors ?? [],
+      current,
+      game.portalTerritoryIds,
+      game.portalsEnabled,
+    );
+    for (const neighborId of neighbors) {
+      if (visited.has(neighborId)) continue;
+      if (game.territoryOwners.get(neighborId) !== playerId) continue;
+      visited.add(neighborId);
+      parentOf.set(neighborId, current);
+      queue.push(neighborId);
+    }
+  }
+  if (!visited.has(endId)) return [];
+
+  const path = [endId];
+  let node = endId;
+  while (node !== startId) {
+    const parent = parentOf.get(node);
+    if (parent === undefined) return [];
+    path.push(parent);
+    node = parent;
+  }
+  return path.reverse();
+}
+
 export function connectedOwnedTerritories(
   game: Game,
   playerId: number,

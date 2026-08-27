@@ -1,4 +1,5 @@
 import { Game, Player } from '../../types';
+import { fortifyFullPath } from './connectivity';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats } from './progression/stats';
 import { TERRITORY_CAP, totalTroopsCap } from './starvation';
@@ -71,6 +72,22 @@ export function gameResultsStats(game: Game) {
   });
 }
 
+function fortifyPathAsRun(game: Game): number[][] {
+  if (
+    game.fortifyStartTerritoryId === null ||
+    game.fortifyEndTerritoryId === null
+  )
+    return [];
+  const turnPlayerId = game.playerIds[game.turnPlayerIndex];
+  const path = fortifyFullPath(
+    game,
+    turnPlayerId,
+    game.fortifyStartTerritoryId,
+    game.fortifyEndTerritoryId,
+  );
+  return path.length > 1 ? [path] : [];
+}
+
 export function gameState(game: Game, playersById: Map<number, Player>) {
   const stats = territoryStats(game);
   const turnPlayerId = game.playerIds[game.turnPlayerIndex];
@@ -109,7 +126,10 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     turnPlayerIndex: game.turnPlayerIndex,
     turnPhase: game.turnPhase,
     troopsToDeploy: game.troopsToDeploy,
-    turnStartedAt: game.turnStartedAt,
+    turnStartedAt:
+      game.paused && game.pausedAt !== null
+        ? game.turnStartedAt + (Date.now() - game.pausedAt)
+        : game.turnStartedAt,
     paused: game.paused,
     selectedTerritoryId: game.selectedTerritoryId,
     fortifyStartTerritoryId: game.fortifyStartTerritoryId,
@@ -117,6 +137,7 @@ export function gameState(game: Game, playersById: Map<number, Player>) {
     attackStartTerritoryId: game.attackStartTerritoryId,
     attackEndTerritoryId: game.attackEndTerritoryId,
     attackConquestMinTroops: game.attackConquestMinTroops,
+    fortifyPathTerritoryIds: fortifyPathAsRun(game),
     winnerIds: game.winnerIds,
     nextSetBaseValues: nextSetBaseValues(game, turnPlayerId),
     upcomingSetValues: upcomingSetValues(game, turnPlayerId, 3),

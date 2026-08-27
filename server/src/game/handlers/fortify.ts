@@ -2,8 +2,16 @@ import { Server, Socket } from 'socket.io';
 import { maps } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
-import { connectedOwnedTerritories } from '../logic/connectivity';
-import { fogFilterEmit, visibleTerritoryIdsOrAll } from '../logic/fog';
+import {
+  connectedOwnedTerritories,
+  fortifyFullPath,
+} from '../logic/connectivity';
+import {
+  fogFilterEmit,
+  pathRunsForViewer,
+  troopMoveFields,
+  visibleTerritoryIdsOrAll,
+} from '../logic/fog';
 import { withPortalEdges } from '../logic/portals';
 import { recordReplayFrame } from '../logic/replay';
 import { gameState } from '../logic/state';
@@ -202,6 +210,7 @@ export function registerFortifyHandlers(
         playerId: player.id,
       });
 
+      const fullPath = fortifyFullPath(game, player.id, startId, endId);
       fogFilterEmit(io, game, playersById, 'game:fortified', (viewerId) => {
         const visible = visibleTerritoryIdsOrAll(game, viewerId);
         if (visible !== null && !visible.has(endId) && !visible.has(startId))
@@ -209,8 +218,9 @@ export function registerFortifyHandlers(
         return {
           territoryId: endId,
           fromTerritoryId: startId,
-          troops,
           playerId: player.id,
+          path: pathRunsForViewer(fullPath, visible),
+          ...troopMoveFields(visible, startId, endId, troops),
         };
       });
       advanceTurnPhase(game, io, playersById);

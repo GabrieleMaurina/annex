@@ -7,10 +7,13 @@ import {
   hasAnyFortify,
   hasAnyToxin,
 } from './combat/autoSkip';
+import { fortifyFullPath } from './connectivity';
 import { checkGameEnd } from './end';
 import {
   fogFilterEmit,
+  pathRunsForViewer,
   recordLogForAll,
+  troopMoveFields,
   visibleTerritoryIdsOrAll,
 } from './fog';
 import {
@@ -567,6 +570,7 @@ export function forceEndTurnImpl(
   game: Game,
   io: Server,
   playersById: Map<number, Player>,
+  skipDeploy = false,
 ) {
   const playerId = game.playerIds[game.turnPlayerIndex];
 
@@ -600,7 +604,7 @@ export function forceEndTurnImpl(
     return;
   }
 
-  if (game.turnPhase === 'deploy') {
+  if (game.turnPhase === 'deploy' && !skipDeploy) {
     const deposits = forceCompleteDeployPhase(game, io, playersById);
     if (deposits.size > 0) {
       const entries = [...deposits.entries()].map(([territoryId, troops]) => ({
@@ -628,12 +632,27 @@ export function forceEndTurnImpl(
           !visible.has(move.fromTerritoryId)
         )
           return null;
-        return move;
+        return {
+          territoryId: move.territoryId,
+          fromTerritoryId: move.fromTerritoryId,
+          ...troopMoveFields(
+            visible,
+            move.fromTerritoryId,
+            move.territoryId,
+            move.troops,
+          ),
+        };
       });
   }
   if (game.turnPhase === 'fortify') {
     const move = completePendingFortify(game, playerId);
-    if (move)
+    if (move) {
+      const fullPath = fortifyFullPath(
+        game,
+        playerId,
+        move.fromTerritoryId,
+        move.territoryId,
+      );
       fogFilterEmit(io, game, playersById, 'game:fortified', (viewerId) => {
         const visible = visibleTerritoryIdsOrAll(game, viewerId);
         if (
@@ -642,8 +661,20 @@ export function forceEndTurnImpl(
           !visible.has(move.fromTerritoryId)
         )
           return null;
-        return { ...move, playerId };
+        return {
+          territoryId: move.territoryId,
+          fromTerritoryId: move.fromTerritoryId,
+          playerId,
+          path: pathRunsForViewer(fullPath, visible),
+          ...troopMoveFields(
+            visible,
+            move.fromTerritoryId,
+            move.territoryId,
+            move.troops,
+          ),
+        };
       });
+    }
   }
   advanceToNextPlayer(game, io, playersById);
 }

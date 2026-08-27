@@ -111,7 +111,7 @@ function PlayersPanel({
 }: Props) {
   const isSpectator = spectators.some((s) => s.id === selfId);
   const self = players.find((p) => p.id === selfId);
-  const canSendEmoji = !gameEnded && !!self;
+  const canSendEmoji = !!self;
   const canSurrender =
     !gameEnded &&
     !isSpectator &&

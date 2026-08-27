@@ -49,6 +49,7 @@ import {
   drawRadiationCloud,
   drawToxinCloud,
   ENTRENCHED_OCTAGON_SCALE,
+  getAnimationDuration,
   hasActiveAnimations,
   onAnimationsToggle,
   pruneAnimations,
@@ -173,6 +174,7 @@ interface Props {
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
+  fortifyPathTerritoryIds: number[][];
   attackStartTerritoryId: number | null;
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
@@ -373,6 +375,7 @@ function GameMap({
   selectedTerritoryId,
   fortifyStartTerritoryId,
   fortifyEndTerritoryId,
+  fortifyPathTerritoryIds,
   attackStartTerritoryId,
   attackEndTerritoryId,
   attackConquestMinTroops,
@@ -510,6 +513,12 @@ function GameMap({
   const frozenTroopsRef = useRef<Map<number, number>>(new Map());
   const frozenOwnerRef = useRef<Map<number, number>>(new Map());
   const attackRevealDeadlineRef = useRef<Map<number, number>>(new Map());
+  const frozenVisibleTerritoryIdsRef = useRef<Set<number> | null>(null);
+  const frozenTerritoryDataRef = useRef(
+    new Map<number, GameState['territories'][number]>(),
+  );
+  const visibleTerritoryIdsRef =
+    useRef<GameState['visibleTerritoryIds']>(undefined);
   const [tankFireId, setTankFireId] = useState(0);
   const toxinPlacedAtRef = useRef<Map<number, number>>(new Map());
   const radiationPlacedAtRef = useRef<Map<number, number>>(new Map());
@@ -730,7 +739,7 @@ function GameMap({
 
   const arrowForPath = useCallback(
     (
-      territoryIds: number[],
+      pathRuns: number[][],
     ): {
       runs?: { x: number; y: number }[][];
       fades?: ('start' | 'end' | undefined)[][];
@@ -738,36 +747,38 @@ function GameMap({
       const visible = visibleTerritoryIds ? new Set(visibleTerritoryIds) : null;
       const runs: { x: number; y: number }[][] = [];
       const fades: ('start' | 'end' | undefined)[][] = [];
-      for (const idRun of idRunsForPath(territoryIds)) {
-        let currentIds: number[] = [idRun[0]];
-        let currentFades: ('start' | 'end' | undefined)[] = [];
-        const flush = () => {
-          if (currentIds.length > 1) {
-            runs.push(territoryPoints(currentIds));
-            fades.push(currentFades);
+      for (const pathRun of pathRuns) {
+        for (const idRun of idRunsForPath(pathRun)) {
+          let currentIds: number[] = [idRun[0]];
+          let currentFades: ('start' | 'end' | undefined)[] = [];
+          const flush = () => {
+            if (currentIds.length > 1) {
+              runs.push(territoryPoints(currentIds));
+              fades.push(currentFades);
+            }
+          };
+          for (let i = 1; i < idRun.length; i++) {
+            const fromId = idRun[i - 1];
+            const toId = idRun[i];
+            const fromVisible = !visible || visible.has(fromId);
+            const toVisible = !visible || visible.has(toId);
+            if (!fromVisible && !toVisible) {
+              flush();
+              currentIds = [toId];
+              currentFades = [];
+              continue;
+            }
+            currentIds.push(toId);
+            currentFades.push(
+              fromVisible && toVisible
+                ? undefined
+                : fromVisible
+                  ? 'end'
+                  : 'start',
+            );
           }
-        };
-        for (let i = 1; i < idRun.length; i++) {
-          const fromId = idRun[i - 1];
-          const toId = idRun[i];
-          const fromVisible = !visible || visible.has(fromId);
-          const toVisible = !visible || visible.has(toId);
-          if (!fromVisible && !toVisible) {
-            flush();
-            currentIds = [toId];
-            currentFades = [];
-            continue;
-          }
-          currentIds.push(toId);
-          currentFades.push(
-            fromVisible && toVisible
-              ? undefined
-              : fromVisible
-                ? 'end'
-                : 'start',
-          );
+          flush();
         }
-        flush();
       }
       if (runs.length === 0) return {};
       return { runs, fades };
@@ -775,10 +786,10 @@ function GameMap({
     [idRunsForPath, territoryPoints, visibleTerritoryIds],
   );
 
-  const flashArrow = useCallback(
-    (territoryIds: number[]) => {
+  const flashArrowRuns = useCallback(
+    (pathRuns: number[][]) => {
       if (areAnimationsDisabled()) return;
-      const arrow = arrowForPath(territoryIds);
+      const arrow = arrowForPath(pathRuns);
       if (!arrow.runs || arrow.runs.length === 0) return;
       const lastRun = arrow.runs[arrow.runs.length - 1];
       const anchor = lastRun[lastRun.length - 1];
@@ -793,6 +804,11 @@ function GameMap({
       );
     },
     [arrowForPath],
+  );
+
+  const flashArrow = useCallback(
+    (territoryIds: number[]) => flashArrowRuns([territoryIds]),
+    [flashArrowRuns],
   );
 
   const playAttackLossEffects = useCallback(
@@ -1106,6 +1122,7 @@ function GameMap({
   useEffect(() => {
     ownerByIdRef.current = ownerById;
     territoriesRef.current = territories;
+    visibleTerritoryIdsRef.current = visibleTerritoryIds;
     colorByPlayerIdRef.current = new Map(
       players.map((pl) => [pl.id, pl.color]),
     );
@@ -1390,26 +1407,6 @@ function GameMap({
     fortifyStartTerritoryId !== null
       ? (ownerById.get(fortifyStartTerritoryId)?.troops ?? 1) - 1
       : 1;
-  const fortifyPathOwnerId =
-    fortifyStartTerritoryId !== null
-      ? (ownerById.get(fortifyStartTerritoryId)?.ownerId ?? null)
-      : null;
-  const fortifyPath =
-    fortifyStartTerritoryId !== null &&
-    fortifyEndTerritoryId !== null &&
-    fortifyPathOwnerId !== null
-      ? getFortifyPath(
-          territories,
-          ownerById,
-          fortifyPathOwnerId,
-          fortifyStartTerritoryId,
-          fortifyEndTerritoryId,
-          fortification,
-          portalTerritoryIds,
-          portalsEnabled,
-        )
-      : [];
-
   const entrenchCandidates = isMyTurn
     ? getEntrenchCandidates(territories, ownerById, selfId)
     : new Set<number>();
@@ -1612,45 +1609,45 @@ function GameMap({
     function onFortified(payload: {
       territoryId: number;
       fromTerritoryId: number;
-      troops: number;
+      troopsRemoved?: number;
+      troopsAdded?: number;
+      path: number[][];
     }) {
       playSound('fortify');
-      adjustTerritoryTroops([
-        { territoryId: payload.fromTerritoryId, delta: -payload.troops },
-        { territoryId: payload.territoryId, delta: payload.troops },
-      ]);
-      const fortifyOwnerId =
-        ownerByIdRef.current.get(payload.fromTerritoryId)?.ownerId ?? null;
-      const fortifyPathIds = getFortifyPath(
-        territoriesRef.current,
-        ownerByIdRef.current,
-        fortifyOwnerId,
-        payload.fromTerritoryId,
-        payload.territoryId,
-        fortification,
-        portalTerritoryIds,
-        portalsEnabled,
-      );
-      flashArrow(
-        fortifyPathIds.length > 1
-          ? fortifyPathIds
-          : [payload.fromTerritoryId, payload.territoryId],
-      );
-      animateRemove({
-        territoryId: payload.fromTerritoryId,
-        troops: payload.troops,
-      });
-      animateAdd({ territoryId: payload.territoryId, troops: payload.troops });
+      const deltas: { territoryId: number; delta: number }[] = [];
+      if (payload.troopsRemoved !== undefined)
+        deltas.push({
+          territoryId: payload.fromTerritoryId,
+          delta: -payload.troopsRemoved,
+        });
+      if (payload.troopsAdded !== undefined)
+        deltas.push({
+          territoryId: payload.territoryId,
+          delta: payload.troopsAdded,
+        });
+      if (deltas.length > 0) adjustTerritoryTroops(deltas);
+      flashArrowRuns(payload.path);
+      if (payload.troopsRemoved !== undefined)
+        animateRemove({
+          territoryId: payload.fromTerritoryId,
+          troops: payload.troopsRemoved,
+        });
+      if (payload.troopsAdded !== undefined)
+        animateAdd({
+          territoryId: payload.territoryId,
+          troops: payload.troopsAdded,
+        });
       startAnimationLoop();
     }
     function onAttackMoved(payload: {
       territoryId: number;
       fromTerritoryId: number;
-      troops: number;
+      troopsAdded?: number;
     }) {
-      adjustTerritoryTroops([
-        { territoryId: payload.territoryId, delta: payload.troops },
-      ]);
+      if (payload.troopsAdded !== undefined)
+        adjustTerritoryTroops([
+          { territoryId: payload.territoryId, delta: payload.troopsAdded },
+        ]);
       const deadline = attackRevealDeadlineRef.current.get(payload.territoryId);
       const pendingDelay = deadline
         ? Math.max(0, deadline - performance.now())
@@ -1658,7 +1655,11 @@ function GameMap({
       const fireAnimation = () => {
         playSound('fortify');
         flashArrow([payload.fromTerritoryId, payload.territoryId]);
-        animateAdd(payload);
+        if (payload.troopsAdded !== undefined)
+          animateAdd({
+            territoryId: payload.territoryId,
+            troops: payload.troopsAdded,
+          });
         startAnimationLoop();
       };
       if (pendingDelay > 0) setTimeout(fireAnimation, pendingDelay);
@@ -1777,9 +1778,7 @@ function GameMap({
     setRadiationTerritoryIds,
     setRadiationUpcomingTerritoryIds,
     flashArrow,
-    fortification,
-    portalTerritoryIds,
-    portalsEnabled,
+    flashArrowRuns,
   ]);
 
   useEffect(() => {
@@ -1803,6 +1802,31 @@ function GameMap({
         payload.type === 'regular' && !freeConquest
           ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
           : 0;
+
+      if (conquered && visibleTerritoryIdsRef.current) {
+        frozenVisibleTerritoryIdsRef.current = new Set(
+          visibleTerritoryIdsRef.current,
+        );
+        const snapshot = new Map(ownerByIdRef.current);
+        const priorDefender = snapshot.get(payload.defendingTerritoryId);
+        snapshot.set(payload.defendingTerritoryId, {
+          id: payload.defendingTerritoryId,
+          ownerId: payload.attackerId,
+          troops: Math.max(0, (payload.defendingTroops ?? 0) - defenceLosses),
+          isCapital: priorDefender?.isCapital ?? false,
+          entrenchedTurns: 0,
+        });
+        frozenTerritoryDataRef.current = snapshot;
+        startAnimationLoop();
+        setTimeout(
+          () => {
+            frozenVisibleTerritoryIdsRef.current = null;
+            frozenTerritoryDataRef.current = new Map();
+            startAnimationLoop();
+          },
+          delay + getAnimationDuration('explosion'),
+        );
+      }
 
       const deltas: {
         territoryId: number;
@@ -2283,6 +2307,15 @@ function GameMap({
     setAttackPreRevealSnapshot(null);
   }
 
+  useEffect(() => {
+    if (!attackDiceOnly) return;
+    const rollId = attackDiceRoll?.id;
+    const timer = setTimeout(() => {
+      setAttackDiceRoll((prev) => (prev?.id === rollId ? null : prev));
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [attackDiceOnly, attackDiceRoll?.id]);
+
   const submitDeploy = useCallback(() => {
     if (selectedTerritoryId === null) return;
     const event = turnPhase === 'troop' ? 'game:placeTroop' : 'game:deploy';
@@ -2321,7 +2354,7 @@ function GameMap({
   }, [selectedTerritoryId, setGame]);
 
   function isInteractable(t: Territory): boolean {
-    if (pendingAttackEmoji) return !gameEnded;
+    if (pendingAttackEmoji) return true;
     if (gameEnded || !isMyTurn || paused) return false;
     if (turnPhase === 'territory') return territoryClaimCandidates.has(t.id);
     if (turnPhase === 'capital') return ownerById.get(t.id)?.ownerId === selfId;
@@ -2780,10 +2813,17 @@ function GameMap({
       );
     }
 
-    drawAnimations(ctx, toScreen, VERTEX_RADIUS * scaleX);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(offsetX, offsetY, imgW * scaleX, imgH * scaleY);
+    ctx.clip();
+    drawAnimations(ctx, toScreen, VERTEX_RADIUS * scaleX, imgW, imgH);
 
     const visibleSet = visibleTerritoryIds
-      ? new Set(visibleTerritoryIds)
+      ? new Set([
+          ...visibleTerritoryIds,
+          ...(frozenVisibleTerritoryIdsRef.current ?? []),
+        ])
       : null;
     const fadeForPair = (
       fromId: number,
@@ -2796,12 +2836,14 @@ function GameMap({
       return fromVisible ? 'end' : 'start';
     };
 
-    if (fortifyPath.length > 1) {
+    if (fortifyPathTerritoryIds.length > 0) {
       const territoryById = new Map(territories.map((t) => [t.id, t]));
-      const worldPath = fortifyPath
-        .map((id) => territoryById.get(id))
-        .filter((t): t is Territory => !!t);
-      if (worldPath.length === fortifyPath.length) {
+      for (const run of fortifyPathTerritoryIds) {
+        if (run.length < 2) continue;
+        const worldPath = run
+          .map((id) => territoryById.get(id))
+          .filter((t): t is Territory => !!t);
+        if (worldPath.length !== run.length) continue;
         for (let i = 0; i < worldPath.length - 1; i++) {
           if (
             isPortalHop(
@@ -2877,6 +2919,8 @@ function GameMap({
         drawFortifyPath(ctx, segments);
       }
     }
+
+    ctx.restore();
 
     const continentGroups = bonusesOpen
       ? (() => {
@@ -2965,6 +3009,8 @@ function GameMap({
         );
       }
 
+      let owner: GameState['territories'][number] | undefined;
+
       if (!isVisible) {
         if (!isRadiated && radiationUpcomingById.has(t.id)) {
           drawRadiationCloud(
@@ -2979,73 +3025,102 @@ function GameMap({
           );
         }
         drawFogCloud(ctx, p.x, p.y, VERTEX_RADIUS * scaleX, now, t.id);
-        continue;
-      }
+      } else {
+        const style = STATE_STYLE[nodeState(t.id)];
+        owner = ownerById.get(t.id) ?? frozenTerritoryDataRef.current.get(t.id);
+        const displayOwnerId =
+          frozenOwnerRef.current.get(t.id) ?? owner?.ownerId;
+        const fillColor =
+          displayOwnerId !== undefined
+            ? playerColor(colorByPlayerId.get(displayOwnerId) ?? 0)
+            : UNCLAIMED_TERRITORY_COLOR;
 
-      const style = STATE_STYLE[nodeState(t.id)];
-      const owner = ownerById.get(t.id);
-      const displayOwnerId = frozenOwnerRef.current.get(t.id) ?? owner?.ownerId;
-      const fillColor =
-        displayOwnerId !== undefined
-          ? playerColor(colorByPlayerId.get(displayOwnerId) ?? 0)
-          : UNCLAIMED_TERRITORY_COLOR;
-
-      if (owner && owner.entrenchedTurns > 0) {
-        traceOctagon(
-          ctx,
-          p.x,
-          p.y,
-          VERTEX_RADIUS * ENTRENCHED_OCTAGON_SCALE * scaleX,
-        );
-        ctx.fillStyle = ENTRENCHED_OCTAGON_FILL;
-        ctx.fill();
-        ctx.strokeStyle = ENTRENCHED_OCTAGON_STROKE;
-        ctx.lineWidth = 2 * zoom;
-        ctx.stroke();
-      }
-
-      const toxin = toxinByTerritoryId.get(t.id);
-      if (toxin) {
-        drawToxinCloud(
-          ctx,
-          p.x,
-          p.y,
-          VERTEX_RADIUS * scaleX,
-          now,
-          toxin.permanent,
-          toxin.turnsRemaining,
-          t.id,
-          areAnimationsDisabled()
-            ? -Infinity
-            : (toxinPlacedAtRef.current.get(t.id) ?? -Infinity),
-        );
-      }
-
-      if (!toxin && !isRadiated) {
-        ctx.beginPath();
-        if (owner?.isCapital) {
-          const half = VERTEX_RADIUS * scaleX;
-          ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
-        } else {
-          ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
+        if (owner && owner.entrenchedTurns > 0) {
+          traceOctagon(
+            ctx,
+            p.x,
+            p.y,
+            VERTEX_RADIUS * ENTRENCHED_OCTAGON_SCALE * scaleX,
+          );
+          ctx.fillStyle = ENTRENCHED_OCTAGON_FILL;
+          ctx.fill();
+          ctx.strokeStyle = ENTRENCHED_OCTAGON_STROKE;
+          ctx.lineWidth = 2 * zoom;
+          ctx.stroke();
         }
-        ctx.fillStyle = fillColor;
-        ctx.fill();
-        ctx.strokeStyle = style.stroke;
-        ctx.lineWidth = style.width * zoom;
-        ctx.stroke();
 
-        if (radiationUpcomingById.has(t.id)) {
-          drawRadiationCloud(
+        const toxin = toxinByTerritoryId.get(t.id);
+        if (toxin) {
+          drawToxinCloud(
             ctx,
             p.x,
             p.y,
             VERTEX_RADIUS * scaleX,
             now,
-            true,
+            toxin.permanent,
+            toxin.turnsRemaining,
             t.id,
-            -Infinity,
+            areAnimationsDisabled()
+              ? -Infinity
+              : (toxinPlacedAtRef.current.get(t.id) ?? -Infinity),
           );
+        }
+
+        if (!toxin && !isRadiated) {
+          ctx.beginPath();
+          if (owner?.isCapital) {
+            const half = VERTEX_RADIUS * scaleX;
+            ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
+          } else {
+            ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
+          }
+          ctx.fillStyle = fillColor;
+          ctx.fill();
+          ctx.strokeStyle = style.stroke;
+          ctx.lineWidth = style.width * zoom;
+          ctx.stroke();
+
+          if (radiationUpcomingById.has(t.id)) {
+            drawRadiationCloud(
+              ctx,
+              p.x,
+              p.y,
+              VERTEX_RADIUS * scaleX,
+              now,
+              true,
+              t.id,
+              -Infinity,
+            );
+          }
+        }
+
+        if (owner) {
+          const troops =
+            isMyTurn && attackPendingConquest && t.id === attackEndTerritoryId
+              ? attackMoveTroops
+              : isMyTurn &&
+                  attackPendingConquest &&
+                  t.id === attackStartTerritoryId
+                ? owner.troops - attackMoveTroops
+                : deployPanelOpen && t.id === selectedTerritoryId
+                  ? owner.troops + deployTroops
+                  : fortifyPanelOpen && t.id === fortifyEndTerritoryId
+                    ? owner.troops + fortifyTroops
+                    : fortifyPanelOpen && t.id === fortifyStartTerritoryId
+                      ? owner.troops - fortifyTroops
+                      : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
+          ctx.fillStyle = contrastTextColor(fillColor);
+          ctx.font = `bold ${VERTEX_RADIUS * scaleX}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'alphabetic';
+          const text = String(troops);
+          const metrics = ctx.measureText(text);
+          const baselineY =
+            p.y +
+            (metrics.actualBoundingBoxAscent -
+              metrics.actualBoundingBoxDescent) /
+              2;
+          ctx.fillText(text, p.x, baselineY);
         }
       }
 
@@ -3135,34 +3210,6 @@ function GameMap({
             }
           }
         }
-      }
-
-      if (owner) {
-        const troops =
-          isMyTurn && attackPendingConquest && t.id === attackEndTerritoryId
-            ? attackMoveTroops
-            : isMyTurn &&
-                attackPendingConquest &&
-                t.id === attackStartTerritoryId
-              ? owner.troops - attackMoveTroops
-              : deployPanelOpen && t.id === selectedTerritoryId
-                ? owner.troops + deployTroops
-                : fortifyPanelOpen && t.id === fortifyEndTerritoryId
-                  ? owner.troops + fortifyTroops
-                  : fortifyPanelOpen && t.id === fortifyStartTerritoryId
-                    ? owner.troops - fortifyTroops
-                    : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
-        ctx.fillStyle = contrastTextColor(fillColor);
-        ctx.font = `bold ${VERTEX_RADIUS * scaleX}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'alphabetic';
-        const text = String(troops);
-        const metrics = ctx.measureText(text);
-        const baselineY =
-          p.y +
-          (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
-            2;
-        ctx.fillText(text, p.x, baselineY);
       }
 
       if (bonusesOpen) {
@@ -3317,7 +3364,7 @@ function GameMap({
     const vertex = hitVertex(pos);
 
     if (pendingAttackEmoji) {
-      if (!gameEnded && vertex)
+      if (vertex)
         sendEmoji(pendingAttackEmoji.targetPlayerId, ATTACK_EMOJI, {
           type: 'territory',
           territoryId: vertex.id,

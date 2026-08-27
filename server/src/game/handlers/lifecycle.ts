@@ -25,7 +25,7 @@ import {
 } from '../../types';
 import { isInteger, isObject } from '../../validate';
 import { initializeContinent } from '../logic/continent';
-import { checkGameEnd } from '../logic/end';
+import { checkGameEnd, computeGameEndWinnerIds } from '../logic/end';
 import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
   assignRandomColor,
@@ -713,7 +713,10 @@ export function registerGameHandlers(
     game.surrenderedIds.add(player.id);
     if (!game.deathOrder.includes(player.id)) game.deathOrder.push(player.id);
     const wasTheirTurn = game.playerIds[game.turnPlayerIndex] === player.id;
-    if (wasTheirTurn) forceEndTurnImpl(game, io, playersById);
+    if (wasTheirTurn) {
+      const endsGame = computeGameEndWinnerIds(game) !== null;
+      forceEndTurnImpl(game, io, playersById, endsGame);
+    }
     checkGameEnd(game, io, playersById, wasTheirTurn);
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);

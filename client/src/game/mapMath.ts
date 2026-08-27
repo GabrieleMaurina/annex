@@ -60,31 +60,55 @@ export function getClampedOffset(
   return clampOffset(canvasW, canvasH, scaleX, scaleY, imgW, imgH, x, y);
 }
 
-function wrapSplitX(a: Point, b: Point, mapW: number): [Point, Point][] {
+export interface WrappedSegment {
+  a: Point;
+  b: Point;
+  // Position of a/b along the original, unwrapped a-to-b hop (0 at the true
+  // start, 1 at the true end), so a fade computed across the whole hop stays
+  // continuous even when the hop is split at the map edge for rendering.
+  t0: number;
+  t1: number;
+}
+
+function wrapSplitX(
+  a: Point,
+  b: Point,
+  mapW: number,
+  t0: number,
+  t1: number,
+): WrappedSegment[] {
   const d = b.x - a.x;
-  if (Math.abs(d) <= mapW / 2) return [[a, b]];
+  if (Math.abs(d) <= mapW / 2) return [{ a, b, t0, t1 }];
   const sign = Math.sign(d);
   const bx = b.x - sign * mapW;
   const boundary = sign < 0 ? mapW : 0;
   const t = (boundary - a.x) / (bx - a.x);
   const y = a.y + t * (b.y - a.y);
+  const tMid = t0 + t * (t1 - t0);
   return [
-    [a, { x: boundary, y }],
-    [{ x: mapW - boundary, y }, b],
+    { a, b: { x: boundary, y }, t0, t1: tMid },
+    { a: { x: mapW - boundary, y }, b, t0: tMid, t1 },
   ];
 }
 
-function wrapSplitY(a: Point, b: Point, mapH: number): [Point, Point][] {
+function wrapSplitY(
+  a: Point,
+  b: Point,
+  mapH: number,
+  t0: number,
+  t1: number,
+): WrappedSegment[] {
   const d = b.y - a.y;
-  if (Math.abs(d) <= mapH / 2) return [[a, b]];
+  if (Math.abs(d) <= mapH / 2) return [{ a, b, t0, t1 }];
   const sign = Math.sign(d);
   const by = b.y - sign * mapH;
   const boundary = sign < 0 ? mapH : 0;
   const t = (boundary - a.y) / (by - a.y);
   const x = a.x + t * (b.x - a.x);
+  const tMid = t0 + t * (t1 - t0);
   return [
-    [a, { x, y: boundary }],
-    [{ x, y: mapH - boundary }, b],
+    { a, b: { x, y: boundary }, t0, t1: tMid },
+    { a: { x, y: mapH - boundary }, b, t0: tMid, t1 },
   ];
 }
 
@@ -93,10 +117,10 @@ function wrapEdgeSegments(
   b: Point,
   mapW: number,
   mapH: number,
-): [Point, Point][] {
-  const segments: [Point, Point][] = [];
-  for (const [p1, p2] of wrapSplitX(a, b, mapW)) {
-    segments.push(...wrapSplitY(p1, p2, mapH));
+): WrappedSegment[] {
+  const segments: WrappedSegment[] = [];
+  for (const seg of wrapSplitX(a, b, mapW, 0, 1)) {
+    segments.push(...wrapSplitY(seg.a, seg.b, mapH, seg.t0, seg.t1));
   }
   return segments;
 }
@@ -162,13 +186,17 @@ export function buildWrappedPathSegments(
   toScreen: (p: Point) => Point,
   mapW: number,
   mapH: number,
-): [Point, Point][] {
-  const segments: [Point, Point][] = [];
+): WrappedSegment[] {
+  const segments: WrappedSegment[] = [];
   for (let i = 0; i < path.length - 1; i++) {
-    const subSegments = wrapEdgeSegments(path[i], path[i + 1], mapW, mapH).map(
-      ([p1, p2]): [Point, Point] => [toScreen(p1), toScreen(p2)],
-    );
-    segments.push(...subSegments);
+    for (const seg of wrapEdgeSegments(path[i], path[i + 1], mapW, mapH)) {
+      segments.push({
+        a: toScreen(seg.a),
+        b: toScreen(seg.b),
+        t0: seg.t0,
+        t1: seg.t1,
+      });
+    }
   }
   return segments;
 }

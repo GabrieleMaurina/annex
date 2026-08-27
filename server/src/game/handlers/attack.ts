@@ -14,6 +14,7 @@ import { checkGameEnd } from '../logic/end';
 import {
   filterGameStateForViewer,
   fogFilterEmit,
+  troopMoveFields,
   visibleTerritoryIdsOrAll,
 } from '../logic/fog';
 import { withPortalEdges } from '../logic/portals';
@@ -431,7 +432,8 @@ export function registerAttackHandlers(
       fogFilterEmit(io, game, playersById, 'game:attacked', (viewerId) => {
         const visible = visibleTerritoryIdsOrAll(game, viewerId);
         const sourceVisible = visible === null || visible.has(startId);
-        const targetVisible = visible === null || visible.has(endId);
+        const targetVisible =
+          visible === null || visible.has(endId) || viewerId === defenderId;
         if (!sourceVisible && !targetVisible) return null;
         return {
           attackingTerritoryId: startId,
@@ -458,7 +460,16 @@ export function registerAttackHandlers(
             !visible.has(move.fromTerritoryId)
           )
             return null;
-          return move;
+          return {
+            territoryId: move.territoryId,
+            fromTerritoryId: move.fromTerritoryId,
+            ...troopMoveFields(
+              visible,
+              move.fromTerritoryId,
+              move.territoryId,
+              move.troops,
+            ),
+          };
         });
       }
 
@@ -535,7 +546,11 @@ export function registerAttackHandlers(
         const visible = visibleTerritoryIdsOrAll(game, viewerId);
         if (visible !== null && !visible.has(endId) && !visible.has(startId))
           return null;
-        return { territoryId: endId, fromTerritoryId: startId, troops };
+        return {
+          territoryId: endId,
+          fromTerritoryId: startId,
+          ...troopMoveFields(visible, startId, endId, troops),
+        };
       });
       if (!hasAnyAttack(game, player.id))
         advanceTurnPhase(game, io, playersById);

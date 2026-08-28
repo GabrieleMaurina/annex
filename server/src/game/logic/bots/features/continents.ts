@@ -2,6 +2,7 @@ import { maps } from '../../../../maps';
 import { Game } from '../../../../types';
 import { BotView, ownerOf } from '../view';
 import { isTeammate } from './mode';
+import { isHazardTerritory } from './territory';
 
 function continentGroups(game: Game): Map<number, number[]> {
   const map = maps.get(game.mapName)!;
@@ -44,6 +45,7 @@ export function continentCompletionCandidates(
       })
     )
       continue;
+    if (remaining.some((id) => isHazardTerritory(game, view, id))) continue;
     candidates.push({
       continentId,
       bonus: map.bonuses[continentId] ?? 0,

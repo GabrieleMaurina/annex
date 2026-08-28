@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { Game, HOME_ROOM, Player } from '../../types';
 import { unregisterBotSocket } from './bots/socket';
 import { endTakeover, startTakeover } from './bots/takeover';
+import { checkGameEnd } from './end';
 import { addHostCandidate, recomputeHost } from './host';
 import { assignRandomColor, maxTeam } from './mechanics';
 import { gameRoomName } from './rooms';
@@ -139,7 +140,7 @@ export function destroyIfInactive(
 function hasEndedGameViewer(game: Game, playersById: Map<number, Player>) {
   return [...game.playerIds, ...game.spectatorIds].some((id) => {
     const member = playersById.get(id);
-    return member?.connected && member.gameName === game.name;
+    return !member?.isBot && member?.connected && member.gameName === game.name;
   });
 }
 
@@ -325,8 +326,10 @@ function leaveGameImpl(
       player.gameName = null;
     else if (!player.connected)
       startTakeover(game, player, io, playersById, playersBySocket);
+    checkGameEnd(game, io, playersById);
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);
+    destroyIfEnded(game, playersById, io);
     return;
   }
 

@@ -1,8 +1,5 @@
 import { Weights } from '../types';
 
-// Absorbs the earlier "Stacker" idea: finishing a player off takes
-// overwhelming force in one place, so Killer also weights consolidating
-// troops into a single stack heavily.
 export const killerWeights: Weights = {
   completeContinent: 0.3,
   breakContinent: 0.5,

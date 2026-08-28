@@ -146,6 +146,9 @@ function EndPage({
                       }}
                       className="d-inline-flex align-items-center gap-1"
                     >
+                      <span className="text-truncate" style={{ minWidth: 0 }}>
+                        {p.id === selfId ? 'You' : p.name}
+                      </span>
                       {p.isBot && (
                         <img
                           src={
@@ -159,9 +162,6 @@ function EndPage({
                           className="flex-shrink-0"
                         />
                       )}
-                      <span className="text-truncate" style={{ minWidth: 0 }}>
-                        {p.id === selfId ? 'You' : p.name}
-                      </span>
                       {p.id === game.originalHostId && (
                         <Badge bg="primary" className="flex-shrink-0">
                           Host

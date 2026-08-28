@@ -62,6 +62,13 @@ function stagingTerritoryFor(
   return owned.length > 0 ? owned[0] : null;
 }
 
+// When bonus is given (continent completion/break), a higher
+// bonus-per-troop-spent ratio scores better: the bonus recurs every turn the
+// continent is held (or denied), so even a costly campaign can pay for
+// itself over time, plus the fighting itself inflicts losses and takes
+// territory from whoever's in the way. Left undefined for campaign types
+// with no continent bonus to weigh against (eliminate), which keeps the
+// plain probability-weighted score.
 function buildPlan(
   game: Game,
   view: BotView,
@@ -71,6 +78,7 @@ function buildPlan(
   continentId: number | null,
   targetIds: number[],
   weightForType: number,
+  bonus?: number,
 ): CampaignPlan | null {
   const ordered = orderTargets(game, view, botId, targetIds);
   if (ordered.length === 0) return null;
@@ -86,6 +94,15 @@ function buildPlan(
   );
   if (!evaluation.feasible) return null;
 
+  let returnFactor = 1;
+  if (bonus !== undefined) {
+    const expectedCost = Math.max(
+      0,
+      startingTroops - evaluation.expectedTroopsRemaining,
+    );
+    returnFactor = bonus / Math.max(expectedCost, 1);
+  }
+
   return {
     type,
     targetPlayerId,
@@ -94,7 +111,7 @@ function buildPlan(
     stagingTerritoryId: staging,
     probability: evaluation.probability,
     expectedTroopsRemaining: evaluation.expectedTroopsRemaining,
-    score: weightForType * evaluation.probability,
+    score: weightForType * evaluation.probability * returnFactor,
   };
 }
 
@@ -118,6 +135,7 @@ export function chooseCampaign(
       c.continentId,
       c.remainingTerritoryIds,
       weights.completeContinent,
+      c.bonus,
     );
     if (plan) candidates.push(plan);
   }
@@ -132,6 +150,7 @@ export function chooseCampaign(
       c.continentId,
       [c.weakestTerritoryId],
       weights.breakContinent,
+      c.bonus,
     );
     if (plan) candidates.push(plan);
   }

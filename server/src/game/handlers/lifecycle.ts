@@ -241,6 +241,7 @@ export function registerGameHandlers(
         deck: [],
         playerCards: new Map(),
         conqueredThisTurn: false,
+        deployCardMandate: false,
         cardSetsPlayed: new Map(),
         cardsLastSetValue: new Map(),
         stats: new Map(),

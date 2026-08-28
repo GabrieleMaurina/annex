@@ -39,6 +39,35 @@ export function computeGameEndWinnerIds(game: Game): number[] | null {
   return checkNonTerritoryPhaseWinner(game);
 }
 
+function isPlayerEliminated(game: Game, id: number): boolean {
+  return game.surrenderedIds.has(id) || game.deathOrder.includes(id);
+}
+
+// A human can leave the game by being killed, surrendering, or disconnecting
+// (disconnect turns their seat into a takeover bot, so isBot covers it too).
+// Once none remain, there's no one left to keep the game running for.
+function noHumanPlayersLeft(game: Game, playersById: Map<number, Player>) {
+  return game.playerIds.every(
+    (id) =>
+      isPlayerEliminated(game, id) || (playersById.get(id)?.isBot ?? true),
+  );
+}
+
+function abandonedByHumansWinnerIds(
+  game: Game,
+  playersById: Map<number, Player>,
+): number[] | null {
+  if (!noHumanPlayersLeft(game, playersById)) return null;
+  const activeIds = game.playerIds.filter(
+    (id) => !isPlayerEliminated(game, id),
+  );
+  if (activeIds.length === 0) return null;
+  const leader = [...activeIds].sort((a, b) =>
+    compareByTerritoriesFirst(game, a, b),
+  )[0];
+  return soleSurvivorWinnerIds(game, leader);
+}
+
 export function checkGameEnd(
   game: Game,
   io: Server,
@@ -47,7 +76,9 @@ export function checkGameEnd(
 ): void {
   if (game.state === 'ended') return;
 
-  const winnerIds = computeGameEndWinnerIds(game);
+  const winnerIds =
+    computeGameEndWinnerIds(game) ??
+    abandonedByHumansWinnerIds(game, playersById);
   if (winnerIds === null) return;
 
   game.state = 'ended';

@@ -98,14 +98,20 @@ function Lobby({
     });
   }
 
+  function cycleBotColor(botPlayerId: number) {
+    socket.emit('game:cycleBotColor', { botPlayerId }, (res: Ack) => {
+      if (res.ok) setGame(res.game);
+    });
+  }
+
   function addSlot() {
     applySettings({ slots: game.slots + 1 });
   }
 
-  function addBot(
-    difficulty: BotDifficulty | 'random',
-    personality: BotPersonality | 'random',
-  ) {
+  function addBot() {
+    const lastBot = [...game.players].reverse().find((p) => p.isBot);
+    const difficulty = lastBot?.botDifficulty ?? 'easy';
+    const personality = lastBot?.botPersonality ?? 'balanced';
     socket.emit('game:addBot', { difficulty, personality }, (res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);
@@ -237,6 +243,7 @@ function Lobby({
         selfId={selfId}
         setPlayerTeam={setPlayerTeam}
         cycleColor={cycleColor}
+        cycleBotColor={cycleBotColor}
         removeSlot={removeSlot}
         addSlot={addSlot}
         addBot={addBot}

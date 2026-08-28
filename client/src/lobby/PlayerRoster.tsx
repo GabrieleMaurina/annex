@@ -22,12 +22,10 @@ interface Props {
   selfId: number | null;
   setPlayerTeam: (playerId: number, team: number) => void;
   cycleColor: () => void;
+  cycleBotColor: (botPlayerId: number) => void;
   removeSlot: (index: number) => void;
   addSlot: () => void;
-  addBot: (
-    difficulty: BotDifficulty | 'random',
-    personality: BotPersonality | 'random',
-  ) => void;
+  addBot: () => void;
   setBotProfile: (
     botPlayerId: number,
     difficulty: BotDifficulty | 'random',
@@ -47,6 +45,7 @@ function PlayerRoster({
   selfId,
   setPlayerTeam,
   cycleColor,
+  cycleBotColor,
   removeSlot,
   addSlot,
   addBot,
@@ -62,6 +61,7 @@ function PlayerRoster({
   );
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+  const hasBots = game.players.some((p) => p.isBot);
 
   return (
     <>
@@ -69,7 +69,9 @@ function PlayerRoster({
         <thead>
           <tr>
             <th style={{ width: '1%' }} className="text-nowrap"></th>
-            <th style={{ width: '100%' }}>Player</th>
+            <th>Player</th>
+            {hasBots && <th className="text-nowrap">Personality</th>}
+            {hasBots && <th className="text-nowrap">Difficulty</th>}
             {isTeamDeathmatch && <th className="text-nowrap">Team</th>}
             {isHost && (
               <th style={{ width: '1%' }} className="text-nowrap"></th>
@@ -93,17 +95,20 @@ function PlayerRoster({
                   if (el) rowRefs.current.set(p.id, el);
                   else rowRefs.current.delete(p.id);
                 }}
-                role={p && !p.isBot ? 'button' : undefined}
+                role={p && (!p.isBot || isHost) ? 'button' : undefined}
                 onClick={
                   p
                     ? p.id === selfId
                       ? cycleColor
                       : p.isBot
-                        ? undefined
+                        ? isHost
+                          ? () => cycleBotColor(p.id)
+                          : undefined
                         : () => onEmojiRowClick(p.id)
                     : undefined
                 }
                 style={{
+                  height: 40,
                   outline: p?.id === selfId ? '2px solid #fff' : undefined,
                   outlineOffset: p?.id === selfId ? '-2px' : undefined,
                 }}
@@ -120,6 +125,7 @@ function PlayerRoster({
                       }}
                       className="d-inline-flex align-items-center gap-2 flex-wrap"
                     >
+                      {p.id === selfId ? 'You' : p.name}
                       {p.isBot && (
                         <img
                           src={
@@ -134,66 +140,14 @@ function PlayerRoster({
                           className="flex-shrink-0"
                         />
                       )}
-                      {p.id === selfId ? 'You' : p.name}
                       {p.id === game.hostId && <Badge bg="primary">Host</Badge>}
-                      {p.isBot &&
-                        (isHost ? (
-                          <span
-                            className="d-inline-flex align-items-center gap-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Form.Select
-                              size="sm"
-                              className="w-auto"
-                              value={p.botPersonality ?? 'balanced'}
-                              onChange={(e) =>
-                                setBotProfile(
-                                  p.id,
-                                  p.botDifficulty ?? 'easy',
-                                  e.target.value as BotPersonality,
-                                )
-                              }
-                            >
-                              {BOT_PERSONALITIES.map((value) => (
-                                <option key={value} value={value}>
-                                  {BOT_PERSONALITY_LABELS[value]}
-                                </option>
-                              ))}
-                            </Form.Select>
-                            <Form.Select
-                              size="sm"
-                              className="w-auto"
-                              value={p.botDifficulty ?? 'easy'}
-                              onChange={(e) =>
-                                setBotProfile(
-                                  p.id,
-                                  e.target.value as BotDifficulty,
-                                  p.botPersonality ?? 'balanced',
-                                )
-                              }
-                            >
-                              {BOT_DIFFICULTIES.map((value) => (
-                                <option key={value} value={value}>
-                                  {BOT_DIFFICULTY_LABELS[value]}
-                                </option>
-                              ))}
-                            </Form.Select>
-                          </span>
-                        ) : (
-                          <Badge bg="secondary">
-                            {p.botPersonality &&
-                              BOT_PERSONALITY_LABELS[p.botPersonality]}{' '}
-                            {p.botDifficulty &&
-                              BOT_DIFFICULTY_LABELS[p.botDifficulty]}
-                          </Badge>
-                        ))}
                     </span>
                   ) : isHost ? (
                     <span onClick={(e) => e.stopPropagation()}>
                       <Button
                         size="sm"
-                        variant="outline-success"
-                        onClick={() => addBot('easy', 'balanced')}
+                        variant="outline-secondary"
+                        onClick={addBot}
                       >
                         Add Bot
                       </Button>
@@ -202,6 +156,70 @@ function PlayerRoster({
                     <span className="text-muted">Empty</span>
                   )}
                 </td>
+                {hasBots && (
+                  <td
+                    className="align-middle"
+                    style={rowStyle}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {p?.isBot &&
+                      (isHost ? (
+                        <Form.Select
+                          size="sm"
+                          className="w-auto"
+                          value={p.botPersonality ?? 'balanced'}
+                          onChange={(e) =>
+                            setBotProfile(
+                              p.id,
+                              p.botDifficulty ?? 'easy',
+                              e.target.value as BotPersonality,
+                            )
+                          }
+                        >
+                          {BOT_PERSONALITIES.map((value) => (
+                            <option key={value} value={value}>
+                              {BOT_PERSONALITY_LABELS[value]}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      ) : (
+                        p.botPersonality &&
+                        BOT_PERSONALITY_LABELS[p.botPersonality]
+                      ))}
+                  </td>
+                )}
+                {hasBots && (
+                  <td
+                    className="align-middle"
+                    style={rowStyle}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {p?.isBot &&
+                      (isHost ? (
+                        <Form.Select
+                          size="sm"
+                          className="w-auto"
+                          value={p.botDifficulty ?? 'easy'}
+                          onChange={(e) =>
+                            setBotProfile(
+                              p.id,
+                              e.target.value as BotDifficulty,
+                              p.botPersonality ?? 'balanced',
+                            )
+                          }
+                        >
+                          {BOT_DIFFICULTIES.map((value) => (
+                            <option key={value} value={value}>
+                              {BOT_DIFFICULTY_LABELS[value]}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      ) : (
+                        p.botDifficulty &&
+                        BOT_DIFFICULTY_LABELS[p.botDifficulty]
+                      ))}
+                  </td>
+                )}
                 {isTeamDeathmatch && (
                   <td
                     className="align-middle"
@@ -265,7 +283,7 @@ function PlayerRoster({
           {isHost && (
             <tr>
               <td
-                colSpan={2 + (isTeamDeathmatch ? 1 : 0) + 1}
+                colSpan={2 + (hasBots ? 2 : 0) + (isTeamDeathmatch ? 1 : 0) + 1}
                 className="text-center align-middle"
               >
                 <Tip text="Add slot" placement="bottom">

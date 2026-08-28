@@ -33,13 +33,28 @@ export function chooseFortify(
   weights: Weights,
   campaign: CampaignPlan | null,
 ): FortifyChoice | null {
+  const frontier = frontierTerritories(game, view, botId);
   const target =
     campaign?.stagingTerritoryId ??
-    frontierTerritories(game, view, botId).sort(
+    frontier.sort(
       (a, b) =>
         (game.territoryTroops.get(a) ?? 0) - (game.territoryTroops.get(b) ?? 0),
     )[0];
   if (target === undefined) return null;
+
+  const frontierSet = new Set(frontier);
+  const trapped = ownedTerritoryIds(game, botId)
+    .filter((id) => id !== target && !frontierSet.has(id))
+    .filter((id) => (game.territoryTroops.get(id) ?? 0) >= 2)
+    .filter((id) => isReachable(game, botId, id, target))
+    .sort(
+      (a, b) =>
+        (game.territoryTroops.get(b) ?? 0) - (game.territoryTroops.get(a) ?? 0),
+    )[0];
+  if (trapped !== undefined) {
+    const trappedTroops = game.territoryTroops.get(trapped) ?? 0;
+    return { startId: trapped, endId: target, troops: trappedTroops - 1 };
+  }
 
   const owned = ownedTerritoryIds(game, botId).filter((id) => id !== target);
   const sourceCandidates = owned

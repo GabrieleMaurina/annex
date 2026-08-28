@@ -105,9 +105,11 @@ export function registerDeployHandlers(
         if (visible !== null && !visible.has(territoryId)) return null;
         return { territoryId, troops, playerId: player.id };
       });
+      const hand = game.playerCards.get(player.id) ?? [];
       if (
         game.troopsToDeploy <= 0 &&
-        !hasPlayableSet(game.playerCards.get(player.id) ?? [])
+        hand.length < 5 &&
+        (game.deployCardMandate || !hasPlayableSet(hand))
       )
         advanceTurnPhase(game, io, playersById);
 

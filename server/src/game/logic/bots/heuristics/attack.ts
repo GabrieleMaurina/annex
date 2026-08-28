@@ -20,12 +20,8 @@ export interface AttackChoice {
   type: 'regular' | 'blitz';
 }
 
-const MIN_WIN_PROBABILITY = 0.35;
+const MIN_WIN_PROBABILITY = 0.55;
 
-// Always blitz with the full committable stack: it resolves the whole
-// battle in one call instead of one 3v3 exchange at a time, matches how
-// most human players actually attack, and gives a cleaner win-probability
-// read than a partial commit would.
 function blitzAllTroops(attackingTroops: number): {
   type: 'regular' | 'blitz';
   troops: number;

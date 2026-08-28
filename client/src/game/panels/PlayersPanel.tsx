@@ -460,6 +460,9 @@ function PlayersPanel({
                   )}
                   <td className="align-middle" style={rowStyle}>
                     <div className="d-flex align-items-center gap-1">
+                      <span className="text-truncate" style={{ minWidth: 0 }}>
+                        {p.id === selfId ? 'You' : p.name}
+                      </span>
                       {p.isBot && (
                         <img
                           src={
@@ -473,9 +476,6 @@ function PlayersPanel({
                           className="flex-shrink-0"
                         />
                       )}
-                      <span className="text-truncate" style={{ minWidth: 0 }}>
-                        {p.id === selfId ? 'You' : p.name}
-                      </span>
                       {p.eliminated && (
                         <Tip text="Eliminated">
                           <img

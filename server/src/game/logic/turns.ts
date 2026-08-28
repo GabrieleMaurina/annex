@@ -488,6 +488,7 @@ export function beginNextSpecialPhase(
 }
 
 function startDeployPhase(game: Game, io: Server, playerId: number) {
+  game.deployCardMandate = (game.playerCards.get(playerId)?.length ?? 0) >= 5;
   const breakdown = calculateDeployTroopsBreakdown(game, playerId);
   game.troopsToDeploy =
     breakdown.territories +

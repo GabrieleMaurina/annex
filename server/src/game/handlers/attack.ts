@@ -366,36 +366,8 @@ export function registerAttackHandlers(
               sendPlayerCards(io, playersById, game, player.id);
               sendPlayerCards(io, playersById, game, defenderId);
             }
-
-            if (attackerHand.length >= 5) {
-              game.territoryTroops.set(
-                startId,
-                remainingAttackers - minMoveTroops,
-              );
-              game.territoryTroops.set(endId, minMoveTroops);
-              recordReplayFrame(game, {
-                type: 'fortify',
-                fromTerritoryId: startId,
-                toTerritoryId: endId,
-                troops: minMoveTroops,
-                playerId: player.id,
-              });
-              autoConquestMove = {
-                territoryId: endId,
-                fromTerritoryId: startId,
-                troops: minMoveTroops,
-              };
-              game.attackStartTerritoryId = null;
-              game.attackEndTerritoryId = null;
-              game.attackConquestMinTroops = null;
-              game.turnPhase = 'deploy';
-              rewindTurnTimerIfBelowHalf(game, io, playersById);
-            } else {
-              game.attackConquestMinTroops = minMoveTroops;
-            }
-          } else {
-            game.attackConquestMinTroops = minMoveTroops;
           }
+          game.attackConquestMinTroops = minMoveTroops;
         } else {
           const remainingAttackers = attackingTroops - attackLosses;
           game.territoryTroops.set(startId, 0);
@@ -552,8 +524,13 @@ export function registerAttackHandlers(
           ...troopMoveFields(visible, startId, endId, troops),
         };
       });
-      if (!hasAnyAttack(game, player.id))
+      if ((game.playerCards.get(player.id)?.length ?? 0) >= 5) {
+        game.turnPhase = 'deploy';
+        game.deployCardMandate = true;
+        rewindTurnTimerIfBelowHalf(game, io, playersById);
+      } else if (!hasAnyAttack(game, player.id)) {
         advanceTurnPhase(game, io, playersById);
+      }
 
       respondWithGameState(io, playersById, game, player.id, callback);
     },

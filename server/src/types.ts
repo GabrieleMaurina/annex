@@ -227,6 +227,7 @@ export interface Game {
   deck: Card[];
   playerCards: Map<number, Card[]>;
   conqueredThisTurn: boolean;
+  deployCardMandate: boolean;
   cardSetsPlayed: Map<number, number>;
   cardsLastSetValue: Map<number, number>;
   stats: Map<number, PlayerStats>;

@@ -73,6 +73,18 @@ function Game({
     setGame(state);
   }
 
+  function updateGameFromAction(state: GameState) {
+    if (
+      game?.state === 'playing' &&
+      state.state === 'playing' &&
+      game.turnPlayerIndex === state.turnPlayerIndex &&
+      game.turnPhase !== state.turnPhase
+    ) {
+      playSound('phase');
+    }
+    setGame(state);
+  }
+
   useEffect(() => {
     socket.on('game:state', applyGameState);
     socket.emit('game:requestState');
@@ -327,7 +339,7 @@ function Game({
           gameEnded={game.state === 'ended'}
           showReplay={endView === 'map'}
           logs={logs}
-          setGame={setGame}
+          setGame={updateGameFromAction}
           adjustTerritoryTroops={adjustTerritoryTroops}
           adjustToxinTerritories={adjustToxinTerritories}
           setRadiationTerritoryIds={setRadiationTerritoryIds}

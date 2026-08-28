@@ -1,8 +1,25 @@
 import { maps } from '../../../../maps';
 import { Game } from '../../../../types';
 import { withPortalEdges } from '../../world/portals';
-import { BotView, ownerOf } from '../view';
+import { BotView, isVisible, ownerOf } from '../view';
 import { isTeammate } from './mode';
+
+// Toxined and radiated territories have no owner but can't be attacked into
+// (see isFreeConquestTarget/isAttackEndCandidate in the attack handler), so
+// they're dead ends, not free conquests. Fog-hidden territories default to
+// not-hazardous, the same optimistic default ownerOf/troopsAt use for unseen
+// ground.
+export function isHazardTerritory(
+  game: Game,
+  view: BotView,
+  territoryId: number,
+): boolean {
+  if (!isVisible(view, territoryId)) return false;
+  return (
+    game.territoryToxins.has(territoryId) ||
+    game.radiationTerritoryIds.has(territoryId)
+  );
+}
 
 export function neighborsOf(game: Game, territoryId: number): number[] {
   const map = maps.get(game.mapName)!;

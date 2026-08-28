@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { BotProfile, Player } from '../../../types';
 import { isInteger, isObject } from '../../../validate';
-import { assignRandomColor } from '../mechanics';
+import { assignRandomColor, cycleColor } from '../mechanics';
 import { gameState } from '../state';
 import { games, respondWithGameState } from '../store';
 import {
@@ -143,6 +143,34 @@ export function registerBotLobbyHandlers(
       unregisterBotSocket(bot.socketId);
       playersBySocket.delete(bot.socketId);
       playersById.delete(bot.id);
+
+      respondWithGameState(io, playersById, game, player.id, callback);
+    },
+  );
+
+  socket.on(
+    'game:cycleBotColor',
+    (data: unknown, callback: (response: GameResponse) => void) => {
+      if (typeof callback !== 'function') return;
+      const player = playersBySocket.get(socket.id);
+      if (!player || !player.gameName)
+        return callback({ ok: false, error: 'not in a game' });
+
+      const game = games.get(player.gameName);
+      if (!game) return callback({ ok: false, error: 'game not found' });
+      if (game.hostId !== player.id)
+        return callback({ ok: false, error: 'not the host' });
+      if (game.state !== 'lobby')
+        return callback({ ok: false, error: 'game already started' });
+
+      const botPlayerId = isObject(data) ? data.botPlayerId : undefined;
+      if (!isInteger(botPlayerId))
+        return callback({ ok: false, error: 'invalid bot' });
+      const bot = playersById.get(botPlayerId);
+      if (!bot || !bot.isBot || !game.playerIds.includes(bot.id))
+        return callback({ ok: false, error: 'invalid bot' });
+
+      cycleColor(game, bot.id);
 
       respondWithGameState(io, playersById, game, player.id, callback);
     },

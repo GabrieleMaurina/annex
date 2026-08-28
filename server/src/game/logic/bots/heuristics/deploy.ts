@@ -1,11 +1,33 @@
 import { Game } from '../../../../types';
-import { frontierTerritories, ownedTerritoryIds } from '../features/territory';
+import {
+  continentBreakCandidates,
+  continentCompletionCandidates,
+} from '../features/continents';
+import { hostileNeighbors, ownedTerritoryIds } from '../features/territory';
 import { CampaignPlan, Weights } from '../types';
-import { BotView } from '../view';
+import { BotView, troopsAt } from '../view';
 
 export interface DeployChoice {
   territoryId: number;
   troops: number;
+}
+
+function opportunityOf(
+  game: Game,
+  view: BotView,
+  botId: number,
+  territoryId: number,
+  breakTargets: Set<number>,
+  completeTargets: Set<number>,
+): number {
+  let best = 0;
+  for (const n of hostileNeighbors(game, view, botId, territoryId)) {
+    let score = 1 / (troopsAt(game, view, n) + 1);
+    if (breakTargets.has(n)) score += 2;
+    if (completeTargets.has(n)) score += 1;
+    if (score > best) best = score;
+  }
+  return best;
 }
 
 export function chooseDeploy(
@@ -25,25 +47,47 @@ export function chooseDeploy(
     };
   }
 
-  const frontier = frontierTerritories(game, view, botId);
+  const bordering = ownedTerritoryIds(game, botId).filter(
+    (id) => hostileNeighbors(game, view, botId, id).length > 0,
+  );
   const targets =
-    frontier.length > 0 ? frontier : ownedTerritoryIds(game, botId);
+    bordering.length > 0 ? bordering : ownedTerritoryIds(game, botId);
   if (targets.length === 0) return null;
 
-  if (weights.stack >= 1.5) {
-    const strongest = targets.reduce((best, id) =>
-      (game.territoryTroops.get(id) ?? 0) >
-      (game.territoryTroops.get(best) ?? 0)
-        ? id
-        : best,
+  const breakTargets = new Set(
+    continentBreakCandidates(game, view, botId).map(
+      (c) => c.weakestTerritoryId,
+    ),
+  );
+  const completeTargets = new Set(
+    continentCompletionCandidates(game, view, botId).flatMap(
+      (c) => c.remainingTerritoryIds,
+    ),
+  );
+
+  const weightOf = (id: number) => {
+    const concentration =
+      ((game.territoryTroops.get(id) ?? 0) + 1) ** (weights.stack * 3);
+    const opportunity = opportunityOf(
+      game,
+      view,
+      botId,
+      id,
+      breakTargets,
+      completeTargets,
     );
-    return { territoryId: strongest, troops: troopsToDeploy };
+    return concentration * (1 + opportunity * 5);
+  };
+  const totalWeight = targets.reduce((sum, id) => sum + weightOf(id), 0);
+  let roll = Math.random() * totalWeight;
+  let territoryId = targets[targets.length - 1];
+  for (const id of targets) {
+    roll -= weightOf(id);
+    if (roll <= 0) {
+      territoryId = id;
+      break;
+    }
   }
 
-  const territoryId = targets[Math.floor(Math.random() * targets.length)];
-  const share = Math.max(
-    1,
-    Math.ceil(troopsToDeploy / Math.min(3, targets.length)),
-  );
-  return { territoryId, troops: Math.min(share, troopsToDeploy) };
+  return { territoryId, troops: troopsToDeploy };
 }

@@ -1,4 +1,4 @@
-import { maps } from '../../../maps';
+import { getGameMap } from '../../../maps';
 import { Game } from '../../../types';
 import {
   isFreeConquestTarget,
@@ -13,7 +13,7 @@ function ownedTerritoryIds(game: Game, playerId: number): number[] {
 }
 
 export function hasAnyAttack(game: Game, playerId: number): boolean {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territoryById = new Map(map.territories.map((t) => [t.id, t]));
   return ownedTerritoryIds(game, playerId).some((id) => {
     if ((game.territoryTroops.get(id) ?? 0) < 2) return false;
@@ -40,7 +40,7 @@ export function hasAnyToxin(game: Game, playerId: number): boolean {
 }
 
 export function hasAnyFortify(game: Game, playerId: number): boolean {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territoryById = new Map(map.territories.map((t) => [t.id, t]));
   return ownedTerritoryIds(game, playerId).some((id) => {
     if ((game.territoryTroops.get(id) ?? 0) < 2) return false;

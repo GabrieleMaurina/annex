@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { maps } from '../../maps';
+import { getGameMap } from '../../maps';
 import { Game, Player, TurnPhase } from '../../types';
 import {
   hasAnyAttack,
@@ -268,9 +268,7 @@ export function startCapitalPlacement(
 }
 
 function totalTerritoryCount(game: Game): number {
-  return (
-    maps.get(game.mapName)!.territories.length - game.radiationTerritoryIds.size
-  );
+  return getGameMap(game).territories.length - game.radiationTerritoryIds.size;
 }
 
 function countTerritoriesByOwner(game: Game): Map<number, number> {
@@ -427,7 +425,7 @@ function autoClaimRandomTerritory(
   playerId: number,
   playersById: Map<number, Player>,
 ) {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const unclaimed = map.territories
     .map((t) => t.id)
     .filter(
@@ -825,7 +823,7 @@ function updatePortalsForNewTurn(game: Game) {
     game.portalsEnabled = true;
     return;
   }
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const exclude = new Set([
     ...game.portalTerritoryIds,
     ...game.radiationTerritoryIds,

@@ -1,4 +1,4 @@
-import { maps } from '../../maps';
+import { getGameMap } from '../../maps';
 import { Game } from '../../types';
 import { isInteger, isObject } from '../../validate';
 import { recordReplayFrame } from './replay';
@@ -124,7 +124,7 @@ export function turnOrderBonus(index: number): number {
 }
 
 function splitTerritoriesAmongPlayers(game: Game): number[][] {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territoryIds = shuffle(
     map.territories
       .map((t) => t.id)
@@ -267,7 +267,7 @@ export function calculateDeployTroopsBreakdown(
   game: Game,
   playerId: number,
 ): DeployTroopsBreakdown {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territoryCount = [...game.territoryOwners.values()].filter(
     (ownerId) => ownerId === playerId,
   ).length;

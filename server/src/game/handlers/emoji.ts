@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { maps } from '../../maps';
+import { getGameMap } from '../../maps';
 import { EmojiAttackTarget, EmojiValue, Game, Player } from '../../types';
 import { isInteger, isObject } from '../../validate';
 import { emojiTargetAllowed } from '../logic/alliances';
@@ -27,7 +27,7 @@ function parseAttackTarget(raw: unknown, game: Game): EmojiAttackTarget | null {
   }
   if (raw.type === 'territory') {
     const territoryId = raw.territoryId;
-    const map = maps.get(game.mapName)!;
+    const map = getGameMap(game);
     if (
       isInteger(territoryId) &&
       territoryId >= 0 &&

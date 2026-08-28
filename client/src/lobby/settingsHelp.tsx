@@ -56,6 +56,9 @@ export const GAME_MODE_HELP = (
 
 export const MAP_HELP = 'Which territory layout the game is played on.';
 
+export const MAP_GEN_HELP =
+  'Procedurally generate a new map instead of picking an existing one. The same seed and settings always produce the same map. Size only roughly determines the resulting territory count, and water level controls how much of the map is ocean.';
+
 export const BLITZ_HELP = (
   <>
     How an all-out attack (&quot;blitz&quot;) resolves a battle instantly

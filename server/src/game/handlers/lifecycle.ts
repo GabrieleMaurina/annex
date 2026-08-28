@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { defaultMapName, maps } from '../../maps';
+import { defaultMapName, getGameMap, maps } from '../../maps';
 import { containsProfanity } from '../../profanity';
 import {
   Alliances,
@@ -59,6 +59,7 @@ import {
   respondWithGameState,
   sendGameResults,
   sendGameState,
+  sendGeneratedMapIfAny,
   sendPlayerCards,
 } from '../logic/store';
 import {
@@ -172,6 +173,7 @@ export function registerGameHandlers(
       const game: Game = {
         name,
         mapName: defaultMapName,
+        generatedMap: null,
         slots: 2,
         hostId: player.id,
         originalHostId: player.id,
@@ -315,6 +317,7 @@ export function registerGameHandlers(
 
       socket.leave(HOME_ROOM);
       socket.join(gameRoomName(game.name));
+      sendGeneratedMapIfAny(io, playersById, game, player.id);
       broadcastHomeGames(io, playersById);
       respondWithGameState(io, playersById, game, player.id, callback);
     },
@@ -478,6 +481,7 @@ export function registerGameHandlers(
         if (typeof settings.mapName !== 'string' || !maps.has(settings.mapName))
           return callback({ ok: false, error: 'invalid map' });
         game.mapName = settings.mapName;
+        game.generatedMap = null;
       }
 
       if (settings.name !== undefined) {
@@ -661,7 +665,7 @@ export function registerGameHandlers(
     broadcastMissions(io, game, playersById);
     game.replayInitial = snapshotTerritories(game);
     game.replayFrames = [];
-    const map = maps.get(game.mapName)!;
+    const map = getGameMap(game);
     game.deck = buildCardDeck(map.territories.map((t) => t.id));
     game.playerCards = new Map(game.playerIds.map((id) => [id, []]));
     for (const id of game.playerIds) {

@@ -5,6 +5,7 @@ export { registerDeployHandlers } from './handlers/deploy';
 export { registerEmojiHandlers } from './handlers/emoji';
 export { registerFortifyHandlers } from './handlers/fortify';
 export { registerGameHandlers } from './handlers/lifecycle';
+export { registerMapGenHandlers } from './handlers/mapgen';
 export { registerReplayHandlers } from './handlers/replay';
 export { registerCapitalHandlers } from './handlers/territory/capital';
 export { registerEntrenchHandlers } from './handlers/territory/entrench';
@@ -20,6 +21,7 @@ export {
   leaveGame,
   listGameSummaries,
   sendGameResults,
+  sendGeneratedMapIfAny,
   sendPlayerCards,
   sendPlayerLogs,
   sendPlayerMission,

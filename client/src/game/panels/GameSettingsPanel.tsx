@@ -44,6 +44,7 @@ function GameSettingsPanel({ game, top, onClose }: Props) {
           isHost={false}
           mapNames={[]}
           applySettings={() => {}}
+          generateMap={() => {}}
           collapsible={false}
         />
       </div>

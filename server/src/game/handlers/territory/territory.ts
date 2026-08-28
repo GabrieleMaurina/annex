@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { maps } from '../../../maps';
+import { getGameMap } from '../../../maps';
 import { Player } from '../../../types';
 import { isInteger, isObject } from '../../../validate';
 import { gameState } from '../../logic/state';
@@ -35,7 +35,7 @@ export function registerTerritoryHandlers(
         return callback({ ok: false, error: 'not your turn' });
 
       const territoryId = isObject(data) ? data.territoryId : undefined;
-      const map = maps.get(game.mapName)!;
+      const map = getGameMap(game);
       if (
         !isInteger(territoryId) ||
         territoryId < 0 ||

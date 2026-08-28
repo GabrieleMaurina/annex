@@ -1,4 +1,4 @@
-import { maps } from '../../../../maps';
+import { getGameMap } from '../../../../maps';
 import { Game } from '../../../../types';
 import { withPortalEdges } from '../../world/portals';
 import { BotView, isVisible, ownerOf } from '../view';
@@ -22,7 +22,7 @@ export function isHazardTerritory(
 }
 
 export function neighborsOf(game: Game, territoryId: number): number[] {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territory = map.territories.find((t) => t.id === territoryId);
   return withPortalEdges(
     territory?.neighbors ?? [],

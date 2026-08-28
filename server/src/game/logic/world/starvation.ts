@@ -1,4 +1,4 @@
-import { maps } from '../../../maps';
+import { getGameMap } from '../../../maps';
 import { Game } from '../../../types';
 import { recordReplayFrame } from '../replay';
 
@@ -7,7 +7,7 @@ const TOTAL_CAP_MULTIPLIER = 3;
 export const TERRITORY_CAP = 30;
 
 export function totalTroopsCap(game: Game): number {
-  return maps.get(game.mapName)!.territories.length * TOTAL_CAP_MULTIPLIER;
+  return getGameMap(game).territories.length * TOTAL_CAP_MULTIPLIER;
 }
 
 function playerTerritoryIds(game: Game, playerId: number): number[] {

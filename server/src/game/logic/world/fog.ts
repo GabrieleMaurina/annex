@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { maps } from '../../../maps';
+import { getGameMap } from '../../../maps';
 import { Game, Player } from '../../../types';
 import { allianceStatesForViewer, alliedIds } from '../alliances';
 import { gameState, isEliminated, territoryStats } from '../state';
@@ -9,7 +9,7 @@ export function computeVisibleTerritoryIds(
   game: Game,
   playerId: number,
 ): Set<number> {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const neighborsById = new Map(
     map.territories.map((t) => [t.id, t.neighbors]),
   );

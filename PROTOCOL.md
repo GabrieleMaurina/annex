@@ -336,6 +336,34 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
   `playerTeam` sets one player's `team` (see `GameState.players` above for its valid range); rejected with `invalid team` unless `playerId` is currently a player (not a spectator) and `team` is an integer within that range.
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid alliances`, `invalid banned players`, `invalid blitz`, `invalid bounties`, `invalid cards`, `invalid defence dice`, `invalid disconnect bot difficulty`, `invalid disconnect bot personality`, `invalid entrenchments`, `invalid fog of war`, `invalid fortification`, `invalid game mode`, `invalid map`, `invalid name`, `invalid password`, `invalid placement`, `invalid team`, `invalid portals`, `invalid radiations`, `invalid slots`, `invalid starvation`, `invalid supply lines`, `invalid toxins`, `invalid turn duration`, `invalid turn troops`, `invalid visibility`, `game name already in use`.
 
+### `game:generateMap`
+- **When sent:** the host of a `lobby` game requests a procedurally generated map, e.g. from the "Generate" entry in the map picker. Sending it again (any number of times, with the same or different `seed`/`size`/`water`) replaces whatever map — generated or not — the game currently has, exactly like picking a different map from `game:settings`' `mapName` would.
+- **Purpose:** build a brand-new map server-side from a random seed and a small set of parameters (continents, territories, oceans/lakes, a connected territory graph, and a rendered image), and make it the game's active map (`GameState.mapName` becomes an internal identifier derived from the inputs, not meant to be displayed — see `displayName` on `game:mapGenerated` below for the name to actually show). The same `seed` with the same `size`/`water` always produces the exact same map; the actual resulting territory/continent counts are influenced by the random seed and aren't guaranteed to hit any particular number, only to trend toward the requested `size`'s range and typical continent sizing (continents are usually 2–15 territories, 7 most common). The caller must be host and the game must still be `lobby`. On success the server broadcasts `game:mapGenerated` (see below) to everyone currently in the game's room, then behaves exactly like `game:settings` changing `mapName`: an Ack to the caller and `game:state` to everyone else.
+- **Content:**
+  ```ts
+  {
+    seed: string;    // trimmed; empty, over 20 characters, or containing profanity is rejected
+    size: 'small' | 'medium' | 'large' | 'xlarge';   // roughly 20–40 / 40–80 / 80–120 / 120–160 territories
+    water: 'land' | 'mixed' | 'ocean';                // land/water balance, land has the least water
+  }
+  ```
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid seed`, `invalid size`, `invalid water`.
+
+### `game:mapGenerated`
+- **When sent:** by the server, never by the client. Broadcast to every socket in a game's room immediately after a successful `game:generateMap` (before that call's Ack/`game:state`, so it's always available by the time `GameState.mapName` changes for any recipient); also sent, targeted at just that one socket, to a player or spectator who `game:join`s or reconnects into a game whose active map is currently a generated one, since `GameState` itself never carries map geometry or images.
+- **Purpose:** deliver the full generated map — the same shape a `.anx` map file's `territories`/`bonuses` have, plus a ready-to-use image — since, unlike the built-in maps listed by `maps:list`, a generated map has no file on disk for the client to fetch by name.
+- **Content:**
+  ```ts
+  {
+    name: string;         // equal to GameState.mapName from this point on; an internal identifier, not meant to be shown to users
+    displayName: string;  // human-facing name, e.g. "Ocean (Large)" - not unique, same convention as a bot's "Killer (Hard)" name
+    territories: { id: number; continentId: number; x: number; y: number; neighbors: number[] }[];
+    bonuses: number[];   // indexed by continentId
+    imageSrc: string;    // a data: URL, directly usable as an <img>/Image src
+  }
+  ```
+- **Ack:** none
+
 ### `game:addBot`
 - **When sent:** the host of a `lobby` game clicks "Add Bot" on an open slot in the player roster.
 - **Purpose:** seat a new bot (see "Bots" above) in an open slot, with a random `team`/`color` exactly as a joining human would get. The caller must be host, the game must still be `lobby`, and it must have an open slot (`playerIds.length < slots`). `difficulty`/`personality` may each be `'random'`, resolved once, immediately, to a concrete value (independently of each other) rather than staying `'random'` on the seated bot; the bot's `name` is derived from the resolved profile (e.g. `Killer (Hard)`), not unique, and changes if the profile is later changed via `game:setBotProfile`.
@@ -595,7 +623,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `maps:list`
 - **When sent:** once, immediately after the socket connects; re-sent any time the client reconnects. Sent as a request/ack rather than the server pushing it unprompted, so the client can't miss it by registering its handler a moment too late.
-- **Purpose:** ask the server which map names are available to choose from (e.g. for the host's map-select control in `game:settings`).
+- **Purpose:** ask the server which map names are available to choose from (e.g. for the host's map-select control in `game:settings`). Never includes a generated map's name (see `game:generateMap` above): those exist only inside the game(s) that generated them, not as a globally pickable map.
 - **Content:** none
 - **Ack:**
   ```ts

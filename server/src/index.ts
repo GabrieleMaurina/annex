@@ -12,6 +12,7 @@ import {
   registerEntrenchHandlers,
   registerFortifyHandlers,
   registerGameHandlers,
+  registerMapGenHandlers,
   registerReplayHandlers,
   registerTerritoryHandlers,
   registerToxinsHandlers,
@@ -29,6 +30,7 @@ const io = new Server(httpServer, {
   cors: {
     origin: 'http://localhost:5000',
   },
+  maxHttpBufferSize: 8 * 1024 * 1024,
 });
 
 const playersBySocket = new Map<string, Player>();
@@ -42,6 +44,7 @@ io.on('connection', (socket) => {
   registerMapsHandlers(socket);
   registerHomeHandlers(io, socket, playersBySocket, playersByKey, playersById);
   registerGameHandlers(io, socket, playersBySocket, playersById);
+  registerMapGenHandlers(io, socket, playersBySocket, playersById);
   registerBotLobbyHandlers(io, socket, playersBySocket, playersById);
   registerTerritoryHandlers(io, socket, playersBySocket, playersById);
   registerTroopHandlers(io, socket, playersBySocket, playersById);

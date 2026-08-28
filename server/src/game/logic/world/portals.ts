@@ -1,4 +1,4 @@
-import { maps } from '../../../maps';
+import { getGameMap } from '../../../maps';
 import { Game, GameMap } from '../../../types';
 import { shuffle } from '../mechanics';
 
@@ -62,7 +62,7 @@ export function initializePortals(game: Game) {
     game.portalsEnabled = false;
     return;
   }
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   game.portalTerritoryIds = selectPortalTerritories(
     map,
     portalCount(map),

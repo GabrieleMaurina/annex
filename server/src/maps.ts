@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Socket } from 'socket.io';
-import { GameMap } from './types';
+import { Game, GameMap } from './types';
 
 const mapsDir = path.resolve(__dirname, '..', '..', 'client', 'public', 'maps');
 
@@ -21,6 +21,17 @@ export const defaultMapName = maps.has('World') ? 'World' : [...maps.keys()][0];
 
 export function listMapNames(): string[] {
   return [...maps.keys()];
+}
+
+export function getGameMap(game: Game): GameMap {
+  if (game.generatedMap) {
+    return {
+      name: game.mapName,
+      territories: game.generatedMap.territories,
+      bonuses: game.generatedMap.bonuses,
+    };
+  }
+  return maps.get(game.mapName)!;
 }
 
 export function registerMapsHandlers(socket: Socket) {

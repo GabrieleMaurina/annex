@@ -14,6 +14,13 @@ export interface GameMap {
   bonuses: number[];
 }
 
+export interface GeneratedGameMap {
+  territories: Territory[];
+  bonuses: number[];
+  displayName: string;
+  imageSrc: string;
+}
+
 export interface Player {
   key: string;
   id: number;
@@ -158,6 +165,7 @@ export interface PlayerStats {
 export interface Game {
   name: string;
   mapName: string;
+  generatedMap: GeneratedGameMap | null;
   slots: number;
   hostId: number;
   originalHostId: number;

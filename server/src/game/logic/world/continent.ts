@@ -1,4 +1,4 @@
-import { maps } from '../../../maps';
+import { getGameMap } from '../../../maps';
 import { Game } from '../../../types';
 import { shuffle } from '../mechanics';
 
@@ -8,7 +8,7 @@ export function continentTerritoryIds(
   game: Game,
   continentId: number,
 ): number[] {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   return map.territories
     .filter((t) => t.continentId === continentId)
     .map((t) => t.id);
@@ -19,7 +19,7 @@ export function initializeContinent(game: Game) {
     game.continentId = null;
     return;
   }
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const sizeByContinentId = new Map<number, number>();
   for (const t of map.territories) {
     sizeByContinentId.set(

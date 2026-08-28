@@ -20,8 +20,10 @@ import { sortMapData } from '../utils/sortMap';
 
 const MIN_CONTINENTS = 1;
 const MAX_CONTINENTS = 20;
-const MIN_BONUS = 1;
-const MAX_BONUS = 10;
+const MIN_BONUS = 2;
+const MAX_BONUS = 15;
+const MIN_CONTINENT_SIZE = 2;
+const MAX_CONTINENT_SIZE = 15;
 
 interface Props {
   collapsed: boolean;
@@ -77,6 +79,24 @@ function isValidTerritory(t: unknown): t is Territory {
   );
 }
 
+function hasInvalidContinentSizes(
+  territories: Territory[],
+  continentCount: number,
+): boolean {
+  const sizeByContinentId = new Map<number, number>();
+  for (const t of territories) {
+    sizeByContinentId.set(
+      t.continentId,
+      (sizeByContinentId.get(t.continentId) ?? 0) + 1,
+    );
+  }
+  for (let i = 0; i < continentCount; i++) {
+    const size = sizeByContinentId.get(i) ?? 0;
+    if (size < MIN_CONTINENT_SIZE || size > MAX_CONTINENT_SIZE) return true;
+  }
+  return false;
+}
+
 function isValidMapFile(m: unknown): m is Map {
   if (typeof m !== 'object' || m === null) return false;
   const f = m as Map;
@@ -108,6 +128,7 @@ function Panel({
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showConnectivityError, setShowConnectivityError] = useState(false);
+  const [showContinentSizeError, setShowContinentSizeError] = useState(false);
 
   function addContinent() {
     if (continentCount >= MAX_CONTINENTS) return;
@@ -232,6 +253,10 @@ function Panel({
       setShowConnectivityError(true);
       return;
     }
+    if (hasInvalidContinentSizes(territories, continentCount)) {
+      setShowContinentSizeError(true);
+      return;
+    }
     const baseName = mapName.replace(/\.(anx|json)$/i, '');
     const isBlankImage = imageSrc === createDefaultImage();
     const sorted = sortMapData(territories, bonuses);
@@ -251,7 +276,7 @@ function Panel({
     a.download = `${baseName}.anx`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [mapName, imageSrc, territories, bonuses]);
+  }, [mapName, imageSrc, territories, bonuses, continentCount]);
 
   const isEmptyMap =
     territories.length === 0 && imageSrc === createDefaultImage();
@@ -417,6 +442,17 @@ function Panel({
         >
           <Toast.Body>
             All territories must be connected to each other.
+          </Toast.Body>
+        </Toast>
+        <Toast
+          show={showContinentSizeError}
+          onClose={() => setShowContinentSizeError(false)}
+          autohide
+          delay={3000}
+        >
+          <Toast.Body>
+            Each continent must have between {MIN_CONTINENT_SIZE} and{' '}
+            {MAX_CONTINENT_SIZE} territories.
           </Toast.Body>
         </Toast>
       </ToastContainer>

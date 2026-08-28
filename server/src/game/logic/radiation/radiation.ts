@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { maps } from '../../../maps';
+import { getGameMap } from '../../../maps';
 import { Game, Player, Radiations } from '../../../types';
 import { ownsAnyTerritory, shuffle } from '../mechanics';
 import { recordElimination } from '../progression/stats';
@@ -29,7 +29,7 @@ export function initializeRadiation(game: Game) {
     game.radiationUpcomingTerritoryIds = new Set();
     return;
   }
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const count = radiationInitialCount(game.radiations, map.territories.length);
   game.radiationTerritoryIds = new Set(
     selectRadiationTerritories(map.territories, count),
@@ -51,7 +51,7 @@ function isValidRadiationTarget(
 }
 
 function computeDynamicTarget(game: Game): Set<number> {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territoryById = new Map(map.territories.map((t) => [t.id, t]));
   const working = new Set(game.radiationTerritoryIds);
 
@@ -68,7 +68,7 @@ function computeDynamicTarget(game: Game): Set<number> {
 }
 
 function computeExpandingTarget(game: Game): Set<number> {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territoryById = new Map(map.territories.map((t) => [t.id, t]));
   const current = game.radiationTerritoryIds;
 

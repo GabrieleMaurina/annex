@@ -1,11 +1,11 @@
-import { maps } from '../../../../maps';
+import { getGameMap } from '../../../../maps';
 import { Game } from '../../../../types';
 import { BotView, ownerOf } from '../view';
 import { isTeammate } from './mode';
 import { isHazardTerritory } from './territory';
 
 function continentGroups(game: Game): Map<number, number[]> {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const continents = new Map<number, number[]>();
   for (const territory of map.territories) {
     const list = continents.get(territory.continentId);
@@ -28,7 +28,7 @@ export function continentCompletionCandidates(
   view: BotView,
   botId: number,
 ): ContinentCompletionCandidate[] {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const candidates: ContinentCompletionCandidate[] = [];
   for (const [continentId, territoryIds] of continentGroups(game)) {
     const owned = territoryIds.filter(
@@ -69,7 +69,7 @@ export function continentBreakCandidates(
   view: BotView,
   botId: number,
 ): ContinentBreakCandidate[] {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const candidates: ContinentBreakCandidate[] = [];
   for (const [continentId, territoryIds] of continentGroups(game)) {
     const owners = territoryIds.map((id) => ownerOf(game, view, id));

@@ -49,11 +49,47 @@ function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
   return `data:${mime};base64,${btoa(binary)}`;
 }
 
+export interface GeneratedMapData {
+  displayName: string;
+  territories: Territory[];
+  bonuses: number[];
+  imageSrc: string;
+}
+
+const generatedMaps = new Map<string, GeneratedMapData>();
+
+export function registerGeneratedMap(
+  name: string,
+  data: GeneratedMapData,
+): void {
+  generatedMaps.set(name, data);
+}
+
+export function getMapDisplayName(mapName: string): string {
+  return generatedMaps.get(mapName)?.displayName ?? mapName;
+}
+
+// Synchronous, unlike loadGameMap: registerGeneratedMap populates this cache
+// the instant `game:mapGenerated` arrives, which is always before the
+// GameState update that changes mapName to it. Reading straight from here
+// during render (rather than through a useEffect + loadGameMap round trip)
+// means a generated map's thumbnail is available on the very same render
+// that its name shows up, with no in-between frame where it's momentarily
+// missing - that gap is what a naive effect-based load would show as a flicker.
+export function getGeneratedMapData(
+  mapName: string,
+): GeneratedMapData | undefined {
+  return generatedMaps.get(mapName);
+}
+
 export function loadGameMap(mapName: string): Promise<{
   territories: Territory[];
   bonuses: number[];
   imageSrc: string | null;
 }> {
+  const generated = generatedMaps.get(mapName);
+  if (generated) return Promise.resolve(generated);
+
   return fetch(`/maps/${encodeURIComponent(mapName)}.anx`)
     .then((res) => res.json())
     .then((data: MapFile) => ({

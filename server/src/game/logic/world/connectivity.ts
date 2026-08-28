@@ -1,4 +1,4 @@
-import { maps } from '../../../maps';
+import { getGameMap } from '../../../maps';
 import { Game } from '../../../types';
 import { withPortalEdges } from './portals';
 
@@ -7,7 +7,7 @@ export function wouldSplitMap(
   removedIds: Set<number>,
   candidateTerritoryId: number,
 ): boolean {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const removed = new Set(removedIds);
   removed.add(candidateTerritoryId);
   const remaining = map.territories.filter((t) => !removed.has(t.id));
@@ -39,7 +39,7 @@ export function ownedTerritoryClusters(
   game: Game,
   playerId: number,
 ): number[][] {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const neighborsById = new Map(
     map.territories.map((t) => [t.id, t.neighbors]),
   );
@@ -82,7 +82,7 @@ export function fortifyFullPath(
   endId: number,
 ): number[] {
   if (game.fortification === 'Unrestricted') return [startId, endId];
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territoryById = new Map(map.territories.map((t) => [t.id, t]));
   const visited = new Set<number>([startId]);
   const parentOf = new Map<number, number>();
@@ -122,7 +122,7 @@ export function connectedOwnedTerritories(
   playerId: number,
   startIds: number[],
 ): Set<number> {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const neighborsById = new Map(
     map.territories.map((t) => [t.id, t.neighbors]),
   );

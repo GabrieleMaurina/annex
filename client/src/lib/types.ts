@@ -277,6 +277,15 @@ export type GameRulesSettings = Pick<
 
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 
+export type MapSize = 'small' | 'medium' | 'large' | 'xlarge';
+export type WaterLevel = 'land' | 'mixed' | 'ocean';
+
+export interface GenerateMapInput {
+  seed: string;
+  size: MapSize;
+  water: WaterLevel;
+}
+
 export interface ChatMessage {
   id: number;
   name: string;

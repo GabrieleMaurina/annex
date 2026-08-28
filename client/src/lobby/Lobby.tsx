@@ -10,6 +10,7 @@ import type {
   BotPersonality,
   GameSettingsInput,
   GameState,
+  GenerateMapInput,
   Player,
 } from '../lib/types';
 import BannedList from './BannedList';
@@ -62,6 +63,22 @@ function Lobby({
       setSettingsError('');
       setGame(res.game);
       if (settings.name !== undefined) saveGameName(res.game.name);
+    });
+  }
+
+  function generateMap(
+    input: GenerateMapInput,
+    onSettled?: (ok: boolean, mapName?: string) => void,
+  ) {
+    socket.emit('game:generateMap', input, (res: Ack) => {
+      if (!res.ok) {
+        setSettingsError(res.error);
+        onSettled?.(false);
+        return;
+      }
+      setSettingsError('');
+      setGame(res.game);
+      onSettled?.(true, res.game.mapName);
     });
   }
 
@@ -220,6 +237,7 @@ function Lobby({
           isHost={isHost}
           mapNames={mapNames}
           applySettings={applySettings}
+          generateMap={generateMap}
           headerActions={
             <div className="d-flex gap-2">
               {isHost && (

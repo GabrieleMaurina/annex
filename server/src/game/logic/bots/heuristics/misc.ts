@@ -1,11 +1,11 @@
-import { maps } from '../../../../maps';
+import { getGameMap } from '../../../../maps';
 import { Game } from '../../../../types';
 import { neighborsOf, ownedTerritoryIds } from '../features/territory';
 import { Weights } from '../types';
 import { BotView } from '../view';
 
 export function chooseTerritoryClaim(game: Game): number | null {
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const unclaimed = map.territories
     .map((t) => t.id)
     .filter(

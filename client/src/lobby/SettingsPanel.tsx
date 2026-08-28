@@ -2,11 +2,24 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Dropdown, Form } from 'react-bootstrap';
 import Help from '../common/Help';
+import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/Tip';
-import { loadGameMap } from '../game/mapData';
+import {
+  getGeneratedMapData,
+  getMapDisplayName,
+  loadGameMap,
+} from '../game/mapData';
 import { playSound } from '../lib/sounds';
-import type { GameMode, GameSettingsInput, GameState } from '../lib/types';
+import type {
+  GameMode,
+  GameSettingsInput,
+  GameState,
+  GenerateMapInput,
+} from '../lib/types';
 import GameSettingsFields from './GameSettingsFields';
+import MapGenerationPanel, {
+  type MapGenerationPanelHandle,
+} from './MapGenerationPanel';
 
 const LABEL_STYLE = { minWidth: 130, flexShrink: 0 };
 const MAP_TEXT_COLOR = 'rgb(222, 226, 230)';
@@ -17,11 +30,17 @@ const MAP_TOOLTIP_STYLE = {
 
 import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
 
+const GENERATE_MAP_OPTION = '__generateMap__';
+
 interface Props {
   game: GameState;
   isHost: boolean;
   mapNames: string[];
   applySettings: (settings: GameSettingsInput) => void;
+  generateMap: (
+    input: GenerateMapInput,
+    onSettled?: (ok: boolean, mapName?: string) => void,
+  ) => void;
   headerActions?: ReactNode;
   collapsible?: boolean;
 }
@@ -55,6 +74,7 @@ function SettingsPanel({
   isHost,
   mapNames,
   applySettings,
+  generateMap,
   headerActions,
   collapsible = true,
 }: Props) {
@@ -65,6 +85,9 @@ function SettingsPanel({
     Record<string, { territories: number; continents: number }>
   >({});
   const loadedMapNamesRef = useRef(new Set<string>());
+  const [mapGenOpen, setMapGenOpen] = useState(false);
+  const mapGenRef = useRef<MapGenerationPanelHandle>(null);
+  const whiteMapIcon = useWhiteIcon('/icons/map.svg');
 
   useEffect(() => {
     const names = new Set(mapNames);
@@ -87,9 +110,31 @@ function SettingsPanel({
     }
   }, [mapNames, game.mapName]);
 
+  // Prefers the synchronous generated-map cache over the async-loaded
+  // mapThumbnails/mapStats state: for a just-generated map, that state won't
+  // catch up until an effect runs a render later, which would show up as a
+  // flash of the icon disappearing and reappearing right as the name changes.
+  function imageSrcFor(name: string): string | undefined {
+    return getGeneratedMapData(name)?.imageSrc ?? mapThumbnails[name];
+  }
+
+  function statsFor(
+    name: string,
+  ): { territories: number; continents: number } | undefined {
+    const generated = getGeneratedMapData(name);
+    if (generated) {
+      return {
+        territories: generated.territories.length,
+        continents: new Set(generated.territories.map((t) => t.continentId))
+          .size,
+      };
+    }
+    return mapStats[name];
+  }
+
   function mapTooltip(name: string) {
-    const image = mapThumbnails[name];
-    const stats = mapStats[name];
+    const image = imageSrcFor(name);
+    const stats = statsFor(name);
     return (
       <div className="text-start">
         {image && (
@@ -110,6 +155,30 @@ function SettingsPanel({
       </div>
     );
   }
+
+  const currentImageSrc = imageSrcFor(game.mapName);
+
+  const mapToggle = (
+    <Dropdown.Toggle
+      as="button"
+      type="button"
+      bsPrefix="form-select"
+      className="w-auto d-flex align-items-center gap-2"
+      style={{ color: MAP_TEXT_COLOR }}
+    >
+      {currentImageSrc && (
+        <img
+          src={currentImageSrc}
+          width={20}
+          height={20}
+          alt=""
+          className="rounded"
+          style={{ objectFit: 'cover' }}
+        />
+      )}
+      {getMapDisplayName(game.mapName)}
+    </Dropdown.Toggle>
+  );
 
   const settingsBody = (
     <>
@@ -174,7 +243,7 @@ function SettingsPanel({
             )}
           </div>
 
-          <div className="col d-flex align-items-center gap-2">
+          <div className="col d-flex align-items-center flex-wrap gap-2">
             <Form.Label
               className="mb-0 d-flex align-items-center gap-1"
               style={LABEL_STYLE}
@@ -184,33 +253,29 @@ function SettingsPanel({
             </Form.Label>
             {isHost ? (
               <Dropdown
-                onSelect={(name) => name && applySettings({ mapName: name })}
+                onSelect={(name) => {
+                  if (!name) return;
+                  if (name === GENERATE_MAP_OPTION) {
+                    setMapGenOpen(true);
+                    mapGenRef.current?.generate();
+                    return;
+                  }
+                  setMapGenOpen(false);
+                  applySettings({ mapName: name });
+                }}
               >
-                <Tip
-                  text={mapTooltip(game.mapName)}
-                  placement="right"
-                  style={MAP_TOOLTIP_STYLE}
-                >
-                  <Dropdown.Toggle
-                    as="button"
-                    type="button"
-                    bsPrefix="form-select"
-                    className="w-auto d-flex align-items-center gap-2"
-                    style={{ color: MAP_TEXT_COLOR }}
+                {mapGenOpen ? (
+                  mapToggle
+                ) : (
+                  <Tip
+                    text={mapTooltip(game.mapName)}
+                    placement="right"
+                    style={MAP_TOOLTIP_STYLE}
+                    trigger={['hover']}
                   >
-                    {mapThumbnails[game.mapName] && (
-                      <img
-                        src={mapThumbnails[game.mapName]}
-                        width={20}
-                        height={20}
-                        alt=""
-                        className="rounded"
-                        style={{ objectFit: 'cover' }}
-                      />
-                    )}
-                    {game.mapName}
-                  </Dropdown.Toggle>
-                </Tip>
+                    {mapToggle}
+                  </Tip>
+                )}
                 <Dropdown.Menu
                   className="rounded-0 p-0 w-100"
                   style={
@@ -247,6 +312,18 @@ function SettingsPanel({
                       </Dropdown.Item>
                     </Tip>
                   ))}
+                  <Dropdown.Item
+                    eventKey={GENERATE_MAP_OPTION}
+                    className="d-flex align-items-center gap-2"
+                  >
+                    <img
+                      src={whiteMapIcon ?? '/icons/map.svg'}
+                      width={20}
+                      height={20}
+                      alt=""
+                    />
+                    Generate
+                  </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
             ) : (
@@ -256,9 +333,9 @@ function SettingsPanel({
                 style={MAP_TOOLTIP_STYLE}
               >
                 <span className="d-flex align-items-center gap-2">
-                  {mapThumbnails[game.mapName] && (
+                  {currentImageSrc && (
                     <img
-                      src={mapThumbnails[game.mapName]}
+                      src={currentImageSrc}
                       width={20}
                       height={20}
                       alt=""
@@ -266,7 +343,7 @@ function SettingsPanel({
                       style={{ objectFit: 'cover' }}
                     />
                   )}
-                  {game.mapName}
+                  {getMapDisplayName(game.mapName)}
                 </span>
               </Tip>
             )}
@@ -275,6 +352,15 @@ function SettingsPanel({
 
         {headerActions}
       </div>
+
+      {isHost && (
+        <MapGenerationPanel
+          ref={mapGenRef}
+          open={mapGenOpen}
+          currentMapName={game.mapName}
+          generateMap={generateMap}
+        />
+      )}
 
       {collapsible ? (
         <details className="mb-1" onToggle={() => playSound('click')}>

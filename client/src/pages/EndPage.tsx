@@ -294,6 +294,7 @@ function EndPage({
           isHost={false}
           mapNames={mapNames}
           applySettings={() => {}}
+          generateMap={() => {}}
         />
       </div>
     </Container>

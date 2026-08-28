@@ -377,6 +377,7 @@ export function handleReconnect(
   }
 
   recomputeHost(game, playersById);
+  sendGeneratedMapIfAny(io, playersById, game, player.id);
   broadcastHomeGames(io, playersById);
   broadcastGameState(io, game, playersById);
 }
@@ -467,6 +468,22 @@ export function broadcastGameResults(
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
     sendGameResults(io, playersById, game, viewerId);
   }
+}
+
+export function sendGeneratedMapIfAny(
+  io: Server,
+  playersById: Map<number, Player>,
+  game: Game,
+  playerId: number,
+) {
+  if (!game.generatedMap) return;
+  sendToPlayer(io, playersById, playerId, 'game:mapGenerated', {
+    name: game.mapName,
+    displayName: game.generatedMap.displayName,
+    territories: game.generatedMap.territories,
+    bonuses: game.generatedMap.bonuses,
+    imageSrc: game.generatedMap.imageSrc,
+  });
 }
 
 export function sendGameState(

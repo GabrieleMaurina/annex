@@ -1,4 +1,4 @@
-import { maps } from '../../../maps';
+import { getGameMap } from '../../../maps';
 import { Game, GameMap, Mission, MissionType } from '../../../types';
 import { countTerritories, findKillerId } from './stats';
 
@@ -68,7 +68,7 @@ export function assignMissions(
   allowedTypes: MissionType[] = ALL_MISSION_TYPES,
 ): Map<number, Mission> {
   const targets = cyclicTargets(game.playerIds);
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const continentCombos = generateContinentCombos(map);
   const types =
     continentCombos.length > 0
@@ -121,7 +121,7 @@ export function missionAccomplished(
   }
 
   if (mission.type === 'continents') {
-    const map = maps.get(game.mapName)!;
+    const map = getGameMap(game);
     return mission.continentIds.every((continentId) =>
       map.territories
         .filter((t) => t.continentId === continentId)

@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { maps } from '../../maps';
+import { getGameMap } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
 import { hasAnyAttack } from '../logic/combat/autoSkip';
@@ -76,7 +76,7 @@ function isAttackStartCandidate(
   territoryId: number,
 ): boolean {
   if ((game.territoryTroops.get(territoryId) ?? 0) < 2) return false;
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territory = map.territories.find((t) => t.id === territoryId);
   const neighbors = withPortalEdges(
     territory?.neighbors ?? [],
@@ -101,7 +101,7 @@ function isAttackEndCandidate(
   if (ownerId === playerId) return false;
   if (ownerId === undefined && !isFreeConquestTarget(game, territoryId))
     return false;
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territory = map.territories.find((t) => t.id === startId);
   const neighbors = withPortalEdges(
     territory?.neighbors ?? [],

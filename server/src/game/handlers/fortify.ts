@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { maps } from '../../maps';
+import { getGameMap } from '../../maps';
 import { Game, Player } from '../../types';
 import { isInteger, isNullableInteger, isObject } from '../../validate';
 import { recordReplayFrame } from '../logic/replay';
@@ -41,7 +41,7 @@ function isFortifyStartCandidate(
   if ((game.territoryTroops.get(territoryId) ?? 0) < 2) return false;
   if (game.fortification === 'Unrestricted')
     return ownsOtherTerritory(game, playerId, territoryId);
-  const map = maps.get(game.mapName)!;
+  const map = getGameMap(game);
   const territory = map.territories.find((t) => t.id === territoryId);
   const neighbors = withPortalEdges(
     territory?.neighbors ?? [],
@@ -60,7 +60,7 @@ function isValidFortifyEnd(
 ): boolean {
   if (game.fortification === 'Unrestricted') return true;
   if (game.fortification === 'Neighboring') {
-    const map = maps.get(game.mapName)!;
+    const map = getGameMap(game);
     const territory = map.territories.find((t) => t.id === startId);
     const neighbors = withPortalEdges(
       territory?.neighbors ?? [],

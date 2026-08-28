@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
+import { registerGeneratedMap, type Territory } from './game/mapData';
 import {
   getGameSettings,
   getGameSlots,
@@ -147,6 +148,27 @@ function App() {
       socket.off('connect', afterConnect);
     };
   }, [room, attemptJoin]);
+
+  useEffect(() => {
+    function onMapGenerated(data: {
+      name: string;
+      displayName: string;
+      territories: Territory[];
+      bonuses: number[];
+      imageSrc: string;
+    }) {
+      registerGeneratedMap(data.name, {
+        displayName: data.displayName,
+        territories: data.territories,
+        bonuses: data.bonuses,
+        imageSrc: data.imageSrc,
+      });
+    }
+    socket.on('game:mapGenerated', onMapGenerated);
+    return () => {
+      socket.off('game:mapGenerated', onMapGenerated);
+    };
+  }, []);
 
   useEffect(() => {
     function onKicked(data: { gameName: string }) {

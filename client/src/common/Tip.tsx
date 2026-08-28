@@ -4,19 +4,22 @@ import type { OverlayTriggerProps } from 'react-bootstrap';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 
 type Placement = NonNullable<OverlayTriggerProps['placement']>;
+type Trigger = OverlayTriggerProps['trigger'];
 
 interface Props {
   text: ReactNode;
   placement?: Placement;
   style?: CSSProperties;
+  trigger?: Trigger;
   children: ReactElement;
 }
 
-function Tip({ text, placement = 'auto', style, children }: Props) {
+function Tip({ text, placement = 'auto', style, trigger, children }: Props) {
   const id = useId();
   return (
     <OverlayTrigger
       placement={placement}
+      trigger={trigger}
       delay={{ show: 0, hide: 0 }}
       overlay={
         <Tooltip id={id} style={{ whiteSpace: 'pre-line', ...style }}>

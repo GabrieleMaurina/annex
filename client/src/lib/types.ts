@@ -111,6 +111,10 @@ export type Mission =
   | { type: 'continents'; continentIds: number[] }
   | { type: 'assassinate'; targetId: number };
 
+export type BotDifficulty = 'idle' | 'easy' | 'medium' | 'hard';
+export type BotPersonality =
+  'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic';
+
 export interface GameState {
   name: string;
   mapName: string;
@@ -118,15 +122,25 @@ export interface GameState {
   hostId: number;
   originalHostId: number;
   state: 'lobby' | 'playing' | 'ended';
+  alliances: Alliances;
+  allianceStates: {
+    playerId: number;
+    state: AllianceViewState;
+    cooldownUntil?: number;
+  }[];
+  blitz: Blitz;
+  bounties: Bounties;
+  cards: CardsMode;
+  defenceDice: DefenceDice;
+  disconnectBotDifficulty: BotDifficulty | 'random';
+  disconnectBotPersonality: BotPersonality | 'random';
+  entrenchments: Entrenchments;
+  fogOfWar: FogOfWar;
+  fortification: Fortification;
   gameMode: GameMode;
   continentId: number | null;
-  blitz: Blitz;
-  defenceDice: DefenceDice;
-  cards: CardsMode;
+  hasPassword: boolean;
   placement: Placement;
-  fortification: Fortification;
-  entrenchments: Entrenchments;
-  toxins: Toxins;
   portals: Portals;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
@@ -134,21 +148,13 @@ export interface GameState {
   radiationTerritoryIds: number[];
   radiationUpcomingTerritoryIds: number[];
   starvation: Starvation;
-  turnTroops: TurnTroops;
-  bounties: Bounties;
   supplyLines: SupplyLines;
-  fogOfWar: FogOfWar;
-  alliances: Alliances;
-  allianceStates: {
-    playerId: number;
-    state: AllianceViewState;
-    cooldownUntil?: number;
-  }[];
+  toxins: Toxins;
+  turnDuration: TurnDuration;
+  turnTroops: TurnTroops;
+  visibility: Visibility;
   territoryTroopsCap: number;
   totalTroopsCap: number;
-  turnDuration: TurnDuration;
-  hasPassword: boolean;
-  visibility: Visibility;
   turnNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
@@ -180,6 +186,9 @@ export interface GameState {
     surrendered: boolean;
     eliminated: boolean;
     playersKilled: number[];
+    isBot: boolean;
+    botDifficulty: BotDifficulty | null;
+    botPersonality: BotPersonality | null;
   }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
@@ -219,6 +228,8 @@ export interface GameSettingsInput {
   bounties?: Bounties;
   cards?: CardsMode;
   defenceDice?: DefenceDice;
+  disconnectBotDifficulty?: BotDifficulty | 'random';
+  disconnectBotPersonality?: BotPersonality | 'random';
   entrenchments?: Entrenchments;
   fogOfWar?: FogOfWar;
   fortification?: Fortification;
@@ -246,6 +257,8 @@ export type GameRulesSettings = Pick<
   | 'bounties'
   | 'cards'
   | 'defenceDice'
+  | 'disconnectBotDifficulty'
+  | 'disconnectBotPersonality'
   | 'entrenchments'
   | 'fogOfWar'
   | 'fortification'

@@ -5,6 +5,8 @@ import Help from '../common/Help';
 import type {
   Alliances,
   Blitz,
+  BotDifficulty,
+  BotPersonality,
   Bounties,
   CardsMode,
   DefenceDice,
@@ -24,11 +26,19 @@ import type {
   Visibility,
 } from '../lib/types';
 import {
+  BOT_DIFFICULTIES,
+  BOT_DIFFICULTY_LABELS,
+  BOT_PERSONALITIES,
+  BOT_PERSONALITY_LABELS,
+} from './botOptions';
+import {
   ALLIANCES_HELP,
   BLITZ_HELP,
   BOUNTIES_HELP,
   CARDS_HELP,
   DEFENCE_DICE_HELP,
+  DISCONNECT_BOT_DIFFICULTY_HELP,
+  DISCONNECT_BOT_PERSONALITY_HELP,
   ENTRENCHMENTS_HELP,
   FOG_OF_WAR_HELP,
   FORTIFICATION_HELP,
@@ -576,6 +586,83 @@ function GameSettingsFields({ game, isHost, applySettings }: Props) {
             ) : (
               <span style={TRUNCATE_STYLE}>
                 {game.alliances === 'on' ? 'On' : 'Off'}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="border rounded p-2 mb-2">
+        <div className="fw-bold text-muted small mb-2">Bots</div>
+        <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-2">
+          <div
+            className="col d-flex align-items-center gap-2"
+            style={SHRINK_STYLE}
+          >
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Disconnect Personality
+              <Help>{DISCONNECT_BOT_PERSONALITY_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                style={SHRINK_STYLE}
+                value={game.disconnectBotPersonality}
+                onChange={(e) =>
+                  applySettings({
+                    disconnectBotPersonality: e.target.value as
+                      BotPersonality | 'random',
+                  })
+                }
+              >
+                {BOT_PERSONALITIES.map((value) => (
+                  <option key={value} value={value}>
+                    {BOT_PERSONALITY_LABELS[value]}
+                  </option>
+                ))}
+              </Form.Select>
+            ) : (
+              <span style={TRUNCATE_STYLE}>
+                {BOT_PERSONALITY_LABELS[game.disconnectBotPersonality]}
+              </span>
+            )}
+          </div>
+
+          <div
+            className="col d-flex align-items-center gap-2"
+            style={SHRINK_STYLE}
+          >
+            <Form.Label
+              className="mb-0 d-flex align-items-center gap-1"
+              style={LABEL_STYLE}
+            >
+              Disconnect Difficulty
+              <Help>{DISCONNECT_BOT_DIFFICULTY_HELP}</Help>
+            </Form.Label>
+            {isHost ? (
+              <Form.Select
+                className="w-auto"
+                style={SHRINK_STYLE}
+                value={game.disconnectBotDifficulty}
+                onChange={(e) =>
+                  applySettings({
+                    disconnectBotDifficulty: e.target.value as
+                      BotDifficulty | 'random',
+                  })
+                }
+              >
+                {BOT_DIFFICULTIES.map((value) => (
+                  <option key={value} value={value}>
+                    {BOT_DIFFICULTY_LABELS[value]}
+                  </option>
+                ))}
+              </Form.Select>
+            ) : (
+              <span style={TRUNCATE_STYLE}>
+                {BOT_DIFFICULTY_LABELS[game.disconnectBotDifficulty]}
               </span>
             )}
           </div>

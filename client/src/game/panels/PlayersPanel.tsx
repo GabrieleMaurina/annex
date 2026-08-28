@@ -141,6 +141,7 @@ function PlayersPanel({
   const isHost = !gameEnded && selfId === hostId;
   const showAllianceColumn = alliances === 'on' && !isSpectator;
 
+  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
   const whiteCapitalIcon = useWhiteIcon('/icons/capital.svg');
@@ -394,6 +395,7 @@ function PlayersPanel({
               const pop = emojiPops.find((e) => e.rowPlayerId === p.id);
               const rowClickable =
                 canSendEmoji &&
+                !p.isBot &&
                 (emojiTargeting ||
                   (p.id !== selfId &&
                     (emojiAllowedIds === null || emojiAllowedIds.has(p.id))));
@@ -436,7 +438,7 @@ function PlayersPanel({
                         else allianceCellRefs.current.delete(p.id);
                       }}
                     >
-                      {p.id !== selfId && (
+                      {p.id !== selfId && !p.isBot && (
                         <Tip text={ALLIANCE_CELL_LABELS[allianceState]}>
                           <button
                             type="button"
@@ -458,6 +460,19 @@ function PlayersPanel({
                   )}
                   <td className="align-middle" style={rowStyle}>
                     <div className="d-flex align-items-center gap-1">
+                      {p.isBot && (
+                        <img
+                          src={
+                            isDark
+                              ? (whiteBotIcon ?? '/icons/bot.svg')
+                              : '/icons/bot.svg'
+                          }
+                          width={12}
+                          height={12}
+                          alt="Bot"
+                          className="flex-shrink-0"
+                        />
+                      )}
                       <span className="text-truncate" style={{ minWidth: 0 }}>
                         {p.id === selfId ? 'You' : p.name}
                       </span>

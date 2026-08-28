@@ -43,6 +43,7 @@ export function registerAllianceHandlers(
     const targetPlayerId = isObject(data) ? data.targetPlayerId : undefined;
     if (!isInteger(targetPlayerId) || targetPlayerId === player.id) return;
     if (!game.playerIds.includes(targetPlayerId)) return;
+    if (playersById.get(targetPlayerId)?.isBot) return;
     if (areAllied(game, player.id, targetPlayerId)) return;
     if (game.allianceRequests.has(pairKey(player.id, targetPlayerId))) return;
     if (allianceCooldownUntil(game, player.id, targetPlayerId) !== null) return;

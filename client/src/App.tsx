@@ -60,6 +60,7 @@ function App() {
         if (res.ok || res.error === 'already in a game') {
           setJoinError('');
           setNeedsPassword(false);
+          socket.emit('game:requestState');
           return;
         }
         if (res.error === 'invalid password') {
@@ -80,10 +81,12 @@ function App() {
             if (savedSlots)
               socket.emit('game:settings', { slots: savedSlots }, () => {});
             setJoinError('');
+            socket.emit('game:requestState');
             return;
           }
           if (createRes.error === 'already in a game') {
             setJoinError('');
+            socket.emit('game:requestState');
             return;
           }
           if (createRes.error !== 'game name already in use') {
@@ -97,6 +100,7 @@ function App() {
             (retryRes: Ack) => {
               if (retryRes.ok || retryRes.error === 'already in a game') {
                 setJoinError('');
+                socket.emit('game:requestState');
               } else if (retryRes.error === 'invalid password') {
                 setNeedsPassword(true);
               } else {

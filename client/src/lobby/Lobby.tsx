@@ -4,7 +4,14 @@ import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { saveGameName, saveGameSettings } from '../lib/player';
 import { socket } from '../lib/socket';
-import type { Ack, GameSettingsInput, GameState, Player } from '../lib/types';
+import type {
+  Ack,
+  BotDifficulty,
+  BotPersonality,
+  GameSettingsInput,
+  GameState,
+  Player,
+} from '../lib/types';
 import BannedList from './BannedList';
 import Header from './Header';
 import PlayerRoster from './PlayerRoster';
@@ -93,6 +100,50 @@ function Lobby({
 
   function addSlot() {
     applySettings({ slots: game.slots + 1 });
+  }
+
+  function addBot(
+    difficulty: BotDifficulty | 'random',
+    personality: BotPersonality | 'random',
+  ) {
+    socket.emit('game:addBot', { difficulty, personality }, (res: Ack) => {
+      if (!res.ok) {
+        setSettingsError(res.error);
+        return;
+      }
+      setSettingsError('');
+      setGame(res.game);
+    });
+  }
+
+  function setBotProfile(
+    botPlayerId: number,
+    difficulty: BotDifficulty | 'random',
+    personality: BotPersonality | 'random',
+  ) {
+    socket.emit(
+      'game:setBotProfile',
+      { botPlayerId, difficulty, personality },
+      (res: Ack) => {
+        if (!res.ok) {
+          setSettingsError(res.error);
+          return;
+        }
+        setSettingsError('');
+        setGame(res.game);
+      },
+    );
+  }
+
+  function removeBot(botPlayerId: number) {
+    socket.emit('game:removeBot', { botPlayerId }, (res: Ack) => {
+      if (!res.ok) {
+        setSettingsError(res.error);
+        return;
+      }
+      setSettingsError('');
+      setGame(res.game);
+    });
   }
 
   function unbanPlayer(id: number) {
@@ -188,6 +239,9 @@ function Lobby({
         cycleColor={cycleColor}
         removeSlot={removeSlot}
         addSlot={addSlot}
+        addBot={addBot}
+        setBotProfile={setBotProfile}
+        removeBot={removeBot}
         rowRefs={rowRefs}
         nameCellRefs={nameCellRefs}
         onEmojiRowClick={handleRowClick}

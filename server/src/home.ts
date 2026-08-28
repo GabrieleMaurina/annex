@@ -57,6 +57,7 @@ export function registerHomeHandlers(
           socketId: socket.id,
           gameName: null,
           connected: true,
+          isBot: false,
         };
         playersByKey.set(playerKey, player);
         playersById.set(player.id, player);
@@ -64,7 +65,7 @@ export function registerHomeHandlers(
       playersBySocket.set(socket.id, player);
 
       if (room !== (player.gameName ?? HOME_ROOM))
-        leaveGame(player, playersById, io, true);
+        leaveGame(player, playersById, io, true, playersBySocket);
 
       const game = player.gameName ? games.get(player.gameName) : undefined;
       if (game && game.playerIds.includes(player.id)) {
@@ -117,7 +118,7 @@ export function registerHomeHandlers(
     playersBySocket.delete(socket.id);
     if (player) {
       player.connected = false;
-      leaveGame(player, playersById, io, false);
+      leaveGame(player, playersById, io, false, playersBySocket);
     }
   });
 }

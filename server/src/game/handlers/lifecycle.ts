@@ -25,6 +25,10 @@ import {
   Visibility,
 } from '../../types';
 import { isInteger, isObject } from '../../validate';
+import {
+  isDifficultyInput,
+  isPersonalityInput,
+} from '../logic/bots/randomProfile';
 import { checkGameEnd, computeGameEndWinnerIds } from '../logic/end';
 import { addHostCandidate, recomputeHost } from '../logic/host';
 import {
@@ -172,15 +176,24 @@ export function registerGameHandlers(
         hostId: player.id,
         originalHostId: player.id,
         state: 'lobby',
+        alliances: 'off',
+        allianceIds: new Set(),
+        allianceRequests: new Map(),
+        allianceCooldowns: new Map(),
+        allianceInitiators: new Map(),
+        blitz: 'Balanced',
+        bounties: 'off',
+        cards: 'Constant',
+        defenceDice: 2,
+        disconnectBotDifficulty: 'random',
+        disconnectBotPersonality: 'random',
+        entrenchments: 'off',
+        fogOfWar: 'off',
+        fortification: 'Connected',
         gameMode: 'Supremacy',
         continentId: null,
-        blitz: 'Balanced',
-        defenceDice: 2,
-        cards: 'Constant',
+        password: null,
         placement: 'Random',
-        fortification: 'Connected',
-        entrenchments: 'off',
-        toxins: 'off',
         portals: 'off',
         portalTerritoryIds: [],
         portalsEnabled: false,
@@ -188,17 +201,10 @@ export function registerGameHandlers(
         radiationTerritoryIds: new Set(),
         radiationUpcomingTerritoryIds: new Set(),
         starvation: 'off',
-        turnTroops: 'off',
-        bounties: 'off',
         supplyLines: 'off',
-        fogOfWar: 'off',
-        alliances: 'off',
-        allianceIds: new Set(),
-        allianceRequests: new Map(),
-        allianceCooldowns: new Map(),
-        allianceInitiators: new Map(),
+        toxins: 'off',
         turnDuration: 120,
-        password: null,
+        turnTroops: 'off',
         visibility: 'public',
         turnNumber: 0,
         turnPlayerIndex: 0,
@@ -229,6 +235,7 @@ export function registerGameHandlers(
         playerMissions: new Map(),
         hostPriority: [player.id],
         substituteFor: new Map(),
+        lobbyDeparted: new Map(),
         surrenderedIds: new Set(),
         winnerIds: [],
         deck: [],
@@ -285,11 +292,22 @@ export function registerGameHandlers(
         recomputeHost(game, playersById);
       } else if (game.state === 'lobby' && game.playerIds.length < game.slots) {
         game.playerIds.push(player.id);
-        game.playerTeams.set(player.id, 0);
-        assignRandomColor(game, player.id);
+        const departed = game.lobbyDeparted.get(player.id);
+        game.lobbyDeparted.delete(player.id);
+        const colorTaken =
+          departed !== undefined &&
+          [...game.playerColors.values()].includes(departed.color);
+        game.playerTeams.set(
+          player.id,
+          departed ? Math.min(departed.team, maxTeam(game)) : 0,
+        );
+        if (departed && !colorTaken)
+          game.playerColors.set(player.id, departed.color);
+        else assignRandomColor(game, player.id);
         addHostCandidate(game, player.id);
         recomputeHost(game, playersById);
       } else {
+        game.lobbyDeparted.delete(player.id);
         game.spectatorIds.push(player.id);
       }
       player.gameName = game.name;
@@ -404,6 +422,24 @@ export function registerGameHandlers(
           return callback({ ok: false, error: 'invalid defence dice' });
         game.defenceDice = settings.defenceDice as DefenceDice;
         if (game.defenceDice !== 2) game.entrenchments = 'off';
+      }
+
+      if (settings.disconnectBotDifficulty !== undefined) {
+        if (!isDifficultyInput(settings.disconnectBotDifficulty))
+          return callback({
+            ok: false,
+            error: 'invalid disconnect bot difficulty',
+          });
+        game.disconnectBotDifficulty = settings.disconnectBotDifficulty;
+      }
+
+      if (settings.disconnectBotPersonality !== undefined) {
+        if (!isPersonalityInput(settings.disconnectBotPersonality))
+          return callback({
+            ok: false,
+            error: 'invalid disconnect bot personality',
+          });
+        game.disconnectBotPersonality = settings.disconnectBotPersonality;
       }
 
       if (settings.entrenchments !== undefined) {

@@ -32,6 +32,8 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   bounties: 'off',
   cards: 'Constant',
   defenceDice: 2,
+  disconnectBotDifficulty: 'random',
+  disconnectBotPersonality: 'random',
   entrenchments: 'off',
   fogOfWar: 'off',
   fortification: 'Connected',

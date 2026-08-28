@@ -21,6 +21,17 @@ export interface Player {
   socketId: string;
   gameName: string | null;
   connected: boolean;
+  isBot: boolean;
+  botProfile?: BotProfile;
+}
+
+export type BotDifficulty = 'idle' | 'easy' | 'medium' | 'hard';
+export type BotPersonality =
+  'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic';
+
+export interface BotProfile {
+  difficulty: BotDifficulty;
+  personality: BotPersonality;
 }
 
 export type CardSymbol = 'soldier' | 'humvee' | 'tank';
@@ -151,15 +162,24 @@ export interface Game {
   hostId: number;
   originalHostId: number;
   state: 'lobby' | 'playing' | 'ended';
+  alliances: Alliances;
+  allianceIds: Set<string>;
+  allianceRequests: Map<string, AllianceRequest>;
+  allianceCooldowns: Map<string, number>;
+  allianceInitiators: Map<string, number>;
+  blitz: Blitz;
+  bounties: Bounties;
+  cards: CardsMode;
+  defenceDice: DefenceDice;
+  disconnectBotDifficulty: BotDifficulty | 'random';
+  disconnectBotPersonality: BotPersonality | 'random';
+  entrenchments: Entrenchments;
+  fogOfWar: FogOfWar;
+  fortification: Fortification;
   gameMode: GameMode;
   continentId: number | null;
-  blitz: Blitz;
-  defenceDice: DefenceDice;
-  cards: CardsMode;
+  password: string | null;
   placement: Placement;
-  fortification: Fortification;
-  entrenchments: Entrenchments;
-  toxins: Toxins;
   portals: Portals;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
@@ -167,17 +187,10 @@ export interface Game {
   radiationTerritoryIds: Set<number>;
   radiationUpcomingTerritoryIds: Set<number>;
   starvation: Starvation;
-  turnTroops: TurnTroops;
-  bounties: Bounties;
   supplyLines: SupplyLines;
-  fogOfWar: FogOfWar;
-  alliances: Alliances;
-  allianceIds: Set<string>;
-  allianceRequests: Map<string, AllianceRequest>;
-  allianceCooldowns: Map<string, number>;
-  allianceInitiators: Map<string, number>;
+  toxins: Toxins;
   turnDuration: TurnDuration;
-  password: string | null;
+  turnTroops: TurnTroops;
   visibility: Visibility;
   turnNumber: number;
   turnPlayerIndex: number;
@@ -208,6 +221,7 @@ export interface Game {
   playerMissions: Map<number, Mission>;
   hostPriority: number[];
   substituteFor: Map<number, number>;
+  lobbyDeparted: Map<number, { team: number; color: number }>;
   surrenderedIds: Set<number>;
   winnerIds: number[];
   deck: Card[];

@@ -53,6 +53,7 @@ function EndPage({
     .map((id) => playerById.get(id))
     .filter((p): p is GameState['players'][number] => !!p);
 
+  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
@@ -145,6 +146,19 @@ function EndPage({
                       }}
                       className="d-inline-flex align-items-center gap-1"
                     >
+                      {p.isBot && (
+                        <img
+                          src={
+                            isDark
+                              ? (whiteBotIcon ?? '/icons/bot.svg')
+                              : '/icons/bot.svg'
+                          }
+                          width={12}
+                          height={12}
+                          alt="Bot"
+                          className="flex-shrink-0"
+                        />
+                      )}
                       <span className="text-truncate" style={{ minWidth: 0 }}>
                         {p.id === selfId ? 'You' : p.name}
                       </span>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { socket } from '../../../lib/socket';
+import { playSound } from '../../../lib/sounds';
 import type { Ack, GameState } from '../../../lib/types';
 import { DICE_ROLL_STEP_DURATION, DICE_ROLL_STEPS } from '../../animations';
 import {
@@ -183,6 +184,7 @@ export function useAttackFlow({
       if (!res.ok) return;
       const hasDiceRoll =
         res.attackerDice.length > 0 && attackEndTerritoryId !== null;
+      if (!hasDiceRoll && res.game.state === 'ended') playSound('end');
       setGame(
         hasDiceRoll && res.game.state === 'ended'
           ? { ...res.game, state: 'playing' }
@@ -218,6 +220,7 @@ export function useAttackFlow({
           setAttackDiceSettled(true);
           setAttackPreRevealSnapshot(null);
           if (res.game.state === 'ended') {
+            playSound('end');
             setGame(res.game);
           } else if (res.game.attackConquestMinTroops !== null) {
             if (autoMoveTroops !== null) {

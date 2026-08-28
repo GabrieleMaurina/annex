@@ -64,6 +64,7 @@ export function registerEmojiHandlers(
         !isInteger(rawTarget) ||
         !game.playerIds.includes(rawTarget) ||
         rawTarget === player.id ||
+        playersById.get(rawTarget)?.isBot ||
         !emojiTargetAllowed(game, player.id, rawTarget)
       )
         return;

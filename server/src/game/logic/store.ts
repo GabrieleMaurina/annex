@@ -1,5 +1,7 @@
 import { Server } from 'socket.io';
 import { Game, HOME_ROOM, Player } from '../../types';
+import { unregisterBotSocket } from './bots/socket';
+import { endTakeover, startTakeover } from './bots/takeover';
 import { addHostCandidate, recomputeHost } from './host';
 import { assignRandomColor, maxTeam } from './mechanics';
 import { gameRoomName } from './rooms';
@@ -11,9 +13,20 @@ export { gameRoomName } from './rooms';
 
 export const games = new Map<string, Game>();
 
+type BotTurnHook = (
+  game: Game,
+  io: Server,
+  playersById: Map<number, Player>,
+) => void;
+let botTurnHook: BotTurnHook | null = null;
+export function setBotTurnHook(hook: BotTurnHook): void {
+  botTurnHook = hook;
+}
+
 const DESTROY_GRACE_MS = 5000;
 const pendingInactiveDestroy = new Map<string, NodeJS.Timeout>();
 const pendingEndedDestroy = new Map<string, NodeJS.Timeout>();
+const pendingLobbyDestroy = new Map<string, NodeJS.Timeout>();
 
 function scheduleDestroy(
   pending: Map<string, NodeJS.Timeout>,
@@ -28,11 +41,15 @@ function scheduleDestroy(
   pending.set(gameName, timer);
 }
 
+// Bots never count as "active" here on purpose: a game kept alive only by
+// bots, with no connected human left to see it, should be torn down like any
+// other abandoned game rather than run (and occupy the games list) forever.
 function hasActivePlayer(game: Game, playersById: Map<number, Player>) {
-  return game.playerIds.some(
-    (id) =>
-      !game.surrenderedIds.has(id) && (playersById.get(id)?.connected ?? false),
-  );
+  return game.playerIds.some((id) => {
+    if (game.surrenderedIds.has(id)) return false;
+    const member = playersById.get(id);
+    return !member?.isBot && (member?.connected ?? false);
+  });
 }
 
 function evictGameMembers(
@@ -48,6 +65,52 @@ function evictGameMembers(
     memberSocket?.leave(gameRoomName(game.name));
     memberSocket?.join(HOME_ROOM);
   }
+}
+
+// Same "bots don't count" reasoning as hasActivePlayer, but also covers
+// spectators: a lobby is only truly abandoned if no connected human is
+// queued to join it either.
+function hasActiveLobbyMember(game: Game, playersById: Map<number, Player>) {
+  return [...game.playerIds, ...game.spectatorIds].some((id) => {
+    const member = playersById.get(id);
+    return !member?.isBot && (member?.connected ?? false);
+  });
+}
+
+// A lobby-added bot has no human counterpart to reclaim it (unlike a
+// mid-game takeover, which reuses the disconnected human's own Player
+// object), so it's safe to fully unregister it here.
+function evictBotPlayers(game: Game, playersById: Map<number, Player>) {
+  for (const id of game.playerIds) {
+    const member = playersById.get(id);
+    if (member?.isBot) {
+      unregisterBotSocket(member.socketId);
+      playersById.delete(id);
+    }
+  }
+}
+
+export function destroyIfLobbyAbandoned(
+  game: Game,
+  playersById: Map<number, Player>,
+  io: Server,
+) {
+  if (game.state !== 'lobby' || hasActiveLobbyMember(game, playersById)) return;
+
+  scheduleDestroy(pendingLobbyDestroy, game.name, () => {
+    const current = games.get(game.name);
+    if (
+      !current ||
+      current.state !== 'lobby' ||
+      hasActiveLobbyMember(current, playersById)
+    )
+      return;
+
+    games.delete(current.name);
+    evictBotPlayers(current, playersById);
+    evictGameMembers(current, playersById, io);
+    broadcastHomeGames(io, playersById);
+  });
 }
 
 export function destroyIfInactive(
@@ -149,16 +212,26 @@ function cementSubstitute(game: Game, ownerId: number): boolean {
   return false;
 }
 
+// A player who disconnects before the game starts should not linger in the
+// slot: with no connected spectator to swap in and later hand it back to,
+// there is nothing to hold the slot for, so it is freed immediately just
+// like an explicit leave.
 function handleLobbyDisconnect(
   game: Game,
-  playerId: number,
+  player: Player,
   playersById: Map<number, Player>,
 ) {
+  const playerId = player.id;
   const subIndex = game.spectatorIds.findIndex(
     (id) => playersById.get(id)?.connected,
   );
   if (subIndex === -1) {
-    recomputeHost(game, playersById);
+    player.gameName = null;
+    game.lobbyDeparted.set(playerId, {
+      team: game.playerTeams.get(playerId) ?? 0,
+      color: game.playerColors.get(playerId) ?? 0,
+    });
+    removePlayerFromGame(game, playerId, playersById);
     return;
   }
 
@@ -211,9 +284,10 @@ export function leaveGame(
   playersById: Map<number, Player>,
   io: Server,
   permanent: boolean,
+  playersBySocket: Map<string, Player>,
 ) {
   const gameName = player.gameName;
-  leaveGameImpl(player, playersById, io, permanent);
+  leaveGameImpl(player, playersById, io, permanent, playersBySocket);
   if (!gameName) return;
   broadcastHomeGames(io, playersById);
   const game = games.get(gameName);
@@ -225,6 +299,7 @@ function leaveGameImpl(
   playersById: Map<number, Player>,
   io: Server,
   permanent: boolean,
+  playersBySocket: Map<string, Player>,
 ) {
   if (!player.gameName) return;
   const game = games.get(player.gameName);
@@ -234,16 +309,22 @@ function leaveGameImpl(
   }
 
   if (game.spectatorIds.includes(player.id)) {
-    if (!permanent) return;
+    if (!permanent) {
+      destroyIfLobbyAbandoned(game, playersById, io);
+      return;
+    }
     player.gameName = null;
     game.spectatorIds = game.spectatorIds.filter((id) => id !== player.id);
     if (game.state === 'ended') destroyIfEnded(game, playersById, io);
+    destroyIfLobbyAbandoned(game, playersById, io);
     return;
   }
 
   if (game.state === 'playing') {
     if (game.surrenderedIds.has(player.id) && player.connected)
       player.gameName = null;
+    else if (!player.connected)
+      startTakeover(game, player, io, playersById, playersBySocket);
     recomputeHost(game, playersById);
     destroyIfInactive(game, playersById, io);
     return;
@@ -257,8 +338,9 @@ function leaveGameImpl(
 
   if (!permanent) {
     if (game.playerIds.includes(player.id))
-      handleLobbyDisconnect(game, player.id, playersById);
+      handleLobbyDisconnect(game, player, playersById);
     else recomputeHost(game, playersById);
+    if (games.has(game.name)) destroyIfLobbyAbandoned(game, playersById, io);
     return;
   }
 
@@ -268,6 +350,7 @@ function leaveGameImpl(
     return;
   }
   removePlayerFromGame(game, player.id, playersById);
+  if (games.has(game.name)) destroyIfLobbyAbandoned(game, playersById, io);
 }
 
 export function handleReconnect(
@@ -278,6 +361,8 @@ export function handleReconnect(
   if (!player.gameName) return;
   const game = games.get(player.gameName);
   if (!game) return;
+
+  if (game.state === 'playing') endTakeover(player);
 
   if (game.state === 'lobby') {
     reclaimSubstitutedSeat(game, player.id, playersById);
@@ -411,6 +496,7 @@ export function broadcastGameState(
       filterGameStateForViewer(base, game, viewerId),
     );
   }
+  botTurnHook?.(game, io, playersById);
 }
 
 export function broadcastGameStateExcept(
@@ -430,6 +516,7 @@ export function broadcastGameStateExcept(
       filterGameStateForViewer(base, game, viewerId),
     );
   }
+  botTurnHook?.(game, io, playersById);
 }
 
 export function respondWithGameState(

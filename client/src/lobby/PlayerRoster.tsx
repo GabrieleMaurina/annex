@@ -3,7 +3,13 @@ import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/Tip';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import type { GameState } from '../lib/types';
+import type { BotDifficulty, BotPersonality, GameState } from '../lib/types';
+import {
+  BOT_DIFFICULTIES,
+  BOT_DIFFICULTY_LABELS,
+  BOT_PERSONALITIES,
+  BOT_PERSONALITY_LABELS,
+} from './botOptions';
 
 const MIN_SLOTS = 2;
 const MAX_SLOTS = 20;
@@ -18,6 +24,16 @@ interface Props {
   cycleColor: () => void;
   removeSlot: (index: number) => void;
   addSlot: () => void;
+  addBot: (
+    difficulty: BotDifficulty | 'random',
+    personality: BotPersonality | 'random',
+  ) => void;
+  setBotProfile: (
+    botPlayerId: number,
+    difficulty: BotDifficulty | 'random',
+    personality: BotPersonality | 'random',
+  ) => void;
+  removeBot: (botPlayerId: number) => void;
   rowRefs: React.RefObject<Map<number, HTMLElement>>;
   nameCellRefs: React.RefObject<Map<number, HTMLElement>>;
   onEmojiRowClick: (playerId: number) => void;
@@ -33,6 +49,9 @@ function PlayerRoster({
   cycleColor,
   removeSlot,
   addSlot,
+  addBot,
+  setBotProfile,
+  removeBot,
   rowRefs,
   nameCellRefs,
   onEmojiRowClick,
@@ -42,6 +61,7 @@ function PlayerRoster({
     (_, i) => game.players[i] ?? null,
   );
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
+  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
 
   return (
     <>
@@ -73,12 +93,14 @@ function PlayerRoster({
                   if (el) rowRefs.current.set(p.id, el);
                   else rowRefs.current.delete(p.id);
                 }}
-                role={p ? 'button' : undefined}
+                role={p && !p.isBot ? 'button' : undefined}
                 onClick={
                   p
                     ? p.id === selfId
                       ? cycleColor
-                      : () => onEmojiRowClick(p.id)
+                      : p.isBot
+                        ? undefined
+                        : () => onEmojiRowClick(p.id)
                     : undefined
                 }
                 style={{
@@ -96,10 +118,85 @@ function PlayerRoster({
                         if (el) nameCellRefs.current.set(p.id, el);
                         else nameCellRefs.current.delete(p.id);
                       }}
-                      className="d-inline-flex align-items-center gap-2"
+                      className="d-inline-flex align-items-center gap-2 flex-wrap"
                     >
+                      {p.isBot && (
+                        <img
+                          src={
+                            contrastTextColor(playerColor(p.color)) ===
+                            '#ffffff'
+                              ? (whiteBotIcon ?? '/icons/bot.svg')
+                              : '/icons/bot.svg'
+                          }
+                          width={14}
+                          height={14}
+                          alt="Bot"
+                          className="flex-shrink-0"
+                        />
+                      )}
                       {p.id === selfId ? 'You' : p.name}
                       {p.id === game.hostId && <Badge bg="primary">Host</Badge>}
+                      {p.isBot &&
+                        (isHost ? (
+                          <span
+                            className="d-inline-flex align-items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Form.Select
+                              size="sm"
+                              className="w-auto"
+                              value={p.botPersonality ?? 'balanced'}
+                              onChange={(e) =>
+                                setBotProfile(
+                                  p.id,
+                                  p.botDifficulty ?? 'easy',
+                                  e.target.value as BotPersonality,
+                                )
+                              }
+                            >
+                              {BOT_PERSONALITIES.map((value) => (
+                                <option key={value} value={value}>
+                                  {BOT_PERSONALITY_LABELS[value]}
+                                </option>
+                              ))}
+                            </Form.Select>
+                            <Form.Select
+                              size="sm"
+                              className="w-auto"
+                              value={p.botDifficulty ?? 'easy'}
+                              onChange={(e) =>
+                                setBotProfile(
+                                  p.id,
+                                  e.target.value as BotDifficulty,
+                                  p.botPersonality ?? 'balanced',
+                                )
+                              }
+                            >
+                              {BOT_DIFFICULTIES.map((value) => (
+                                <option key={value} value={value}>
+                                  {BOT_DIFFICULTY_LABELS[value]}
+                                </option>
+                              ))}
+                            </Form.Select>
+                          </span>
+                        ) : (
+                          <Badge bg="secondary">
+                            {p.botPersonality &&
+                              BOT_PERSONALITY_LABELS[p.botPersonality]}{' '}
+                            {p.botDifficulty &&
+                              BOT_DIFFICULTY_LABELS[p.botDifficulty]}
+                          </Badge>
+                        ))}
+                    </span>
+                  ) : isHost ? (
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="outline-success"
+                        onClick={() => addBot('easy', 'balanced')}
+                      >
+                        Add Bot
+                      </Button>
                     </span>
                   ) : (
                     <span className="text-muted">Empty</span>
@@ -142,12 +239,18 @@ function PlayerRoster({
                     onClick={(e) => e.stopPropagation()}
                   >
                     {p?.id !== selfId && (
-                      <Tip text={p ? 'Kick/Ban' : 'Remove'}>
+                      <Tip
+                        text={
+                          p ? (p.isBot ? 'Remove bot' : 'Kick/Ban') : 'Remove'
+                        }
+                      >
                         <Button
                           variant="danger"
                           className="d-inline-flex align-items-center justify-content-center"
                           style={{ width: 24, height: 24, padding: 0 }}
-                          onClick={() => removeSlot(i)}
+                          onClick={() =>
+                            p?.isBot ? removeBot(p.id) : removeSlot(i)
+                          }
                           disabled={!p && game.slots <= MIN_SLOTS}
                         >
                           ✕

@@ -11,6 +11,8 @@ export { registerEntrenchHandlers } from './handlers/territory/entrench';
 export { registerTerritoryHandlers } from './handlers/territory/territory';
 export { registerTroopHandlers } from './handlers/territory/troop';
 export { registerToxinsHandlers } from './handlers/toxins/toxins';
+export { scheduleBotTurnIfNeeded } from './logic/bots/controller';
+export { registerBotLobbyHandlers } from './logic/bots/lobby';
 export {
   gameRoomName,
   games,

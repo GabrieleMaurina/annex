@@ -157,7 +157,7 @@ export function balancedWinProbs(
 
 const winGuaranteedProbability = 0.85;
 
-function battleStatistics(
+export function battleStatistics(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
@@ -168,6 +168,8 @@ function battleStatistics(
   attackerVariance: number;
   defenderMean: number;
   defenderVariance: number;
+  attackerMeanAtInput: number;
+  attackerVarianceAtInput: number;
 } {
   const distributionCache = new Map<
     string,
@@ -263,6 +265,12 @@ function battleStatistics(
       (1 - winProbability) -
     defenderMean * defenderMean;
 
+  const attackerMeanAtInput =
+    attackerWinSum[attackingTroops][defendingTroops] / winProbability;
+  const attackerVarianceAtInput =
+    attackerWinSumSquares[attackingTroops][defendingTroops] / winProbability -
+    attackerMeanAtInput * attackerMeanAtInput;
+
   return {
     winProbability,
     attackerTroopsNeeded,
@@ -270,6 +278,8 @@ function battleStatistics(
     attackerVariance,
     defenderMean,
     defenderVariance,
+    attackerMeanAtInput,
+    attackerVarianceAtInput,
   };
 }
 

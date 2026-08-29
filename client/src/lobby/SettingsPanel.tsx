@@ -11,6 +11,7 @@ import {
 } from '../game/mapData';
 import { playSound } from '../lib/sounds';
 import type {
+  GameMeta,
   GameMode,
   GameSettingsInput,
   GameState,
@@ -34,6 +35,7 @@ const GENERATE_MAP_OPTION = '__generateMap__';
 
 interface Props {
   game: GameState;
+  gameMeta?: GameMeta | null;
   isHost: boolean;
   mapNames: string[];
   applySettings: (settings: GameSettingsInput) => void;
@@ -71,6 +73,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
 
 function SettingsPanel({
   game,
+  gameMeta = null,
   isHost,
   mapNames,
   applySettings,
@@ -184,6 +187,7 @@ function SettingsPanel({
     <>
       <GameSettingsFields
         game={game}
+        gameMeta={gameMeta}
         isHost={isHost}
         applySettings={applySettings}
       />

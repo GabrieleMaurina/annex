@@ -4,16 +4,20 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "predev": "tsc -b ../engine",
+    "dev": "vite --force",
+    "prebuild": "tsc -b ../engine",
     "build": "tsc -b && vite build",
     "start": "vite preview",
     "lint": "eslint src",
     "format": "prettier --write src",
+    "pretypes": "tsc -b ../engine",
     "types": "tsc -b",
     "check": "npm run format && npm run lint && npm run types"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
+    "engine": "*",
     "obscenity": "^0.4.6",
     "react": "^19.2.8",
     "react-bootstrap": "^2.10.10",

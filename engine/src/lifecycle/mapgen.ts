@@ -57,6 +57,9 @@ export function generateMap(
       bonuses: generated.bonuses,
       displayName: generated.displayName,
       imageSrc: generated.imageSrc,
+      seed: trimmedSeed,
+      size,
+      water,
     };
 
     for (const viewerId of [...current.playerIds, ...current.spectatorIds]) {

@@ -1,6 +1,7 @@
 import { createEngine, EngineCallbacks } from 'engine';
 import express from 'express';
 import { createServer } from 'http';
+import os from 'os';
 import { Server } from 'socket.io';
 import {
   registerAllianceHandlers,
@@ -19,9 +20,37 @@ import {
   registerToxinsHandlers,
   registerTroopHandlers,
 } from './game/handlers';
+import { getGameMeta, isGamePublic, reconcileGameMeta } from './gameMeta';
 import { registerHomeHandlers } from './home';
 import { loadMaps, registerMapsHandlers } from './maps';
-import { emitTo, HOME_ROOM, setSocketRoom } from './socketRooms';
+import {
+  emitTo,
+  HOME_ROOM,
+  offlineClientPlayerIds,
+  setSocketRoom,
+} from './socketRooms';
+import { nodeWorkerPort } from './workers/nodeWorkerPort';
+
+type HomeGameSummary = { name: string };
+
+let lastReconciled: unknown[] | null = null;
+
+function reconcile(games: unknown[]): void {
+  if (games === lastReconciled) return;
+  lastReconciled = games;
+  reconcileGameMeta(
+    new Set((games as HomeGameSummary[]).map((game) => game.name)),
+  );
+}
+
+function visibleHomeGames(games: unknown[]): unknown[] {
+  return (games as HomeGameSummary[])
+    .filter((game) => isGamePublic(game.name))
+    .map((game) => ({
+      ...game,
+      hasPassword: getGameMeta(game.name).password !== null,
+    }));
+}
 
 const app = express();
 const httpServer = createServer(app);
@@ -33,7 +62,11 @@ const io = new Server(httpServer, {
 });
 
 const callbacks: EngineCallbacks = {
-  onHomeGames: (playerId, games) => emitTo(io, playerId, 'home:games', games),
+  onHomeGames: (playerId, games) => {
+    reconcile(games);
+    if (offlineClientPlayerIds.has(playerId)) return;
+    emitTo(io, playerId, 'home:games', visibleHomeGames(games));
+  },
   onGameState: (playerId, state) => emitTo(io, playerId, 'game:state', state),
   onCards: (playerId, payload) => emitTo(io, playerId, 'game:cards', payload),
   onMission: (playerId, payload) =>
@@ -93,7 +126,16 @@ const callbacks: EngineCallbacks = {
   onRoomChanged: (playerId, gameName) => setSocketRoom(io, playerId, gameName),
 };
 
-export const engine = createEngine(callbacks);
+export const engine = createEngine(callbacks, {
+  botWorker: {
+    create: () => nodeWorkerPort('botWorker'),
+    poolSize: Math.max(1, os.cpus().length - 1),
+  },
+  mapgenWorker: {
+    create: () => nodeWorkerPort('mapgenWorker'),
+    poolSize: 2,
+  },
+});
 
 loadMaps(engine);
 

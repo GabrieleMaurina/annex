@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { socket } from '../../../lib/socket';
+import { connector } from '../../../connector';
 import type { Ack, Fortification, GameState } from '../../../lib/types';
 import { getEntrenchCandidates } from '../../logic/entrench';
 import {
@@ -88,7 +88,7 @@ export function useTurnActionFlows({
 
   const selectFortifyStart = useCallback(
     (territoryId: number | null) => {
-      socket.emit('game:fortifySelectStart', { territoryId }, (res: Ack) => {
+      connector.fortifySelectStart({ territoryId }, (res: Ack) => {
         if (res.ok) setGame(res.game);
       });
     },
@@ -102,7 +102,7 @@ export function useTurnActionFlows({
 
   const selectFortifyEnd = useCallback(
     (territoryId: number) => {
-      socket.emit('game:fortifySelectEnd', { territoryId }, (res: Ack) => {
+      connector.fortifySelectEnd({ territoryId }, (res: Ack) => {
         if (res.ok) setGame(res.game);
       });
     },
@@ -110,7 +110,7 @@ export function useTurnActionFlows({
   );
 
   const submitFortify = useCallback(() => {
-    socket.emit('game:fortify', { troops: fortifyTroops }, (res: Ack) => {
+    connector.fortify({ troops: fortifyTroops }, (res: Ack) => {
       if (!res.ok) return;
       setGame(res.game);
     });
@@ -130,8 +130,7 @@ export function useTurnActionFlows({
 
   const submitEntrench = useCallback(() => {
     if (selectedTerritoryId === null) return;
-    socket.emit(
-      'game:entrench',
+    connector.entrench(
       { territoryId: selectedTerritoryId, troops: entrenchTroops },
       (res: Ack) => {
         if (!res.ok) return;
@@ -162,14 +161,10 @@ export function useTurnActionFlows({
 
   const submitToxins = useCallback(() => {
     if (selectedTerritoryId === null) return;
-    socket.emit(
-      'game:toxins',
-      { territoryId: selectedTerritoryId },
-      (res: Ack) => {
-        if (!res.ok) return;
-        setGame(res.game);
-      },
-    );
+    connector.toxins({ territoryId: selectedTerritoryId }, (res: Ack) => {
+      if (!res.ok) return;
+      setGame(res.game);
+    });
   }, [selectedTerritoryId, setGame]);
 
   const fortifyPanelOpen =

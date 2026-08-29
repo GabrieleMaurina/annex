@@ -79,6 +79,11 @@ export type TurnPhase =
   | 'toxins';
 export type Visibility = 'public' | 'private';
 
+export interface GameMeta {
+  hasPassword: boolean;
+  visibility: Visibility;
+}
+
 export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
 export type EmojiAttackTarget =
   | { type: 'player'; playerId: number }
@@ -118,6 +123,7 @@ export type BotPersonality =
 export interface GameState {
   name: string;
   mapName: string;
+  mapGeneration: GenerateMapInput | null;
   slots: number;
   hostId: number;
   originalHostId: number;
@@ -139,7 +145,6 @@ export interface GameState {
   fortification: Fortification;
   gameMode: GameMode;
   continentId: number | null;
-  hasPassword: boolean;
   placement: Placement;
   portals: Portals;
   portalTerritoryIds: number[];
@@ -152,7 +157,6 @@ export interface GameState {
   toxins: Toxins;
   turnDuration: TurnDuration;
   turnTroops: TurnTroops;
-  visibility: Visibility;
   territoryTroopsCap: number;
   totalTroopsCap: number;
   turnNumber: number;
@@ -273,7 +277,7 @@ export type GameRulesSettings = Pick<
   | 'turnDuration'
   | 'turnTroops'
   | 'visibility'
->;
+> & { mapGeneration?: GenerateMapInput };
 
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 

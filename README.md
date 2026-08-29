@@ -14,12 +14,7 @@ Install all dependencies once from the repo root:
 npm i
 ```
 
-Build `engine` (the server imports its compiled output, so this must run first, and again after changing `engine`):
-
-```bash
-cd engine/
-npm run build
-```
+Run the server and client in separate terminals:
 
 ```bash
 cd server/

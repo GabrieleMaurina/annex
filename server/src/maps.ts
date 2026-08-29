@@ -1,4 +1,4 @@
-import { Engine } from 'engine';
+import { BUILTIN_MAP_NAMES, Engine } from 'engine';
 import fs from 'fs';
 import path from 'path';
 import { Socket } from 'socket.io';
@@ -6,16 +6,16 @@ import { Socket } from 'socket.io';
 const mapsDir = path.resolve(__dirname, '..', '..', 'client', 'public', 'maps');
 
 export function loadMaps(engine: Engine): void {
-  const entries = [];
-  for (const file of fs.readdirSync(mapsDir)) {
-    if (!file.endsWith('.anx')) continue;
-    const data = JSON.parse(fs.readFileSync(path.join(mapsDir, file), 'utf-8'));
-    entries.push({
+  const entries = BUILTIN_MAP_NAMES.map((name) => {
+    const data = JSON.parse(
+      fs.readFileSync(path.join(mapsDir, `${name}.anx`), 'utf-8'),
+    );
+    return {
       name: data.name,
       territories: data.territories,
       bonuses: data.bonuses,
-    });
-  }
+    };
+  });
   engine.loadMaps(entries);
 }
 

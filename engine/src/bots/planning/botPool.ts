@@ -1,18 +1,23 @@
-import os from 'os';
 import { getGameMap } from '../../maps/maps';
 import { BotProfile, Game } from '../../types';
-import { WorkerPool, WorkerResult } from '../../workers/workerPool';
+import { getBotWorkerConfig } from '../../workers/registry';
+import { WorkerResult } from '../../workers/types';
+import { WorkerPool } from '../../workers/workerPool';
 import {
   CampaignCache,
   PlanBotTurnInput,
   PlanBotTurnResult,
 } from './planBotTurn';
 
-const pool = new WorkerPool<PlanBotTurnInput, PlanBotTurnResult>(
-  __dirname,
-  'worker',
-  Math.max(1, os.cpus().length - 1),
-);
+let pool: WorkerPool<PlanBotTurnInput, PlanBotTurnResult> | null = null;
+
+function getPool(): WorkerPool<PlanBotTurnInput, PlanBotTurnResult> {
+  if (!pool) {
+    const config = getBotWorkerConfig();
+    pool = new WorkerPool(config.create, config.poolSize ?? 1);
+  }
+  return pool;
+}
 
 export function planBotTurnAsync(
   game: Game,
@@ -21,7 +26,7 @@ export function planBotTurnAsync(
   cachedCampaign: CampaignCache | null,
   callback: (result: WorkerResult<PlanBotTurnResult>) => void,
 ): void {
-  pool.run(
+  getPool().run(
     { game, map: getGameMap(game), botId, botProfile, cachedCampaign },
     callback,
   );

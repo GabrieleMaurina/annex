@@ -1,4 +1,7 @@
+import type { MapSize, WaterLevel } from './mapgen/core/params';
+
 export const HOME_ROOM = 'home';
+export const OFFLINE_ROOM = 'offline';
 
 export interface Territory {
   id: number;
@@ -19,10 +22,12 @@ export interface GeneratedGameMap {
   bonuses: number[];
   displayName: string;
   imageSrc: string;
+  seed: string;
+  size: MapSize;
+  water: WaterLevel;
 }
 
 export interface Player {
-  key: string;
   id: number;
   name: string;
   gameName: string | null;
@@ -90,7 +95,6 @@ export type TurnPhase =
   | 'fortify'
   | 'entrench'
   | 'toxins';
-export type Visibility = 'public' | 'private';
 
 export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
 export type EmojiAttackTarget =
@@ -185,7 +189,6 @@ export interface Game {
   fortification: Fortification;
   gameMode: GameMode;
   continentId: number | null;
-  password: string | null;
   placement: Placement;
   portals: Portals;
   portalTerritoryIds: number[];
@@ -198,7 +201,6 @@ export interface Game {
   toxins: Toxins;
   turnDuration: TurnDuration;
   turnTroops: TurnTroops;
-  visibility: Visibility;
   turnNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
@@ -219,7 +221,6 @@ export interface Game {
   playerTeams: Map<number, number>;
   playerColors: Map<number, number>;
   bannedIds: Set<number>;
-  passwordExemptIds: Set<number>;
   territoryOwners: Map<number, number>;
   territoryTroops: Map<number, number>;
   territoryEntrenchment: Map<number, number>;

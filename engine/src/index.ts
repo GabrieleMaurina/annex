@@ -1,7 +1,15 @@
 import { scheduleBotTurnIfNeeded } from './bots/controller';
 import { EngineCallbacks, setCallbacks } from './callbacks';
 import { loadMaps } from './maps/maps';
-import { disconnect, identify, setBotTurnHook, setName } from './session/store';
+import { addPlayer as addEnginePlayer } from './session/players';
+import {
+  disconnect,
+  resyncPlayer,
+  setBotTurnHook,
+  setName,
+} from './session/store';
+import { setWorkerConfig } from './workers/registry';
+import { EngineWorkerConfig } from './workers/types';
 
 import {
   addBot,
@@ -54,6 +62,7 @@ import { sendEmoji } from './social/emoji';
 
 import { GameMap } from './types';
 
+export { runBotWorker } from './bots/planning/worker';
 export { EngineCallbacks } from './callbacks';
 export {
   MAP_SIZE_VALUES,
@@ -61,9 +70,23 @@ export {
   WATER_LEVEL_VALUES,
   WaterLevel,
 } from './mapgen/core/params';
+export { runMapgenWorker } from './mapgen/worker';
+export { BUILTIN_MAP_NAMES } from './maps/maps';
+export { GameMap } from './types';
+export {
+  EngineWorkerConfig,
+  EngineWorkerFactory,
+  EngineWorkerHandle,
+  EngineWorkerScope,
+  WorkerResult,
+} from './workers/types';
 
-export function createEngine(callbacks: EngineCallbacks) {
+export function createEngine(
+  callbacks: EngineCallbacks,
+  workerConfig: EngineWorkerConfig,
+) {
   setCallbacks(callbacks);
+  setWorkerConfig(workerConfig);
   setBotTurnHook(scheduleBotTurnIfNeeded);
 
   return {
@@ -71,7 +94,10 @@ export function createEngine(callbacks: EngineCallbacks) {
       loadMaps(entries);
     },
 
-    identify,
+    addPlayer(name?: string): { id: number } {
+      return { id: addEnginePlayer(name).id };
+    },
+    resyncPlayer,
     setName,
     disconnect,
 

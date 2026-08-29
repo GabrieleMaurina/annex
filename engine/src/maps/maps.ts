@@ -1,5 +1,7 @@
 import { Game, GameMap } from '../types';
 
+export const BUILTIN_MAP_NAMES = ['World', 'Europe'];
+
 const maps = new Map<string, GameMap>();
 
 export function loadMaps(entries: GameMap[]): void {

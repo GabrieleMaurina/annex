@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { socket } from '../lib/socket';
+import { connector } from '../connector';
 import type {
   ReplayAck,
   ReplayAnimation,
@@ -71,7 +71,7 @@ export function useReplay(
 
   useEffect(() => {
     if (!gameEnded) return;
-    socket.emit('game:replay', (res: ReplayAck) => {
+    connector.replay((res: ReplayAck) => {
       if (!res.ok) return;
       setReplay({
         initial: res.initial,

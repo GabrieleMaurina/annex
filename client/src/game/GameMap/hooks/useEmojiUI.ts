@@ -1,8 +1,8 @@
 import type { RefObject } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { isPlayerMuted } from '../../../common/mutedPlayers';
+import { connector } from '../../../connector';
 import { playerColor } from '../../../lib/palette';
-import { socket } from '../../../lib/socket';
 import { playSound } from '../../../lib/sounds';
 import type {
   EmojiSentPayload,
@@ -73,7 +73,7 @@ export function useEmojiUI({
     emoji: EmojiValue,
     attackTarget?: EmojiSentPayload['attackTarget'],
   ) {
-    socket.emit('game:sendEmoji', {
+    connector.sendEmoji({
       targetPlayerId:
         targetPlayerId === GLOBAL_TARGET_ID ? undefined : targetPlayerId,
       emoji,
@@ -223,9 +223,9 @@ export function useEmojiUI({
       }, EMOJI_POP_DURATION);
       emojiTimers.add(popTimer);
     }
-    socket.on('game:emojiSent', onEmojiSent);
+    connector.on('game:emojiSent', onEmojiSent);
     return () => {
-      socket.off('game:emojiSent', onEmojiSent);
+      connector.off('game:emojiSent', onEmojiSent);
       emojiTimers.forEach(clearTimeout);
       emojiTimers.clear();
     };

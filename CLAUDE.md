@@ -49,13 +49,18 @@ Code for readability first, then simplicity, and finally performance.
 - No sub-agents unless explicitly requested.
 - No browser verification/running unless explicitly requested.
 
+**Engine**
+- Pure TypeScript
+- Contains the game logic, bots ai, and map generation.
+- Used by both the server and client. Must be independent of any UI or network code.
+
 **Server**
 - Node.js, nodemon, Express, Socket.io, TypeScript, ESLint, Prettier.
-- Follow PROTOCOL.md for socket.io events and data structures.
+- Follow PROTOCOL.md for socket.io events and data types.
 
 **Client**
 - Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
-- Follow PROTOCOL.md for socket.io events and data structures.
+- Follow PROTOCOL.md for socket.io events and data types.
 
 **Mapper**
 - Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.

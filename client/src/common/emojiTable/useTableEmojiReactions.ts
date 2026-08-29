@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { connector } from '../../connector';
 import { EMOJI_POP_DURATION, GLOBAL_TARGET_ID } from '../../game/logic/emoji';
-import { socket } from '../../lib/socket';
 import { playSound } from '../../lib/sounds';
 import type { EmojiSentPayload, EmojiValue } from '../../lib/types';
 import { isPlayerMuted } from '../mutedPlayers';
@@ -44,9 +44,9 @@ export function useTableEmojiReactions(selfId: number | null) {
       }, EMOJI_POP_DURATION);
       emojiTimers.add(timer);
     }
-    socket.on('game:emojiSent', onEmojiSent);
+    connector.on('game:emojiSent', onEmojiSent);
     return () => {
-      socket.off('game:emojiSent', onEmojiSent);
+      connector.off('game:emojiSent', onEmojiSent);
       emojiTimers.forEach(clearTimeout);
       emojiTimers.clear();
     };
@@ -59,7 +59,7 @@ export function useTableEmojiReactions(selfId: number | null) {
 
   function handleEmojiPick(targetPlayerId: number, emoji: EmojiValue) {
     setEmojiPickerFor(null);
-    socket.emit('game:sendEmoji', {
+    connector.sendEmoji({
       targetPlayerId:
         targetPlayerId === GLOBAL_TARGET_ID ? undefined : targetPlayerId,
       emoji,

@@ -1,11 +1,16 @@
-import { parentPort } from 'worker_threads';
+import { EngineWorkerScope } from '../workers/types';
 import { GenerateMapParams } from './core/params';
 import { generateMap } from './generate';
 
-parentPort!.on('message', (params: GenerateMapParams) => {
-  try {
-    parentPort!.postMessage({ ok: true, result: generateMap(params) });
-  } catch (err) {
-    parentPort!.postMessage({ ok: false, error: String(err) });
-  }
-});
+export function runMapgenWorker(scope: EngineWorkerScope): void {
+  scope.onMessage((data) => {
+    try {
+      scope.postMessage({
+        ok: true,
+        result: generateMap(data as GenerateMapParams),
+      });
+    } catch (err) {
+      scope.postMessage({ ok: false, error: String(err) });
+    }
+  });
+}

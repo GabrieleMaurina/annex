@@ -9,11 +9,7 @@ import {
   sendGeneratedMapIfAny,
 } from '../session/store';
 
-export function joinGame(
-  playerId: number,
-  gameName: string,
-  password: string | undefined,
-): GameResponse {
+export function joinGame(playerId: number, gameName: string): GameResponse {
   const player = playersById.get(playerId);
   if (!player) return { ok: false, error: 'not identified' };
   if (player.gameName) return { ok: false, error: 'already in a game' };
@@ -22,12 +18,6 @@ export function joinGame(
   if (!game) return { ok: false, error: 'game not found' };
   if (game.bannedIds.has(player.id))
     return { ok: false, error: 'banned from this game' };
-
-  if (!game.passwordExemptIds.has(player.id) && game.password !== null) {
-    if (password !== game.password)
-      return { ok: false, error: 'invalid password' };
-  }
-  game.passwordExemptIds.add(player.id);
 
   if (game.playerIds.includes(player.id)) {
     recomputeHost(game);

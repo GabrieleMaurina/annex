@@ -3,7 +3,7 @@ import { defaultMapName } from '../maps/maps';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
 import { broadcastHomeGames, games, respondGameState } from '../session/store';
-import { Game, HOME_ROOM } from '../types';
+import { Game, HOME_ROOM, OFFLINE_ROOM } from '../types';
 
 const MAX_GAME_NAME_LENGTH = 20;
 
@@ -13,7 +13,8 @@ export function validateGameName(name: unknown): string | null {
   if (
     !trimmed ||
     trimmed.length > MAX_GAME_NAME_LENGTH ||
-    trimmed === HOME_ROOM
+    trimmed === HOME_ROOM ||
+    trimmed === OFFLINE_ROOM
   )
     return null;
   return trimmed;
@@ -60,7 +61,6 @@ export function createGame(
     fortification: 'Connected',
     gameMode: 'Supremacy',
     continentId: null,
-    password: null,
     placement: 'Random',
     portals: 'off',
     portalTerritoryIds: [],
@@ -73,7 +73,6 @@ export function createGame(
     toxins: 'off',
     turnDuration: 120,
     turnTroops: 'off',
-    visibility: 'public',
     turnNumber: 0,
     turnPlayerIndex: 0,
     turnPhase: 'deploy',
@@ -94,7 +93,6 @@ export function createGame(
     playerTeams: new Map([[player.id, 0]]),
     playerColors: new Map(),
     bannedIds: new Set(),
-    passwordExemptIds: new Set([player.id]),
     territoryOwners: new Map(),
     territoryTroops: new Map(),
     territoryEntrenchment: new Map(),

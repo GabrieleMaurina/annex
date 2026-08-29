@@ -1,6 +1,11 @@
 import { Engine } from 'engine';
 import { Server, Socket } from 'socket.io';
+import { emitGameMeta } from './gameMeta';
 import {
+  HOME_ROOM,
+  OFFLINE_ROOM,
+  offlineClientPlayerIds,
+  playerIdByKey,
   playerIdBySocketId,
   setSocketRoom,
   socketIdByPlayerId,
@@ -31,21 +36,35 @@ export function registerHomeHandlers(
       const { playerKey, playerName, room } = data;
       if (typeof playerKey !== 'string' || typeof room !== 'string') return;
 
-      const result = engine.identify(
-        playerKey,
-        isValidName(playerName) ? playerName.trim() : undefined,
-        room,
-      );
+      const offline = room === OFFLINE_ROOM;
 
-      const oldSocketId = socketIdByPlayerId.get(result.id);
+      let playerId = playerIdByKey.get(playerKey);
+      if (playerId === undefined) {
+        playerId = engine.addPlayer(
+          isValidName(playerName) ? playerName.trim() : undefined,
+        ).id;
+        playerIdByKey.set(playerKey, playerId);
+      }
+
+      const oldSocketId = socketIdByPlayerId.get(playerId);
       if (oldSocketId && oldSocketId !== socket.id) {
         playerIdBySocketId.delete(oldSocketId);
         io.sockets.sockets.get(oldSocketId)?.disconnect(true);
       }
-      socketIdByPlayerId.set(result.id, socket.id);
-      playerIdBySocketId.set(socket.id, result.id);
+      socketIdByPlayerId.set(playerId, socket.id);
+      playerIdBySocketId.set(socket.id, playerId);
 
-      setSocketRoom(io, result.id, result.gameName);
+      if (offline) offlineClientPlayerIds.add(playerId);
+      else offlineClientPlayerIds.delete(playerId);
+
+      const result = engine.resyncPlayer(playerId, offline ? HOME_ROOM : room);
+
+      if (offline) {
+        setSocketRoom(io, playerId, null);
+      } else {
+        setSocketRoom(io, playerId, result.gameName);
+        if (result.gameName) emitGameMeta(io, result.gameName, socket);
+      }
 
       callback(result);
     },
@@ -64,6 +83,7 @@ export function registerHomeHandlers(
     const playerId = playerIdBySocketId.get(socket.id);
     playerIdBySocketId.delete(socket.id);
     if (playerId === undefined) return;
+    offlineClientPlayerIds.delete(playerId);
     if (socketIdByPlayerId.get(playerId) === socket.id)
       socketIdByPlayerId.delete(playerId);
     engine.disconnect(playerId);

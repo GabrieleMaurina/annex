@@ -2,8 +2,8 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { Toast, ToastContainer } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
+import { connector } from '../../connector';
 import { playerColor } from '../../lib/palette';
-import { socket } from '../../lib/socket';
 import type {
   Ack,
   Alliances,
@@ -744,7 +744,7 @@ function GameMap({
   const hasSetToPlay = cardsFlow.hasSetToPlay;
 
   const surrender = useCallback(() => {
-    socket.emit('game:surrender', (res: Ack) => {
+    connector.surrender((res: Ack) => {
       if (res.ok) setGame(res.game);
     });
   }, [setGame]);

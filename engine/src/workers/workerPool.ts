@@ -1,29 +1,23 @@
-import path from 'path';
-import { inspect } from 'util';
-import { Worker } from 'worker_threads';
-
-export type WorkerResult<TOut> =
-  { ok: true; result: TOut } | { ok: false; error: string };
+import { EngineWorkerFactory, EngineWorkerHandle, WorkerResult } from './types';
 
 interface QueuedTask<TIn, TOut> {
   payload: TIn;
   callback: (result: WorkerResult<TOut>) => void;
 }
 
-const IS_TS_NODE = __filename.endsWith('.ts');
-
 export class WorkerPool<TIn, TOut> {
-  private scriptPath: string;
-  private workers: Worker[] = [];
-  private idle: Worker[] = [];
-  private pending = new Map<Worker, (result: WorkerResult<TOut>) => void>();
+  private workers: EngineWorkerHandle[] = [];
+  private idle: EngineWorkerHandle[] = [];
+  private pending = new Map<
+    EngineWorkerHandle,
+    (result: WorkerResult<TOut>) => void
+  >();
   private queue: QueuedTask<TIn, TOut>[] = [];
 
-  constructor(scriptDir: string, scriptBaseName: string, size: number) {
-    this.scriptPath = path.join(
-      scriptDir,
-      `${scriptBaseName}.${IS_TS_NODE ? 'ts' : 'js'}`,
-    );
+  constructor(
+    private createWorker: EngineWorkerFactory,
+    size: number,
+  ) {
     for (let i = 0; i < size; i++) this.spawn();
   }
 
@@ -33,34 +27,17 @@ export class WorkerPool<TIn, TOut> {
   }
 
   private spawn(): void {
-    const worker = new Worker(
-      this.scriptPath,
-      IS_TS_NODE
-        ? {
-            execArgv: ['-r', 'ts-node/register'],
-            env: { ...process.env, TS_NODE_TRANSPILE_ONLY: 'true' },
-          }
-        : undefined,
-    );
-    worker.on('message', (result: WorkerResult<TOut>) => {
-      this.settle(worker, result);
+    const worker = this.createWorker();
+    worker.onMessage((data) => {
+      this.settle(worker, data as WorkerResult<TOut>);
     });
-    worker.on('error', (err) => {
-      this.workers = this.workers.filter((w) => w !== worker);
-      this.idle = this.idle.filter((w) => w !== worker);
-      this.settle(worker, {
-        ok: false,
-        error: err instanceof Error ? (err.stack ?? err.message) : inspect(err),
-      });
-      this.spawn();
-    });
-    worker.on('exit', (code) => {
+    worker.onError((err) => {
       if (!this.workers.includes(worker)) return;
       this.workers = this.workers.filter((w) => w !== worker);
       this.idle = this.idle.filter((w) => w !== worker);
       this.settle(worker, {
         ok: false,
-        error: `worker exited with code ${code}`,
+        error: err instanceof Error ? (err.stack ?? err.message) : String(err),
       });
       this.spawn();
     });
@@ -68,7 +45,7 @@ export class WorkerPool<TIn, TOut> {
     this.idle.push(worker);
   }
 
-  private settle(worker: Worker, result: WorkerResult<TOut>): void {
+  private settle(worker: EngineWorkerHandle, result: WorkerResult<TOut>): void {
     const callback = this.pending.get(worker);
     this.pending.delete(worker);
     if (!this.idle.includes(worker) && this.workers.includes(worker))

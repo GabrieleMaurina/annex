@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { connector } from '../../../connector';
 import { playerColor } from '../../../lib/palette';
-import { socket } from '../../../lib/socket';
 import { playSound } from '../../../lib/sounds';
 import type {
   Fortification,
@@ -621,27 +621,27 @@ export function useGameSocketEvents({
       setRadiationUpcomingTerritoryIds([]);
       startAnimationLoop();
     }
-    socket.on('game:deployed', onDeployed);
-    socket.on('game:fortified', onFortified);
-    socket.on('game:attackMoved', onAttackMoved);
-    socket.on('game:deployedMany', onDeployedMany);
-    socket.on('game:entrenched', onEntrenched);
-    socket.on('game:starved', onStarved);
-    socket.on('game:toxined', onToxined);
-    socket.on('game:toxinExpired', onToxinExpired);
-    socket.on('game:radiationUpcoming', onRadiationUpcoming);
-    socket.on('game:radiationChanged', onRadiationChanged);
+    connector.on('game:deployed', onDeployed);
+    connector.on('game:fortified', onFortified);
+    connector.on('game:attackMoved', onAttackMoved);
+    connector.on('game:deployedMany', onDeployedMany);
+    connector.on('game:entrenched', onEntrenched);
+    connector.on('game:starved', onStarved);
+    connector.on('game:toxined', onToxined);
+    connector.on('game:toxinExpired', onToxinExpired);
+    connector.on('game:radiationUpcoming', onRadiationUpcoming);
+    connector.on('game:radiationChanged', onRadiationChanged);
     return () => {
-      socket.off('game:deployed', onDeployed);
-      socket.off('game:fortified', onFortified);
-      socket.off('game:attackMoved', onAttackMoved);
-      socket.off('game:deployedMany', onDeployedMany);
-      socket.off('game:entrenched', onEntrenched);
-      socket.off('game:starved', onStarved);
-      socket.off('game:toxined', onToxined);
-      socket.off('game:toxinExpired', onToxinExpired);
-      socket.off('game:radiationUpcoming', onRadiationUpcoming);
-      socket.off('game:radiationChanged', onRadiationChanged);
+      connector.off('game:deployed', onDeployed);
+      connector.off('game:fortified', onFortified);
+      connector.off('game:attackMoved', onAttackMoved);
+      connector.off('game:deployedMany', onDeployedMany);
+      connector.off('game:entrenched', onEntrenched);
+      connector.off('game:starved', onStarved);
+      connector.off('game:toxined', onToxined);
+      connector.off('game:toxinExpired', onToxinExpired);
+      connector.off('game:radiationUpcoming', onRadiationUpcoming);
+      connector.off('game:radiationChanged', onRadiationChanged);
     };
   }, [
     animateAdd,
@@ -788,9 +788,9 @@ export function useGameSocketEvents({
         startAnimationLoop();
       }, delay);
     }
-    socket.on('game:attacked', onAttacked);
+    connector.on('game:attacked', onAttacked);
     return () => {
-      socket.off('game:attacked', onAttacked);
+      connector.off('game:attacked', onAttacked);
     };
   }, [
     explode,
@@ -813,9 +813,9 @@ export function useGameSocketEvents({
           : 0;
       setTimeout(() => setTankFireId((id) => id + 1), delay);
     }
-    socket.on('game:tankFired', onTankFired);
+    connector.on('game:tankFired', onTankFired);
     return () => {
-      socket.off('game:tankFired', onTankFired);
+      connector.off('game:tankFired', onTankFired);
     };
   }, []);
 
@@ -823,9 +823,9 @@ export function useGameSocketEvents({
     function onSelected() {
       playSound('select');
     }
-    socket.on('game:selected', onSelected);
+    connector.on('game:selected', onSelected);
     return () => {
-      socket.off('game:selected', onSelected);
+      connector.off('game:selected', onSelected);
     };
   }, []);
 
@@ -843,9 +843,9 @@ export function useGameSocketEvents({
       });
       startAnimationLoop();
     }
-    socket.on('game:territoryClaimed', onTerritoryClaimed);
+    connector.on('game:territoryClaimed', onTerritoryClaimed);
     return () => {
-      socket.off('game:territoryClaimed', onTerritoryClaimed);
+      connector.off('game:territoryClaimed', onTerritoryClaimed);
     };
   }, [animateAdd, startAnimationLoop]);
 

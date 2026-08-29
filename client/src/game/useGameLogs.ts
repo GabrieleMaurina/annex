@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { connector } from '../connector';
 import { playerColor } from '../lib/palette';
-import { socket } from '../lib/socket';
 import type { Card, GameState } from '../lib/types';
 
 export interface LogEntry {
@@ -263,35 +263,35 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
   );
 
   useEffect(() => {
-    socket.on('game:deployed', onDeployed);
-    socket.on('game:fortified', onFortified);
-    socket.on('game:attackMoved', onAttackMoved);
-    socket.on('game:deployedMany', onDeployedMany);
-    socket.on('game:entrenched', onEntrenched);
-    socket.on('game:toxined', onToxined);
-    socket.on('game:radiationChanged', onRadiationChanged);
-    socket.on('game:attacked', onAttacked);
-    socket.on('game:cardSetPlayed', onCardSetPlayed);
-    socket.on('game:turnStarted', onTurnStarted);
-    socket.on('game:capitalPlacementStarted', onCapitalPlacementStarted);
-    socket.on('game:territoryClaimed', onTerritoryClaimed);
-    socket.on('game:allianceFormed', onAllianceFormed);
-    socket.on('game:allianceTerminated', onAllianceTerminated);
+    connector.on('game:deployed', onDeployed);
+    connector.on('game:fortified', onFortified);
+    connector.on('game:attackMoved', onAttackMoved);
+    connector.on('game:deployedMany', onDeployedMany);
+    connector.on('game:entrenched', onEntrenched);
+    connector.on('game:toxined', onToxined);
+    connector.on('game:radiationChanged', onRadiationChanged);
+    connector.on('game:attacked', onAttacked);
+    connector.on('game:cardSetPlayed', onCardSetPlayed);
+    connector.on('game:turnStarted', onTurnStarted);
+    connector.on('game:capitalPlacementStarted', onCapitalPlacementStarted);
+    connector.on('game:territoryClaimed', onTerritoryClaimed);
+    connector.on('game:allianceFormed', onAllianceFormed);
+    connector.on('game:allianceTerminated', onAllianceTerminated);
     return () => {
-      socket.off('game:deployed', onDeployed);
-      socket.off('game:fortified', onFortified);
-      socket.off('game:attackMoved', onAttackMoved);
-      socket.off('game:deployedMany', onDeployedMany);
-      socket.off('game:entrenched', onEntrenched);
-      socket.off('game:toxined', onToxined);
-      socket.off('game:radiationChanged', onRadiationChanged);
-      socket.off('game:attacked', onAttacked);
-      socket.off('game:cardSetPlayed', onCardSetPlayed);
-      socket.off('game:turnStarted', onTurnStarted);
-      socket.off('game:capitalPlacementStarted', onCapitalPlacementStarted);
-      socket.off('game:territoryClaimed', onTerritoryClaimed);
-      socket.off('game:allianceFormed', onAllianceFormed);
-      socket.off('game:allianceTerminated', onAllianceTerminated);
+      connector.off('game:deployed', onDeployed);
+      connector.off('game:fortified', onFortified);
+      connector.off('game:attackMoved', onAttackMoved);
+      connector.off('game:deployedMany', onDeployedMany);
+      connector.off('game:entrenched', onEntrenched);
+      connector.off('game:toxined', onToxined);
+      connector.off('game:radiationChanged', onRadiationChanged);
+      connector.off('game:attacked', onAttacked);
+      connector.off('game:cardSetPlayed', onCardSetPlayed);
+      connector.off('game:turnStarted', onTurnStarted);
+      connector.off('game:capitalPlacementStarted', onCapitalPlacementStarted);
+      connector.off('game:territoryClaimed', onTerritoryClaimed);
+      connector.off('game:allianceFormed', onAllianceFormed);
+      connector.off('game:allianceTerminated', onAllianceTerminated);
     };
   }, [
     onDeployed,
@@ -399,9 +399,9 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
         pendingLogEntriesRef.current = payload.entries;
       }
     }
-    socket.on('game:logs', onGameLogs);
+    connector.on('game:logs', onGameLogs);
     return () => {
-      socket.off('game:logs', onGameLogs);
+      connector.off('game:logs', onGameLogs);
     };
   }, [applyLogEntry]);
 

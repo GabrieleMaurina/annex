@@ -2,8 +2,8 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
+import { connector } from '../../connector';
 import { contrastTextColor, withAlpha } from '../../lib/palette';
-import { socket } from '../../lib/socket';
 import type { Ack, GameState, TurnPhase } from '../../lib/types';
 
 const SPARK_BASE_ANGLES = [-50, -35, -20, -7, 7, 20, 35, 50];
@@ -88,7 +88,7 @@ function TurnPanel({
   }, [tankFireId]);
 
   function nextPhase() {
-    socket.emit('game:nextPhase', (res: Ack) => {
+    connector.nextPhase((res: Ack) => {
       if (res.ok) setGame(res.game);
     });
   }

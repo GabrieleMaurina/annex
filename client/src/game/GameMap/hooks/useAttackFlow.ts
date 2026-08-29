@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { socket } from '../../../lib/socket';
+import { connector } from '../../../connector';
 import { playSound } from '../../../lib/sounds';
 import type { Ack, GameState } from '../../../lib/types';
 import { DICE_ROLL_STEP_DURATION, DICE_ROLL_STEPS } from '../../animations';
@@ -82,7 +82,7 @@ export function useAttackFlow({
 
   const selectAttackStart = useCallback(
     (territoryId: number | null) => {
-      socket.emit('game:attackSelectStart', { territoryId }, (res: Ack) => {
+      connector.attackSelectStart({ territoryId }, (res: Ack) => {
         if (!res.ok) return;
         setGame(res.game);
         if (territoryId !== null) setAttackDiceRoll(null);
@@ -121,22 +121,18 @@ export function useAttackFlow({
 
   const selectAttackEnd = useCallback(
     (territoryId: number) => {
-      socket.emit(
-        'game:attackSelectEnd',
-        { territoryId },
-        (res: AttackSelectEndAck) => {
-          if (!res.ok) return;
-          setGame(res.game);
-          applyAttackProbabilities(res.blitzWinProbabilities);
-        },
-      );
+      connector.attackSelectEnd({ territoryId }, (res: AttackSelectEndAck) => {
+        if (!res.ok) return;
+        setGame(res.game);
+        applyAttackProbabilities(res.blitzWinProbabilities);
+      });
     },
     [setGame, applyAttackProbabilities],
   );
 
   const performAttackMove = useCallback(
     (troops: number, conqueredTerritoryId: number | null) => {
-      socket.emit('game:attackMove', { troops }, (res: Ack) => {
+      connector.attackMove({ troops }, (res: Ack) => {
         if (!res.ok) return;
         setGame(res.game);
         if (conqueredTerritoryId !== null) {
@@ -180,7 +176,7 @@ export function useAttackFlow({
       attackSelectedType === 'regular'
         ? { type: 'regular' as const, troops: attackRegularTroops }
         : { type: 'blitz' as const, troops: attackBlitzTroops };
-    socket.emit('game:attack', payload, (res: AttackResultAck) => {
+    connector.attack(payload, (res: AttackResultAck) => {
       if (!res.ok) return;
       const hasDiceRoll =
         res.attackerDice.length > 0 && attackEndTerritoryId !== null;

@@ -7,7 +7,7 @@ import { gameResultsStats, gameState, gameSummary } from '../game/state';
 import { clearTurnTimer } from '../game/turns';
 import { filterGameStateForViewer } from '../game/world/visibility';
 import { Game, HOME_ROOM, Player } from '../types';
-import { findOrCreatePlayerByKey, playersById } from './players';
+import { playersById } from './players';
 
 export const games = new Map<string, Game>();
 
@@ -313,9 +313,7 @@ export function handleReconnect(player: Player) {
 }
 
 export function listGameSummaries() {
-  return [...games.values()]
-    .filter((game) => game.visibility === 'public')
-    .map((game) => gameSummary(game));
+  return [...games.values()].map((game) => gameSummary(game));
 }
 
 export function broadcastHomeGames() {
@@ -429,12 +427,13 @@ export function respondWithGameState(
   broadcastGameStateExcept(game, playerId);
 }
 
-export function identify(
-  playerKey: string,
-  playerName: string | undefined,
+export function resyncPlayer(
+  playerId: number,
   room: string,
 ): { id: number; gameName: string | null } {
-  const player = findOrCreatePlayerByKey(playerKey, playerName);
+  const player = playersById.get(playerId);
+  if (!player) return { id: playerId, gameName: null };
+  player.connected = true;
 
   if (room !== (player.gameName ?? HOME_ROOM)) leaveGame(player, true);
 

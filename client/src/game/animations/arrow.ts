@@ -31,7 +31,7 @@ function drawArrowHeads(
   // 1 means `to` is a synthetic split point (the trail continues past it on
   // the other edge), so bleed forward past it. Real endpoints (t0 === 0 /
   // t1 === 1) are never bled past. The map-bounds clip callers apply around
-  // arrow drawing still cuts these off exactly at the border either way —
+  // arrow drawing still cuts these off exactly at the border either way;
   // that's the point: it makes the trail look like it continues underneath
   // the clipped-away band instead of a chevron abruptly popping in/out of
   // existence right at the edge as the animation phase cycles.

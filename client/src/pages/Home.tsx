@@ -4,14 +4,10 @@ import PlayerNameEditor from '../common/PlayerNameEditor';
 import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
+import { connector } from '../connector';
+import { applySavedGameSettings } from '../lib/gameSetup';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import {
-  getGameName,
-  getGameSettings,
-  getGameSlots,
-  saveGameName,
-} from '../lib/player';
-import { socket } from '../lib/socket';
+import { getGameName, saveGameName } from '../lib/player';
 import type { Ack, GameSummary, Player } from '../lib/types';
 
 const MAX_GAME_NAME_LENGTH = 20;
@@ -58,24 +54,19 @@ function Home({
     function onGames(list: GameSummary[]) {
       setGames(list);
     }
-    socket.on('home:games', onGames);
+    connector.on('home:games', onGames);
     return () => {
-      socket.off('home:games', onGames);
+      connector.off('home:games', onGames);
     };
   }, []);
 
   function createGame(attempt = 0) {
     const baseName = getGameName() || `Game with ${player.name}`;
     const name = suggestedGameName(baseName, attempt);
-    socket.emit('game:create', { name }, (res: Ack) => {
+    connector.createGame({ name }, (res: Ack) => {
       if (res.ok) {
         saveGameName(baseName);
-        const savedSettings = getGameSettings();
-        if (savedSettings)
-          socket.emit('game:settings', savedSettings, () => {});
-        const savedSlots = getGameSlots();
-        if (savedSlots)
-          socket.emit('game:settings', { slots: savedSlots }, () => {});
+        applySavedGameSettings();
         navigate(`/${encodeURIComponent(res.game.name)}`);
       } else if (
         res.error === 'game name already in use' &&
@@ -87,7 +78,7 @@ function Home({
   }
 
   function joinGame(gameName: string, password?: string) {
-    socket.emit('game:join', { gameName, password }, (res: Ack) => {
+    connector.joinGame({ gameName, password }, (res: Ack) => {
       if (res.ok) {
         setPasswordPrompt(null);
         navigate(`/${encodeURIComponent(res.game.name)}`);
@@ -175,9 +166,12 @@ function Home({
         </Alert>
       )}
 
-      <Button className="mb-4" onClick={() => createGame()}>
-        Create Game
-      </Button>
+      <div className="d-flex gap-2 mb-4">
+        <Button onClick={() => createGame()}>Create Online</Button>
+        <Button variant="secondary" onClick={() => navigate('/offline')}>
+          Create Offline
+        </Button>
+      </div>
 
       {games.length === 0 ? (
         <p className="text-center">No Games Available</p>

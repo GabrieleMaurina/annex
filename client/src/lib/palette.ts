@@ -1,4 +1,4 @@
-const CONTINENT_COLORS = [
+export const PLAYER_COLORS = [
   '#E53935',
   '#1E88E5',
   '#43A047',
@@ -20,8 +20,6 @@ const CONTINENT_COLORS = [
   '#A44A2A',
   '#00897B',
 ];
-
-export const PLAYER_COLORS = CONTINENT_COLORS;
 
 export function playerColor(colorIndex: number): string {
   return PLAYER_COLORS[colorIndex];

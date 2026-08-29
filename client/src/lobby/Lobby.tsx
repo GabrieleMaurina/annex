@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
+import { connector } from '../connector';
 import { saveGameName, saveGameSettings } from '../lib/player';
-import { socket } from '../lib/socket';
 import type {
   Ack,
   BotDifficulty,
   BotPersonality,
+  GameMeta,
   GameSettingsInput,
   GameState,
   GenerateMapInput,
@@ -21,6 +22,7 @@ import SpectatorList from './SpectatorList';
 
 interface Props {
   game: GameState;
+  gameMeta: GameMeta | null;
   setGame: (game: GameState) => void;
   player: Player;
   onNameChange: (name: string) => void;
@@ -31,6 +33,7 @@ interface Props {
 
 function Lobby({
   game,
+  gameMeta,
   setGame,
   player,
   onNameChange,
@@ -55,7 +58,7 @@ function Lobby({
   }, [game]);
 
   function applySettings(settings: GameSettingsInput) {
-    socket.emit('game:settings', settings, (res: Ack) => {
+    connector.updateSettings(settings, (res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);
         return;
@@ -70,7 +73,7 @@ function Lobby({
     input: GenerateMapInput,
     onSettled?: (ok: boolean, mapName?: string) => void,
   ) {
-    socket.emit('game:generateMap', input, (res: Ack) => {
+    connector.generateMap(input, (res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);
         onSettled?.(false);
@@ -110,13 +113,13 @@ function Lobby({
   }
 
   function cycleColor() {
-    socket.emit('game:cycleColor', (res: Ack) => {
+    connector.cycleColor((res: Ack) => {
       if (res.ok) setGame(res.game);
     });
   }
 
   function cycleBotColor(botPlayerId: number) {
-    socket.emit('game:cycleBotColor', { botPlayerId }, (res: Ack) => {
+    connector.cycleBotColor({ botPlayerId }, (res: Ack) => {
       if (res.ok) setGame(res.game);
     });
   }
@@ -129,7 +132,7 @@ function Lobby({
     const lastBot = [...game.players].reverse().find((p) => p.isBot);
     const difficulty = lastBot?.botDifficulty ?? 'easy';
     const personality = lastBot?.botPersonality ?? 'balanced';
-    socket.emit('game:addBot', { difficulty, personality }, (res: Ack) => {
+    connector.addBot({ difficulty, personality }, (res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);
         return;
@@ -144,8 +147,7 @@ function Lobby({
     difficulty: BotDifficulty | 'random',
     personality: BotPersonality | 'random',
   ) {
-    socket.emit(
-      'game:setBotProfile',
+    connector.setBotProfile(
       { botPlayerId, difficulty, personality },
       (res: Ack) => {
         if (!res.ok) {
@@ -159,7 +161,7 @@ function Lobby({
   }
 
   function removeBot(botPlayerId: number) {
-    socket.emit('game:removeBot', { botPlayerId }, (res: Ack) => {
+    connector.removeBot({ botPlayerId }, (res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);
         return;
@@ -177,7 +179,7 @@ function Lobby({
   }
 
   function startGame() {
-    socket.emit('game:start', (res: Ack) => {
+    connector.startGame((res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);
         return;
@@ -185,7 +187,9 @@ function Lobby({
       setSettingsError('');
       saveGameSettings(
         {
-          mapName: res.game.mapName,
+          ...(res.game.mapGeneration
+            ? { mapGeneration: res.game.mapGeneration }
+            : { mapName: res.game.mapName }),
           gameMode: res.game.gameMode,
           blitz: res.game.blitz,
           defenceDice: res.game.defenceDice,
@@ -203,7 +207,7 @@ function Lobby({
           fogOfWar: res.game.fogOfWar,
           alliances: res.game.alliances,
           turnDuration: res.game.turnDuration,
-          visibility: res.game.visibility,
+          ...(gameMeta ? { visibility: gameMeta.visibility } : {}),
         },
         res.game.slots,
       );
@@ -213,6 +217,13 @@ function Lobby({
 
   return (
     <>
+      <div className="text-center mb-2">
+        <span
+          className={`badge ${connector.isOffline() ? 'bg-secondary' : 'bg-success'}`}
+        >
+          {connector.isOffline() ? 'Offline' : 'Online'}
+        </span>
+      </div>
       <Header
         game={game}
         isHost={isHost}
@@ -234,6 +245,7 @@ function Lobby({
       <div className="mb-1">
         <SettingsPanel
           game={game}
+          gameMeta={gameMeta}
           isHost={isHost}
           mapNames={mapNames}
           applySettings={applySettings}
@@ -265,6 +277,9 @@ function Lobby({
         removeSlot={removeSlot}
         addSlot={addSlot}
         addBot={addBot}
+        addLocalPlayer={
+          connector.isOffline() ? () => connector.addLocalPlayer('') : undefined
+        }
         setBotProfile={setBotProfile}
         removeBot={removeBot}
         rowRefs={rowRefs}

@@ -1,7 +1,6 @@
 import { BotProfile, Player } from '../types';
 
 export const playersById = new Map<number, Player>();
-export const playersByKey = new Map<string, Player>();
 
 let nextPlayerId = 1;
 let nextBotId = 1;
@@ -14,24 +13,14 @@ export function isValidPlayerName(name: unknown): name is string {
   return trimmed.length > 0 && trimmed.length <= MAX_PLAYER_NAME_LENGTH;
 }
 
-export function findOrCreatePlayerByKey(
-  playerKey: string,
-  playerName: string | undefined,
-): Player {
-  const existing = playersByKey.get(playerKey);
-  if (existing) {
-    existing.connected = true;
-    return existing;
-  }
+export function addPlayer(name: string | undefined): Player {
   const player: Player = {
-    key: playerKey,
     id: nextPlayerId++,
-    name: playerName ?? 'Player',
+    name: name ?? 'Player',
     gameName: null,
     connected: true,
     isBot: false,
   };
-  playersByKey.set(playerKey, player);
   playersById.set(player.id, player);
   return player;
 }
@@ -39,7 +28,6 @@ export function findOrCreatePlayerByKey(
 export function createBotPlayer(name: string, botProfile: BotProfile): Player {
   const id = -nextBotId++;
   const player: Player = {
-    key: `bot:${id}`,
     id,
     name,
     gameName: null,

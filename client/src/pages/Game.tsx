@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
 import SettingsMenu from '../common/SettingsMenu';
+import { connector } from '../connector';
 import GameMap from '../game/GameMap';
+import OfflineHandoffGate from '../game/OfflineHandoffGate';
 import { useGameLogs } from '../game/useGameLogs';
-import { socket } from '../lib/socket';
 import { playSound } from '../lib/sounds';
 import type {
   Ack,
+  GameMeta,
   GameResults,
   GameState,
   Mission,
@@ -41,6 +43,7 @@ function Game({
   onRename,
 }: Props) {
   const [game, setGame] = useState<GameState | null>(null);
+  const [gameMeta, setGameMeta] = useState<GameMeta | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
   const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
@@ -86,10 +89,10 @@ function Game({
   }
 
   useEffect(() => {
-    socket.on('game:state', applyGameState);
-    socket.emit('game:requestState');
+    connector.on('game:state', applyGameState);
+    connector.requestState();
     return () => {
-      socket.off('game:state', applyGameState);
+      connector.off('game:state', applyGameState);
     };
   }, []);
 
@@ -101,9 +104,9 @@ function Game({
         playSound(payload.playerId === selfId ? 'turn' : 'phase');
       }
     }
-    socket.on('game:turnStarted', onTurnStarted);
+    connector.on('game:turnStarted', onTurnStarted);
     return () => {
-      socket.off('game:turnStarted', onTurnStarted);
+      connector.off('game:turnStarted', onTurnStarted);
     };
   }, [selfId]);
 
@@ -115,9 +118,19 @@ function Game({
     function onMission(payload: { mission: Mission }) {
       setMission(payload.mission);
     }
-    socket.on('game:mission', onMission);
+    connector.on('game:mission', onMission);
     return () => {
-      socket.off('game:mission', onMission);
+      connector.off('game:mission', onMission);
+    };
+  }, []);
+
+  useEffect(() => {
+    function onMeta(payload: GameMeta) {
+      setGameMeta(payload);
+    }
+    connector.on('game:meta', onMeta);
+    return () => {
+      connector.off('game:meta', onMeta);
     };
   }, []);
 
@@ -125,10 +138,10 @@ function Game({
     function onResults(payload: GameResults) {
       setResults(new Map(payload.stats.map((s) => [s.id, s])));
     }
-    socket.on('game:results', onResults);
-    socket.emit('game:requestResults');
+    connector.on('game:results', onResults);
+    connector.requestResults();
     return () => {
-      socket.off('game:results', onResults);
+      connector.off('game:results', onResults);
     };
   }, []);
 
@@ -192,7 +205,7 @@ function Game({
 
   function togglePause() {
     setGame((prev) => (prev ? { ...prev, paused: !prev.paused } : prev));
-    socket.emit('game:pause', (res: Ack) => {
+    connector.pause((res: Ack) => {
       if (res.ok) setGame(res.game);
       else setGame((prev) => (prev ? { ...prev, paused: !prev.paused } : prev));
     });
@@ -362,6 +375,7 @@ function Game({
         <Container fluid className="pt-3 pb-5 px-4">
           <Lobby
             game={game}
+            gameMeta={gameMeta}
             setGame={applyGameState}
             player={player}
             onNameChange={onNameChange}
@@ -388,6 +402,7 @@ function Game({
         open={chatOpen}
         setOpen={setChatOpen}
       />
+      <OfflineHandoffGate />
     </>
   );
 }

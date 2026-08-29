@@ -1,6 +1,6 @@
 import type { CSSProperties, RefObject } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { socket } from '../../../lib/socket';
+import { connector } from '../../../connector';
 import type { Ack, CardSymbol, GameState, TurnPhase } from '../../../lib/types';
 import {
   setContinuousAnimation,
@@ -322,7 +322,7 @@ export function useAutoAdvancePhase({
     if (autoAdvanceKeyRef.current === key) return;
     autoAdvanceKeyRef.current = key;
 
-    socket.emit('game:nextPhase', (res: Ack) => {
+    connector.nextPhase((res: Ack) => {
       if (res.ok) setGame(res.game);
     });
   });

@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { socket } from '../../../lib/socket';
+import { connector } from '../../../connector';
 import type { Ack, Card, GameState } from '../../../lib/types';
 import { CARD_SET_FLASH_DURATION } from '../../animations';
 import {
@@ -79,7 +79,7 @@ export function useCardsAndDeploy({
   const playCardSet = useCallback(
     (combo: EvaluatedCombo) => {
       const cards = combo.cards.map((c) => c.territoryId);
-      socket.emit('game:playCardSet', { cards }, (res: Ack) => {
+      connector.playCardSet({ cards }, (res: Ack) => {
         if (!res.ok) return;
         setGame(res.game);
         setSelectedComboKey(null);
@@ -99,15 +99,16 @@ export function useCardsAndDeploy({
 
   const submitDeploy = useCallback(() => {
     if (selectedTerritoryId === null) return;
-    const event = turnPhase === 'troop' ? 'game:placeTroop' : 'game:deploy';
-    socket.emit(
-      event,
-      { territoryId: selectedTerritoryId, troops: deployTroops },
-      (res: Ack) => {
-        if (!res.ok) return;
-        setGame(res.game);
-      },
-    );
+    const payload = {
+      territoryId: selectedTerritoryId,
+      troops: deployTroops,
+    };
+    const cb = (res: Ack) => {
+      if (!res.ok) return;
+      setGame(res.game);
+    };
+    if (turnPhase === 'troop') connector.placeTroop(payload, cb);
+    else connector.deploy(payload, cb);
   }, [selectedTerritoryId, deployTroops, setGame, turnPhase]);
 
   const deployPanelOpen =
@@ -133,10 +134,10 @@ export function useCardsAndDeploy({
       handRef.current = payload.cards;
       setHand(payload.cards);
     }
-    socket.on('game:cards', onCards);
-    socket.emit('game:requestCards');
+    connector.on('game:cards', onCards);
+    connector.requestCards();
     return () => {
-      socket.off('game:cards', onCards);
+      connector.off('game:cards', onCards);
     };
   }, []);
 
@@ -165,9 +166,9 @@ export function useCardsAndDeploy({
         ]);
       }
     }
-    socket.on('game:cardSetPlayed', onCardSetPlayed);
+    connector.on('game:cardSetPlayed', onCardSetPlayed);
     return () => {
-      socket.off('game:cardSetPlayed', onCardSetPlayed);
+      connector.off('game:cardSetPlayed', onCardSetPlayed);
     };
   }, [selfId, playersRef, setToasts]);
 

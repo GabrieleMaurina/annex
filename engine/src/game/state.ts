@@ -50,7 +50,6 @@ export function gameSummary(game: Game) {
     slots: game.slots,
     state: game.state,
     spectatorCount: game.spectatorIds.length,
-    hasPassword: game.password !== null,
   };
 }
 
@@ -95,6 +94,13 @@ export function gameState(game: Game) {
   return {
     name: game.name,
     mapName: game.mapName,
+    mapGeneration: game.generatedMap
+      ? {
+          seed: game.generatedMap.seed,
+          size: game.generatedMap.size,
+          water: game.generatedMap.water,
+        }
+      : null,
     slots: game.slots,
     hostId: game.hostId,
     originalHostId: game.originalHostId,
@@ -116,7 +122,6 @@ export function gameState(game: Game) {
     fortification: game.fortification,
     gameMode: game.gameMode,
     continentId: game.continentId,
-    hasPassword: game.password !== null,
     placement: game.placement,
     portals: game.portals,
     portalTerritoryIds: game.portalTerritoryIds,
@@ -129,7 +134,6 @@ export function gameState(game: Game) {
     toxins: game.toxins,
     turnDuration: game.turnDuration,
     turnTroops: game.turnTroops,
-    visibility: game.visibility,
     territoryTroopsCap: TERRITORY_CAP,
     totalTroopsCap: totalTroopsCap(game),
     turnNumber: game.turnNumber,

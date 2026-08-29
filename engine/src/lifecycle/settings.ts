@@ -28,7 +28,6 @@ import {
   Toxins,
   TurnDuration,
   TurnTroops,
-  Visibility,
 } from '../types';
 import { validateGameName } from './create';
 
@@ -82,8 +81,6 @@ const SUPPLY_LINES_VALUES: SupplyLines[] = ['off', 'on'];
 const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const TURN_TROOPS_VALUES: TurnTroops[] = ['off', 'on'];
-const VISIBILITY_VALUES: Visibility[] = ['public', 'private'];
-const MAX_PASSWORD_LENGTH = 50;
 
 function isInteger(value: unknown): value is number {
   return Number.isInteger(value);
@@ -237,19 +234,6 @@ export function updateSettings(
     }
   }
 
-  if (settings.password !== undefined) {
-    if (settings.password === null) {
-      game.password = null;
-    } else {
-      if (typeof settings.password !== 'string')
-        return { ok: false, error: 'invalid password' };
-      const trimmedPassword = settings.password.trim();
-      if (!trimmedPassword || trimmedPassword.length > MAX_PASSWORD_LENGTH)
-        return { ok: false, error: 'invalid password' };
-      game.password = trimmedPassword;
-    }
-  }
-
   if (settings.placement !== undefined) {
     if (!(PLACEMENT_VALUES as unknown[]).includes(settings.placement))
       return { ok: false, error: 'invalid placement' };
@@ -329,12 +313,6 @@ export function updateSettings(
     if (!(TURN_TROOPS_VALUES as unknown[]).includes(settings.turnTroops))
       return { ok: false, error: 'invalid turn troops' };
     game.turnTroops = settings.turnTroops as TurnTroops;
-  }
-
-  if (settings.visibility !== undefined) {
-    if (!(VISIBILITY_VALUES as unknown[]).includes(settings.visibility))
-      return { ok: false, error: 'invalid visibility' };
-    game.visibility = settings.visibility as Visibility;
   }
 
   broadcastHomeGames();

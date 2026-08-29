@@ -26,6 +26,7 @@ interface Props {
   removeSlot: (index: number) => void;
   addSlot: () => void;
   addBot: () => void;
+  addLocalPlayer?: () => void;
   setBotProfile: (
     botPlayerId: number,
     difficulty: BotDifficulty | 'random',
@@ -49,6 +50,7 @@ function PlayerRoster({
   removeSlot,
   addSlot,
   addBot,
+  addLocalPlayer,
   setBotProfile,
   removeBot,
   rowRefs,
@@ -143,7 +145,19 @@ function PlayerRoster({
                       {p.id === game.hostId && <Badge bg="primary">Host</Badge>}
                     </span>
                   ) : isHost ? (
-                    <span onClick={(e) => e.stopPropagation()}>
+                    <span
+                      onClick={(e) => e.stopPropagation()}
+                      className="d-inline-flex gap-2"
+                    >
+                      {addLocalPlayer && (
+                        <Button
+                          size="sm"
+                          variant="outline-secondary"
+                          onClick={addLocalPlayer}
+                        >
+                          Add Player
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline-secondary"

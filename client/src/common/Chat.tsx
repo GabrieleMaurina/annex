@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Form, ListGroup } from 'react-bootstrap';
+import { connector } from '../connector';
 import { playerColor } from '../lib/palette';
 import { containsProfanity } from '../lib/profanity';
-import { socket } from '../lib/socket';
 import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
 import { PANEL_CLASS } from './panelStyle';
@@ -34,9 +34,9 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
       setMessages((prev) => [...prev, message]);
       if (!openRef.current) setUnreadCount((prev) => prev + 1);
     }
-    socket.on('game:chatMessage', onMessage);
+    connector.on('game:chatMessage', onMessage);
     return () => {
-      socket.off('game:chatMessage', onMessage);
+      connector.off('game:chatMessage', onMessage);
     };
   }, []);
 
@@ -59,7 +59,7 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
       setHasProfanity(true);
       return;
     }
-    socket.emit('game:chat', { message: trimmed });
+    connector.chat({ message: trimmed });
     setText('');
   }
 

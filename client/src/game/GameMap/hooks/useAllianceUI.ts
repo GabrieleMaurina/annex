@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { socket } from '../../../lib/socket';
+import { connector } from '../../../connector';
 import { playSound } from '../../../lib/sounds';
 import type {
   AllianceDeclinedPayload,
@@ -40,10 +40,10 @@ export function useAllianceUI({
     if (state === 'none') {
       if (allianceCooldownIds.has(playerId)) return;
       setAlliancePopupFor(null);
-      socket.emit('game:offerAlliance', { targetPlayerId: playerId });
+      connector.offerAlliance({ targetPlayerId: playerId });
     } else if (state === 'requestSent') {
       setAlliancePopupFor(null);
-      socket.emit('game:revokeAllianceRequest', { targetPlayerId: playerId });
+      connector.revokeAllianceRequest({ targetPlayerId: playerId });
     } else {
       setAlliancePopupFor((prev) => (prev === playerId ? null : playerId));
     }
@@ -51,12 +51,12 @@ export function useAllianceUI({
 
   function respondAllianceRequest(fromPlayerId: number, accept: boolean) {
     setAlliancePopupFor(null);
-    socket.emit('game:respondAllianceRequest', { fromPlayerId, accept });
+    connector.respondAllianceRequest({ fromPlayerId, accept });
   }
 
   function terminateAlliance(targetPlayerId: number) {
     setAlliancePopupFor(null);
-    socket.emit('game:terminateAlliance', { targetPlayerId });
+    connector.terminateAlliance({ targetPlayerId });
   }
 
   useEffect(() => {
@@ -119,15 +119,15 @@ export function useAllianceUI({
         { id: Date.now(), message: `${name} declined your alliance request` },
       ]);
     }
-    socket.on('game:allianceRequested', onAllianceRequested);
-    socket.on('game:allianceFormed', onAllianceFormed);
-    socket.on('game:allianceTerminated', onAllianceTerminated);
-    socket.on('game:allianceDeclined', onAllianceDeclined);
+    connector.on('game:allianceRequested', onAllianceRequested);
+    connector.on('game:allianceFormed', onAllianceFormed);
+    connector.on('game:allianceTerminated', onAllianceTerminated);
+    connector.on('game:allianceDeclined', onAllianceDeclined);
     return () => {
-      socket.off('game:allianceRequested', onAllianceRequested);
-      socket.off('game:allianceFormed', onAllianceFormed);
-      socket.off('game:allianceTerminated', onAllianceTerminated);
-      socket.off('game:allianceDeclined', onAllianceDeclined);
+      connector.off('game:allianceRequested', onAllianceRequested);
+      connector.off('game:allianceFormed', onAllianceFormed);
+      connector.off('game:allianceTerminated', onAllianceTerminated);
+      connector.off('game:allianceDeclined', onAllianceDeclined);
     };
   }, [playersRef, setToasts]);
 

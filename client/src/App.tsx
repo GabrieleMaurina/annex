@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
+import { connector } from './connector';
 import { registerGeneratedMap, type Territory } from './game/mapData';
-import {
-  getGameSettings,
-  getGameSlots,
-  getPlayer,
-  savePlayer,
-} from './lib/player';
-import { socket } from './lib/socket';
+import { applySavedGameSettings } from './lib/gameSetup';
+import { getPlayer, savePlayer } from './lib/player';
 import type { Ack, Player } from './lib/types';
 import Game from './pages/Game';
 import Home from './pages/Home';
@@ -37,31 +33,55 @@ function App() {
   }, [player]);
 
   useEffect(() => {
+    const pathname = window.location.pathname;
+    connector.setMode(
+      roomFromPath(pathname) === 'offline',
+      playerRef.current.name,
+    );
+  }, []);
+
+  const applyRoom = useCallback((pathname: string) => {
+    connector.setMode(
+      roomFromPath(pathname) === 'offline',
+      playerRef.current.name,
+    );
+    setPath(pathname);
+  }, []);
+
+  useEffect(() => {
     function onPopState() {
-      setPath(window.location.pathname);
+      applyRoom(window.location.pathname);
     }
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  }, [applyRoom]);
 
   const room = roomFromPath(path);
+  const isOffline = room === 'offline';
 
-  function navigate(newPath: string) {
-    window.history.pushState(null, '', newPath);
-    setPath(newPath);
-  }
+  const navigate = useCallback(
+    (newPath: string) => {
+      window.history.pushState(null, '', newPath);
+      applyRoom(newPath);
+    },
+    [applyRoom],
+  );
 
-  const renameRoom = useCallback((newName: string) => {
-    window.history.replaceState(null, '', `/${encodeURIComponent(newName)}`);
-  }, []);
+  const renameRoom = useCallback(
+    (newName: string) => {
+      if (isOffline) return;
+      window.history.replaceState(null, '', `/${encodeURIComponent(newName)}`);
+    },
+    [isOffline],
+  );
 
   const attemptJoin = useCallback(
     (password?: string) => {
-      socket.emit('game:join', { gameName: room, password }, (res: Ack) => {
+      connector.joinGame({ gameName: room, password }, (res: Ack) => {
         if (res.ok || res.error === 'already in a game') {
           setJoinError('');
           setNeedsPassword(false);
-          socket.emit('game:requestState');
+          connector.requestState();
           return;
         }
         if (res.error === 'invalid password') {
@@ -73,21 +93,16 @@ function App() {
           return;
         }
 
-        socket.emit('game:create', { name: room }, (createRes: Ack) => {
+        connector.createGame({ name: room }, (createRes: Ack) => {
           if (createRes.ok) {
-            const savedSettings = getGameSettings();
-            if (savedSettings)
-              socket.emit('game:settings', savedSettings, () => {});
-            const savedSlots = getGameSlots();
-            if (savedSlots)
-              socket.emit('game:settings', { slots: savedSlots }, () => {});
+            applySavedGameSettings();
             setJoinError('');
-            socket.emit('game:requestState');
+            connector.requestState();
             return;
           }
           if (createRes.error === 'already in a game') {
             setJoinError('');
-            socket.emit('game:requestState');
+            connector.requestState();
             return;
           }
           if (createRes.error !== 'game name already in use') {
@@ -95,20 +110,16 @@ function App() {
             return;
           }
 
-          socket.emit(
-            'game:join',
-            { gameName: room, password },
-            (retryRes: Ack) => {
-              if (retryRes.ok || retryRes.error === 'already in a game') {
-                setJoinError('');
-                socket.emit('game:requestState');
-              } else if (retryRes.error === 'invalid password') {
-                setNeedsPassword(true);
-              } else {
-                setJoinError(retryRes.error);
-              }
-            },
-          );
+          connector.joinGame({ gameName: room, password }, (retryRes: Ack) => {
+            if (retryRes.ok || retryRes.error === 'already in a game') {
+              setJoinError('');
+              connector.requestState();
+            } else if (retryRes.error === 'invalid password') {
+              setNeedsPassword(true);
+            } else {
+              setJoinError(retryRes.error);
+            }
+          });
         });
       });
     },
@@ -117,11 +128,10 @@ function App() {
 
   useEffect(() => {
     function afterConnect() {
-      socket.emit('maps:list', (names: string[]) => {
+      connector.listMaps((names: string[]) => {
         setMapNames(names);
       });
-      socket.emit(
-        'player:identify',
+      connector.identify(
         {
           playerKey: playerRef.current.key,
           playerName: playerRef.current.name,
@@ -139,15 +149,20 @@ function App() {
         setJoinError('');
         return;
       }
+      if (isOffline) {
+        applySavedGameSettings();
+        setJoinError('');
+        return;
+      }
 
       attemptJoin();
     }
-    if (socket.connected) afterConnect();
-    socket.on('connect', afterConnect);
+    if (connector.connected) afterConnect();
+    if (!isOffline) connector.on('connect', afterConnect);
     return () => {
-      socket.off('connect', afterConnect);
+      connector.off('connect', afterConnect);
     };
-  }, [room, attemptJoin]);
+  }, [room, isOffline, attemptJoin, navigate]);
 
   useEffect(() => {
     function onMapGenerated(data: {
@@ -164,9 +179,9 @@ function App() {
         imageSrc: data.imageSrc,
       });
     }
-    socket.on('game:mapGenerated', onMapGenerated);
+    connector.on('game:mapGenerated', onMapGenerated);
     return () => {
-      socket.off('game:mapGenerated', onMapGenerated);
+      connector.off('game:mapGenerated', onMapGenerated);
     };
   }, []);
 
@@ -175,9 +190,19 @@ function App() {
       setKickedMessage(`You were kicked from ${data.gameName}`);
       navigate('/');
     }
-    socket.on('game:kicked', onKicked);
+    connector.on('game:kicked', onKicked);
     return () => {
-      socket.off('game:kicked', onKicked);
+      connector.off('game:kicked', onKicked);
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    function onActor(payload: { selfId: number }) {
+      setSelfId(payload.selfId);
+    }
+    connector.on('offline:actor', onActor);
+    return () => {
+      connector.off('offline:actor', onActor);
     };
   }, []);
 
@@ -187,19 +212,20 @@ function App() {
         setSessionTakenOver(true);
         return;
       }
+      if (connector.isOffline()) return;
       navigate('/');
     }
-    socket.on('disconnect', onDisconnect);
+    connector.on('disconnect', onDisconnect);
     return () => {
-      socket.off('disconnect', onDisconnect);
+      connector.off('disconnect', onDisconnect);
     };
-  }, []);
+  }, [navigate]);
 
   function handleNameChange(name: string) {
     const updated = { ...player, name };
     setPlayer(updated);
     savePlayer(updated);
-    socket.emit('player:setName', { name });
+    connector.setName({ name });
   }
 
   if (sessionTakenOver) {

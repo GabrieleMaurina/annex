@@ -13,6 +13,7 @@ import type {
   Entrenchments,
   FogOfWar,
   Fortification,
+  GameMeta,
   GameSettingsInput,
   GameState,
   Placement,
@@ -67,6 +68,7 @@ const TRUNCATE_STYLE: CSSProperties = {
 
 interface Props {
   game: GameState;
+  gameMeta?: GameMeta | null;
   isHost: boolean;
   applySettings: (settings: GameSettingsInput) => void;
 }
@@ -77,7 +79,12 @@ function formatDuration(seconds: number): string {
   return sec === 0 ? `${min} min` : `${min} min ${sec} sec`;
 }
 
-function GameSettingsFields({ game, isHost, applySettings }: Props) {
+function GameSettingsFields({
+  game,
+  gameMeta = null,
+  isHost,
+  applySettings,
+}: Props) {
   const [passwordInput, setPasswordInput] = useState('');
 
   return (
@@ -707,85 +714,93 @@ function GameSettingsFields({ game, isHost, applySettings }: Props) {
             )}
           </div>
 
-          <div
-            className="col d-flex align-items-center gap-2"
-            style={SHRINK_STYLE}
-          >
-            <Form.Label
-              className="mb-0 d-flex align-items-center gap-1"
-              style={LABEL_STYLE}
-            >
-              Visibility
-              <Help>{VISIBILITY_HELP}</Help>
-            </Form.Label>
-            {isHost ? (
-              <Form.Select
-                className="w-auto"
+          {gameMeta && (
+            <>
+              <div
+                className="col d-flex align-items-center gap-2"
                 style={SHRINK_STYLE}
-                value={game.visibility}
-                onChange={(e) =>
-                  applySettings({ visibility: e.target.value as Visibility })
-                }
               >
-                <option value="public">Public</option>
-                <option value="private">Private</option>
-              </Form.Select>
-            ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.visibility === 'private' ? 'Private' : 'Public'}
-              </span>
-            )}
-          </div>
-
-          <div
-            className="col d-flex align-items-center gap-2"
-            style={SHRINK_STYLE}
-          >
-            <Form.Label
-              className="mb-0 d-flex align-items-center gap-1"
-              style={LABEL_STYLE}
-            >
-              Password
-              <Help>{PASSWORD_HELP}</Help>
-            </Form.Label>
-            {isHost ? (
-              <div className="d-flex align-items-center gap-2">
-                <Form.Control
-                  type="text"
-                  className="w-auto"
-                  style={SHRINK_STYLE}
-                  htmlSize={13}
-                  placeholder={
-                    game.hasPassword ? 'Change password' : 'No password'
-                  }
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  onBlur={() => {
-                    const trimmed = passwordInput.trim();
-                    if (!trimmed) return;
-                    applySettings({ password: trimmed });
-                    setPasswordInput('');
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') e.currentTarget.blur();
-                  }}
-                />
-                {game.hasPassword && (
-                  <Button
-                    size="sm"
-                    variant="outline-secondary"
-                    onClick={() => applySettings({ password: null })}
+                <Form.Label
+                  className="mb-0 d-flex align-items-center gap-1"
+                  style={LABEL_STYLE}
+                >
+                  Visibility
+                  <Help>{VISIBILITY_HELP}</Help>
+                </Form.Label>
+                {isHost ? (
+                  <Form.Select
+                    className="w-auto"
+                    style={SHRINK_STYLE}
+                    value={gameMeta.visibility}
+                    onChange={(e) =>
+                      applySettings({
+                        visibility: e.target.value as Visibility,
+                      })
+                    }
                   >
-                    Clear
-                  </Button>
+                    <option value="public">Public</option>
+                    <option value="private">Private</option>
+                  </Form.Select>
+                ) : (
+                  <span style={TRUNCATE_STYLE}>
+                    {gameMeta.visibility === 'private' ? 'Private' : 'Public'}
+                  </span>
                 )}
               </div>
-            ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.hasPassword ? 'Password protected' : 'No password'}
-              </span>
-            )}
-          </div>
+
+              <div
+                className="col d-flex align-items-center gap-2"
+                style={SHRINK_STYLE}
+              >
+                <Form.Label
+                  className="mb-0 d-flex align-items-center gap-1"
+                  style={LABEL_STYLE}
+                >
+                  Password
+                  <Help>{PASSWORD_HELP}</Help>
+                </Form.Label>
+                {isHost ? (
+                  <div className="d-flex align-items-center gap-2">
+                    <Form.Control
+                      type="text"
+                      className="w-auto"
+                      style={SHRINK_STYLE}
+                      htmlSize={13}
+                      placeholder={
+                        gameMeta.hasPassword ? 'Change password' : 'No password'
+                      }
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      onBlur={() => {
+                        const trimmed = passwordInput.trim();
+                        if (!trimmed) return;
+                        applySettings({ password: trimmed });
+                        setPasswordInput('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur();
+                      }}
+                    />
+                    {gameMeta.hasPassword && (
+                      <Button
+                        size="sm"
+                        variant="outline-secondary"
+                        onClick={() => applySettings({ password: null })}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <span style={TRUNCATE_STYLE}>
+                    {gameMeta.hasPassword
+                      ? 'Password protected'
+                      : 'No password'}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>

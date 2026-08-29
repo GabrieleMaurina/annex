@@ -1,6 +1,6 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { socket } from '../../../lib/socket';
+import { connector } from '../../../connector';
 import type {
   Ack,
   EmojiAttackTarget,
@@ -212,7 +212,7 @@ export function useCanvasInteractions({
 
   const selectTerritory = useCallback(
     (territoryId: number | null) => {
-      socket.emit('game:selectTerritory', { territoryId }, (res: Ack) => {
+      connector.selectTerritory({ territoryId }, (res: Ack) => {
         if (res.ok) setGame(res.game);
       });
     },
@@ -221,7 +221,7 @@ export function useCanvasInteractions({
 
   const selectCapital = useCallback(
     (territoryId: number) => {
-      socket.emit('game:selectCapital', { territoryId }, (res: Ack) => {
+      connector.selectCapital({ territoryId }, (res: Ack) => {
         if (res.ok) setGame(res.game);
       });
     },
@@ -230,7 +230,7 @@ export function useCanvasInteractions({
 
   const claimTerritory = useCallback(
     (territoryId: number) => {
-      socket.emit('game:claimTerritory', { territoryId }, (res: Ack) => {
+      connector.claimTerritory({ territoryId }, (res: Ack) => {
         if (res.ok) setGame(res.game);
       });
     },
@@ -712,7 +712,7 @@ export function useCanvasInteractions({
       if (e.key === 'Tab') {
         e.preventDefault();
         if (canAdvancePhase) {
-          socket.emit('game:nextPhase', (res: Ack) => {
+          connector.nextPhase((res: Ack) => {
             if (res.ok) setGame(res.game);
           });
         } else {

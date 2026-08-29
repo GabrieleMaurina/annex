@@ -1,55 +1,20 @@
-import { Server, Socket } from 'socket.io';
-import { getGameMap } from '../../../maps';
-import { Player } from '../../../types';
-import { isInteger, isObject } from '../../../validate';
-import { gameState } from '../../logic/state';
-import { games, respondWithGameState } from '../../logic/store';
-import { advanceTerritoryPhase, claimTerritory } from '../../logic/turns';
+import { Engine } from 'engine';
+import { Socket } from 'socket.io';
+import { playerIdBySocketId } from '../../../socketRooms';
+import { isObject } from '../../../validate';
 
-type GameResponse =
-  | { ok: true; game: ReturnType<typeof gameState> }
-  | { ok: false; error: string };
+type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };
 
-export function registerTerritoryHandlers(
-  io: Server,
-  socket: Socket,
-  playersBySocket: Map<string, Player>,
-  playersById: Map<number, Player>,
-) {
+export function registerTerritoryHandlers(socket: Socket, engine: Engine) {
   socket.on(
     'game:claimTerritory',
     (data: unknown, callback: (response: GameResponse) => void) => {
       if (typeof callback !== 'function') return;
-      const player = playersBySocket.get(socket.id);
-      if (!player || !player.gameName)
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
-
-      const game = games.get(player.gameName);
-      if (!game) return callback({ ok: false, error: 'game not found' });
-      if (game.state !== 'playing')
-        return callback({ ok: false, error: 'game not started' });
-      if (game.paused) return callback({ ok: false, error: 'game paused' });
-      if (game.turnPhase !== 'territory')
-        return callback({ ok: false, error: 'not territory phase' });
-      if (game.playerIds[game.turnPlayerIndex] !== player.id)
-        return callback({ ok: false, error: 'not your turn' });
-
       const territoryId = isObject(data) ? data.territoryId : undefined;
-      const map = getGameMap(game);
-      if (
-        !isInteger(territoryId) ||
-        territoryId < 0 ||
-        territoryId >= map.territories.length ||
-        game.radiationTerritoryIds.has(territoryId)
-      )
-        return callback({ ok: false, error: 'invalid territory' });
-      if (game.territoryOwners.has(territoryId))
-        return callback({ ok: false, error: 'territory already claimed' });
-
-      claimTerritory(game, io, player.id, territoryId);
-      advanceTerritoryPhase(game, io, playersById);
-
-      respondWithGameState(io, playersById, game, player.id, callback);
+      callback(engine.claimTerritory(playerId, territoryId));
     },
   );
 }

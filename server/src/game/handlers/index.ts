@@ -1,0 +1,15 @@
+export { registerAllianceHandlers } from './alliance';
+export { registerAttackHandlers } from './attack';
+export { registerBotLobbyHandlers } from './bots';
+export { registerCardHandlers } from './cards';
+export { registerDeployHandlers } from './deploy';
+export { registerEmojiHandlers } from './emoji';
+export { registerFortifyHandlers } from './fortify';
+export { registerGameHandlers } from './lifecycle';
+export { registerMapGenHandlers } from './mapgen';
+export { registerReplayHandlers } from './replay';
+export { registerCapitalHandlers } from './territory/capital';
+export { registerEntrenchHandlers } from './territory/entrench';
+export { registerTerritoryHandlers } from './territory/territory';
+export { registerTroopHandlers } from './territory/troop';
+export { registerToxinsHandlers } from './toxins/toxins';

@@ -1,131 +1,26 @@
-import { Server, Socket } from 'socket.io';
-import { Player } from '../../types';
-import { isNullableInteger, isObject } from '../../validate';
-import {
-  counterKey,
-  evaluateCardSelection,
-  returnCardsToDeck,
-} from '../logic/progression/cards';
-import { bumpStat } from '../logic/progression/stats';
-import { recordReplayFrame } from '../logic/replay';
-import { gameState } from '../logic/state';
-import {
-  gameRoomName,
-  games,
-  respondWithGameState,
-  sendPlayerCards,
-} from '../logic/store';
-import {
-  fogFilterEmit,
-  recordLogForAll,
-  visibleTerritoryIdsOrAll,
-} from '../logic/world/fog';
+import { Engine } from 'engine';
+import { Socket } from 'socket.io';
+import { playerIdBySocketId } from '../../socketRooms';
+import { isObject } from '../../validate';
 
-type GameResponse =
-  | { ok: true; game: ReturnType<typeof gameState> }
-  | { ok: false; error: string };
+type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };
 
-export function registerCardHandlers(
-  io: Server,
-  socket: Socket,
-  playersBySocket: Map<string, Player>,
-  playersById: Map<number, Player>,
-) {
+export function registerCardHandlers(socket: Socket, engine: Engine) {
   socket.on('game:requestCards', () => {
-    const player = playersBySocket.get(socket.id);
-    if (!player || !player.gameName) return;
-
-    const game = games.get(player.gameName);
-    if (!game || game.state !== 'playing') return;
-
-    sendPlayerCards(io, playersById, game, player.id);
+    const playerId = playerIdBySocketId.get(socket.id);
+    if (playerId === undefined) return;
+    engine.requestCards(playerId);
   });
 
   socket.on(
     'game:playCardSet',
     (data: unknown, callback: (response: GameResponse) => void) => {
       if (typeof callback !== 'function') return;
-      const player = playersBySocket.get(socket.id);
-      if (!player || !player.gameName)
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
-
-      const game = games.get(player.gameName);
-      if (!game) return callback({ ok: false, error: 'game not found' });
-      if (game.state !== 'playing')
-        return callback({ ok: false, error: 'game not started' });
-      if (game.paused) return callback({ ok: false, error: 'game paused' });
-      if (game.playerIds[game.turnPlayerIndex] !== player.id)
-        return callback({ ok: false, error: 'not your turn' });
-      if (game.turnPhase !== 'deploy')
-        return callback({ ok: false, error: 'not deploy phase' });
-
       const cards = isObject(data) ? data.cards : undefined;
-      if (
-        !Array.isArray(cards) ||
-        cards.length !== 3 ||
-        !cards.every((c) => isNullableInteger(c))
-      )
-        return callback({ ok: false, error: 'invalid cards' });
-
-      const hand = game.playerCards.get(player.id) ?? [];
-      const evaluated = evaluateCardSelection(game, hand, player.id, cards);
-      if (!evaluated) return callback({ ok: false, error: 'invalid set' });
-
-      for (const used of evaluated.cards) {
-        const index = hand.indexOf(used);
-        if (index !== -1) hand.splice(index, 1);
-      }
-      returnCardsToDeck(game.deck, evaluated.cards);
-      sendPlayerCards(io, playersById, game, player.id);
-
-      game.troopsToDeploy += evaluated.baseValue;
-      for (const territoryId of evaluated.territoryBonusIds) {
-        game.territoryTroops.set(
-          territoryId,
-          (game.territoryTroops.get(territoryId) ?? 0) + 2,
-        );
-        recordReplayFrame(game, {
-          type: 'deploy',
-          territoryId,
-          troops: 2,
-          playerId: player.id,
-        });
-      }
-      const key = counterKey(game, player.id);
-      game.cardSetsPlayed.set(key, (game.cardSetsPlayed.get(key) ?? 0) + 1);
-      bumpStat(game, player.id, 'setsPlayed');
-      bumpStat(
-        game,
-        player.id,
-        'troopsGained',
-        evaluated.territoryBonusIds.length * 2,
-      );
-      if (
-        game.cards === 'Exponential' ||
-        game.cards === 'Exponential Per Player'
-      )
-        game.cardsLastSetValue.set(key, evaluated.baseValue);
-
-      const cardSetPlayedPayload = {
-        playerId: player.id,
-        troops: evaluated.totalValue,
-        cards: evaluated.cards,
-        territoryBonusCount: evaluated.territoryBonusIds.length,
-      };
-      io.to(gameRoomName(game.name)).emit(
-        'game:cardSetPlayed',
-        cardSetPlayedPayload,
-      );
-      recordLogForAll(game, 'game:cardSetPlayed', cardSetPlayedPayload);
-      for (const territoryId of evaluated.territoryBonusIds) {
-        fogFilterEmit(io, game, playersById, 'game:deployed', (viewerId) => {
-          const visible = visibleTerritoryIdsOrAll(game, viewerId);
-          if (visible !== null && !visible.has(territoryId)) return null;
-          return { territoryId, troops: 2, playerId: player.id };
-        });
-      }
-
-      respondWithGameState(io, playersById, game, player.id, callback);
+      callback(engine.playCardSet(playerId, cards));
     },
   );
 }

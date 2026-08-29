@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "predev": "tsc -b ../engine",
     "dev": "npm run kill && nodemon --exec ts-node src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",

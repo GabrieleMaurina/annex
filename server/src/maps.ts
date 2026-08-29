@@ -1,42 +1,27 @@
+import { Engine } from 'engine';
 import fs from 'fs';
 import path from 'path';
 import { Socket } from 'socket.io';
-import { Game, GameMap } from './types';
 
 const mapsDir = path.resolve(__dirname, '..', '..', 'client', 'public', 'maps');
 
-export const maps = new Map<string, GameMap>();
-
-for (const file of fs.readdirSync(mapsDir)) {
-  if (!file.endsWith('.anx')) continue;
-  const data = JSON.parse(fs.readFileSync(path.join(mapsDir, file), 'utf-8'));
-  maps.set(data.name, {
-    name: data.name,
-    territories: data.territories,
-    bonuses: data.bonuses,
-  });
-}
-
-export const defaultMapName = maps.has('World') ? 'World' : [...maps.keys()][0];
-
-export function listMapNames(): string[] {
-  return [...maps.keys()];
-}
-
-export function getGameMap(game: Game): GameMap {
-  if (game.generatedMap) {
-    return {
-      name: game.mapName,
-      territories: game.generatedMap.territories,
-      bonuses: game.generatedMap.bonuses,
-    };
+export function loadMaps(engine: Engine): void {
+  const entries = [];
+  for (const file of fs.readdirSync(mapsDir)) {
+    if (!file.endsWith('.anx')) continue;
+    const data = JSON.parse(fs.readFileSync(path.join(mapsDir, file), 'utf-8'));
+    entries.push({
+      name: data.name,
+      territories: data.territories,
+      bonuses: data.bonuses,
+    });
   }
-  return maps.get(game.mapName)!;
+  engine.loadMaps(entries);
 }
 
-export function registerMapsHandlers(socket: Socket) {
+export function registerMapsHandlers(socket: Socket, engine: Engine) {
   socket.on('maps:list', (callback: (names: string[]) => void) => {
     if (typeof callback !== 'function') return;
-    callback(listMapNames());
+    callback(engine.listMaps());
   });
 }

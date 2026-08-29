@@ -1,102 +1,40 @@
-import { Server, Socket } from 'socket.io';
 import {
+  Engine,
   MAP_SIZE_VALUES,
   MapSize,
   WATER_LEVEL_VALUES,
   WaterLevel,
-} from '../../mapgen/core/params';
-import { generateMapAsync } from '../../mapgen/mapgenPool';
-import { containsProfanity } from '../../profanity';
-import { Player } from '../../types';
+} from 'engine';
+import { Socket } from 'socket.io';
+import { playerIdBySocketId } from '../../socketRooms';
 import { isObject } from '../../validate';
-import { gameState } from '../logic/state';
-import { gameRoomName, games, respondWithGameState } from '../logic/store';
 
-const MAX_SEED_LENGTH = 20;
-const PRINTABLE_ASCII = /^[\x20-\x7e]+$/;
+type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };
 
-type GenerateMapResponse =
-  | { ok: true; game: ReturnType<typeof gameState> }
-  | { ok: false; error: string };
-
-export function registerMapGenHandlers(
-  io: Server,
-  socket: Socket,
-  playersBySocket: Map<string, Player>,
-  playersById: Map<number, Player>,
-) {
+export function registerMapGenHandlers(socket: Socket, engine: Engine) {
   socket.on(
     'game:generateMap',
-    (data: unknown, callback: (response: GenerateMapResponse) => void) => {
+    (data: unknown, callback: (response: GameResponse) => void) => {
       if (typeof callback !== 'function') return;
-      const player = playersBySocket.get(socket.id);
-      if (!player || !player.gameName)
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
 
-      const game = games.get(player.gameName);
-      if (!game) return callback({ ok: false, error: 'game not found' });
-      if (game.hostId !== player.id)
-        return callback({ ok: false, error: 'not the host' });
-      if (game.state !== 'lobby')
-        return callback({ ok: false, error: 'game already started' });
-
       const input: Record<string, unknown> = isObject(data) ? data : {};
-
       const seed = input.seed;
-      const trimmedSeed = typeof seed === 'string' ? seed.trim() : '';
-      if (
-        typeof seed !== 'string' ||
-        trimmedSeed.length === 0 ||
-        trimmedSeed.length > MAX_SEED_LENGTH ||
-        !PRINTABLE_ASCII.test(trimmedSeed) ||
-        containsProfanity(trimmedSeed)
-      )
+      if (typeof seed !== 'string')
         return callback({ ok: false, error: 'invalid seed' });
-
       if (!(MAP_SIZE_VALUES as unknown[]).includes(input.size))
         return callback({ ok: false, error: 'invalid size' });
-
       if (!(WATER_LEVEL_VALUES as unknown[]).includes(input.water))
         return callback({ ok: false, error: 'invalid water' });
 
-      const gameName = game.name;
-      const hostId = player.id;
-
-      generateMapAsync(
-        {
-          seed: trimmedSeed,
-          size: input.size as MapSize,
-          water: input.water as WaterLevel,
-        },
-        (res) => {
-          const current = games.get(gameName);
-          if (
-            !current ||
-            current.state !== 'lobby' ||
-            current.hostId !== hostId
-          )
-            return callback({ ok: false, error: 'game no longer available' });
-          if (!res.ok) return callback({ ok: false, error: res.error });
-
-          const generated = res.result;
-          current.mapName = generated.name;
-          current.generatedMap = {
-            territories: generated.territories,
-            bonuses: generated.bonuses,
-            displayName: generated.displayName,
-            imageSrc: generated.imageSrc,
-          };
-
-          io.to(gameRoomName(current.name)).emit('game:mapGenerated', {
-            name: generated.name,
-            displayName: generated.displayName,
-            territories: generated.territories,
-            bonuses: generated.bonuses,
-            imageSrc: generated.imageSrc,
-          });
-
-          respondWithGameState(io, playersById, current, hostId, callback);
-        },
+      engine.generateMap(
+        playerId,
+        seed,
+        input.size as MapSize,
+        input.water as WaterLevel,
+        callback,
       );
     },
   );

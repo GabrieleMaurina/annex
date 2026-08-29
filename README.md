@@ -6,16 +6,27 @@ Strategy Multiplayer War Game
 
 ### Running
 
-Install [Node.js](https://nodejs.org/en/download "Node.js")  
+Install [Node.js](https://nodejs.org/en/download "Node.js")
+
+Install all dependencies once from the repo root:
+
+```bash
+npm i
+```
+
+Build `engine` (the server imports its compiled output, so this must run first, and again after changing `engine`):
+
+```bash
+cd engine/
+npm run build
+```
 
 ```bash
 cd server/
-npm i
 npm run dev
 ```
 
 ```bash
 cd client/
-npm i
 npm run dev
 ```

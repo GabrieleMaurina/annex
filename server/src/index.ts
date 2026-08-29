@@ -1,3 +1,4 @@
+import { createEngine, EngineCallbacks } from 'engine';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -17,12 +18,10 @@ import {
   registerTerritoryHandlers,
   registerToxinsHandlers,
   registerTroopHandlers,
-  scheduleBotTurnIfNeeded,
-} from './game';
-import { setBotTurnHook } from './game/logic/store';
+} from './game/handlers';
 import { registerHomeHandlers } from './home';
-import { registerMapsHandlers } from './maps';
-import { HOME_ROOM, Player } from './types';
+import { loadMaps, registerMapsHandlers } from './maps';
+import { emitTo, HOME_ROOM, setSocketRoom } from './socketRooms';
 
 const app = express();
 const httpServer = createServer(app);
@@ -33,31 +32,90 @@ const io = new Server(httpServer, {
   maxHttpBufferSize: 8 * 1024 * 1024,
 });
 
-const playersBySocket = new Map<string, Player>();
-const playersByKey = new Map<string, Player>();
-const playersById = new Map<number, Player>();
+const callbacks: EngineCallbacks = {
+  onHomeGames: (playerId, games) => emitTo(io, playerId, 'home:games', games),
+  onGameState: (playerId, state) => emitTo(io, playerId, 'game:state', state),
+  onCards: (playerId, payload) => emitTo(io, playerId, 'game:cards', payload),
+  onMission: (playerId, payload) =>
+    emitTo(io, playerId, 'game:mission', payload),
+  onLogs: (playerId, payload) => emitTo(io, playerId, 'game:logs', payload),
+  onResults: (playerId, payload) =>
+    emitTo(io, playerId, 'game:results', payload),
+  onCardSetPlayed: (playerId, payload) =>
+    emitTo(io, playerId, 'game:cardSetPlayed', payload),
+  onKicked: (playerId, payload) => emitTo(io, playerId, 'game:kicked', payload),
+  onChatMessage: (playerId, payload) =>
+    emitTo(io, playerId, 'game:chatMessage', payload),
+  onEmojiSent: (playerId, payload) =>
+    emitTo(io, playerId, 'game:emojiSent', payload),
+  onAllianceRequested: (playerId, payload) =>
+    emitTo(io, playerId, 'game:allianceRequested', payload),
+  onAllianceFormed: (playerId, payload) =>
+    emitTo(io, playerId, 'game:allianceFormed', payload),
+  onAllianceDeclined: (playerId, payload) =>
+    emitTo(io, playerId, 'game:allianceDeclined', payload),
+  onAllianceTerminated: (playerId, payload) =>
+    emitTo(io, playerId, 'game:allianceTerminated', payload),
+  onCapitalPlacementStarted: (playerId) =>
+    emitTo(io, playerId, 'game:capitalPlacementStarted'),
+  onTerritoryClaimed: (playerId, payload) =>
+    emitTo(io, playerId, 'game:territoryClaimed', payload),
+  onTurnStarted: (playerId, payload) =>
+    emitTo(io, playerId, 'game:turnStarted', payload),
+  onDeployed: (playerId, payload) =>
+    emitTo(io, playerId, 'game:deployed', payload),
+  onDeployedMany: (playerId, payload) =>
+    emitTo(io, playerId, 'game:deployedMany', payload),
+  onFortified: (playerId, payload) =>
+    emitTo(io, playerId, 'game:fortified', payload),
+  onEntrenched: (playerId, payload) =>
+    emitTo(io, playerId, 'game:entrenched', payload),
+  onToxined: (playerId, payload) =>
+    emitTo(io, playerId, 'game:toxined', payload),
+  onToxinExpired: (playerId, payload) =>
+    emitTo(io, playerId, 'game:toxinExpired', payload),
+  onRadiationUpcoming: (playerId, payload) =>
+    emitTo(io, playerId, 'game:radiationUpcoming', payload),
+  onRadiationChanged: (playerId, payload) =>
+    emitTo(io, playerId, 'game:radiationChanged', payload),
+  onStarved: (playerId, payload) =>
+    emitTo(io, playerId, 'game:starved', payload),
+  onAttacked: (playerId, payload) =>
+    emitTo(io, playerId, 'game:attacked', payload),
+  onTankFired: (playerId, payload) =>
+    emitTo(io, playerId, 'game:tankFired', payload),
+  onAttackMoved: (playerId, payload) =>
+    emitTo(io, playerId, 'game:attackMoved', payload),
+  onSelected: (playerId, payload) =>
+    emitTo(io, playerId, 'game:selected', payload),
+  onMapGenerated: (playerId, payload) =>
+    emitTo(io, playerId, 'game:mapGenerated', payload),
+  onRoomChanged: (playerId, gameName) => setSocketRoom(io, playerId, gameName),
+};
 
-setBotTurnHook(scheduleBotTurnIfNeeded);
+export const engine = createEngine(callbacks);
+
+loadMaps(engine);
 
 io.on('connection', (socket) => {
   socket.join(HOME_ROOM);
-  registerMapsHandlers(socket);
-  registerHomeHandlers(io, socket, playersBySocket, playersByKey, playersById);
-  registerGameHandlers(io, socket, playersBySocket, playersById);
-  registerMapGenHandlers(io, socket, playersBySocket, playersById);
-  registerBotLobbyHandlers(io, socket, playersBySocket, playersById);
-  registerTerritoryHandlers(io, socket, playersBySocket, playersById);
-  registerTroopHandlers(io, socket, playersBySocket, playersById);
-  registerCapitalHandlers(io, socket, playersBySocket, playersById);
-  registerDeployHandlers(io, socket, playersBySocket, playersById);
-  registerEmojiHandlers(io, socket, playersBySocket, playersById);
-  registerFortifyHandlers(io, socket, playersBySocket, playersById);
-  registerEntrenchHandlers(io, socket, playersBySocket, playersById);
-  registerToxinsHandlers(io, socket, playersBySocket, playersById);
-  registerAttackHandlers(io, socket, playersBySocket, playersById);
-  registerCardHandlers(io, socket, playersBySocket, playersById);
-  registerAllianceHandlers(io, socket, playersBySocket, playersById);
-  registerReplayHandlers(io, socket, playersBySocket);
+  registerMapsHandlers(socket, engine);
+  registerHomeHandlers(io, socket, engine);
+  registerGameHandlers(io, socket, engine);
+  registerMapGenHandlers(socket, engine);
+  registerBotLobbyHandlers(socket, engine);
+  registerTerritoryHandlers(socket, engine);
+  registerTroopHandlers(socket, engine);
+  registerCapitalHandlers(socket, engine);
+  registerDeployHandlers(socket, engine);
+  registerEmojiHandlers(socket, engine);
+  registerFortifyHandlers(socket, engine);
+  registerEntrenchHandlers(socket, engine);
+  registerToxinsHandlers(socket, engine);
+  registerAttackHandlers(socket, engine);
+  registerCardHandlers(socket, engine);
+  registerAllianceHandlers(socket, engine);
+  registerReplayHandlers(socket, engine);
 });
 
 const port = Number(process.env.PORT) || 3000;

@@ -1,0 +1,31 @@
+{
+  "name": "engine",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src",
+    "format": "prettier --write src",
+    "types": "tsc --noEmit",
+    "check": "npm run format && npm run lint && npm run types"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "obscenity": "^0.4.6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.6",
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}

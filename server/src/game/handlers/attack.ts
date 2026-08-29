@@ -1,471 +1,46 @@
-import { Server, Socket } from 'socket.io';
-import { getGameMap } from '../../maps';
-import { Game, Player } from '../../types';
-import { isInteger, isNullableInteger, isObject } from '../../validate';
-import { hasAnyAttack } from '../logic/combat/autoSkip';
-import {
-  balancedBlitz,
-  balancedWinProbs,
-  attack as rollAttack,
-  trueBlitz,
-  trueWinProbs,
-} from '../logic/combat/dice';
-import { checkGameEnd } from '../logic/end';
-import { recordElimination } from '../logic/progression/stats';
-import { recordReplayFrame } from '../logic/replay';
-import { gameState } from '../logic/state';
-import {
-  broadcastGameStateExcept,
-  gameRoomName,
-  games,
-  respondWithGameState,
-  sendPlayerCards,
-} from '../logic/store';
-import { isFreeConquestTarget } from '../logic/toxins/toxins';
-import { advanceTurnPhase, rewindTurnTimerIfBelowHalf } from '../logic/turns';
-import {
-  filterGameStateForViewer,
-  fogFilterEmit,
-  troopMoveFields,
-  visibleTerritoryIdsOrAll,
-} from '../logic/world/fog';
-import { withPortalEdges } from '../logic/world/portals';
+import { Engine } from 'engine';
+import { Socket } from 'socket.io';
+import { playerIdBySocketId } from '../../socketRooms';
+import { isObject } from '../../validate';
 
-type GameResponse =
-  | { ok: true; game: ReturnType<typeof gameState> }
-  | { ok: false; error: string };
+type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };
 
-type AttackProbabilitiesResponse =
-  | {
-      ok: true;
-      game: ReturnType<typeof gameState>;
-      blitzWinProbabilities: number[];
-    }
-  | { ok: false; error: string };
-
-type AttackResultResponse =
-  | {
-      ok: true;
-      game: ReturnType<typeof gameState>;
-      blitzWinProbabilities: number[];
-      attackerDice: number[];
-      defenderDice: number[];
-    }
-  | { ok: false; error: string };
-
-function defenceDiceFor(game: Game, territoryId: number): number {
-  if (game.capitalTerritoryIds.has(territoryId)) return 3;
-  if ((game.territoryEntrenchment.get(territoryId) ?? 0) > 0) return 3;
-  return game.defenceDice;
-}
-
-function computeBlitzWinProbabilities(
-  game: Game,
-  attackingTroops: number,
-  defendingTroops: number,
-  defendingDice: number,
-): number[] {
-  const maxBlitz = attackingTroops - 1;
-  const blitzWinProbs = game.blitz === 'True' ? trueWinProbs : balancedWinProbs;
-  return blitzWinProbs(maxBlitz, defendingTroops, defendingDice);
-}
-
-function isAttackStartCandidate(
-  game: Game,
-  playerId: number,
-  territoryId: number,
-): boolean {
-  if ((game.territoryTroops.get(territoryId) ?? 0) < 2) return false;
-  const map = getGameMap(game);
-  const territory = map.territories.find((t) => t.id === territoryId);
-  const neighbors = withPortalEdges(
-    territory?.neighbors ?? [],
-    territoryId,
-    game.portalTerritoryIds,
-    game.portalsEnabled,
-  );
-  return neighbors.some((n) => {
-    const ownerId = game.territoryOwners.get(n);
-    if (ownerId !== undefined) return ownerId !== playerId;
-    return isFreeConquestTarget(game, n);
-  });
-}
-
-function isAttackEndCandidate(
-  game: Game,
-  playerId: number,
-  startId: number,
-  territoryId: number,
-): boolean {
-  const ownerId = game.territoryOwners.get(territoryId);
-  if (ownerId === playerId) return false;
-  if (ownerId === undefined && !isFreeConquestTarget(game, territoryId))
-    return false;
-  const map = getGameMap(game);
-  const territory = map.territories.find((t) => t.id === startId);
-  const neighbors = withPortalEdges(
-    territory?.neighbors ?? [],
-    startId,
-    game.portalTerritoryIds,
-    game.portalsEnabled,
-  );
-  return neighbors.includes(territoryId);
-}
-
-function hasPendingConquest(game: Game, playerId: number): boolean {
-  return (
-    game.attackEndTerritoryId !== null &&
-    game.territoryOwners.get(game.attackEndTerritoryId) === playerId
-  );
-}
-
-export function registerAttackHandlers(
-  io: Server,
-  socket: Socket,
-  playersBySocket: Map<string, Player>,
-  playersById: Map<number, Player>,
-) {
+export function registerAttackHandlers(socket: Socket, engine: Engine) {
   socket.on(
     'game:attackSelectStart',
     (data: unknown, callback: (response: GameResponse) => void) => {
       if (typeof callback !== 'function') return;
-      const player = playersBySocket.get(socket.id);
-      if (!player || !player.gameName)
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
-
-      const game = games.get(player.gameName);
-      if (!game) return callback({ ok: false, error: 'game not found' });
-      if (game.state !== 'playing')
-        return callback({ ok: false, error: 'game not started' });
-      if (game.paused) return callback({ ok: false, error: 'game paused' });
-      if (game.playerIds[game.turnPlayerIndex] !== player.id)
-        return callback({ ok: false, error: 'not your turn' });
-      if (game.turnPhase !== 'attack')
-        return callback({ ok: false, error: 'not attack phase' });
-      if (hasPendingConquest(game, player.id))
-        return callback({ ok: false, error: 'pending conquest move' });
-
       const territoryId = isObject(data) ? data.territoryId : undefined;
-      if (!isNullableInteger(territoryId))
-        return callback({ ok: false, error: 'invalid territory' });
-
-      if (territoryId !== null) {
-        if (!game.territoryOwners.has(territoryId))
-          return callback({ ok: false, error: 'invalid territory' });
-        if (game.territoryOwners.get(territoryId) !== player.id)
-          return callback({ ok: false, error: 'territory not owned' });
-        if (!isAttackStartCandidate(game, player.id, territoryId))
-          return callback({ ok: false, error: 'invalid start territory' });
-      }
-
-      game.attackStartTerritoryId = territoryId;
-      game.attackEndTerritoryId = null;
-      game.attackConquestMinTroops = null;
-      if (territoryId !== null)
-        io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
-      respondWithGameState(io, playersById, game, player.id, callback);
+      callback(engine.attackSelectStart(playerId, territoryId));
     },
   );
 
   socket.on(
     'game:attackSelectEnd',
-    (
-      data: unknown,
-      callback: (response: AttackProbabilitiesResponse) => void,
-    ) => {
+    (data: unknown, callback: (response: unknown) => void) => {
       if (typeof callback !== 'function') return;
-      const player = playersBySocket.get(socket.id);
-      if (!player || !player.gameName)
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
-
-      const game = games.get(player.gameName);
-      if (!game) return callback({ ok: false, error: 'game not found' });
-      if (game.state !== 'playing')
-        return callback({ ok: false, error: 'game not started' });
-      if (game.paused) return callback({ ok: false, error: 'game paused' });
-      if (game.playerIds[game.turnPlayerIndex] !== player.id)
-        return callback({ ok: false, error: 'not your turn' });
-      if (game.turnPhase !== 'attack')
-        return callback({ ok: false, error: 'not attack phase' });
-      if (game.attackStartTerritoryId === null)
-        return callback({ ok: false, error: 'no start territory selected' });
-
       const territoryId = isObject(data) ? data.territoryId : undefined;
-      if (!isInteger(territoryId))
-        return callback({ ok: false, error: 'invalid territory' });
-      if (
-        !isAttackEndCandidate(
-          game,
-          player.id,
-          game.attackStartTerritoryId,
-          territoryId,
-        )
-      )
-        return callback({ ok: false, error: 'invalid end territory' });
-
-      game.attackEndTerritoryId = territoryId;
-
-      const attackingTroops =
-        game.territoryTroops.get(game.attackStartTerritoryId) ?? 0;
-      const defendingTroops = game.territoryTroops.get(territoryId) ?? 0;
-      const blitzWinProbabilities = computeBlitzWinProbabilities(
-        game,
-        attackingTroops,
-        defendingTroops,
-        defenceDiceFor(game, territoryId),
-      );
-
-      io.to(gameRoomName(game.name)).emit('game:selected', { territoryId });
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-        blitzWinProbabilities,
-      });
-      broadcastGameStateExcept(io, playersById, game, player.id);
+      callback(engine.attackSelectEnd(playerId, territoryId));
     },
   );
 
   socket.on(
     'game:attack',
-    (data: unknown, callback: (response: AttackResultResponse) => void) => {
+    (data: unknown, callback: (response: unknown) => void) => {
       if (typeof callback !== 'function') return;
-      const player = playersBySocket.get(socket.id);
-      if (!player || !player.gameName)
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
-
-      const game = games.get(player.gameName);
-      if (!game) return callback({ ok: false, error: 'game not found' });
-      if (game.state !== 'playing')
-        return callback({ ok: false, error: 'game not started' });
-      if (game.paused) return callback({ ok: false, error: 'game paused' });
-      if (game.playerIds[game.turnPlayerIndex] !== player.id)
-        return callback({ ok: false, error: 'not your turn' });
-      if (game.turnPhase !== 'attack')
-        return callback({ ok: false, error: 'not attack phase' });
-      if (
-        game.attackStartTerritoryId === null ||
-        game.attackEndTerritoryId === null
-      )
-        return callback({ ok: false, error: 'no attack selection' });
-      if (hasPendingConquest(game, player.id))
-        return callback({ ok: false, error: 'territory already conquered' });
-
       const { type, troops } = isObject(data)
         ? data
         : ({} as Record<string, unknown>);
-      if (type !== 'regular' && type !== 'blitz')
-        return callback({ ok: false, error: 'invalid attack type' });
-
-      const startId = game.attackStartTerritoryId;
-      const endId = game.attackEndTerritoryId;
-      const attackingTroops = game.territoryTroops.get(startId) ?? 0;
-      const maxTroops =
-        type === 'regular'
-          ? Math.min(attackingTroops - 1, 3)
-          : attackingTroops - 1;
-      if (!isInteger(troops))
-        return callback({ ok: false, error: 'invalid troops' });
-      if (troops < 1 || troops > maxTroops)
-        return callback({ ok: false, error: 'invalid troops' });
-
-      const defendingTroops = game.territoryTroops.get(endId) ?? 0;
-      const defenderId = game.territoryOwners.get(endId);
-      let attackLosses: number;
-      let defenceLosses: number;
-      let attackerDice: number[] = [];
-      let defenderDice: number[] = [];
-      const defendingDice = defenceDiceFor(game, endId);
-      if (defenderId === undefined) {
-        attackLosses = 0;
-        defenceLosses = 0;
-      } else if (type === 'regular') {
-        const result = rollAttack(
-          troops,
-          Math.min(defendingTroops, defendingDice),
-        );
-        attackLosses = result.attackLosses;
-        defenceLosses = result.defenceLosses;
-        attackerDice = result.attackDice;
-        defenderDice = result.defenceDice;
-      } else {
-        const result = (game.blitz === 'True' ? trueBlitz : balancedBlitz)(
-          troops,
-          defendingTroops,
-          defendingDice,
-        );
-        attackLosses = result.attackLosses;
-        defenceLosses = result.defenceLosses;
-      }
-
-      game.territoryTroops.set(startId, attackingTroops - attackLosses);
-      game.territoryTroops.set(
-        endId,
-        Math.max(0, defendingTroops - defenceLosses),
-      );
-      const attackerStats = game.stats.get(player.id)!;
-      const defenderStats =
-        defenderId !== undefined ? game.stats.get(defenderId) : undefined;
-      attackerStats.troopsLost += attackLosses;
-      attackerStats.troopsKilled += defenceLosses;
-      if (defenderStats) {
-        defenderStats.troopsLost += defenceLosses;
-        defenderStats.troopsKilled += attackLosses;
-      }
-
-      const conquered = defenceLosses >= defendingTroops;
-      if (conquered) {
-        game.territoryOwners.set(endId, player.id);
-        game.territoryEntrenchment.delete(endId);
-        game.territoryToxins.delete(endId);
-      }
-      recordReplayFrame(game, {
-        type: 'attack',
-        attackingTerritoryId: startId,
-        defendingTerritoryId: endId,
-        attackerId: player.id,
-        defenderId,
-        attackLosses,
-        defenceLosses,
-      });
-
-      let blitzWinProbabilities: number[] = [];
-      let autoConquestMove: {
-        territoryId: number;
-        fromTerritoryId: number;
-        troops: number;
-      } | null = null;
-      if (conquered) {
-        game.conqueredThisTurn = true;
-        attackerStats.territoriesConquered++;
-        if (game.capitalTerritoryIds.has(endId))
-          attackerStats.capitalsConquered++;
-        if (defenderStats) {
-          defenderStats.territoriesLost++;
-          if (game.capitalTerritoryIds.has(endId)) defenderStats.capitalsLost++;
-        }
-        const defenderEliminated =
-          defenderId !== undefined
-            ? recordElimination(game, defenderId, player.id)
-            : false;
-        checkGameEnd(game, io, playersById);
-        if (game.state === 'playing') {
-          const remainingAttackers = attackingTroops - attackLosses;
-          const minMoveTroops = Math.min(troops, 3, remainingAttackers - 1);
-
-          if (defenderEliminated && defenderId !== undefined) {
-            const defenderHand = game.playerCards.get(defenderId) ?? [];
-            const attackerHand = game.playerCards.get(player.id) ?? [];
-            attackerHand.push(...defenderHand);
-            game.playerCards.set(defenderId, []);
-            attackerStats.cardsGained += defenderHand.length;
-            if (defenderHand.length > 0) {
-              sendPlayerCards(io, playersById, game, player.id);
-              sendPlayerCards(io, playersById, game, defenderId);
-            }
-          }
-          game.attackConquestMinTroops = minMoveTroops;
-        } else {
-          const remainingAttackers = attackingTroops - attackLosses;
-          game.territoryTroops.set(startId, 0);
-          game.territoryTroops.set(endId, remainingAttackers);
-          recordReplayFrame(game, {
-            type: 'fortify',
-            fromTerritoryId: startId,
-            toTerritoryId: endId,
-            troops: remainingAttackers,
-            playerId: player.id,
-          });
-          autoConquestMove = {
-            territoryId: endId,
-            fromTerritoryId: startId,
-            troops: remainingAttackers,
-          };
-        }
-      } else {
-        const remainingAttackers = attackingTroops - attackLosses;
-        const remainingDefenders = defendingTroops - defenceLosses;
-        if (remainingAttackers > 1) {
-          blitzWinProbabilities = computeBlitzWinProbabilities(
-            game,
-            remainingAttackers,
-            remainingDefenders,
-            defendingDice,
-          );
-        } else {
-          game.attackStartTerritoryId = null;
-          game.attackEndTerritoryId = null;
-        }
-      }
-
-      fogFilterEmit(io, game, playersById, 'game:attacked', (viewerId) => {
-        const visible = visibleTerritoryIdsOrAll(game, viewerId);
-        const sourceVisible = visible === null || visible.has(startId);
-        const targetVisible =
-          visible === null || visible.has(endId) || viewerId === defenderId;
-        if (!sourceVisible && !targetVisible) return null;
-        return {
-          attackingTerritoryId: startId,
-          defendingTerritoryId: endId,
-          attackerId: player.id,
-          type,
-          ...(sourceVisible ? { attackingTroops: troops, attackLosses } : {}),
-          ...(targetVisible
-            ? { defenderId, defendingTroops, defenceLosses, conquered }
-            : {}),
-        };
-      });
-      io.to(gameRoomName(game.name)).emit('game:tankFired', {
-        type,
-        hasDefender: defenderId !== undefined,
-      });
-      if (autoConquestMove) {
-        const move = autoConquestMove;
-        fogFilterEmit(io, game, playersById, 'game:attackMoved', (viewerId) => {
-          const visible = visibleTerritoryIdsOrAll(game, viewerId);
-          if (
-            visible !== null &&
-            !visible.has(move.territoryId) &&
-            !visible.has(move.fromTerritoryId)
-          )
-            return null;
-          return {
-            territoryId: move.territoryId,
-            fromTerritoryId: move.fromTerritoryId,
-            ...troopMoveFields(
-              visible,
-              move.fromTerritoryId,
-              move.territoryId,
-              move.troops,
-            ),
-          };
-        });
-      }
-
-      if (
-        game.state === 'playing' &&
-        game.turnPhase === 'attack' &&
-        game.attackConquestMinTroops === null &&
-        !hasAnyAttack(game, player.id)
-      ) {
-        advanceTurnPhase(game, io, playersById);
-      }
-
-      callback({
-        ok: true,
-        game: filterGameStateForViewer(
-          gameState(game, playersById),
-          game,
-          player.id,
-        ),
-        blitzWinProbabilities,
-        attackerDice,
-        defenderDice,
-      });
-      broadcastGameStateExcept(io, playersById, game, player.id);
+      callback(engine.attack(playerId, type, troops));
     },
   );
 
@@ -473,66 +48,11 @@ export function registerAttackHandlers(
     'game:attackMove',
     (data: unknown, callback: (response: GameResponse) => void) => {
       if (typeof callback !== 'function') return;
-      const player = playersBySocket.get(socket.id);
-      if (!player || !player.gameName)
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
-
-      const game = games.get(player.gameName);
-      if (!game) return callback({ ok: false, error: 'game not found' });
-      if (game.state !== 'playing')
-        return callback({ ok: false, error: 'game not started' });
-      if (game.paused) return callback({ ok: false, error: 'game paused' });
-      if (game.playerIds[game.turnPlayerIndex] !== player.id)
-        return callback({ ok: false, error: 'not your turn' });
-      if (game.turnPhase !== 'attack')
-        return callback({ ok: false, error: 'not attack phase' });
-      if (!hasPendingConquest(game, player.id))
-        return callback({ ok: false, error: 'no pending conquest' });
-
-      const startId = game.attackStartTerritoryId!;
-      const endId = game.attackEndTerritoryId!;
-      const startTroops = game.territoryTroops.get(startId) ?? 0;
-      const min = game.attackConquestMinTroops ?? 1;
-      const max = startTroops - 1;
-
       const troops = isObject(data) ? data.troops : undefined;
-      if (!isInteger(troops))
-        return callback({ ok: false, error: 'invalid troops' });
-      if (troops < min || troops > max)
-        return callback({ ok: false, error: 'invalid troops' });
-
-      game.territoryTroops.set(startId, startTroops - troops);
-      game.territoryTroops.set(endId, troops);
-      recordReplayFrame(game, {
-        type: 'fortify',
-        fromTerritoryId: startId,
-        toTerritoryId: endId,
-        troops,
-        playerId: player.id,
-      });
-      game.attackStartTerritoryId = null;
-      game.attackEndTerritoryId = null;
-      game.attackConquestMinTroops = null;
-
-      fogFilterEmit(io, game, playersById, 'game:attackMoved', (viewerId) => {
-        const visible = visibleTerritoryIdsOrAll(game, viewerId);
-        if (visible !== null && !visible.has(endId) && !visible.has(startId))
-          return null;
-        return {
-          territoryId: endId,
-          fromTerritoryId: startId,
-          ...troopMoveFields(visible, startId, endId, troops),
-        };
-      });
-      if ((game.playerCards.get(player.id)?.length ?? 0) >= 5) {
-        game.turnPhase = 'deploy';
-        game.deployCardMandate = true;
-        rewindTurnTimerIfBelowHalf(game, io, playersById);
-      } else if (!hasAnyAttack(game, player.id)) {
-        advanceTurnPhase(game, io, playersById);
-      }
-
-      respondWithGameState(io, playersById, game, player.id, callback);
+      callback(engine.attackMove(playerId, troops));
     },
   );
 }

@@ -83,8 +83,7 @@ export function tessellate(
       const id = labelGrid[gy * width + gx];
       if (id < 0) continue;
       const rightId = gx + 1 < width ? labelGrid[gy * width + gx + 1] : -1;
-      const downId =
-        gy + 1 < height ? labelGrid[(gy + 1) * width + gx] : -1;
+      const downId = gy + 1 < height ? labelGrid[(gy + 1) * width + gx] : -1;
       if (rightId >= 0 && rightId !== id) addEdge(id, rightId);
       if (downId >= 0 && downId !== id) addEdge(id, downId);
     }

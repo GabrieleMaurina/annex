@@ -73,6 +73,24 @@ function breakBonus(
     : 0;
 }
 
+export function chooseAttackMoveTroops(
+  game: Game,
+  view: BotView,
+  botId: number,
+  campaign: CampaignPlan | null,
+  campaignStep: number,
+): number {
+  const startId = game.attackStartTerritoryId!;
+  const startTroops = game.territoryTroops.get(startId) ?? 0;
+  const min = game.attackConquestMinTroops ?? 1;
+  const max = startTroops - 1;
+
+  if (campaign && campaignStep < campaign.orderedTargetIds.length) return max;
+  if (hostileNeighbors(game, view, botId, startId).length > 0)
+    return Math.max(min, Math.floor(max / 2));
+  return max;
+}
+
 export function chooseAttack(
   game: Game,
   view: BotView,

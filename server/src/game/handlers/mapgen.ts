@@ -5,7 +5,7 @@ import {
   WATER_LEVEL_VALUES,
   WaterLevel,
 } from '../../mapgen/core/params';
-import { generateMap } from '../../mapgen/generate';
+import { generateMapAsync } from '../../mapgen/mapgenPool';
 import { containsProfanity } from '../../profanity';
 import { Player } from '../../types';
 import { isObject } from '../../validate';
@@ -59,29 +59,45 @@ export function registerMapGenHandlers(
       if (!(WATER_LEVEL_VALUES as unknown[]).includes(input.water))
         return callback({ ok: false, error: 'invalid water' });
 
-      const generated = generateMap({
-        seed: trimmedSeed,
-        size: input.size as MapSize,
-        water: input.water as WaterLevel,
-      });
+      const gameName = game.name;
+      const hostId = player.id;
 
-      game.mapName = generated.name;
-      game.generatedMap = {
-        territories: generated.territories,
-        bonuses: generated.bonuses,
-        displayName: generated.displayName,
-        imageSrc: generated.imageSrc,
-      };
+      generateMapAsync(
+        {
+          seed: trimmedSeed,
+          size: input.size as MapSize,
+          water: input.water as WaterLevel,
+        },
+        (res) => {
+          const current = games.get(gameName);
+          if (
+            !current ||
+            current.state !== 'lobby' ||
+            current.hostId !== hostId
+          )
+            return callback({ ok: false, error: 'game no longer available' });
+          if (!res.ok) return callback({ ok: false, error: res.error });
 
-      io.to(gameRoomName(game.name)).emit('game:mapGenerated', {
-        name: generated.name,
-        displayName: generated.displayName,
-        territories: generated.territories,
-        bonuses: generated.bonuses,
-        imageSrc: generated.imageSrc,
-      });
+          const generated = res.result;
+          current.mapName = generated.name;
+          current.generatedMap = {
+            territories: generated.territories,
+            bonuses: generated.bonuses,
+            displayName: generated.displayName,
+            imageSrc: generated.imageSrc,
+          };
 
-      respondWithGameState(io, playersById, game, player.id, callback);
+          io.to(gameRoomName(current.name)).emit('game:mapGenerated', {
+            name: generated.name,
+            displayName: generated.displayName,
+            territories: generated.territories,
+            bonuses: generated.bonuses,
+            imageSrc: generated.imageSrc,
+          });
+
+          respondWithGameState(io, playersById, current, hostId, callback);
+        },
+      );
     },
   );
 }

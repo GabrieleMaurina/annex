@@ -28,7 +28,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: 'http://localhost:5000',
+    origin: process.env.CLIENT_URL || 'http://localhost:5000',
   },
   maxHttpBufferSize: 8 * 1024 * 1024,
 });
@@ -60,7 +60,7 @@ io.on('connection', (socket) => {
   registerReplayHandlers(io, socket, playersBySocket);
 });
 
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
 httpServer.listen(port, () => {
   console.log(`server listening on port ${port}`);
 });

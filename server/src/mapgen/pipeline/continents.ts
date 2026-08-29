@@ -73,7 +73,10 @@ export function clusterContinents(
 
   function assign(territoryId: number, continentId: number) {
     continentIdByTerritory[territoryId] = continentId;
-    sizeByContinent.set(continentId, (sizeByContinent.get(continentId) ?? 0) + 1);
+    sizeByContinent.set(
+      continentId,
+      (sizeByContinent.get(continentId) ?? 0) + 1,
+    );
   }
 
   let nextContinentId = 0;

@@ -31,7 +31,7 @@ function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
 export function computeGameEndWinnerIds(game: Game): number[] | null {
   if (game.turnPhase === 'territory') {
     const remaining = game.playerIds.filter(
-      (id) => !game.surrenderedIds.has(id) && !game.deathOrder.includes(id),
+      (id) => !isPlayerEliminated(game, id),
     );
     if (remaining.length !== 1) return null;
     return soleSurvivorWinnerIds(game, remaining[0]);
@@ -43,9 +43,6 @@ function isPlayerEliminated(game: Game, id: number): boolean {
   return game.surrenderedIds.has(id) || game.deathOrder.includes(id);
 }
 
-// A human can leave the game by being killed, surrendering, or disconnecting
-// (disconnect turns their seat into a takeover bot, so isBot covers it too).
-// Once none remain, there's no one left to keep the game running for.
 function noHumanPlayersLeft(game: Game) {
   return game.playerIds.every(
     (id) =>

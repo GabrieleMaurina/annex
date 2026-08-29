@@ -47,10 +47,6 @@ export function computeIslands(land: boolean[][]): Islands {
 const MIN_COMPONENT_AREA_RATIO = 0.4;
 const MAX_CLEAN_PASSES = 8;
 
-// Islands and water bodies are both measured against the same mask, then
-// applied together - cleaning up tiny lakes against an already-island-
-// cleaned grid would see the freshly emptied island footprint as another
-// tiny lake and immediately refill it, undoing the island removal.
 function cleanLandMaskOnce(land: boolean[][], minArea: number): boolean[][] {
   const height = land.length;
   const width = land[0]?.length ?? 0;
@@ -84,8 +80,6 @@ function landMasksEqual(a: boolean[][], b: boolean[][]): boolean {
   return true;
 }
 
-// A single pass can create new tiny slivers (e.g. filling a lake leaves a
-// newly isolated speck of land behind), so repeat until nothing changes.
 export function cleanLandMask(
   land: boolean[][],
   expectedTerritoryArea: number,

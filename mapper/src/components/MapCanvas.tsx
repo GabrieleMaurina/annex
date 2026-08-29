@@ -211,6 +211,21 @@ function MapCanvas({
     return clampOffset(canvasW, canvasH, scaleX, scaleY, imgW, imgH, x, y);
   }
 
+  function getViewport() {
+    const canvas = canvasRef.current!;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    const { imgW, imgH, scaleX, scaleY } = getScales(w, h, transform.zoom);
+    const { x: offsetX, y: offsetY } = getClampedOffset(
+      w,
+      h,
+      transform.zoom,
+      transform.offsetX,
+      transform.offsetY,
+    );
+    return { imgW, imgH, scaleX, scaleY, offsetX, offsetY };
+  }
+
   useEffect(() => {
     const img = new Image();
     img.onload = () => {
@@ -421,19 +436,7 @@ function MapCanvas({
   }
 
   function hitVertex(pos: Point): Territory | null {
-    const canvas = canvasRef.current!;
-    const { imgW, imgH, scaleX, scaleY } = getScales(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-    );
-    const { x: offsetX, y: offsetY } = getClampedOffset(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-      transform.offsetX,
-      transform.offsetY,
-    );
+    const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = getViewport();
     const hitRadius =
       getVertexRadius(imgW, imgH) * HIT_RADIUS_MULTIPLIER * scaleX +
       HIT_TOLERANCE;
@@ -453,19 +456,7 @@ function MapCanvas({
   }
 
   function addVertexAt(pos: Point) {
-    const canvas = canvasRef.current!;
-    const { scaleX, scaleY } = getScales(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-    );
-    const { x: offsetX, y: offsetY } = getClampedOffset(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-      transform.offsetX,
-      transform.offsetY,
-    );
+    const { scaleX, scaleY, offsetX, offsetY } = getViewport();
     const worldX = (pos.x - offsetX) / scaleX;
     const worldY = (pos.y - offsetY) / scaleY;
     const nextId = territories.length
@@ -489,19 +480,7 @@ function MapCanvas({
     to: Point,
     excludeIds: Set<number>,
   ): boolean {
-    const canvas = canvasRef.current!;
-    const { imgW, imgH, scaleX, scaleY } = getScales(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-    );
-    const { x: offsetX, y: offsetY } = getClampedOffset(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-      transform.offsetX,
-      transform.offsetY,
-    );
+    const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = getViewport();
     const toScreenPos = (p: Point): Point => ({
       x: p.x * scaleX + offsetX,
       y: p.y * scaleY + offsetY,
@@ -619,18 +598,11 @@ function MapCanvas({
       };
       return;
     }
-    const canvas = canvasRef.current!;
-    const { x, y } = getClampedOffset(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-      transform.offsetX,
-      transform.offsetY,
-    );
+    const { offsetX, offsetY } = getViewport();
     dragRef.current = {
       type: 'pan',
       startPos: pos,
-      startTransform: { x, y },
+      startTransform: { x: offsetX, y: offsetY },
       moved: false,
     };
   }
@@ -638,19 +610,7 @@ function MapCanvas({
   function handleMouseMove(e: React.MouseEvent) {
     const drag = dragRef.current;
     const pos = getPos(e);
-    const canvas = canvasRef.current!;
-    const { scaleX, scaleY } = getScales(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-    );
-    const { x: offsetX, y: offsetY } = getClampedOffset(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-      transform.offsetX,
-      transform.offsetY,
-    );
+    const { scaleX, scaleY, offsetX, offsetY } = getViewport();
     setMouseWorldPos({
       x: (pos.x - offsetX) / scaleX,
       y: (pos.y - offsetY) / scaleY,
@@ -665,11 +625,7 @@ function MapCanvas({
       if (Math.hypot(dx, dy) > DRAG_THRESHOLD) drag.moved = true;
       if (drag.moved) {
         const canvas = canvasRef.current!;
-        const { imgW, imgH, scaleX, scaleY } = getScales(
-          canvas.clientWidth,
-          canvas.clientHeight,
-          transform.zoom,
-        );
+        const { w: imgW, h: imgH } = getImageDims();
         const { x, y } = clampOffset(
           canvas.clientWidth,
           canvas.clientHeight,
@@ -696,12 +652,6 @@ function MapCanvas({
       if (drag.moved && selectedVertexId !== null && selectedVertexId !== id) {
         setSelectedVertexId(null);
       }
-      const canvas = canvasRef.current!;
-      const { scaleX, scaleY } = getScales(
-        canvas.clientWidth,
-        canvas.clientHeight,
-        transform.zoom,
-      );
       setTerritories((prev) =>
         prev.map((t) =>
           t.id === id

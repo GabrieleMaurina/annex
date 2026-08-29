@@ -154,9 +154,6 @@ export interface EngineCallbacks {
     },
   ): void;
 
-  // Infrastructure-only: not a wire event. Fired whenever a THIRD PARTY's
-  // (not the acting caller's) socket-room membership must change as a side
-  // effect (kick, eviction, game rename). null means "back to the lobby".
   onRoomChanged(playerId: number, gameName: string | null): void;
 }
 

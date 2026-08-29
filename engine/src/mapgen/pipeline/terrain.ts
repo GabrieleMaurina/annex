@@ -5,13 +5,6 @@ import { Rng } from '../core/rng';
 const PERSISTENCE = 0.5;
 const LACUNARITY = 2;
 
-// 'land' and 'ocean' both threshold near an extreme of the height field, so
-// the minority terrain (lakes in 'land', islands in 'ocean') is naturally
-// fragmented into many small blobs rather than one sprawling body - but only
-// if the noise itself has enough small-scale detail. A higher frequency and
-// an extra octave give both modes that detail; 'mixed' sits near the middle
-// of the range, where even coarse noise already breaks up into varied,
-// contiguous-but-irregular landmasses, so it's left alone.
 const TERRAIN_PARAMS: Record<
   WaterLevel,
   { frequency: number; octaves: number }

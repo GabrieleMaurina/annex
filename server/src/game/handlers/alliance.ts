@@ -1,39 +1,27 @@
 import { Engine } from 'engine';
 import { Socket } from 'socket.io';
-import { playerIdBySocketId } from '../../socketRooms';
-import { isInteger, isObject } from '../../validate';
+import { isInteger } from '../../validate';
+import { registerGameEvent } from '../handlerHelpers';
 
 export function registerAllianceHandlers(socket: Socket, engine: Engine) {
-  socket.on('game:offerAlliance', (data: unknown) => {
-    const playerId = playerIdBySocketId.get(socket.id);
-    if (playerId === undefined) return;
-    const targetPlayerId = isObject(data) ? data.targetPlayerId : undefined;
-    if (!isInteger(targetPlayerId)) return;
-    engine.offerAlliance(playerId, targetPlayerId);
+  registerGameEvent(socket, 'game:offerAlliance', (playerId, data) => {
+    if (!isInteger(data.targetPlayerId)) return;
+    engine.offerAlliance(playerId, data.targetPlayerId);
   });
 
-  socket.on('game:revokeAllianceRequest', (data: unknown) => {
-    const playerId = playerIdBySocketId.get(socket.id);
-    if (playerId === undefined) return;
-    const targetPlayerId = isObject(data) ? data.targetPlayerId : undefined;
-    if (!isInteger(targetPlayerId)) return;
-    engine.revokeAllianceRequest(playerId, targetPlayerId);
+  registerGameEvent(socket, 'game:revokeAllianceRequest', (playerId, data) => {
+    if (!isInteger(data.targetPlayerId)) return;
+    engine.revokeAllianceRequest(playerId, data.targetPlayerId);
   });
 
-  socket.on('game:respondAllianceRequest', (data: unknown) => {
-    const playerId = playerIdBySocketId.get(socket.id);
-    if (playerId === undefined) return;
-    if (!isObject(data)) return;
+  registerGameEvent(socket, 'game:respondAllianceRequest', (playerId, data) => {
     const { fromPlayerId, accept } = data;
     if (!isInteger(fromPlayerId) || typeof accept !== 'boolean') return;
     engine.respondAllianceRequest(playerId, fromPlayerId, accept);
   });
 
-  socket.on('game:terminateAlliance', (data: unknown) => {
-    const playerId = playerIdBySocketId.get(socket.id);
-    if (playerId === undefined) return;
-    const targetPlayerId = isObject(data) ? data.targetPlayerId : undefined;
-    if (!isInteger(targetPlayerId)) return;
-    engine.terminateAlliance(playerId, targetPlayerId);
+  registerGameEvent(socket, 'game:terminateAlliance', (playerId, data) => {
+    if (!isInteger(data.targetPlayerId)) return;
+    engine.terminateAlliance(playerId, data.targetPlayerId);
   });
 }

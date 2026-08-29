@@ -63,9 +63,6 @@ export function getClampedOffset(
 export interface WrappedSegment {
   a: Point;
   b: Point;
-  // Position of a/b along the original, unwrapped a-to-b hop (0 at the true
-  // start, 1 at the true end), so a fade computed across the whole hop stays
-  // continuous even when the hop is split at the map edge for rendering.
   t0: number;
   t1: number;
 }

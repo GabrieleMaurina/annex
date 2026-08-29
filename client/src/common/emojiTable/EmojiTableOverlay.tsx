@@ -49,6 +49,7 @@ function EmojiTableOverlay({
             .get(emojiPickerFor)
             ?.getBoundingClientRect();
           if (!rowRect || !nameRect) return null;
+          const muted = isPlayerMuted(emojiPickerFor);
           return (
             <div
               ref={emojiPickerRef}
@@ -76,10 +77,7 @@ function EmojiTableOverlay({
                 </Tip>
               ))}
               {emojiPickerFor !== GLOBAL_TARGET_ID && (
-                <Tip
-                  text={isPlayerMuted(emojiPickerFor) ? 'Unmute' : 'Mute'}
-                  placement="bottom"
-                >
+                <Tip text={muted ? 'Unmute' : 'Mute'} placement="bottom">
                   <button
                     type="button"
                     className="border-0 border-start d-inline-flex align-items-center justify-content-center lh-1"
@@ -96,16 +94,12 @@ function EmojiTableOverlay({
                   >
                     <img
                       src={
-                        (isPlayerMuted(emojiPickerFor)
-                          ? whiteMutedIcon
-                          : whiteUnmutedIcon) ??
-                        (isPlayerMuted(emojiPickerFor)
-                          ? '/icons/muted.svg'
-                          : '/icons/unmuted.svg')
+                        (muted ? whiteMutedIcon : whiteUnmutedIcon) ??
+                        (muted ? '/icons/muted.svg' : '/icons/unmuted.svg')
                       }
                       width={20}
                       height={20}
-                      alt={isPlayerMuted(emojiPickerFor) ? 'Muted' : 'Unmuted'}
+                      alt={muted ? 'Muted' : 'Unmuted'}
                     />
                   </button>
                 </Tip>

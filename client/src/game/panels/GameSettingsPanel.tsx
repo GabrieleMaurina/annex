@@ -1,3 +1,4 @@
+import PanelHeader from '../../common/PanelHeader';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import type { GameState } from '../../lib/types';
 import SettingsPanel from '../../lobby/SettingsPanel';
@@ -19,21 +20,7 @@ function GameSettingsPanel({ game, top, onClose }: Props) {
         maxHeight: `calc(100vh - ${top}px - ${BOTTOM_MARGIN}px)`,
       }}
     >
-      <div
-        className="fw-bold lh-1 mb-2 flex-shrink-0"
-        role="button"
-        tabIndex={0}
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.stopPropagation();
-            onClose();
-          }
-        }}
-        style={{ cursor: 'pointer' }}
-      >
-        Settings
-      </div>
+      <PanelHeader title="Settings" onClose={onClose} />
       <div
         className="no-scrollbar"
         style={{ overflowY: 'auto', minHeight: 0 }}

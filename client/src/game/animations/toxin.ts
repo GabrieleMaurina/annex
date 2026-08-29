@@ -1,4 +1,4 @@
-import { pseudoRandom } from './state';
+import { pseudoRandom, regularPolygonPath } from './state';
 
 const TOXIN_CLOUD_SCALE = 1.4;
 const TOXIN_CLOUD_COLOR = '65, 70, 75';
@@ -90,15 +90,7 @@ function drawToxinParticle(
   ctx.save();
   ctx.translate(particle.x, particle.y);
   ctx.rotate(particle.rotation);
-  ctx.beginPath();
-  for (let i = 0; i < TOXIN_PARTICLE_SIDES; i++) {
-    const angle = (i / TOXIN_PARTICLE_SIDES) * Math.PI * 2;
-    const px = Math.cos(angle) * size;
-    const py = Math.sin(angle) * size;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
+  regularPolygonPath(ctx, 0, 0, size, TOXIN_PARTICLE_SIDES);
   ctx.fillStyle = `rgba(${TOXIN_CLOUD_COLOR}, ${Math.min(1, particle.alpha * alphaBoost)})`;
   ctx.fill();
   ctx.restore();

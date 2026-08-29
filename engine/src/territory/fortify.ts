@@ -16,6 +16,7 @@ import { getGameMap } from '../maps/maps';
 import { GameResponse, requireGame } from '../session/context';
 import { broadcastSelected, respondGameState } from '../session/store';
 import { Game } from '../types';
+import { isInteger, isNullableInteger } from '../util/validate';
 
 function ownsOtherTerritory(
   game: Game,
@@ -66,14 +67,6 @@ function isValidFortifyEnd(
     return neighbors.includes(endId);
   }
   return connectedOwnedTerritories(game, playerId, [startId]).has(endId);
-}
-
-function isInteger(value: unknown): value is number {
-  return Number.isInteger(value);
-}
-
-function isNullableInteger(value: unknown): value is number | null {
-  return value === null || isInteger(value);
 }
 
 function requireFortifyTurn(playerId: number) {

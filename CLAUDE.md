@@ -37,9 +37,11 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the user's request.
 
-## 4. Stack
+## 4. Rules
 
-Code for readability first, then simplicity, and finally performance.
+**Code for readability first, then simplicity, and finally performance.**
+
+Follow these rules unless explicitly instructed otherwise:
 - No comments in the code.
 - Single quote string.
 - No async/await.
@@ -49,9 +51,13 @@ Code for readability first, then simplicity, and finally performance.
 - No sub-agents unless explicitly requested.
 - No browser verification/running unless explicitly requested.
 
+## 5. Stack
+
+Whole repo is an npm workspace with 4 modules: `engine`, `server`, `client`, and `mapper`.
+
 **Engine**
 - Pure TypeScript
-- Contains the game logic, bots ai, and map generation.
+- Contains the game logic, bots AI, and map generation.
 - Used by both the server and client. Must be independent of any UI or network code.
 
 **Server**

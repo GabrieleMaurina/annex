@@ -8,11 +8,6 @@ interface AttackedLogPayload {
   defendingTerritoryId?: number;
 }
 
-// Reuses the existing per-player game.logs (populated for every
-// game:attacked event by recordLog/fogFilterEmit) instead of tracking any
-// new state: scans the bot's own log for attacks it suffered, weighting each
-// by troops lost and whether a territory (or capital) was taken, with more
-// recent attacks counting more.
 export function grudgeAgainst(
   game: Game,
   botId: number,

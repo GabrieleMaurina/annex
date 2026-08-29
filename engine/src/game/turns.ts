@@ -11,6 +11,7 @@ import {
 import { checkGameEnd } from './end';
 import {
   calculateDeployTroopsBreakdown,
+  ownedTerritoryIds,
   ownsAnyTerritory,
   turnOrderBonus,
 } from './mechanics';
@@ -118,9 +119,7 @@ function dropTroopsRandomly(
   deposits: Map<number, number>,
   countsAsGained: boolean,
 ) {
-  const territoryIds = [...game.territoryOwners.entries()]
-    .filter(([, ownerId]) => ownerId === playerId)
-    .map(([territoryId]) => territoryId);
+  const territoryIds = ownedTerritoryIds(game, playerId);
   if (territoryIds.length === 0) return;
 
   if (countsAsGained) bumpStat(game, playerId, 'troopsGained', amount);
@@ -139,6 +138,31 @@ function dropTroopsRandomly(
     deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + troops);
     recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
   }
+}
+
+function emitDeployedMany(
+  game: Game,
+  playerId: number,
+  deposits: Map<number, number>,
+) {
+  if (deposits.size === 0) return;
+  const entries = [...deposits.entries()].map(([territoryId, troops]) => ({
+    territoryId,
+    troops,
+  }));
+  fogFilterEmit(
+    game,
+    'game:deployedMany',
+    callbacks.onDeployedMany,
+    (viewerId) => {
+      const visible = visibleTerritoryIdsOrAll(game, viewerId);
+      const filtered =
+        visible === null
+          ? entries
+          : entries.filter((e) => visible.has(e.territoryId));
+      return filtered.length > 0 ? { deposits: filtered, playerId } : null;
+    },
+  );
 }
 
 function forceCompleteDeployPhase(game: Game): Map<number, number> {
@@ -189,9 +213,7 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
 }
 
 function pickRandomOwnedTerritory(game: Game, playerId: number): number | null {
-  const territoryIds = [...game.territoryOwners.entries()]
-    .filter(([, ownerId]) => ownerId === playerId)
-    .map(([territoryId]) => territoryId);
+  const territoryIds = ownedTerritoryIds(game, playerId);
   if (territoryIds.length === 0) return null;
   return territoryIds[Math.floor(Math.random() * territoryIds.length)];
 }
@@ -315,17 +337,7 @@ export function startTroopPhase(game: Game) {
     );
   });
   game.turnPhase = 'troop';
-  let startIndex = 0;
-  for (let i = 0; i < game.playerIds.length; i++) {
-    const id = game.playerIds[i];
-    if (
-      !game.deathOrder.includes(id) &&
-      (game.placementTroopPools.get(id) ?? 0) > 0
-    ) {
-      startIndex = i;
-      break;
-    }
-  }
+  const startIndex = nextTroopIndexFrom(game, -1) ?? 0;
   game.turnPlayerIndex = startIndex;
   game.troopsToDeploy = Math.min(
     TROOP_PHASE_TURN_MAX,
@@ -387,25 +399,7 @@ function autoPlaceRemainingTroops(game: Game, playerId: number) {
     const pool = game.placementTroopPools.get(playerId) ?? 0;
     game.placementTroopPools.set(playerId, Math.max(0, pool - amount));
     game.troopsToDeploy = 0;
-    if (deposits.size > 0) {
-      const entries = [...deposits.entries()].map(([territoryId, troops]) => ({
-        territoryId,
-        troops,
-      }));
-      fogFilterEmit(
-        game,
-        'game:deployedMany',
-        callbacks.onDeployedMany,
-        (viewerId) => {
-          const visible = visibleTerritoryIdsOrAll(game, viewerId);
-          const filtered =
-            visible === null
-              ? entries
-              : entries.filter((e) => visible.has(e.territoryId));
-          return filtered.length > 0 ? { deposits: filtered, playerId } : null;
-        },
-      );
-    }
+    emitDeployedMany(game, playerId, deposits);
   }
   advanceTroopPhase(game);
 }
@@ -533,26 +527,7 @@ export function forceEndTurnImpl(game: Game, skipDeploy = false) {
   }
 
   if (game.turnPhase === 'deploy' && !skipDeploy) {
-    const deposits = forceCompleteDeployPhase(game);
-    if (deposits.size > 0) {
-      const entries = [...deposits.entries()].map(([territoryId, troops]) => ({
-        territoryId,
-        troops,
-      }));
-      fogFilterEmit(
-        game,
-        'game:deployedMany',
-        callbacks.onDeployedMany,
-        (viewerId) => {
-          const visible = visibleTerritoryIdsOrAll(game, viewerId);
-          const filtered =
-            visible === null
-              ? entries
-              : entries.filter((e) => visible.has(e.territoryId));
-          return filtered.length > 0 ? { deposits: filtered, playerId } : null;
-        },
-      );
-    }
+    emitDeployedMany(game, playerId, forceCompleteDeployPhase(game));
   }
   if (game.turnPhase === 'attack') {
     const move = completePendingAttackMove(game, playerId);

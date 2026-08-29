@@ -17,6 +17,7 @@ From the project's CLAUDE.md, these override default behavior:
 - `server` and `client` follow PROTOCOL.md for socket.io events and data types.
 - Do NOT run the app or do browser verification.
 - Do NOT commit or push. Leave changes in the working tree.
+- **Shared working tree, concurrent editors.** Every sub-agent edits the SAME working tree at the SAME time as other sub-agents working on other units. Do NOT run any git command that changes repo or index state: no `git stash` (it will sweep up and hide other agents' in-progress edits), no `git checkout`/`git restore`/`git reset`/`git clean`/`git rebase`/`git apply`, no `git add`/`git commit`. Only read-only git is allowed (`git status`, `git diff`, `git log`, `git ls-files`). Make all edits with the file-editing tools directly. To type-check, run `tsc`/`eslint` against the tree as-is; if you see errors only in files OUTSIDE your unit, ignore them and note it in your report (another agent's edit is mid-flight) — do not try to "clean" or reset the tree to get a green baseline.
 
 ## Phase 1: Discovery (terminal commands only, do NOT read files)
 
@@ -65,6 +66,8 @@ Spawn sub-agents (general-purpose), one per unit, and run them in parallel where
 >
 > Make the low-risk, clearly-correct fixes directly in the working tree. Keep changes surgical and minimal. It is a valid and expected outcome to find little or nothing, do not manufacture changes.
 >
+> **You are one of many sub-agents editing this one working tree at the same time.** Other sub-agents are concurrently changing files in other units right now. Do NOT run `git stash`, `git checkout`, `git restore`, `git reset`, `git clean`, `git rebase`, `git apply`, `git add`, or `git commit` — any of these will corrupt or hide other agents' in-progress work. Read-only git (`git status`, `git diff`, `git log`) is fine. Edit files only with the file tools. When you run `tsc`/`eslint`, expect to see transient errors in files outside your unit from other agents mid-edit — ignore those, note them, and never reset the tree to chase a clean baseline. If your own edits appear to have vanished, another agent's git command likely reverted them: re-apply with the file tools and note it — do not run git to recover.
+>
 > **When you are unsure** (a refactor is larger, riskier, changes a public/shared API, or you can see more than one reasonable option) do NOT apply it. List it under "Decisions needed" in your report with: what you'd change, why, the risk, and your recommended option. The orchestrator will decide and may send you a follow-up instruction to apply it.
 >
 > **Multi-unit refactors are allowed when necessary**, with caution. If the cleanest fix requires touching files outside your unit (renaming or moving a symbol that's imported elsewhere, updating call sites across modules) you may do it, but:
@@ -105,9 +108,10 @@ When in doubt, reject and recommend. The bar is "clearly correct and low-risk", 
 ## Phase 5: Consolidate
 
 After all sub-agents and follow-ups finish:
-1. Run a full workspace type-check / lint / build for each module (`engine`, `server`, `client`, `mapper`) to confirm nothing broke across unit boundaries. Fix trivial breakages caused by the changes; escalate anything non-trivial in the report.
-2. Review the set of changes for consistency (e.g. two units that both extracted a similar helper, consider whether it should be unified, but only if clean). Reconcile any overlapping edits from multi-unit refactors.
-3. Produce the **final report** for the user. Keep it tight, roughly one page:
+1. Check `git stash list` and `git status`. If a sub-agent ran `git stash` despite the rule, its own and other agents' edits may be sitting in a stash instead of the working tree: for every file a stash touches, confirm the working-tree version is the intended final one (compare against the sub-agent reports and `git diff <stash>:<file> -- <file>`), recover any file that was left reverted, then drop the redundant stashes. Also confirm the set of modified files matches the union of what the sub-agents reported changing — no file silently reverted, none unexpectedly changed.
+2. Run a full workspace type-check / lint / build for each module (`engine`, `server`, `client`, `mapper`) to confirm nothing broke across unit boundaries. Fix trivial breakages caused by the changes; escalate anything non-trivial in the report.
+3. Review the set of changes for consistency (e.g. two units that both extracted a similar helper, consider whether it should be unified, but only if clean). Reconcile any overlapping edits from multi-unit refactors.
+4. Produce the **final report** for the user. Keep it tight, roughly one page:
    - **Summary**: 2-3 sentences on overall code health and how much was changed.
    - **Changes by module**: bullet list, grouped by `engine` / `server` / `client` / `mapper`, each bullet one line.
    - **Duplication removed**: short list.

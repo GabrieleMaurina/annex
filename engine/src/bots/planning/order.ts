@@ -20,12 +20,6 @@ function isPassable(
   return !isHazardTerritory(game, view, territoryId);
 }
 
-// Multi-source Dijkstra from the bot's claimed territories to every
-// reachable, passable territory. Edge weight is estimatedConquestCost, the
-// expected troops sacrificed taking that territory (folding in its defender
-// count, defence dice, capitals and entrenchment), so `cost` ends up being
-// the cheapest total troop expenditure of any path into that territory
-// (whether it's a goal or just a stepping stone toward one).
 function reachCosts(
   game: Game,
   view: BotView,
@@ -91,14 +85,6 @@ function pathTo(
   return path;
 }
 
-// Cheapest-path-first ordering: at every step, pathfind from the territory
-// claimed so far to every remaining target, and commit to whichever target
-// has the cheapest total troop-expenditure path (which may run through
-// territory outside the goal itself, e.g. crossing a third player to reach
-// a continent). Repeats until every target is claimed or none are
-// reachable. Not an exhaustive search over full campaign orderings, but
-// every individual step is a real shortest-path result, not a
-// nearest-neighbor guess.
 export function orderTargets(
   game: Game,
   view: BotView,

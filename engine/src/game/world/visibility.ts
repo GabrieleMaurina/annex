@@ -53,11 +53,6 @@ export function visibleTerritoryIdsOrAll(
   return computeVisibleTerritoryIds(game, viewerId);
 }
 
-// Splits a territory-id path into runs, dropping any hop where neither
-// endpoint is visible so a client never learns two hidden territories are
-// connected by a fortify chain. Each remaining hop keeps at least one
-// visible endpoint, which is enough for the client to draw a full or
-// half-faded arrow using its own visibleTerritoryIds.
 export function pathRunsForViewer(
   path: number[],
   visible: Set<number> | null,
@@ -80,11 +75,6 @@ export function pathRunsForViewer(
   return runs;
 }
 
-// Troop-move events (fortify, attack-move) transfer the same amount out of
-// one territory and into another with no loss. Revealing that amount for a
-// territory the recipient can't see would tell them exactly how many troops
-// just left (or arrived at) a hidden territory, so each side is only
-// included when that specific territory is visible to this recipient.
 export function troopMoveFields(
   visible: Set<number> | null,
   fromTerritoryId: number,
@@ -115,11 +105,6 @@ export function filterGameStateForViewer(
     base.attackEndTerritoryId !== null &&
     visible.has(base.attackEndTerritoryId);
 
-  // A start/end pair for a 2-territory selection (attack or fortify) is kept
-  // whole as long as either endpoint is visible, mirroring the redaction rule
-  // for the action events themselves: the client needs both ids to draw the
-  // preview arrow, fading it toward whichever end it can't see. Only null
-  // both when neither endpoint is visible.
   const keepPairIfEitherVisible = (
     startId: number | null,
     endId: number | null,

@@ -62,13 +62,6 @@ function stagingTerritoryFor(
   return owned.length > 0 ? owned[0] : null;
 }
 
-// When bonus is given (continent completion/break), a higher
-// bonus-per-troop-spent ratio scores better: the bonus recurs every turn the
-// continent is held (or denied), so even a costly campaign can pay for
-// itself over time, plus the fighting itself inflicts losses and takes
-// territory from whoever's in the way. Left undefined for campaign types
-// with no continent bonus to weigh against (eliminate), which keeps the
-// plain probability-weighted score.
 function buildPlan(
   game: Game,
   view: BotView,

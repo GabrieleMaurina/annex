@@ -8,10 +8,6 @@ export interface CampaignEvaluation {
 
 const FEASIBILITY_BAR = 0.05;
 
-// Chains the analytical win-probability/expected-survivors math through an
-// ordered sequence of conquests: each step's expected surviving attacker
-// troops becomes the next step's starting strength. Deterministic expected
-// value, not a simulated rollout.
 export function evaluateCampaign(
   startingTroops: number,
   orderedTargetIds: number[],

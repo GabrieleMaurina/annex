@@ -73,6 +73,7 @@ export {
 export { runMapgenWorker } from './mapgen/worker';
 export { BUILTIN_MAP_NAMES } from './maps/maps';
 export { GameMap } from './types';
+export { containsProfanity } from './util/profanity';
 export {
   EngineWorkerConfig,
   EngineWorkerFactory,

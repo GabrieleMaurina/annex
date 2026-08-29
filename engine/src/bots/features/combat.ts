@@ -20,12 +20,6 @@ export function attackWinProbability(
 const CONQUEST_TROOPS_MULTIPLIER = 4;
 const CONQUEST_TROOPS_MARGIN = 5;
 
-// Expected troops sacrificed to take a territory, using battleStatistics'
-// attackerTroopsNeeded (the smallest attacking force that reaches a ~85%
-// win chance against this defender/dice combo) as the committed force, and
-// its expected survivors as what's left afterward. Independent of whatever
-// troop count actually arrives at this territory during play, so it's a
-// stable per-territory weight for comparing paths ahead of time.
 export function estimatedConquestCost(
   game: Game,
   territoryId: number,
@@ -48,9 +42,6 @@ export interface ExpectedOutcome {
   attackerSurvivorsMean: number;
 }
 
-// Expected attacker survivors when attacking with exactly attackingTroops and
-// winning, using the same analytical DP the client's win-odds display and
-// balancedBlitz already rely on (no simulation).
 export function expectedOutcome(
   attackingTroops: number,
   defendingTroops: number,

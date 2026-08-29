@@ -24,10 +24,6 @@ import { CARD_SET_FLASH_DURATION } from '../animations';
 import { CardFace } from '../panels/CardsPanel';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
-import {
-  computeSupplyConnectedTerritoryIds,
-  computeSupplyLineEdges,
-} from '../supplyLines';
 import type { LogEntry } from '../useGameLogs';
 import { drawGameMapCanvas } from './draw/drawCanvas';
 import {
@@ -48,6 +44,7 @@ import {
   useLiveGameRefs,
   usePanelStyles,
   useResetTroopInputOnSelection,
+  useSupplyLineOverlay,
 } from './hooks/useMiscUiState';
 import { usePanelsUI } from './hooks/usePanelsUI';
 import { useTurnActionFlows } from './hooks/useTurnActionFlows';
@@ -363,7 +360,7 @@ function GameMap({
     toxins,
     cards,
     nextSetBaseValues,
-    toxinById,
+    blockedById: unusableTerritoryById,
     setGame,
   });
 
@@ -422,53 +419,19 @@ function GameMap({
 
   const allianceUI = useAllianceUI({ allianceStates, playersRef, setToasts });
 
-  const supplyLineEdgesByPlayer = useMemo(() => {
-    if (supplyLines !== 'on' || territories.length === 0) return new Map();
-    const edges = computeSupplyLineEdges(
-      territories,
-      ownerById,
-      portalTerritoryIds,
-      portalsEnabled,
-      imgDims.w,
-      imgDims.h,
-    );
-    if (!showReplay && visibleTerritoryIds && selfId !== null) {
-      const ownEdges = edges.get(selfId);
-      return ownEdges ? new Map([[selfId, ownEdges]]) : new Map();
-    }
-    return edges;
-  }, [
-    supplyLines,
-    territories,
-    ownerById,
-    portalTerritoryIds,
-    portalsEnabled,
-    imgDims.w,
-    imgDims.h,
-    showReplay,
-    visibleTerritoryIds,
-    selfId,
-  ]);
-  const supplyConnectedTerritoryIds = useMemo(
-    () =>
-      supplyLines === 'on' && selfId !== null
-        ? computeSupplyConnectedTerritoryIds(
-            territories,
-            ownerById,
-            selfId,
-            portalTerritoryIds,
-            portalsEnabled,
-          )
-        : null,
-    [
+  const { supplyLineEdgesByPlayer, supplyConnectedTerritoryIds } =
+    useSupplyLineOverlay({
       supplyLines,
       territories,
       ownerById,
-      selfId,
       portalTerritoryIds,
       portalsEnabled,
-    ],
-  );
+      imgWidth: imgDims.w,
+      imgHeight: imgDims.h,
+      showReplay,
+      visibleTerritoryIds,
+      selfId,
+    });
   const replayPlayer = players.find((p) => p.id === replayTurnPlayerId);
   const replayPlayerColor = replayPlayer
     ? playerColor(replayPlayer.color)

@@ -79,6 +79,10 @@ function formatDuration(seconds: number): string {
   return sec === 0 ? `${min} min` : `${min} min ${sec} sec`;
 }
 
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 function GameSettingsFields({
   game,
   gameMeta = null,
@@ -245,7 +249,7 @@ function GameSettingsFields({
               </Form.Select>
             ) : (
               <span style={TRUNCATE_STYLE}>
-                {game.entrenchments === 'on' ? 'On' : 'Off'}
+                {capitalize(game.entrenchments)}
               </span>
             )}
           </div>
@@ -314,9 +318,7 @@ function GameSettingsFields({
                 <option value="on">On</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.turnTroops === 'on' ? 'On' : 'Off'}
-              </span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.turnTroops)}</span>
             )}
           </div>
 
@@ -344,9 +346,7 @@ function GameSettingsFields({
                 <option value="on">On</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.bounties === 'on' ? 'On' : 'Off'}
-              </span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.bounties)}</span>
             )}
           </div>
 
@@ -374,9 +374,7 @@ function GameSettingsFields({
                 <option value="on">On</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.supplyLines === 'on' ? 'On' : 'Off'}
-              </span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.supplyLines)}</span>
             )}
           </div>
         </div>
@@ -410,13 +408,7 @@ function GameSettingsFields({
                 <option value="dynamic">Dynamic</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.portals === 'off'
-                  ? 'Off'
-                  : game.portals === 'static'
-                    ? 'Static'
-                    : 'Dynamic'}
-              </span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.portals)}</span>
             )}
           </div>
 
@@ -446,15 +438,7 @@ function GameSettingsFields({
                 <option value="expanding">Expanding</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.radiations === 'off'
-                  ? 'Off'
-                  : game.radiations === 'static'
-                    ? 'Static'
-                    : game.radiations === 'dynamic'
-                      ? 'Dynamic'
-                      : 'Expanding'}
-              </span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.radiations)}</span>
             )}
           </div>
 
@@ -483,13 +467,7 @@ function GameSettingsFields({
                 <option value="permanent">Permanent</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.toxins === 'off'
-                  ? 'Off'
-                  : game.toxins === 'temporary'
-                    ? 'Temporary'
-                    : 'Permanent'}
-              </span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.toxins)}</span>
             )}
           </div>
 
@@ -519,15 +497,7 @@ function GameSettingsFields({
                 <option value="percent">Percent</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.starvation === 'off'
-                  ? 'Off'
-                  : game.starvation === 'territory'
-                    ? 'Territory'
-                    : game.starvation === 'total'
-                      ? 'Total'
-                      : 'Percent'}
-              </span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.starvation)}</span>
             )}
           </div>
         </div>
@@ -560,9 +530,7 @@ function GameSettingsFields({
                 <option value="on">On</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.fogOfWar === 'on' ? 'On' : 'Off'}
-              </span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.fogOfWar)}</span>
             )}
           </div>
 
@@ -591,9 +559,7 @@ function GameSettingsFields({
                 <option value="on">On</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>
-                {game.alliances === 'on' ? 'On' : 'Off'}
-              </span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.alliances)}</span>
             )}
           </div>
         </div>

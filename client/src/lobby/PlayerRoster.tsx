@@ -65,6 +65,13 @@ function PlayerRoster({
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
   const hasBots = game.players.some((p) => p.isBot);
 
+  function rowClick(p: (typeof slotRows)[number]) {
+    if (!p) return undefined;
+    if (p.id === selfId) return cycleColor;
+    if (p.isBot) return isHost ? () => cycleBotColor(p.id) : undefined;
+    return () => onEmojiRowClick(p.id);
+  }
+
   return (
     <>
       <Table striped borderless hover size="sm" className="mb-0">
@@ -98,17 +105,7 @@ function PlayerRoster({
                   else rowRefs.current.delete(p.id);
                 }}
                 role={p && (!p.isBot || isHost) ? 'button' : undefined}
-                onClick={
-                  p
-                    ? p.id === selfId
-                      ? cycleColor
-                      : p.isBot
-                        ? isHost
-                          ? () => cycleBotColor(p.id)
-                          : undefined
-                        : () => onEmojiRowClick(p.id)
-                    : undefined
-                }
+                onClick={rowClick(p)}
                 style={{
                   height: 40,
                   outline: p?.id === selfId ? '2px solid #fff' : undefined,

@@ -10,10 +10,7 @@ import { fogFilterEmit, recordLogForAll } from '../game/world/fog';
 import { visibleTerritoryIdsOrAll } from '../game/world/visibility';
 import { GameResponse, requireGame } from '../session/context';
 import { respondGameState, sendPlayerCards } from '../session/store';
-
-function isNullableInteger(value: unknown): value is number | null {
-  return value === null || Number.isInteger(value);
-}
+import { isNullableInteger } from '../util/validate';
 
 function isCardSelection(value: unknown): value is (number | null)[] {
   return (

@@ -35,9 +35,6 @@ function scheduleDestroy(
   pending.set(gameName, timer);
 }
 
-// Bots never count as "active" here on purpose: a game kept alive only by
-// bots, with no connected human left to see it, should be torn down like any
-// other abandoned game rather than run (and occupy the games list) forever.
 function hasActivePlayer(game: Game) {
   return game.playerIds.some((id) => {
     if (game.surrenderedIds.has(id)) return false;
@@ -55,9 +52,6 @@ function evictGameMembers(game: Game) {
   }
 }
 
-// Same "bots don't count" reasoning as hasActivePlayer, but also covers
-// spectators: a lobby is only truly abandoned if no connected human is
-// queued to join it either.
 function hasActiveLobbyMember(game: Game) {
   return [...game.playerIds, ...game.spectatorIds].some((id) => {
     const member = playersById.get(id);
@@ -65,9 +59,6 @@ function hasActiveLobbyMember(game: Game) {
   });
 }
 
-// A lobby-added bot has no human counterpart to reclaim it (unlike a
-// mid-game takeover, which reuses the disconnected human's own Player
-// object), so it's safe to fully unregister it here.
 function evictBotPlayers(game: Game) {
   for (const id of game.playerIds) {
     const member = playersById.get(id);
@@ -169,10 +160,6 @@ function cementSubstitute(game: Game, ownerId: number): boolean {
   return false;
 }
 
-// A player who disconnects before the game starts should not linger in the
-// slot: with no connected spectator to swap in and later hand it back to,
-// there is nothing to hold the slot for, so it is freed immediately just
-// like an explicit leave.
 function handleLobbyDisconnect(game: Game, player: Player) {
   const playerId = player.id;
   const subIndex = game.spectatorIds.findIndex(

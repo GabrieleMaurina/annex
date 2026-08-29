@@ -1,67 +1,33 @@
 import { Engine } from 'engine';
 import { Socket } from 'socket.io';
-import { playerIdBySocketId } from '../../socketRooms';
-import { isInteger, isObject } from '../../validate';
-
-type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };
+import { isInteger } from '../../validate';
+import { registerGameAction } from '../handlerHelpers';
 
 export function registerBotLobbyHandlers(socket: Socket, engine: Engine) {
-  socket.on(
-    'game:addBot',
-    (data: unknown, callback: (response: GameResponse) => void) => {
-      if (typeof callback !== 'function') return;
-      const playerId = playerIdBySocketId.get(socket.id);
-      if (playerId === undefined)
-        return callback({ ok: false, error: 'not in a game' });
-      const difficulty = isObject(data) ? data.difficulty : undefined;
-      const personality = isObject(data) ? data.personality : undefined;
-      callback(engine.addBot(playerId, difficulty, personality));
-    },
+  registerGameAction(socket, 'game:addBot', (playerId, data) =>
+    engine.addBot(playerId, data.difficulty, data.personality),
   );
 
-  socket.on(
-    'game:setBotProfile',
-    (data: unknown, callback: (response: GameResponse) => void) => {
-      if (typeof callback !== 'function') return;
-      const playerId = playerIdBySocketId.get(socket.id);
-      if (playerId === undefined)
-        return callback({ ok: false, error: 'not in a game' });
-      const botPlayerId = isObject(data) ? data.botPlayerId : undefined;
-      if (!isInteger(botPlayerId))
-        return callback({ ok: false, error: 'invalid bot' });
-      const difficulty = isObject(data) ? data.difficulty : undefined;
-      const personality = isObject(data) ? data.personality : undefined;
-      callback(
-        engine.setBotProfile(playerId, botPlayerId, difficulty, personality),
-      );
-    },
-  );
+  registerGameAction(socket, 'game:setBotProfile', (playerId, data) => {
+    if (!isInteger(data.botPlayerId))
+      return { ok: false, error: 'invalid bot' };
+    return engine.setBotProfile(
+      playerId,
+      data.botPlayerId,
+      data.difficulty,
+      data.personality,
+    );
+  });
 
-  socket.on(
-    'game:removeBot',
-    (data: unknown, callback: (response: GameResponse) => void) => {
-      if (typeof callback !== 'function') return;
-      const playerId = playerIdBySocketId.get(socket.id);
-      if (playerId === undefined)
-        return callback({ ok: false, error: 'not in a game' });
-      const botPlayerId = isObject(data) ? data.botPlayerId : undefined;
-      if (!isInteger(botPlayerId))
-        return callback({ ok: false, error: 'invalid bot' });
-      callback(engine.removeBot(playerId, botPlayerId));
-    },
-  );
+  registerGameAction(socket, 'game:removeBot', (playerId, data) => {
+    if (!isInteger(data.botPlayerId))
+      return { ok: false, error: 'invalid bot' };
+    return engine.removeBot(playerId, data.botPlayerId);
+  });
 
-  socket.on(
-    'game:cycleBotColor',
-    (data: unknown, callback: (response: GameResponse) => void) => {
-      if (typeof callback !== 'function') return;
-      const playerId = playerIdBySocketId.get(socket.id);
-      if (playerId === undefined)
-        return callback({ ok: false, error: 'not in a game' });
-      const botPlayerId = isObject(data) ? data.botPlayerId : undefined;
-      if (!isInteger(botPlayerId))
-        return callback({ ok: false, error: 'invalid bot' });
-      callback(engine.cycleBotColor(playerId, botPlayerId));
-    },
-  );
+  registerGameAction(socket, 'game:cycleBotColor', (playerId, data) => {
+    if (!isInteger(data.botPlayerId))
+      return { ok: false, error: 'invalid bot' };
+    return engine.cycleBotColor(playerId, data.botPlayerId);
+  });
 }

@@ -11,10 +11,7 @@ import { fogFilterEmit } from '../game/world/fog';
 import { visibleTerritoryIdsOrAll } from '../game/world/visibility';
 import { GameResponse, requireGame } from '../session/context';
 import { broadcastSelected, respondGameState } from '../session/store';
-
-function isNullableInteger(value: unknown): value is number | null {
-  return value === null || Number.isInteger(value);
-}
+import { isNullableInteger } from '../util/validate';
 
 export function selectTerritory(
   playerId: number,

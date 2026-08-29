@@ -6,13 +6,6 @@ import {
 } from '../core/params';
 import { gaussianRandom, randomInt, Rng } from '../core/rng';
 
-// Picks the smallest neighboring continent rather than the first one found,
-// so a leftover territory that must be merged into an existing continent
-// (rather than forming its own, too-small one) is least likely to push that
-// continent over CONTINENT_SIZE_MAX - and when every neighbor is already at
-// or above the cap, this keeps the inevitable overflow as small as possible
-// instead of dumping every leftover onto whichever continent happened to be
-// discovered first.
 function smallestNeighborContinent(
   territoryIds: Iterable<number>,
   adjacency: Map<number, Set<number>>,

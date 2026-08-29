@@ -22,6 +22,22 @@ function writeCookie(name: string, value: string) {
   document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${MAX_AGE}; path=/`;
 }
 
+function parseStore() {
+  const raw = readCookie(COOKIE_NAME);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function patchStore(patch: Record<string, unknown>) {
+  const parsed = parseStore();
+  if (!parsed || !parsed.key || !parsed.name) return;
+  writeCookie(COOKIE_NAME, JSON.stringify({ ...parsed, ...patch }));
+}
+
 function randomName(): string {
   return `Player${Math.floor(Math.random() * 9000) + 1000}`;
 }
@@ -63,73 +79,30 @@ export function savePlayer(player: Player) {
 }
 
 export function saveSettings() {
-  const raw = readCookie(COOKIE_NAME);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed.key || !parsed.name) return;
-    writeCookie(
-      COOKIE_NAME,
-      JSON.stringify({ ...parsed, settings: currentSettings() }),
-    );
-  } catch {}
+  patchStore({ settings: currentSettings() });
 }
 
 export function getGameSettings(): GameRulesSettings | null {
-  const raw = readCookie(COOKIE_NAME);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed.gameSettings ?? null;
-  } catch {
-    return null;
-  }
+  return parseStore()?.gameSettings ?? null;
 }
 
 export function saveGameSettings(
   gameSettings: GameRulesSettings,
   gameSlots: number,
 ) {
-  const raw = readCookie(COOKIE_NAME);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed.key || !parsed.name) return;
-    writeCookie(
-      COOKIE_NAME,
-      JSON.stringify({ ...parsed, gameSettings, gameSlots }),
-    );
-  } catch {}
+  patchStore({ gameSettings, gameSlots });
 }
 
 export function getGameSlots(): number | null {
-  const raw = readCookie(COOKIE_NAME);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return typeof parsed.gameSlots === 'number' ? parsed.gameSlots : null;
-  } catch {
-    return null;
-  }
+  const slots = parseStore()?.gameSlots;
+  return typeof slots === 'number' ? slots : null;
 }
 
 export function getGameName(): string | null {
-  const raw = readCookie(COOKIE_NAME);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return typeof parsed.gameName === 'string' ? parsed.gameName : null;
-  } catch {
-    return null;
-  }
+  const name = parseStore()?.gameName;
+  return typeof name === 'string' ? name : null;
 }
 
 export function saveGameName(gameName: string) {
-  const raw = readCookie(COOKIE_NAME);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed.key || !parsed.name) return;
-    writeCookie(COOKIE_NAME, JSON.stringify({ ...parsed, gameName }));
-  } catch {}
+  patchStore({ gameName });
 }

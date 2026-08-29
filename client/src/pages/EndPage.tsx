@@ -120,6 +120,8 @@ function EndPage({
                 cursor: p.id === selfId ? 'default' : 'pointer',
               };
               const isDark = fg === '#ffffff';
+              const rowIcon = (white: string | undefined, path: string) =>
+                isDark ? (white ?? path) : path;
               const killedNames = p.playersKilled
                 .map((id) => nameById.get(id) ?? '?')
                 .join(', ');
@@ -151,11 +153,7 @@ function EndPage({
                       </span>
                       {p.isBot && (
                         <img
-                          src={
-                            isDark
-                              ? (whiteBotIcon ?? '/icons/bot.svg')
-                              : '/icons/bot.svg'
-                          }
+                          src={rowIcon(whiteBotIcon, '/icons/bot.svg')}
                           width={12}
                           height={12}
                           alt="Bot"
@@ -170,11 +168,7 @@ function EndPage({
                       {p.eliminated && (
                         <Tip text="Eliminated">
                           <img
-                            src={
-                              isDark
-                                ? (whiteDeathIcon ?? '/icons/death.svg')
-                                : '/icons/death.svg'
-                            }
+                            src={rowIcon(whiteDeathIcon, '/icons/death.svg')}
                             width={12}
                             height={12}
                             alt="Eliminated"
@@ -185,11 +179,7 @@ function EndPage({
                       {p.surrendered && (
                         <Tip text="Surrendered">
                           <img
-                            src={
-                              isDark
-                                ? (whiteFlagIcon ?? '/icons/flag.svg')
-                                : '/icons/flag.svg'
-                            }
+                            src={rowIcon(whiteFlagIcon, '/icons/flag.svg')}
                             width={12}
                             height={12}
                             alt="Surrendered"
@@ -200,11 +190,7 @@ function EndPage({
                       {!p.connected && !p.eliminated && (
                         <Tip text="Disconnected">
                           <img
-                            src={
-                              isDark
-                                ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
-                                : '/icons/no-wifi.svg'
-                            }
+                            src={rowIcon(whiteNoWifiIcon, '/icons/no-wifi.svg')}
                             width={12}
                             height={12}
                             alt="Disconnected"

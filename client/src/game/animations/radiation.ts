@@ -1,4 +1,4 @@
-import { pseudoRandom } from './state';
+import { pseudoRandom, regularPolygonPath } from './state';
 import type { ToxinParticlePosition } from './toxin';
 import {
   TOXIN_PARTICLE_ALPHA_MIN,
@@ -124,15 +124,7 @@ function drawRadiationParticle(
   ctx.rotate(particle.rotation);
   ctx.shadowBlur = RADIATION_GLOW_BLUR * sizeScale;
   ctx.shadowColor = color;
-  ctx.beginPath();
-  for (let i = 0; i < TOXIN_PARTICLE_SIDES; i++) {
-    const angle = (i / TOXIN_PARTICLE_SIDES) * Math.PI * 2;
-    const px = Math.cos(angle) * size;
-    const py = Math.sin(angle) * size;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
+  regularPolygonPath(ctx, 0, 0, size, TOXIN_PARTICLE_SIDES);
   ctx.globalAlpha = Math.min(1, particle.alpha * alphaScale);
   ctx.fillStyle = color;
   ctx.fill();

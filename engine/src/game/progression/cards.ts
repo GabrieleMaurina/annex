@@ -1,4 +1,5 @@
 import { Card, CardSymbol, Game } from '../../types';
+import { shuffle } from '../mechanics';
 
 const SYMBOLS: CardSymbol[] = ['soldier', 'humvee', 'tank'];
 
@@ -38,14 +39,11 @@ export function buildCardDeck(territoryIds: number[]): Card[] {
   for (let i = 0; i < remainder; i++) {
     symbols.push(SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]);
   }
-  for (let i = symbols.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
-  }
+  const shuffledSymbols = shuffle(symbols);
 
   const deck: Card[] = territoryIds.map((territoryId, i) => ({
     territoryId,
-    symbol: symbols[i],
+    symbol: shuffledSymbols[i],
   }));
   deck.push(
     { territoryId: null, symbol: null },

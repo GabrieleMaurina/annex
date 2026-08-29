@@ -41,7 +41,7 @@ function allDiceRolls(diceCount: number): number[][] {
   return rolls.map((roll) => roll.sort((a, b) => b - a));
 }
 
-function lossDistribution(
+function computeLossDistribution(
   attackerDiceCount: number,
   defenderDiceCount: number,
 ): { attackLosses: number; defenceLosses: number; probability: number }[] {
@@ -68,28 +68,29 @@ function lossDistribution(
   }));
 }
 
+const lossDistributionCache = new Map<
+  string,
+  ReturnType<typeof computeLossDistribution>
+>();
+
+function lossDistribution(
+  attackerDiceCount: number,
+  defenderDiceCount: number,
+): ReturnType<typeof computeLossDistribution> {
+  const key = `${attackerDiceCount},${defenderDiceCount}`;
+  let cached = lossDistributionCache.get(key);
+  if (!cached) {
+    cached = computeLossDistribution(attackerDiceCount, defenderDiceCount);
+    lossDistributionCache.set(key, cached);
+  }
+  return cached;
+}
+
 function winProbTable(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
 ): number[][] {
-  const distributionCache = new Map<
-    string,
-    ReturnType<typeof lossDistribution>
-  >();
-  const getDistribution = (
-    attackerDiceCount: number,
-    defenderDiceCount: number,
-  ) => {
-    const key = `${attackerDiceCount},${defenderDiceCount}`;
-    if (!distributionCache.has(key))
-      distributionCache.set(
-        key,
-        lossDistribution(attackerDiceCount, defenderDiceCount),
-      );
-    return distributionCache.get(key)!;
-  };
-
   const table: number[][] = Array.from({ length: attackingTroops + 1 }, () =>
     new Array(defendingTroops + 1).fill(0),
   );
@@ -100,7 +101,7 @@ function winProbTable(
       const attackerDiceCount = Math.min(a, 3);
       const defenderDiceCount = Math.min(d, defendingDice);
       let probability = 0;
-      for (const outcome of getDistribution(
+      for (const outcome of lossDistribution(
         attackerDiceCount,
         defenderDiceCount,
       )) {
@@ -171,23 +172,6 @@ export function battleStatistics(
   attackerMeanAtInput: number;
   attackerVarianceAtInput: number;
 } {
-  const distributionCache = new Map<
-    string,
-    ReturnType<typeof lossDistribution>
-  >();
-  const getDistribution = (
-    attackerDiceCount: number,
-    defenderDiceCount: number,
-  ) => {
-    const key = `${attackerDiceCount},${defenderDiceCount}`;
-    if (!distributionCache.has(key))
-      distributionCache.set(
-        key,
-        lossDistribution(attackerDiceCount, defenderDiceCount),
-      );
-    return distributionCache.get(key)!;
-  };
-
   const makeTable = () =>
     Array.from({ length: attackingTroops + 1 }, () =>
       new Array(defendingTroops + 1).fill(0),
@@ -217,7 +201,7 @@ export function battleStatistics(
       let attackerSumSquares = 0;
       let defenderSum = 0;
       let defenderSumSquares = 0;
-      for (const outcome of getDistribution(
+      for (const outcome of lossDistribution(
         attackerDiceCount,
         defenderDiceCount,
       )) {

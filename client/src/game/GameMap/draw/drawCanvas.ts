@@ -175,12 +175,13 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     y: p.y * scaleY + offsetY,
   });
 
+  const territoryById = new Map(territories.map((t) => [t.id, t]));
+
   if (supplyLineEdgesByPlayer.size > 0) {
-    const supplyTerritoryById = new Map(territories.map((t) => [t.id, t]));
     drawSupplyLines(
       ctx,
       supplyLineEdgesByPlayer,
-      supplyTerritoryById,
+      territoryById,
       toScreen,
       imgW,
       imgH,
@@ -210,9 +211,19 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     if (fromVisible && toVisible) return undefined;
     return fromVisible ? 'end' : 'start';
   };
+  const drawArrowSegment = (
+    a: Territory,
+    b: Territory,
+    fade?: 'start' | 'end',
+  ) => {
+    drawFortifyPath(
+      ctx,
+      buildWrappedPathSegments([a, b], toScreen, imgW, imgH),
+      fade,
+    );
+  };
 
   if (fortifyPathTerritoryIds.length > 0) {
-    const territoryById = new Map(territories.map((t) => [t.id, t]));
     for (const run of fortifyPathTerritoryIds) {
       if (run.length < 2) continue;
       const worldPath = run
@@ -229,15 +240,9 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           )
         )
           continue;
-        const segments = buildWrappedPathSegments(
-          [worldPath[i], worldPath[i + 1]],
-          toScreen,
-          imgW,
-          imgH,
-        );
-        drawFortifyPath(
-          ctx,
-          segments,
+        drawArrowSegment(
+          worldPath[i],
+          worldPath[i + 1],
           fadeForPair(worldPath[i].id, worldPath[i + 1].id),
         );
       }
@@ -254,22 +259,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       portalsEnabled,
     )
   ) {
-    const territoryById = new Map(territories.map((t) => [t.id, t]));
     const start = territoryById.get(attackStartTerritoryId);
     const end = territoryById.get(attackEndTerritoryId);
-    if (start && end) {
-      const segments = buildWrappedPathSegments(
-        [start, end],
-        toScreen,
-        imgW,
-        imgH,
-      );
-      drawFortifyPath(
-        ctx,
-        segments,
+    if (start && end)
+      drawArrowSegment(
+        start,
+        end,
         fadeForPair(attackStartTerritoryId, attackEndTerritoryId),
       );
-    }
   }
 
   if (
@@ -281,18 +278,9 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       portalsEnabled,
     )
   ) {
-    const territoryById = new Map(territories.map((t) => [t.id, t]));
     const start = territoryById.get(replayConquestArrow.fromTerritoryId);
     const end = territoryById.get(replayConquestArrow.toTerritoryId);
-    if (start && end) {
-      const segments = buildWrappedPathSegments(
-        [start, end],
-        toScreen,
-        imgW,
-        imgH,
-      );
-      drawFortifyPath(ctx, segments);
-    }
+    if (start && end) drawArrowSegment(start, end);
   }
 
   ctx.restore();
@@ -512,7 +500,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         } else {
           ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * scaleX, 0, Math.PI * 2);
         }
-        ctx.strokeStyle = '#0d6efd'; // Bootstrap's primary button blue
+        ctx.strokeStyle = '#0d6efd';
         ctx.lineWidth = 3 * zoom;
         ctx.stroke();
       }

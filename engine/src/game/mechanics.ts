@@ -1,5 +1,6 @@
 import { getGameMap } from '../maps/maps';
 import { Game } from '../types';
+import { isInteger } from '../util/validate';
 import { recordReplayFrame } from './replay';
 import {
   connectedOwnedTerritories,
@@ -21,6 +22,12 @@ export function ownsAnyTerritory(game: Game, playerId: number): boolean {
     if (ownerId === playerId) return true;
   }
   return false;
+}
+
+export function ownedTerritoryIds(game: Game, playerId: number): number[] {
+  return [...game.territoryOwners.entries()]
+    .filter(([, ownerId]) => ownerId === playerId)
+    .map(([territoryId]) => territoryId);
 }
 
 export function teamCount(game: Game) {
@@ -218,10 +225,6 @@ export function supplyHubTerritoryIds(game: Game, playerId: number): number[] {
 export interface TroopDeposit {
   territoryId: number;
   troops: number;
-}
-
-function isInteger(value: unknown): value is number {
-  return Number.isInteger(value);
 }
 
 export function depositTroopsOnOwnedTerritory(

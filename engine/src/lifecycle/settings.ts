@@ -29,6 +29,7 @@ import {
   TurnDuration,
   TurnTroops,
 } from '../types';
+import { isInteger } from '../util/validate';
 import { validateGameName } from './create';
 
 const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
@@ -81,10 +82,6 @@ const SUPPLY_LINES_VALUES: SupplyLines[] = ['off', 'on'];
 const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const TURN_TROOPS_VALUES: TurnTroops[] = ['off', 'on'];
-
-function isInteger(value: unknown): value is number {
-  return Number.isInteger(value);
-}
 
 export function updateSettings(
   playerId: number,

@@ -1,16 +1,11 @@
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
+import { ownedTerritoryIds } from '../mechanics';
 import {
   isFreeConquestTarget,
   toxinsCost,
   wouldSplitMap,
 } from '../toxins/toxins';
-
-function ownedTerritoryIds(game: Game, playerId: number): number[] {
-  return [...game.territoryOwners.entries()]
-    .filter(([, ownerId]) => ownerId === playerId)
-    .map(([territoryId]) => territoryId);
-}
 
 export function hasAnyAttack(game: Game, playerId: number): boolean {
   const map = getGameMap(game);

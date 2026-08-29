@@ -18,12 +18,12 @@ export function toxinsCost(
 
 export function wouldSplitMap(
   territories: Territory[],
-  toxinById: Set<number>,
+  blockedById: Set<number>,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
   candidateTerritoryId: number,
 ): boolean {
-  const removed = new Set(toxinById);
+  const removed = new Set(blockedById);
   removed.add(candidateTerritoryId);
   const remaining = territories.filter((t) => !removed.has(t.id));
   if (remaining.length === 0) return false;
@@ -55,7 +55,7 @@ export function getToxinsCandidates(
   ownerById: OwnerById,
   selfId: number | null,
   cost: number,
-  toxinById: Set<number>,
+  blockedById: Set<number>,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
 ): Set<number> {
@@ -72,7 +72,7 @@ export function getToxinsCandidates(
     if (
       wouldSplitMap(
         territories,
-        toxinById,
+        blockedById,
         portalTerritoryIds,
         portalsEnabled,
         t.id,

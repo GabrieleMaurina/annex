@@ -33,11 +33,6 @@ export interface GridDimensions {
   height: number;
 }
 
-// All four keep the mapper's 16:9 aspect ratio; 'large' matches the mapper's
-// own default resolution (2560x1440 at OUTPUT_SCALE 5) exactly, and the
-// others scale area by thirds relative to it (small = 1x, medium = 2x,
-// large = 3x, xlarge = 4x) so average territory area stays consistent across
-// sizes, since territory count scales with area too.
 export const GRID_DIMENSIONS: Record<MapSize, GridDimensions> = {
   small: { width: 296, height: 166 },
   medium: { width: 418, height: 235 },
@@ -65,15 +60,10 @@ export function waterLevelLabel(water: WaterLevel): string {
   return { land: 'Land', mixed: 'Mixed', ocean: 'Ocean' }[water];
 }
 
-// Internal registry key only (see server/src/maps.ts): must stay unique per
-// seed/size/water so two unrelated games' generated maps never collide in
-// the shared map registry. Never shown to users - see generatedMapDisplayName.
 export function generatedMapName(params: GenerateMapParams): string {
   return `Generated: ${params.seed} · ${mapSizeLabel(params.size)} · ${waterLevelLabel(params.water)}`;
 }
 
-// The human-facing name, shown in the lobby UI - deliberately not unique
-// (e.g. "Ocean (Large)"), same convention as a bot's "Killer (Hard)" name.
 export function generatedMapDisplayName(params: GenerateMapParams): string {
   return `${waterLevelLabel(params.water)} (${mapSizeLabel(params.size)})`;
 }

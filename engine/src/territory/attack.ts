@@ -27,6 +27,7 @@ import {
   sendPlayerCards,
 } from '../session/store';
 import { Game } from '../types';
+import { isInteger, isNullableInteger } from '../util/validate';
 
 export type AttackProbabilitiesResponse =
   | {
@@ -123,14 +124,6 @@ function requirePlayingTurn(ctx: GameContext, phase: Game['turnPhase']) {
   if (game.turnPhase !== phase)
     return { ok: false as const, error: `not ${phase} phase` };
   return ctx;
-}
-
-function isInteger(value: unknown): value is number {
-  return Number.isInteger(value);
-}
-
-function isNullableInteger(value: unknown): value is number | null {
-  return value === null || isInteger(value);
 }
 
 function isAttackType(value: unknown): value is 'regular' | 'blitz' {

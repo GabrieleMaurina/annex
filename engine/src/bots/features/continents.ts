@@ -21,8 +21,6 @@ export interface ContinentCompletionCandidate {
   remainingTerritoryIds: number[];
 }
 
-// Continents the bot partially owns (at least one, not all), with the
-// territories still needed to complete them.
 export function continentCompletionCandidates(
   game: Game,
   view: BotView,
@@ -62,8 +60,6 @@ export interface ContinentBreakCandidate {
   weakestTerritoryId: number;
 }
 
-// Continents fully owned by a single opponent, with that opponent's weakest
-// territory in it (the cheapest single break target).
 export function continentBreakCandidates(
   game: Game,
   view: BotView,

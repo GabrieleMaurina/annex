@@ -47,32 +47,6 @@ function sourceForCampaignStep(
   return best;
 }
 
-function completionBonus(
-  game: Game,
-  view: BotView,
-  botId: number,
-  endId: number,
-): number {
-  return continentCompletionCandidates(game, view, botId).some((c) =>
-    c.remainingTerritoryIds.includes(endId),
-  )
-    ? 1
-    : 0;
-}
-
-function breakBonus(
-  game: Game,
-  view: BotView,
-  botId: number,
-  endId: number,
-): number {
-  return continentBreakCandidates(game, view, botId).some(
-    (c) => c.weakestTerritoryId === endId,
-  )
-    ? 1
-    : 0;
-}
-
 export function chooseAttackMoveTroops(
   game: Game,
   view: BotView,
@@ -111,16 +85,23 @@ export function chooseAttack(
         defendingTroops,
         defenceDiceFor(game, endId),
       );
-      // Real dice results since the plan was built may have made this step
-      // worse than expected; re-check before committing rather than
-      // executing blind, and fall through to per-move scoring if it's gone
-      // bad (the campaign is simply abandoned for this call, not mutated).
       if (attackingTroops >= 2 && winProb >= MIN_WIN_PROBABILITY) {
         const { type, troops } = blitzAllTroops(attackingTroops);
         return { startId, endId, troops, type };
       }
     }
   }
+
+  const breakTargets = new Set(
+    continentBreakCandidates(game, view, botId).map(
+      (c) => c.weakestTerritoryId,
+    ),
+  );
+  const completeTargets = new Set(
+    continentCompletionCandidates(game, view, botId).flatMap(
+      (c) => c.remainingTerritoryIds,
+    ),
+  );
 
   const frontier = frontierTerritories(game, view, botId);
   let best: AttackChoice | null = null;
@@ -144,12 +125,8 @@ export function chooseAttack(
           weights.grudge *
           0.1 *
           Math.min(grudgeAgainst(game, botId, defenderId) / 10, 1);
-      score +=
-        weights.completeContinent *
-        0.1 *
-        completionBonus(game, view, botId, endId);
-      score +=
-        weights.breakContinent * 0.1 * breakBonus(game, view, botId, endId);
+      if (completeTargets.has(endId)) score += weights.completeContinent * 0.1;
+      if (breakTargets.has(endId)) score += weights.breakContinent * 0.1;
       score += (Math.random() - 0.5) * noise;
 
       if (score > bestScore) {

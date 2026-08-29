@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Table } from 'react-bootstrap';
+import PanelHeader from '../../common/PanelHeader';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor } from '../../lib/palette';
 
@@ -60,21 +61,7 @@ function LogsPanel({ logs, top, onClose }: Props) {
         maxHeight: `calc(100vh - ${top}px - ${BOTTOM_MARGIN}px)`,
       }}
     >
-      <div
-        className="fw-bold lh-1 mb-2 flex-shrink-0"
-        role="button"
-        tabIndex={0}
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.stopPropagation();
-            onClose();
-          }
-        }}
-        style={{ cursor: 'pointer' }}
-      >
-        Logs
-      </div>
+      <PanelHeader title="Logs" onClose={onClose} />
       {newestFirst.length === 0 ? (
         <div className="text-muted small">No actions yet</div>
       ) : (

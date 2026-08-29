@@ -47,6 +47,24 @@ export function pseudoRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
+export function regularPolygonPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  sides: number,
+) {
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const angle = (i / sides) * Math.PI * 2;
+    const px = cx + Math.cos(angle) * r;
+    const py = cy + Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
 export function jaggedPolygonPath(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -160,13 +178,14 @@ export function setFogActive(active: boolean) {
 }
 
 export function hasActiveAnimations(): boolean {
+  if (animations.length > 0) return true;
+  if (disabled) return false;
   return (
-    animations.length > 0 ||
-    (continuousAnimationActive && !disabled) ||
-    (portalsActive && !disabled) ||
-    (toxinsActive && !disabled) ||
-    (radiationActive && !disabled) ||
-    (fogActive && !disabled)
+    continuousAnimationActive ||
+    portalsActive ||
+    toxinsActive ||
+    radiationActive ||
+    fogActive
   );
 }
 

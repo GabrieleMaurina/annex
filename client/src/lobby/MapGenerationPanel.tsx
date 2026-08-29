@@ -1,9 +1,9 @@
+import { containsProfanity } from 'engine';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
 import { getGeneratedMapData } from '../game/mapData';
-import { containsProfanity } from '../lib/profanity';
 import type { GenerateMapInput, MapSize, WaterLevel } from '../lib/types';
 
 export interface MapGenerationPanelHandle {
@@ -93,10 +93,6 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
 
     if (!open) return null;
 
-    // Reads straight from the synchronous generated-map cache rather than
-    // through mapThumbnails/mapStats state, so the preview and stats match
-    // currentMapName on the very first render where it's already updated -
-    // no frame where the panel briefly shows stale or missing data.
     const generated = getGeneratedMapData(currentMapName);
     const stats = generated && {
       territories: generated.territories.length,

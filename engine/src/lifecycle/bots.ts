@@ -8,23 +8,19 @@ import { assignRandomColor, cycleColor } from '../game/mechanics';
 import { GameResponse } from '../session/context';
 import { createBotPlayer, playersById } from '../session/players';
 import { games, respondGameState } from '../session/store';
-import { BotProfile } from '../types';
+import { BotProfile, Game, Player } from '../types';
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-// Reusable across multiple bots in the same game, deliberately not made
-// unique: the name is meant to describe what the bot is, not to identify it.
 function botDisplayName(profile: BotProfile): string {
   return `${capitalize(profile.personality)} (${capitalize(profile.difficulty)})`;
 }
 
-export function addBot(
+function requireLobbyHost(
   playerId: number,
-  difficulty: unknown,
-  personality: unknown,
-): GameResponse {
+): { game: Game; player: Player } | GameResponse {
   const player = playersById.get(playerId);
   if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
 
@@ -33,6 +29,25 @@ export function addBot(
   if (game.hostId !== player.id) return { ok: false, error: 'not the host' };
   if (game.state !== 'lobby')
     return { ok: false, error: 'game already started' };
+
+  return { game, player };
+}
+
+function findLobbyBot(game: Game, botPlayerId: number): Player | null {
+  const bot = playersById.get(botPlayerId);
+  if (!bot || !bot.isBot || !game.playerIds.includes(bot.id)) return null;
+  return bot;
+}
+
+export function addBot(
+  playerId: number,
+  difficulty: unknown,
+  personality: unknown,
+): GameResponse {
+  const ctx = requireLobbyHost(playerId);
+  if ('ok' in ctx) return ctx;
+  const { game, player } = ctx;
+
   if (game.playerIds.length >= game.slots)
     return { ok: false, error: 'no open slots' };
 
@@ -60,18 +75,12 @@ export function setBotProfile(
   difficulty: unknown,
   personality: unknown,
 ): GameResponse {
-  const player = playersById.get(playerId);
-  if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
+  const ctx = requireLobbyHost(playerId);
+  if ('ok' in ctx) return ctx;
+  const { game, player } = ctx;
 
-  const game = games.get(player.gameName);
-  if (!game) return { ok: false, error: 'game not found' };
-  if (game.hostId !== player.id) return { ok: false, error: 'not the host' };
-  if (game.state !== 'lobby')
-    return { ok: false, error: 'game already started' };
-
-  const bot = playersById.get(botPlayerId);
-  if (!bot || !bot.isBot || !game.playerIds.includes(bot.id))
-    return { ok: false, error: 'invalid bot' };
+  const bot = findLobbyBot(game, botPlayerId);
+  if (!bot) return { ok: false, error: 'invalid bot' };
   if (!isDifficultyInput(difficulty))
     return { ok: false, error: 'invalid difficulty' };
   if (!isPersonalityInput(personality))
@@ -88,18 +97,12 @@ export function setBotProfile(
 }
 
 export function removeBot(playerId: number, botPlayerId: number): GameResponse {
-  const player = playersById.get(playerId);
-  if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
+  const ctx = requireLobbyHost(playerId);
+  if ('ok' in ctx) return ctx;
+  const { game, player } = ctx;
 
-  const game = games.get(player.gameName);
-  if (!game) return { ok: false, error: 'game not found' };
-  if (game.hostId !== player.id) return { ok: false, error: 'not the host' };
-  if (game.state !== 'lobby')
-    return { ok: false, error: 'game already started' };
-
-  const bot = playersById.get(botPlayerId);
-  if (!bot || !bot.isBot || !game.playerIds.includes(bot.id))
-    return { ok: false, error: 'invalid bot' };
+  const bot = findLobbyBot(game, botPlayerId);
+  if (!bot) return { ok: false, error: 'invalid bot' };
 
   game.playerIds = game.playerIds.filter((id) => id !== bot.id);
   game.playerTeams.delete(bot.id);
@@ -113,18 +116,12 @@ export function cycleBotColor(
   playerId: number,
   botPlayerId: number,
 ): GameResponse {
-  const player = playersById.get(playerId);
-  if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
+  const ctx = requireLobbyHost(playerId);
+  if ('ok' in ctx) return ctx;
+  const { game, player } = ctx;
 
-  const game = games.get(player.gameName);
-  if (!game) return { ok: false, error: 'game not found' };
-  if (game.hostId !== player.id) return { ok: false, error: 'not the host' };
-  if (game.state !== 'lobby')
-    return { ok: false, error: 'game already started' };
-
-  const bot = playersById.get(botPlayerId);
-  if (!bot || !bot.isBot || !game.playerIds.includes(bot.id))
-    return { ok: false, error: 'invalid bot' };
+  const bot = findLobbyBot(game, botPlayerId);
+  if (!bot) return { ok: false, error: 'invalid bot' };
 
   cycleColor(game, bot.id);
 

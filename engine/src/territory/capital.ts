@@ -5,10 +5,7 @@ import { fogFilterEmit } from '../game/world/fog';
 import { visibleTerritoryIdsOrAll } from '../game/world/visibility';
 import { GameResponse, requireGame } from '../session/context';
 import { respondGameState } from '../session/store';
-
-function isInteger(value: unknown): value is number {
-  return Number.isInteger(value);
-}
+import { isInteger } from '../util/validate';
 
 export function selectCapital(
   playerId: number,

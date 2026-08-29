@@ -1,5 +1,6 @@
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
+import { ownedTerritoryIds } from '../mechanics';
 import { recordReplayFrame } from '../replay';
 
 const PERCENT_LOSS = 0.3;
@@ -8,12 +9,6 @@ export const TERRITORY_CAP = 30;
 
 export function totalTroopsCap(game: Game): number {
   return getGameMap(game).territories.length * TOTAL_CAP_MULTIPLIER;
-}
-
-function playerTerritoryIds(game: Game, playerId: number): number[] {
-  return [...game.territoryOwners.entries()]
-    .filter(([, ownerId]) => ownerId === playerId)
-    .map(([territoryId]) => territoryId);
 }
 
 function largestArmyTerritoryId(
@@ -38,7 +33,7 @@ export function applyStarvation(
 ): Map<number, number> {
   const losses = new Map<number, number>();
   if (game.starvation === 'off') return losses;
-  const territoryIds = playerTerritoryIds(game, playerId);
+  const territoryIds = ownedTerritoryIds(game, playerId);
 
   function removeTroop(territoryId: number) {
     game.territoryTroops.set(

@@ -1,4 +1,5 @@
 import { Badge, Button, ListGroup } from 'react-bootstrap';
+import PanelHeader from '../../common/PanelHeader';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import type { Card } from '../../lib/types';
 import { comboKey, sortForDisplay, type EvaluatedCombo } from '../logic/cards';
@@ -140,21 +141,7 @@ function CardsPanel({
 
   return (
     <div className={`${PANEL_BG_CLASS} ${PANEL_CLASS}`} style={{ width: 268 }}>
-      <div
-        className="fw-bold lh-1 mb-2"
-        role="button"
-        tabIndex={0}
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.stopPropagation();
-            onClose();
-          }
-        }}
-        style={{ cursor: 'pointer' }}
-      >
-        Your Cards
-      </div>
+      <PanelHeader title="Your Cards" onClose={onClose} />
       {hand.length === 0 ? (
         <div className="text-muted small">No cards yet</div>
       ) : (

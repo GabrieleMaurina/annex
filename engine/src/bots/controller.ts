@@ -11,11 +11,16 @@ const pendingActs = new Map<string, NodeJS.Timeout>();
 const inFlight = new Set<string>();
 const campaignByGame = new Map<string, CampaignCache>();
 
+function currentBot(game: Game): (Player & { botProfile: BotProfile }) | null {
+  if (game.state !== 'playing' || game.paused) return null;
+  const player = playersById.get(game.playerIds[game.turnPlayerIndex]);
+  if (!player?.isBot || !player.botProfile) return null;
+  return player as Player & { botProfile: BotProfile };
+}
+
 export function scheduleBotTurnIfNeeded(game: Game): void {
-  if (game.state !== 'playing' || game.paused) return;
-  const playerId = game.playerIds[game.turnPlayerIndex];
-  const player = playersById.get(playerId);
-  if (!player?.isBot || !player.botProfile) return;
+  const player = currentBot(game);
+  if (!player) return;
   if (pendingActs.has(game.name) || inFlight.has(game.name)) return;
 
   const delay = thinkDelayMs(player.botProfile.difficulty, game.turnPhase);
@@ -28,10 +33,8 @@ export function scheduleBotTurnIfNeeded(game: Game): void {
 }
 
 function act(game: Game): void {
-  if (game.state !== 'playing' || game.paused) return;
-  const playerId = game.playerIds[game.turnPlayerIndex];
-  const player = playersById.get(playerId);
-  if (!player?.isBot || !player.botProfile) return;
+  const player = currentBot(game);
+  if (!player) return;
 
   if (player.botProfile.difficulty === 'idle') {
     forceEndTurnImpl(game, true);
@@ -48,7 +51,6 @@ function recover(player: Player): void {
 }
 
 function dispatchActions(
-  game: Game,
   player: Player,
   actions: BotAction[],
   index = 0,
@@ -57,7 +59,7 @@ function dispatchActions(
   const { event, payload } = actions[index];
   const res = dispatchBotAction(player.id, event, payload);
   if (!res.ok) return recover(player);
-  dispatchActions(game, player, actions, index + 1);
+  dispatchActions(player, actions, index + 1);
 }
 
 function performPhaseStep(
@@ -93,7 +95,7 @@ function performPhaseStep(
         return;
 
       campaignByGame.set(gameName, res.result.campaign);
-      dispatchActions(current, player, res.result.actions);
+      dispatchActions(player, res.result.actions);
     },
   );
 }

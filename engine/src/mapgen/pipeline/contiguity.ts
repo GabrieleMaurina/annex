@@ -49,15 +49,6 @@ function findLabelComponents(
   return componentsByTerritory;
 }
 
-// A territory must be a single contiguous landmass - it can never be split
-// into separate pieces by water, on the same island or across different
-// ones. Only the largest component of each territory survives; every other
-// piece is reassigned to whichever neighboring territory borders it, grown
-// outward with a multi-source BFS so the result stays contiguous with that
-// territory's existing land. A piece that borders no other territory at all
-// (an island entirely orphaned from the rest of the map) has nothing to
-// reassign it to, so it's removed outright - left unclaimed, which renders
-// as plain water - rather than kept as a second, disallowed island.
 export function enforceContiguity(
   land: boolean[][],
   labelGrid: Int16Array,

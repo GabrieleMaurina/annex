@@ -24,8 +24,6 @@ function randomWeights(): Weights {
   };
 }
 
-// Resampled fresh on every call, never cached: Erratic's defining trait is
-// unpredictability, not a fixed profile like the other personalities.
 export function erraticWeights(): Weights {
   if (Math.random() < 0.5) return randomWeights();
   return ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];

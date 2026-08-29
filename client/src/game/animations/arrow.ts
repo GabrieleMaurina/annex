@@ -3,9 +3,6 @@ import { areAnimationsDisabled } from './state';
 const ARROW_CHEVRON_SPACING = 18;
 const ARROW_CHEVRON_SPEED = 0.05;
 const ARROW_CHEVRON_SIZE = 10;
-// How far past a map-wrap split point (not a real territory endpoint) to
-// keep drawing chevrons, so the trail slides off one edge and back in from
-// the other instead of abruptly stopping/starting exactly at the border.
 const ARROW_WRAP_BLEED = ARROW_CHEVRON_SPACING * 1.5;
 
 function drawArrowHeads(
@@ -26,15 +23,6 @@ function drawArrowHeads(
   const perpX = -uy;
   const perpY = ux;
 
-  // t0 > 0 means `from` is a synthetic split point (the trail enters here
-  // after wrapping from the opposite edge), so bleed backward past it. t1 <
-  // 1 means `to` is a synthetic split point (the trail continues past it on
-  // the other edge), so bleed forward past it. Real endpoints (t0 === 0 /
-  // t1 === 1) are never bled past. The map-bounds clip callers apply around
-  // arrow drawing still cuts these off exactly at the border either way;
-  // that's the point: it makes the trail look like it continues underneath
-  // the clipped-away band instead of a chevron abruptly popping in/out of
-  // existence right at the edge as the animation phase cycles.
   const bleedStart = t0 > 0 ? ARROW_WRAP_BLEED : 0;
   const bleedEnd = t1 < 1 ? ARROW_WRAP_BLEED : 0;
 
@@ -46,11 +34,6 @@ function drawArrowHeads(
     Math.ceil(bleedStart / ARROW_CHEVRON_SPACING) * ARROW_CHEVRON_SPACING;
   for (let d = start; d < length + bleedEnd; d += ARROW_CHEVRON_SPACING) {
     if (d < -bleedStart) continue;
-    // t is the chevron's position along the whole logical arrow (t0..t1),
-    // not just this rendered segment, so a fade stays continuous across a
-    // wrap split instead of resetting at the map edge. Clamped because the
-    // bleed can overshoot past 0/1 on a short split segment, and
-    // ctx.globalAlpha silently ignores out-of-range values.
     const t = Math.min(1, Math.max(0, t0 + (d / length) * (t1 - t0)));
     ctx.globalAlpha = fade === 'start' ? t : fade === 'end' ? 1 - t : 1;
     const cx = from.x + ux * d;

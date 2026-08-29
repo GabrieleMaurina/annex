@@ -11,8 +11,8 @@ import {
   chooseTroopPlacement,
 } from '../heuristics/misc';
 import { getWeights } from '../personality/registry';
-import { CampaignPlan } from '../types';
-import { getBotView } from '../view';
+import { CampaignPlan, DifficultyParams, Weights } from '../types';
+import { BotView, getBotView } from '../view';
 import { chooseCampaign } from './campaigns';
 
 export interface BotAction {
@@ -42,8 +42,11 @@ export interface PlanBotTurnInput {
 
 function resolveCampaign(
   game: Game,
+  view: BotView,
   botId: number,
   botProfile: BotProfile,
+  weights: Weights,
+  params: DifficultyParams,
   cached: CampaignCache | null,
 ): CampaignCache {
   if (
@@ -53,9 +56,6 @@ function resolveCampaign(
   )
     return cached;
 
-  const view = getBotView(game, botId);
-  const weights = getWeights(botProfile.personality);
-  const params = difficultyParams(botProfile.difficulty);
   const plan = chooseCampaign(
     game,
     view,
@@ -76,7 +76,15 @@ export function planBotTurn(
   const view = getBotView(game, botId);
   const weights = getWeights(botProfile.personality);
   const params = difficultyParams(botProfile.difficulty);
-  const campaign = resolveCampaign(game, botId, botProfile, cachedCampaign);
+  const campaign = resolveCampaign(
+    game,
+    view,
+    botId,
+    botProfile,
+    weights,
+    params,
+    cachedCampaign,
+  );
   const actions: BotAction[] = [];
 
   switch (game.turnPhase) {

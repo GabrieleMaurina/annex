@@ -58,13 +58,6 @@ function directionalKey(fromId: number, toId: number): string {
   return `${fromId}->${toId}`;
 }
 
-// Directional, not pairKey: only whoever originally initiated a request is
-// ever blocked from re-offering to the same target for a minute, regardless
-// of whether it was declined, rescinded, or (if accepted) later terminated by
-// either player. The other player is never restricted from offering in
-// return (e.g. so a recipient who declined by mistake can immediately
-// re-propose it, or so terminating an alliance you didn't start doesn't cost
-// you anything).
 export function startAllianceCooldown(
   game: Game,
   blockedFromId: number,
@@ -118,10 +111,6 @@ export function removeAllianceRequest(game: Game, a: number, b: number) {
   clearAllianceRequestTimer(game.name, a, b);
 }
 
-// The initiator is whoever originally sent the request that was accepted,
-// recorded so that whichever player later terminates the alliance, the
-// cooldown this starts (see startAllianceCooldown) always lands on the
-// original initiator, never on the other player, and never on both.
 export function formAlliance(game: Game, initiatorId: number, otherId: number) {
   game.allianceIds.add(pairKey(initiatorId, otherId));
   game.allianceInitiators.set(pairKey(initiatorId, otherId), initiatorId);

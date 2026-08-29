@@ -2,12 +2,10 @@ import {
   getClampedOffset as computeClampedOffset,
   getScales as computeScales,
   convexHull,
+  type Point,
 } from '../mapMath';
 
-export interface Point {
-  x: number;
-  y: number;
-}
+export type { Point };
 
 export interface Transform {
   zoom: number;

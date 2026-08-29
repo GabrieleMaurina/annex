@@ -1,8 +1,8 @@
+import { containsProfanity } from 'engine';
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Form, ListGroup } from 'react-bootstrap';
 import { connector } from '../connector';
 import { playerColor } from '../lib/palette';
-import { containsProfanity } from '../lib/profanity';
 import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
 import { PANEL_CLASS } from './panelStyle';

@@ -21,6 +21,7 @@ import GameSettingsFields from './GameSettingsFields';
 import MapGenerationPanel, {
   type MapGenerationPanelHandle,
 } from './MapGenerationPanel';
+import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
 
 const LABEL_STYLE = { minWidth: 130, flexShrink: 0 };
 const MAP_TEXT_COLOR = 'rgb(222, 226, 230)';
@@ -28,8 +29,6 @@ const MAP_TEXT_HOVER_COLOR = 'rgb(59, 59, 59)';
 const MAP_TOOLTIP_STYLE = {
   '--bs-tooltip-max-width': '500px',
 } as CSSProperties;
-
-import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
 
 const GENERATE_MAP_OPTION = '__generateMap__';
 
@@ -113,10 +112,6 @@ function SettingsPanel({
     }
   }, [mapNames, game.mapName]);
 
-  // Prefers the synchronous generated-map cache over the async-loaded
-  // mapThumbnails/mapStats state: for a just-generated map, that state won't
-  // catch up until an effect runs a render later, which would show up as a
-  // flash of the icon disappearing and reappearing right as the name changes.
   function imageSrcFor(name: string): string | undefined {
     return getGeneratedMapData(name)?.imageSrc ?? mapThumbnails[name];
   }

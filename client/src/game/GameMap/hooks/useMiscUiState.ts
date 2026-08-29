@@ -13,6 +13,11 @@ import type { Territory } from '../../mapData';
 import { getAnchoredPanelPosition } from '../../mapMath';
 import type { ConquestArrow } from '../../replay';
 import {
+  computeSupplyConnectedTerritoryIds,
+  computeSupplyLineEdges,
+  type RailEdge,
+} from '../../supplyLines';
+import {
   ATTACK_PANEL_HEIGHT,
   ATTACK_PANEL_WIDTH,
   getScales,
@@ -326,6 +331,82 @@ export function useAutoAdvancePhase({
       if (res.ok) setGame(res.game);
     });
   });
+}
+
+export function useSupplyLineOverlay({
+  supplyLines,
+  territories,
+  ownerById,
+  portalTerritoryIds,
+  portalsEnabled,
+  imgWidth,
+  imgHeight,
+  showReplay,
+  visibleTerritoryIds,
+  selfId,
+}: {
+  supplyLines: GameState['supplyLines'];
+  territories: Territory[];
+  ownerById: Map<number, GameState['territories'][number]>;
+  portalTerritoryIds: number[];
+  portalsEnabled: boolean;
+  imgWidth: number;
+  imgHeight: number;
+  showReplay: boolean;
+  visibleTerritoryIds: GameState['visibleTerritoryIds'];
+  selfId: number | null;
+}) {
+  const supplyLineEdgesByPlayer = useMemo(() => {
+    if (supplyLines !== 'on' || territories.length === 0)
+      return new Map<number, RailEdge[]>();
+    const edges = computeSupplyLineEdges(
+      territories,
+      ownerById,
+      portalTerritoryIds,
+      portalsEnabled,
+      imgWidth,
+      imgHeight,
+    );
+    if (!showReplay && visibleTerritoryIds && selfId !== null) {
+      const ownEdges = edges.get(selfId);
+      return ownEdges
+        ? new Map([[selfId, ownEdges]])
+        : new Map<number, RailEdge[]>();
+    }
+    return edges;
+  }, [
+    supplyLines,
+    territories,
+    ownerById,
+    portalTerritoryIds,
+    portalsEnabled,
+    imgWidth,
+    imgHeight,
+    showReplay,
+    visibleTerritoryIds,
+    selfId,
+  ]);
+  const supplyConnectedTerritoryIds = useMemo(
+    () =>
+      supplyLines === 'on' && selfId !== null
+        ? computeSupplyConnectedTerritoryIds(
+            territories,
+            ownerById,
+            selfId,
+            portalTerritoryIds,
+            portalsEnabled,
+          )
+        : null,
+    [
+      supplyLines,
+      territories,
+      ownerById,
+      selfId,
+      portalTerritoryIds,
+      portalsEnabled,
+    ],
+  );
+  return { supplyLineEdgesByPlayer, supplyConnectedTerritoryIds };
 }
 
 export function useResetTroopInputOnSelection({

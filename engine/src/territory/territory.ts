@@ -5,10 +5,7 @@ import {
 import { getGameMap } from '../maps/maps';
 import { GameResponse, requireGame } from '../session/context';
 import { respondGameState } from '../session/store';
-
-function isInteger(value: unknown): value is number {
-  return Number.isInteger(value);
-}
+import { isInteger } from '../util/validate';
 
 export function claimTerritory(
   playerId: number,

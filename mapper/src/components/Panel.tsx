@@ -17,6 +17,7 @@ import {
 } from '../utils/imageBytes';
 import { continentColor } from '../utils/palette';
 import { sortMapData } from '../utils/sortMap';
+import { useDragNumber } from '../utils/useDragNumber';
 
 const MIN_CONTINENTS = 1;
 const MAX_CONTINENTS = 20;
@@ -108,6 +109,34 @@ function isValidMapFile(m: unknown): m is Map {
     f.bonuses.every((b) => typeof b === 'number') &&
     Array.isArray(f.territories) &&
     f.territories.every(isValidTerritory)
+  );
+}
+
+function BonusInput({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const dragNumber = useDragNumber({
+    value,
+    min: MIN_BONUS,
+    max: MAX_BONUS,
+    onChange,
+  });
+  return (
+    <Form.Control
+      type="number"
+      size="sm"
+      className="text-center"
+      min={MIN_BONUS}
+      max={MAX_BONUS}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      {...dragNumber}
+      style={dragNumber.style}
+    />
   );
 }
 
@@ -310,8 +339,8 @@ function Panel({
       <div
         className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column"
         style={{
-          width: 280,
-          maxHeight: 'calc(100vh - 1rem)',
+          width: 'min(280px, calc(100vw - 1rem))',
+          maxHeight: 'calc(100dvh - 1rem)',
           cursor: 'pointer',
         }}
         onClick={(e) => {
@@ -391,14 +420,9 @@ function Panel({
                     {territories.filter((t) => t.continentId === i).length}
                   </td>
                   <td>
-                    <Form.Control
-                      type="number"
-                      size="sm"
-                      className="text-center"
-                      min={MIN_BONUS}
-                      max={MAX_BONUS}
+                    <BonusInput
                       value={bonuses[i] ?? 2}
-                      onChange={(e) => updateBonus(i, Number(e.target.value))}
+                      onChange={(value) => updateBonus(i, value)}
                     />
                   </td>
                   <td>

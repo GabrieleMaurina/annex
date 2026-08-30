@@ -5,6 +5,7 @@ import SettingsMenu from '../common/SettingsMenu';
 import { connector } from '../connector';
 import GameMap from '../game/GameMap';
 import OfflineHandoffGate from '../game/OfflineHandoffGate';
+import RotateDeviceOverlay from '../game/RotateDeviceOverlay';
 import { useGameLogs } from '../game/useGameLogs';
 import { playSound } from '../lib/sounds';
 import type {
@@ -372,7 +373,7 @@ function Game({
           onNameChange={onNameChange}
         />
       ) : (
-        <Container fluid className="pt-3 pb-5 px-4">
+        <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
           <Lobby
             game={game}
             gameMeta={gameMeta}
@@ -390,6 +391,7 @@ function Game({
           variant="secondary"
           size="sm"
           className="position-fixed bottom-0 end-0 m-3"
+          style={{ zIndex: 5 }}
           onClick={() => setEndView('stats')}
         >
           Results
@@ -403,6 +405,7 @@ function Game({
         setOpen={setChatOpen}
       />
       <OfflineHandoffGate game={game} />
+      {game.state === 'playing' && <RotateDeviceOverlay />}
     </>
   );
 }

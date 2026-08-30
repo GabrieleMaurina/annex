@@ -24,7 +24,7 @@ function Blackout({
     <div
       role={onClick ? 'button' : undefined}
       onClick={onClick}
-      className="position-fixed top-0 start-0 vw-100 vh-100 d-flex flex-column justify-content-center align-items-center"
+      className="position-fixed top-0 bottom-0 start-0 end-0 d-flex flex-column justify-content-center align-items-center"
       style={{
         zIndex: 3000,
         backgroundColor: background,

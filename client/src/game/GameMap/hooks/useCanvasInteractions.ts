@@ -26,6 +26,25 @@ import {
   type Transform,
 } from '../helpers';
 
+const SYNTHETIC_MOUSE_WINDOW_MS = 500;
+
+function touchDistance(touches: React.TouchList): number {
+  return Math.hypot(
+    touches[0].clientX - touches[1].clientX,
+    touches[0].clientY - touches[1].clientY,
+  );
+}
+
+function touchMidpoint(touches: React.TouchList): {
+  clientX: number;
+  clientY: number;
+} {
+  return {
+    clientX: (touches[0].clientX + touches[1].clientX) / 2,
+    clientY: (touches[0].clientY + touches[1].clientY) / 2,
+  };
+}
+
 export function useCanvasInteractions({
   canvasRef,
   territories,
@@ -204,11 +223,17 @@ export function useCanvasInteractions({
   canAdvancePhase: boolean;
 }) {
   const dragRef = useRef<DragState>(null);
+  const pinchRef = useRef<{ lastDistance: number } | null>(null);
+  const lastTouchAtRef = useRef(0);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [tooltipTerritoryId, setTooltipTerritoryId] = useState<number | null>(
     null,
   );
+
+  function isSyntheticMouseEvent(): boolean {
+    return Date.now() - lastTouchAtRef.current < SYNTHETIC_MOUSE_WINDOW_MS;
+  }
 
   const selectTerritory = useCallback(
     (territoryId: number | null) => {
@@ -235,6 +260,49 @@ export function useCanvasInteractions({
       });
     },
     [setGame],
+  );
+
+  const zoomAround = useCallback(
+    (clientX: number, clientY: number, factor: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const pos = { x: clientX - rect.left, y: clientY - rect.top };
+      const canvasW = canvas.clientWidth;
+      const canvasH = canvas.clientHeight;
+      const { w: imgW, h: imgH } = imgDims;
+      setTransform((prev) => {
+        const { scaleX: oldScaleX, scaleY: oldScaleY } = computeScales(
+          canvasW,
+          canvasH,
+          prev.zoom,
+          imgW,
+          imgH,
+        );
+        const worldX = (pos.x - prev.offsetX) / oldScaleX;
+        const worldY = (pos.y - prev.offsetY) / oldScaleY;
+        const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
+        const { scaleX: newScaleX, scaleY: newScaleY } = computeScales(
+          canvasW,
+          canvasH,
+          newZoom,
+          imgW,
+          imgH,
+        );
+        const { x, y } = clampOffset(
+          canvasW,
+          canvasH,
+          newScaleX,
+          newScaleY,
+          imgW,
+          imgH,
+          pos.x - worldX * newScaleX,
+          pos.y - worldY * newScaleY,
+        );
+        return { zoom: newZoom, offsetX: x, offsetY: y };
+      });
+    },
+    [canvasRef, imgDims, setTransform],
   );
 
   function isInteractable(t: Territory): boolean {
@@ -351,9 +419,7 @@ export function useCanvasInteractions({
     return nearest;
   }
 
-  function handleMouseDown(e: React.MouseEvent) {
-    if (e.button !== 0) return;
-    const pos = getPos(e);
+  function beginDrag(pos: Point) {
     const canvas = canvasRef.current!;
     const { x, y } = getClampedOffset(
       canvas.clientWidth,
@@ -366,49 +432,54 @@ export function useCanvasInteractions({
     dragRef.current = { startPos: pos, startTransform: { x, y }, moved: false };
   }
 
-  function handleMouseMove(e: React.MouseEvent) {
+  function updateDrag(pos: Point) {
     const drag = dragRef.current;
+    if (!drag) return;
+    const dx = pos.x - drag.startPos.x;
+    const dy = pos.y - drag.startPos.y;
+    if (Math.hypot(dx, dy) > DRAG_THRESHOLD) drag.moved = true;
+    if (!drag.moved) return;
+    const canvas = canvasRef.current!;
+    const { imgW, imgH, scaleX, scaleY } = getScales(
+      canvas.clientWidth,
+      canvas.clientHeight,
+      transform.zoom,
+      imgDims,
+    );
+    const { x, y } = clampOffset(
+      canvas.clientWidth,
+      canvas.clientHeight,
+      scaleX,
+      scaleY,
+      imgW,
+      imgH,
+      drag.startTransform.x + dx,
+      drag.startTransform.y + dy,
+    );
+    setTransform((t) => ({ ...t, offsetX: x, offsetY: y }));
+    setHoveredId(null);
+    setTooltipTerritoryId(null);
+    setIsDragging(true);
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    if (e.button !== 0 || isSyntheticMouseEvent()) return;
+    beginDrag(getPos(e));
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (isSyntheticMouseEvent()) return;
     const pos = getPos(e);
-    if (!drag) {
+    if (!dragRef.current) {
       const vertex = hitVertex(pos);
       setHoveredId(vertex && isInteractable(vertex) ? vertex.id : null);
       setTooltipTerritoryId(vertex ? vertex.id : null);
       return;
     }
-    const dx = pos.x - drag.startPos.x;
-    const dy = pos.y - drag.startPos.y;
-    if (Math.hypot(dx, dy) > DRAG_THRESHOLD) drag.moved = true;
-    if (drag.moved) {
-      const canvas = canvasRef.current!;
-      const { imgW, imgH, scaleX, scaleY } = getScales(
-        canvas.clientWidth,
-        canvas.clientHeight,
-        transform.zoom,
-        imgDims,
-      );
-      const { x, y } = clampOffset(
-        canvas.clientWidth,
-        canvas.clientHeight,
-        scaleX,
-        scaleY,
-        imgW,
-        imgH,
-        drag.startTransform.x + dx,
-        drag.startTransform.y + dy,
-      );
-      setTransform((t) => ({ ...t, offsetX: x, offsetY: y }));
-      setHoveredId(null);
-      setTooltipTerritoryId(null);
-      setIsDragging(true);
-    }
+    updateDrag(pos);
   }
 
-  function handleMouseUp(e: React.MouseEvent) {
-    const drag = dragRef.current;
-    dragRef.current = null;
-    setIsDragging(false);
-    if (!drag || drag.moved) return;
-    const pos = getPos(e);
+  function handleTap(pos: Point) {
     const vertex = hitVertex(pos);
 
     if (pendingAttackEmoji) {
@@ -530,6 +601,15 @@ export function useCanvasInteractions({
     selectTerritory(vertex.id);
   }
 
+  function handleMouseUp(e: React.MouseEvent) {
+    if (isSyntheticMouseEvent()) return;
+    const drag = dragRef.current;
+    dragRef.current = null;
+    setIsDragging(false);
+    if (!drag || drag.moved) return;
+    handleTap(getPos(e));
+  }
+
   function handleMouseLeave() {
     dragRef.current = null;
     setHoveredId(null);
@@ -537,8 +617,59 @@ export function useCanvasInteractions({
     setIsDragging(false);
   }
 
+  function handleTouchStart(e: React.TouchEvent) {
+    lastTouchAtRef.current = Date.now();
+    if (e.touches.length === 1) {
+      pinchRef.current = null;
+      beginDrag(getPos(e.touches[0]));
+    } else if (e.touches.length === 2) {
+      dragRef.current = null;
+      setIsDragging(false);
+      pinchRef.current = { lastDistance: touchDistance(e.touches) };
+    }
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    lastTouchAtRef.current = Date.now();
+    if (pinchRef.current && e.touches.length === 2) {
+      const distance = touchDistance(e.touches);
+      const factor = distance / pinchRef.current.lastDistance;
+      pinchRef.current.lastDistance = distance;
+      const { clientX, clientY } = touchMidpoint(e.touches);
+      zoomAround(clientX, clientY, factor);
+      return;
+    }
+    if (dragRef.current && e.touches.length === 1) {
+      updateDrag(getPos(e.touches[0]));
+    }
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    lastTouchAtRef.current = Date.now();
+    if (pinchRef.current) {
+      pinchRef.current = null;
+      if (e.touches.length === 1) beginDrag(getPos(e.touches[0]));
+      return;
+    }
+    if (e.touches.length > 0) return;
+    const drag = dragRef.current;
+    dragRef.current = null;
+    setIsDragging(false);
+    if (drag && !drag.moved && e.changedTouches.length > 0) {
+      handleTap(getPos(e.changedTouches[0]));
+    }
+  }
+
+  function handleTouchCancel() {
+    lastTouchAtRef.current = Date.now();
+    dragRef.current = null;
+    pinchRef.current = null;
+    setIsDragging(false);
+  }
+
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault();
+    if (isSyntheticMouseEvent()) return;
     if (pendingAttackEmoji) {
       setPendingAttackEmoji(null);
       return;
@@ -814,51 +945,13 @@ export function useCanvasInteractions({
         return;
       }
       if (attackPanelOpen) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      const canvasW = canvas.clientWidth;
-      const canvasH = canvas.clientHeight;
-      const { w: imgW, h: imgH } = imgDims;
-      const factor = e.deltaY < 0 ? 1.1 : 0.9;
-      setTransform((prev) => {
-        const { scaleX: oldScaleX, scaleY: oldScaleY } = computeScales(
-          canvasW,
-          canvasH,
-          prev.zoom,
-          imgW,
-          imgH,
-        );
-        const worldX = (pos.x - prev.offsetX) / oldScaleX;
-        const worldY = (pos.y - prev.offsetY) / oldScaleY;
-        const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
-        const { scaleX: newScaleX, scaleY: newScaleY } = computeScales(
-          canvasW,
-          canvasH,
-          newZoom,
-          imgW,
-          imgH,
-        );
-        const { x, y } = clampOffset(
-          canvasW,
-          canvasH,
-          newScaleX,
-          newScaleY,
-          imgW,
-          imgH,
-          pos.x - worldX * newScaleX,
-          pos.y - worldY * newScaleY,
-        );
-        return { zoom: newZoom, offsetX: x, offsetY: y };
-      });
+      zoomAround(e.clientX, e.clientY, e.deltaY < 0 ? 1.1 : 0.9);
     }
     window.addEventListener('wheel', onWheel, { passive: false });
     return () => window.removeEventListener('wheel', onWheel);
   }, [
     deployPanelOpen,
     troopsToDeploy,
-    imgDims,
     fortifyPanelOpen,
     fortifyMaxTroops,
     entrenchPanelOpen,
@@ -869,8 +962,7 @@ export function useCanvasInteractions({
     cycleAttackOption,
     attackMoveMinTroops,
     attackMoveMaxTroops,
-    canvasRef,
-    setTransform,
+    zoomAround,
     setDeployTroops,
     setFortifyTroops,
     setEntrenchTroops,
@@ -888,5 +980,9 @@ export function useCanvasInteractions({
     handleMouseUp,
     handleMouseLeave,
     handleContextMenu,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    handleTouchCancel,
   };
 }

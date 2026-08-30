@@ -14,7 +14,7 @@ function App() {
   const [currentContinentId, setCurrentContinentId] = useState(0);
 
   return (
-    <div className="position-relative vh-100 overflow-hidden">
+    <div className="position-fixed top-0 bottom-0 start-0 end-0 overflow-hidden">
       <MapCanvas
         territories={territories}
         setTerritories={setTerritories}

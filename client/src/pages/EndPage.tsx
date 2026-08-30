@@ -71,11 +71,11 @@ function EndPage({
   } = useTableEmojiReactions(selfId);
 
   return (
-    <Container fluid className="py-5 px-4">
+    <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
         <PlayerNameEditor player={player} onNameChange={onNameChange} />
       </div>
-      <div className="text-center mb-4">
+      <div className="text-center mb-4 mt-4 mt-sm-0">
         <h1 className="mb-4">{won ? 'You Win!' : 'Game Over'}</h1>
         {isTeamDeathmatch ? (
           <p className="fs-4 mb-0">

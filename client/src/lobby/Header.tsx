@@ -18,11 +18,11 @@ function Header({ game, isHost, applySettings, player, onNameChange }: Props) {
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="mb-4">
+    <div className="mb-4 mt-4 mt-sm-0">
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
         <PlayerNameEditor player={player} onNameChange={onNameChange} />
       </div>
-      <div className="d-flex justify-content-center align-items-center gap-3">
+      <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 gap-sm-5">
         <img src="/favicon.svg" alt="" style={{ height: '3rem' }} />
         {isHost && editingName ? (
           <Form.Control

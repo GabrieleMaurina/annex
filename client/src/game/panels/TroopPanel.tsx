@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import { Button, Form } from 'react-bootstrap';
+import { useDragNumber } from '../../common/useDragNumber';
 
 interface Props {
   label: string;
@@ -26,6 +27,12 @@ function TroopPanel({
   style,
   extra,
 }: Props) {
+  const dragNumber = useDragNumber({
+    value: troops,
+    min: minTroops,
+    max: maxTroops,
+    onChange,
+  });
   return (
     <div
       className="p-2 px-3 border rounded bg-body bg-opacity-75 d-flex flex-column gap-1"
@@ -53,7 +60,8 @@ function TroopPanel({
               ),
             )
           }
-          style={{ width: 70 }}
+          {...dragNumber}
+          style={{ ...dragNumber.style, width: 70 }}
         />
         <Button size="sm" onClick={onConfirm}>
           {buttonLabel}

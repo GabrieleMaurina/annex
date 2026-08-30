@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Territory } from '../types';
 import {
   DEFAULT_IMAGE_HEIGHT,
@@ -52,6 +52,30 @@ function edgeKey(a: number, b: number): string {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function clampOffset(
+  canvasW: number,
+  canvasH: number,
+  scaleX: number,
+  scaleY: number,
+  imgW: number,
+  imgH: number,
+  x: number,
+  y: number,
+) {
+  const scaledW = imgW * scaleX;
+  const scaledH = imgH * scaleY;
+  return {
+    x:
+      scaledW <= canvasW
+        ? (canvasW - scaledW) / 2
+        : clamp(x, canvasW - scaledW, 0),
+    y:
+      scaledH <= canvasH
+        ? (canvasH - scaledH) / 2
+        : clamp(y, canvasH - scaledH, 0),
+  };
 }
 
 function segmentsProperlyIntersect(
@@ -124,6 +148,26 @@ function wrapEdgeSegments(
   return segments;
 }
 
+const SYNTHETIC_MOUSE_WINDOW_MS = 500;
+const LONG_PRESS_MS = 500;
+
+function touchDistance(touches: React.TouchList): number {
+  return Math.hypot(
+    touches[0].clientX - touches[1].clientX,
+    touches[0].clientY - touches[1].clientY,
+  );
+}
+
+function touchMidpoint(touches: React.TouchList): {
+  clientX: number;
+  clientY: number;
+} {
+  return {
+    clientX: (touches[0].clientX + touches[1].clientX) / 2,
+    clientY: (touches[0].clientY + touches[1].clientY) / 2,
+  };
+}
+
 function MapCanvas({
   territories,
   setTerritories,
@@ -136,6 +180,9 @@ function MapCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<DragState>(null);
+  const pinchRef = useRef<{ lastDistance: number } | null>(null);
+  const lastTouchAtRef = useRef(0);
+  const longPressRef = useRef<number | null>(null);
   const [transform, setTransform] = useState<Transform>({
     zoom: 1,
     offsetX: 0,
@@ -173,30 +220,6 @@ function MapCanvas({
       imgH,
       scaleX: scale,
       scaleY: scale,
-    };
-  }
-
-  function clampOffset(
-    canvasW: number,
-    canvasH: number,
-    scaleX: number,
-    scaleY: number,
-    imgW: number,
-    imgH: number,
-    x: number,
-    y: number,
-  ) {
-    const scaledW = imgW * scaleX;
-    const scaledH = imgH * scaleY;
-    return {
-      x:
-        scaledW <= canvasW
-          ? (canvasW - scaledW) / 2
-          : clamp(x, canvasW - scaledW, 0),
-      y:
-        scaledH <= canvasH
-          ? (canvasH - scaledH) / 2
-          : clamp(y, canvasH - scaledH, 0),
     };
   }
 
@@ -271,40 +294,49 @@ function MapCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedVertexId, setTerritories, setCollapsed]);
 
+  const applyZoom = useCallback((pos: Point, factor: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const canvasW = canvas.clientWidth;
+    const canvasH = canvas.clientHeight;
+    const img = imageRef.current;
+    const imgW = img ? img.naturalWidth : DEFAULT_IMAGE_WIDTH;
+    const imgH = img ? img.naturalHeight : DEFAULT_IMAGE_HEIGHT;
+    const baseScale = Math.min(canvasW / imgW, canvasH / imgH);
+    setTransform((prev) => {
+      const oldScale = baseScale * prev.zoom;
+      const worldX = (pos.x - prev.offsetX) / oldScale;
+      const worldY = (pos.y - prev.offsetY) / oldScale;
+      const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
+      const newScale = baseScale * newZoom;
+      const { x, y } = clampOffset(
+        canvasW,
+        canvasH,
+        newScale,
+        newScale,
+        imgW,
+        imgH,
+        pos.x - worldX * newScale,
+        pos.y - worldY * newScale,
+      );
+      return { zoom: newZoom, offsetX: x, offsetY: y };
+    });
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     function onWheel(e: WheelEvent) {
       e.preventDefault();
       const rect = canvas!.getBoundingClientRect();
-      const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      const canvasW = canvas!.clientWidth;
-      const canvasH = canvas!.clientHeight;
-      const { w: imgW, h: imgH } = getImageDims();
-      const factor = e.deltaY < 0 ? 1.1 : 0.9;
-      setTransform((prev) => {
-        const oldScale = Math.min(canvasW / imgW, canvasH / imgH) * prev.zoom;
-        const worldX = (pos.x - prev.offsetX) / oldScale;
-        const worldY = (pos.y - prev.offsetY) / oldScale;
-        const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
-        const newScaleX = Math.min(canvasW / imgW, canvasH / imgH) * newZoom;
-        const newScaleY = newScaleX;
-        const { x, y } = clampOffset(
-          canvasW,
-          canvasH,
-          newScaleX,
-          newScaleY,
-          imgW,
-          imgH,
-          pos.x - worldX * newScaleX,
-          pos.y - worldY * newScaleY,
-        );
-        return { zoom: newZoom, offsetX: x, offsetY: y };
-      });
+      applyZoom(
+        { x: e.clientX - rect.left, y: e.clientY - rect.top },
+        e.deltaY < 0 ? 1.1 : 0.9,
+      );
     }
     canvas.addEventListener('wheel', onWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [applyZoom]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -584,9 +616,18 @@ function MapCanvas({
     setSelectedVertexId(id);
   }
 
-  function handleMouseDown(e: React.MouseEvent) {
-    if (e.button !== 0) return;
-    const pos = getPos(e);
+  function isSyntheticMouse(): boolean {
+    return Date.now() - lastTouchAtRef.current < SYNTHETIC_MOUSE_WINDOW_MS;
+  }
+
+  function clearLongPress() {
+    if (longPressRef.current !== null) {
+      window.clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  }
+
+  function beginPointer(pos: Point) {
     const vertex = hitVertex(pos);
     if (vertex) {
       dragRef.current = {
@@ -607,18 +648,10 @@ function MapCanvas({
     };
   }
 
-  function handleMouseMove(e: React.MouseEvent) {
+  function dragPointer(pos: Point) {
     const drag = dragRef.current;
-    const pos = getPos(e);
-    const { scaleX, scaleY, offsetX, offsetY } = getViewport();
-    setMouseWorldPos({
-      x: (pos.x - offsetX) / scaleX,
-      y: (pos.y - offsetY) / scaleY,
-    });
-    if (!drag) {
-      setHoveredVertexId(hitVertex(pos)?.id ?? null);
-      return;
-    }
+    if (!drag) return;
+    const { scaleX, scaleY } = getViewport();
     if (drag.type === 'pan') {
       const dx = pos.x - drag.startPos.x;
       const dy = pos.y - drag.startPos.y;
@@ -662,12 +695,11 @@ function MapCanvas({
     }
   }
 
-  function handleMouseUp(e: React.MouseEvent) {
+  function endPointer(pos: Point) {
     const drag = dragRef.current;
     dragRef.current = null;
     setIsDragging(false);
     if (!drag) return;
-    const pos = getPos(e);
     if (drag.type === 'pan') {
       if (!drag.moved) {
         if (selectedVertexId !== null) {
@@ -681,16 +713,7 @@ function MapCanvas({
     if (!drag.moved) handleVertexClick(drag.id);
   }
 
-  function handleMouseLeave() {
-    dragRef.current = null;
-    setHoveredVertexId(null);
-    setMouseWorldPos(null);
-    setIsDragging(false);
-  }
-
-  function handleContextMenu(e: React.MouseEvent) {
-    e.preventDefault();
-    const pos = getPos(e);
+  function cycleContinentAt(pos: Point) {
     const vertex = hitVertex(pos);
     if (!vertex) {
       if (selectedVertexId !== null) {
@@ -710,6 +733,118 @@ function MapCanvas({
     );
   }
 
+  function handleMouseDown(e: React.MouseEvent) {
+    if (e.button !== 0 || isSyntheticMouse()) return;
+    beginPointer(getPos(e));
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (isSyntheticMouse()) return;
+    const pos = getPos(e);
+    const { scaleX, scaleY, offsetX, offsetY } = getViewport();
+    setMouseWorldPos({
+      x: (pos.x - offsetX) / scaleX,
+      y: (pos.y - offsetY) / scaleY,
+    });
+    if (!dragRef.current) {
+      setHoveredVertexId(hitVertex(pos)?.id ?? null);
+      return;
+    }
+    dragPointer(pos);
+  }
+
+  function handleMouseUp(e: React.MouseEvent) {
+    if (isSyntheticMouse()) return;
+    endPointer(getPos(e));
+  }
+
+  function handleMouseLeave() {
+    dragRef.current = null;
+    setHoveredVertexId(null);
+    setMouseWorldPos(null);
+    setIsDragging(false);
+  }
+
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault();
+    if (isSyntheticMouse()) return;
+    cycleContinentAt(getPos(e));
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    lastTouchAtRef.current = Date.now();
+    clearLongPress();
+    if (e.touches.length === 1) {
+      pinchRef.current = null;
+      const pos = getPos(e.touches[0]);
+      beginPointer(pos);
+      longPressRef.current = window.setTimeout(() => {
+        longPressRef.current = null;
+        dragRef.current = null;
+        setIsDragging(false);
+        cycleContinentAt(pos);
+      }, LONG_PRESS_MS);
+    } else if (e.touches.length === 2) {
+      dragRef.current = null;
+      setIsDragging(false);
+      pinchRef.current = { lastDistance: touchDistance(e.touches) };
+    }
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    lastTouchAtRef.current = Date.now();
+    if (pinchRef.current && e.touches.length === 2) {
+      clearLongPress();
+      const distance = touchDistance(e.touches);
+      const factor = distance / pinchRef.current.lastDistance;
+      pinchRef.current.lastDistance = distance;
+      const mid = touchMidpoint(e.touches);
+      const rect = canvasRef.current!.getBoundingClientRect();
+      applyZoom(
+        { x: mid.clientX - rect.left, y: mid.clientY - rect.top },
+        factor,
+      );
+      return;
+    }
+    if (dragRef.current && e.touches.length === 1) {
+      const pos = getPos(e.touches[0]);
+      const drag = dragRef.current;
+      if (
+        Math.hypot(pos.x - drag.startPos.x, pos.y - drag.startPos.y) >
+        DRAG_THRESHOLD
+      ) {
+        clearLongPress();
+      }
+      dragPointer(pos);
+    }
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    lastTouchAtRef.current = Date.now();
+    clearLongPress();
+    if (pinchRef.current) {
+      if (e.touches.length === 0) pinchRef.current = null;
+      return;
+    }
+    if (e.touches.length > 0) return;
+    if (e.changedTouches.length > 0) {
+      endPointer(getPos(e.changedTouches[0]));
+    } else {
+      dragRef.current = null;
+      setIsDragging(false);
+    }
+  }
+
+  function handleTouchCancel() {
+    lastTouchAtRef.current = Date.now();
+    clearLongPress();
+    dragRef.current = null;
+    pinchRef.current = null;
+    setIsDragging(false);
+    setHoveredVertexId(null);
+    setMouseWorldPos(null);
+  }
+
   return (
     <canvas
       ref={canvasRef}
@@ -718,7 +853,12 @@ function MapCanvas({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
       style={{
+        touchAction: 'none',
         display: 'block',
         width: size.w,
         height: size.h,

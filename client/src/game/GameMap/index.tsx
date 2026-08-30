@@ -196,6 +196,18 @@ function GameMap({
     size,
   } = useMapView(mapName);
 
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="viewport"]');
+    const original = meta?.getAttribute('content') ?? null;
+    meta?.setAttribute(
+      'content',
+      'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+    );
+    return () => {
+      if (meta && original !== null) meta.setAttribute('content', original);
+    };
+  }, []);
+
   const vertexDiametersPerLongestSide = 50;
   const VERTEX_RADIUS =
     Math.max(imgDims.w, imgDims.h) / (vertexDiametersPerLongestSide * 2);
@@ -713,7 +725,7 @@ function GameMap({
   }, [setGame]);
 
   return (
-    <div className="position-relative">
+    <div className="position-fixed top-0 bottom-0 start-0 end-0 overflow-hidden">
       <canvas
         ref={canvasRef}
         onMouseDown={interactions.handleMouseDown}
@@ -721,10 +733,15 @@ function GameMap({
         onMouseUp={interactions.handleMouseUp}
         onMouseLeave={interactions.handleMouseLeave}
         onContextMenu={interactions.handleContextMenu}
+        onTouchStart={interactions.handleTouchStart}
+        onTouchMove={interactions.handleTouchMove}
+        onTouchEnd={interactions.handleTouchEnd}
+        onTouchCancel={interactions.handleTouchCancel}
         style={{
           display: 'block',
           width: size.w,
           height: size.h,
+          touchAction: 'none',
           cursor: emojiUI.pendingAttackEmoji
             ? 'crosshair'
             : interactions.hoveredId !== null

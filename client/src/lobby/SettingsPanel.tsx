@@ -230,9 +230,9 @@ function SettingsPanel({
 
   return (
     <div className="flex-grow-1">
-      <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
+      <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-1">
         <div className="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2 flex-grow-1 align-self-stretch">
-          <div className="col d-flex align-items-center gap-2">
+          <div className="col d-flex align-items-center flex-wrap gap-2">
             <Form.Label
               className="mb-0 d-flex align-items-center gap-1"
               style={LABEL_STYLE}

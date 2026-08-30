@@ -92,7 +92,7 @@ function Home({
   }
 
   return (
-    <Container fluid className="pt-3 pb-5 px-4">
+    <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
       <SettingsMenu shareUrl={window.location.origin} />
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
         <PlayerNameEditor player={player} onNameChange={onNameChange} />
@@ -114,7 +114,7 @@ function Home({
           />
         </Button>
       </Tip>
-      <div className="d-flex justify-content-center align-items-center gap-5 mb-4">
+      <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 gap-sm-5 mb-4">
         <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
         <Tip text="/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission">
           <h1 className="mb-0">Annex</h1>
@@ -176,61 +176,63 @@ function Home({
       {games.length === 0 ? (
         <p className="text-center">No Games Available</p>
       ) : (
-        <Table striped hover borderless>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Map</th>
-              <th>Host</th>
-              <th>Players</th>
-              <th>Phase</th>
-            </tr>
-          </thead>
-          <tbody>
-            {games.map((g) => {
-              const isFullLobby =
-                g.state === 'lobby' && g.playerCount >= g.slots;
-              const bg = isFullLobby
-                ? GAME_STATE_COLORS.playing
-                : GAME_STATE_COLORS[g.state];
-              const rowStyle = {
-                backgroundColor: bg,
-                color: contrastTextColor(bg),
-              };
-              return (
-                <tr
-                  key={g.name}
-                  role="button"
-                  onClick={() =>
-                    g.hasPassword
-                      ? setPasswordPrompt({ gameName: g.name, password: '' })
-                      : joinGame(g.name)
-                  }
-                  style={{ cursor: 'pointer' }}
-                >
-                  <td style={rowStyle}>
-                    {g.name}
-                    {g.hasPassword && ' \u{1F512}'}
-                  </td>
-                  <td style={rowStyle}>{g.mapName}</td>
-                  <td style={rowStyle}>{g.hostName}</td>
-                  <td style={rowStyle}>
-                    {g.playerCount}/{g.slots}
-                    {g.spectatorCount > 0 &&
-                      ` · ${g.spectatorCount} spectating`}
-                  </td>
-                  <td style={rowStyle}>
-                    {g.state === 'lobby'
-                      ? 'Lobby'
-                      : g.state === 'playing'
-                        ? 'Playing'
-                        : 'Ended'}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
+        <div className="table-responsive">
+          <Table striped hover borderless>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Map</th>
+                <th>Host</th>
+                <th>Players</th>
+                <th>Phase</th>
+              </tr>
+            </thead>
+            <tbody>
+              {games.map((g) => {
+                const isFullLobby =
+                  g.state === 'lobby' && g.playerCount >= g.slots;
+                const bg = isFullLobby
+                  ? GAME_STATE_COLORS.playing
+                  : GAME_STATE_COLORS[g.state];
+                const rowStyle = {
+                  backgroundColor: bg,
+                  color: contrastTextColor(bg),
+                };
+                return (
+                  <tr
+                    key={g.name}
+                    role="button"
+                    onClick={() =>
+                      g.hasPassword
+                        ? setPasswordPrompt({ gameName: g.name, password: '' })
+                        : joinGame(g.name)
+                    }
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td style={rowStyle}>
+                      {g.name}
+                      {g.hasPassword && ' \u{1F512}'}
+                    </td>
+                    <td style={rowStyle}>{g.mapName}</td>
+                    <td style={rowStyle}>{g.hostName}</td>
+                    <td style={rowStyle}>
+                      {g.playerCount}/{g.slots}
+                      {g.spectatorCount > 0 &&
+                        ` · ${g.spectatorCount} spectating`}
+                    </td>
+                    <td style={rowStyle}>
+                      {g.state === 'lobby'
+                        ? 'Lobby'
+                        : g.state === 'playing'
+                          ? 'Playing'
+                          : 'Ended'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </div>
       )}
     </Container>
   );

@@ -5,6 +5,7 @@ import {
   type MapSize,
   type WaterLevel,
 } from 'engine';
+import { getGameName, saveGameName } from '../../lib/player';
 import type { GameState } from '../../lib/types';
 import { publish } from '../inbound';
 import { browserWorkerPort } from './browserWorkerPort';
@@ -176,11 +177,17 @@ export function startOffline(name: string): void {
     if (!engine) engine = buildEngine();
     engine.loadMaps(maps);
     session += 1;
-    gameName = `${URL_ROOM}-${session}`;
     hostId = engine.addPlayer(name || 'You').id;
     currentActorId = hostId;
     localPlayerIds = [hostId];
-    engine.createGame(hostId, { name: gameName });
+    const baseName = getGameName() || `Game with ${name || 'You'}`;
+    gameName = baseName;
+    if (engine.createGame(hostId, { name: gameName }).ok) {
+      saveGameName(baseName);
+    } else {
+      gameName = `${URL_ROOM}-${session}`;
+      engine.createGame(hostId, { name: gameName });
+    }
     ready = true;
     const pending = queue.splice(0);
     for (const fn of pending) fn();

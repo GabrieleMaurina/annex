@@ -180,7 +180,15 @@ function PlayersPanel({
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
-      document.documentElement.requestFullscreen();
+      document.documentElement
+        .requestFullscreen()
+        .then(() => {
+          const orientation = screen.orientation as
+            | (ScreenOrientation & { lock?: (o: string) => Promise<void> })
+            | undefined;
+          orientation?.lock?.('landscape').catch(() => {});
+        })
+        .catch(() => {});
     }
   }
 

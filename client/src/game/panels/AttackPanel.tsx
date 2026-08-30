@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { useEffect, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
+import { useDragNumber } from '../../common/useDragNumber';
 import {
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
@@ -191,6 +192,22 @@ function AttackPanel({
   const blitzProbability = blitzWinProbabilities[blitzTroops - 1] ?? 0;
   const maxRegularTroops = Math.min(maxBlitzTroops, 3);
 
+  const moveDragNumber = useDragNumber({
+    value: moveTroops,
+    min: moveMinTroops,
+    max: moveMaxTroops,
+    onChange: onMoveTroopsChange,
+  });
+  const blitzDragNumber = useDragNumber({
+    value: blitzTroops,
+    min: 1,
+    max: maxBlitzTroops,
+    onChange: (troops) => {
+      onSelectBlitz();
+      onBlitzTroopsChange(troops);
+    },
+  });
+
   function optionStyle(selected: boolean): React.CSSProperties {
     return {
       cursor: 'pointer',
@@ -234,7 +251,8 @@ function AttackPanel({
                 ),
               )
             }
-            style={{ width: 70 }}
+            {...moveDragNumber}
+            style={{ ...moveDragNumber.style, width: 70 }}
           />
           <Button size="sm" onClick={onConfirmMove}>
             Confirm
@@ -287,7 +305,8 @@ function AttackPanel({
                     ),
                   );
                 }}
-                style={{ width: 60 }}
+                {...blitzDragNumber}
+                style={{ ...blitzDragNumber.style, width: 60 }}
               />
               <span className="small">
                 {formatProbability(blitzProbability)}

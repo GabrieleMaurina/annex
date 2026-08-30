@@ -49,7 +49,7 @@ There are two distinct ways a seat becomes bot-controlled:
 ```ts
 {
   name: string;
-  mapName: string;
+  mapName: string; // human-facing map name, ready to display: a built-in map's name, or a generated map's `displayName` (e.g. "Ocean (Large)"), never a generated map's internal `GameState.mapName` identifier
   hostName: string;
   playerCount: number;
   slots: number;

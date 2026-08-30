@@ -13,6 +13,7 @@ export interface MapGenerationPanelHandle {
 interface Props {
   open: boolean;
   currentMapName: string;
+  onHide: () => void;
   generateMap: (
     input: GenerateMapInput,
     onSettled?: (ok: boolean, mapName?: string) => void,
@@ -49,7 +50,10 @@ function seedError(seed: string): string | null {
 }
 
 const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
-  function MapGenerationPanel({ open, currentMapName, generateMap }, ref) {
+  function MapGenerationPanel(
+    { open, currentMapName, onHide, generateMap },
+    ref,
+  ) {
     const [seed, setSeed] = useState(randomSeed);
     const [genType, setGenType] = useState<WaterLevel>('mixed');
     const [genSize, setGenSize] = useState<MapSize>('medium');
@@ -91,6 +95,12 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
 
     useImperativeHandle(ref, () => ({ generate: handleGenerate }));
 
+    function handlePanelClick(e: React.MouseEvent<HTMLDivElement>) {
+      if ((e.target as HTMLElement).closest('input, select, button, img'))
+        return;
+      onHide();
+    }
+
     if (!open) return null;
 
     const generated = getGeneratedMapData(currentMapName);
@@ -100,7 +110,10 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
     };
 
     return (
-      <div className={`${PANEL_BG_CLASS} ${PANEL_CLASS} mt-2`}>
+      <div
+        className={`${PANEL_BG_CLASS} ${PANEL_CLASS} mt-2`}
+        onClick={handlePanelClick}
+      >
         <div className="d-flex flex-column flex-lg-row gap-3">
           <div
             className="d-flex flex-column gap-2"

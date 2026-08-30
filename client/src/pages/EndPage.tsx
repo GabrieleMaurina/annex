@@ -4,6 +4,7 @@ import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReacti
 import { useWhiteIcon } from '../common/icon';
 import PlayerNameEditor from '../common/PlayerNameEditor';
 import Tip from '../common/Tip';
+import { connector } from '../connector';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState, Player, PlayerResultStats } from '../lib/types';
@@ -149,7 +150,9 @@ function EndPage({
                       className="d-inline-flex align-items-center gap-1"
                     >
                       <span className="text-truncate" style={{ minWidth: 0 }}>
-                        {p.id === selfId ? 'You' : p.name}
+                        {p.id === selfId && !connector.isOffline()
+                          ? 'You'
+                          : p.name}
                       </span>
                       {p.isBot && (
                         <img

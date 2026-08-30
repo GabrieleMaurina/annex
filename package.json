@@ -1,4 +1,7 @@
 {
   "private": true,
-  "workspaces": ["server", "client", "mapper", "engine"]
+  "workspaces": ["server", "client", "mapper", "engine"],
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
 }

@@ -205,6 +205,15 @@ export function setClientName(name: string): void {
   if (currentActorId !== null) engine.requestState(currentActorId);
 }
 
+export function setLocalPlayerName(playerId: number, name: string): void {
+  if (!active || !engine || hostId === null) return;
+  if (playerId === hostId || !localPlayerIds.includes(playerId)) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  engine.setName(playerId, trimmed);
+  if (currentActorId !== null) engine.requestState(currentActorId);
+}
+
 export function addLocalPlayer(name: string): void {
   if (!engine || !ready || hostId === null || !lastState) return;
   if (lastState.players.length >= lastState.slots)

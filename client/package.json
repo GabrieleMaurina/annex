@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "predev": "tsc -b ../engine",
-    "dev": "vite --force",
+    "dev": "concurrently -k -n engine,client \"tsc -b ../engine --watch --preserveWatchOutput\" \"vite --force\"",
     "prebuild": "tsc -b ../engine",
     "build": "tsc -b && vite build",
     "start": "vite preview",

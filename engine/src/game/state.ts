@@ -44,7 +44,7 @@ export function isEliminated(game: Game, territoryCount: number): boolean {
 export function gameSummary(game: Game) {
   return {
     name: game.name,
-    mapName: game.mapName,
+    mapName: game.generatedMap?.displayName ?? game.mapName,
     hostName: playersById.get(game.hostId)?.name ?? '',
     playerCount: game.playerIds.length,
     slots: game.slots,

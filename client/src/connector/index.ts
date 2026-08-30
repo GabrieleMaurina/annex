@@ -12,6 +12,7 @@ import {
   continueHandoff as offlineContinueHandoff,
   dispatch as offlineDispatch,
   setClientName as offlineSetClientName,
+  setLocalPlayerName as offlineSetLocalPlayerName,
   startOffline,
   stopOffline,
 } from './offline/host';
@@ -53,6 +54,10 @@ export const connector = {
 
   addLocalPlayer(name: string): void {
     if (isOffline()) offlineAddLocalPlayer(name);
+  },
+
+  setLocalPlayerName(playerId: number, name: string): void {
+    if (isOffline()) offlineSetLocalPlayerName(playerId, name);
   },
 
   continueHandoff(): void {

@@ -4,11 +4,13 @@ import { Button, Dropdown, Form } from 'react-bootstrap';
 import Help from '../common/Help';
 import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/Tip';
+import { connector } from '../connector';
 import {
   getGeneratedMapData,
   getMapDisplayName,
   loadGameMap,
 } from '../game/mapData';
+import { isRegeneratingMap } from '../lib/gameSetup';
 import { playSound } from '../lib/sounds';
 import type {
   GameMeta,
@@ -88,8 +90,25 @@ function SettingsPanel({
   >({});
   const loadedMapNamesRef = useRef(new Set<string>());
   const [mapGenOpen, setMapGenOpen] = useState(false);
+  const [mapRegenerating, setMapRegenerating] = useState(isRegeneratingMap);
+  const [seenMapName, setSeenMapName] = useState<string | null>(null);
   const mapGenRef = useRef<MapGenerationPanelHandle>(null);
   const whiteMapIcon = useWhiteIcon('/icons/map.svg');
+
+  if (game.mapName !== seenMapName) {
+    setSeenMapName(game.mapName);
+    if (getGeneratedMapData(game.mapName)) setMapGenOpen(true);
+  }
+
+  useEffect(() => {
+    function onRegenerating(value: boolean) {
+      setMapRegenerating(value);
+    }
+    connector.on('map:regenerating', onRegenerating);
+    return () => {
+      connector.off('map:regenerating', onRegenerating);
+    };
+  }, []);
 
   useEffect(() => {
     const names = new Set(mapNames);
@@ -154,7 +173,12 @@ function SettingsPanel({
     );
   }
 
-  const currentImageSrc = imageSrcFor(game.mapName);
+  const currentImageSrc = mapRegenerating
+    ? undefined
+    : imageSrcFor(game.mapName);
+  const currentMapLabel = mapRegenerating
+    ? 'Generating…'
+    : getMapDisplayName(game.mapName);
 
   const mapToggle = (
     <Dropdown.Toggle
@@ -174,7 +198,7 @@ function SettingsPanel({
           style={{ objectFit: 'cover' }}
         />
       )}
-      {getMapDisplayName(game.mapName)}
+      {currentMapLabel}
     </Dropdown.Toggle>
   );
 
@@ -256,7 +280,9 @@ function SettingsPanel({
                   if (!name) return;
                   if (name === GENERATE_MAP_OPTION) {
                     setMapGenOpen(true);
-                    mapGenRef.current?.generate();
+                    if (!getGeneratedMapData(game.mapName)) {
+                      mapGenRef.current?.generate();
+                    }
                     return;
                   }
                   setMapGenOpen(false);
@@ -342,7 +368,7 @@ function SettingsPanel({
                       style={{ objectFit: 'cover' }}
                     />
                   )}
-                  {getMapDisplayName(game.mapName)}
+                  {currentMapLabel}
                 </span>
               </Tip>
             )}
@@ -357,6 +383,7 @@ function SettingsPanel({
           ref={mapGenRef}
           open={mapGenOpen}
           currentMapName={game.mapName}
+          onHide={() => setMapGenOpen(false)}
           generateMap={generateMap}
         />
       )}

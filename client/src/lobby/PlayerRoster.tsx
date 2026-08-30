@@ -1,6 +1,8 @@
 import { Badge, Button, Form, Table } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
+import PlayerNameEditor from '../common/PlayerNameEditor';
 import Tip from '../common/Tip';
+import { connector } from '../connector';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { BotDifficulty, BotPersonality, GameState } from '../lib/types';
@@ -27,6 +29,7 @@ interface Props {
   addSlot: () => void;
   addBot: () => void;
   addLocalPlayer?: () => void;
+  setLocalPlayerName?: (playerId: number, name: string) => void;
   setBotProfile: (
     botPlayerId: number,
     difficulty: BotDifficulty | 'random',
@@ -51,6 +54,7 @@ function PlayerRoster({
   addSlot,
   addBot,
   addLocalPlayer,
+  setLocalPlayerName,
   setBotProfile,
   removeBot,
   rowRefs,
@@ -124,7 +128,20 @@ function PlayerRoster({
                       }}
                       className="d-inline-flex align-items-center gap-2 flex-wrap"
                     >
-                      {p.id === selfId ? 'You' : p.name}
+                      {p.id === selfId && !connector.isOffline() ? (
+                        'You'
+                      ) : setLocalPlayerName && i >= 1 && !p.isBot ? (
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <PlayerNameEditor
+                            player={p}
+                            onNameChange={(name) =>
+                              setLocalPlayerName(p.id, name)
+                            }
+                          />
+                        </span>
+                      ) : (
+                        p.name
+                      )}
                       {p.isBot && (
                         <img
                           src={

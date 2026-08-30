@@ -402,7 +402,7 @@ function Game({
         open={chatOpen}
         setOpen={setChatOpen}
       />
-      <OfflineHandoffGate />
+      <OfflineHandoffGate game={game} />
     </>
   );
 }

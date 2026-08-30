@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "predev": "tsc -b ../engine",
-    "dev": "npm run kill && nodemon --exec ts-node src/index.ts",
+    "dev": "npm run kill && concurrently -k -n engine,server \"tsc -b ../engine --watch --preserveWatchOutput\" \"nodemon --exec ts-node src/index.ts\"",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint src",

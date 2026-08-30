@@ -1,13 +1,43 @@
 import { useEffect, useState } from 'react';
 import { connector } from '../connector';
 import { contrastTextColor, playerColor } from '../lib/palette';
+import type { GameState } from '../lib/types';
 
 interface Handoff {
   toName: string;
   color: number;
 }
 
-function OfflineHandoffGate() {
+function Blackout({
+  color,
+  title,
+  subtitle,
+  onClick,
+}: {
+  color: number;
+  title: string;
+  subtitle: string;
+  onClick?: () => void;
+}) {
+  const background = playerColor(color);
+  return (
+    <div
+      role={onClick ? 'button' : undefined}
+      onClick={onClick}
+      className="position-fixed top-0 start-0 vw-100 vh-100 d-flex flex-column justify-content-center align-items-center"
+      style={{
+        zIndex: 3000,
+        backgroundColor: background,
+        color: contrastTextColor(background),
+      }}
+    >
+      <h1 className="mb-3">{title}</h1>
+      <p className="opacity-75">{subtitle}</p>
+    </div>
+  );
+}
+
+function OfflineHandoffGate({ game }: { game: GameState }) {
   const [handoff, setHandoff] = useState<Handoff | null>(null);
 
   useEffect(() => {
@@ -18,29 +48,35 @@ function OfflineHandoffGate() {
     return () => connector.off('offline:handoff', onHandoff);
   }, []);
 
-  if (handoff === null) return null;
-
   function proceed() {
     setHandoff(null);
     connector.continueHandoff();
   }
 
-  const background = playerColor(handoff.color);
+  if (handoff !== null) {
+    return (
+      <Blackout
+        color={handoff.color}
+        title={`Pass to ${handoff.toName}`}
+        subtitle="Tap anywhere to continue"
+        onClick={proceed}
+      />
+    );
+  }
+
+  const current =
+    connector.isOffline() && game.state === 'playing' && game.fogOfWar === 'on'
+      ? game.players[game.turnPlayerIndex]
+      : undefined;
+
+  if (!current?.isBot) return null;
 
   return (
-    <div
-      role="button"
-      onClick={proceed}
-      className="position-fixed top-0 start-0 vw-100 vh-100 d-flex flex-column justify-content-center align-items-center"
-      style={{
-        zIndex: 3000,
-        backgroundColor: background,
-        color: contrastTextColor(background),
-      }}
-    >
-      <h1 className="mb-3">Pass to {handoff.toName}</h1>
-      <p className="opacity-75">Tap anywhere to continue</p>
-    </div>
+    <Blackout
+      color={current.color}
+      title="Bot turn in progress"
+      subtitle={`${current.name} is playing`}
+    />
   );
 }
 

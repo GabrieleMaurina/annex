@@ -1,11 +1,10 @@
 import { useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
-import type { Player } from '../lib/types';
 
 const MAX_NAME_LENGTH = 10;
 
 interface Props {
-  player: Player;
+  player: { name: string };
   onNameChange: (name: string) => void;
 }
 

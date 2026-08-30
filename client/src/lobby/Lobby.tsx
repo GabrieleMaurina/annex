@@ -280,6 +280,11 @@ function Lobby({
         addLocalPlayer={
           connector.isOffline() ? () => connector.addLocalPlayer('') : undefined
         }
+        setLocalPlayerName={
+          connector.isOffline()
+            ? (playerId, name) => connector.setLocalPlayerName(playerId, name)
+            : undefined
+        }
         setBotProfile={setBotProfile}
         removeBot={removeBot}
         rowRefs={rowRefs}

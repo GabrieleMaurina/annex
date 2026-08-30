@@ -765,8 +765,9 @@ export function useGameSocketEvents({
           payload.attackingTerritoryId,
           payload.defendingTerritoryId,
         ]);
+        frozenTroopsRef.current.delete(payload.attackingTerritoryId);
+        frozenTroopsRef.current.delete(payload.defendingTerritoryId);
         if (attackLosses > 0) {
-          frozenTroopsRef.current.delete(payload.attackingTerritoryId);
           explode(payload.attackingTerritoryId);
           animateRemove({
             territoryId: payload.attackingTerritoryId,
@@ -775,7 +776,6 @@ export function useGameSocketEvents({
           });
         }
         if (defenceLosses > 0) {
-          frozenTroopsRef.current.delete(payload.defendingTerritoryId);
           if (conquered)
             frozenOwnerRef.current.delete(payload.defendingTerritoryId);
           explode(payload.defendingTerritoryId);

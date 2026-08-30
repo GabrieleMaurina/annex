@@ -1,0 +1,4 @@
+{
+  "watch": ["src", "../engine/dist"],
+  "ext": "ts,js,json"
+}

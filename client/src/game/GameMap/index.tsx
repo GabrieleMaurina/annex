@@ -116,6 +116,8 @@ interface Props {
   setRadiationTerritoryIds: (territoryIds: number[]) => void;
   setRadiationUpcomingTerritoryIds: (territoryIds: number[]) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
+  settingsMenuOpen: boolean;
+  onPanelOpenChange: (open: boolean) => void;
   navigate: (path: string) => void;
 }
 
@@ -175,6 +177,8 @@ function GameMap({
   setRadiationTerritoryIds,
   setRadiationUpcomingTerritoryIds,
   setChatOpen,
+  settingsMenuOpen,
+  onPanelOpenChange,
   navigate,
 }: Props) {
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
@@ -397,6 +401,10 @@ function GameMap({
     panelCollapsed,
     setPanelCollapsed,
   } = usePanelsUI();
+
+  useEffect(() => {
+    onPanelOpenChange(openPanel !== null);
+  }, [openPanel, onPanelOpenChange]);
 
   const cardsFlow = useCardsAndDeploy({
     turnPhase,
@@ -773,6 +781,7 @@ function GameMap({
         bonusesButtonRef={bonusesButtonRef}
         whiteBonusIcon={whiteBonusIcon}
         setOpenPanel={setOpenPanel}
+        bonusesOpen={bonusesOpen}
         cardsOpen={cardsOpen}
         cardsPanelRef={cardsPanelRef}
         hand={hand}
@@ -800,6 +809,7 @@ function GameMap({
         settingsPanelTop={settingsPanelTop}
         settingsButtonRef={settingsButtonRef}
         whiteSettingsIcon={whiteSettingsIcon}
+        settingsMenuOpen={settingsMenuOpen}
         game={game}
         awardedCards={cardsFlow.awardedCards}
       />

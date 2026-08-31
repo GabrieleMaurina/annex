@@ -6,6 +6,15 @@ import {
   DEFAULT_IMAGE_WIDTH,
 } from '../utils/defaultImage';
 import { continentColor } from '../utils/palette';
+import {
+  clamp,
+  clampPan,
+  createSettleSampler,
+  easeOutCubic,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  screenOffset,
+} from './mapViewport';
 
 interface Props {
   territories: Territory[];
@@ -43,39 +52,12 @@ const VERTEX_DIAMETERS_PER_LONGEST_SIDE = 50;
 const HIT_TOLERANCE = 6;
 const HIT_RADIUS_MULTIPLIER = 2;
 const DRAG_THRESHOLD = 4;
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 10;
+const SETTLE_DURATION = 200;
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_DIST = 24;
 
 function edgeKey(a: number, b: number): string {
   return a < b ? `${a}-${b}` : `${b}-${a}`;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function clampOffset(
-  canvasW: number,
-  canvasH: number,
-  scaleX: number,
-  scaleY: number,
-  imgW: number,
-  imgH: number,
-  x: number,
-  y: number,
-) {
-  const scaledW = imgW * scaleX;
-  const scaledH = imgH * scaleY;
-  return {
-    x:
-      scaledW <= canvasW
-        ? (canvasW - scaledW) / 2
-        : clamp(x, canvasW - scaledW, 0),
-    y:
-      scaledH <= canvasH
-        ? (canvasH - scaledH) / 2
-        : clamp(y, canvasH - scaledH, 0),
-  };
 }
 
 function segmentsProperlyIntersect(
@@ -181,7 +163,11 @@ function MapCanvas({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<DragState>(null);
   const pinchRef = useRef<{ lastDistance: number } | null>(null);
+  const settleRef = useRef<number | null>(null);
   const lastTouchAtRef = useRef(0);
+  const lastTapAtRef = useRef(0);
+  const lastTapPosRef = useRef<Point>({ x: 0, y: 0 });
+  const lastAddedVertexRef = useRef<number | null>(null);
   const longPressRef = useRef<number | null>(null);
   const [transform, setTransform] = useState<Transform>({
     zoom: 1,
@@ -223,15 +209,24 @@ function MapCanvas({
     };
   }
 
-  function getClampedOffset(
+  function getScreenOffset(
     canvasW: number,
     canvasH: number,
     zoom: number,
-    x: number,
-    y: number,
+    panX: number,
+    panY: number,
   ) {
     const { imgW, imgH, scaleX, scaleY } = getScales(canvasW, canvasH, zoom);
-    return clampOffset(canvasW, canvasH, scaleX, scaleY, imgW, imgH, x, y);
+    return screenOffset(
+      canvasW,
+      canvasH,
+      scaleX,
+      scaleY,
+      imgW,
+      imgH,
+      panX,
+      panY,
+    );
   }
 
   function getViewport() {
@@ -239,7 +234,7 @@ function MapCanvas({
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     const { imgW, imgH, scaleX, scaleY } = getScales(w, h, transform.zoom);
-    const { x: offsetX, y: offsetY } = getClampedOffset(
+    const { x: offsetX, y: offsetY } = getScreenOffset(
       w,
       h,
       transform.zoom,
@@ -247,6 +242,58 @@ function MapCanvas({
       transform.offsetY,
     );
     return { imgW, imgH, scaleX, scaleY, offsetX, offsetY };
+  }
+
+  const cancelSettle = useCallback(() => {
+    if (settleRef.current !== null) {
+      cancelAnimationFrame(settleRef.current);
+      settleRef.current = null;
+    }
+  }, []);
+
+  const resetView = useCallback(() => {
+    cancelSettle();
+    setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
+  }, [cancelSettle]);
+
+  function startSettle() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    cancelSettle();
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    const { offsetX, offsetY } = transform;
+    const { imgW, imgH, scaleX, scaleY } = getScales(w, h, transform.zoom);
+    const settle = createSettleSampler(
+      w,
+      h,
+      scaleX,
+      scaleY,
+      imgW,
+      imgH,
+      offsetX,
+      offsetY,
+    );
+    const { target } = settle;
+    if (settle.settled) {
+      if (offsetX !== target.x || offsetY !== target.y) {
+        setTransform((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
+      }
+      return;
+    }
+    const begin = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min((now - begin) / SETTLE_DURATION, 1);
+      if (progress >= 1) {
+        setTransform((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
+        settleRef.current = null;
+        return;
+      }
+      const next = settle.sample(easeOutCubic(progress));
+      setTransform((t) => ({ ...t, offsetX: next.x, offsetY: next.y }));
+      settleRef.current = requestAnimationFrame(animate);
+    };
+    settleRef.current = requestAnimationFrame(animate);
   }
 
   useEffect(() => {
@@ -265,6 +312,18 @@ function MapCanvas({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (settleRef.current !== null) cancelAnimationFrame(settleRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    document.addEventListener('fullscreenchange', resetView);
+    return () => document.removeEventListener('fullscreenchange', resetView);
+  }, [resetView]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -294,34 +353,40 @@ function MapCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedVertexId, setTerritories, setCollapsed]);
 
-  const applyZoom = useCallback((pos: Point, factor: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const canvasW = canvas.clientWidth;
-    const canvasH = canvas.clientHeight;
-    const img = imageRef.current;
-    const imgW = img ? img.naturalWidth : DEFAULT_IMAGE_WIDTH;
-    const imgH = img ? img.naturalHeight : DEFAULT_IMAGE_HEIGHT;
-    const baseScale = Math.min(canvasW / imgW, canvasH / imgH);
-    setTransform((prev) => {
-      const oldScale = baseScale * prev.zoom;
-      const worldX = (pos.x - prev.offsetX) / oldScale;
-      const worldY = (pos.y - prev.offsetY) / oldScale;
-      const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
-      const newScale = baseScale * newZoom;
-      const { x, y } = clampOffset(
-        canvasW,
-        canvasH,
-        newScale,
-        newScale,
-        imgW,
-        imgH,
-        pos.x - worldX * newScale,
-        pos.y - worldY * newScale,
-      );
-      return { zoom: newZoom, offsetX: x, offsetY: y };
-    });
-  }, []);
+  const applyZoom = useCallback(
+    (pos: Point, factor: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      cancelSettle();
+      const canvasW = canvas.clientWidth;
+      const canvasH = canvas.clientHeight;
+      const img = imageRef.current;
+      const imgW = img ? img.naturalWidth : DEFAULT_IMAGE_WIDTH;
+      const imgH = img ? img.naturalHeight : DEFAULT_IMAGE_HEIGHT;
+      const baseScale = Math.min(canvasW / imgW, canvasH / imgH);
+      setTransform((prev) => {
+        const oldScale = baseScale * prev.zoom;
+        const oldOffX = (canvasW - imgW * oldScale) / 2 + prev.offsetX;
+        const oldOffY = (canvasH - imgH * oldScale) / 2 + prev.offsetY;
+        const worldX = (pos.x - oldOffX) / oldScale;
+        const worldY = (pos.y - oldOffY) / oldScale;
+        const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
+        const newScale = baseScale * newZoom;
+        const { x, y } = clampPan(
+          canvasW,
+          canvasH,
+          newScale,
+          newScale,
+          imgW,
+          imgH,
+          pos.x - worldX * newScale - (canvasW - imgW * newScale) / 2,
+          pos.y - worldY * newScale - (canvasH - imgH * newScale) / 2,
+        );
+        return { zoom: newZoom, offsetX: x, offsetY: y };
+      });
+    },
+    [cancelSettle],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -353,7 +418,7 @@ function MapCanvas({
 
     const { zoom } = transform;
     const { imgW, imgH, scaleX, scaleY } = getScales(size.w, size.h, zoom);
-    const { x: offsetX, y: offsetY } = getClampedOffset(
+    const { x: offsetX, y: offsetY } = getScreenOffset(
       size.w,
       size.h,
       zoom,
@@ -487,7 +552,7 @@ function MapCanvas({
     return nearest;
   }
 
-  function addVertexAt(pos: Point) {
+  function addVertexAt(pos: Point): number {
     const { scaleX, scaleY, offsetX, offsetY } = getViewport();
     const worldX = (pos.x - offsetX) / scaleX;
     const worldY = (pos.y - offsetY) / scaleY;
@@ -505,6 +570,7 @@ function MapCanvas({
       },
     ]);
     setHoveredVertexId(nextId);
+    return nextId;
   }
 
   function segmentWouldCross(
@@ -639,11 +705,11 @@ function MapCanvas({
       };
       return;
     }
-    const { offsetX, offsetY } = getViewport();
+    cancelSettle();
     dragRef.current = {
       type: 'pan',
       startPos: pos,
-      startTransform: { x: offsetX, y: offsetY },
+      startTransform: { x: transform.offsetX, y: transform.offsetY },
       moved: false,
     };
   }
@@ -651,28 +717,20 @@ function MapCanvas({
   function dragPointer(pos: Point) {
     const drag = dragRef.current;
     if (!drag) return;
-    const { scaleX, scaleY } = getViewport();
     if (drag.type === 'pan') {
       const dx = pos.x - drag.startPos.x;
       const dy = pos.y - drag.startPos.y;
       if (Math.hypot(dx, dy) > DRAG_THRESHOLD) drag.moved = true;
       if (drag.moved) {
-        const canvas = canvasRef.current!;
-        const { w: imgW, h: imgH } = getImageDims();
-        const { x, y } = clampOffset(
-          canvas.clientWidth,
-          canvas.clientHeight,
-          scaleX,
-          scaleY,
-          imgW,
-          imgH,
-          drag.startTransform.x + dx,
-          drag.startTransform.y + dy,
-        );
-        setTransform((t) => ({ ...t, offsetX: x, offsetY: y }));
+        setTransform((t) => ({
+          ...t,
+          offsetX: drag.startTransform.x + dx,
+          offsetY: drag.startTransform.y + dy,
+        }));
         setIsDragging(true);
       }
     } else {
+      const { scaleX, scaleY } = getViewport();
       const dx = pos.x - drag.lastPos.x;
       const dy = pos.y - drag.lastPos.y;
       if (
@@ -695,22 +753,53 @@ function MapCanvas({
     }
   }
 
+  function tryDoubleTapReset(pos: Point, hitId: number | null): boolean {
+    const near =
+      Date.now() - lastTapAtRef.current < DOUBLE_TAP_MS &&
+      Math.hypot(
+        pos.x - lastTapPosRef.current.x,
+        pos.y - lastTapPosRef.current.y,
+      ) < DOUBLE_TAP_DIST;
+    if (!near || (hitId !== null && hitId !== lastAddedVertexRef.current)) {
+      return false;
+    }
+    lastTapAtRef.current = 0;
+    const strayId = lastAddedVertexRef.current;
+    lastAddedVertexRef.current = null;
+    if (strayId !== null) {
+      setTerritories((prev) => prev.filter((t) => t.id !== strayId));
+      setHoveredVertexId(null);
+    }
+    resetView();
+    return true;
+  }
+
   function endPointer(pos: Point) {
     const drag = dragRef.current;
     dragRef.current = null;
     setIsDragging(false);
     if (!drag) return;
+    const hitId = drag.type === 'vertex' ? drag.id : null;
+    if (!drag.moved && tryDoubleTapReset(pos, hitId)) return;
     if (drag.type === 'pan') {
       if (!drag.moved) {
+        lastTapPosRef.current = pos;
+        lastTapAtRef.current = Date.now();
         if (selectedVertexId !== null) {
           setSelectedVertexId(null);
+          lastAddedVertexRef.current = null;
         } else {
-          addVertexAt(pos);
+          lastAddedVertexRef.current = addVertexAt(pos);
         }
       }
+      startSettle();
       return;
     }
-    if (!drag.moved) handleVertexClick(drag.id);
+    if (!drag.moved) {
+      lastTapAtRef.current = 0;
+      lastAddedVertexRef.current = null;
+      handleVertexClick(drag.id);
+    }
   }
 
   function cycleContinentAt(pos: Point) {
@@ -763,6 +852,7 @@ function MapCanvas({
     setHoveredVertexId(null);
     setMouseWorldPos(null);
     setIsDragging(false);
+    startSettle();
   }
 
   function handleContextMenu(e: React.MouseEvent) {
@@ -774,6 +864,7 @@ function MapCanvas({
   function handleTouchStart(e: React.TouchEvent) {
     lastTouchAtRef.current = Date.now();
     clearLongPress();
+    cancelSettle();
     if (e.touches.length === 1) {
       pinchRef.current = null;
       const pos = getPos(e.touches[0]);
@@ -832,6 +923,7 @@ function MapCanvas({
     } else {
       dragRef.current = null;
       setIsDragging(false);
+      startSettle();
     }
   }
 
@@ -843,6 +935,7 @@ function MapCanvas({
     setIsDragging(false);
     setHoveredVertexId(null);
     setMouseWorldPos(null);
+    startSettle();
   }
 
   return (

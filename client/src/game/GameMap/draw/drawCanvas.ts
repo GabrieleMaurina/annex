@@ -22,8 +22,8 @@ import { drawSupplyLines } from '../../supplyLines';
 import {
   ENTRENCHED_OCTAGON_FILL,
   ENTRENCHED_OCTAGON_STROKE,
-  getClampedOffset,
   getScales,
+  getScreenOffset,
   STATE_STYLE,
   strokeContinentOutline,
   UNCLAIMED_TERRITORY_COLOR,
@@ -151,7 +151,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     zoom,
     imgDims,
   );
-  const { x: offsetX, y: offsetY } = getClampedOffset(
+  const { x: offsetX, y: offsetY } = getScreenOffset(
     size.w,
     size.h,
     zoom,
@@ -300,16 +300,13 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   if (continentGroups) {
     const hullPad = (VERTEX_RADIUS + 30) * scaleX;
     ctx.save();
+    ctx.fillStyle = 'rgba(110, 110, 110, 0.4)';
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 2.5 * zoom;
     ctx.lineJoin = 'round';
     ctx.setLineDash([6 * zoom, 5 * zoom]);
     for (const group of continentGroups.values()) {
-      strokeContinentOutline(
-        ctx,
-        group.map((t) => toScreen(t)),
-        hullPad,
-      );
+      strokeContinentOutline(ctx, group, toScreen, hullPad);
     }
     ctx.restore();
   }
@@ -321,14 +318,11 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     if (targetTerritories.length > 0) {
       const hullPad = (VERTEX_RADIUS + 30) * scaleX;
       ctx.save();
+      ctx.fillStyle = 'rgba(110, 110, 110, 0.4)';
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.lineWidth = 3.5 * zoom;
       ctx.lineJoin = 'round';
-      strokeContinentOutline(
-        ctx,
-        targetTerritories.map((t) => toScreen(t)),
-        hullPad,
-      );
+      strokeContinentOutline(ctx, targetTerritories, toScreen, hullPad);
       ctx.restore();
     }
   }

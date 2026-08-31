@@ -14,6 +14,7 @@ export default function MapButtonsColumn({
   bonusesButtonRef,
   whiteBonusIcon,
   setOpenPanel,
+  bonusesOpen,
   cardsOpen,
   cardsPanelRef,
   hand,
@@ -41,6 +42,7 @@ export default function MapButtonsColumn({
   settingsPanelTop,
   settingsButtonRef,
   whiteSettingsIcon,
+  settingsMenuOpen,
   game,
   awardedCards,
 }: {
@@ -51,6 +53,7 @@ export default function MapButtonsColumn({
   setOpenPanel: Dispatch<
     SetStateAction<'cards' | 'bonuses' | 'logs' | 'settings' | null>
   >;
+  bonusesOpen: boolean;
   cardsOpen: boolean;
   cardsPanelRef: RefObject<HTMLDivElement | null>;
   hand: Card[];
@@ -78,37 +81,42 @@ export default function MapButtonsColumn({
   settingsPanelTop: number;
   settingsButtonRef: RefObject<HTMLButtonElement | null>;
   whiteSettingsIcon: string | undefined;
+  settingsMenuOpen: boolean;
   game: GameState;
   awardedCards: { id: number; card: Card }[];
 }) {
+  const panelExpanded = cardsOpen || bonusesOpen || logsOpen || settingsOpen;
+  const anyPanelOpen = panelExpanded || settingsMenuOpen;
   return (
     <div
       className="position-absolute start-0 ms-3 d-flex flex-column align-items-start gap-2"
-      style={{ zIndex: 2, top: cardsButtonsTop }}
+      style={{ zIndex: 2, top: panelExpanded ? 16 : cardsButtonsTop }}
     >
       <div
         ref={buttonColumnRef}
         className="d-flex flex-column align-items-start gap-3"
       >
-        <Tip text="Bonuses">
-          <Button
-            ref={bonusesButtonRef}
-            variant="secondary"
-            size="sm"
-            className="d-flex align-items-center justify-content-center"
-            style={{ width: 28, height: 28, padding: 0 }}
-            onClick={() =>
-              setOpenPanel((p) => (p === 'bonuses' ? null : 'bonuses'))
-            }
-          >
-            <img
-              src={whiteBonusIcon ?? '/icons/bonus.svg'}
-              width={16}
-              height={16}
-              alt="Continent Bonuses"
-            />
-          </Button>
-        </Tip>
+        {(!anyPanelOpen || bonusesOpen) && (
+          <Tip text="Bonuses">
+            <Button
+              ref={bonusesButtonRef}
+              variant="secondary"
+              size="sm"
+              className="d-flex align-items-center justify-content-center"
+              style={{ width: 28, height: 28, padding: 0 }}
+              onClick={() =>
+                setOpenPanel((p) => (p === 'bonuses' ? null : 'bonuses'))
+              }
+            >
+              <img
+                src={whiteBonusIcon ?? '/icons/bonus.svg'}
+                width={16}
+                height={16}
+                alt="Continent Bonuses"
+              />
+            </Button>
+          </Tip>
+        )}
         {cardsOpen ? (
           <div ref={cardsPanelRef}>
             <CardsPanel
@@ -123,7 +131,7 @@ export default function MapButtonsColumn({
               onClose={() => setOpenPanel(null)}
             />
           </div>
-        ) : (
+        ) : anyPanelOpen ? null : (
           <Tip text="Cards">
             <Button
               ref={cardsButtonRef}
@@ -164,7 +172,7 @@ export default function MapButtonsColumn({
               onClose={() => setOpenPanel(null)}
             />
           </div>
-        ) : (
+        ) : anyPanelOpen ? null : (
           <Tip text="Logs">
             <Button
               ref={logsButtonRef}
@@ -191,7 +199,7 @@ export default function MapButtonsColumn({
               onClose={() => setOpenPanel(null)}
             />
           </div>
-        ) : (
+        ) : anyPanelOpen ? null : (
           <Tip text="Game Settings">
             <Button
               ref={settingsButtonRef}

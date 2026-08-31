@@ -73,7 +73,7 @@ function PlayerRoster({
     if (!p) return undefined;
     if (p.id === selfId) return cycleColor;
     if (p.isBot) return isHost ? () => cycleBotColor(p.id) : undefined;
-    return () => onEmojiRowClick(p.id);
+    return connector.isOffline() ? undefined : () => onEmojiRowClick(p.id);
   }
 
   return (
@@ -94,11 +94,12 @@ function PlayerRoster({
           </thead>
           <tbody>
             {slotRows.map((p, i) => {
+              const onRowClick = rowClick(p);
               const rowStyle = p
                 ? {
                     backgroundColor: playerColor(p.color),
                     color: contrastTextColor(playerColor(p.color)),
-                    cursor: 'pointer',
+                    cursor: onRowClick ? 'pointer' : 'default',
                   }
                 : undefined;
               return (
@@ -109,8 +110,8 @@ function PlayerRoster({
                     if (el) rowRefs.current.set(p.id, el);
                     else rowRefs.current.delete(p.id);
                   }}
-                  role={p && (!p.isBot || isHost) ? 'button' : undefined}
-                  onClick={rowClick(p)}
+                  role={onRowClick ? 'button' : undefined}
+                  onClick={onRowClick}
                   style={{
                     height: 40,
                     outline: p?.id === selfId ? '2px solid #fff' : undefined,
@@ -338,33 +339,35 @@ function PlayerRoster({
           </tbody>
         </Table>
       </div>
-      <div className="d-flex justify-content-start mt-1">
-        <Tip text="Everyone" placement="bottom">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="d-inline-flex align-items-center justify-content-center"
-            style={{ width: 28, height: 28, padding: 0 }}
-            onClick={() => onEmojiRowClick(GLOBAL_TARGET_ID)}
-            ref={(el) => {
-              if (el) {
-                rowRefs.current.set(GLOBAL_TARGET_ID, el);
-                nameCellRefs.current.set(GLOBAL_TARGET_ID, el);
-              } else {
-                rowRefs.current.delete(GLOBAL_TARGET_ID);
-                nameCellRefs.current.delete(GLOBAL_TARGET_ID);
-              }
-            }}
-          >
-            <img
-              src={whiteGlobeIcon ?? '/icons/globe.svg'}
-              width={14}
-              height={14}
-              alt="Everyone"
-            />
-          </Button>
-        </Tip>
-      </div>
+      {!connector.isOffline() && (
+        <div className="d-flex justify-content-start mt-1">
+          <Tip text="Everyone" placement="bottom">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="d-inline-flex align-items-center justify-content-center"
+              style={{ width: 28, height: 28, padding: 0 }}
+              onClick={() => onEmojiRowClick(GLOBAL_TARGET_ID)}
+              ref={(el) => {
+                if (el) {
+                  rowRefs.current.set(GLOBAL_TARGET_ID, el);
+                  nameCellRefs.current.set(GLOBAL_TARGET_ID, el);
+                } else {
+                  rowRefs.current.delete(GLOBAL_TARGET_ID);
+                  nameCellRefs.current.delete(GLOBAL_TARGET_ID);
+                }
+              }}
+            >
+              <img
+                src={whiteGlobeIcon ?? '/icons/globe.svg'}
+                width={14}
+                height={14}
+                alt="Everyone"
+              />
+            </Button>
+          </Tip>
+        </div>
+      )}
     </>
   );
 }

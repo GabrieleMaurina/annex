@@ -4,7 +4,12 @@ Strategy Multiplayer War Game
 **annex** /ænˈeks/ *(verb)* : to take possession of an area of land or a country, usually by force or without permission
 
 
-### Running
+### Play
+
+[annexgame.com](https://annexgame.com)
+
+
+### Run Locally
 
 Install [Node.js](https://nodejs.org/en/download "Node.js")
 

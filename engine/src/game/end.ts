@@ -14,6 +14,7 @@ import { clearTurnTimer } from './turns';
 import { continentTerritoryIds } from './world/continent';
 
 const EARLY_WIN_GATE_TURN_NUMBER = 2;
+export const HUMANS_ABANDONED_GRACE_MS = 5000;
 
 function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
   if (game.gameMode === 'Team Deathmatch') {
@@ -50,8 +51,20 @@ function noHumanPlayersLeft(game: Game) {
   );
 }
 
+function humansAbandonedGraceElapsed(game: Game): boolean {
+  if (!noHumanPlayersLeft(game)) {
+    game.humansAbandonedAt = null;
+    return false;
+  }
+  if (game.humansAbandonedAt === null) {
+    game.humansAbandonedAt = Date.now();
+    return false;
+  }
+  return Date.now() - game.humansAbandonedAt >= HUMANS_ABANDONED_GRACE_MS;
+}
+
 function abandonedByHumansWinnerIds(game: Game): number[] | null {
-  if (!noHumanPlayersLeft(game)) return null;
+  if (!humansAbandonedGraceElapsed(game)) return null;
   const activeIds = game.playerIds.filter(
     (id) => !isPlayerEliminated(game, id),
   );

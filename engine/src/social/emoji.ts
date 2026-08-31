@@ -52,6 +52,7 @@ export function sendEmoji(
   const ctx = requireGame(playerId);
   if (!ctx.ok) return;
   const { game } = ctx;
+  if (game.offline) return;
   if (!game.playerIds.includes(playerId)) return;
   if (!EMOJI_VALUES.includes(rawEmoji as EmojiValue)) return;
   const emoji = rawEmoji as EmojiValue;

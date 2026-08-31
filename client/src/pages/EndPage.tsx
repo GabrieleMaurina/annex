@@ -69,6 +69,7 @@ function EndPage({
     rowRefs,
     nameCellRefs,
   } = useTableEmojiReactions(selfId);
+  const tableEmojiEnabled = !connector.isOffline();
 
   return (
     <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
@@ -115,10 +116,12 @@ function EndPage({
             {rankedPlayers.map((p, index) => {
               const bg = playerColor(p.color);
               const fg = contrastTextColor(bg);
+              const emojiRowClickable =
+                tableEmojiEnabled && p.id !== selfId && !p.isBot;
               const rowStyle = {
                 backgroundColor: bg,
                 color: fg,
-                cursor: p.id === selfId ? 'default' : 'pointer',
+                cursor: emojiRowClickable ? 'pointer' : 'default',
               };
               const isDark = fg === '#ffffff';
               const rowIcon = (white: string | undefined, path: string) =>
@@ -133,9 +136,11 @@ function EndPage({
                   ref={(el) => {
                     if (el) rowRefs.current.set(p.id, el);
                   }}
-                  role={p.id === selfId ? undefined : 'button'}
+                  role={emojiRowClickable ? 'button' : undefined}
                   data-no-click-sound
-                  onClick={() => handleRowClick(p.id)}
+                  onClick={
+                    emojiRowClickable ? () => handleRowClick(p.id) : undefined
+                  }
                   style={{
                     outline: p.id === selfId ? '2px solid #fff' : undefined,
                     outlineOffset: p.id === selfId ? '-2px' : undefined,
@@ -231,42 +236,46 @@ function EndPage({
         </Table>
       </div>
 
-      <div className="d-flex justify-content-start mt-1 mb-4">
-        <Tip text="Everyone" placement="bottom">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="d-inline-flex align-items-center justify-content-center"
-            style={{ width: 28, height: 28, padding: 0 }}
-            onClick={() => handleRowClick(GLOBAL_TARGET_ID)}
-            ref={(el) => {
-              if (el) {
-                rowRefs.current.set(GLOBAL_TARGET_ID, el);
-                nameCellRefs.current.set(GLOBAL_TARGET_ID, el);
-              } else {
-                rowRefs.current.delete(GLOBAL_TARGET_ID);
-                nameCellRefs.current.delete(GLOBAL_TARGET_ID);
-              }
-            }}
-          >
-            <img
-              src={whiteGlobeIcon ?? '/icons/globe.svg'}
-              width={14}
-              height={14}
-              alt="Everyone"
-            />
-          </Button>
-        </Tip>
-      </div>
+      {tableEmojiEnabled && (
+        <div className="d-flex justify-content-start mt-1 mb-4">
+          <Tip text="Everyone" placement="bottom">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="d-inline-flex align-items-center justify-content-center"
+              style={{ width: 28, height: 28, padding: 0 }}
+              onClick={() => handleRowClick(GLOBAL_TARGET_ID)}
+              ref={(el) => {
+                if (el) {
+                  rowRefs.current.set(GLOBAL_TARGET_ID, el);
+                  nameCellRefs.current.set(GLOBAL_TARGET_ID, el);
+                } else {
+                  rowRefs.current.delete(GLOBAL_TARGET_ID);
+                  nameCellRefs.current.delete(GLOBAL_TARGET_ID);
+                }
+              }}
+            >
+              <img
+                src={whiteGlobeIcon ?? '/icons/globe.svg'}
+                width={14}
+                height={14}
+                alt="Everyone"
+              />
+            </Button>
+          </Tip>
+        </div>
+      )}
 
-      <EmojiTableOverlay
-        emojiPickerFor={emojiPickerFor}
-        emojiPops={emojiPops}
-        rowRefs={rowRefs}
-        nameCellRefs={nameCellRefs}
-        emojiPickerRef={emojiPickerRef}
-        onPick={handleEmojiPick}
-      />
+      {tableEmojiEnabled && (
+        <EmojiTableOverlay
+          emojiPickerFor={emojiPickerFor}
+          emojiPops={emojiPops}
+          rowRefs={rowRefs}
+          nameCellRefs={nameCellRefs}
+          emojiPickerRef={emojiPickerRef}
+          onPick={handleEmojiPick}
+        />
+      )}
 
       <div className="d-flex justify-content-center gap-2">
         <Button variant="primary" onClick={onViewMap}>

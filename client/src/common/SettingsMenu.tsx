@@ -19,10 +19,16 @@ import Tip from './Tip';
 
 interface Props {
   shareUrl: string;
+  hidden?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-function SettingsMenu({ shareUrl }: Props) {
+function SettingsMenu({ shareUrl, hidden, onOpenChange }: Props) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
   const [, forceUpdate] = useState(0);
   const [copied, setCopied] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -58,7 +64,9 @@ function SettingsMenu({ shareUrl }: Props) {
   return (
     <div
       id="settings-toggle"
-      className="position-fixed top-0 start-0 m-3"
+      className={`position-fixed top-0 start-0 m-3${
+        hidden && !open ? ' invisible' : ''
+      }`}
       style={{ zIndex: 1 }}
     >
       {!open ? (

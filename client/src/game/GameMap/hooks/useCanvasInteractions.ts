@@ -10,23 +10,23 @@ import type {
 import type { EvaluatedCombo } from '../../logic/cards';
 import { ATTACK_EMOJI } from '../../logic/emoji';
 import type { Territory } from '../../mapData';
-import { clamp, clampOffset, getScales as computeScales } from '../../mapMath';
 import type { AttackType, DiceRoll } from '../../panels/AttackPanel';
 import {
   DRAG_THRESHOLD,
-  getClampedOffset,
   getScales,
+  getScreenOffset,
   HIT_RADIUS_MULTIPLIER,
   HIT_TOLERANCE,
   isTypingTarget,
-  MAX_ZOOM,
-  MIN_ZOOM,
   type DragState,
   type Point,
   type Transform,
 } from '../helpers';
+import { useMapViewportAnimation } from './useMapViewportAnimation';
 
 const SYNTHETIC_MOUSE_WINDOW_MS = 500;
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_DIST = 24;
 
 function touchDistance(touches: React.TouchList): number {
   return Math.hypot(
@@ -225,6 +225,10 @@ export function useCanvasInteractions({
   const dragRef = useRef<DragState>(null);
   const pinchRef = useRef<{ lastDistance: number } | null>(null);
   const lastTouchAtRef = useRef(0);
+  const lastTapAtRef = useRef(0);
+  const lastTapPosRef = useRef<Point>({ x: 0, y: 0 });
+  const { zoomAround, startSettle, cancelSettle, resetView } =
+    useMapViewportAnimation(canvasRef, transform, imgDims, setTransform);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [tooltipTerritoryId, setTooltipTerritoryId] = useState<number | null>(
@@ -260,49 +264,6 @@ export function useCanvasInteractions({
       });
     },
     [setGame],
-  );
-
-  const zoomAround = useCallback(
-    (clientX: number, clientY: number, factor: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const pos = { x: clientX - rect.left, y: clientY - rect.top };
-      const canvasW = canvas.clientWidth;
-      const canvasH = canvas.clientHeight;
-      const { w: imgW, h: imgH } = imgDims;
-      setTransform((prev) => {
-        const { scaleX: oldScaleX, scaleY: oldScaleY } = computeScales(
-          canvasW,
-          canvasH,
-          prev.zoom,
-          imgW,
-          imgH,
-        );
-        const worldX = (pos.x - prev.offsetX) / oldScaleX;
-        const worldY = (pos.y - prev.offsetY) / oldScaleY;
-        const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
-        const { scaleX: newScaleX, scaleY: newScaleY } = computeScales(
-          canvasW,
-          canvasH,
-          newZoom,
-          imgW,
-          imgH,
-        );
-        const { x, y } = clampOffset(
-          canvasW,
-          canvasH,
-          newScaleX,
-          newScaleY,
-          imgW,
-          imgH,
-          pos.x - worldX * newScaleX,
-          pos.y - worldY * newScaleY,
-        );
-        return { zoom: newZoom, offsetX: x, offsetY: y };
-      });
-    },
-    [canvasRef, imgDims, setTransform],
   );
 
   function isInteractable(t: Territory): boolean {
@@ -394,7 +355,7 @@ export function useCanvasInteractions({
       transform.zoom,
       imgDims,
     );
-    const { x: offsetX, y: offsetY } = getClampedOffset(
+    const { x: offsetX, y: offsetY } = getScreenOffset(
       canvas.clientWidth,
       canvas.clientHeight,
       transform.zoom,
@@ -420,16 +381,12 @@ export function useCanvasInteractions({
   }
 
   function beginDrag(pos: Point) {
-    const canvas = canvasRef.current!;
-    const { x, y } = getClampedOffset(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-      transform.offsetX,
-      transform.offsetY,
-      imgDims,
-    );
-    dragRef.current = { startPos: pos, startTransform: { x, y }, moved: false };
+    cancelSettle();
+    dragRef.current = {
+      startPos: pos,
+      startTransform: { x: transform.offsetX, y: transform.offsetY },
+      moved: false,
+    };
   }
 
   function updateDrag(pos: Point) {
@@ -439,24 +396,11 @@ export function useCanvasInteractions({
     const dy = pos.y - drag.startPos.y;
     if (Math.hypot(dx, dy) > DRAG_THRESHOLD) drag.moved = true;
     if (!drag.moved) return;
-    const canvas = canvasRef.current!;
-    const { imgW, imgH, scaleX, scaleY } = getScales(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      transform.zoom,
-      imgDims,
-    );
-    const { x, y } = clampOffset(
-      canvas.clientWidth,
-      canvas.clientHeight,
-      scaleX,
-      scaleY,
-      imgW,
-      imgH,
-      drag.startTransform.x + dx,
-      drag.startTransform.y + dy,
-    );
-    setTransform((t) => ({ ...t, offsetX: x, offsetY: y }));
+    setTransform((t) => ({
+      ...t,
+      offsetX: drag.startTransform.x + dx,
+      offsetY: drag.startTransform.y + dy,
+    }));
     setHoveredId(null);
     setTooltipTerritoryId(null);
     setIsDragging(true);
@@ -477,6 +421,24 @@ export function useCanvasInteractions({
       return;
     }
     updateDrag(pos);
+  }
+
+  function consumeDoubleTap(pos: Point): boolean {
+    if (hitVertex(pos)) {
+      lastTapAtRef.current = 0;
+      return false;
+    }
+    const now = Date.now();
+    const isDouble =
+      now - lastTapAtRef.current < DOUBLE_TAP_MS &&
+      Math.hypot(
+        pos.x - lastTapPosRef.current.x,
+        pos.y - lastTapPosRef.current.y,
+      ) < DOUBLE_TAP_DIST;
+    lastTapAtRef.current = isDouble ? 0 : now;
+    lastTapPosRef.current = pos;
+    if (isDouble) resetView();
+    return isDouble;
   }
 
   function handleTap(pos: Point) {
@@ -606,8 +568,12 @@ export function useCanvasInteractions({
     const drag = dragRef.current;
     dragRef.current = null;
     setIsDragging(false);
-    if (!drag || drag.moved) return;
-    handleTap(getPos(e));
+    if (drag && !drag.moved) {
+      const pos = getPos(e);
+      if (consumeDoubleTap(pos)) return;
+      handleTap(pos);
+    }
+    startSettle();
   }
 
   function handleMouseLeave() {
@@ -615,10 +581,12 @@ export function useCanvasInteractions({
     setHoveredId(null);
     setTooltipTerritoryId(null);
     setIsDragging(false);
+    startSettle();
   }
 
   function handleTouchStart(e: React.TouchEvent) {
     lastTouchAtRef.current = Date.now();
+    cancelSettle();
     if (e.touches.length === 1) {
       pinchRef.current = null;
       beginDrag(getPos(e.touches[0]));
@@ -656,8 +624,11 @@ export function useCanvasInteractions({
     dragRef.current = null;
     setIsDragging(false);
     if (drag && !drag.moved && e.changedTouches.length > 0) {
-      handleTap(getPos(e.changedTouches[0]));
+      const pos = getPos(e.changedTouches[0]);
+      if (consumeDoubleTap(pos)) return;
+      handleTap(pos);
     }
+    startSettle();
   }
 
   function handleTouchCancel() {
@@ -665,6 +636,7 @@ export function useCanvasInteractions({
     dragRef.current = null;
     pinchRef.current = null;
     setIsDragging(false);
+    startSettle();
   }
 
   function handleContextMenu(e: React.MouseEvent) {

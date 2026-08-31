@@ -114,12 +114,25 @@ function Home({
           />
         </Button>
       </Tip>
-      <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 gap-sm-5 mb-4">
-        <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
+      <div className="d-flex flex-nowrap justify-content-center align-items-center gap-3 gap-sm-5 mb-4">
+        <img
+          src="/favicon.svg"
+          alt=""
+          style={{ height: 'clamp(2rem, 12vw, 4rem)', flexShrink: 0 }}
+        />
         <Tip text="/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission">
-          <h1 className="mb-0">Annex</h1>
+          <h1
+            className="mb-0 text-nowrap"
+            style={{ fontSize: 'clamp(1.5rem, 9vw, 2.5rem)' }}
+          >
+            Annex
+          </h1>
         </Tip>
-        <img src="/favicon.svg" alt="" style={{ height: '4rem' }} />
+        <img
+          src="/favicon.svg"
+          alt=""
+          style={{ height: 'clamp(2rem, 12vw, 4rem)', flexShrink: 0 }}
+        />
       </div>
 
       {kickedMessage && (
@@ -166,7 +179,7 @@ function Home({
         </Alert>
       )}
 
-      <div className="d-flex gap-2 mb-4">
+      <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-2 mb-4">
         <Button onClick={() => createGame()}>Create Online</Button>
         <Button variant="secondary" onClick={() => navigate('/offline')}>
           Create Offline

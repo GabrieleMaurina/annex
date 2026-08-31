@@ -53,12 +53,13 @@ export function useTableEmojiReactions(selfId: number | null) {
   }, [selfId]);
 
   function handleRowClick(playerId: number) {
-    if (playerId === selfId) return;
+    if (connector.isOffline() || playerId === selfId) return;
     setEmojiPickerFor((prev) => (prev === playerId ? null : playerId));
   }
 
   function handleEmojiPick(targetPlayerId: number, emoji: EmojiValue) {
     setEmojiPickerFor(null);
+    if (connector.isOffline()) return;
     connector.sendEmoji({
       targetPlayerId:
         targetPlayerId === GLOBAL_TARGET_ID ? undefined : targetPlayerId,

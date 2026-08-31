@@ -23,6 +23,7 @@ export function validateGameName(name: unknown): string | null {
 export function createGame(
   playerId: number,
   settings: { name?: unknown },
+  offline = false,
 ): GameResponse {
   const player = playersById.get(playerId);
   if (!player) return { ok: false, error: 'not identified' };
@@ -44,6 +45,7 @@ export function createGame(
     slots: 2,
     hostId: player.id,
     originalHostId: player.id,
+    offline,
     state: 'lobby',
     alliances: 'off',
     allianceIds: new Set(),
@@ -82,6 +84,7 @@ export function createGame(
     turnStartedAt: 0,
     paused: false,
     pausedAt: null,
+    humansAbandonedAt: null,
     selectedTerritoryId: null,
     fortifyStartTerritoryId: null,
     fortifyEndTerritoryId: null,

@@ -7,6 +7,7 @@ export function sendChat(playerId: number, message: string): void {
   const ctx = requireGame(playerId);
   if (!ctx.ok) return;
   const { game } = ctx;
+  if (game.offline) return;
 
   const trimmed = message.trim();
   if (!trimmed) return;

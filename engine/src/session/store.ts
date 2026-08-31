@@ -1,6 +1,6 @@
 import { endTakeover, startTakeover } from '../bots/takeover';
 import { callbacks } from '../callbacks';
-import { checkGameEnd } from '../game/end';
+import { checkGameEnd, HUMANS_ABANDONED_GRACE_MS } from '../game/end';
 import { addHostCandidate, recomputeHost } from '../game/host';
 import { assignRandomColor, maxTeam } from '../game/mechanics';
 import { gameResultsStats, gameState, gameSummary } from '../game/state';
@@ -21,17 +21,19 @@ const DESTROY_GRACE_MS = 5000;
 const pendingInactiveDestroy = new Map<string, NodeJS.Timeout>();
 const pendingEndedDestroy = new Map<string, NodeJS.Timeout>();
 const pendingLobbyDestroy = new Map<string, NodeJS.Timeout>();
+const pendingAbandonEnd = new Map<string, NodeJS.Timeout>();
 
 function scheduleDestroy(
   pending: Map<string, NodeJS.Timeout>,
   gameName: string,
   check: () => void,
+  grace = DESTROY_GRACE_MS,
 ) {
   if (pending.has(gameName)) return;
   const timer = setTimeout(() => {
     pending.delete(gameName);
     check();
-  }, DESTROY_GRACE_MS);
+  }, grace);
   pending.set(gameName, timer);
 }
 
@@ -115,6 +117,28 @@ export function destroyIfEnded(game: Game) {
     evictGameMembers(current);
     broadcastHomeGames();
   });
+}
+
+export function scheduleAbandonEnd(game: Game) {
+  if (game.state !== 'playing' || hasActivePlayer(game)) return;
+
+  scheduleDestroy(
+    pendingAbandonEnd,
+    game.name,
+    () => {
+      const current = games.get(game.name);
+      if (!current || current.state !== 'playing' || hasActivePlayer(current))
+        return;
+
+      checkGameEnd(current);
+      const ended = games.get(game.name);
+      if (ended && ended.state === 'ended') {
+        broadcastGameState(ended);
+        destroyIfEnded(ended);
+      }
+    },
+    HUMANS_ABANDONED_GRACE_MS,
+  );
 }
 
 export function removePlayerFromGame(game: Game, playerId: number) {
@@ -250,6 +274,7 @@ function leaveGameImpl(player: Player, permanent: boolean) {
     else if (!player.connected) startTakeover(game, player);
     checkGameEnd(game);
     recomputeHost(game);
+    scheduleAbandonEnd(game);
     destroyIfInactive(game);
     destroyIfEnded(game);
     return;
@@ -282,8 +307,6 @@ export function handleReconnect(player: Player) {
   const game = games.get(player.gameName);
   if (!game) return;
 
-  if (game.state === 'playing') endTakeover(player);
-
   if (game.state === 'lobby') {
     reclaimSubstitutedSeat(game, player.id);
     if (
@@ -292,6 +315,8 @@ export function handleReconnect(player: Player) {
     )
       game.spectatorIds.push(player.id);
   }
+
+  if (hasActivePlayer(game)) game.humansAbandonedAt = null;
 
   recomputeHost(game);
   sendGeneratedMapIfAny(game, player.id);
@@ -421,6 +446,7 @@ export function resyncPlayer(
   const player = playersById.get(playerId);
   if (!player) return { id: playerId, gameName: null };
   player.connected = true;
+  endTakeover(player);
 
   if (room !== (player.gameName ?? HOME_ROOM)) leaveGame(player, true);
 

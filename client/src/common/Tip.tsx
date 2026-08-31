@@ -11,15 +11,24 @@ interface Props {
   placement?: Placement;
   style?: CSSProperties;
   trigger?: Trigger;
+  popperConfig?: OverlayTriggerProps['popperConfig'];
   children: ReactElement;
 }
 
-function Tip({ text, placement = 'auto', style, trigger, children }: Props) {
+function Tip({
+  text,
+  placement = 'auto',
+  style,
+  trigger,
+  popperConfig,
+  children,
+}: Props) {
   const id = useId();
   return (
     <OverlayTrigger
       placement={placement}
       trigger={trigger}
+      popperConfig={popperConfig}
       delay={{ show: 0, hide: 0 }}
       overlay={
         <Tooltip id={id} style={{ whiteSpace: 'pre-line', ...style }}>

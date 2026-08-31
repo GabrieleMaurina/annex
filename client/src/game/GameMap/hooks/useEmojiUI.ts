@@ -73,6 +73,7 @@ export function useEmojiUI({
     emoji: EmojiValue,
     attackTarget?: EmojiSentPayload['attackTarget'],
   ) {
+    if (connector.isOffline()) return;
     connector.sendEmoji({
       targetPlayerId:
         targetPlayerId === GLOBAL_TARGET_ID ? undefined : targetPlayerId,

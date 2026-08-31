@@ -47,6 +47,8 @@ function Game({
   const [gameMeta, setGameMeta] = useState<GameMeta | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [gamePanelOpen, setGamePanelOpen] = useState(false);
   const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
   const [mission, setMission] = useState<Mission | null>(null);
   const [results, setResults] = useState<Map<number, PlayerResultStats> | null>(
@@ -301,7 +303,11 @@ function Game({
 
   return (
     <>
-      <SettingsMenu shareUrl={window.location.href} />
+      <SettingsMenu
+        shareUrl={window.location.href}
+        hidden={showMap && gamePanelOpen}
+        onOpenChange={setSettingsMenuOpen}
+      />
       {showMap ? (
         <GameMap
           game={game}
@@ -359,6 +365,8 @@ function Game({
           setRadiationTerritoryIds={setRadiationTerritoryIds}
           setRadiationUpcomingTerritoryIds={setRadiationUpcomingTerritoryIds}
           setChatOpen={setChatOpen}
+          settingsMenuOpen={settingsMenuOpen}
+          onPanelOpenChange={setGamePanelOpen}
           navigate={navigate}
         />
       ) : game.state === 'ended' ? (
@@ -397,13 +405,15 @@ function Game({
           Results
         </Button>
       )}
-      <Chat
-        nameById={nameById}
-        colorById={colorById}
-        transparent={showMap}
-        open={chatOpen}
-        setOpen={setChatOpen}
-      />
+      {!connector.isOffline() && (
+        <Chat
+          nameById={nameById}
+          colorById={colorById}
+          transparent={showMap}
+          open={chatOpen}
+          setOpen={setChatOpen}
+        />
+      )}
       <OfflineHandoffGate game={game} />
       {game.state === 'playing' && <RotateDeviceOverlay />}
     </>

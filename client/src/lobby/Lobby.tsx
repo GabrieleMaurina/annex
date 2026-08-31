@@ -251,7 +251,7 @@ function Lobby({
           applySettings={applySettings}
           generateMap={generateMap}
           headerActions={
-            <div className="d-flex gap-2">
+            <div className="d-flex flex-column flex-sm-row align-items-start gap-2">
               {isHost && (
                 <Button disabled={!canStart} onClick={startGame}>
                   Start
@@ -291,14 +291,16 @@ function Lobby({
         nameCellRefs={nameCellRefs}
         onEmojiRowClick={handleRowClick}
       />
-      <EmojiTableOverlay
-        emojiPickerFor={emojiPickerFor}
-        emojiPops={emojiPops}
-        rowRefs={rowRefs}
-        nameCellRefs={nameCellRefs}
-        emojiPickerRef={emojiPickerRef}
-        onPick={handleEmojiPick}
-      />
+      {!connector.isOffline() && (
+        <EmojiTableOverlay
+          emojiPickerFor={emojiPickerFor}
+          emojiPops={emojiPops}
+          rowRefs={rowRefs}
+          nameCellRefs={nameCellRefs}
+          emojiPickerRef={emojiPickerRef}
+          onPick={handleEmojiPick}
+        />
+      )}
 
       <SpectatorList
         spectators={game.spectators}

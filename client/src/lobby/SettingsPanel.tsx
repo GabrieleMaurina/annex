@@ -31,6 +31,15 @@ const MAP_TEXT_HOVER_COLOR = 'rgb(59, 59, 59)';
 const MAP_TOOLTIP_STYLE = {
   '--bs-tooltip-max-width': '500px',
 } as CSSProperties;
+const MAP_TOOLTIP_POPPER = {
+  modifiers: [
+    {
+      name: 'flip',
+      enabled: true,
+      options: { fallbackPlacements: ['bottom', 'left'] },
+    },
+  ],
+};
 
 const GENERATE_MAP_OPTION = '__generateMap__';
 
@@ -91,14 +100,8 @@ function SettingsPanel({
   const loadedMapNamesRef = useRef(new Set<string>());
   const [mapGenOpen, setMapGenOpen] = useState(false);
   const [mapRegenerating, setMapRegenerating] = useState(isRegeneratingMap);
-  const [seenMapName, setSeenMapName] = useState<string | null>(null);
   const mapGenRef = useRef<MapGenerationPanelHandle>(null);
   const whiteMapIcon = useWhiteIcon('/icons/map.svg');
-
-  if (game.mapName !== seenMapName) {
-    setSeenMapName(game.mapName);
-    if (getGeneratedMapData(game.mapName)) setMapGenOpen(true);
-  }
 
   useEffect(() => {
     function onRegenerating(value: boolean) {
@@ -297,6 +300,7 @@ function SettingsPanel({
                     placement="right"
                     style={MAP_TOOLTIP_STYLE}
                     trigger={['hover']}
+                    popperConfig={MAP_TOOLTIP_POPPER}
                   >
                     {mapToggle}
                   </Tip>
@@ -318,6 +322,7 @@ function SettingsPanel({
                       text={mapTooltip(name)}
                       placement="right"
                       style={MAP_TOOLTIP_STYLE}
+                      popperConfig={MAP_TOOLTIP_POPPER}
                     >
                       <Dropdown.Item
                         eventKey={name}
@@ -356,6 +361,7 @@ function SettingsPanel({
                 text={mapTooltip(game.mapName)}
                 placement="right"
                 style={MAP_TOOLTIP_STYLE}
+                popperConfig={MAP_TOOLTIP_POPPER}
               >
                 <span className="d-flex align-items-center gap-2">
                   {currentImageSrc && (

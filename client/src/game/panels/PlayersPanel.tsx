@@ -4,6 +4,7 @@ import { Button, ListGroup, Table } from 'react-bootstrap';
 import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
+import { connector } from '../../connector';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import { playSound } from '../../lib/sounds';
 import type {
@@ -130,7 +131,7 @@ function PlayersPanel({
 }: Props) {
   const isSpectator = spectators.some((s) => s.id === selfId);
   const self = players.find((p) => p.id === selfId);
-  const canSendEmoji = !!self;
+  const canSendEmoji = !!self && !connector.isOffline();
   const canSurrender =
     !gameEnded &&
     !isSpectator &&

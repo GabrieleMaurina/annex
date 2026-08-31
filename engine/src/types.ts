@@ -172,6 +172,7 @@ export interface Game {
   slots: number;
   hostId: number;
   originalHostId: number;
+  offline: boolean;
   state: 'lobby' | 'playing' | 'ended';
   alliances: Alliances;
   allianceIds: Set<string>;
@@ -210,6 +211,7 @@ export interface Game {
   turnStartedAt: number;
   paused: boolean;
   pausedAt: number | null;
+  humansAbandonedAt: number | null;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;

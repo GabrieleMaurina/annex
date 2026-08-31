@@ -182,11 +182,11 @@ export function startOffline(name: string): void {
     localPlayerIds = [hostId];
     const baseName = getGameName() || `Game with ${name || 'You'}`;
     gameName = baseName;
-    if (engine.createGame(hostId, { name: gameName }).ok) {
+    if (engine.createGame(hostId, { name: gameName }, true).ok) {
       saveGameName(baseName);
     } else {
       gameName = `${URL_ROOM}-${session}`;
-      engine.createGame(hostId, { name: gameName });
+      engine.createGame(hostId, { name: gameName }, true);
     }
     ready = true;
     const pending = queue.splice(0);

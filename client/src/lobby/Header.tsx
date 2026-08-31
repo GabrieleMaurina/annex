@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
 import PlayerNameEditor from '../common/PlayerNameEditor';
+import { useTitleIconFit } from '../common/useTitleIconFit';
 import type { GameSettingsInput, GameState, Player } from '../lib/types';
 
 const MAX_GAME_NAME_LENGTH = 20;
@@ -16,14 +17,25 @@ interface Props {
 function Header({ game, isHost, applySettings, player, onNameChange }: Props) {
   const [editingName, setEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const { containerRef, textRef, hideIcons } = useTitleIconFit(game.name);
 
   return (
     <div className="mb-4 mt-4 mt-sm-0">
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
         <PlayerNameEditor player={player} onNameChange={onNameChange} />
       </div>
-      <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 gap-sm-5">
-        <img src="/favicon.svg" alt="" style={{ height: '3rem' }} />
+      <div
+        ref={containerRef}
+        className="d-flex flex-nowrap justify-content-center align-items-center gap-3 gap-sm-5"
+      >
+        {!hideIcons && (
+          <img
+            src="/favicon.svg"
+            alt=""
+            className="title-icon"
+            style={{ height: 'clamp(1.75rem, 10vw, 3rem)', flexShrink: 0 }}
+          />
+        )}
         {isHost && editingName ? (
           <Form.Control
             ref={nameInputRef}
@@ -47,15 +59,27 @@ function Header({ game, isHost, applySettings, player, onNameChange }: Props) {
           />
         ) : (
           <h1
-            className="mb-0"
+            ref={textRef}
+            className="mb-0 text-truncate"
             role={isHost ? 'button' : undefined}
-            style={isHost ? { cursor: 'pointer' } : undefined}
+            style={{
+              fontSize: 'clamp(1.25rem, 7vw, 2.5rem)',
+              minWidth: 0,
+              ...(isHost ? { cursor: 'pointer' } : {}),
+            }}
             onClick={isHost ? () => setEditingName(true) : undefined}
           >
             {game.name}
           </h1>
         )}
-        <img src="/favicon.svg" alt="" style={{ height: '3rem' }} />
+        {!hideIcons && (
+          <img
+            src="/favicon.svg"
+            alt=""
+            className="title-icon"
+            style={{ height: 'clamp(1.75rem, 10vw, 3rem)', flexShrink: 0 }}
+          />
+        )}
       </div>
     </div>
   );

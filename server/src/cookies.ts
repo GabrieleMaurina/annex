@@ -23,14 +23,14 @@ export function parseCookies(
   return out;
 }
 
-export function serializeSessionCookie(value: string, secure: boolean): string {
-  const parts = [
-    `${SESSION_COOKIE}=${encodeURIComponent(value)}`,
-    'Path=/',
-    `Max-Age=${MAX_AGE_SECONDS}`,
-    'HttpOnly',
-    'SameSite=Lax',
-  ];
+export function serializeSessionCookie(
+  value: string,
+  secure: boolean,
+  persistent: boolean,
+): string {
+  const parts = [`${SESSION_COOKIE}=${encodeURIComponent(value)}`, 'Path=/'];
+  if (persistent) parts.push(`Max-Age=${MAX_AGE_SECONDS}`);
+  parts.push('HttpOnly', 'SameSite=Lax');
   if (secure) parts.push('Secure');
   return parts.join('; ');
 }
@@ -77,18 +77,31 @@ export function sessionTokenFromRequest(req: IncomingMessage): string {
 }
 
 const ROTATION_TTL_MS = 5 * 60 * 1000;
-const pendingRotations = new Map<string, string>();
 
-export function queueSessionRotation(current: string, next: string): void {
-  pendingRotations.set(current, next);
+interface SessionRotation {
+  next: string;
+  persistent: boolean;
+}
+
+const pendingRotations = new Map<string, SessionRotation>();
+
+export function queueSessionRotation(
+  current: string,
+  next: string,
+  persistent: boolean,
+): void {
+  const rotation = { next, persistent };
+  pendingRotations.set(current, rotation);
   setTimeout(() => {
-    if (pendingRotations.get(current) === next)
+    if (pendingRotations.get(current) === rotation)
       pendingRotations.delete(current);
   }, ROTATION_TTL_MS).unref();
 }
 
-export function takeSessionRotation(current: string): string | undefined {
-  const next = pendingRotations.get(current);
-  if (next !== undefined) pendingRotations.delete(current);
-  return next;
+export function takeSessionRotation(
+  current: string,
+): SessionRotation | undefined {
+  const rotation = pendingRotations.get(current);
+  if (rotation !== undefined) pendingRotations.delete(current);
+  return rotation;
 }

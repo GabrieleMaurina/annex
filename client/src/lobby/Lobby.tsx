@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
+import { formatError } from '../common/formatError';
 import { connector } from '../connector';
 import { saveGameSettings } from '../lib/player';
 import type {
@@ -240,7 +241,7 @@ function Lobby({
           dismissible
           onClose={() => setSettingsError('')}
         >
-          {settingsError}
+          {formatError(settingsError)}
         </Alert>
       )}
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Form } from 'react-bootstrap';
+import { Alert, Button, Form, InputGroup } from 'react-bootstrap';
 import { connector } from '../connector';
 import { getPlayerName, setPlayerName } from '../lib/player';
 import type { Account, AccountChange } from '../lib/types';
+import { formatError } from './formatError';
 import { PANEL_BG_CLASS, PANEL_CLASS } from './panelStyle';
 
 type Mode = 'login' | 'register' | 'forgotPassword' | 'forgotUsername' | 'info';
@@ -19,6 +20,9 @@ function AccountButton({ account, onAccountChange }: Props) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [revealPassword, setRevealPassword] = useState(false);
+  const [stayLoggedIn, setStayLoggedIn] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [loginFailed, setLoginFailed] = useState(false);
@@ -31,6 +35,9 @@ function AccountButton({ account, onAccountChange }: Props) {
     setUsername('');
     setEmail('');
     setPassword('');
+    setConfirmPassword('');
+    setRevealPassword(false);
+    setStayLoggedIn(true);
     setError('');
     setBusy(false);
     setLoginFailed(false);
@@ -67,7 +74,7 @@ function AccountButton({ account, onAccountChange }: Props) {
     e.preventDefault();
     setBusy(true);
     setError('');
-    connector.login({ username, password }, (res) => {
+    connector.login({ username, password, stayLoggedIn }, (res) => {
       if (!res.ok) {
         setError(res.error);
         setBusy(false);
@@ -87,6 +94,10 @@ function AccountButton({ account, onAccountChange }: Props) {
 
   function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError('passwords do not match');
+      return;
+    }
     setBusy(true);
     setError('');
     connector.register({ username, email, password }, (res) => {
@@ -230,20 +241,50 @@ function AccountButton({ account, onAccountChange }: Props) {
                 />
               )}
               {showPassword && (
-                <Form.Control
-                  size="sm"
-                  type="password"
-                  placeholder="Password"
-                  autoComplete={
-                    mode === 'login' ? 'current-password' : 'new-password'
-                  }
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                <>
+                  <InputGroup size="sm">
+                    <Form.Control
+                      type={revealPassword ? 'text' : 'password'}
+                      placeholder="Password"
+                      autoComplete={
+                        mode === 'login' ? 'current-password' : 'new-password'
+                      }
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <Button
+                      variant="outline-secondary"
+                      tabIndex={-1}
+                      onClick={() => setRevealPassword((v) => !v)}
+                    >
+                      {revealPassword ? 'Hide' : 'Show'}
+                    </Button>
+                  </InputGroup>
+                  {mode === 'register' && (
+                    <Form.Control
+                      size="sm"
+                      type={revealPassword ? 'text' : 'password'}
+                      placeholder="Confirm password"
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  )}
+                </>
+              )}
+              {mode === 'login' && (
+                <Form.Check
+                  type="checkbox"
+                  id="stay-logged-in"
+                  className="small"
+                  label="Stay logged in"
+                  checked={stayLoggedIn}
+                  onChange={(e) => setStayLoggedIn(e.target.checked)}
                 />
               )}
               {error && (
                 <Alert variant="danger" className="py-1 px-2 mb-0 small">
-                  {error}
+                  {formatError(error)}
                 </Alert>
               )}
               <Button type="submit" size="sm" disabled={busy}>

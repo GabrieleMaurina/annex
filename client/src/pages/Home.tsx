@@ -3,6 +3,7 @@ import { Alert, Button, Container, Form, Table } from 'react-bootstrap';
 import AccountButton from '../common/AccountButton';
 import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
+import { formatError } from '../common/formatError';
 import { useWhiteIcon } from '../common/icon';
 import { connector } from '../connector';
 import { applySavedGameSettings } from '../lib/gameSetup';
@@ -141,7 +142,7 @@ function Home({
       )}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError('')}>
-          {error}
+          {formatError(error)}
         </Alert>
       )}
 

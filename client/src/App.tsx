@@ -272,10 +272,10 @@ function App() {
           <p className="mb-0">Loading...</p>
         </Container>
       );
-    const AuthPageComponent =
-      authPage.kind === 'confirm' ? EmailConfirmation : PasswordReset;
+    if (authPage.kind === 'confirm')
+      return <EmailConfirmation code={authPage.code} navigate={navigate} />;
     return (
-      <AuthPageComponent
+      <PasswordReset
         code={authPage.code}
         navigate={navigate}
         onAccountChange={handleAccountChange}

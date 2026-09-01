@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
 import SettingsMenu from '../common/SettingsMenu';
+import { formatError } from '../common/formatError';
 import { connector } from '../connector';
 import GameMap from '../game/GameMap';
 import OfflineHandoffGate from '../game/OfflineHandoffGate';
@@ -192,7 +193,7 @@ function Game({
   if (joinError) {
     return (
       <Container fluid className="py-5 px-4">
-        <Alert variant="danger">{joinError}</Alert>
+        <Alert variant="danger">{formatError(joinError)}</Alert>
         <Button onClick={() => navigate('/')}>Home</Button>
       </Container>
     );
@@ -369,8 +370,6 @@ function Game({
           settingsMenuOpen={settingsMenuOpen}
           onPanelOpenChange={setGamePanelOpen}
           navigate={navigate}
-          account={account}
-          onAccountChange={onAccountChange}
         />
       ) : game.state === 'ended' ? (
         <EndPage

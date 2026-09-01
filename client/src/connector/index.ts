@@ -106,11 +106,8 @@ export const connector = {
     socket.emit('auth:register', data, cb);
   },
 
-  confirmEmail(data: { code: string }, cb: (res: LoginAck) => void): void {
-    socket.emit('auth:confirmEmail', data, (res: LoginAck) => {
-      cb(res);
-      if (res.ok) rebindSocket();
-    });
+  confirmEmail(data: { code: string }, cb: (res: AuthAck) => void): void {
+    socket.emit('auth:confirmEmail', data, cb);
   },
 
   recoverUsername(
@@ -128,7 +125,7 @@ export const connector = {
   },
 
   resetPassword(
-    data: { code: string; password: string },
+    data: { code: string; password: string; stayLoggedIn: boolean },
     cb: (res: LoginAck) => void,
   ): void {
     socket.emit('auth:resetPassword', data, (res: LoginAck) => {
@@ -138,7 +135,7 @@ export const connector = {
   },
 
   login(
-    data: { username: string; password: string },
+    data: { username: string; password: string; stayLoggedIn: boolean },
     cb: (res: LoginAck) => void,
   ): void {
     socket.emit('auth:login', data, (res: LoginAck) => {

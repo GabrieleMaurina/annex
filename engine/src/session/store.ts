@@ -333,6 +333,16 @@ export function listGameSummaries() {
   return [...games.values()].map((game) => gameSummary(game));
 }
 
+export function playerGameName(playerId: number): string | null {
+  return playersById.get(playerId)?.gameName ?? null;
+}
+
+export function playerGameState(playerId: number): Game['state'] | null {
+  const name = playersById.get(playerId)?.gameName;
+  if (!name) return null;
+  return games.get(name)?.state ?? null;
+}
+
 export function broadcastHomeGames() {
   const summaries = listGameSummaries();
   for (const player of playersById.values()) {

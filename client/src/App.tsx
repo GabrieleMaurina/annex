@@ -1,14 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+import BurgerMenu from './common/BurgerMenu';
 import { connector } from './connector';
 import { registerGeneratedMap, type Territory } from './game/mapData';
 import { applySavedGameSettings } from './lib/gameSetup';
 import { applyServerSettings, setPlayerName } from './lib/player';
-import type { Account, AccountChange, Ack, IdentifyResult } from './lib/types';
+import type { Account, Ack, IdentifyResult } from './lib/types';
+import AccountPage from './pages/Account';
 import EmailConfirmation from './pages/EmailConfirmation';
+import Friends from './pages/Friends';
 import Game from './pages/Game';
+import GameHistory from './pages/GameHistory';
 import Home from './pages/Home';
+import Login from './pages/Login';
 import PasswordReset from './pages/PasswordReset';
+import PlayerProfile from './pages/PlayerProfile';
+import Players from './pages/Players';
 
 const AUTH_PAGE_PREFIXES = {
   confirm: '/email_confirmation/',
@@ -34,17 +48,24 @@ function authPageFromPath(pathname: string): AuthPage | null {
 }
 
 function roomFromPath(pathname: string): string {
-  if (pathname === '/') return 'home';
-  try {
-    return decodeURIComponent(pathname.slice(1));
-  } catch {
-    return 'home';
+  if (pathname === '/games/offline') return 'offline';
+  const match = pathname.match(/^\/games\/live\/([^/]+)/);
+  if (match) {
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return 'home';
+    }
   }
+  return 'home';
+}
+
+function gamePath(name: string): string {
+  return `/games/live/${encodeURIComponent(name)}`;
 }
 
 function App() {
   const [account, setAccount] = useState<Account | null>(null);
-  const [path, setPath] = useState(window.location.pathname);
   const [joinError, setJoinError] = useState('');
   const [needsPassword, setNeedsPassword] = useState(false);
   const [kickedMessage, setKickedMessage] = useState('');
@@ -52,41 +73,39 @@ function App() {
   const [mapNames, setMapNames] = useState<string[]>([]);
   const [selfId, setSelfId] = useState<number | null>(null);
 
-  const authPage = authPageFromPath(path);
-  const onAuthPage = authPage !== null;
-
-  useEffect(() => {
-    connector.setMode(roomFromPath(window.location.pathname) === 'offline');
-  }, []);
-
-  const applyRoom = useCallback((pathname: string) => {
-    connector.setMode(roomFromPath(pathname) === 'offline');
-    setPath(pathname);
-  }, []);
-
-  useEffect(() => {
-    function onPopState() {
-      applyRoom(window.location.pathname);
-    }
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, [applyRoom]);
-
-  const room = authPage ? 'home' : roomFromPath(path);
-  const isOffline = room === 'offline';
-
+  const { pathname } = useLocation();
+  const routerNavigate = useNavigate();
   const navigate = useCallback(
-    (newPath: string) => {
-      window.history.pushState(null, '', newPath);
-      applyRoom(newPath);
-    },
-    [applyRoom],
+    (path: string) => routerNavigate(path),
+    [routerNavigate],
   );
+
+  const authPage = authPageFromPath(pathname);
+  const onAuthPage = authPage !== null;
+  const room = roomFromPath(pathname);
+  const isOffline = room === 'offline';
+  const inGame = !onAuthPage && room !== 'home';
+
+  const refreshSession = useCallback(() => {
+    connector.session((res) => {
+      setAccount(res.account);
+      setPlayerName(res.name);
+      applyServerSettings(!!res.account, res.clientSettings, res.gameSettings);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isOffline) refreshSession();
+  }, [isOffline, refreshSession]);
+
+  useEffect(() => {
+    connector.setMode(isOffline);
+  }, [isOffline]);
 
   const renameRoom = useCallback(
     (newName: string) => {
       if (isOffline) return;
-      window.history.replaceState(null, '', `/${encodeURIComponent(newName)}`);
+      window.history.replaceState(null, '', gamePath(newName));
     },
     [isOffline],
   );
@@ -143,43 +162,35 @@ function App() {
   );
 
   useEffect(() => {
+    if (!inGame) return;
+
     function afterConnect() {
-      connector.listMaps((names: string[]) => {
-        setMapNames(names);
-      });
-      connector.identify({ room }, (res: IdentifyResult) => {
-        setSelfId(res.id);
-        if (!onAuthPage && res.gameName && res.gameName !== room) {
-          navigate(`/${encodeURIComponent(res.gameName)}`);
-        }
-        if (isOffline) return;
-        setAccount(res.account);
-        setPlayerName(res.name);
-        applyServerSettings(
-          !!res.account,
-          res.clientSettings,
-          res.gameSettings,
-        );
-      });
+      connector.listMaps(setMapNames);
       setNeedsPassword(false);
-      if (room === 'home') {
-        setJoinError('');
-        return;
-      }
       if (isOffline) {
         applySavedGameSettings();
         setJoinError('');
-        return;
       }
-
-      attemptJoin();
+      connector.identify({ room }, (res: IdentifyResult) => {
+        setSelfId(res.id);
+        if (isOffline) return;
+        setPlayerName(res.name);
+        if (res.gameName && res.gameName !== room) {
+          navigate(gamePath(res.gameName));
+          return;
+        }
+        attemptJoin();
+      });
     }
+
+    if (!isOffline) connector.open(room);
+    connector.on('connect', afterConnect);
     if (connector.connected) afterConnect();
-    if (!isOffline) connector.on('connect', afterConnect);
     return () => {
       connector.off('connect', afterConnect);
+      if (!isOffline) connector.close();
     };
-  }, [room, isOffline, onAuthPage, attemptJoin, navigate]);
+  }, [inGame, isOffline, room, attemptJoin, navigate]);
 
   useEffect(() => {
     function onMapGenerated(data: {
@@ -225,34 +236,13 @@ function App() {
 
   useEffect(() => {
     function onDisconnect(reason: string) {
-      if (reason === 'io server disconnect') {
-        setSessionTakenOver(true);
-        return;
-      }
-      if (connector.isOffline()) return;
-      navigate('/');
+      if (reason === 'io server disconnect') setSessionTakenOver(true);
     }
     connector.on('disconnect', onDisconnect);
     return () => {
       connector.off('disconnect', onDisconnect);
     };
-  }, [navigate]);
-
-  const handleAccountChange = useCallback<AccountChange>(
-    (change) => {
-      setAccount(change.account);
-      applyServerSettings(
-        !!change.account,
-        change.clientSettings,
-        change.gameSettings,
-      );
-      if (change.gameName != null) {
-        const target = `/${encodeURIComponent(change.gameName)}`;
-        if (window.location.pathname !== target) navigate(target);
-      }
-    },
-    [navigate],
-  );
+  }, []);
 
   if (sessionTakenOver) {
     return (
@@ -266,34 +256,14 @@ function App() {
   }
 
   if (authPage) {
-    if (selfId === null)
-      return (
-        <Container className="py-5">
-          <p className="mb-0">Loading...</p>
-        </Container>
-      );
     if (authPage.kind === 'confirm')
       return <EmailConfirmation code={authPage.code} navigate={navigate} />;
     return <PasswordReset code={authPage.code} navigate={navigate} />;
   }
 
-  if (room === 'home') {
-    return (
-      <Home
-        account={account}
-        onAccountChange={handleAccountChange}
-        navigate={navigate}
-        kickedMessage={kickedMessage}
-        clearKickedMessage={() => setKickedMessage('')}
-      />
-    );
-  }
-
-  return (
+  const gameElement = (
     <Game
       key={room}
-      account={account}
-      onAccountChange={handleAccountChange}
       selfId={selfId}
       joinError={joinError}
       needsPassword={needsPassword}
@@ -302,6 +272,53 @@ function App() {
       navigate={navigate}
       onRename={renameRoom}
     />
+  );
+
+  return (
+    <>
+      {!inGame && (
+        <div
+          className="position-fixed top-0 end-0 m-3"
+          style={{ zIndex: 1030 }}
+        >
+          <BurgerMenu
+            account={account}
+            navigate={navigate}
+            onSessionChange={refreshSession}
+          />
+        </div>
+      )}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Home
+              navigate={navigate}
+              kickedMessage={kickedMessage}
+              clearKickedMessage={() => setKickedMessage('')}
+            />
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <Login
+              account={account}
+              onSessionChange={refreshSession}
+              navigate={navigate}
+            />
+          }
+        />
+        <Route path="/account" element={<AccountPage />} />
+        <Route path="/friends" element={<Friends />} />
+        <Route path="/players" element={<Players />} />
+        <Route path="/players/:username" element={<PlayerProfile />} />
+        <Route path="/games/history" element={<GameHistory />} />
+        <Route path="/games/offline" element={gameElement} />
+        <Route path="/games/live/:gameName" element={gameElement} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

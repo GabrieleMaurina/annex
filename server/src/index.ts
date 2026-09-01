@@ -1,16 +1,13 @@
 import { createEngine, EngineCallbacks } from 'engine';
-import express from 'express';
 import { createServer } from 'http';
 import os from 'os';
 import { Server } from 'socket.io';
 import { randomToken } from './auth';
-import { registerAuthHandlers } from './authHandlers';
 import {
   isSecureRequest,
   isSessionToken,
   parseCookies,
   serializeSessionCookie,
-  takeSessionRotation,
 } from './cookies';
 import { connectDb } from './db';
 import { handleGameEnded } from './elo';
@@ -33,29 +30,23 @@ import {
 } from './game/handlers';
 import { getGameMeta, isGamePublic, reconcileGameMeta } from './gameMeta';
 import { registerHomeHandlers } from './home';
+import { createHttpApp } from './http/app';
 import { loadMaps, registerMapsHandlers } from './maps';
+import { gameRoomName } from './rooms';
 import {
   emitTo,
-  HOME_ROOM,
-  offlineClientPlayerIds,
+  playerIdForIdentity,
   setSocketRoom,
+  socketIdByPlayerId,
 } from './socketRooms';
 import { nodeWorkerPort } from './workers/nodeWorkerPort';
 
 type HomeGameSummary = { name: string };
 
-let lastReconciled: unknown[] | null = null;
-
-function reconcile(games: unknown[]): void {
-  if (games === lastReconciled) return;
-  lastReconciled = games;
-  reconcileGameMeta(
-    new Set((games as HomeGameSummary[]).map((game) => game.name)),
-  );
-}
-
-function visibleHomeGames(games: unknown[]): unknown[] {
-  return (games as HomeGameSummary[])
+function listVisibleGames(): unknown[] {
+  const summaries = engine.listGameSummaries() as HomeGameSummary[];
+  reconcileGameMeta(new Set(summaries.map((game) => game.name)));
+  return summaries
     .filter((game) => isGamePublic(game.name))
     .map((game) => ({
       ...game,
@@ -63,7 +54,25 @@ function visibleHomeGames(games: unknown[]): unknown[] {
     }));
 }
 
-const app = express();
+function playerGame(token: string, userId: string | null): string | null {
+  const playerId = playerIdForIdentity(token, userId);
+  return playerId === undefined ? null : engine.playerGameName(playerId);
+}
+
+function inLiveGame(token: string, userId: string | null): boolean {
+  const playerId = playerIdForIdentity(token, userId);
+  if (playerId === undefined) return false;
+  return (
+    socketIdByPlayerId.has(playerId) ||
+    engine.playerGameState(playerId) === 'playing'
+  );
+}
+
+const app = createHttpApp({
+  listGames: listVisibleGames,
+  playerGame,
+  inLiveGame,
+});
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
@@ -76,8 +85,7 @@ const io = new Server(httpServer, {
 io.engine.on('initial_headers', (headers, req) => {
   const raw = parseCookies(req.headers.cookie).anx;
   const existing = isSessionToken(raw) ? raw : undefined;
-  const rotated = existing ? takeSessionRotation(existing) : undefined;
-  const token = rotated?.next || existing || randomToken();
+  const token = existing || randomToken();
   (req as { anxToken?: string }).anxToken = token;
   if (!existing)
     headers['set-cookie'] = serializeSessionCookie(
@@ -85,20 +93,10 @@ io.engine.on('initial_headers', (headers, req) => {
       isSecureRequest(req),
       true,
     );
-  else if (rotated)
-    headers['set-cookie'] = serializeSessionCookie(
-      token,
-      isSecureRequest(req),
-      rotated.persistent,
-    );
 });
 
 const callbacks: EngineCallbacks = {
-  onHomeGames: (playerId, games) => {
-    reconcile(games);
-    if (offlineClientPlayerIds.has(playerId)) return;
-    emitTo(io, playerId, 'home:games', visibleHomeGames(games));
-  },
+  onHomeGames: () => {},
   onGameState: (playerId, state) => emitTo(io, playerId, 'game:state', state),
   onCards: (playerId, payload) => emitTo(io, playerId, 'game:cards', payload),
   onMission: (playerId, payload) =>
@@ -173,10 +171,10 @@ export const engine = createEngine(callbacks, {
 loadMaps(engine);
 
 io.on('connection', (socket) => {
-  socket.join(HOME_ROOM);
+  const game = socket.handshake.query.game;
+  if (typeof game === 'string' && game) socket.join(gameRoomName(game));
   registerMapsHandlers(socket, engine);
   registerHomeHandlers(io, socket, engine);
-  registerAuthHandlers(io, socket, engine);
   registerGameHandlers(io, socket, engine);
   registerMapGenHandlers(socket, engine);
   registerBotLobbyHandlers(socket, engine);

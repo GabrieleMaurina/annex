@@ -8,18 +8,16 @@ export interface Account {
   username: string;
 }
 
-export type AccountChange = (change: {
-  account: Account | null;
-  clientSettings: ClientSettings;
-  gameSettings: Record<string, unknown>;
-  gameName?: string | null;
-}) => void;
-
 export interface IdentifyResult {
   id: number;
   gameName: string | null;
   name: string;
+}
+
+export interface SessionResult {
   account: Account | null;
+  name: string;
+  gameName?: string | null;
   clientSettings?: ClientSettings;
   gameSettings?: Record<string, unknown>;
 }

@@ -10,8 +10,6 @@ import RotateDeviceOverlay from '../game/RotateDeviceOverlay';
 import { useGameLogs } from '../game/useGameLogs';
 import { playSound } from '../lib/sounds';
 import type {
-  Account,
-  AccountChange,
   Ack,
   GameMeta,
   GameResults,
@@ -23,8 +21,6 @@ import Lobby from '../lobby/Lobby';
 import EndPage from './EndPage';
 
 interface Props {
-  account: Account | null;
-  onAccountChange: AccountChange;
   selfId: number | null;
   joinError: string;
   needsPassword: boolean;
@@ -35,8 +31,6 @@ interface Props {
 }
 
 function Game({
-  account,
-  onAccountChange,
   selfId,
   joinError,
   needsPassword,
@@ -379,8 +373,6 @@ function Game({
           mapNames={mapNames}
           navigate={navigate}
           onViewMap={() => setEndView('map')}
-          account={account}
-          onAccountChange={onAccountChange}
         />
       ) : (
         <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
@@ -388,8 +380,6 @@ function Game({
             game={game}
             gameMeta={gameMeta}
             setGame={applyGameState}
-            account={account}
-            onAccountChange={onAccountChange}
             selfId={selfId}
             mapNames={mapNames}
             navigate={navigate}

@@ -1,18 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Container, Form, Table } from 'react-bootstrap';
-import AccountButton from '../common/AccountButton';
+import { Alert, Button, Container, Table } from 'react-bootstrap';
 import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
-import { formatError } from '../common/formatError';
 import { useWhiteIcon } from '../common/icon';
 import { connector } from '../connector';
-import { applySavedGameSettings } from '../lib/gameSetup';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import { getPlayerName } from '../lib/player';
-import type { Account, AccountChange, Ack, GameSummary } from '../lib/types';
+import type { GameSummary } from '../lib/types';
 
 const MAX_GAME_NAME_LENGTH = 20;
-const MAX_CREATE_ATTEMPTS = 20;
+const POLL_MS = 5000;
 
 const GAME_STATE_COLORS: Record<GameSummary['state'], string> = {
   lobby: playerColor(2),
@@ -21,8 +18,6 @@ const GAME_STATE_COLORS: Record<GameSummary['state'], string> = {
 };
 
 interface Props {
-  account: Account | null;
-  onAccountChange: AccountChange;
   navigate: (path: string) => void;
   kickedMessage: string;
   clearKickedMessage: () => void;
@@ -36,67 +31,41 @@ function suggestedGameName(base: string, attempt: number): string {
     : base + suffix;
 }
 
-function Home({
-  account,
-  onAccountChange,
-  navigate,
-  kickedMessage,
-  clearKickedMessage,
-}: Props) {
+function gamePath(name: string): string {
+  return `/games/live/${encodeURIComponent(name)}`;
+}
+
+function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
   const [games, setGames] = useState<GameSummary[]>([]);
-  const [error, setError] = useState('');
-  const [passwordPrompt, setPasswordPrompt] = useState<{
-    gameName: string;
-    password: string;
-  } | null>(null);
+  const [resumeGame, setResumeGame] = useState<string | null>(null);
   const whiteGithubIcon = useWhiteIcon('/icons/github.svg');
 
   useEffect(() => {
-    function onGames(list: GameSummary[]) {
-      setGames(list);
+    function refresh() {
+      if (document.visibilityState !== 'visible') return;
+      connector.listGames(setGames);
+      connector.session((s) => setResumeGame(s.gameName ?? null));
     }
-    connector.on('home:games', onGames);
+    refresh();
+    const timer = setInterval(refresh, POLL_MS);
+    document.addEventListener('visibilitychange', refresh);
     return () => {
-      connector.off('home:games', onGames);
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
     };
   }, []);
 
-  function createGame(attempt = 0) {
-    const baseName = `Game with ${getPlayerName()}`;
-    const name = suggestedGameName(baseName, attempt);
-    connector.createGame({ name }, (res: Ack) => {
-      if (res.ok) {
-        applySavedGameSettings();
-        navigate(`/${encodeURIComponent(res.game.name)}`);
-      } else if (
-        res.error === 'game name already in use' &&
-        attempt < MAX_CREATE_ATTEMPTS
-      )
-        createGame(attempt + 1);
-      else setError(res.error);
-    });
-  }
-
-  function joinGame(gameName: string, password?: string) {
-    connector.joinGame({ gameName, password }, (res: Ack) => {
-      if (res.ok) {
-        setPasswordPrompt(null);
-        navigate(`/${encodeURIComponent(res.game.name)}`);
-      } else if (res.error === 'invalid password') {
-        setPasswordPrompt({ gameName, password: '' });
-      } else {
-        setPasswordPrompt(null);
-        setError(res.error);
-      }
-    });
+  function createGame() {
+    const base = `Game with ${getPlayerName() || 'Player'}`;
+    const taken = new Set(games.map((g) => g.name));
+    let attempt = 0;
+    while (taken.has(suggestedGameName(base, attempt))) attempt += 1;
+    navigate(gamePath(suggestedGameName(base, attempt)));
   }
 
   return (
     <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
       <SettingsMenu shareUrl={window.location.origin} />
-      <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
-        <AccountButton account={account} onAccountChange={onAccountChange} />
-      </div>
       <Tip text="View on GitHub">
         <Button
           variant="secondary"
@@ -140,48 +109,21 @@ function Home({
           {kickedMessage}
         </Alert>
       )}
-      {error && (
-        <Alert variant="danger" dismissible onClose={() => setError('')}>
-          {formatError(error)}
-        </Alert>
-      )}
 
-      {passwordPrompt && (
-        <Alert
-          variant="secondary"
-          dismissible
-          onClose={() => setPasswordPrompt(null)}
-        >
-          <Form
-            className="d-flex align-items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              joinGame(passwordPrompt.gameName, passwordPrompt.password);
-            }}
+      {resumeGame && (
+        <div className="text-center mb-4">
+          <Button
+            variant="success"
+            onClick={() => navigate(gamePath(resumeGame))}
           >
-            <span>Password for {passwordPrompt.gameName}:</span>
-            <Form.Control
-              type="password"
-              autoFocus
-              className="w-auto"
-              value={passwordPrompt.password}
-              onChange={(e) =>
-                setPasswordPrompt({
-                  ...passwordPrompt,
-                  password: e.target.value,
-                })
-              }
-            />
-            <Button type="submit" size="sm">
-              Join
-            </Button>
-          </Form>
-        </Alert>
+            Resume {resumeGame}
+          </Button>
+        </div>
       )}
 
       <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-2 mb-4">
-        <Button onClick={() => createGame()}>Create Online</Button>
-        <Button variant="secondary" onClick={() => navigate('/offline')}>
+        <Button onClick={createGame}>Create Online</Button>
+        <Button variant="secondary" onClick={() => navigate('/games/offline')}>
           Create Offline
         </Button>
       </div>
@@ -215,11 +157,7 @@ function Home({
                   <tr
                     key={g.name}
                     role="button"
-                    onClick={() =>
-                      g.hasPassword
-                        ? setPasswordPrompt({ gameName: g.name, password: '' })
-                        : joinGame(g.name)
-                    }
+                    onClick={() => navigate(gamePath(g.name))}
                     style={{ cursor: 'pointer' }}
                   >
                     <td style={rowStyle}>

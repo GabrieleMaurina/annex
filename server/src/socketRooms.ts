@@ -2,9 +2,6 @@ import { Server, Socket } from 'socket.io';
 import { renameGameMeta } from './gameMeta';
 import { gameRoomName } from './rooms';
 
-export const HOME_ROOM = 'home';
-export const OFFLINE_ROOM = 'offline';
-
 export const playerIdBySessionToken = new Map<string, number>();
 export const playerIdByUserId = new Map<string, number>();
 export const socketIdByPlayerId = new Map<number, string>();
@@ -12,8 +9,6 @@ export const playerIdBySocketId = new Map<string, number>();
 export const sessionTokenBySocketId = new Map<string, string>();
 export const userIdBySocketId = new Map<string, string>();
 export const gameNameByPlayerId = new Map<number, string | null>();
-export const offlineClientPlayerIds = new Set<number>();
-export const rebindingPlayerIds = new Set<number>();
 
 export function emitTo(
   io: Server,
@@ -32,6 +27,17 @@ export function userIdByPlayerId(playerId: number): string | undefined {
     if (id === playerId) return userId;
   }
   return undefined;
+}
+
+export function playerIdForIdentity(
+  token: string,
+  userId: string | null,
+): number | undefined {
+  if (userId) {
+    const byUser = playerIdByUserId.get(userId);
+    if (byUser !== undefined) return byUser;
+  }
+  return playerIdBySessionToken.get(token);
 }
 
 export function bindSocket(
@@ -71,5 +77,5 @@ export function setSocketRoom(
   for (const joinedRoom of [...socket.rooms]) {
     if (joinedRoom !== socket.id) socket.leave(joinedRoom);
   }
-  socket.join(gameName ? gameRoomName(gameName) : HOME_ROOM);
+  if (gameName) socket.join(gameRoomName(gameName));
 }

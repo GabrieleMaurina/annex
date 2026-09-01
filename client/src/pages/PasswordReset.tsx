@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button, Container, Form } from 'react-bootstrap';
+import { formatError } from '../common/formatError';
 import { connector } from '../connector';
 import { setPlayerName } from '../lib/player';
 import type { AccountChange } from '../lib/types';
@@ -12,6 +13,7 @@ interface Props {
 
 function PasswordReset({ code, navigate, onAccountChange }: Props) {
   const [password, setPassword] = useState('');
+  const [stayLoggedIn, setStayLoggedIn] = useState(true);
   const [status, setStatus] = useState<'form' | 'ok'>('form');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -20,7 +22,7 @@ function PasswordReset({ code, navigate, onAccountChange }: Props) {
     e.preventDefault();
     setBusy(true);
     setError('');
-    connector.resetPassword({ code, password }, (res) => {
+    connector.resetPassword({ code, password, stayLoggedIn }, (res) => {
       setBusy(false);
       if (res.ok) {
         setPlayerName(res.username);
@@ -53,9 +55,17 @@ function PasswordReset({ code, navigate, onAccountChange }: Props) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <Form.Check
+            type="checkbox"
+            id="reset-stay-logged-in"
+            className="small"
+            label="Stay logged in"
+            checked={stayLoggedIn}
+            onChange={(e) => setStayLoggedIn(e.target.checked)}
+          />
           {error && (
             <Alert variant="danger" className="py-1 px-2 mb-0 small">
-              {error}
+              {formatError(error)}
             </Alert>
           )}
           <Button type="submit" disabled={busy}>

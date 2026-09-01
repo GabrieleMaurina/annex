@@ -60,7 +60,10 @@ export function registerAuthHandlers(
   socket: Socket,
   engine: Engine,
 ) {
-  function completeLogin(res: Extract<LoginResult, { ok: true }>): Promise<{
+  function completeLogin(
+    res: Extract<LoginResult, { ok: true }>,
+    persistent: boolean,
+  ): Promise<{
     username: string;
     clientSettings: ClientSettings;
     gameSettings: GameSettings;
@@ -85,7 +88,7 @@ export function registerAuthHandlers(
       }
       rebindingPlayerIds.add(effectiveId);
       bindSocket(io, socket, effectiveId, newToken, res.userId);
-      queueSessionRotation(currentToken, newToken);
+      queueSessionRotation(currentToken, newToken, persistent);
       setTimeout(() => {
         if (!rebindingPlayerIds.delete(effectiveId)) return;
         const sid = socketIdByPlayerId.get(effectiveId);
@@ -105,14 +108,18 @@ export function registerAuthHandlers(
     });
   }
 
-  function handleLoggedIn(result: Promise<LoginResult>, callback: LoggedInAck) {
+  function handleLoggedIn(
+    result: Promise<LoginResult>,
+    callback: LoggedInAck,
+    persistent: boolean,
+  ) {
     result
       .then((res) => {
         if (!res.ok) {
           callback(res);
           return;
         }
-        return completeLogin(res).then((payload) =>
+        return completeLogin(res, persistent).then((payload) =>
           callback({ ok: true, ...payload }),
         );
       })
@@ -142,13 +149,15 @@ export function registerAuthHandlers(
       .catch(() => callback({ ok: false, error: 'server error' }));
   });
 
-  socket.on('auth:confirmEmail', (data: unknown, callback: LoggedInAck) => {
+  socket.on('auth:confirmEmail', (data: unknown, callback: SimpleAck) => {
     if (typeof callback !== 'function' || !isObject(data)) return;
     if (!allowAuthAttempt(ip)) {
       callback({ ok: false, error: 'too many requests' });
       return;
     }
-    handleLoggedIn(confirmEmail(data.code), callback);
+    confirmEmail(data.code)
+      .then(callback)
+      .catch(() => callback({ ok: false, error: 'server error' }));
   });
 
   socket.on('auth:resetPassword', (data: unknown, callback: LoggedInAck) => {
@@ -157,7 +166,11 @@ export function registerAuthHandlers(
       callback({ ok: false, error: 'too many requests' });
       return;
     }
-    handleLoggedIn(resetPassword(data.code, data.password), callback);
+    handleLoggedIn(
+      resetPassword(data.code, data.password),
+      callback,
+      data.stayLoggedIn !== false,
+    );
   });
 
   socket.on('auth:login', (data: unknown, callback: LoggedInAck) => {
@@ -182,6 +195,7 @@ export function registerAuthHandlers(
         return res;
       }),
       callback,
+      data.stayLoggedIn !== false,
     );
   });
 

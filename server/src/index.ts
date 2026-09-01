@@ -76,10 +76,20 @@ io.engine.on('initial_headers', (headers, req) => {
   const raw = parseCookies(req.headers.cookie).anx;
   const existing = isSessionToken(raw) ? raw : undefined;
   const rotated = existing ? takeSessionRotation(existing) : undefined;
-  const token = rotated || existing || randomToken();
+  const token = rotated?.next || existing || randomToken();
   (req as { anxToken?: string }).anxToken = token;
-  if (!existing || rotated)
-    headers['set-cookie'] = serializeSessionCookie(token, isSecureRequest(req));
+  if (!existing)
+    headers['set-cookie'] = serializeSessionCookie(
+      token,
+      isSecureRequest(req),
+      true,
+    );
+  else if (rotated)
+    headers['set-cookie'] = serializeSessionCookie(
+      token,
+      isSecureRequest(req),
+      rotated.persistent,
+    );
 });
 
 const callbacks: EngineCallbacks = {

@@ -88,7 +88,7 @@ function sendConfirmation(userId: string, email: string): Promise<void> {
     return sendMail(
       email,
       'Confirm your Annex account',
-      `<p>Confirm your email address: <a href="${link}">${link}</a></p>`,
+      `<p>Confirm your email address:</p><p><a href="${link}">${link}</a></p>`,
     );
   });
 }
@@ -100,7 +100,7 @@ function sendReset(userId: string, email: string): Promise<void> {
     return sendMail(
       email,
       'Reset your Annex password',
-      `<p>Reset your password: <a href="${link}">${link}</a></p>`,
+      `<p>Reset your password:</p><p><a href="${link}">${link}</a></p>`,
     );
   });
 }
@@ -156,19 +156,15 @@ export function registerAccount(data: {
   });
 }
 
-export function confirmEmail(code: unknown): Promise<LoginResult> {
+export function confirmEmail(
+  code: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   if (typeof code !== 'string' || !code)
     return Promise.resolve({ ok: false, error: 'invalid code' });
   return consumeEmailConfirmation(sha256(code)).then((userId) => {
     if (!userId)
       return { ok: false as const, error: 'invalid or expired code' };
-    return markEmailValidated(userId)
-      .then(() => findUserById(userId))
-      .then((user) =>
-        user
-          ? loginResult(user)
-          : { ok: false as const, error: 'invalid or expired code' },
-      );
+    return markEmailValidated(userId).then(() => ({ ok: true as const }));
   });
 }
 

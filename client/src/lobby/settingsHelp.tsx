@@ -13,7 +13,7 @@ export const GAME_MODE_HELP = (
       </li>
       <li>
         Capitals: everyone places a capital at the start; win by owning every
-        territory, or by owning every capital from turn 3 onward.
+        territory, or by owning every capital from round 3 onward.
       </li>
       <li>
         Team Deathmatch: players are split into teams; your team wins by owning
@@ -23,14 +23,14 @@ export const GAME_MODE_HELP = (
         Continent: the server picks one continent (at least 7 territories if the
         map has one, otherwise its largest) for everyone to fight over. Win by
         owning every territory of that continent (ignoring any currently toxined
-        or radiated) from turn 3 onward.
+        or radiated) from round 3 onward.
       </li>
       <li>
-        5-Turn: the game ends after 5 full rounds, whoever holds the most
+        5-Round: the game ends after 5 full rounds, whoever holds the most
         territories then wins.
       </li>
       <li>
-        10-Turn: the game ends after 10 full rounds, whoever holds the most
+        10-Round: the game ends after 10 full rounds, whoever holds the most
         territories then wins.
       </li>
       <li>
@@ -226,7 +226,7 @@ export const TOXINS_HELP = (
       <li>Off: no toxins phase.</li>
       <li>
         Temporary: costs 5 troops (Constant cards) or 25% of the next card
-        set&apos;s value, and clears itself after 3 turns; once cleared, the
+        set&apos;s value, and clears itself after 3 rounds; once cleared, the
         territory can be freely conquered by anyone with no dice roll.
       </li>
       <li>
@@ -267,14 +267,14 @@ export const RADIATIONS_HELP = (
   </>
 );
 
-export const TURN_TROOPS_HELP = (
+export const ROUND_TROOPS_HELP = (
   <>
     Whether players get extra troops each turn on top of the normal deploy pool.
     <ul className="mb-0 ps-3">
       <li>Off: no extra troops.</li>
       <li>
         On: at the start of each turn, the player gets extra troops equal to the
-        current turn number (1 on turn 1, 2 on turn 2, and so on).
+        current round number (1 in round 1, 2 in round 2, and so on).
       </li>
     </ul>
   </>

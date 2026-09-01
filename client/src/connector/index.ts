@@ -125,13 +125,10 @@ export const connector = {
   },
 
   resetPassword(
-    data: { code: string; password: string; stayLoggedIn: boolean },
-    cb: (res: LoginAck) => void,
+    data: { code: string; password: string },
+    cb: (res: AuthAck) => void,
   ): void {
-    socket.emit('auth:resetPassword', data, (res: LoginAck) => {
-      cb(res);
-      if (res.ok) rebindSocket();
-    });
+    socket.emit('auth:resetPassword', data, cb);
   },
 
   login(

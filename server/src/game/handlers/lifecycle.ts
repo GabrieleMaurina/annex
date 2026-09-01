@@ -1,5 +1,6 @@
 import { Engine } from 'engine';
 import { Server, Socket } from 'socket.io';
+import { recordGameParticipants } from '../../elo';
 import {
   applyMetaUpdate,
   checkGamePassword,
@@ -106,7 +107,12 @@ export function registerGameHandlers(
     const playerId = playerIdBySocketId.get(socket.id);
     if (playerId === undefined)
       return callback({ ok: false, error: 'not in a game' });
-    callback(engine.startGame(playerId));
+    const response = engine.startGame(playerId);
+    if (response.ok)
+      recordGameParticipants(
+        response.game as { name: string; players: { id: number }[] },
+      );
+    callback(response);
   });
 
   socket.on('game:cycleColor', (callback: (response: GameResponse) => void) => {

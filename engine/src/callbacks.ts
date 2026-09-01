@@ -13,6 +13,12 @@ export interface EngineCallbacks {
   onMission(playerId: number, payload: { mission: Mission }): void;
   onLogs(playerId: number, payload: { entries: GameLogEvent[] }): void;
   onResults(playerId: number, payload: { stats: unknown[] }): void;
+  onGameEnded?(payload: {
+    gameName: string;
+    gameMode: string;
+    roundNumber: number;
+    ranking: { playerId: number; team: number }[];
+  }): void;
   onCardSetPlayed(
     playerId: number,
     payload: {
@@ -49,11 +55,11 @@ export interface EngineCallbacks {
     playerId: number,
     payload: {
       playerId: number;
-      turnNumber: number;
+      roundNumber: number;
       troopsFromTerritories: number;
       troopsFromBonuses: number;
       troopsFromCapitals: number;
-      troopsFromTurnTroops: number;
+      troopsFromRoundTroops: number;
       troopsFromBounties: number;
     },
   ): void;
@@ -93,7 +99,7 @@ export interface EngineCallbacks {
     payload: {
       territoryId: number;
       permanent: boolean;
-      turnsRemaining: number;
+      roundsRemaining: number;
       playerId: number;
     },
   ): void;

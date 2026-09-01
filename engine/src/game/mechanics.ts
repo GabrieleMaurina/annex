@@ -263,7 +263,7 @@ export interface DeployTroopsBreakdown {
   territories: number;
   bonuses: number;
   capitals: number;
-  turnTroops: number;
+  roundTroops: number;
   bounties: number;
 }
 
@@ -300,14 +300,14 @@ export function calculateDeployTroopsBreakdown(
     capitals = capitalsControlled * 2;
   }
 
-  const turnTroops = game.turnTroops === 'on' ? game.turnNumber + 1 : 0;
+  const roundTroops = game.roundTroops === 'on' ? game.roundNumber + 1 : 0;
 
   const bounties =
     game.bounties === 'on'
       ? (game.stats.get(playerId)?.playersKilled.length ?? 0) * 10
       : 0;
 
-  return { territories, bonuses, capitals, turnTroops, bounties };
+  return { territories, bonuses, capitals, roundTroops, bounties };
 }
 
 export function assignRandomColor(game: Game, playerId: number) {

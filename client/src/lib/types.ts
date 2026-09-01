@@ -59,8 +59,8 @@ export type GameMode =
   | 'Capitals'
   | 'Team Deathmatch'
   | 'Continent'
-  | '5-Turn'
-  | '10-Turn'
+  | '5-Round'
+  | '10-Round'
   | 'Assassin'
   | 'Mission'
   | 'Player Kills'
@@ -72,7 +72,7 @@ export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
 export type Radiations = 'off' | 'static' | 'dynamic' | 'expanding';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
-export type TurnTroops = 'off' | 'on';
+export type RoundTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
@@ -167,10 +167,10 @@ export interface GameState {
   supplyLines: SupplyLines;
   toxins: Toxins;
   turnDuration: TurnDuration;
-  turnTroops: TurnTroops;
+  roundTroops: RoundTroops;
   territoryTroopsCap: number;
   totalTroopsCap: number;
-  turnNumber: number;
+  roundNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
   troopsToDeploy: number;
@@ -261,7 +261,7 @@ export interface GameSettingsInput {
   supplyLines?: SupplyLines;
   toxins?: Toxins;
   turnDuration?: TurnDuration;
-  turnTroops?: TurnTroops;
+  roundTroops?: RoundTroops;
   visibility?: Visibility;
 }
 
@@ -286,7 +286,7 @@ export type GameRulesSettings = Pick<
   | 'supplyLines'
   | 'toxins'
   | 'turnDuration'
-  | 'turnTroops'
+  | 'roundTroops'
   | 'visibility'
 > & { mapGeneration?: GenerateMapInput };
 
@@ -317,7 +317,7 @@ export interface ReplayTerritory {
 export interface ReplayToxinTerritory {
   id: number;
   permanent: boolean;
-  turnsRemaining: number;
+  roundsRemaining: number;
 }
 
 export type ReplayAnimation =
@@ -347,7 +347,7 @@ export interface ReplayFrame {
   toxinTerritories: ReplayToxinTerritory[];
   radiationTerritories: number[];
   animation: ReplayAnimation;
-  turnNumber: number;
+  roundNumber: number;
   playerId: number;
 }
 

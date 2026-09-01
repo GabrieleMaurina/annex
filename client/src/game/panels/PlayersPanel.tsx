@@ -74,7 +74,7 @@ interface Props {
   paused: boolean;
   onTogglePause: () => void;
   onSurrender: () => void;
-  turnNumber: number;
+  roundNumber: number;
   turnPhase: TurnPhase;
   turnPlayerId: number | null;
   gameEnded: boolean;
@@ -111,7 +111,7 @@ function PlayersPanel({
   paused,
   onTogglePause,
   onSurrender,
-  turnNumber,
+  roundNumber,
   turnPhase,
   turnPlayerId,
   gameEnded,
@@ -289,10 +289,10 @@ function PlayersPanel({
           </Tip>
         </div>
         <div className="text-center fw-bold mb-3">
-          Turn{' '}
+          Round{' '}
           {['territory', 'troop', 'capital'].includes(turnPhase)
             ? 0
-            : turnNumber + 1}
+            : roundNumber + 1}
         </div>
       </div>
       {starvation === 'territory' && (

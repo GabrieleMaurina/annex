@@ -285,7 +285,7 @@ export function useAutoAdvancePhase({
   fortifyStartCandidatesSize,
   entrenchCandidatesSize,
   toxinsCandidatesSize,
-  turnNumber,
+  roundNumber,
   turnPlayerIndex,
   autoAdvanceKeyRef,
   setGame,
@@ -298,7 +298,7 @@ export function useAutoAdvancePhase({
   fortifyStartCandidatesSize: number;
   entrenchCandidatesSize: number;
   toxinsCandidatesSize: number;
-  turnNumber: number;
+  roundNumber: number;
   turnPlayerIndex: number;
   autoAdvanceKeyRef: RefObject<string | null>;
   setGame: (game: GameState) => void;
@@ -323,7 +323,7 @@ export function useAutoAdvancePhase({
     )
       return;
 
-    const key = `${turnNumber}-${turnPlayerIndex}-${turnPhase}`;
+    const key = `${roundNumber}-${turnPlayerIndex}-${turnPhase}`;
     if (autoAdvanceKeyRef.current === key) return;
     autoAdvanceKeyRef.current = key;
 

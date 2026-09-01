@@ -23,11 +23,11 @@ import {
   Placement,
   Portals,
   Radiations,
+  RoundTroops,
   Starvation,
   SupplyLines,
   Toxins,
   TurnDuration,
-  TurnTroops,
 } from '../types';
 import { isInteger } from '../util/validate';
 import { validateGameName } from './create';
@@ -57,8 +57,8 @@ const GAME_MODE_VALUES: GameMode[] = [
   'Capitals',
   'Team Deathmatch',
   'Continent',
-  '5-Turn',
-  '10-Turn',
+  '5-Round',
+  '10-Round',
   'Assassin',
   'Mission',
   'Player Kills',
@@ -81,7 +81,7 @@ const STARVATION_VALUES: Starvation[] = [
 const SUPPLY_LINES_VALUES: SupplyLines[] = ['off', 'on'];
 const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
-const TURN_TROOPS_VALUES: TurnTroops[] = ['off', 'on'];
+const ROUND_TROOPS_VALUES: RoundTroops[] = ['off', 'on'];
 
 export function updateSettings(
   playerId: number,
@@ -306,10 +306,10 @@ export function updateSettings(
     game.turnDuration = settings.turnDuration as TurnDuration;
   }
 
-  if (settings.turnTroops !== undefined) {
-    if (!(TURN_TROOPS_VALUES as unknown[]).includes(settings.turnTroops))
-      return { ok: false, error: 'invalid turn troops' };
-    game.turnTroops = settings.turnTroops as TurnTroops;
+  if (settings.roundTroops !== undefined) {
+    if (!(ROUND_TROOPS_VALUES as unknown[]).includes(settings.roundTroops))
+      return { ok: false, error: 'invalid round troops' };
+    game.roundTroops = settings.roundTroops as RoundTroops;
   }
 
   broadcastHomeGames();

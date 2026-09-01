@@ -66,7 +66,7 @@ interface Props {
   continentId: number | null;
   mission: Mission | null;
   selfId: number | null;
-  turnNumber: number;
+  roundNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
   turnDuration: TurnDuration;
@@ -110,7 +110,7 @@ interface Props {
   adjustToxinTerritories: (
     changes: (
       | { territoryId: number; remove: true }
-      | { territoryId: number; permanent: boolean; turnsRemaining: number }
+      | { territoryId: number; permanent: boolean; roundsRemaining: number }
     )[],
   ) => void;
   setRadiationTerritoryIds: (territoryIds: number[]) => void;
@@ -134,7 +134,7 @@ function GameMap({
   continentId,
   mission,
   selfId,
-  turnNumber,
+  roundNumber,
   turnPlayerIndex,
   turnPhase,
   turnDuration,
@@ -270,7 +270,7 @@ function GameMap({
     territories: replayTerritories,
     toxinTerritories: replayToxinTerritories,
     radiationTerritories: replayRadiationTerritories,
-    turnNumber: replayTurnNumber,
+    roundNumber: replayRoundNumber,
     turnPlayerId: replayTurnPlayerId,
     conquestArrow: replayConquestArrow,
     stepForward: replayStepForward,
@@ -584,7 +584,7 @@ function GameMap({
     fortifyStartCandidatesSize: turnFlow.fortifyStartCandidates.size,
     entrenchCandidatesSize: turnFlow.entrenchCandidates.size,
     toxinsCandidatesSize: turnFlow.toxinsCandidates.size,
-    turnNumber,
+    roundNumber,
     turnPlayerIndex,
     autoAdvanceKeyRef,
     setGame,
@@ -592,7 +592,7 @@ function GameMap({
 
   const deployPhaseKey =
     turnPhase === 'deploy' && currentTurnPlayer
-      ? `${turnNumber}-${turnPlayerIndex}`
+      ? `${roundNumber}-${turnPlayerIndex}`
       : null;
   if (
     deployPhaseKey !== null &&
@@ -617,7 +617,7 @@ function GameMap({
     ]);
   }
 
-  if (isCapitals && !capitalModeAnnounced && turnNumber >= 2) {
+  if (isCapitals && !capitalModeAnnounced && roundNumber >= 2) {
     setCapitalModeAnnounced(true);
     setToasts((prev) => [
       ...prev,
@@ -827,7 +827,7 @@ function GameMap({
         toxinsCost={turnFlow.toxinsCostValue}
         mission={mission}
         selfId={selfId}
-        turnNumber={turnNumber}
+        roundNumber={roundNumber}
         turnPhase={turnPhase}
         turnPlayerId={currentTurnPlayer?.id ?? null}
         hostId={hostId}
@@ -877,7 +877,7 @@ function GameMap({
           totalFrames={replayTotalFrames}
           playing={replayPlaying}
           speed={replaySpeed}
-          turnNumber={(replayTurnNumber ?? 0) + 1}
+          roundNumber={(replayRoundNumber ?? 0) + 1}
           color={replayPlayerColor}
           onTogglePlay={replayTogglePlay}
           onStepBack={replayStepBackward}

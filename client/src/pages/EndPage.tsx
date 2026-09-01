@@ -214,7 +214,7 @@ function EndPage({
                     </div>
                   </td>
                   <td style={rowStyle}>
-                    {stats.turnsPlayed}/{game.turnNumber + 1}
+                    {stats.turnsPlayed}/{game.roundNumber + 1}
                   </td>
                   {killedNames ? (
                     <Tip text={killedNames}>

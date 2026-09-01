@@ -2,18 +2,14 @@ import { useState } from 'react';
 import { Alert, Button, Container, Form } from 'react-bootstrap';
 import { formatError } from '../common/formatError';
 import { connector } from '../connector';
-import { setPlayerName } from '../lib/player';
-import type { AccountChange } from '../lib/types';
 
 interface Props {
   code: string;
   navigate: (path: string) => void;
-  onAccountChange: AccountChange;
 }
 
-function PasswordReset({ code, navigate, onAccountChange }: Props) {
+function PasswordReset({ code, navigate }: Props) {
   const [password, setPassword] = useState('');
-  const [stayLoggedIn, setStayLoggedIn] = useState(true);
   const [status, setStatus] = useState<'form' | 'ok'>('form');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -22,16 +18,9 @@ function PasswordReset({ code, navigate, onAccountChange }: Props) {
     e.preventDefault();
     setBusy(true);
     setError('');
-    connector.resetPassword({ code, password, stayLoggedIn }, (res) => {
+    connector.resetPassword({ code, password }, (res) => {
       setBusy(false);
       if (res.ok) {
-        setPlayerName(res.username);
-        onAccountChange({
-          account: { username: res.username },
-          clientSettings: res.clientSettings,
-          gameSettings: res.gameSettings,
-          gameName: res.gameName,
-        });
         setStatus('ok');
       } else {
         setError(res.error);
@@ -42,9 +31,7 @@ function PasswordReset({ code, navigate, onAccountChange }: Props) {
   return (
     <Container className="py-5" style={{ maxWidth: 360 }}>
       {status === 'ok' ? (
-        <Alert variant="success">
-          Password updated. You are now logged in.
-        </Alert>
+        <Alert variant="success">Password updated. You can now log in.</Alert>
       ) : (
         <Form onSubmit={submit} className="d-flex flex-column gap-2">
           <h5>Choose a new password</h5>
@@ -54,14 +41,6 @@ function PasswordReset({ code, navigate, onAccountChange }: Props) {
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-          />
-          <Form.Check
-            type="checkbox"
-            id="reset-stay-logged-in"
-            className="small"
-            label="Stay logged in"
-            checked={stayLoggedIn}
-            onChange={(e) => setStayLoggedIn(e.target.checked)}
           />
           {error && (
             <Alert variant="danger" className="py-1 px-2 mb-0 small">

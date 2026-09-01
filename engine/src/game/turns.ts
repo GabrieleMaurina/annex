@@ -22,7 +22,7 @@ import {
   returnCardsToDeck,
 } from './progression/cards';
 import { bumpStat } from './progression/stats';
-import { updateRadiationForNewTurn } from './radiation/radiation';
+import { updateRadiationForNewRound } from './radiation/radiation';
 import { recordReplayFrame } from './replay';
 import { decrementToxinsGlobally } from './toxins/toxins';
 import { fortifyFullPath } from './world/connectivity';
@@ -245,7 +245,7 @@ export function advanceCapitalPlacement(game: Game) {
 }
 
 export function startCapitalPlacement(game: Game) {
-  game.turnNumber = 0;
+  game.roundNumber = 0;
   game.turnPlayerIndex = firstAliveIndex(game);
   game.turnPhase = 'capital';
   game.troopsToDeploy = 0;
@@ -422,15 +422,15 @@ function startDeployPhase(game: Game, playerId: number) {
     breakdown.territories +
     breakdown.bonuses +
     breakdown.capitals +
-    breakdown.turnTroops +
+    breakdown.roundTroops +
     breakdown.bounties;
   const turnStartedPayload = {
     playerId,
-    turnNumber: game.turnNumber,
+    roundNumber: game.roundNumber,
     troopsFromTerritories: breakdown.territories,
     troopsFromBonuses: breakdown.bonuses,
     troopsFromCapitals: breakdown.capitals,
-    troopsFromTurnTroops: breakdown.turnTroops,
+    troopsFromRoundTroops: breakdown.roundTroops,
     troopsFromBounties: breakdown.bounties,
   };
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
@@ -609,7 +609,7 @@ function nextAlivePlayerIndex(game: Game): number {
   const fromIndex = game.turnPlayerIndex;
   const nextIndex = findNextAliveIndexFrom(game, fromIndex);
   if (nextIndex === null) return fromIndex;
-  if (nextIndex <= fromIndex) game.turnNumber++;
+  if (nextIndex <= fromIndex) game.roundNumber++;
   return nextIndex;
 }
 
@@ -653,11 +653,11 @@ export function advanceToNextPlayer(game: Game) {
     });
   }
 
-  const previousTurnNumber = game.turnNumber;
+  const previousRoundNumber = game.roundNumber;
   let nextIndex = nextAlivePlayerIndex(game);
 
-  if (game.turnNumber !== previousTurnNumber) {
-    const eliminatedByRadiation = updateRadiationForNewTurn(game);
+  if (game.roundNumber !== previousRoundNumber) {
+    const eliminatedByRadiation = updateRadiationForNewRound(game);
     if (eliminatedByRadiation.includes(game.playerIds[nextIndex])) {
       const reResolved = findNextAliveIndexFrom(game, game.turnPlayerIndex);
       if (reResolved !== null) nextIndex = reResolved;
@@ -667,7 +667,7 @@ export function advanceToNextPlayer(game: Game) {
   checkGameEnd(game, true);
   if (game.state === 'ended') return;
 
-  if (game.turnNumber !== previousTurnNumber) updatePortalsForNewTurn(game);
+  if (game.roundNumber !== previousRoundNumber) updatePortalsForNewRound(game);
 
   game.turnPlayerIndex = nextIndex;
   game.turnPhase = 'deploy';
@@ -677,7 +677,7 @@ export function advanceToNextPlayer(game: Game) {
   game.attackStartTerritoryId = null;
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
-  if (game.turnNumber !== previousTurnNumber) {
+  if (game.roundNumber !== previousRoundNumber) {
     const expiredToxinIds = decrementToxinsGlobally(game);
     if (expiredToxinIds.length > 0) {
       fogFilterEmit(
@@ -732,9 +732,9 @@ export function advanceTurnPhase(game: Game) {
   }
 }
 
-function updatePortalsForNewTurn(game: Game) {
+function updatePortalsForNewRound(game: Game) {
   if (game.portals !== 'dynamic') return;
-  if (game.turnNumber % 2 === 1) {
+  if (game.roundNumber % 2 === 1) {
     game.portalsEnabled = true;
     return;
   }
@@ -753,7 +753,7 @@ function updatePortalsForNewTurn(game: Game) {
 }
 
 export function startTurns(game: Game) {
-  game.turnNumber = 0;
+  game.roundNumber = 0;
   game.turnPlayerIndex = 0;
   game.turnPhase = 'deploy';
   game.selectedTerritoryId = null;

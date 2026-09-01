@@ -56,7 +56,7 @@ export function useGameSocketEvents({
   adjustToxinTerritories: (
     changes: (
       | { territoryId: number; remove: true }
-      | { territoryId: number; permanent: boolean; turnsRemaining: number }
+      | { territoryId: number; permanent: boolean; roundsRemaining: number }
     )[],
   ) => void;
   setRadiationTerritoryIds: (territoryIds: number[]) => void;
@@ -584,7 +584,7 @@ export function useGameSocketEvents({
     function onToxined(payload: {
       territoryId: number;
       permanent: boolean;
-      turnsRemaining: number;
+      roundsRemaining: number;
     }) {
       playSound('toxins');
       toxinPlaceEffect(payload.territoryId);
@@ -592,7 +592,7 @@ export function useGameSocketEvents({
         {
           territoryId: payload.territoryId,
           permanent: payload.permanent,
-          turnsRemaining: payload.turnsRemaining,
+          roundsRemaining: payload.roundsRemaining,
         },
       ]);
       startAnimationLoop();

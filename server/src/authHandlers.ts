@@ -160,17 +160,15 @@ export function registerAuthHandlers(
       .catch(() => callback({ ok: false, error: 'server error' }));
   });
 
-  socket.on('auth:resetPassword', (data: unknown, callback: LoggedInAck) => {
+  socket.on('auth:resetPassword', (data: unknown, callback: SimpleAck) => {
     if (typeof callback !== 'function' || !isObject(data)) return;
     if (!allowAuthAttempt(ip)) {
       callback({ ok: false, error: 'too many requests' });
       return;
     }
-    handleLoggedIn(
-      resetPassword(data.code, data.password),
-      callback,
-      data.stayLoggedIn !== false,
-    );
+    resetPassword(data.code, data.password)
+      .then(callback)
+      .catch(() => callback({ ok: false, error: 'server error' }));
   });
 
   socket.on('auth:login', (data: unknown, callback: LoggedInAck) => {

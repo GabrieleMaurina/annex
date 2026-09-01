@@ -68,8 +68,8 @@ export type GameMode =
   | 'Capitals'
   | 'Team Deathmatch'
   | 'Continent'
-  | '5-Turn'
-  | '10-Turn'
+  | '5-Round'
+  | '10-Round'
   | 'Assassin'
   | 'Mission'
   | 'Player Kills'
@@ -81,7 +81,7 @@ export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
 export type Radiations = 'off' | 'static' | 'dynamic' | 'expanding';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
-export type TurnTroops = 'off' | 'on';
+export type RoundTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
@@ -139,7 +139,7 @@ export interface ReplayTerritory {
 export interface ReplayToxinTerritory {
   id: number;
   permanent: boolean;
-  turnsRemaining: number;
+  roundsRemaining: number;
 }
 
 export interface ReplayFrame {
@@ -147,7 +147,7 @@ export interface ReplayFrame {
   toxinTerritories: ReplayToxinTerritory[];
   radiationTerritories: number[];
   animation: ReplayAnimation;
-  turnNumber: number;
+  roundNumber: number;
   playerId: number;
 }
 
@@ -201,8 +201,8 @@ export interface Game {
   supplyLines: SupplyLines;
   toxins: Toxins;
   turnDuration: TurnDuration;
-  turnTroops: TurnTroops;
-  turnNumber: number;
+  roundTroops: RoundTroops;
+  roundNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
   troopsToDeploy: number;
@@ -226,7 +226,7 @@ export interface Game {
   territoryOwners: Map<number, number>;
   territoryTroops: Map<number, number>;
   territoryEntrenchment: Map<number, number>;
-  territoryToxins: Map<number, { permanent: boolean; turnsRemaining: number }>;
+  territoryToxins: Map<number, { permanent: boolean; roundsRemaining: number }>;
   capitalTerritoryIds: Set<number>;
   playerMissions: Map<number, Mission>;
   hostPriority: number[];

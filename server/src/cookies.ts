@@ -75,33 +75,3 @@ export function sessionTokenFromRequest(req: IncomingMessage): string {
   const raw = parseCookies(req.headers.cookie).anx;
   return isSessionToken(raw) ? raw : '';
 }
-
-const ROTATION_TTL_MS = 5 * 60 * 1000;
-
-interface SessionRotation {
-  next: string;
-  persistent: boolean;
-}
-
-const pendingRotations = new Map<string, SessionRotation>();
-
-export function queueSessionRotation(
-  current: string,
-  next: string,
-  persistent: boolean,
-): void {
-  const rotation = { next, persistent };
-  pendingRotations.set(current, rotation);
-  setTimeout(() => {
-    if (pendingRotations.get(current) === rotation)
-      pendingRotations.delete(current);
-  }, ROTATION_TTL_MS).unref();
-}
-
-export function takeSessionRotation(
-  current: string,
-): SessionRotation | undefined {
-  const rotation = pendingRotations.get(current);
-  if (rotation !== undefined) pendingRotations.delete(current);
-  return rotation;
-}

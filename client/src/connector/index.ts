@@ -1,11 +1,19 @@
-import { rebindSocket, socket } from '../lib/socket';
+import { httpGet, httpSend } from '../lib/http';
+import {
+  closeSocket,
+  getSocket,
+  isSocketConnected,
+  openSocket,
+} from '../lib/socket';
 import type {
   Ack,
   ClientSettings,
   GameSettingsInput,
+  GameSummary,
   GenerateMapInput,
   IdentifyResult,
   ReplayAck,
+  SessionResult,
 } from '../lib/types';
 import { subscribe, unsubscribe } from './inbound';
 import {
@@ -25,15 +33,15 @@ type LoginAck =
       username: string;
       clientSettings: ClientSettings;
       gameSettings: Record<string, unknown>;
-      gameName: string | null;
     }
   | { ok: false; error: string };
-type LogoutAck = {
-  ok: true;
-  name: string;
-  clientSettings: ClientSettings;
-  gameSettings: Record<string, unknown>;
-};
+type LogoutAck =
+  | {
+      ok: true;
+      clientSettings: ClientSettings;
+      gameSettings: Record<string, unknown>;
+    }
+  | { ok: false; error: string };
 
 type Listener = (payload: never) => void;
 type AckCallback = (res: Ack) => void;
@@ -50,6 +58,8 @@ function route(event: string, data?: unknown, cb?: (res: never) => void): void {
     offlineDispatch(event, data, cb as ((res: unknown) => void) | undefined);
     return;
   }
+  const socket = getSocket();
+  if (!socket) return;
   if (data === undefined && cb === undefined) socket.emit(event);
   else if (data === undefined) socket.emit(event, cb);
   else if (cb === undefined) socket.emit(event, data);
@@ -58,7 +68,15 @@ function route(event: string, data?: unknown, cb?: (res: never) => void): void {
 
 export const connector = {
   get connected(): boolean {
-    return isOffline() ? true : socket.connected;
+    return isOffline() ? true : isSocketConnected();
+  },
+
+  open(gameName: string): void {
+    openSocket(gameName);
+  },
+
+  close(): void {
+    closeSocket();
   },
 
   isOffline(): boolean {
@@ -92,57 +110,79 @@ export const connector = {
 
   identify(data: { room: string }, cb: (res: IdentifyResult) => void): void {
     if (isOffline()) {
-      socket.emit('player:identify', data, () => {});
       offlineDispatch('player:identify', data, cb as (res: unknown) => void);
       return;
     }
-    socket.emit('player:identify', data, cb);
+    getSocket()?.emit('player:identify', data, cb);
+  },
+
+  session(cb: (res: SessionResult) => void): void {
+    httpGet<SessionResult>('/session')
+      .then(cb)
+      .catch(() => cb({ account: null, name: '' }));
+  },
+
+  listGames(cb: (games: GameSummary[]) => void): void {
+    httpGet<GameSummary[]>('/games')
+      .then(cb)
+      .catch(() => {});
   },
 
   register(
     data: { username: string; email: string; password: string },
     cb: (res: AuthAck) => void,
   ): void {
-    socket.emit('auth:register', data, cb);
+    httpSend<AuthAck>('POST', '/auth/register', data)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
   confirmEmail(data: { code: string }, cb: (res: AuthAck) => void): void {
-    socket.emit('auth:confirmEmail', data, cb);
+    httpSend<AuthAck>('POST', '/auth/confirm-email', data)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
   recoverUsername(
     data: { email: string },
     cb: (res: { ok: true }) => void,
   ): void {
-    socket.emit('auth:recoverUsername', data, cb);
+    httpSend<{ ok: true }>('POST', '/auth/recover-username', data)
+      .then(cb)
+      .catch(() => cb({ ok: true }));
   },
 
   requestPasswordReset(
     data: { email: string },
     cb: (res: { ok: true }) => void,
   ): void {
-    socket.emit('auth:requestPasswordReset', data, cb);
+    httpSend<{ ok: true }>('POST', '/auth/request-password-reset', data)
+      .then(cb)
+      .catch(() => cb({ ok: true }));
   },
 
   resetPassword(
     data: { code: string; password: string },
     cb: (res: AuthAck) => void,
   ): void {
-    socket.emit('auth:resetPassword', data, cb);
+    httpSend<AuthAck>('POST', '/auth/reset-password', data)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
   login(
     data: { username: string; password: string; stayLoggedIn: boolean },
     cb: (res: LoginAck) => void,
   ): void {
-    socket.emit('auth:login', data, (res: LoginAck) => {
-      cb(res);
-      if (res.ok) rebindSocket();
-    });
+    httpSend<LoginAck>('POST', '/auth/login', data)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
   logout(cb: (res: LogoutAck) => void): void {
-    socket.emit('auth:logout', {}, cb);
+    httpSend<LogoutAck>('POST', '/auth/logout', {})
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
   listMaps(cb: (names: string[]) => void): void {

@@ -1,4 +1,4 @@
-import { isRebindDisconnect, socket } from '../lib/socket';
+import type { Socket } from 'socket.io-client';
 
 type Handler = (payload: never) => void;
 
@@ -34,7 +34,6 @@ const INBOUND_EVENTS = [
   'game:allianceFormed',
   'game:allianceDeclined',
   'game:allianceTerminated',
-  'home:games',
 ];
 
 const listeners = new Map<string, Set<Handler>>();
@@ -57,10 +56,9 @@ export function publish(event: string, payload?: unknown): void {
     (handler as (payload?: unknown) => void)(payload);
 }
 
-for (const event of INBOUND_EVENTS)
-  socket.on(event, (payload) => publish(event, payload));
-socket.on('connect', () => publish('connect'));
-socket.on('disconnect', (reason) => {
-  if (isRebindDisconnect()) return;
-  publish('disconnect', reason);
-});
+export function attachInbound(socket: Socket): void {
+  for (const event of INBOUND_EVENTS)
+    socket.on(event, (payload) => publish(event, payload));
+  socket.on('connect', () => publish('connect'));
+  socket.on('disconnect', (reason) => publish('disconnect', reason));
+}

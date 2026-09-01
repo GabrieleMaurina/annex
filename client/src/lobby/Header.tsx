@@ -1,13 +1,7 @@
 import { useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
-import AccountButton from '../common/AccountButton';
 import { useTitleIconFit } from '../common/useTitleIconFit';
-import type {
-  Account,
-  AccountChange,
-  GameSettingsInput,
-  GameState,
-} from '../lib/types';
+import type { GameSettingsInput, GameState } from '../lib/types';
 
 const MAX_GAME_NAME_LENGTH = 20;
 
@@ -15,26 +9,15 @@ interface Props {
   game: GameState;
   isHost: boolean;
   applySettings: (settings: GameSettingsInput) => void;
-  account: Account | null;
-  onAccountChange: AccountChange;
 }
 
-function Header({
-  game,
-  isHost,
-  applySettings,
-  account,
-  onAccountChange,
-}: Props) {
+function Header({ game, isHost, applySettings }: Props) {
   const [editingName, setEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { containerRef, textRef, hideIcons } = useTitleIconFit(game.name);
 
   return (
     <div className="mb-4 mt-4 mt-sm-0">
-      <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
-        <AccountButton account={account} onAccountChange={onAccountChange} />
-      </div>
       <div
         ref={containerRef}
         className="d-flex flex-nowrap justify-content-center align-items-center gap-3 gap-sm-5"

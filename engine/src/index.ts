@@ -4,6 +4,9 @@ import { loadMaps } from './maps/maps';
 import { addPlayer as addEnginePlayer } from './session/players';
 import {
   disconnect,
+  listGameSummaries,
+  playerGameName,
+  playerGameState,
   resyncPlayer,
   setBotTurnHook,
   setName,
@@ -102,6 +105,9 @@ export function createEngine(
     resyncPlayer,
     setName,
     disconnect,
+    listGameSummaries,
+    playerGameName,
+    playerGameState,
 
     createGame,
     joinGame,

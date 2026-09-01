@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
+import BurgerMenu from '../common/BurgerMenu';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { formatError } from '../common/formatError';
 import { connector } from '../connector';
 import { saveGameSettings } from '../lib/player';
 import type {
-  Account,
-  AccountChange,
   Ack,
   BotDifficulty,
   BotPersonality,
@@ -26,23 +25,12 @@ interface Props {
   game: GameState;
   gameMeta: GameMeta | null;
   setGame: (game: GameState) => void;
-  account: Account | null;
-  onAccountChange: AccountChange;
   selfId: number | null;
   mapNames: string[];
   navigate: (path: string) => void;
 }
 
-function Lobby({
-  game,
-  gameMeta,
-  setGame,
-  account,
-  onAccountChange,
-  selfId,
-  mapNames,
-  navigate,
-}: Props) {
+function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
   const [settingsError, setSettingsError] = useState('');
   const bannedIdsRef = useRef<number[]>([]);
   const {
@@ -220,6 +208,9 @@ function Lobby({
 
   return (
     <>
+      <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1030 }}>
+        <BurgerMenu navigate={navigate} />
+      </div>
       <div className="text-center mb-2">
         <span
           className={`badge ${connector.isOffline() ? 'bg-secondary' : 'bg-success'}`}
@@ -227,13 +218,7 @@ function Lobby({
           {connector.isOffline() ? 'Offline' : 'Online'}
         </span>
       </div>
-      <Header
-        game={game}
-        isHost={isHost}
-        applySettings={applySettings}
-        account={account}
-        onAccountChange={onAccountChange}
-      />
+      <Header game={game} isHost={isHost} applySettings={applySettings} />
 
       {settingsError && (
         <Alert

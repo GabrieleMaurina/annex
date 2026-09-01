@@ -2,7 +2,7 @@ import {
   areAnimationsDisabled,
   setAnimationsDisabled,
 } from '../game/animations';
-import { socket } from './socket';
+import { httpSend } from './http';
 import {
   getSoundVolume,
   isSoundMuted,
@@ -16,6 +16,8 @@ let playerName = '';
 let gameSettings: Record<string, unknown> = {};
 let gameSlots = 2;
 
+const nameListeners = new Set<() => void>();
+
 export function isLoggedIn(): boolean {
   return loggedIn;
 }
@@ -25,7 +27,16 @@ export function getPlayerName(): string {
 }
 
 export function setPlayerName(name: string): void {
+  if (name === playerName) return;
   playerName = name;
+  nameListeners.forEach((listener) => listener());
+}
+
+export function subscribePlayerName(listener: () => void): () => void {
+  nameListeners.add(listener);
+  return () => {
+    nameListeners.delete(listener);
+  };
 }
 
 function currentClientSettings(): ClientSettings {
@@ -59,10 +70,10 @@ let pushTimer: ReturnType<typeof setTimeout> | undefined;
 export function pushSettings() {
   clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
-    socket.emit('user:updateSettings', {
+    httpSend('PATCH', '/settings', {
       clientSettings: currentClientSettings(),
       gameSettings: { ...gameSettings, slots: gameSlots },
-    });
+    }).catch(() => {});
   }, 500);
 }
 

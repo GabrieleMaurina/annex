@@ -1,16 +1,27 @@
-export interface PlayerSettings {
+export interface ClientSettings {
   muted: boolean;
   animationsDisabled: boolean;
   volume: number;
 }
 
-export interface Player {
-  key: string;
+export interface Account {
+  username: string;
+}
+
+export type AccountChange = (change: {
+  account: Account | null;
+  clientSettings: ClientSettings;
+  gameSettings: Record<string, unknown>;
+  gameName?: string | null;
+}) => void;
+
+export interface IdentifyResult {
+  id: number;
+  gameName: string | null;
   name: string;
-  settings?: PlayerSettings;
-  gameSettings?: GameRulesSettings;
-  gameSlots?: number;
-  gameName?: string;
+  account: Account | null;
+  clientSettings?: ClientSettings;
+  gameSettings?: Record<string, unknown>;
 }
 
 export interface GameSummary {

@@ -442,9 +442,9 @@ export function respondWithGameState(
 export function resyncPlayer(
   playerId: number,
   room: string,
-): { id: number; gameName: string | null } {
+): { id: number; gameName: string | null; name: string } {
   const player = playersById.get(playerId);
-  if (!player) return { id: playerId, gameName: null };
+  if (!player) return { id: playerId, gameName: null, name: '' };
   player.connected = true;
   endTakeover(player);
 
@@ -477,7 +477,7 @@ export function resyncPlayer(
 
   if (!player.gameName) callbacks.onHomeGames(player.id, listGameSummaries());
 
-  return { id: player.id, gameName: player.gameName };
+  return { id: player.id, gameName: player.gameName, name: player.name };
 }
 
 export function setName(playerId: number, name: string): void {

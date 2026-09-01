@@ -1,6 +1,7 @@
 import type { MutableRefObject, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
+import AccountButton from '../../common/AccountButton';
 import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
@@ -8,6 +9,8 @@ import { connector } from '../../connector';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import { playSound } from '../../lib/sounds';
 import type {
+  Account,
+  AccountChange,
   Alliances,
   Bounties,
   GameMode,
@@ -57,6 +60,8 @@ function formatMission(
 }
 
 interface Props {
+  account: Account | null;
+  onAccountChange: AccountChange;
   players: GameState['players'];
   spectators: GameState['spectators'];
   gameMode: GameMode;
@@ -94,6 +99,8 @@ interface Props {
 }
 
 function PlayersPanel({
+  account,
+  onAccountChange,
   players,
   spectators,
   gameMode,
@@ -653,6 +660,9 @@ function PlayersPanel({
           </Button>
         </div>
       )}
+      <div className="mt-2">
+        <AccountButton account={account} onAccountChange={onAccountChange} />
+      </div>
     </div>
   );
 }

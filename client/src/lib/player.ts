@@ -2,47 +2,33 @@ import {
   areAnimationsDisabled,
   setAnimationsDisabled,
 } from '../game/animations';
+import { socket } from './socket';
 import {
   getSoundVolume,
   isSoundMuted,
   setSoundMuted,
   setSoundVolume,
 } from './sounds';
-import type { GameRulesSettings, Player } from './types';
+import type { ClientSettings, GameRulesSettings } from './types';
 
-const COOKIE_NAME = 'anx';
-const MAX_AGE = 60 * 60 * 24 * 365 * 100;
+let loggedIn = false;
+let playerName = '';
+let gameSettings: Record<string, unknown> = {};
+let gameSlots = 2;
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+export function isLoggedIn(): boolean {
+  return loggedIn;
 }
 
-function writeCookie(name: string, value: string) {
-  document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${MAX_AGE}; path=/`;
+export function getPlayerName(): string {
+  return playerName;
 }
 
-function parseStore() {
-  const raw = readCookie(COOKIE_NAME);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+export function setPlayerName(name: string): void {
+  playerName = name;
 }
 
-function patchStore(patch: Record<string, unknown>) {
-  const parsed = parseStore();
-  if (!parsed || !parsed.key || !parsed.name) return;
-  writeCookie(COOKIE_NAME, JSON.stringify({ ...parsed, ...patch }));
-}
-
-function randomName(): string {
-  return `Player${Math.floor(Math.random() * 9000) + 1000}`;
-}
-
-function currentSettings(): Player['settings'] {
+function currentClientSettings(): ClientSettings {
   return {
     muted: isSoundMuted(),
     animationsDisabled: areAnimationsDisabled(),
@@ -50,59 +36,46 @@ function currentSettings(): Player['settings'] {
   };
 }
 
-export function getPlayer(): Player {
-  const raw = readCookie(COOKIE_NAME);
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed.key && parsed.name) {
-        if (parsed.settings) {
-          setSoundMuted(!!parsed.settings.muted);
-          setAnimationsDisabled(!!parsed.settings.animationsDisabled);
-          if (typeof parsed.settings.volume === 'number')
-            setSoundVolume(parsed.settings.volume);
-        }
-        return parsed;
-      }
-    } catch {}
-  }
-  const player: Player = { key: crypto.randomUUID(), name: randomName() };
-  writeCookie(COOKIE_NAME, JSON.stringify(player));
-  return player;
-}
-
-export function savePlayer(player: Player) {
-  writeCookie(
-    COOKIE_NAME,
-    JSON.stringify({ ...player, settings: currentSettings() }),
-  );
-}
-
-export function saveSettings() {
-  patchStore({ settings: currentSettings() });
-}
-
-export function getGameSettings(): GameRulesSettings | null {
-  return parseStore()?.gameSettings ?? null;
-}
-
-export function saveGameSettings(
-  gameSettings: GameRulesSettings,
-  gameSlots: number,
+export function applyServerSettings(
+  hasAccount: boolean,
+  client: ClientSettings | undefined,
+  game: Record<string, unknown> | undefined,
 ) {
-  patchStore({ gameSettings, gameSlots });
+  loggedIn = hasAccount;
+  if (client) {
+    setSoundMuted(!!client.muted);
+    setAnimationsDisabled(!!client.animationsDisabled);
+    if (typeof client.volume === 'number') setSoundVolume(client.volume);
+  }
+  if (game) {
+    const { slots, ...rest } = game;
+    gameSettings = rest;
+    gameSlots = typeof slots === 'number' ? slots : 2;
+  }
 }
 
-export function getGameSlots(): number | null {
-  const slots = parseStore()?.gameSlots;
-  return typeof slots === 'number' ? slots : null;
+let pushTimer: ReturnType<typeof setTimeout> | undefined;
+
+export function pushSettings() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    socket.emit('user:updateSettings', {
+      clientSettings: currentClientSettings(),
+      gameSettings: { ...gameSettings, slots: gameSlots },
+    });
+  }, 500);
 }
 
-export function getGameName(): string | null {
-  const name = parseStore()?.gameName;
-  return typeof name === 'string' ? name : null;
+export function getGameSettings(): GameRulesSettings {
+  return gameSettings as GameRulesSettings;
 }
 
-export function saveGameName(gameName: string) {
-  patchStore({ gameName });
+export function getGameSlots(): number {
+  return gameSlots;
+}
+
+export function saveGameSettings(settings: GameRulesSettings, slots: number) {
+  gameSettings = { ...settings };
+  gameSlots = slots;
+  pushSettings();
 }

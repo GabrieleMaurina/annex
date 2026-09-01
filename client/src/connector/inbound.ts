@@ -1,4 +1,4 @@
-import { socket } from '../lib/socket';
+import { isRebindDisconnect, socket } from '../lib/socket';
 
 type Handler = (payload: never) => void;
 
@@ -60,4 +60,7 @@ export function publish(event: string, payload?: unknown): void {
 for (const event of INBOUND_EVENTS)
   socket.on(event, (payload) => publish(event, payload));
 socket.on('connect', () => publish('connect'));
-socket.on('disconnect', (reason) => publish('disconnect', reason));
+socket.on('disconnect', (reason) => {
+  if (isRebindDisconnect()) return;
+  publish('disconnect', reason);
+});

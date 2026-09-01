@@ -1,13 +1,18 @@
 import { Badge, Button, Container, Table } from 'react-bootstrap';
+import AccountButton from '../common/AccountButton';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { useWhiteIcon } from '../common/icon';
-import PlayerNameEditor from '../common/PlayerNameEditor';
 import Tip from '../common/Tip';
 import { connector } from '../connector';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import type { GameState, Player, PlayerResultStats } from '../lib/types';
+import type {
+  Account,
+  AccountChange,
+  GameState,
+  PlayerResultStats,
+} from '../lib/types';
 import SettingsPanel from '../lobby/SettingsPanel';
 
 const EMPTY_STATS: Omit<PlayerResultStats, 'id'> = {
@@ -30,8 +35,8 @@ interface Props {
   mapNames: string[];
   navigate: (path: string) => void;
   onViewMap: () => void;
-  player: Player;
-  onNameChange: (name: string) => void;
+  account: Account | null;
+  onAccountChange: AccountChange;
 }
 
 function EndPage({
@@ -41,8 +46,8 @@ function EndPage({
   mapNames,
   navigate,
   onViewMap,
-  player,
-  onNameChange,
+  account,
+  onAccountChange,
 }: Props) {
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
   const won = selfId !== null && game.winnerIds.includes(selfId);
@@ -74,7 +79,7 @@ function EndPage({
   return (
     <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
-        <PlayerNameEditor player={player} onNameChange={onNameChange} />
+        <AccountButton account={account} onAccountChange={onAccountChange} />
       </div>
       <div className="text-center mb-4 mt-4 mt-sm-0">
         <h1 className="mb-4">{won ? 'You Win!' : 'Game Over'}</h1>

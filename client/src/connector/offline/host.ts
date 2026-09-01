@@ -5,7 +5,6 @@ import {
   type MapSize,
   type WaterLevel,
 } from 'engine';
-import { getGameName, saveGameName } from '../../lib/player';
 import type { GameState } from '../../lib/types';
 import { publish } from '../inbound';
 import { browserWorkerPort } from './browserWorkerPort';
@@ -164,7 +163,7 @@ export function isOffline(): boolean {
   return active;
 }
 
-export function startOffline(name: string): void {
+export function startOffline(): void {
   if (active) return;
   active = true;
   ready = false;
@@ -177,14 +176,12 @@ export function startOffline(name: string): void {
     if (!engine) engine = buildEngine();
     engine.loadMaps(maps);
     session += 1;
-    hostId = engine.addPlayer(name || 'You').id;
+    const hostName = 'You';
+    hostId = engine.addPlayer(hostName).id;
     currentActorId = hostId;
     localPlayerIds = [hostId];
-    const baseName = getGameName() || `Game with ${name || 'You'}`;
-    gameName = baseName;
-    if (engine.createGame(hostId, { name: gameName }, true).ok) {
-      saveGameName(baseName);
-    } else {
+    gameName = `Game with ${hostName}`;
+    if (!engine.createGame(hostId, { name: gameName }, true).ok) {
       gameName = `${URL_ROOM}-${session}`;
       engine.createGame(hostId, { name: gameName }, true);
     }
@@ -204,12 +201,6 @@ export function stopOffline(): void {
   currentActorId = null;
   localPlayerIds = [];
   pendingActor = null;
-}
-
-export function setClientName(name: string): void {
-  if (!active || !engine || hostId === null) return;
-  engine.setName(hostId, name.trim() || 'You');
-  if (currentActorId !== null) engine.requestState(currentActorId);
 }
 
 export function setLocalPlayerName(playerId: number, name: string): void {
@@ -248,7 +239,12 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
 
   switch (event) {
     case 'player:identify':
-      cb?.({ id, gameName: URL_ROOM });
+      cb?.({
+        id,
+        gameName: URL_ROOM,
+        name: 'You',
+        account: null,
+      });
       return;
     case 'maps:list':
       cb?.(engine.listMaps());

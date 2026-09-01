@@ -9,20 +9,21 @@ import RotateDeviceOverlay from '../game/RotateDeviceOverlay';
 import { useGameLogs } from '../game/useGameLogs';
 import { playSound } from '../lib/sounds';
 import type {
+  Account,
+  AccountChange,
   Ack,
   GameMeta,
   GameResults,
   GameState,
   Mission,
-  Player,
   PlayerResultStats,
 } from '../lib/types';
 import Lobby from '../lobby/Lobby';
 import EndPage from './EndPage';
 
 interface Props {
-  player: Player;
-  onNameChange: (name: string) => void;
+  account: Account | null;
+  onAccountChange: AccountChange;
   selfId: number | null;
   joinError: string;
   needsPassword: boolean;
@@ -33,8 +34,8 @@ interface Props {
 }
 
 function Game({
-  player,
-  onNameChange,
+  account,
+  onAccountChange,
   selfId,
   joinError,
   needsPassword,
@@ -368,6 +369,8 @@ function Game({
           settingsMenuOpen={settingsMenuOpen}
           onPanelOpenChange={setGamePanelOpen}
           navigate={navigate}
+          account={account}
+          onAccountChange={onAccountChange}
         />
       ) : game.state === 'ended' ? (
         <EndPage
@@ -377,8 +380,8 @@ function Game({
           mapNames={mapNames}
           navigate={navigate}
           onViewMap={() => setEndView('map')}
-          player={player}
-          onNameChange={onNameChange}
+          account={account}
+          onAccountChange={onAccountChange}
         />
       ) : (
         <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
@@ -386,8 +389,8 @@ function Game({
             game={game}
             gameMeta={gameMeta}
             setGame={applyGameState}
-            player={player}
-            onNameChange={onNameChange}
+            account={account}
+            onAccountChange={onAccountChange}
             selfId={selfId}
             mapNames={mapNames}
             navigate={navigate}

@@ -3,8 +3,10 @@ import { Alert, Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { connector } from '../connector';
-import { saveGameName, saveGameSettings } from '../lib/player';
+import { saveGameSettings } from '../lib/player';
 import type {
+  Account,
+  AccountChange,
   Ack,
   BotDifficulty,
   BotPersonality,
@@ -12,7 +14,6 @@ import type {
   GameSettingsInput,
   GameState,
   GenerateMapInput,
-  Player,
 } from '../lib/types';
 import BannedList from './BannedList';
 import Header from './Header';
@@ -24,8 +25,8 @@ interface Props {
   game: GameState;
   gameMeta: GameMeta | null;
   setGame: (game: GameState) => void;
-  player: Player;
-  onNameChange: (name: string) => void;
+  account: Account | null;
+  onAccountChange: AccountChange;
   selfId: number | null;
   mapNames: string[];
   navigate: (path: string) => void;
@@ -35,8 +36,8 @@ function Lobby({
   game,
   gameMeta,
   setGame,
-  player,
-  onNameChange,
+  account,
+  onAccountChange,
   selfId,
   mapNames,
   navigate,
@@ -65,7 +66,6 @@ function Lobby({
       }
       setSettingsError('');
       setGame(res.game);
-      if (settings.name !== undefined) saveGameName(res.game.name);
     });
   }
 
@@ -207,6 +207,8 @@ function Lobby({
           fogOfWar: res.game.fogOfWar,
           alliances: res.game.alliances,
           turnDuration: res.game.turnDuration,
+          disconnectBotDifficulty: res.game.disconnectBotDifficulty,
+          disconnectBotPersonality: res.game.disconnectBotPersonality,
           ...(gameMeta ? { visibility: gameMeta.visibility } : {}),
         },
         res.game.slots,
@@ -228,8 +230,8 @@ function Lobby({
         game={game}
         isHost={isHost}
         applySettings={applySettings}
-        player={player}
-        onNameChange={onNameChange}
+        account={account}
+        onAccountChange={onAccountChange}
       />
 
       {settingsError && (

@@ -72,6 +72,7 @@ export {
 } from './mapgen/core/params';
 export { runMapgenWorker } from './mapgen/worker';
 export { BUILTIN_MAP_NAMES } from './maps/maps';
+export { randomPlayerName } from './session/players';
 export { GameMap } from './types';
 export { containsProfanity } from './util/profanity';
 export {

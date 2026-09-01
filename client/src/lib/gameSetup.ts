@@ -1,6 +1,6 @@
 import { connector } from '../connector';
 import { publish } from '../connector/inbound';
-import { getGameSettings, getGameSlots } from './player';
+import { getGameSettings, getGameSlots, isLoggedIn } from './player';
 import type { Ack } from './types';
 
 let regeneratingMap = false;
@@ -19,18 +19,15 @@ function apply(res: Ack): void {
 }
 
 export function applySavedGameSettings(): void {
-  const saved = getGameSettings();
-  if (saved) {
-    const { mapGeneration, ...rules } = saved;
-    if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
-    if (mapGeneration) {
-      setRegeneratingMap(true);
-      connector.generateMap(mapGeneration, (res) => {
-        setRegeneratingMap(false);
-        apply(res);
-      });
-    }
+  if (!isLoggedIn()) return;
+  const { mapGeneration, ...rules } = getGameSettings();
+  if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
+  if (mapGeneration) {
+    setRegeneratingMap(true);
+    connector.generateMap(mapGeneration, (res) => {
+      setRegeneratingMap(false);
+      apply(res);
+    });
   }
-  const slots = getGameSlots();
-  if (slots) connector.updateSettings({ slots }, apply);
+  connector.updateSettings({ slots: getGameSlots() }, apply);
 }

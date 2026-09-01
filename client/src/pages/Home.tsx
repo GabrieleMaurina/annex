@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Container, Form, Table } from 'react-bootstrap';
-import PlayerNameEditor from '../common/PlayerNameEditor';
+import AccountButton from '../common/AccountButton';
 import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
 import { useWhiteIcon } from '../common/icon';
 import { connector } from '../connector';
 import { applySavedGameSettings } from '../lib/gameSetup';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import { getGameName, saveGameName } from '../lib/player';
-import type { Ack, GameSummary, Player } from '../lib/types';
+import { getPlayerName } from '../lib/player';
+import type { Account, AccountChange, Ack, GameSummary } from '../lib/types';
 
 const MAX_GAME_NAME_LENGTH = 20;
 const MAX_CREATE_ATTEMPTS = 20;
@@ -20,8 +20,8 @@ const GAME_STATE_COLORS: Record<GameSummary['state'], string> = {
 };
 
 interface Props {
-  player: Player;
-  onNameChange: (name: string) => void;
+  account: Account | null;
+  onAccountChange: AccountChange;
   navigate: (path: string) => void;
   kickedMessage: string;
   clearKickedMessage: () => void;
@@ -36,8 +36,8 @@ function suggestedGameName(base: string, attempt: number): string {
 }
 
 function Home({
-  player,
-  onNameChange,
+  account,
+  onAccountChange,
   navigate,
   kickedMessage,
   clearKickedMessage,
@@ -61,11 +61,10 @@ function Home({
   }, []);
 
   function createGame(attempt = 0) {
-    const baseName = getGameName() || `Game with ${player.name}`;
+    const baseName = `Game with ${getPlayerName()}`;
     const name = suggestedGameName(baseName, attempt);
     connector.createGame({ name }, (res: Ack) => {
       if (res.ok) {
-        saveGameName(baseName);
         applySavedGameSettings();
         navigate(`/${encodeURIComponent(res.game.name)}`);
       } else if (
@@ -95,7 +94,7 @@ function Home({
     <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
       <SettingsMenu shareUrl={window.location.origin} />
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1 }}>
-        <PlayerNameEditor player={player} onNameChange={onNameChange} />
+        <AccountButton account={account} onAccountChange={onAccountChange} />
       </div>
       <Tip text="View on GitHub">
         <Button

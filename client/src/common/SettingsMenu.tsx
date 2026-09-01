@@ -4,7 +4,7 @@ import {
   areAnimationsDisabled,
   toggleAnimationsDisabled,
 } from '../game/animations';
-import { saveSettings } from '../lib/player';
+import { pushSettings } from '../lib/player';
 import {
   getSoundVolume,
   isSoundMuted,
@@ -104,7 +104,7 @@ function SettingsMenu({ shareUrl, hidden, onOpenChange }: Props) {
                 className="d-flex align-items-center justify-content-center"
                 onClick={() => {
                   toggleSoundMuted();
-                  saveSettings();
+                  pushSettings();
                   forceUpdate((n) => n + 1);
                 }}
               >
@@ -133,7 +133,7 @@ function SettingsMenu({ shareUrl, hidden, onOpenChange }: Props) {
                 className="d-flex align-items-center justify-content-center"
                 onClick={() => {
                   toggleAnimationsDisabled();
-                  saveSettings();
+                  pushSettings();
                   forceUpdate((n) => n + 1);
                 }}
               >
@@ -177,7 +177,7 @@ function SettingsMenu({ shareUrl, hidden, onOpenChange }: Props) {
               value={getSoundVolume()}
               onChange={(e) => {
                 setSoundVolume(Number(e.target.value));
-                saveSettings();
+                pushSettings();
                 forceUpdate((n) => n + 1);
               }}
               style={

@@ -13,10 +13,14 @@ export function isValidPlayerName(name: unknown): name is string {
   return trimmed.length > 0 && trimmed.length <= MAX_PLAYER_NAME_LENGTH;
 }
 
+export function randomPlayerName(): string {
+  return `Player${Math.floor(Math.random() * 9000) + 1000}`;
+}
+
 export function addPlayer(name: string | undefined): Player {
   const player: Player = {
     id: nextPlayerId++,
-    name: name ?? 'Player',
+    name: name ?? randomPlayerName(),
     gameName: null,
     connected: true,
     isBot: false,

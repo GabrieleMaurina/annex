@@ -1,8 +1,10 @@
-import { socket } from '../lib/socket';
+import { rebindSocket, socket } from '../lib/socket';
 import type {
   Ack,
+  ClientSettings,
   GameSettingsInput,
   GenerateMapInput,
+  IdentifyResult,
   ReplayAck,
 } from '../lib/types';
 import { subscribe, unsubscribe } from './inbound';
@@ -11,11 +13,27 @@ import {
   addLocalPlayer as offlineAddLocalPlayer,
   continueHandoff as offlineContinueHandoff,
   dispatch as offlineDispatch,
-  setClientName as offlineSetClientName,
   setLocalPlayerName as offlineSetLocalPlayerName,
   startOffline,
   stopOffline,
 } from './offline/host';
+
+type AuthAck = { ok: true } | { ok: false; error: string };
+type LoginAck =
+  | {
+      ok: true;
+      username: string;
+      clientSettings: ClientSettings;
+      gameSettings: Record<string, unknown>;
+      gameName: string | null;
+    }
+  | { ok: false; error: string };
+type LogoutAck = {
+  ok: true;
+  name: string;
+  clientSettings: ClientSettings;
+  gameSettings: Record<string, unknown>;
+};
 
 type Listener = (payload: never) => void;
 type AckCallback = (res: Ack) => void;
@@ -47,8 +65,8 @@ export const connector = {
     return isOffline();
   },
 
-  setMode(offline: boolean, playerName: string): void {
-    if (offline) startOffline(playerName);
+  setMode(offline: boolean): void {
+    if (offline) startOffline();
     else stopOffline();
   },
 
@@ -72,10 +90,7 @@ export const connector = {
     unsubscribe(event, handler);
   },
 
-  identify(
-    data: { playerKey: string; playerName: string; room: string },
-    cb: (res: { id: number; gameName: string | null }) => void,
-  ): void {
+  identify(data: { room: string }, cb: (res: IdentifyResult) => void): void {
     if (isOffline()) {
       socket.emit('player:identify', data, () => {});
       offlineDispatch('player:identify', data, cb as (res: unknown) => void);
@@ -84,9 +99,56 @@ export const connector = {
     socket.emit('player:identify', data, cb);
   },
 
-  setName(data: { name: string }): void {
-    socket.emit('player:setName', data);
-    offlineSetClientName(data.name);
+  register(
+    data: { username: string; email: string; password: string },
+    cb: (res: AuthAck) => void,
+  ): void {
+    socket.emit('auth:register', data, cb);
+  },
+
+  confirmEmail(data: { code: string }, cb: (res: LoginAck) => void): void {
+    socket.emit('auth:confirmEmail', data, (res: LoginAck) => {
+      cb(res);
+      if (res.ok) rebindSocket();
+    });
+  },
+
+  recoverUsername(
+    data: { email: string },
+    cb: (res: { ok: true }) => void,
+  ): void {
+    socket.emit('auth:recoverUsername', data, cb);
+  },
+
+  requestPasswordReset(
+    data: { email: string },
+    cb: (res: { ok: true }) => void,
+  ): void {
+    socket.emit('auth:requestPasswordReset', data, cb);
+  },
+
+  resetPassword(
+    data: { code: string; password: string },
+    cb: (res: LoginAck) => void,
+  ): void {
+    socket.emit('auth:resetPassword', data, (res: LoginAck) => {
+      cb(res);
+      if (res.ok) rebindSocket();
+    });
+  },
+
+  login(
+    data: { username: string; password: string },
+    cb: (res: LoginAck) => void,
+  ): void {
+    socket.emit('auth:login', data, (res: LoginAck) => {
+      cb(res);
+      if (res.ok) rebindSocket();
+    });
+  },
+
+  logout(cb: (res: LogoutAck) => void): void {
+    socket.emit('auth:logout', {}, cb);
   },
 
   listMaps(cb: (names: string[]) => void): void {

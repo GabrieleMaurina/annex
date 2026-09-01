@@ -5,6 +5,8 @@ import { useWhiteIcon } from '../../common/icon';
 import { connector } from '../../connector';
 import { playerColor } from '../../lib/palette';
 import type {
+  Account,
+  AccountChange,
   Ack,
   Alliances,
   Bounties,
@@ -119,6 +121,8 @@ interface Props {
   settingsMenuOpen: boolean;
   onPanelOpenChange: (open: boolean) => void;
   navigate: (path: string) => void;
+  account: Account | null;
+  onAccountChange: AccountChange;
 }
 
 function GameMap({
@@ -180,6 +184,8 @@ function GameMap({
   settingsMenuOpen,
   onPanelOpenChange,
   navigate,
+  account,
+  onAccountChange,
 }: Props) {
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteBonusIcon = useWhiteIcon('/icons/bonus.svg');
@@ -814,6 +820,8 @@ function GameMap({
         awardedCards={cardsFlow.awardedCards}
       />
       <PlayersPanel
+        account={account}
+        onAccountChange={onAccountChange}
         players={players}
         spectators={spectators}
         gameMode={gameMode}

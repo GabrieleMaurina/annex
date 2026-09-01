@@ -1,12 +1,37 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
 import { connector } from './connector';
 import { registerGeneratedMap, type Territory } from './game/mapData';
 import { applySavedGameSettings } from './lib/gameSetup';
-import { getPlayer, savePlayer } from './lib/player';
-import type { Ack, Player } from './lib/types';
+import { applyServerSettings, setPlayerName } from './lib/player';
+import type { Account, AccountChange, Ack, IdentifyResult } from './lib/types';
+import EmailConfirmation from './pages/EmailConfirmation';
 import Game from './pages/Game';
 import Home from './pages/Home';
+import PasswordReset from './pages/PasswordReset';
+
+const AUTH_PAGE_PREFIXES = {
+  confirm: '/email_confirmation/',
+  reset: '/password_reset/',
+} as const;
+
+type AuthPage = { kind: keyof typeof AUTH_PAGE_PREFIXES; code: string };
+
+function authPageFromPath(pathname: string): AuthPage | null {
+  for (const [kind, prefix] of Object.entries(AUTH_PAGE_PREFIXES)) {
+    if (pathname.startsWith(prefix)) {
+      try {
+        return {
+          kind: kind as keyof typeof AUTH_PAGE_PREFIXES,
+          code: decodeURIComponent(pathname.slice(prefix.length)),
+        };
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
 
 function roomFromPath(pathname: string): string {
   if (pathname === '/') return 'home';
@@ -18,7 +43,7 @@ function roomFromPath(pathname: string): string {
 }
 
 function App() {
-  const [player, setPlayer] = useState<Player>(() => getPlayer());
+  const [account, setAccount] = useState<Account | null>(null);
   const [path, setPath] = useState(window.location.pathname);
   const [joinError, setJoinError] = useState('');
   const [needsPassword, setNeedsPassword] = useState(false);
@@ -26,25 +51,16 @@ function App() {
   const [sessionTakenOver, setSessionTakenOver] = useState(false);
   const [mapNames, setMapNames] = useState<string[]>([]);
   const [selfId, setSelfId] = useState<number | null>(null);
-  const playerRef = useRef(player);
+
+  const authPage = authPageFromPath(path);
+  const onAuthPage = authPage !== null;
 
   useEffect(() => {
-    playerRef.current = player;
-  }, [player]);
-
-  useEffect(() => {
-    const pathname = window.location.pathname;
-    connector.setMode(
-      roomFromPath(pathname) === 'offline',
-      playerRef.current.name,
-    );
+    connector.setMode(roomFromPath(window.location.pathname) === 'offline');
   }, []);
 
   const applyRoom = useCallback((pathname: string) => {
-    connector.setMode(
-      roomFromPath(pathname) === 'offline',
-      playerRef.current.name,
-    );
+    connector.setMode(roomFromPath(pathname) === 'offline');
     setPath(pathname);
   }, []);
 
@@ -56,7 +72,7 @@ function App() {
     return () => window.removeEventListener('popstate', onPopState);
   }, [applyRoom]);
 
-  const room = roomFromPath(path);
+  const room = authPage ? 'home' : roomFromPath(path);
   const isOffline = room === 'offline';
 
   const navigate = useCallback(
@@ -131,19 +147,20 @@ function App() {
       connector.listMaps((names: string[]) => {
         setMapNames(names);
       });
-      connector.identify(
-        {
-          playerKey: playerRef.current.key,
-          playerName: playerRef.current.name,
-          room,
-        },
-        (res: { id: number; gameName: string | null }) => {
-          setSelfId(res.id);
-          if (res.gameName && res.gameName !== room) {
-            navigate(`/${encodeURIComponent(res.gameName)}`);
-          }
-        },
-      );
+      connector.identify({ room }, (res: IdentifyResult) => {
+        setSelfId(res.id);
+        if (!onAuthPage && res.gameName && res.gameName !== room) {
+          navigate(`/${encodeURIComponent(res.gameName)}`);
+        }
+        if (isOffline) return;
+        setAccount(res.account);
+        setPlayerName(res.name);
+        applyServerSettings(
+          !!res.account,
+          res.clientSettings,
+          res.gameSettings,
+        );
+      });
       setNeedsPassword(false);
       if (room === 'home') {
         setJoinError('');
@@ -162,7 +179,7 @@ function App() {
     return () => {
       connector.off('connect', afterConnect);
     };
-  }, [room, isOffline, attemptJoin, navigate]);
+  }, [room, isOffline, onAuthPage, attemptJoin, navigate]);
 
   useEffect(() => {
     function onMapGenerated(data: {
@@ -221,12 +238,21 @@ function App() {
     };
   }, [navigate]);
 
-  function handleNameChange(name: string) {
-    const updated = { ...player, name };
-    setPlayer(updated);
-    savePlayer(updated);
-    connector.setName({ name });
-  }
+  const handleAccountChange = useCallback<AccountChange>(
+    (change) => {
+      setAccount(change.account);
+      applyServerSettings(
+        !!change.account,
+        change.clientSettings,
+        change.gameSettings,
+      );
+      if (change.gameName != null) {
+        const target = `/${encodeURIComponent(change.gameName)}`;
+        if (window.location.pathname !== target) navigate(target);
+      }
+    },
+    [navigate],
+  );
 
   if (sessionTakenOver) {
     return (
@@ -239,11 +265,29 @@ function App() {
     );
   }
 
+  if (authPage) {
+    if (selfId === null)
+      return (
+        <Container className="py-5">
+          <p className="mb-0">Loading...</p>
+        </Container>
+      );
+    const AuthPageComponent =
+      authPage.kind === 'confirm' ? EmailConfirmation : PasswordReset;
+    return (
+      <AuthPageComponent
+        code={authPage.code}
+        navigate={navigate}
+        onAccountChange={handleAccountChange}
+      />
+    );
+  }
+
   if (room === 'home') {
     return (
       <Home
-        player={player}
-        onNameChange={handleNameChange}
+        account={account}
+        onAccountChange={handleAccountChange}
         navigate={navigate}
         kickedMessage={kickedMessage}
         clearKickedMessage={() => setKickedMessage('')}
@@ -254,8 +298,8 @@ function App() {
   return (
     <Game
       key={room}
-      player={player}
-      onNameChange={handleNameChange}
+      account={account}
+      onAccountChange={handleAccountChange}
       selfId={selfId}
       joinError={joinError}
       needsPassword={needsPassword}

@@ -3,6 +3,16 @@ import express from 'express';
 import { createServer } from 'http';
 import os from 'os';
 import { Server } from 'socket.io';
+import { randomToken } from './auth';
+import { registerAuthHandlers } from './authHandlers';
+import {
+  isSecureRequest,
+  isSessionToken,
+  parseCookies,
+  serializeSessionCookie,
+  takeSessionRotation,
+} from './cookies';
+import { connectDb } from './db';
 import {
   registerAllianceHandlers,
   registerAttackHandlers,
@@ -57,8 +67,19 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:5000',
+    credentials: true,
   },
   maxHttpBufferSize: 8 * 1024 * 1024,
+});
+
+io.engine.on('initial_headers', (headers, req) => {
+  const raw = parseCookies(req.headers.cookie).anx;
+  const existing = isSessionToken(raw) ? raw : undefined;
+  const rotated = existing ? takeSessionRotation(existing) : undefined;
+  const token = rotated || existing || randomToken();
+  (req as { anxToken?: string }).anxToken = token;
+  if (!existing || rotated)
+    headers['set-cookie'] = serializeSessionCookie(token, isSecureRequest(req));
 });
 
 const callbacks: EngineCallbacks = {
@@ -143,6 +164,7 @@ io.on('connection', (socket) => {
   socket.join(HOME_ROOM);
   registerMapsHandlers(socket, engine);
   registerHomeHandlers(io, socket, engine);
+  registerAuthHandlers(io, socket, engine);
   registerGameHandlers(io, socket, engine);
   registerMapGenHandlers(socket, engine);
   registerBotLobbyHandlers(socket, engine);
@@ -158,6 +180,11 @@ io.on('connection', (socket) => {
   registerCardHandlers(socket, engine);
   registerAllianceHandlers(socket, engine);
   registerReplayHandlers(socket, engine);
+});
+
+connectDb().catch((error) => {
+  console.error(error);
+  process.exit(1);
 });
 
 const port = Number(process.env.PORT) || 3000;

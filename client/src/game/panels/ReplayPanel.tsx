@@ -8,7 +8,7 @@ interface Props {
   totalFrames: number;
   playing: boolean;
   speed: number;
-  turnNumber: number;
+  roundNumber: number;
   color: string;
   onTogglePlay: () => void;
   onStepBack: () => void;
@@ -24,7 +24,7 @@ function ReplayPanel({
   totalFrames,
   playing,
   speed,
-  turnNumber,
+  roundNumber,
   color,
   onTogglePlay,
   onStepBack,
@@ -73,7 +73,7 @@ function ReplayPanel({
           style={{ width: 22, height: 22, backgroundColor: color }}
         />
       </Tip>
-      <span className="fw-bold">Turn {turnNumber}</span>
+      <span className="fw-bold">Round {roundNumber}</span>
       <Tip text="Jump to start">
         <Button
           size="sm"

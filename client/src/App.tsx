@@ -274,13 +274,7 @@ function App() {
       );
     if (authPage.kind === 'confirm')
       return <EmailConfirmation code={authPage.code} navigate={navigate} />;
-    return (
-      <PasswordReset
-        code={authPage.code}
-        navigate={navigate}
-        onAccountChange={handleAccountChange}
-      />
-    );
+    return <PasswordReset code={authPage.code} navigate={navigate} />;
   }
 
   if (room === 'home') {

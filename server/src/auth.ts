@@ -191,7 +191,7 @@ export function requestPasswordReset(email: unknown): Promise<{ ok: true }> {
 export function resetPassword(
   code: unknown,
   password: unknown,
-): Promise<LoginResult> {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   if (typeof code !== 'string' || !code)
     return Promise.resolve({ ok: false, error: 'invalid code' });
   if (!isValidPassword(password))
@@ -201,13 +201,9 @@ export function resetPassword(
       return { ok: false as const, error: 'invalid or expired code' };
     return hashPassword(password)
       .then((hash) => setPassword(userId, hash))
+      .then(() => markEmailValidated(userId))
       .then(() => deleteUserSessions(userId))
-      .then(() => findUserById(userId))
-      .then((user) =>
-        user
-          ? loginResult(user)
-          : { ok: false as const, error: 'invalid or expired code' },
-      );
+      .then(() => ({ ok: true as const }));
   });
 }
 

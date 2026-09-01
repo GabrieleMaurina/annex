@@ -414,7 +414,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           VERTEX_RADIUS * scaleX,
           now,
           toxin.permanent,
-          toxin.turnsRemaining,
+          toxin.roundsRemaining,
           t.id,
           areAnimationsDisabled()
             ? -Infinity

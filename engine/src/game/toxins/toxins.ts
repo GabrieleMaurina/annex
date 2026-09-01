@@ -32,13 +32,13 @@ export function decrementToxinsGlobally(game: Game): number[] {
   const expired: number[] = [];
   for (const [territoryId, toxin] of [...game.territoryToxins]) {
     if (toxin.permanent) continue;
-    if (toxin.turnsRemaining <= 1) {
+    if (toxin.roundsRemaining <= 1) {
       game.territoryToxins.delete(territoryId);
       expired.push(territoryId);
     } else {
       game.territoryToxins.set(territoryId, {
         ...toxin,
-        turnsRemaining: toxin.turnsRemaining - 1,
+        roundsRemaining: toxin.roundsRemaining - 1,
       });
     }
   }

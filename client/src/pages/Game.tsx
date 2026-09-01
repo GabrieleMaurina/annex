@@ -255,7 +255,7 @@ function Game({
   function adjustToxinTerritories(
     changes: (
       | { territoryId: number; remove: true }
-      | { territoryId: number; permanent: boolean; turnsRemaining: number }
+      | { territoryId: number; permanent: boolean; roundsRemaining: number }
     )[],
   ) {
     setGame((prev) => {
@@ -267,7 +267,7 @@ function Game({
         ): c is {
           territoryId: number;
           permanent: boolean;
-          turnsRemaining: number;
+          roundsRemaining: number;
         } => !('remove' in c),
       );
       return {
@@ -277,7 +277,7 @@ function Game({
           ...additions.map((a) => ({
             id: a.territoryId,
             permanent: a.permanent,
-            turnsRemaining: a.turnsRemaining,
+            roundsRemaining: a.roundsRemaining,
           })),
         ],
       };
@@ -324,7 +324,7 @@ function Game({
           continentId={game.continentId}
           mission={mission}
           selfId={selfId}
-          turnNumber={game.turnNumber}
+          roundNumber={game.roundNumber}
           turnPlayerIndex={game.turnPlayerIndex}
           turnPhase={game.turnPhase}
           turnDuration={game.turnDuration}

@@ -24,7 +24,7 @@ export interface GameSettings {
   portals: string;
   radiations: string;
   starvation: string;
-  turnTroops: string;
+  roundTroops: string;
   bounties: string;
   supplyLines: string;
   fogOfWar: string;
@@ -41,6 +41,7 @@ export interface User {
   email: string;
   passwordHash: string;
   emailValidated: boolean;
+  elo: number;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
 }
@@ -52,6 +53,7 @@ interface UserDoc {
   email_normalized: string;
   password: string;
   validated_email: boolean;
+  elo?: number;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
 }
@@ -78,8 +80,8 @@ const GAME_ENUMS: Record<string, unknown[]> = {
     'Capitals',
     'Team Deathmatch',
     'Continent',
-    '5-Turn',
-    '10-Turn',
+    '5-Round',
+    '10-Round',
     'Assassin',
     'Mission',
     'Player Kills',
@@ -101,7 +103,7 @@ const GAME_ENUMS: Record<string, unknown[]> = {
   portals: ['off', 'static', 'dynamic'],
   radiations: ['off', 'static', 'dynamic', 'expanding'],
   starvation: ['off', 'territory', 'total', 'percent'],
-  turnTroops: ['off', 'on'],
+  roundTroops: ['off', 'on'],
   bounties: ['off', 'on'],
   supplyLines: ['off', 'on'],
   fogOfWar: ['off', 'on'],
@@ -119,6 +121,8 @@ const GAME_ENUMS: Record<string, unknown[]> = {
   ],
   visibility: ['public', 'private'],
 };
+
+export const DEFAULT_ELO = 1500;
 
 export const DEFAULT_CLIENT_SETTINGS: ClientSettings = {
   muted: false,
@@ -141,7 +145,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   portals: 'off',
   radiations: 'off',
   starvation: 'off',
-  turnTroops: 'off',
+  roundTroops: 'off',
   bounties: 'off',
   supplyLines: 'off',
   fogOfWar: 'off',
@@ -169,6 +173,7 @@ const schema = {
       additionalProperties: false,
       properties: {
         _id: {},
+        elo: { bsonType: 'number' },
         username: {
           bsonType: 'string',
           maxLength: 10,
@@ -306,6 +311,7 @@ function toUser(doc: WithId<UserDoc>): User {
     email: doc.email,
     passwordHash: doc.password,
     emailValidated: doc.validated_email,
+    elo: doc.elo ?? DEFAULT_ELO,
     clientSettings: sanitizeClientSettings(doc.clientSettings),
     gameSettings: sanitizeGameSettings(doc.gameSettings),
   };
@@ -342,6 +348,7 @@ export function insertUser(data: {
       email_normalized: normalizeEmail(data.email),
       password: data.passwordHash,
       validated_email: false,
+      elo: DEFAULT_ELO,
       clientSettings: { ...DEFAULT_CLIENT_SETTINGS },
       gameSettings: { ...DEFAULT_GAME_SETTINGS },
     })
@@ -385,5 +392,33 @@ export function saveSettings(
   if (Object.keys(set).length === 0) return Promise.resolve();
   return collection()
     .updateOne({ _id: new ObjectId(userId) }, { $set: set })
+    .then(() => undefined);
+}
+
+export function getElosByIds(ids: string[]): Promise<Map<string, number>> {
+  return collection()
+    .find({ _id: { $in: ids.map((id) => new ObjectId(id)) } })
+    .toArray()
+    .then(
+      (docs) =>
+        new Map(
+          docs.map((doc) => [doc._id.toString(), doc.elo ?? DEFAULT_ELO]),
+        ),
+    );
+}
+
+export function setElos(
+  updates: { userId: string; elo: number }[],
+): Promise<void> {
+  if (updates.length === 0) return Promise.resolve();
+  return collection()
+    .bulkWrite(
+      updates.map((update) => ({
+        updateOne: {
+          filter: { _id: new ObjectId(update.userId) },
+          update: { $set: { elo: update.elo } },
+        },
+      })),
+    )
     .then(() => undefined);
 }

@@ -27,6 +27,13 @@ export function emitTo(
   else io.to(socketId).emit(event, payload);
 }
 
+export function userIdByPlayerId(playerId: number): string | undefined {
+  for (const [userId, id] of playerIdByUserId) {
+    if (id === playerId) return userId;
+  }
+  return undefined;
+}
+
 export function bindSocket(
   io: Server,
   socket: Socket,

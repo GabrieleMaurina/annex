@@ -202,7 +202,7 @@ function Lobby({
           portals: res.game.portals,
           radiations: res.game.radiations,
           starvation: res.game.starvation,
-          turnTroops: res.game.turnTroops,
+          roundTroops: res.game.roundTroops,
           bounties: res.game.bounties,
           supplyLines: res.game.supplyLines,
           fogOfWar: res.game.fogOfWar,

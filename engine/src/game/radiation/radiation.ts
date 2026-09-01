@@ -121,10 +121,10 @@ function applyRadiation(game: Game): {
   return { eliminatedPlayerIds, newlyRadiated };
 }
 
-export function updateRadiationForNewTurn(game: Game): number[] {
+export function updateRadiationForNewRound(game: Game): number[] {
   if (game.radiations === 'off' || game.radiations === 'static') return [];
 
-  if (game.turnNumber % 2 === 1) {
+  if (game.roundNumber % 2 === 1) {
     computeUpcomingRadiation(game);
     fogFilterEmit(
       game,

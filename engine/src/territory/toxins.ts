@@ -41,8 +41,8 @@ export function toxin(playerId: number, rawTerritoryId: unknown): GameResponse {
   game.territoryTroops.delete(territoryId);
   game.territoryEntrenchment.delete(territoryId);
   const permanent = game.toxins === 'permanent';
-  const turnsRemaining = permanent ? 0 : 3;
-  game.territoryToxins.set(territoryId, { permanent, turnsRemaining });
+  const roundsRemaining = permanent ? 0 : 3;
+  game.territoryToxins.set(territoryId, { permanent, roundsRemaining });
   if (permanent) removePortalTerritory(game, territoryId);
   if (game.selectedTerritoryId === territoryId) game.selectedTerritoryId = null;
 
@@ -52,7 +52,7 @@ export function toxin(playerId: number, rawTerritoryId: unknown): GameResponse {
     const visible = visibleTerritoryIdsOrAll(game, viewerId);
     if (viewerId !== playerId && visible !== null && !visible.has(territoryId))
       return null;
-    return { territoryId, permanent, turnsRemaining, playerId };
+    return { territoryId, permanent, roundsRemaining, playerId };
   });
 
   if (!hasAnyToxin(game, playerId)) advanceTurnPhase(game);

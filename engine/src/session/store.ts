@@ -1,6 +1,10 @@
 import { endTakeover, startTakeover } from '../bots/takeover';
 import { callbacks } from '../callbacks';
-import { checkGameEnd, HUMANS_ABANDONED_GRACE_MS } from '../game/end';
+import {
+  checkGameEnd,
+  endAbandonedGame,
+  HUMANS_ABANDONED_GRACE_MS,
+} from '../game/end';
 import { addHostCandidate, recomputeHost } from '../game/host';
 import { assignRandomColor, maxTeam } from '../game/mechanics';
 import { gameResultsStats, gameState, gameSummary } from '../game/state';
@@ -92,6 +96,7 @@ export function destroyIfInactive(game: Game) {
       return;
 
     clearTurnTimer(current.name);
+    endAbandonedGame(current);
     games.delete(current.name);
     evictGameMembers(current);
     broadcastHomeGames();

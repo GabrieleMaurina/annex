@@ -69,7 +69,7 @@ function performPhaseStep(
 ): void {
   const gameName = game.name;
   const botId = player.id;
-  const requestedTurnNumber = game.turnNumber;
+  const requestedRoundNumber = game.roundNumber;
   const requestedPhase = game.turnPhase;
 
   planBotTurnAsync(
@@ -88,7 +88,7 @@ function performPhaseStep(
         !current ||
         current.state !== 'playing' ||
         current.paused ||
-        current.turnNumber !== requestedTurnNumber ||
+        current.roundNumber !== requestedRoundNumber ||
         current.turnPhase !== requestedPhase ||
         current.playerIds[current.turnPlayerIndex] !== botId
       )

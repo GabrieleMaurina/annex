@@ -19,11 +19,11 @@ import type {
   Placement,
   Portals,
   Radiations,
+  RoundTroops,
   Starvation,
   SupplyLines,
   Toxins,
   TurnDuration,
-  TurnTroops,
   Visibility,
 } from '../lib/types';
 import {
@@ -47,11 +47,11 @@ import {
   PLACEMENT_HELP,
   PORTALS_HELP,
   RADIATIONS_HELP,
+  ROUND_TROOPS_HELP,
   STARVATION_HELP,
   SUPPLY_LINES_HELP,
   TOXINS_HELP,
   TURN_DURATION_HELP,
-  TURN_TROOPS_HELP,
   VISIBILITY_HELP,
 } from './settingsHelp';
 
@@ -300,17 +300,17 @@ function GameSettingsFields({
               className="mb-0 d-flex align-items-center gap-1"
               style={LABEL_STYLE}
             >
-              Turn Troops
-              <Help>{TURN_TROOPS_HELP}</Help>
+              Round Troops
+              <Help>{ROUND_TROOPS_HELP}</Help>
             </Form.Label>
             {isHost ? (
               <Form.Select
                 className="w-auto"
                 style={SHRINK_STYLE}
-                value={game.turnTroops}
+                value={game.roundTroops}
                 onChange={(e) =>
                   applySettings({
-                    turnTroops: e.target.value as TurnTroops,
+                    roundTroops: e.target.value as RoundTroops,
                   })
                 }
               >
@@ -318,7 +318,7 @@ function GameSettingsFields({
                 <option value="on">On</option>
               </Form.Select>
             ) : (
-              <span style={TRUNCATE_STYLE}>{capitalize(game.turnTroops)}</span>
+              <span style={TRUNCATE_STYLE}>{capitalize(game.roundTroops)}</span>
             )}
           </div>
 

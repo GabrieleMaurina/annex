@@ -13,6 +13,7 @@ import {
   takeSessionRotation,
 } from './cookies';
 import { connectDb } from './db';
+import { handleGameEnded } from './elo';
 import {
   registerAllianceHandlers,
   registerAttackHandlers,
@@ -105,6 +106,7 @@ const callbacks: EngineCallbacks = {
   onLogs: (playerId, payload) => emitTo(io, playerId, 'game:logs', payload),
   onResults: (playerId, payload) =>
     emitTo(io, playerId, 'game:results', payload),
+  onGameEnded: handleGameEnded,
   onCardSetPlayed: (playerId, payload) =>
     emitTo(io, playerId, 'game:cardSetPlayed', payload),
   onKicked: (playerId, payload) => emitTo(io, playerId, 'game:kicked', payload),

@@ -31,7 +31,7 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
   }, []);
 
   const lastConquestAttackerIdRef = useRef<number | undefined>(undefined);
-  const lastLoggedTurnNumberRef = useRef<number | null>(null);
+  const lastLoggedRoundNumberRef = useRef<number | null>(null);
 
   const logDeploy = useCallback(
     (payload: { territoryId: number; troops: number; playerId: number }) => {
@@ -100,14 +100,14 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     (payload: {
       territoryId: number;
       permanent: boolean;
-      turnsRemaining: number;
+      roundsRemaining: number;
       playerId: number;
     }) => {
       pushLog(
         colorForPlayer(payload.playerId),
         payload.permanent
           ? `Released toxin on territory #${payload.territoryId + 1} permanently`
-          : `Released toxin on territory #${payload.territoryId + 1} for ${payload.turnsRemaining} turns`,
+          : `Released toxin on territory #${payload.territoryId + 1} for ${payload.roundsRemaining} rounds`,
       );
     },
     [colorForPlayer, pushLog],
@@ -176,19 +176,19 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
   const onTurnStarted = useCallback(
     (payload: {
       playerId: number;
-      turnNumber: number;
+      roundNumber: number;
       troopsFromTerritories: number;
       troopsFromBonuses: number;
       troopsFromCapitals: number;
-      troopsFromTurnTroops: number;
+      troopsFromRoundTroops: number;
       troopsFromBounties: number;
     }) => {
       if (
-        lastLoggedTurnNumberRef.current === null ||
-        payload.turnNumber > lastLoggedTurnNumberRef.current
+        lastLoggedRoundNumberRef.current === null ||
+        payload.roundNumber > lastLoggedRoundNumberRef.current
       ) {
-        lastLoggedTurnNumberRef.current = payload.turnNumber;
-        pushLog(NEUTRAL_LOG_COLOR, `Started turn ${payload.turnNumber + 1}`);
+        lastLoggedRoundNumberRef.current = payload.roundNumber;
+        pushLog(NEUTRAL_LOG_COLOR, `Started round ${payload.roundNumber + 1}`);
       }
       const color = colorForPlayer(payload.playerId);
       if (payload.troopsFromTerritories > 0)
@@ -206,10 +206,10 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
           color,
           `Received ${payload.troopsFromCapitals} troops from capitals`,
         );
-      if (payload.troopsFromTurnTroops > 0)
+      if (payload.troopsFromRoundTroops > 0)
         pushLog(
           color,
-          `Received ${payload.troopsFromTurnTroops} troops from turn troops`,
+          `Received ${payload.troopsFromRoundTroops} troops from round troops`,
         );
       if (payload.troopsFromBounties > 0)
         pushLog(

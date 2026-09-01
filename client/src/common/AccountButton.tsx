@@ -226,6 +226,7 @@ function AccountButton({ account, onAccountChange }: Props) {
                   size="sm"
                   placeholder="Username"
                   autoComplete="username"
+                  maxLength={10}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                 />
@@ -236,6 +237,7 @@ function AccountButton({ account, onAccountChange }: Props) {
                   type="email"
                   placeholder="Email"
                   autoComplete="email"
+                  maxLength={50}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />

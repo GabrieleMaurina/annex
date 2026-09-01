@@ -23,7 +23,7 @@ export interface BotAction {
 export interface CampaignCache {
   plan: CampaignPlan | null;
   step: number;
-  turnNumber: number;
+  roundNumber: number;
   playerId: number;
 }
 
@@ -51,7 +51,7 @@ function resolveCampaign(
 ): CampaignCache {
   if (
     cached &&
-    cached.turnNumber === game.turnNumber &&
+    cached.roundNumber === game.roundNumber &&
     cached.playerId === botId
   )
     return cached;
@@ -64,7 +64,7 @@ function resolveCampaign(
     weights,
     params,
   );
-  return { plan, step: 0, turnNumber: game.turnNumber, playerId: botId };
+  return { plan, step: 0, roundNumber: game.roundNumber, playerId: botId };
 }
 
 export function planBotTurn(

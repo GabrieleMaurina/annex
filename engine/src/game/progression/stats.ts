@@ -165,7 +165,7 @@ export function computeFinalRanking(game: Game): number[] {
     return [...game.playerIds].sort(killsComparator(game));
 
   const tiebreak =
-    game.gameMode === '5-Turn' || game.gameMode === '10-Turn'
+    game.gameMode === '5-Round' || game.gameMode === '10-Round'
       ? compareByTerritoriesFirst
       : compareBySurvivorTiebreak;
 

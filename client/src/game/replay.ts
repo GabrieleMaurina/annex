@@ -161,7 +161,7 @@ export function useReplay(
     territories,
     toxinTerritories,
     radiationTerritories,
-    turnNumber: currentFrame ? currentFrame.turnNumber : null,
+    roundNumber: currentFrame ? currentFrame.roundNumber : null,
     turnPlayerId: currentFrame ? currentFrame.playerId : null,
     conquestArrow:
       replay && index < totalFrames ? conquestArrowAt(replay, index) : null,

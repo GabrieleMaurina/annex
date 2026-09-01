@@ -1,3 +1,4 @@
+import { callbacks } from '../callbacks';
 import { playersById } from '../session/players';
 import { broadcastGameResults, broadcastHomeGames } from '../session/store';
 import { Game } from '../types';
@@ -13,8 +14,31 @@ import {
 import { clearTurnTimer } from './turns';
 import { continentTerritoryIds } from './world/continent';
 
-const EARLY_WIN_GATE_TURN_NUMBER = 2;
+const EARLY_WIN_GATE_ROUND_NUMBER = 2;
 export const HUMANS_ABANDONED_GRACE_MS = 5000;
+
+function emitGameEnded(game: Game): void {
+  const seen = new Set<number>();
+  const ranking: { playerId: number; team: number }[] = [];
+  for (const id of game.finalRanking) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    ranking.push({ playerId: id, team: game.playerTeams.get(id) ?? 0 });
+  }
+  callbacks.onGameEnded?.({
+    gameName: game.name,
+    gameMode: game.gameMode,
+    roundNumber: game.roundNumber,
+    ranking,
+  });
+}
+
+export function endAbandonedGame(game: Game): void {
+  if (game.state !== 'playing') return;
+  game.state = 'ended';
+  game.finalRanking = computeFinalRanking(game);
+  emitGameEnded(game);
+}
 
 function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
   if (game.gameMode === 'Team Deathmatch') {
@@ -101,6 +125,7 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   game.attackConquestMinTroops = null;
   clearTurnTimer(game.name);
   game.finalRanking = computeFinalRanking(game);
+  emitGameEnded(game);
   broadcastHomeGames();
   broadcastGameResults(game);
 }
@@ -132,7 +157,7 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
       const winnerId =
         uniqueOwners.size === 1 ? [...uniqueOwners][0] : undefined;
       if (winnerId === undefined) return null;
-      if (game.turnNumber < EARLY_WIN_GATE_TURN_NUMBER) return null;
+      if (game.roundNumber < EARLY_WIN_GATE_ROUND_NUMBER) return null;
       winnerIds = [winnerId];
     }
   } else if (game.gameMode === 'Continent') {
@@ -148,7 +173,7 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
         ? [...continentOwners][0]
         : undefined;
     if (continentWinnerId === undefined) return null;
-    if (game.turnNumber < EARLY_WIN_GATE_TURN_NUMBER) return null;
+    if (game.roundNumber < EARLY_WIN_GATE_ROUND_NUMBER) return null;
     winnerIds = [continentWinnerId];
   } else if (
     game.gameMode === 'Supremacy 3/4' ||
@@ -161,9 +186,9 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
     );
     if (winner === undefined) return null;
     winnerIds = [winner];
-  } else if (game.gameMode === '5-Turn' || game.gameMode === '10-Turn') {
-    const turnLimit = game.gameMode === '5-Turn' ? 5 : 10;
-    if (game.turnNumber < turnLimit) return null;
+  } else if (game.gameMode === '5-Round' || game.gameMode === '10-Round') {
+    const roundLimit = game.gameMode === '5-Round' ? 5 : 10;
+    if (game.roundNumber < roundLimit) return null;
     winnerIds = [
       [...activePlayers].sort((a, b) =>
         compareByTerritoriesFirst(game, a, b),

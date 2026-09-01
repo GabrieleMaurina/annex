@@ -18,7 +18,7 @@ function snapshotToxinTerritories(game: Game): ReplayToxinTerritory[] {
   return [...game.territoryToxins.entries()].map(([id, toxin]) => ({
     id,
     permanent: toxin.permanent,
-    turnsRemaining: toxin.turnsRemaining,
+    roundsRemaining: toxin.roundsRemaining,
   }));
 }
 
@@ -38,7 +38,7 @@ export function recordReplayFrame(game: Game, animation: ReplayAnimation) {
     toxinTerritories: snapshotToxinTerritories(game),
     radiationTerritories: snapshotRadiationTerritories(game),
     animation,
-    turnNumber: game.turnNumber,
+    roundNumber: game.roundNumber,
     playerId: actingPlayerId(animation),
   });
 }

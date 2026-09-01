@@ -77,7 +77,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   supplyLines: 'off',
   toxins: 'off',
   turnDuration: 120,
-  turnTroops: 'off',
+  roundTroops: 'off',
   visibility: 'public',
 };
 
@@ -257,8 +257,8 @@ function SettingsPanel({
                 <option value="Capitals">Capitals</option>
                 <option value="Team Deathmatch">Team Deathmatch</option>
                 <option value="Continent">Continent</option>
-                <option value="5-Turn">5-Turn</option>
-                <option value="10-Turn">10-Turn</option>
+                <option value="5-Round">5-Round</option>
+                <option value="10-Round">10-Round</option>
                 <option value="Assassin">Assassin</option>
                 <option value="Mission">Mission</option>
                 <option value="Player Kills">Player Kills</option>

@@ -103,7 +103,7 @@ export function drawToxinCloud(
   radius: number,
   now: number,
   permanent: boolean,
-  turnsRemaining: number,
+  roundsRemaining: number,
   seed: number,
   placedAt: number,
 ) {
@@ -139,9 +139,9 @@ export function drawToxinCloud(
     const ty = y - cloudRadius * 0.7;
     ctx.lineWidth = Math.max(2, radius * 0.15);
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.strokeText(String(turnsRemaining), tx, ty);
+    ctx.strokeText(String(roundsRemaining), tx, ty);
     ctx.fillStyle = TOXIN_CLOUD_COUNTDOWN_COLOR;
-    ctx.fillText(String(turnsRemaining), tx, ty);
+    ctx.fillText(String(roundsRemaining), tx, ty);
     ctx.restore();
   }
 }

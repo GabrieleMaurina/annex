@@ -9,6 +9,7 @@ import type {
   Ack,
   ClientSettings,
   GameSettingsInput,
+  GameState,
   GameSummary,
   GenerateMapInput,
   IdentifyResult,
@@ -17,11 +18,13 @@ import type {
 } from '../lib/types';
 import { subscribe, unsubscribe } from './inbound';
 import {
+  hasPendingSeed,
   isOffline,
   addLocalPlayer as offlineAddLocalPlayer,
   continueHandoff as offlineContinueHandoff,
   dispatch as offlineDispatch,
   setLocalPlayerName as offlineSetLocalPlayerName,
+  seedOffline,
   startOffline,
   stopOffline,
 } from './offline/host';
@@ -86,6 +89,14 @@ export const connector = {
   setMode(offline: boolean): void {
     if (offline) startOffline();
     else stopOffline();
+  },
+
+  convertToOffline(state: GameState): void {
+    seedOffline(state);
+  },
+
+  isConvertingOffline(): boolean {
+    return hasPendingSeed();
   },
 
   addLocalPlayer(name: string): void {

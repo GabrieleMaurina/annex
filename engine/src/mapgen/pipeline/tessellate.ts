@@ -9,6 +9,66 @@ const WARP_AMPLITUDE_1 = 9;
 const WARP_FREQUENCY_2 = 0.12;
 const WARP_AMPLITUDE_2 = 3.5;
 
+const MIN_LAKE_AREA_RATIO = 0.4;
+
+function fillSmallLakes(
+  labelGrid: Int16Array,
+  width: number,
+  height: number,
+  minArea: number,
+): void {
+  const visited = new Uint8Array(width * height);
+  for (let start = 0; start < labelGrid.length; start++) {
+    if (labelGrid[start] !== -1 || visited[start]) continue;
+
+    const cells: number[] = [];
+    const borderLabels = new Map<number, number>();
+    let touchesEdge = false;
+    const stack = [start];
+    visited[start] = 1;
+    while (stack.length > 0) {
+      const cell = stack.pop()!;
+      cells.push(cell);
+      const cx = cell % width;
+      const cy = Math.floor(cell / width);
+      if (cx === 0 || cx === width - 1 || cy === 0 || cy === height - 1)
+        touchesEdge = true;
+      const neighbors: [number, number][] = [
+        [cx + 1, cy],
+        [cx - 1, cy],
+        [cx, cy + 1],
+        [cx, cy - 1],
+      ];
+      for (const [nx, ny] of neighbors) {
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const nIdx = ny * width + nx;
+        const nLabel = labelGrid[nIdx];
+        if (nLabel === -1) {
+          if (!visited[nIdx]) {
+            visited[nIdx] = 1;
+            stack.push(nIdx);
+          }
+        } else if (nLabel >= 0) {
+          borderLabels.set(nLabel, (borderLabels.get(nLabel) ?? 0) + 1);
+        }
+      }
+    }
+
+    if (touchesEdge || cells.length >= minArea || borderLabels.size === 0)
+      continue;
+
+    let fillLabel = -1;
+    let bestCount = -1;
+    for (const [label, count] of borderLabels) {
+      if (count > bestCount) {
+        bestCount = count;
+        fillLabel = label;
+      }
+    }
+    for (const cell of cells) labelGrid[cell] = fillLabel;
+  }
+}
+
 export interface Tessellation {
   labelGrid: Int16Array;
   adjacency: Map<number, Set<number>>;
@@ -19,6 +79,7 @@ export function tessellate(
   rng: Rng,
   land: boolean[][],
   centers: GridPoint[],
+  expectedTerritoryArea: number,
 ): Tessellation {
   const height = land.length;
   const width = land[0]?.length ?? 0;
@@ -57,6 +118,12 @@ export function tessellate(
 
   smoothBorders(labelGrid, width, height);
   enforceContiguity(land, labelGrid, centers.length);
+  fillSmallLakes(
+    labelGrid,
+    width,
+    height,
+    expectedTerritoryArea * MIN_LAKE_AREA_RATIO,
+  );
 
   const cellCounts = new Array(centers.length).fill(0);
   for (const id of labelGrid) if (id >= 0) cellCounts[id]++;

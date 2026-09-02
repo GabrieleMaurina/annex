@@ -168,6 +168,14 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
   }
 
   function startGame() {
+    if (
+      !connector.isOffline() &&
+      game.players.filter((p) => !p.isBot).length < 2
+    ) {
+      connector.convertToOffline(game);
+      navigate('/games/offline');
+      return;
+    }
     connector.startGame((res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);

@@ -72,6 +72,7 @@ function App() {
   const [sessionTakenOver, setSessionTakenOver] = useState(false);
   const [mapNames, setMapNames] = useState<string[]>([]);
   const [selfId, setSelfId] = useState<number | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
 
   const { pathname } = useLocation();
   const routerNavigate = useNavigate();
@@ -86,17 +87,22 @@ function App() {
   const isOffline = room === 'offline';
   const inGame = !onAuthPage && room !== 'home';
 
-  const refreshSession = useCallback(() => {
+  const refreshSession = useCallback(function load() {
     connector.session((res) => {
+      if (!res.name) {
+        setTimeout(load, 1000);
+        return;
+      }
       setAccount(res.account);
       setPlayerName(res.name);
       applyServerSettings(!!res.account, res.clientSettings, res.gameSettings);
+      setSessionReady(true);
     });
   }, []);
 
   useEffect(() => {
-    if (!isOffline) refreshSession();
-  }, [isOffline, refreshSession]);
+    refreshSession();
+  }, [refreshSession]);
 
   useEffect(() => {
     connector.setMode(isOffline);
@@ -163,12 +169,13 @@ function App() {
 
   useEffect(() => {
     if (!inGame) return;
+    if (!isOffline && !sessionReady) return;
 
     function afterConnect() {
       connector.listMaps(setMapNames);
       setNeedsPassword(false);
       if (isOffline) {
-        applySavedGameSettings();
+        if (!connector.isConvertingOffline()) applySavedGameSettings();
         setJoinError('');
       }
       connector.identify({ room }, (res: IdentifyResult) => {
@@ -190,7 +197,7 @@ function App() {
       connector.off('connect', afterConnect);
       if (!isOffline) connector.close();
     };
-  }, [inGame, isOffline, room, attemptJoin, navigate]);
+  }, [inGame, isOffline, sessionReady, room, attemptJoin, navigate]);
 
   useEffect(() => {
     function onMapGenerated(data: {

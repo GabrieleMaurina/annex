@@ -6,6 +6,7 @@ import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/Tip';
 import { connector } from '../connector';
 import {
+  generatedMapSeed,
   getGeneratedMapData,
   getMapDisplayName,
   loadGameMap,
@@ -100,6 +101,7 @@ function SettingsPanel({
   const loadedMapNamesRef = useRef(new Set<string>());
   const [mapGenOpen, setMapGenOpen] = useState(false);
   const [mapRegenerating, setMapRegenerating] = useState(isRegeneratingMap);
+  const [seedCopied, setSeedCopied] = useState(false);
   const mapGenRef = useRef<MapGenerationPanelHandle>(null);
   const whiteMapIcon = useWhiteIcon('/icons/map.svg');
 
@@ -155,6 +157,7 @@ function SettingsPanel({
   function mapTooltip(name: string) {
     const image = imageSrcFor(name);
     const stats = statsFor(name);
+    const seed = generatedMapSeed(name);
     return (
       <div className="text-start">
         {image && (
@@ -167,9 +170,12 @@ function SettingsPanel({
             style={{ objectFit: 'cover' }}
           />
         )}
-        {stats && (
+        {(stats || seed) && (
           <div>
-            {stats.territories} territories, {stats.continents} continents
+            {stats &&
+              `${stats.territories} territories, ${stats.continents} continents`}
+            {stats && seed && ', '}
+            {seed && `Seed: ${seed}`}
           </div>
         )}
       </div>
@@ -182,6 +188,20 @@ function SettingsPanel({
   const currentMapLabel = mapRegenerating
     ? 'Generating…'
     : getMapDisplayName(game.mapName);
+  const currentSeed = mapRegenerating
+    ? undefined
+    : generatedMapSeed(game.mapName);
+
+  function copySeed() {
+    if (!currentSeed) return;
+    navigator.clipboard
+      .writeText(currentSeed)
+      .then(() => {
+        setSeedCopied(true);
+        setTimeout(() => setSeedCopied(false), 1500);
+      })
+      .catch(() => {});
+  }
 
   const mapToggle = (
     <Dropdown.Toggle
@@ -299,7 +319,7 @@ function SettingsPanel({
                     text={mapTooltip(game.mapName)}
                     placement="right"
                     style={MAP_TOOLTIP_STYLE}
-                    trigger={['hover']}
+                    trigger={['hover', 'focus']}
                     popperConfig={MAP_TOOLTIP_POPPER}
                   >
                     {mapToggle}
@@ -363,7 +383,12 @@ function SettingsPanel({
                 style={MAP_TOOLTIP_STYLE}
                 popperConfig={MAP_TOOLTIP_POPPER}
               >
-                <span className="d-flex align-items-center gap-2">
+                <span
+                  className="d-flex align-items-center gap-2"
+                  role={currentSeed ? 'button' : undefined}
+                  style={currentSeed ? { cursor: 'pointer' } : undefined}
+                  onClick={currentSeed ? copySeed : undefined}
+                >
                   {currentImageSrc && (
                     <img
                       src={currentImageSrc}
@@ -374,7 +399,7 @@ function SettingsPanel({
                       style={{ objectFit: 'cover' }}
                     />
                   )}
-                  {currentMapLabel}
+                  {seedCopied ? 'Seed copied!' : currentMapLabel}
                 </span>
               </Tip>
             )}

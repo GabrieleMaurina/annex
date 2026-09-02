@@ -1,6 +1,7 @@
 import { isDifficultyInput, isPersonalityInput } from '../bots/randomProfile';
 import { callbacks } from '../callbacks';
-import { maxTeam } from '../game/mechanics';
+import { addHostCandidate } from '../game/host';
+import { assignRandomColor, maxTeam } from '../game/mechanics';
 import { listMapNames } from '../maps/maps';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
@@ -280,6 +281,18 @@ export function updateSettings(
       return { ok: false, error: 'invalid slots' };
     }
     game.slots = settings.slots;
+
+    while (game.playerIds.length < game.slots) {
+      const idx = game.spectatorIds.findIndex(
+        (id) => playersById.get(id)?.connected,
+      );
+      if (idx === -1) break;
+      const promotedId = game.spectatorIds.splice(idx, 1)[0];
+      game.playerIds.push(promotedId);
+      game.playerTeams.set(promotedId, 0);
+      assignRandomColor(game, promotedId);
+      addHostCandidate(game, promotedId);
+    }
   }
 
   if (settings.starvation !== undefined) {

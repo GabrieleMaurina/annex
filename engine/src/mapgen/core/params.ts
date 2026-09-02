@@ -22,6 +22,13 @@ export const TERRITORY_COUNT_RANGES: Record<MapSize, [number, number]> = {
   xlarge: [120, 160],
 };
 
+export const TERRITORY_MERGE_COUNTS: Record<MapSize, number> = {
+  small: 3,
+  medium: 6,
+  large: 9,
+  xlarge: 12,
+};
+
 export const WATER_THRESHOLDS: Record<WaterLevel, number> = {
   land: 0.36,
   mixed: 0.48,

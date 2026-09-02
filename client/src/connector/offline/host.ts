@@ -278,7 +278,10 @@ export function startOffline(): void {
     const pendingSeed = seed;
     seed = null;
     if (pendingSeed) applySeed(pendingSeed);
-    else flushQueue();
+    else {
+      flushQueue();
+      engine.requestState(hostId);
+    }
   });
 }
 

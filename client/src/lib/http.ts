@@ -1,8 +1,8 @@
 const BASE = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
 
 export function httpGet<T>(path: string): Promise<T> {
-  return fetch(BASE + path, { credentials: 'include' }).then((res) =>
-    res.json(),
+  return fetch(BASE + path, { credentials: 'include', cache: 'no-store' }).then(
+    (res) => res.json(),
   );
 }
 

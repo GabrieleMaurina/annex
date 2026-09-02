@@ -6,12 +6,18 @@ import {
   GRID_DIMENSIONS,
   OUTPUT_SCALE,
   TERRITORY_COUNT_RANGES,
+  TERRITORY_MERGE_COUNTS,
 } from './core/params';
 import { createRng, randomInt } from './core/rng';
 import { computeTerritoryCentroids } from './pipeline/centroid';
-import { ensureConnected } from './pipeline/connectivity';
+import {
+  addRedundantBridges,
+  addSeaShortcuts,
+  ensureConnected,
+} from './pipeline/connectivity';
 import { clusterContinents, computeBonus } from './pipeline/continents';
 import { cleanLandMask } from './pipeline/islands';
+import { mergeTerritories } from './pipeline/merge';
 import { placeTerritoryCenters } from './pipeline/placement';
 import { buildLandMask } from './pipeline/terrain';
 import { tessellate } from './pipeline/tessellate';
@@ -31,8 +37,9 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
   const dims = GRID_DIMENSIONS[params.size];
   const land = buildLandMask(rng, params.water, dims);
 
+  const mergeCount = TERRITORY_MERGE_COUNTS[params.size];
   const [minCount, maxCount] = TERRITORY_COUNT_RANGES[params.size];
-  const targetCount = randomInt(rng, minCount, maxCount);
+  const targetCount = randomInt(rng, minCount, maxCount) + mergeCount;
 
   let landCellCount = 0;
   for (const row of land) for (const cell of row) if (cell) landCellCount++;
@@ -40,22 +47,50 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
   const cleanedLand = cleanLandMask(land, expectedTerritoryArea);
 
   const rawCenters = placeTerritoryCenters(rng, cleanedLand, targetCount);
-  const { labelGrid, adjacency, centers } = tessellate(
+  const tessellation = tessellate(
     rng,
     cleanedLand,
     rawCenters,
+    expectedTerritoryArea,
+  );
+  const labelGrid = tessellation.labelGrid;
+  const { adjacency, centers } = mergeTerritories(
+    rng,
+    labelGrid,
+    tessellation.adjacency,
+    tessellation.centers,
+    mergeCount,
   );
 
-  const specialEdges = ensureConnected(centers, adjacency);
-  validateTerritoryGraph(centers.length, adjacency);
-
   const centroids = computeTerritoryCentroids(labelGrid, centers.length, dims);
+
+  const specialEdges = ensureConnected(
+    rng,
+    centroids,
+    adjacency,
+    labelGrid,
+    dims,
+  );
+  validateTerritoryGraph(centers.length, adjacency);
 
   const continentIdByTerritory = clusterContinents(
     rng,
     centers.length,
     adjacency,
+    specialEdges,
   );
+
+  addRedundantBridges(
+    rng,
+    centroids,
+    adjacency,
+    specialEdges,
+    continentIdByTerritory,
+    labelGrid,
+    dims,
+  );
+
+  addSeaShortcuts(centroids, adjacency, specialEdges, labelGrid, dims);
 
   const continentSizes = new Map<number, number>();
   for (const continentId of continentIdByTerritory) {

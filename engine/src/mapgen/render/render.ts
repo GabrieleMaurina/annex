@@ -79,9 +79,37 @@ function stitchLoops(edges: Edge[]): Point[][] {
   return loops;
 }
 
-function decimatePositional(loop: Point[], step: number): Point[] {
-  if (loop.length <= step * 6) return loop;
-  return loop.filter(([gx, gy]) => (gx + gy) % step === 0);
+function junctionKeysFromLoops(loopsByTerritory: Point[][][]): Set<string> {
+  const neighborKeys = new Map<string, Set<string>>();
+  for (const loops of loopsByTerritory) {
+    for (const loop of loops) {
+      const n = loop.length;
+      for (let i = 0; i < n; i++) {
+        const ka = pointKey(loop[i]);
+        const kb = pointKey(loop[(i + 1) % n]);
+        if (!neighborKeys.has(ka)) neighborKeys.set(ka, new Set());
+        if (!neighborKeys.has(kb)) neighborKeys.set(kb, new Set());
+        neighborKeys.get(ka)!.add(kb);
+        neighborKeys.get(kb)!.add(ka);
+      }
+    }
+  }
+  const junctions = new Set<string>();
+  for (const [key, neighbors] of neighborKeys) {
+    if (neighbors.size > 2) junctions.add(key);
+  }
+  return junctions;
+}
+
+function decimatePositional(
+  loop: Point[],
+  step: number,
+  junctionKeys: Set<string>,
+): Point[] {
+  if (loop.length <= 8) return loop;
+  return loop.filter(
+    ([gx, gy]) => (gx + gy) % step === 0 || junctionKeys.has(`${gx},${gy}`),
+  );
 }
 
 function chaikinSmooth(loop: Point[], iterations: number): Point[] {
@@ -99,8 +127,53 @@ function chaikinSmooth(loop: Point[], iterations: number): Point[] {
   return points;
 }
 
+function chaikinArc(arc: Point[], iterations: number): Point[] {
+  let points = arc;
+  for (let iter = 0; iter < iterations; iter++) {
+    if (points.length < 3) break;
+    const next: Point[] = [points[0]];
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      next.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
+      next.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    next.push(points[points.length - 1]);
+    points = next;
+  }
+  return points;
+}
+
+function smoothLoop(
+  loop: Point[],
+  junctionKeys: Set<string>,
+  iterations: number,
+): Point[] {
+  const junctionIndices: number[] = [];
+  for (let i = 0; i < loop.length; i++) {
+    if (junctionKeys.has(pointKey(loop[i]))) junctionIndices.push(i);
+  }
+  if (junctionIndices.length < 2) return chaikinSmooth(loop, iterations);
+
+  const result: Point[] = [];
+  for (let j = 0; j < junctionIndices.length; j++) {
+    const startI = junctionIndices[j];
+    const endI = junctionIndices[(j + 1) % junctionIndices.length];
+    const arc: Point[] = [];
+    let i = startI;
+    while (true) {
+      arc.push(loop[i]);
+      if (i === endI) break;
+      i = (i + 1) % loop.length;
+    }
+    const smoothed = chaikinArc(arc, iterations);
+    for (let k = 0; k < smoothed.length - 1; k++) result.push(smoothed[k]);
+  }
+  return result;
+}
+
 const NOISE_FREQUENCY = 0.22;
-const NOISE_AMPLITUDE = 2.2;
+const NOISE_AMPLITUDE = 1;
 
 function isOnGridBoundary(p: Point, width: number, height: number): boolean {
   return p[0] <= 0 || p[0] >= width || p[1] <= 0 || p[1] >= height;
@@ -113,18 +186,12 @@ function buildDisplacementCache(
   height: number,
 ): Map<string, Point> {
   const neighborKeysByPoint = new Map<string, Set<string>>();
-  const coordByKey = new Map<string, Point>();
-
   for (const loops of loopsByTerritory) {
     for (const loop of loops) {
       const n = loop.length;
       for (let i = 0; i < n; i++) {
-        const a = loop[i];
-        const b = loop[(i + 1) % n];
-        const ka = pointKey(a);
-        const kb = pointKey(b);
-        coordByKey.set(ka, a);
-        coordByKey.set(kb, b);
+        const ka = pointKey(loop[i]);
+        const kb = pointKey(loop[(i + 1) % n]);
         if (!neighborKeysByPoint.has(ka))
           neighborKeysByPoint.set(ka, new Set());
         if (!neighborKeysByPoint.has(kb))
@@ -136,25 +203,40 @@ function buildDisplacementCache(
   }
 
   const displacedByKey = new Map<string, Point>();
-  for (const [key, neighborKeys] of neighborKeysByPoint) {
-    if (neighborKeys.size !== 2) continue;
-    const p = coordByKey.get(key)!;
-    if (isOnGridBoundary(p, width, height)) continue;
-    const [k1, k2] = [...neighborKeys].sort();
-    const n1 = coordByKey.get(k1)!;
-    const n2 = coordByKey.get(k2)!;
-    const tangentX = n2[0] - n1[0];
-    const tangentY = n2[1] - n1[1];
-    const tangentLength = Math.hypot(tangentX, tangentY) || 1;
-    const normalX = -tangentY / tangentLength;
-    const normalY = tangentX / tangentLength;
-    const displacement =
-      noise.noise(p[0] * NOISE_FREQUENCY, p[1] * NOISE_FREQUENCY) *
-      NOISE_AMPLITUDE;
-    displacedByKey.set(key, [
-      p[0] + normalX * displacement,
-      p[1] + normalY * displacement,
-    ]);
+  for (const loops of loopsByTerritory) {
+    for (const loop of loops) {
+      const n = loop.length;
+      for (let i = 0; i < n; i++) {
+        const p = loop[i];
+        const key = pointKey(p);
+        if (displacedByKey.has(key)) continue;
+        if ((neighborKeysByPoint.get(key)?.size ?? 0) !== 2) continue;
+        if (isOnGridBoundary(p, width, height)) continue;
+        const prev = loop[(i - 1 + n) % n];
+        const next = loop[(i + 1) % n];
+        const tangentX = next[0] - prev[0];
+        const tangentY = next[1] - prev[1];
+        const tangentLength = Math.hypot(tangentX, tangentY) || 1;
+        const normalX = -tangentY / tangentLength;
+        const normalY = tangentX / tangentLength;
+        const inX = p[0] - prev[0];
+        const inY = p[1] - prev[1];
+        const outX = next[0] - p[0];
+        const outY = next[1] - p[1];
+        const inLen = Math.hypot(inX, inY) || 1;
+        const outLen = Math.hypot(outX, outY) || 1;
+        const alignment = (inX * outX + inY * outY) / (inLen * outLen);
+        const curvatureDamping = Math.max(0, Math.min(1, alignment));
+        const displacement =
+          noise.noise(p[0] * NOISE_FREQUENCY, p[1] * NOISE_FREQUENCY) *
+          NOISE_AMPLITUDE *
+          curvatureDamping;
+        displacedByKey.set(key, [
+          p[0] + normalX * displacement,
+          p[1] + normalY * displacement,
+        ]);
+      }
+    }
   }
 
   return displacedByKey;
@@ -251,7 +333,7 @@ function labelAtPixel(
   return labelGrid[gy * width + gx];
 }
 
-const SPECIAL_EDGE_CLIP_MARGIN = NOISE_AMPLITUDE * OUTPUT_SCALE * 1.5;
+const SPECIAL_EDGE_CLIP_MARGIN = NOISE_AMPLITUDE * OUTPUT_SCALE * 0.3;
 
 function longestWaterRun(
   labelGrid: Int16Array,
@@ -346,9 +428,13 @@ export function renderMapImage(
     height,
   );
 
-  const smoothedLoopsByTerritory = edgesByTerritory.map((edges) =>
-    stitchLoops(edges).map((loop) =>
-      chaikinSmooth(decimatePositional(loop, 2), 3),
+  const stitchedLoopsByTerritory = edgesByTerritory.map((edges) =>
+    stitchLoops(edges),
+  );
+  const junctionKeys = junctionKeysFromLoops(stitchedLoopsByTerritory);
+  const smoothedLoopsByTerritory = stitchedLoopsByTerritory.map((loops) =>
+    loops.map((loop) =>
+      smoothLoop(decimatePositional(loop, 2, junctionKeys), junctionKeys, 3),
     ),
   );
 
@@ -402,7 +488,7 @@ export function renderMapImage(
         `<line x1="${from.x.toFixed(1)}" y1="${from.y.toFixed(1)}" ` +
         `x2="${to.x.toFixed(1)}" y2="${to.y.toFixed(1)}" ` +
         `stroke="${TERRITORY_STROKE_COLOR}" stroke-width="${SPECIAL_EDGE_STROKE_WIDTH}" ` +
-        `stroke-dasharray="16,12" stroke-linecap="round"/>`
+        `stroke-dasharray="6,10" stroke-linecap="round"/>`
       );
     })
     .join('');

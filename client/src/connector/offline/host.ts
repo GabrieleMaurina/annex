@@ -26,6 +26,95 @@ let bufferedTurnStarted: unknown = null;
 let pausedForHandoff = false;
 const queue: (() => void)[] = [];
 
+interface OfflineSeed {
+  settings: Record<string, unknown>;
+  mapName: string;
+  mapGeneration: GameState['mapGeneration'];
+  slots: number;
+  teams: number[] | null;
+  bots: { difficulty: string; personality: string }[];
+}
+
+let seed: OfflineSeed | null = null;
+
+export function seedOffline(state: GameState): void {
+  const host = state.players.find((p) => !p.isBot);
+  const bots = state.players.filter((p) => p.isBot);
+  seed = {
+    settings: {
+      alliances: state.alliances,
+      blitz: state.blitz,
+      bounties: state.bounties,
+      cards: state.cards,
+      defenceDice: state.defenceDice,
+      disconnectBotDifficulty: state.disconnectBotDifficulty,
+      disconnectBotPersonality: state.disconnectBotPersonality,
+      entrenchments: state.entrenchments,
+      fogOfWar: state.fogOfWar,
+      fortification: state.fortification,
+      gameMode: state.gameMode,
+      placement: state.placement,
+      portals: state.portals,
+      radiations: state.radiations,
+      starvation: state.starvation,
+      supplyLines: state.supplyLines,
+      toxins: state.toxins,
+      turnDuration: state.turnDuration,
+      roundTroops: state.roundTroops,
+    },
+    mapName: state.mapName,
+    mapGeneration: state.mapGeneration,
+    slots: state.slots,
+    teams:
+      state.gameMode === 'Team Deathmatch'
+        ? [host?.team ?? 0, ...bots.map((b) => b.team)]
+        : null,
+    bots: bots.map((b) => ({
+      difficulty: b.botDifficulty ?? 'easy',
+      personality: b.botPersonality ?? 'balanced',
+    })),
+  };
+}
+
+export function hasPendingSeed(): boolean {
+  return seed !== null;
+}
+
+function flushQueue(): void {
+  const pending = queue.splice(0);
+  for (const fn of pending) fn();
+}
+
+function applySeed(s: OfflineSeed): void {
+  if (!engine || hostId === null) return;
+  const id = hostId;
+  let resp = engine.updateSettings(id, { ...s.settings, slots: s.slots });
+  for (const bot of s.bots)
+    resp = engine.addBot(id, bot.difficulty, bot.personality);
+  if (s.teams && resp.ok)
+    resp.game.players.forEach((p, i) => {
+      engine?.updateSettings(id, {
+        playerTeam: { playerId: p.id, team: s.teams?.[i] ?? 0 },
+      });
+    });
+  const finish = () => {
+    engine?.startGame(id);
+    flushQueue();
+  };
+  if (s.mapGeneration)
+    engine.generateMap(
+      id,
+      s.mapGeneration.seed,
+      s.mapGeneration.size,
+      s.mapGeneration.water,
+      finish,
+    );
+  else {
+    engine.updateSettings(id, { mapName: s.mapName });
+    finish();
+  }
+}
+
 function beginHandoff(next: number, turnStarted: unknown): void {
   pendingActor = next;
   bufferedTurnStarted = turnStarted;
@@ -186,8 +275,10 @@ export function startOffline(): void {
       engine.createGame(hostId, { name: gameName }, true);
     }
     ready = true;
-    const pending = queue.splice(0);
-    for (const fn of pending) fn();
+    const pendingSeed = seed;
+    seed = null;
+    if (pendingSeed) applySeed(pendingSeed);
+    else flushQueue();
   });
 }
 
@@ -195,6 +286,7 @@ export function stopOffline(): void {
   if (!active) return;
   active = false;
   ready = false;
+  seed = null;
   queue.length = 0;
   if (engine && hostId !== null) engine.disconnect(hostId);
   hostId = null;

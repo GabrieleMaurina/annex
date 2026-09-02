@@ -36,6 +36,11 @@ export function startGame(playerId: number): GameResponse {
   if (game.state !== 'lobby') return { ok: false, error: 'already started' };
   if (game.playerIds.length < 2)
     return { ok: false, error: 'not enough players' };
+  if (
+    !game.offline &&
+    game.playerIds.filter((id) => !playersById.get(id)?.isBot).length < 2
+  )
+    return { ok: false, error: 'not enough human players' };
   if (game.gameMode === 'Team Deathmatch' && teamCount(game) < 2)
     return { ok: false, error: 'not enough teams' };
   if (game.gameMode === 'Team Deathmatch' && game.alliances === 'on')

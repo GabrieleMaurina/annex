@@ -5,6 +5,37 @@ import { Rng } from '../core/rng';
 const PERSISTENCE = 0.5;
 const LACUNARITY = 2;
 
+const ISLAND_BORDER_FRACTION = 0.05;
+const ISLAND_BORDER_DEPTH = 1.2;
+
+function shouldCarveIslandBorder(rng: Rng, water: WaterLevel): boolean {
+  if (water === 'ocean') return true;
+  if (water === 'land') return false;
+  return rng() < 0.5;
+}
+
+function carveIslandBorder(
+  heights: number[][],
+  dims: GridDimensions,
+  min: number,
+  range: number,
+): void {
+  const { width, height: gridHeight } = dims;
+  const ring = Math.max(
+    2,
+    Math.round(Math.min(width, gridHeight) * ISLAND_BORDER_FRACTION),
+  );
+  for (let gy = 0; gy < gridHeight; gy++) {
+    for (let gx = 0; gx < width; gx++) {
+      const edge = Math.min(gx, gy, width - 1 - gx, gridHeight - 1 - gy);
+      if (edge >= ring) continue;
+      const t = 1 - edge / ring;
+      const carved = heights[gy][gx] - range * ISLAND_BORDER_DEPTH * t * t;
+      heights[gy][gx] = Math.max(min, carved);
+    }
+  }
+}
+
 const TERRAIN_PARAMS: Record<
   WaterLevel,
   { frequency: number; octaves: number }
@@ -41,6 +72,9 @@ export function buildLandMask(
   }
 
   const range = max - min || 1;
+  if (shouldCarveIslandBorder(rng, water)) {
+    carveIslandBorder(heights, dims, min, range);
+  }
   const land: boolean[][] = [];
   for (let gy = 0; gy < gridHeight; gy++) {
     const row: boolean[] = [];

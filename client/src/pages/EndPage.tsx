@@ -273,7 +273,7 @@ function EndPage({
         />
       )}
 
-      <div className="d-flex justify-content-center gap-2">
+      <div className="d-flex justify-content-center gap-2 mt-2">
         <Button variant="primary" onClick={onViewMap}>
           Map
         </Button>

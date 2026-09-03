@@ -1,6 +1,5 @@
 import { Territory } from '../types';
 import {
-  generatedMapDisplayName,
   generatedMapName,
   GenerateMapParams,
   GRID_DIMENSIONS,
@@ -26,7 +25,6 @@ import { renderMapImage } from './render/gif';
 
 export interface GeneratedMap {
   name: string;
-  displayName: string;
   territories: Territory[];
   bonuses: number[];
   imageSrc: string;
@@ -134,7 +132,6 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
 
   return {
     name: generatedMapName(params),
-    displayName: generatedMapDisplayName(params),
     territories,
     bonuses,
     imageSrc,

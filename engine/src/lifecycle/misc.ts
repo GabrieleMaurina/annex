@@ -10,6 +10,7 @@ import {
   pauseTurnTimer,
   resumeTurnTimer,
 } from '../game/turns';
+import { ArchivedMap, getArchivedMap } from '../maps/maps';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
 import {
@@ -20,6 +21,11 @@ import {
   sendGameResults,
   sendGameState,
 } from '../session/store';
+
+export function mapForGame(gameName: string): ArchivedMap | null {
+  const game = games.get(gameName);
+  return game ? getArchivedMap(game) : null;
+}
 
 export function requestState(playerId: number): void {
   const player = playersById.get(playerId);

@@ -20,7 +20,6 @@ export interface GameMap {
 export interface GeneratedGameMap {
   territories: Territory[];
   bonuses: number[];
-  displayName: string;
   imageSrc: string;
   seed: string;
   size: MapSize;

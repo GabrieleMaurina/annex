@@ -153,7 +153,6 @@ export interface EngineCallbacks {
     playerId: number,
     payload: {
       name: string;
-      displayName: string;
       territories: unknown[];
       bonuses: number[];
       imageSrc: string;

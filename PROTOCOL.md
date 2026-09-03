@@ -71,7 +71,7 @@ There are two distinct ways a seat becomes bot-controlled:
 ```ts
 {
   name: string;
-  mapName: string; // human-facing map name, ready to display: a built-in map's name, or a generated map's `displayName` (e.g. "Ocean (Large)"), never a generated map's internal `GameState.mapName` identifier
+  mapName: string; // equal to `GameState.mapName`: a built-in map's name, or a generated map's `<Water> (<Size>)` label (e.g. "Ocean (Large)")
   hostName: string;
   playerCount: number;
   slots: number;
@@ -105,7 +105,7 @@ A private game (visibility, a server-only attribute; see "Password and visibilit
 ```ts
 {
   name: string;
-  mapName: string;
+  mapName: string; // display-ready: a built-in map's name, or a generated map's `<Water> (<Size>)` label (e.g. "Ocean (Large)") - not unique across generated maps, since it omits the seed
   mapGeneration: { seed: string; size: 'small' | 'medium' | 'large' | 'xlarge'; water: 'land' | 'mixed' | 'ocean' } | null; // the `game:generateMap` inputs that produced the current map, or null when `mapName` is a built-in map; lets a client persist a "use this map" preference (and rebuild the map) without storing the geometry
   slots: number;
   hostId: number;
@@ -417,7 +417,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `game:generateMap`
 - **When sent:** the host of a `lobby` game requests a procedurally generated map, e.g. from the "Generate" entry in the map picker. Sending it again (any number of times, with the same or different `seed`/`size`/`water`) replaces whatever map, generated or not, the game currently has, exactly like picking a different map from `game:settings`' `mapName` would.
-- **Purpose:** build a brand-new map server-side from a random seed and a small set of parameters (continents, territories, oceans/lakes, a connected territory graph, and a rendered image), and make it the game's active map (`GameState.mapName` becomes an internal identifier derived from the inputs, not meant to be displayed; see `displayName` on `game:mapGenerated` below for the name to actually show; `GameState.mapGeneration` is set to the `{ seed, size, water }` used, and goes back to `null` if the map is later changed to a built-in one). The same `seed` with the same `size`/`water` always produces the exact same map; the actual resulting territory/continent counts are influenced by the random seed and aren't guaranteed to hit any particular number, only to trend toward the requested `size`'s range and typical continent sizing (continents are usually 2–15 territories, 7 most common). The caller must be host and the game must still be `lobby`. On success the server broadcasts `game:mapGenerated` (see below) to everyone currently in the game's room, then behaves exactly like `game:settings` changing `mapName`: an Ack to the caller and `game:state` to everyone else.
+- **Purpose:** build a brand-new map server-side from a random seed and a small set of parameters (continents, territories, oceans/lakes, a connected territory graph, and a rendered image), and make it the game's active map (`GameState.mapName` becomes the generated map's `<Water> (<Size>)` label, e.g. "Ocean (Large)" - display-ready but not unique, since two seeds with the same size/water share it; `GameState.mapGeneration` is set to the `{ seed, size, water }` used, and goes back to `null` if the map is later changed to a built-in one). The same `seed` with the same `size`/`water` always produces the exact same map; the actual resulting territory/continent counts are influenced by the random seed and aren't guaranteed to hit any particular number, only to trend toward the requested `size`'s range and typical continent sizing (continents are usually 2–15 territories, 7 most common). The caller must be host and the game must still be `lobby`. On success the server broadcasts `game:mapGenerated` (see below) to everyone currently in the game's room, then behaves exactly like `game:settings` changing `mapName`: an Ack to the caller and `game:state` to everyone else.
 - **Content:**
   ```ts
   {
@@ -434,8 +434,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 - **Content:**
   ```ts
   {
-    name: string;         // equal to GameState.mapName from this point on; an internal identifier, not meant to be shown to users
-    displayName: string;  // human-facing name, e.g. "Ocean (Large)" - not unique, same convention as a bot's "Killer (Hard)" name
+    name: string;        // equal to GameState.mapName from this point on: the `<Water> (<Size>)` label, e.g. "Ocean (Large)"
     territories: { id: number; continentId: number; x: number; y: number; neighbors: number[] }[];
     bonuses: number[];   // indexed by continentId
     imageSrc: string;    // a data: URL, directly usable as an <img>/Image src

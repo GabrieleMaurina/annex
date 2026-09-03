@@ -50,7 +50,6 @@ function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
 }
 
 export interface GeneratedMapData {
-  displayName: string;
   territories: Territory[];
   bonuses: number[];
   imageSrc: string;
@@ -63,18 +62,6 @@ export function registerGeneratedMap(
   data: GeneratedMapData,
 ): void {
   generatedMaps.set(name, data);
-}
-
-export function getMapDisplayName(mapName: string): string {
-  return generatedMaps.get(mapName)?.displayName ?? mapName;
-}
-
-export function generatedMapSeed(mapName: string): string | undefined {
-  const prefix = 'Generated: ';
-  if (!mapName.startsWith(prefix)) return undefined;
-  const rest = mapName.slice(prefix.length);
-  const separator = rest.indexOf(' · ');
-  return separator === -1 ? rest : rest.slice(0, separator);
 }
 
 export function getGeneratedMapData(

@@ -25,6 +25,7 @@ import { joinGame } from './lifecycle/join';
 import { generateMap, listMaps } from './lifecycle/mapgen';
 import {
   cycleColor,
+  mapForGame,
   nextPhase,
   pauseGame,
   requestResults,
@@ -74,7 +75,7 @@ export {
   WaterLevel,
 } from './mapgen/core/params';
 export { runMapgenWorker } from './mapgen/worker';
-export { BUILTIN_MAP_NAMES } from './maps/maps';
+export { ArchivedMap, BUILTIN_MAP_NAMES } from './maps/maps';
 export { randomPlayerName } from './session/players';
 export { GameMap } from './types';
 export { containsProfanity } from './util/profanity';
@@ -108,6 +109,7 @@ export function createEngine(
     listGameSummaries,
     playerGameName,
     playerGameState,
+    mapForGame,
 
     createGame,
     joinGame,

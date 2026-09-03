@@ -22,7 +22,7 @@ import { placeTerritoryCenters } from './pipeline/placement';
 import { buildLandMask } from './pipeline/terrain';
 import { tessellate } from './pipeline/tessellate';
 import { validateTerritoryGraph } from './pipeline/validate';
-import { renderMapImage } from './render/render';
+import { renderMapImage } from './render/gif';
 
 export interface GeneratedMap {
   name: string;
@@ -34,7 +34,11 @@ export interface GeneratedMap {
 
 export function generateMap(params: GenerateMapParams): GeneratedMap {
   const rng = createRng(`${params.seed}::${params.size}::${params.water}`);
-  const dims = GRID_DIMENSIONS[params.size];
+  const grid = GRID_DIMENSIONS[params.size];
+  const width = grid.width * OUTPUT_SCALE;
+  const height = grid.height * OUTPUT_SCALE;
+  const dims = { width, height };
+
   const land = buildLandMask(rng, params.water, dims);
 
   const mergeCount = TERRITORY_MERGE_COUNTS[params.size];
@@ -42,14 +46,22 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
   const targetCount = randomInt(rng, minCount, maxCount) + mergeCount;
 
   let landCellCount = 0;
-  for (const row of land) for (const cell of row) if (cell) landCellCount++;
+  for (let i = 0; i < land.length; i++) landCellCount += land[i];
   const expectedTerritoryArea = landCellCount / targetCount;
-  const cleanedLand = cleanLandMask(land, expectedTerritoryArea);
+  const cleanedLand = cleanLandMask(land, width, height, expectedTerritoryArea);
 
-  const rawCenters = placeTerritoryCenters(rng, cleanedLand, targetCount);
+  const rawCenters = placeTerritoryCenters(
+    rng,
+    cleanedLand,
+    width,
+    height,
+    targetCount,
+  );
   const tessellation = tessellate(
     rng,
     cleanedLand,
+    width,
+    height,
     rawCenters,
     expectedTerritoryArea,
   );
@@ -57,7 +69,10 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
   const { adjacency, centers } = mergeTerritories(
     rng,
     labelGrid,
-    tessellation.adjacency,
+    {
+      adjacency: tessellation.adjacency,
+      borderLength: tessellation.borderLength,
+    },
     tessellation.centers,
     mergeCount,
   );
@@ -89,7 +104,6 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
     labelGrid,
     dims,
   );
-
   addSeaShortcuts(centroids, adjacency, specialEdges, labelGrid, dims);
 
   const continentSizes = new Map<number, number>();
@@ -101,26 +115,21 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
     bonuses.push(computeBonus(continentSizes.get(i) ?? 0));
   }
 
-  const territoryCenters = centroids.map((c) => ({
-    x: (c.gx + 0.5) * OUTPUT_SCALE,
-    y: (c.gy + 0.5) * OUTPUT_SCALE,
-  }));
-
   const territories: Territory[] = centers.map((_, id) => ({
     id,
     continentId: continentIdByTerritory[id],
-    x: territoryCenters[id].x,
-    y: territoryCenters[id].y,
+    x: centroids[id].gx,
+    y: centroids[id].gy,
     neighbors: [...(adjacency.get(id) ?? [])].sort((a, b) => a - b),
   }));
 
   const imageSrc = renderMapImage(
     labelGrid,
+    width,
+    height,
     continentIdByTerritory,
-    territoryCenters,
+    centroids,
     specialEdges,
-    rng,
-    dims,
   );
 
   return {

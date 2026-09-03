@@ -7,15 +7,15 @@ export interface GridPoint {
 
 export function placeTerritoryCenters(
   rng: Rng,
-  land: boolean[][],
+  land: Uint8Array,
+  width: number,
+  height: number,
   targetCount: number,
 ): GridPoint[] {
-  const height = land.length;
-  const width = land[0]?.length ?? 0;
   const landCells: GridPoint[] = [];
   for (let gy = 0; gy < height; gy++) {
     for (let gx = 0; gx < width; gx++) {
-      if (land[gy][gx]) landCells.push({ gx, gy });
+      if (land[gy * width + gx]) landCells.push({ gx, gy });
     }
   }
   if (landCells.length === 0) return [];

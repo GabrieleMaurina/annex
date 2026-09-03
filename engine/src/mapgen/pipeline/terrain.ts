@@ -2,7 +2,7 @@ import { Perlin2D } from '../core/noise';
 import { GridDimensions, WATER_THRESHOLDS, WaterLevel } from '../core/params';
 import { Rng } from '../core/rng';
 
-const PERSISTENCE = 0.5;
+const PERSISTENCE = 0.44;
 const LACUNARITY = 2;
 
 const ISLAND_BORDER_FRACTION = 0.05;
@@ -49,7 +49,7 @@ export function buildLandMask(
   rng: Rng,
   water: WaterLevel,
   dims: GridDimensions,
-): boolean[][] {
+): Uint8Array {
   const perlin = new Perlin2D(rng);
   const threshold = WATER_THRESHOLDS[water];
   const { frequency, octaves } = TERRAIN_PARAMS[water];
@@ -75,14 +75,12 @@ export function buildLandMask(
   if (shouldCarveIslandBorder(rng, water)) {
     carveIslandBorder(heights, dims, min, range);
   }
-  const land: boolean[][] = [];
+  const land = new Uint8Array(width * gridHeight);
   for (let gy = 0; gy < gridHeight; gy++) {
-    const row: boolean[] = [];
     for (let gx = 0; gx < width; gx++) {
-      const normalized = (heights[gy][gx] - min) / range;
-      row.push(normalized > threshold);
+      if ((heights[gy][gx] - min) / range > threshold)
+        land[gy * width + gx] = 1;
     }
-    land.push(row);
   }
   return land;
 }

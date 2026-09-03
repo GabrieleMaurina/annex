@@ -161,6 +161,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   );
 
   if (imageRef.current) {
+    ctx.imageSmoothingEnabled = scaleX * dpr < 1;
     ctx.drawImage(
       imageRef.current,
       offsetX,
@@ -168,6 +169,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       imgW * scaleX,
       imgH * scaleY,
     );
+    ctx.imageSmoothingEnabled = true;
   }
 
   const toScreen = (p: Point): Point => ({

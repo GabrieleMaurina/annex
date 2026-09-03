@@ -1,107 +1,92 @@
-import { computeIslands } from './islands';
-
-interface Component {
-  cells: number[];
-  islandId: number;
-}
-
-function findLabelComponents(
-  land: boolean[][],
+export function enforceContiguity(
   labelGrid: Int16Array,
-  islandId: Int32Array,
-): Component[][] {
-  const height = land.length;
-  const width = land[0]?.length ?? 0;
-  const visited = new Uint8Array(width * height);
-  const componentsByTerritory: Component[][] = [];
+  width: number,
+  height: number,
+): void {
+  const size = width * height;
+  const visited = new Uint8Array(size);
+  const stack = new Int32Array(size);
+  const comps: number[][] = [];
+  const compLabel: number[] = [];
 
-  for (let start = 0; start < labelGrid.length; start++) {
-    const id = labelGrid[start];
-    if (id < 0 || visited[start]) continue;
-
+  for (let start = 0; start < size; start++) {
+    const label = labelGrid[start];
+    if (label < 0 || visited[start]) continue;
     const cells: number[] = [];
-    const stack = [start];
+    let sp = 0;
+    stack[sp++] = start;
     visited[start] = 1;
-    while (stack.length > 0) {
-      const cell = stack.pop()!;
-      cells.push(cell);
-      const cx = cell % width;
-      const cy = Math.floor(cell / width);
-      const neighbors: [number, number][] = [
-        [cx + 1, cy],
-        [cx - 1, cy],
-        [cx, cy + 1],
-        [cx, cy - 1],
-      ];
-      for (const [nx, ny] of neighbors) {
-        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-        const nIdx = ny * width + nx;
-        if (visited[nIdx] || labelGrid[nIdx] !== id) continue;
-        visited[nIdx] = 1;
-        stack.push(nIdx);
+    while (sp > 0) {
+      const c = stack[--sp];
+      cells.push(c);
+      const x = c % width;
+      if (x > 0 && !visited[c - 1] && labelGrid[c - 1] === label) {
+        visited[c - 1] = 1;
+        stack[sp++] = c - 1;
+      }
+      if (x < width - 1 && !visited[c + 1] && labelGrid[c + 1] === label) {
+        visited[c + 1] = 1;
+        stack[sp++] = c + 1;
+      }
+      if (c >= width && !visited[c - width] && labelGrid[c - width] === label) {
+        visited[c - width] = 1;
+        stack[sp++] = c - width;
+      }
+      if (
+        c + width < size &&
+        !visited[c + width] &&
+        labelGrid[c + width] === label
+      ) {
+        visited[c + width] = 1;
+        stack[sp++] = c + width;
       }
     }
-
-    if (!componentsByTerritory[id]) componentsByTerritory[id] = [];
-    componentsByTerritory[id].push({ cells, islandId: islandId[start] });
+    comps.push(cells);
+    compLabel.push(label);
   }
 
-  return componentsByTerritory;
-}
+  const largest = new Map<number, number>();
+  for (let ci = 0; ci < comps.length; ci++) {
+    const best = largest.get(compLabel[ci]);
+    if (best === undefined || comps[ci].length > comps[best].length)
+      largest.set(compLabel[ci], ci);
+  }
 
-export function enforceContiguity(
-  land: boolean[][],
-  labelGrid: Int16Array,
-  territoryCount: number,
-): void {
-  const height = land.length;
-  const width = land[0]?.length ?? 0;
-  const { islandId } = computeIslands(land);
-  const componentsByTerritory = findLabelComponents(land, labelGrid, islandId);
-
-  const toReassign = new Set<number>();
-  for (let id = 0; id < territoryCount; id++) {
-    const components = componentsByTerritory[id];
-    if (!components || components.length <= 1) continue;
-
-    components.sort((a, b) => b.cells.length - a.cells.length);
-    for (let i = 1; i < components.length; i++) {
-      for (const cell of components[i].cells) toReassign.add(cell);
+  let orphans = 0;
+  for (let ci = 0; ci < comps.length; ci++) {
+    if (ci === largest.get(compLabel[ci])) continue;
+    for (const c of comps[ci]) {
+      labelGrid[c] = -2;
+      orphans++;
     }
   }
+  if (orphans === 0) return;
 
-  if (toReassign.size === 0) return;
-
-  const working = labelGrid;
-  for (const cell of toReassign) working[cell] = -2;
-
-  const queue: number[] = [];
-  for (let i = 0; i < working.length; i++) {
-    if (working[i] >= 0) queue.push(i);
-  }
-
+  const queue = new Int32Array(size);
+  let qt = 0;
+  for (let i = 0; i < size; i++) if (labelGrid[i] >= 0) queue[qt++] = i;
   let head = 0;
-  while (head < queue.length) {
-    const cell = queue[head++];
-    const label = working[cell];
-    const cx = cell % width;
-    const cy = Math.floor(cell / width);
-    const neighbors: [number, number][] = [
-      [cx + 1, cy],
-      [cx - 1, cy],
-      [cx, cy + 1],
-      [cx, cy - 1],
-    ];
-    for (const [nx, ny] of neighbors) {
-      if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-      const nIdx = ny * width + nx;
-      if (working[nIdx] !== -2) continue;
-      working[nIdx] = label;
-      queue.push(nIdx);
+  while (head < qt) {
+    const c = queue[head++];
+    const label = labelGrid[c];
+    const x = c % width;
+    if (x > 0 && labelGrid[c - 1] === -2) {
+      labelGrid[c - 1] = label;
+      queue[qt++] = c - 1;
+    }
+    if (x < width - 1 && labelGrid[c + 1] === -2) {
+      labelGrid[c + 1] = label;
+      queue[qt++] = c + 1;
+    }
+    if (c >= width && labelGrid[c - width] === -2) {
+      labelGrid[c - width] = label;
+      queue[qt++] = c - width;
+    }
+    if (c + width < size && labelGrid[c + width] === -2) {
+      labelGrid[c + width] = label;
+      queue[qt++] = c + width;
     }
   }
 
-  for (let i = 0; i < working.length; i++) {
-    if (working[i] === -2) working[i] = -1;
-  }
+  for (let i = 0; i < size; i++) if (labelGrid[i] === -2) labelGrid[i] = -1;
 }

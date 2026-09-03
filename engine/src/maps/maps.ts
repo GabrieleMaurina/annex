@@ -1,4 +1,5 @@
-import { Game, GameMap } from '../types';
+import { MapSize, WaterLevel } from '../mapgen/core/params';
+import { Game, GameMap, Territory } from '../types';
 
 export const BUILTIN_MAP_NAMES = ['World', 'Europe'];
 
@@ -27,4 +28,26 @@ export function getGameMap(game: Game): GameMap {
     };
   }
   return maps.get(game.mapName)!;
+}
+
+export interface ArchivedMap {
+  name: string;
+  territories: Territory[];
+  bonuses: number[];
+  imageSrc: string | null;
+  generation: { seed: string; size: MapSize; water: WaterLevel } | null;
+}
+
+export function getArchivedMap(game: Game): ArchivedMap {
+  const { name, territories, bonuses } = getGameMap(game);
+  const generated = game.generatedMap;
+  return {
+    name,
+    territories,
+    bonuses,
+    imageSrc: generated?.imageSrc ?? null,
+    generation: generated
+      ? { seed: generated.seed, size: generated.size, water: generated.water }
+      : null,
+  };
 }

@@ -5,12 +5,7 @@ import Help from '../common/Help';
 import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/Tip';
 import { connector } from '../connector';
-import {
-  generatedMapSeed,
-  getGeneratedMapData,
-  getMapDisplayName,
-  loadGameMap,
-} from '../game/mapData';
+import { getGeneratedMapData, loadGameMap } from '../game/mapData';
 import { isRegeneratingMap } from '../lib/gameSetup';
 import { playSound } from '../lib/sounds';
 import type {
@@ -157,7 +152,7 @@ function SettingsPanel({
   function mapTooltip(name: string) {
     const image = imageSrcFor(name);
     const stats = statsFor(name);
-    const seed = generatedMapSeed(name);
+    const seed = name === game.mapName ? game.mapGeneration?.seed : undefined;
     return (
       <div className="text-start">
         {image && (
@@ -185,12 +180,8 @@ function SettingsPanel({
   const currentImageSrc = mapRegenerating
     ? undefined
     : imageSrcFor(game.mapName);
-  const currentMapLabel = mapRegenerating
-    ? 'Generating…'
-    : getMapDisplayName(game.mapName);
-  const currentSeed = mapRegenerating
-    ? undefined
-    : generatedMapSeed(game.mapName);
+  const currentMapLabel = mapRegenerating ? 'Generating…' : game.mapName;
+  const currentSeed = mapRegenerating ? undefined : game.mapGeneration?.seed;
 
   function copySeed() {
     if (!currentSeed) return;

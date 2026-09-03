@@ -31,7 +31,7 @@ import {
 import { getGameMeta, isGamePublic, reconcileGameMeta } from './gameMeta';
 import { registerHomeHandlers } from './home';
 import { createHttpApp } from './http/app';
-import { loadMaps, registerMapsHandlers } from './maps';
+import { loadMaps, persistGameMap, registerMapsHandlers } from './maps';
 import { gameRoomName } from './rooms';
 import {
   emitTo,
@@ -104,7 +104,10 @@ const callbacks: EngineCallbacks = {
   onLogs: (playerId, payload) => emitTo(io, playerId, 'game:logs', payload),
   onResults: (playerId, payload) =>
     emitTo(io, playerId, 'game:results', payload),
-  onGameEnded: handleGameEnded,
+  onGameEnded: (payload) => {
+    handleGameEnded(payload);
+    persistGameMap(engine, payload.gameName);
+  },
   onCardSetPlayed: (playerId, payload) =>
     emitTo(io, playerId, 'game:cardSetPlayed', payload),
   onKicked: (playerId, payload) => emitTo(io, playerId, 'game:kicked', payload),

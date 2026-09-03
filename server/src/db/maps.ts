@@ -1,0 +1,87 @@
+import { Binary } from 'mongodb';
+import { ensureCollection, getCollection } from './mongo';
+
+const NAME = 'maps';
+
+export interface MapDoc {
+  _id: string;
+  name: string;
+  territories: {
+    id: number;
+    continentId: number;
+    x: number;
+    y: number;
+    neighbors: number[];
+  }[];
+  bonuses: number[];
+  generation: { seed: string; size: string; water: string } | null;
+  image: Binary;
+  imageMime: string;
+}
+
+const schema = {
+  validator: {
+    $jsonSchema: {
+      bsonType: 'object',
+      required: [
+        '_id',
+        'name',
+        'territories',
+        'bonuses',
+        'generation',
+        'image',
+        'imageMime',
+      ],
+      additionalProperties: false,
+      properties: {
+        _id: { bsonType: 'string' },
+        name: { bsonType: 'string' },
+        territories: {
+          bsonType: 'array',
+          items: {
+            bsonType: 'object',
+            required: ['id', 'continentId', 'x', 'y', 'neighbors'],
+            additionalProperties: false,
+            properties: {
+              id: { bsonType: 'number' },
+              continentId: { bsonType: 'number' },
+              x: { bsonType: 'number' },
+              y: { bsonType: 'number' },
+              neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
+            },
+          },
+        },
+        bonuses: { bsonType: 'array', items: { bsonType: 'number' } },
+        generation: {
+          bsonType: ['object', 'null'],
+          required: ['seed', 'size', 'water'],
+          additionalProperties: false,
+          properties: {
+            seed: { bsonType: 'string' },
+            size: { enum: ['small', 'medium', 'large', 'xlarge'] },
+            water: { enum: ['land', 'mixed', 'ocean'] },
+          },
+        },
+        image: { bsonType: 'binData' },
+        imageMime: { bsonType: 'string' },
+      },
+    },
+  },
+  validationLevel: 'strict',
+  validationAction: 'error',
+};
+
+function collection() {
+  return getCollection<MapDoc>(NAME);
+}
+
+export function ensureMaps(): Promise<unknown> {
+  return ensureCollection(NAME, schema);
+}
+
+export function storeMap(doc: MapDoc): Promise<void> {
+  const { _id, ...rest } = doc;
+  return collection()
+    .updateOne({ _id }, { $setOnInsert: rest }, { upsert: true })
+    .then(() => undefined);
+}

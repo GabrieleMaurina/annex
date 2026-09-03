@@ -384,7 +384,6 @@ export function sendGeneratedMapIfAny(game: Game, playerId: number) {
   if (!game.generatedMap) return;
   callbacks.onMapGenerated(playerId, {
     name: game.mapName,
-    displayName: game.generatedMap.displayName,
     territories: game.generatedMap.territories,
     bonuses: game.generatedMap.bonuses,
     imageSrc: game.generatedMap.imageSrc,

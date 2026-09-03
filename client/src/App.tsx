@@ -202,13 +202,11 @@ function App() {
   useEffect(() => {
     function onMapGenerated(data: {
       name: string;
-      displayName: string;
       territories: Territory[];
       bonuses: number[];
       imageSrc: string;
     }) {
       registerGeneratedMap(data.name, {
-        displayName: data.displayName,
         territories: data.territories,
         bonuses: data.bonuses,
         imageSrc: data.imageSrc,

@@ -55,7 +55,6 @@ export function generateMap(
     current.generatedMap = {
       territories: generated.territories,
       bonuses: generated.bonuses,
-      displayName: generated.displayName,
       imageSrc: generated.imageSrc,
       seed: trimmedSeed,
       size,
@@ -65,7 +64,6 @@ export function generateMap(
     for (const viewerId of [...current.playerIds, ...current.spectatorIds]) {
       callbacks.onMapGenerated(viewerId, {
         name: generated.name,
-        displayName: generated.displayName,
         territories: generated.territories,
         bonuses: generated.bonuses,
         imageSrc: generated.imageSrc,

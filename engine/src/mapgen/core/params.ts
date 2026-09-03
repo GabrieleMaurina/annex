@@ -68,9 +68,5 @@ export function waterLevelLabel(water: WaterLevel): string {
 }
 
 export function generatedMapName(params: GenerateMapParams): string {
-  return `Generated: ${params.seed} · ${mapSizeLabel(params.size)} · ${waterLevelLabel(params.water)}`;
-}
-
-export function generatedMapDisplayName(params: GenerateMapParams): string {
   return `${waterLevelLabel(params.water)} (${mapSizeLabel(params.size)})`;
 }

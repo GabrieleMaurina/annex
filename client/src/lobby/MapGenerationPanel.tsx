@@ -4,6 +4,7 @@ import { Button, Form } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
 import { getGeneratedMapData } from '../game/mapData';
+import { getGameSettings } from '../lib/player';
 import type { GenerateMapInput, MapSize, WaterLevel } from '../lib/types';
 
 export interface MapGenerationPanelHandle {
@@ -54,12 +55,13 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
     { open, currentMapName, onHide, generateMap },
     ref,
   ) {
-    const [seed, setSeed] = useState(randomSeed);
-    const [genType, setGenType] = useState<WaterLevel>('mixed');
-    const [genSize, setGenSize] = useState<MapSize>('medium');
+    const saved = getGameSettings().mapGeneration;
+    const [seed, setSeed] = useState(() => saved?.seed ?? randomSeed());
+    const [genType, setGenType] = useState<WaterLevel>(saved?.water ?? 'mixed');
+    const [genSize, setGenSize] = useState<MapSize>(saved?.size ?? 'medium');
     const [generating, setGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState<GenerateMapInput | null>(
-      null,
+      saved ?? null,
     );
     const whiteMapIcon = useWhiteIcon('/icons/map.svg');
 

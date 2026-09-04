@@ -395,6 +395,33 @@ export function saveSettings(
     .then(() => undefined);
 }
 
+export function searchUsers(
+  regex: RegExp,
+  limit: number,
+): Promise<{ id: string; username: string }[]> {
+  return collection()
+    .find({ username: regex }, { projection: { username: 1 } })
+    .sort({ username: 1 })
+    .limit(limit)
+    .toArray()
+    .then((docs) =>
+      docs.map((doc) => ({ id: doc._id.toString(), username: doc.username })),
+    );
+}
+
+export function getUsernamesByIds(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return Promise.resolve(new Map());
+  return collection()
+    .find(
+      { _id: { $in: ids.map((id) => new ObjectId(id)) } },
+      { projection: { username: 1 } },
+    )
+    .toArray()
+    .then(
+      (docs) => new Map(docs.map((doc) => [doc._id.toString(), doc.username])),
+    );
+}
+
 export function getElosByIds(ids: string[]): Promise<Map<string, number>> {
   return collection()
     .find({ _id: { $in: ids.map((id) => new ObjectId(id)) } })

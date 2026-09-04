@@ -484,6 +484,8 @@ export interface StoredGame {
 export interface GameHistoryRow {
   id: string;
   name: string;
+  startedAt: string;
+  endedAt: string;
   mapName: string;
   gameMode: string;
   roundNumber: number;
@@ -498,11 +500,20 @@ export interface GameHistoryRow {
 export interface GamesQuery {
   page: number;
   pageSize: number;
-  search?: string;
+  playerIds?: string[];
   playersMin?: number;
   playersMax?: number;
   mode?: string;
   mapName?: string;
+  startedFrom?: number;
+  startedTo?: number;
+  endedFrom?: number;
+  endedTo?: number;
+  durationMin?: number;
+  durationMax?: number;
+  generatedMap?: boolean;
+  mapGenerationSize?: MapSize;
+  mapGenerationWater?: WaterLevel;
   minRounds?: number;
   maxRounds?: number;
   settings?: Record<string, string>;
@@ -512,6 +523,11 @@ export interface GamesQuery {
   mine?: boolean;
   sort?: 'newest' | 'rounds' | 'position';
   sortDir?: 'asc' | 'desc';
+}
+
+export interface PlayerSearchResult {
+  id: string;
+  username: string;
 }
 
 export const SETTING_FILTER_SECTIONS = [

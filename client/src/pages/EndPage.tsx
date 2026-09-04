@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { Button } from 'react-bootstrap';
 import BurgerMenu from '../common/BurgerMenu';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
@@ -5,8 +6,9 @@ import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReacti
 import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/Tip';
 import { connector } from '../connector';
-import GameEndResults from '../game/GameEndResults';
+import GameReplayView from '../game/GameReplayView';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
+import type { LogEntry } from '../game/useGameLogs';
 import type { GameState, PlayerResultStats } from '../lib/types';
 
 interface Props {
@@ -15,7 +17,11 @@ interface Props {
   selfId: number | null;
   mapNames: string[];
   navigate: (path: string) => void;
-  onWatchReplay: () => void;
+  logs: LogEntry[];
+  setChatOpen: Dispatch<SetStateAction<boolean>>;
+  settingsMenuOpen: boolean;
+  onPanelOpenChange: (open: boolean) => void;
+  onViewChange: (view: 'results' | 'replay') => void;
 }
 
 function EndPage({
@@ -24,7 +30,11 @@ function EndPage({
   selfId,
   mapNames,
   navigate,
-  onWatchReplay,
+  logs,
+  setChatOpen,
+  settingsMenuOpen,
+  onPanelOpenChange,
+  onViewChange,
 }: Props) {
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const {
@@ -43,12 +53,18 @@ function EndPage({
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1030 }}>
         <BurgerMenu navigate={navigate} />
       </div>
-      <GameEndResults
+      <GameReplayView
         game={game}
         results={results}
         selfId={selfId}
         mapNames={mapNames}
-        onWatchReplay={onWatchReplay}
+        mapRenderName={game.mapName}
+        logs={logs}
+        navigate={navigate}
+        setChatOpen={setChatOpen}
+        settingsMenuOpen={settingsMenuOpen}
+        onPanelOpenChange={onPanelOpenChange}
+        onViewChange={onViewChange}
         showYouLabel={!connector.isOffline()}
         rowClickable={(p) => tableEmojiEnabled && p.id !== selfId && !p.isBot}
         rowRef={(id) => (el) => {

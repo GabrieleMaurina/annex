@@ -76,7 +76,9 @@ function collection() {
 }
 
 export function ensureMaps(): Promise<unknown> {
-  return ensureCollection(NAME, schema);
+  return ensureCollection(NAME, schema).then(() =>
+    collection().createIndex({ name: 1 }),
+  );
 }
 
 export function storeMap(doc: MapDoc): Promise<void> {
@@ -92,6 +94,21 @@ export interface StoredMap {
   bonuses: number[];
   image: string;
   imageMime: string;
+}
+
+export function findMapIdsByName(name: string): Promise<string[]> {
+  return collection()
+    .find({ name }, { projection: { _id: 1 } })
+    .toArray()
+    .then((docs) => docs.map((doc) => doc._id));
+}
+
+export function getMapNamesByIds(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return Promise.resolve(new Map());
+  return collection()
+    .find({ _id: { $in: ids } }, { projection: { name: 1 } })
+    .toArray()
+    .then((docs) => new Map(docs.map((doc) => [doc._id, doc.name])));
 }
 
 export function getMapById(id: string): Promise<StoredMap | null> {

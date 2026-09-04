@@ -1,14 +1,20 @@
 import { GameExport } from 'engine';
 import { ObjectId } from 'mongodb';
+import { findMapIdsByName, getMapNamesByIds } from './maps';
 import { ensureCollection, getCollection } from './mongo';
-import { GAME_ENUMS, MAP_SIZES, WATER_LEVELS } from './users';
+import {
+  GAME_ENUMS,
+  getUsernamesByIds,
+  MAP_SIZES,
+  WATER_LEVELS,
+} from './users';
 
 const NAME = 'games';
 
 export interface GamePlayerDoc {
   playerId: number;
   userId: string | null;
-  name: string;
+  name: string | null;
   isBot: boolean;
   botDifficulty: string | null;
   botPersonality: string | null;
@@ -19,7 +25,7 @@ export interface GamePlayerDoc {
   won: boolean;
 }
 
-export type GameDoc = Omit<GameExport, 'players'> & {
+export type GameDoc = Omit<GameExport, 'players' | 'mapName'> & {
   mapId: string;
   players: GamePlayerDoc[];
 };
@@ -27,6 +33,8 @@ export type GameDoc = Omit<GameExport, 'players'> & {
 export interface GameHistoryRow {
   id: string;
   name: string;
+  startedAt: string;
+  endedAt: string;
   mapName: string;
   gameMode: string;
   roundNumber: number;
@@ -41,11 +49,20 @@ export interface GameHistoryRow {
 export interface GamesQuery {
   page: number;
   pageSize: number;
-  search?: string;
+  playerIds?: string[];
   playersMin?: number;
   playersMax?: number;
   mode?: string;
   mapName?: string;
+  startedFrom?: number;
+  startedTo?: number;
+  endedFrom?: number;
+  endedTo?: number;
+  durationMin?: number;
+  durationMax?: number;
+  generatedMap?: boolean;
+  mapGenerationSize?: string;
+  mapGenerationWater?: string;
   minRounds?: number;
   maxRounds?: number;
   settings?: Record<string, string | number>;
@@ -242,7 +259,7 @@ const player = object(
   {
     playerId: int,
     userId: { bsonType: ['string', 'null'] },
-    name: string,
+    name: { bsonType: ['string', 'null'] },
     isBot: bool,
     botDifficulty: { bsonType: ['string', 'null'] },
     botPersonality: { bsonType: ['string', 'null'] },
@@ -260,7 +277,6 @@ const schema = {
       [
         'name',
         'mapId',
-        'mapName',
         'mapGeneration',
         'settings',
         'players',
@@ -268,6 +284,8 @@ const schema = {
         'roundNumber',
         'playerCount',
         'originalHostId',
+        'startedAt',
+        'endedAt',
         'capitalTerritoryIds',
         'results',
         'serverLog',
@@ -277,8 +295,9 @@ const schema = {
         _id: {},
         name: string,
         mapId: string,
-        mapName: string,
         originalHostId: int,
+        startedAt: int,
+        endedAt: int,
         mapGeneration: {
           bsonType: ['object', 'null'],
           required: ['seed', 'size', 'water'],
@@ -329,8 +348,9 @@ export function ensureGames(): Promise<unknown> {
       collection().createIndex({ 'players.userId': 1, _id: -1 }),
       collection().createIndex({ 'players.userId': 1, 'players.rank': 1 }),
       collection().createIndex({ 'settings.gameMode': 1 }),
-      collection().createIndex({ mapName: 1 }),
-      collection().createIndex({ 'players.name': 1 }),
+      collection().createIndex({ mapId: 1 }),
+      collection().createIndex({ startedAt: 1 }),
+      collection().createIndex({ endedAt: 1 }),
     ]),
   );
 }
@@ -341,28 +361,70 @@ export function storeGame(doc: GameDoc): Promise<string> {
     .then((res) => res.insertedId.toString());
 }
 
-export function getGameById(
-  id: string,
-): Promise<(GameDoc & { id: string }) | null> {
+function playerDisplayName(
+  player: GamePlayerDoc,
+  nameByUserId: Map<string, string>,
+): string {
+  return player.userId
+    ? (nameByUserId.get(player.userId) ?? '?')
+    : (player.name ?? '?');
+}
+
+function resolveNames(
+  docs: { mapId: string; players: GamePlayerDoc[] }[],
+): Promise<{
+  mapNameById: Map<string, string>;
+  nameByUserId: Map<string, string>;
+}> {
+  const mapIds = [...new Set(docs.map((d) => d.mapId))];
+  const userIds = [
+    ...new Set(
+      docs
+        .flatMap((d) => d.players.map((p) => p.userId))
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+  return Promise.all([
+    getMapNamesByIds(mapIds),
+    getUsernamesByIds(userIds),
+  ]).then(([mapNameById, nameByUserId]) => ({ mapNameById, nameByUserId }));
+}
+
+export type ResolvedGamePlayer = Omit<GamePlayerDoc, 'name'> & { name: string };
+export type ResolvedGameDoc = Omit<GameDoc, 'players'> & {
+  id: string;
+  mapName: string;
+  players: ResolvedGamePlayer[];
+};
+
+export function getGameById(id: string): Promise<ResolvedGameDoc | null> {
   if (!ObjectId.isValid(id)) return Promise.resolve(null);
   return collection()
     .findOne({ _id: new ObjectId(id) })
     .then((doc) => {
       if (!doc) return null;
       const { _id, ...rest } = doc;
-      return { ...(rest as GameDoc), id: _id.toString() };
+      return resolveNames([rest]).then(({ mapNameById, nameByUserId }) => ({
+        ...rest,
+        id: _id.toString(),
+        mapName: mapNameById.get(rest.mapId) ?? '?',
+        players: rest.players.map((p) => ({
+          ...p,
+          name: playerDisplayName(p, nameByUserId),
+        })),
+      }));
     });
-}
-
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function toRow(
   doc: GameDoc & { _id: ObjectId },
+  mapNameById: Map<string, string>,
+  nameByUserId: Map<string, string>,
   userId?: string,
 ): GameHistoryRow {
-  const nameById = new Map(doc.players.map((p) => [p.playerId, p.name]));
+  const nameById = new Map(
+    doc.players.map((p) => [p.playerId, playerDisplayName(p, nameByUserId)]),
+  );
   const you = userId ? doc.players.find((p) => p.userId === userId) : undefined;
   const yourResult = you
     ? doc.results.find((r) => r.playerId === you.playerId)
@@ -370,7 +432,9 @@ function toRow(
   return {
     id: doc._id.toString(),
     name: doc.name,
-    mapName: doc.mapName,
+    startedAt: new Date(doc.startedAt).toISOString(),
+    endedAt: new Date(doc.endedAt).toISOString(),
+    mapName: mapNameById.get(doc.mapId) ?? '?',
     gameMode: doc.settings.gameMode,
     roundNumber: doc.roundNumber,
     playerCount: doc.playerCount ?? doc.players.length,
@@ -379,7 +443,7 @@ function toRow(
     yourRank: yourResult ? yourResult.rank : null,
     settings: doc.settings,
     players: doc.players.map((p) => ({
-      name: p.name,
+      name: playerDisplayName(p, nameByUserId),
       isBot: p.isBot,
       color: p.color,
       team: p.team,
@@ -389,10 +453,38 @@ function toRow(
 
 export function listGames(query: GamesQuery): Promise<GamesPage> {
   const viewer = query.viewerId ?? query.userId;
+
+  return (
+    query.mapName ? findMapIdsByName(query.mapName) : Promise.resolve(null)
+  ).then((mapNameIds) => queryGames(query, viewer, mapNameIds));
+}
+
+function queryGames(
+  query: GamesQuery,
+  viewer: string | undefined,
+  mapNameIds: string[] | null,
+): Promise<GamesPage> {
   const filter: Record<string, unknown> = {};
 
   if (query.mode) filter['settings.gameMode'] = query.mode;
-  if (query.mapName) filter.mapName = query.mapName;
+  if (mapNameIds) filter.mapId = { $in: mapNameIds };
+  if (query.startedFrom !== undefined || query.startedTo !== undefined) {
+    const range: Record<string, number> = {};
+    if (query.startedFrom !== undefined) range.$gte = query.startedFrom;
+    if (query.startedTo !== undefined) range.$lte = query.startedTo;
+    filter.startedAt = range;
+  }
+  if (query.endedFrom !== undefined || query.endedTo !== undefined) {
+    const range: Record<string, number> = {};
+    if (query.endedFrom !== undefined) range.$gte = query.endedFrom;
+    if (query.endedTo !== undefined) range.$lte = query.endedTo;
+    filter.endedAt = range;
+  }
+  if (query.generatedMap) filter.mapGeneration = { $ne: null };
+  if (query.mapGenerationSize)
+    filter['mapGeneration.size'] = query.mapGenerationSize;
+  if (query.mapGenerationWater)
+    filter['mapGeneration.water'] = query.mapGenerationWater;
   if (query.minRounds !== undefined || query.maxRounds !== undefined) {
     const range: Record<string, number> = {};
     if (query.minRounds !== undefined) range.$gte = query.minRounds;
@@ -401,23 +493,33 @@ export function listGames(query: GamesQuery): Promise<GamesPage> {
   }
   for (const [key, value] of Object.entries(query.settings ?? {}))
     filter[`settings.${key}`] = value;
-  if (query.search) {
-    const rx = new RegExp(escapeRegex(query.search), 'i');
-    filter.$or = [
-      { mapName: rx },
-      { 'settings.gameMode': rx },
-      { 'players.name': rx },
-    ];
+  const requiredPlayerIds = [
+    ...new Set([
+      ...(query.userId ? [query.userId] : []),
+      ...(query.playerIds ?? []),
+    ]),
+  ];
+  if (requiredPlayerIds.length === 1)
+    filter['players.userId'] = requiredPlayerIds[0];
+  else if (requiredPlayerIds.length > 1)
+    filter['players.userId'] = { $all: requiredPlayerIds };
+  const exprConditions: Record<string, unknown>[] = [];
+  if (query.playersMin !== undefined)
+    exprConditions.push({ $gte: [{ $size: '$players' }, query.playersMin] });
+  if (query.playersMax !== undefined)
+    exprConditions.push({ $lte: [{ $size: '$players' }, query.playersMax] });
+  if (query.durationMin !== undefined || query.durationMax !== undefined) {
+    const duration = { $subtract: ['$endedAt', '$startedAt'] };
+    if (query.durationMin !== undefined)
+      exprConditions.push({ $gte: [duration, query.durationMin * 60000] });
+    if (query.durationMax !== undefined)
+      exprConditions.push({ $lte: [duration, query.durationMax * 60000] });
   }
-  if (query.userId) filter['players.userId'] = query.userId;
-  if (query.playersMin !== undefined || query.playersMax !== undefined) {
-    const bounds: Record<string, unknown>[] = [];
-    if (query.playersMin !== undefined)
-      bounds.push({ $gte: [{ $size: '$players' }, query.playersMin] });
-    if (query.playersMax !== undefined)
-      bounds.push({ $lte: [{ $size: '$players' }, query.playersMax] });
-    filter.$expr = bounds.length === 1 ? bounds[0] : { $and: bounds };
-  }
+  if (exprConditions.length > 0)
+    filter.$expr =
+      exprConditions.length === 1
+        ? exprConditions[0]
+        : { $and: exprConditions };
 
   // Viewer-relative fields are derived from `results` / `winnerIds`, which every
   // stored game has (unlike the newer denormalised `players[].rank`/`won`).
@@ -510,10 +612,13 @@ export function listGames(query: GamesQuery): Promise<GamesPage> {
       rows: (GameDoc & { _id: ObjectId })[];
     }>(pipeline, { allowDiskUse: true })
     .toArray()
-    .then(([res]) => ({
-      total: res?.total[0]?.n ?? 0,
-      page: query.page,
-      pageSize: query.pageSize,
-      games: (res?.rows ?? []).map((doc) => toRow(doc, viewer)),
-    }));
+    .then(([res]) => {
+      const rows = res?.rows ?? [];
+      return resolveNames(rows).then(({ mapNameById, nameByUserId }) => ({
+        total: res?.total[0]?.n ?? 0,
+        page: query.page,
+        pageSize: query.pageSize,
+        games: rows.map((doc) => toRow(doc, mapNameById, nameByUserId, viewer)),
+      }));
+    });
 }

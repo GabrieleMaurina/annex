@@ -2,13 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Spinner } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
 import { connector } from '../connector';
-import GameEndResults from '../game/GameEndResults';
-import GameMap from '../game/GameMap';
-import { gameMapDataProps, noopGameMapHandlers } from '../game/gameMapProps';
+import GameReplayView from '../game/GameReplayView';
 import { formatLogEntries } from '../game/logFormat';
 import { registerGeneratedMap } from '../game/mapData';
 import { foldStoredReplay } from '../game/replay';
-import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState, ReplayTerritory, StoredGame } from '../lib/types';
 
 interface Props {
@@ -132,8 +129,6 @@ function ReplayPage({ navigate }: Props) {
     mapRenderName: string;
   } | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [view, setView] = useState<'results' | 'replay'>('results');
-  const [replayIndex, setReplayIndex] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,7 +181,7 @@ function ReplayPage({ navigate }: Props) {
     return (
       <div className="d-flex flex-column align-items-center gap-3 py-5">
         <p>Replay not found.</p>
-        <Button onClick={() => navigate('/games')}>Games</Button>
+        <Button onClick={() => navigate('/games/replay')}>Games</Button>
       </div>
     );
   }
@@ -203,88 +198,20 @@ function ReplayPage({ navigate }: Props) {
   const finalTerritories =
     folded.data.frames.at(-1)?.territories ?? folded.data.initial;
   const game = buildGameState(doc, finalTerritories);
-  const nameById = new Map(doc.players.map((p) => [p.playerId, p.name]));
-  const colorById = new Map(doc.players.map((p) => [p.playerId, p.color]));
-  const shownChat = folded.chat.filter((m) => m.afterFrame <= replayIndex);
-  const shownEmoji = folded.emoji.filter((e) => e.afterFrame <= replayIndex);
-
-  if (view === 'results') {
-    return (
-      <GameEndResults
-        game={game}
-        results={new Map(doc.results.map((r) => [r.playerId, r]))}
-        selfId={null}
-        mapNames={[]}
-        onWatchReplay={() => setView('replay')}
-      />
-    );
-  }
 
   return (
-    <>
-      <GameMap
-        {...gameMapDataProps(game, resolved.mapRenderName)}
-        {...noopGameMapHandlers}
-        mission={null}
-        selfId={null}
-        gameEnded
-        showReplay
-        replayData={folded.data}
-        onReplayIndexChange={setReplayIndex}
-        logs={logs}
-        settingsMenuOpen={false}
-        navigate={navigate}
-      />
-      <Button
-        variant="secondary"
-        size="sm"
-        className="position-fixed bottom-0 end-0 m-3"
-        style={{ zIndex: 5 }}
-        onClick={() => setView('results')}
-      >
-        Results
-      </Button>
-      {(shownChat.length > 0 || shownEmoji.length > 0) && (
-        <div
-          className="position-fixed top-0 start-0 m-3 p-2 rounded small"
-          style={{
-            zIndex: 5,
-            maxWidth: 280,
-            maxHeight: '40vh',
-            overflowY: 'auto',
-            background: 'rgba(0,0,0,0.6)',
-            color: '#fff',
-          }}
-        >
-          {shownChat.map((message, i) => (
-            <div key={`c${i}`}>
-              <span
-                className="badge me-1"
-                style={{
-                  backgroundColor: playerColor(
-                    colorById.get(message.senderId) ?? 0,
-                  ),
-                  color: contrastTextColor(
-                    playerColor(colorById.get(message.senderId) ?? 0),
-                  ),
-                }}
-              >
-                {message.name}
-              </span>
-              {message.message}
-            </div>
-          ))}
-          {shownEmoji.map((e, i) => (
-            <div key={`e${i}`}>
-              {nameById.get(e.senderId) ?? '?'} {e.emoji}
-              {e.targetPlayerId !== null
-                ? ` → ${nameById.get(e.targetPlayerId) ?? '?'}`
-                : ''}
-            </div>
-          ))}
-        </div>
-      )}
-    </>
+    <GameReplayView
+      game={game}
+      results={new Map(doc.results.map((r) => [r.playerId, r]))}
+      selfId={null}
+      mapNames={[]}
+      mapRenderName={resolved.mapRenderName}
+      replayData={folded.data}
+      logs={logs}
+      navigate={navigate}
+      chatLog={folded.chat}
+      emojiLog={folded.emoji}
+    />
   );
 }
 

@@ -17,7 +17,7 @@ const LINKS: { label: string; path: string }[] = [
   { label: 'Home', path: '/' },
   { label: 'Players', path: '/players' },
   { label: 'Friends', path: '/friends' },
-  { label: 'Games', path: '/games' },
+  { label: 'Games', path: '/games/replay' },
 ];
 
 interface Props {

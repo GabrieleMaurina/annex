@@ -6,6 +6,7 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  useParams,
 } from 'react-router-dom';
 import BurgerMenu from './common/BurgerMenu';
 import { connector } from './connector';
@@ -25,27 +26,22 @@ import PlayerProfile from './pages/PlayerProfile';
 import Players from './pages/Players';
 import ReplayPage from './pages/ReplayPage';
 
-const AUTH_PAGE_PREFIXES = {
-  confirm: '/email_confirmation/',
-  reset: '/password_reset/',
-} as const;
+function EmailConfirmationRoute({
+  navigate,
+}: {
+  navigate: (path: string) => void;
+}) {
+  const { code = '' } = useParams();
+  return <EmailConfirmation code={code} navigate={navigate} />;
+}
 
-type AuthPage = { kind: keyof typeof AUTH_PAGE_PREFIXES; code: string };
-
-function authPageFromPath(pathname: string): AuthPage | null {
-  for (const [kind, prefix] of Object.entries(AUTH_PAGE_PREFIXES)) {
-    if (pathname.startsWith(prefix)) {
-      try {
-        return {
-          kind: kind as keyof typeof AUTH_PAGE_PREFIXES,
-          code: decodeURIComponent(pathname.slice(prefix.length)),
-        };
-      } catch {
-        return null;
-      }
-    }
-  }
-  return null;
+function PasswordResetRoute({
+  navigate,
+}: {
+  navigate: (path: string) => void;
+}) {
+  const { code = '' } = useParams();
+  return <PasswordReset code={code} navigate={navigate} />;
 }
 
 function roomFromPath(pathname: string): string {
@@ -82,11 +78,9 @@ function App() {
     [routerNavigate],
   );
 
-  const authPage = authPageFromPath(pathname);
-  const onAuthPage = authPage !== null;
   const room = roomFromPath(pathname);
   const isOffline = room === 'offline';
-  const inGame = !onAuthPage && room !== 'home';
+  const inGame = room !== 'home';
 
   const refreshSession = useCallback(function load() {
     connector.session((res) => {
@@ -261,12 +255,6 @@ function App() {
     );
   }
 
-  if (authPage) {
-    if (authPage.kind === 'confirm')
-      return <EmailConfirmation code={authPage.code} navigate={navigate} />;
-    return <PasswordReset code={authPage.code} navigate={navigate} />;
-  }
-
   const gameElement = (
     <Game
       key={room}
@@ -316,10 +304,18 @@ function App() {
           }
         />
         <Route path="/account" element={<AccountPage />} />
+        <Route
+          path="/email_confirmation/:code"
+          element={<EmailConfirmationRoute navigate={navigate} />}
+        />
+        <Route
+          path="/password_reset/:code"
+          element={<PasswordResetRoute navigate={navigate} />}
+        />
         <Route path="/friends" element={<Friends />} />
         <Route path="/players" element={<Players />} />
         <Route path="/players/:username" element={<PlayerProfile />} />
-        <Route path="/games" element={<Games account={account} />} />
+        <Route path="/games/replay" element={<Games account={account} />} />
         <Route
           path="/games/replay/:id"
           element={<ReplayPage navigate={navigate} />}

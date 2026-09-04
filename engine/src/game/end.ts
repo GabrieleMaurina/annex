@@ -36,6 +36,7 @@ function emitGameEnded(game: Game): void {
 export function endAbandonedGame(game: Game): void {
   if (game.state !== 'playing') return;
   game.state = 'ended';
+  game.endedAt = Date.now();
   game.finalRanking = computeFinalRanking(game);
   emitGameEnded(game);
 }
@@ -107,6 +108,7 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   if (winnerIds === null) return;
 
   game.state = 'ended';
+  game.endedAt = Date.now();
   game.winnerIds = winnerIds;
   if (!turnAlreadyEnded) {
     const currentPlayerId = game.playerIds[game.turnPlayerIndex];

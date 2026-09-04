@@ -327,6 +327,18 @@ function SettingsPanel({
                     } as CSSProperties
                   }
                 >
+                  <Dropdown.Item
+                    eventKey={GENERATE_MAP_OPTION}
+                    className="d-flex align-items-center gap-2"
+                  >
+                    <img
+                      src={whiteMapIcon ?? '/icons/map.svg'}
+                      width={20}
+                      height={20}
+                      alt=""
+                    />
+                    Generate
+                  </Dropdown.Item>
                   {mapNames.map((name) => (
                     <Tip
                       key={name}
@@ -353,18 +365,6 @@ function SettingsPanel({
                       </Dropdown.Item>
                     </Tip>
                   ))}
-                  <Dropdown.Item
-                    eventKey={GENERATE_MAP_OPTION}
-                    className="d-flex align-items-center gap-2"
-                  >
-                    <img
-                      src={whiteMapIcon ?? '/icons/map.svg'}
-                      width={20}
-                      height={20}
-                      alt=""
-                    />
-                    Generate
-                  </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
             ) : (

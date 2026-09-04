@@ -99,6 +99,7 @@ export function startGame(playerId: number): GameResponse {
   }
   game.originalHostId = game.hostId;
   game.state = 'playing';
+  game.startedAt = Date.now();
   game.remainingSpecialPhases = [
     ...(game.placement === 'Custom' ? (['territory'] as const) : []),
     ...(game.placement !== 'Random' ? (['troop'] as const) : []),

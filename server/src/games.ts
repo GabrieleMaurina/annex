@@ -1,9 +1,7 @@
 import { Engine } from 'engine';
-import { Server } from 'socket.io';
 import { storeGame } from './db';
 import { gameParticipants } from './elo';
 import { persistGameMap } from './maps';
-import { gameRoomName } from './rooms';
 
 interface GameEndedPayload {
   gameName: string;
@@ -12,7 +10,6 @@ interface GameEndedPayload {
 
 export function persistFinishedGame(
   engine: Engine,
-  io: Server,
   payload: GameEndedPayload,
 ): void {
   if (payload.roundNumber < 1) return;
@@ -25,14 +22,24 @@ export function persistFinishedGame(
     .then((mapId) => {
       if (!mapId) return;
       return storeGame({
-        ...bundle,
+        name: bundle.name,
+        mapGeneration: bundle.mapGeneration,
+        originalHostId: bundle.originalHostId,
+        startedAt: bundle.startedAt,
+        endedAt: bundle.endedAt,
+        settings: bundle.settings,
+        winnerIds: bundle.winnerIds,
+        roundNumber: bundle.roundNumber,
+        playerCount: bundle.playerCount,
+        capitalTerritoryIds: bundle.capitalTerritoryIds,
+        results: bundle.results,
+        serverLog: bundle.serverLog,
+        replay: bundle.replay,
         mapId,
-        players: bundle.players.map((player) => ({
-          ...player,
-          userId: participants.get(player.playerId) ?? null,
-        })),
-      }).then((gameId) => {
-        io.to(gameRoomName(payload.gameName)).emit('game:stored', { gameId });
+        players: bundle.players.map((player) => {
+          const userId = participants.get(player.playerId) ?? null;
+          return { ...player, userId, name: userId ? null : player.name };
+        }),
       });
     })
     .catch((error) => console.error('failed to store game', error));

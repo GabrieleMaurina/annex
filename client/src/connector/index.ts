@@ -15,6 +15,7 @@ import type {
   GameSummary,
   GenerateMapInput,
   IdentifyResult,
+  PlayerSearchResult,
   ReplayAck,
   SessionResult,
   StoredGame,
@@ -138,7 +139,7 @@ export const connector = {
   },
 
   listGames(cb: (games: GameSummary[]) => void): void {
-    httpGet<GameSummary[]>('/games')
+    httpGet<GameSummary[]>('/games/live')
       .then(cb)
       .catch(() => {});
   },
@@ -147,13 +148,30 @@ export const connector = {
     const params = new URLSearchParams();
     params.set('page', String(query.page));
     params.set('pageSize', String(query.pageSize));
-    if (query.search) params.set('search', query.search);
+    for (const id of query.playerIds ?? []) params.append('playerIds', id);
     if (query.playersMin !== undefined)
       params.set('playersMin', String(query.playersMin));
     if (query.playersMax !== undefined)
       params.set('playersMax', String(query.playersMax));
     if (query.mode) params.set('mode', query.mode);
     if (query.mapName) params.set('mapName', query.mapName);
+    if (query.startedFrom !== undefined)
+      params.set('startedFrom', String(query.startedFrom));
+    if (query.startedTo !== undefined)
+      params.set('startedTo', String(query.startedTo));
+    if (query.endedFrom !== undefined)
+      params.set('endedFrom', String(query.endedFrom));
+    if (query.endedTo !== undefined)
+      params.set('endedTo', String(query.endedTo));
+    if (query.durationMin !== undefined)
+      params.set('durationMin', String(query.durationMin));
+    if (query.durationMax !== undefined)
+      params.set('durationMax', String(query.durationMax));
+    if (query.generatedMap) params.set('generatedMap', '1');
+    if (query.mapGenerationSize)
+      params.set('mapGenerationSize', query.mapGenerationSize);
+    if (query.mapGenerationWater)
+      params.set('mapGenerationWater', query.mapGenerationWater);
     if (query.minRounds !== undefined)
       params.set('minRounds', String(query.minRounds));
     if (query.maxRounds !== undefined)
@@ -189,6 +207,17 @@ export const connector = {
     httpGet<StoredMap>('/maps/' + encodeURIComponent(id))
       .then((map) => cb('territories' in map ? map : null))
       .catch(() => cb(null));
+  },
+
+  searchPlayers(
+    query: string,
+    cb: (results: PlayerSearchResult[]) => void,
+  ): void {
+    httpGet<PlayerSearchResult[]>(
+      '/games/players/search?q=' + encodeURIComponent(query),
+    )
+      .then(cb)
+      .catch(() => cb([]));
   },
 
   register(

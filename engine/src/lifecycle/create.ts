@@ -47,6 +47,8 @@ export function createGame(
     originalHostId: player.id,
     offline,
     state: 'lobby',
+    startedAt: null,
+    endedAt: null,
     alliances: 'off',
     allianceIds: new Set(),
     allianceRequests: new Map(),

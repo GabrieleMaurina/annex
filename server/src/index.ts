@@ -106,7 +106,7 @@ const callbacks: EngineCallbacks = {
   onResults: (playerId, payload) =>
     emitTo(io, playerId, 'game:results', payload),
   onGameEnded: (payload) => {
-    persistFinishedGame(engine, io, payload);
+    persistFinishedGame(engine, payload);
     handleGameEnded(payload);
   },
   onCardSetPlayed: (playerId, payload) =>

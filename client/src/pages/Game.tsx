@@ -46,7 +46,7 @@ function Game({
   const [chatOpen, setChatOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [gamePanelOpen, setGamePanelOpen] = useState(false);
-  const [endView, setEndView] = useState<'results' | 'replay'>('results');
+  const [endReplaying, setEndReplaying] = useState(false);
   const [mission, setMission] = useState<Mission | null>(null);
   const [results, setResults] = useState<Map<number, PlayerResultStats> | null>(
     null,
@@ -143,16 +143,6 @@ function Game({
       connector.off('game:results', onResults);
     };
   }, []);
-
-  useEffect(() => {
-    function onStored(payload: { gameId: string }) {
-      navigate(`/games/replay/${payload.gameId}`);
-    }
-    connector.on('game:stored', onStored);
-    return () => {
-      connector.off('game:stored', onStored);
-    };
-  }, [navigate]);
 
   if (needsPassword) {
     return (
@@ -296,8 +286,7 @@ function Game({
   );
   const colorById = new Map(game.players.map((p) => [p.id, p.color]));
   const ended = game.state === 'ended';
-  const showResults = ended && endView === 'results';
-  const showMap = game.state === 'playing' || (ended && endView === 'replay');
+  const showMap = game.state === 'playing' || (ended && endReplaying);
 
   return (
     <>
@@ -317,14 +306,18 @@ function Game({
             navigate={navigate}
           />
         </Container>
-      ) : showResults ? (
+      ) : ended ? (
         <EndPage
           game={game}
           results={results}
           selfId={selfId}
           mapNames={mapNames}
           navigate={navigate}
-          onWatchReplay={() => setEndView('replay')}
+          logs={logs}
+          setChatOpen={setChatOpen}
+          settingsMenuOpen={settingsMenuOpen}
+          onPanelOpenChange={setGamePanelOpen}
+          onViewChange={(view) => setEndReplaying(view === 'replay')}
         />
       ) : (
         <GameMap
@@ -332,8 +325,8 @@ function Game({
           mission={mission}
           selfId={selfId}
           onTogglePause={togglePause}
-          gameEnded={ended}
-          showReplay={ended && endView === 'replay'}
+          gameEnded={false}
+          showReplay={false}
           logs={logs}
           setGame={updateGameFromAction}
           adjustTerritoryTroops={adjustTerritoryTroops}
@@ -345,17 +338,6 @@ function Game({
           onPanelOpenChange={setGamePanelOpen}
           navigate={navigate}
         />
-      )}
-      {ended && endView === 'replay' && (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="position-fixed bottom-0 end-0 m-3"
-          style={{ zIndex: 5 }}
-          onClick={() => setEndView('results')}
-        >
-          Results
-        </Button>
       )}
       {!connector.isOffline() && (
         <Chat

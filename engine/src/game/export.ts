@@ -77,6 +77,8 @@ export interface GameExport {
   mapName: string;
   mapGeneration: { seed: string; size: string; water: string } | null;
   originalHostId: number;
+  startedAt: number;
+  endedAt: number;
   settings: {
     gameMode: string;
     continentId: number | null;
@@ -246,6 +248,7 @@ function buildResults(game: Game): GameResultExport[] {
 export function exportGame(gameName: string): GameExport | null {
   const game = games.get(gameName);
   if (!game || game.state !== 'ended' || game.roundNumber < 1) return null;
+  if (game.startedAt === null || game.endedAt === null) return null;
 
   const results = buildResults(game);
   const rankByPlayerId = new Map(results.map((r) => [r.playerId, r.rank]));
@@ -303,6 +306,8 @@ export function exportGame(gameName: string): GameExport | null {
     roundNumber: game.roundNumber,
     playerCount: game.playerIds.length,
     originalHostId: game.originalHostId,
+    startedAt: game.startedAt,
+    endedAt: game.endedAt,
     capitalTerritoryIds: [...game.capitalTerritoryIds],
     results,
     serverLog: game.logs.get(SERVER_VIEW_ID) ?? [],

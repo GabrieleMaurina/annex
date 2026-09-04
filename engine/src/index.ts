@@ -14,6 +14,7 @@ import {
 import { setWorkerConfig } from './workers/registry';
 import { EngineWorkerConfig } from './workers/types';
 
+import { exportGame } from './game/export';
 import {
   addBot,
   cycleBotColor,
@@ -68,6 +69,12 @@ import { GameMap } from './types';
 
 export { runBotWorker } from './bots/planning/worker';
 export { EngineCallbacks } from './callbacks';
+export {
+  GameExport,
+  GameResultExport,
+  ReplayEntry,
+  ReplayTerritoryDelta,
+} from './game/export';
 export {
   MAP_SIZE_VALUES,
   MapSize,
@@ -153,6 +160,7 @@ export function createEngine(
     attackMove,
 
     requestReplay,
+    exportGame,
 
     sendEmoji,
     offerAlliance,

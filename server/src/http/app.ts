@@ -1,5 +1,6 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { authRouter } from './authRoutes';
+import { gameHistoryRouter, publicGamesRouter } from './gameHistoryRoutes';
 import { gamesRouter } from './gamesRoutes';
 import { corsMiddleware, identityMiddleware } from './middleware';
 import { sessionRouter } from './session';
@@ -28,8 +29,10 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   const app = express();
   app.use(corsMiddleware);
   app.use(gamesRouter(deps.listGames));
+  app.use(publicGamesRouter);
   app.use(express.json({ limit: '16kb' }));
   app.use(identityMiddleware);
+  app.use(gameHistoryRouter);
   app.use(sessionRouter(deps.playerGame));
   app.use(authRouter(deps.inLiveGame));
   app.use(settingsRouter);

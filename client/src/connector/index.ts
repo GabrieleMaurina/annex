@@ -9,12 +9,16 @@ import type {
   Ack,
   ClientSettings,
   GameSettingsInput,
+  GamesPage,
+  GamesQuery,
   GameState,
   GameSummary,
   GenerateMapInput,
   IdentifyResult,
   ReplayAck,
   SessionResult,
+  StoredGame,
+  StoredMap,
 } from '../lib/types';
 import { subscribe, unsubscribe } from './inbound';
 import {
@@ -137,6 +141,54 @@ export const connector = {
     httpGet<GameSummary[]>('/games')
       .then(cb)
       .catch(() => {});
+  },
+
+  listGameHistory(query: GamesQuery, cb: (page: GamesPage) => void): void {
+    const params = new URLSearchParams();
+    params.set('page', String(query.page));
+    params.set('pageSize', String(query.pageSize));
+    if (query.search) params.set('search', query.search);
+    if (query.playersMin !== undefined)
+      params.set('playersMin', String(query.playersMin));
+    if (query.playersMax !== undefined)
+      params.set('playersMax', String(query.playersMax));
+    if (query.mode) params.set('mode', query.mode);
+    if (query.mapName) params.set('mapName', query.mapName);
+    if (query.minRounds !== undefined)
+      params.set('minRounds', String(query.minRounds));
+    if (query.maxRounds !== undefined)
+      params.set('maxRounds', String(query.maxRounds));
+    if (query.outcome) params.set('outcome', query.outcome);
+    if (query.positionMin !== undefined)
+      params.set('positionMin', String(query.positionMin));
+    if (query.positionMax !== undefined)
+      params.set('positionMax', String(query.positionMax));
+    for (const [key, value] of Object.entries(query.settings ?? {}))
+      if (value) params.set(key, value);
+    if (query.mine) params.set('mine', '1');
+    if (query.sort) params.set('sort', query.sort);
+    if (query.sortDir) params.set('sortDir', query.sortDir);
+    const empty: GamesPage = {
+      games: [],
+      total: 0,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+    httpGet<GamesPage>('/games/history?' + params.toString())
+      .then(cb)
+      .catch(() => cb(empty));
+  },
+
+  getStoredGame(id: string, cb: (game: StoredGame | null) => void): void {
+    httpGet<StoredGame>('/games/replay/' + encodeURIComponent(id))
+      .then((game) => cb('id' in game ? game : null))
+      .catch(() => cb(null));
+  },
+
+  getStoredMap(id: string, cb: (map: StoredMap | null) => void): void {
+    httpGet<StoredMap>('/maps/' + encodeURIComponent(id))
+      .then((map) => cb('territories' in map ? map : null))
+      .catch(() => cb(null));
   },
 
   register(

@@ -69,10 +69,10 @@ export function normalizeEmail(email: string): string {
   return lower.slice(0, at).replace(/\./g, '') + lower.slice(at);
 }
 
-const MAP_SIZES = ['small', 'medium', 'large', 'xlarge'];
-const WATER_LEVELS = ['land', 'mixed', 'ocean'];
+export const MAP_SIZES = ['small', 'medium', 'large', 'xlarge'];
+export const WATER_LEVELS = ['land', 'mixed', 'ocean'];
 
-const GAME_ENUMS: Record<string, unknown[]> = {
+export const GAME_ENUMS: Record<string, unknown[]> = {
   gameMode: [
     'Supremacy',
     'Supremacy 3/4',

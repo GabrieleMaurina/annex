@@ -21,11 +21,13 @@ import {
 import { getFortifyPath } from '../../logic/fortify';
 import type { Territory } from '../../mapData';
 import { isPortalHop } from '../../portals';
+import type { ReplayData } from '../../replay';
 import { useReplay } from '../../replay';
 import type { Point } from '../helpers';
 
 export function useGameSocketEvents({
   showReplay,
+  replayData,
   fortification,
   portalTerritoryIds,
   portalsEnabled,
@@ -41,6 +43,7 @@ export function useGameSocketEvents({
   setRadiationUpcomingTerritoryIds,
 }: {
   showReplay: boolean;
+  replayData?: ReplayData | null;
   fortification: Fortification;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
@@ -467,7 +470,12 @@ export function useGameSocketEvents({
     ],
   );
 
-  const replay = useReplay(showReplay, playFrameAnimation);
+  const replay = useReplay(
+    replayData
+      ? { kind: 'static', data: replayData }
+      : { kind: 'live', enabled: showReplay },
+    playFrameAnimation,
+  );
 
   useEffect(() => {
     function playAddEffect(

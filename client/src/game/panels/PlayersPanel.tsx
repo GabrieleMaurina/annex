@@ -140,7 +140,7 @@ function PlayersPanel({
     !self.surrendered;
   const canLeave = isSpectator || (!!self && (gameEnded || self.surrendered));
   const isHost = !gameEnded && selfId === hostId;
-  const showAllianceColumn = alliances === 'on' && !isSpectator;
+  const showAllianceColumn = alliances === 'on' && !isSpectator && !gameEnded;
 
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');

@@ -1,27 +1,13 @@
-import { Badge, Button, Container, Table } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
 import BurgerMenu from '../common/BurgerMenu';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/Tip';
 import { connector } from '../connector';
+import GameEndResults from '../game/GameEndResults';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
-import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState, PlayerResultStats } from '../lib/types';
-import SettingsPanel from '../lobby/SettingsPanel';
-
-const EMPTY_STATS: Omit<PlayerResultStats, 'id'> = {
-  troopsGained: 0,
-  troopsKilled: 0,
-  troopsLost: 0,
-  territoriesConquered: 0,
-  territoriesLost: 0,
-  capitalsConquered: 0,
-  capitalsLost: 0,
-  cardsGained: 0,
-  turnsPlayed: 0,
-  setsPlayed: 0,
-};
 
 interface Props {
   game: GameState;
@@ -29,7 +15,7 @@ interface Props {
   selfId: number | null;
   mapNames: string[];
   navigate: (path: string) => void;
-  onViewMap: () => void;
+  onWatchReplay: () => void;
 }
 
 function EndPage({
@@ -38,24 +24,9 @@ function EndPage({
   selfId,
   mapNames,
   navigate,
-  onViewMap,
+  onWatchReplay,
 }: Props) {
-  const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
-  const won = selfId !== null && game.winnerIds.includes(selfId);
-  const isTeamDeathmatch = game.gameMode === 'Team Deathmatch';
-  const isCapitals = game.gameMode === 'Capitals';
-  const nameById = new Map(game.players.map((p) => [p.id, p.name]));
-  const playerById = new Map(game.players.map((p) => [p.id, p]));
-  const rankedPlayers = game.finalRanking
-    .map((id) => playerById.get(id))
-    .filter((p): p is GameState['players'][number] => !!p);
-
-  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
-  const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
-  const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
-  const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
-
   const {
     emojiPickerFor,
     emojiPops,
@@ -68,230 +39,70 @@ function EndPage({
   const tableEmojiEnabled = !connector.isOffline();
 
   return (
-    <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
+    <>
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1030 }}>
         <BurgerMenu navigate={navigate} />
       </div>
-      <div className="text-center mb-4 mt-4 mt-sm-0">
-        <h1 className="mb-4">{won ? 'You Win!' : 'Game Over'}</h1>
-        {isTeamDeathmatch ? (
-          <p className="fs-4 mb-0">
-            Team {(winners[0]?.team ?? 0) + 1} wins:{' '}
-            {winners.map((w) => w.name).join(', ')}
-          </p>
-        ) : (
-          <p
-            className="fs-4 mb-0"
-            style={{ color: playerColor(winners[0]?.color ?? 0) }}
-          >
-            {winners[0]?.name} wins!
-          </p>
-        )}
-      </div>
-
-      <div className="table-responsive">
-        <Table size="sm" borderless className="mb-0 text-center align-middle">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th className="text-start">Player</th>
-              <th>Turns</th>
-              <th>Players Killed</th>
-              <th>Troops Gained</th>
-              <th>Troops Killed</th>
-              <th>Troops Lost</th>
-              <th>Territories Conquered</th>
-              <th>Territories Lost</th>
-              {isCapitals && <th>Capitals Conquered</th>}
-              {isCapitals && <th>Capitals Lost</th>}
-              <th>Cards Gained</th>
-              <th>Sets Played</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rankedPlayers.map((p, index) => {
-              const bg = playerColor(p.color);
-              const fg = contrastTextColor(bg);
-              const emojiRowClickable =
-                tableEmojiEnabled && p.id !== selfId && !p.isBot;
-              const rowStyle = {
-                backgroundColor: bg,
-                color: fg,
-                cursor: emojiRowClickable ? 'pointer' : 'default',
-              };
-              const isDark = fg === '#ffffff';
-              const rowIcon = (white: string | undefined, path: string) =>
-                isDark ? (white ?? path) : path;
-              const killedNames = p.playersKilled
-                .map((id) => nameById.get(id) ?? '?')
-                .join(', ');
-              const stats = results?.get(p.id) ?? EMPTY_STATS;
-              return (
-                <tr
-                  key={p.id}
+      <GameEndResults
+        game={game}
+        results={results}
+        selfId={selfId}
+        mapNames={mapNames}
+        onWatchReplay={onWatchReplay}
+        showYouLabel={!connector.isOffline()}
+        rowClickable={(p) => tableEmojiEnabled && p.id !== selfId && !p.isBot}
+        rowRef={(id) => (el) => {
+          if (el) rowRefs.current.set(id, el);
+        }}
+        nameRef={(id) => (el) => {
+          if (el) nameCellRefs.current.set(id, el);
+        }}
+        onRowClick={handleRowClick}
+        belowTable={
+          tableEmojiEnabled && (
+            <div className="d-flex justify-content-start mt-1">
+              <Tip text="Everyone" placement="bottom">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="d-inline-flex align-items-center justify-content-center"
+                  style={{ width: 28, height: 28, padding: 0 }}
+                  onClick={() => handleRowClick(GLOBAL_TARGET_ID)}
                   ref={(el) => {
-                    if (el) rowRefs.current.set(p.id, el);
-                  }}
-                  role={emojiRowClickable ? 'button' : undefined}
-                  data-no-click-sound
-                  onClick={
-                    emojiRowClickable ? () => handleRowClick(p.id) : undefined
-                  }
-                  style={{
-                    outline: p.id === selfId ? '2px solid #fff' : undefined,
-                    outlineOffset: p.id === selfId ? '-2px' : undefined,
+                    if (el) {
+                      rowRefs.current.set(GLOBAL_TARGET_ID, el);
+                      nameCellRefs.current.set(GLOBAL_TARGET_ID, el);
+                    } else {
+                      rowRefs.current.delete(GLOBAL_TARGET_ID);
+                      nameCellRefs.current.delete(GLOBAL_TARGET_ID);
+                    }
                   }}
                 >
-                  <td style={rowStyle}>{index + 1}</td>
-                  <td className="text-start" style={rowStyle}>
-                    <div
-                      ref={(el) => {
-                        if (el) nameCellRefs.current.set(p.id, el);
-                      }}
-                      className="d-inline-flex align-items-center gap-1"
-                    >
-                      <span className="text-truncate" style={{ minWidth: 0 }}>
-                        {p.id === selfId && !connector.isOffline()
-                          ? 'You'
-                          : p.name}
-                      </span>
-                      {p.isBot && (
-                        <img
-                          src={rowIcon(whiteBotIcon, '/icons/bot.svg')}
-                          width={12}
-                          height={12}
-                          alt="Bot"
-                          className="flex-shrink-0"
-                        />
-                      )}
-                      {p.id === game.originalHostId && (
-                        <Badge bg="primary" className="flex-shrink-0">
-                          Host
-                        </Badge>
-                      )}
-                      {p.eliminated && (
-                        <Tip text="Eliminated">
-                          <img
-                            src={rowIcon(whiteDeathIcon, '/icons/death.svg')}
-                            width={12}
-                            height={12}
-                            alt="Eliminated"
-                            className="flex-shrink-0"
-                          />
-                        </Tip>
-                      )}
-                      {p.surrendered && (
-                        <Tip text="Surrendered">
-                          <img
-                            src={rowIcon(whiteFlagIcon, '/icons/flag.svg')}
-                            width={12}
-                            height={12}
-                            alt="Surrendered"
-                            className="flex-shrink-0"
-                          />
-                        </Tip>
-                      )}
-                      {!p.connected && !p.eliminated && (
-                        <Tip text="Disconnected">
-                          <img
-                            src={rowIcon(whiteNoWifiIcon, '/icons/no-wifi.svg')}
-                            width={12}
-                            height={12}
-                            alt="Disconnected"
-                            className="flex-shrink-0"
-                          />
-                        </Tip>
-                      )}
-                    </div>
-                  </td>
-                  <td style={rowStyle}>
-                    {stats.turnsPlayed}/{game.roundNumber + 1}
-                  </td>
-                  {killedNames ? (
-                    <Tip text={killedNames}>
-                      <td style={rowStyle}>{p.playersKilled.length}</td>
-                    </Tip>
-                  ) : (
-                    <td style={rowStyle}>{p.playersKilled.length}</td>
-                  )}
-                  <td style={rowStyle}>{stats.troopsGained}</td>
-                  <td style={rowStyle}>{stats.troopsKilled}</td>
-                  <td style={rowStyle}>{stats.troopsLost}</td>
-                  <td style={rowStyle}>{stats.territoriesConquered}</td>
-                  <td style={rowStyle}>{stats.territoriesLost}</td>
-                  {isCapitals && (
-                    <td style={rowStyle}>{stats.capitalsConquered}</td>
-                  )}
-                  {isCapitals && <td style={rowStyle}>{stats.capitalsLost}</td>}
-                  <td style={rowStyle}>{stats.cardsGained}</td>
-                  <td style={rowStyle}>{stats.setsPlayed}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
-      </div>
-
-      {tableEmojiEnabled && (
-        <div className="d-flex justify-content-start mt-1 mb-4">
-          <Tip text="Everyone" placement="bottom">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="d-inline-flex align-items-center justify-content-center"
-              style={{ width: 28, height: 28, padding: 0 }}
-              onClick={() => handleRowClick(GLOBAL_TARGET_ID)}
-              ref={(el) => {
-                if (el) {
-                  rowRefs.current.set(GLOBAL_TARGET_ID, el);
-                  nameCellRefs.current.set(GLOBAL_TARGET_ID, el);
-                } else {
-                  rowRefs.current.delete(GLOBAL_TARGET_ID);
-                  nameCellRefs.current.delete(GLOBAL_TARGET_ID);
-                }
-              }}
-            >
-              <img
-                src={whiteGlobeIcon ?? '/icons/globe.svg'}
-                width={14}
-                height={14}
-                alt="Everyone"
-              />
-            </Button>
-          </Tip>
-        </div>
-      )}
-
-      {tableEmojiEnabled && (
-        <EmojiTableOverlay
-          emojiPickerFor={emojiPickerFor}
-          emojiPops={emojiPops}
-          rowRefs={rowRefs}
-          nameCellRefs={nameCellRefs}
-          emojiPickerRef={emojiPickerRef}
-          onPick={handleEmojiPick}
-        />
-      )}
-
-      <div className="d-flex justify-content-center gap-2 mt-2">
-        <Button variant="primary" onClick={onViewMap}>
-          Map
-        </Button>
-        <Button variant="secondary" onClick={() => navigate('/')}>
-          Leave
-        </Button>
-      </div>
-
-      <div className="mt-4">
-        <SettingsPanel
-          game={game}
-          isHost={false}
-          mapNames={mapNames}
-          applySettings={() => {}}
-          generateMap={() => {}}
-        />
-      </div>
-    </Container>
+                  <img
+                    src={whiteGlobeIcon ?? '/icons/globe.svg'}
+                    width={14}
+                    height={14}
+                    alt="Everyone"
+                  />
+                </Button>
+              </Tip>
+            </div>
+          )
+        }
+        overlay={
+          tableEmojiEnabled && (
+            <EmojiTableOverlay
+              emojiPickerFor={emojiPickerFor}
+              emojiPops={emojiPops}
+              rowRefs={rowRefs}
+              nameCellRefs={nameCellRefs}
+              emojiPickerRef={emojiPickerRef}
+              onPick={handleEmojiPick}
+            />
+          )
+        }
+      />
+    </>
   );
 }
 

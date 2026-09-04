@@ -120,6 +120,9 @@ export function createGame(
     replayInitial: [],
     replayInitialRadiation: [],
     replayFrames: [],
+    replayTurnMarkers: [],
+    replayChat: [],
+    replayEmoji: [],
     logs: new Map(),
   };
   games.set(game.name, game);

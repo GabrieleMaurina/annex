@@ -1,4 +1,5 @@
 import { ensureEmailConfirmations } from './emailConfirmations';
+import { ensureGames } from './games';
 import { ensureMaps } from './maps';
 import { connect } from './mongo';
 import { ensurePasswordResets } from './passwordResets';
@@ -14,6 +15,7 @@ export function connectDb(): Promise<void> {
         ensureEmailConfirmations(),
         ensurePasswordResets(),
         ensureMaps(),
+        ensureGames(),
       ]),
     )
     .then(() => {
@@ -22,6 +24,7 @@ export function connectDb(): Promise<void> {
 }
 
 export * from './emailConfirmations';
+export * from './games';
 export * from './maps';
 export * from './passwordResets';
 export * from './sessions';

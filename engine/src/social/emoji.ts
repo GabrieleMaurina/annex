@@ -86,4 +86,14 @@ export function sendEmoji(
     callbacks.onEmojiSent(playerId, payload);
     callbacks.onEmojiSent(targetPlayerId, payload);
   }
+
+  if (game.state === 'playing') {
+    game.replayEmoji.push({
+      senderId: playerId,
+      targetPlayerId: targetPlayerId ?? null,
+      emoji,
+      attackTarget: attackTarget ?? null,
+      afterFrame: game.replayFrames.length,
+    });
+  }
 }

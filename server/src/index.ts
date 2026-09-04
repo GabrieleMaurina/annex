@@ -29,9 +29,10 @@ import {
   registerTroopHandlers,
 } from './game/handlers';
 import { getGameMeta, isGamePublic, reconcileGameMeta } from './gameMeta';
+import { persistFinishedGame } from './games';
 import { registerHomeHandlers } from './home';
 import { createHttpApp } from './http/app';
-import { loadMaps, persistGameMap, registerMapsHandlers } from './maps';
+import { loadMaps, registerMapsHandlers } from './maps';
 import { gameRoomName } from './rooms';
 import {
   emitTo,
@@ -105,8 +106,8 @@ const callbacks: EngineCallbacks = {
   onResults: (playerId, payload) =>
     emitTo(io, playerId, 'game:results', payload),
   onGameEnded: (payload) => {
+    persistFinishedGame(engine, io, payload);
     handleGameEnded(payload);
-    persistGameMap(engine, payload.gameName);
   },
   onCardSetPlayed: (playerId, payload) =>
     emitTo(io, playerId, 'game:cardSetPlayed', payload),

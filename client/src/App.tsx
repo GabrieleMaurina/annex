@@ -17,12 +17,13 @@ import AccountPage from './pages/Account';
 import EmailConfirmation from './pages/EmailConfirmation';
 import Friends from './pages/Friends';
 import Game from './pages/Game';
-import GameHistory from './pages/GameHistory';
+import Games from './pages/Games';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import PasswordReset from './pages/PasswordReset';
 import PlayerProfile from './pages/PlayerProfile';
 import Players from './pages/Players';
+import ReplayPage from './pages/ReplayPage';
 
 const AUTH_PAGE_PREFIXES = {
   confirm: '/email_confirmation/',
@@ -318,7 +319,11 @@ function App() {
         <Route path="/friends" element={<Friends />} />
         <Route path="/players" element={<Players />} />
         <Route path="/players/:username" element={<PlayerProfile />} />
-        <Route path="/games/history" element={<GameHistory />} />
+        <Route path="/games" element={<Games account={account} />} />
+        <Route
+          path="/games/replay/:id"
+          element={<ReplayPage navigate={navigate} />}
+        />
         <Route path="/games/offline" element={gameElement} />
         <Route path="/games/live/:gameName" element={gameElement} />
         <Route path="*" element={<Navigate to="/" replace />} />

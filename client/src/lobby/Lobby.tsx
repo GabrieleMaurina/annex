@@ -247,16 +247,11 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
           applySettings={applySettings}
           generateMap={generateMap}
           headerActions={
-            <div className="d-flex flex-column flex-sm-row align-items-start gap-2">
-              {isHost && (
-                <Button disabled={!canStart} onClick={startGame}>
-                  Start
-                </Button>
-              )}
-              <Button variant="secondary" onClick={() => navigate('/')}>
-                Leave
+            isHost && (
+              <Button disabled={!canStart} onClick={startGame}>
+                Start
               </Button>
-            </div>
+            )
           }
         />
       </div>

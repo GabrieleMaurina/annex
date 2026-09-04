@@ -11,7 +11,7 @@ import {
   scheduleAllianceRequestExpiry,
   startAllianceCooldown,
 } from '../game/alliances';
-import { recordLog } from '../game/world/fog';
+import { recordLog, SERVER_VIEW_ID } from '../game/world/fog';
 import { playersById } from '../session/players';
 import { games, sendGameState } from '../session/store';
 import { Game, Player } from '../types';
@@ -97,6 +97,10 @@ export function respondAllianceRequest(
     formAlliance(game, fromPlayerId, player.id);
     recordLog(game, player.id, 'game:allianceFormed', { withId: fromPlayerId });
     recordLog(game, fromPlayerId, 'game:allianceFormed', { withId: player.id });
+    recordLog(game, SERVER_VIEW_ID, 'game:allianceFormed', {
+      playerId: player.id,
+      withId: fromPlayerId,
+    });
     callbacks.onAllianceFormed(player.id, { withId: fromPlayerId });
     callbacks.onAllianceFormed(fromPlayerId, { withId: player.id });
   } else {
@@ -127,6 +131,10 @@ export function terminateAlliance(
   });
   recordLog(game, targetPlayerId, 'game:allianceTerminated', {
     withId: player.id,
+  });
+  recordLog(game, SERVER_VIEW_ID, 'game:allianceTerminated', {
+    playerId: player.id,
+    withId: targetPlayerId,
   });
   callbacks.onAllianceTerminated(player.id, { withId: targetPlayerId });
   callbacks.onAllianceTerminated(targetPlayerId, { withId: player.id });

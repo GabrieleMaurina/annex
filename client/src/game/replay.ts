@@ -4,16 +4,148 @@ import type {
   ReplayAck,
   ReplayAnimation,
   ReplayFrame,
+  ReplayHand,
   ReplayTerritory,
+  StoredGame,
 } from '../lib/types';
 
 export const REPLAY_SPEEDS = [0.5, 1, 2, 4];
 const BASE_FRAME_INTERVAL_MS = 800;
 
-interface ReplayData {
+export interface ReplayData {
   initial: ReplayTerritory[];
   initialRadiation: number[];
   frames: ReplayFrame[];
+}
+
+export type ReplaySource =
+  | { kind: 'live'; enabled: boolean }
+  | { kind: 'static'; data: ReplayData | null };
+
+export interface ReplayTurnMarker {
+  afterFrame: number;
+  playerId: number;
+  roundNumber: number;
+}
+
+export interface ReplayChatMessage {
+  afterFrame: number;
+  senderId: number;
+  name: string;
+  message: string;
+}
+
+export interface ReplayEmoji {
+  afterFrame: number;
+  senderId: number;
+  targetPlayerId: number | null;
+  emoji: string;
+}
+
+export interface FoldedReplay {
+  data: ReplayData;
+  turnMarkers: ReplayTurnMarker[];
+  chat: ReplayChatMessage[];
+  emoji: ReplayEmoji[];
+}
+
+export function foldStoredReplay(replay: StoredGame['replay']): FoldedReplay {
+  const territoryById = new Map(
+    replay.initialTerritories.map((t) => [t.id, { ...t }]),
+  );
+  const frames: ReplayFrame[] = [];
+  const turnMarkers: ReplayTurnMarker[] = [];
+  const chat: ReplayChatMessage[] = [];
+  const emoji: ReplayEmoji[] = [];
+
+  for (const entry of replay.frames) {
+    if (entry.kind === 'action') {
+      for (const delta of entry.mapDelta)
+        territoryById.set(delta.id, { ...delta });
+      const animation =
+        entry.animation.type === 'attack' && entry.animation.defenderId == null
+          ? { ...entry.animation, defenderId: undefined }
+          : entry.animation;
+      frames.push({
+        territories: [...territoryById.values()].map((t) => ({ ...t })),
+        toxinTerritories: entry.toxinTerritories,
+        radiationTerritories: entry.radiationTerritories,
+        radiationUpcoming: entry.radiationUpcoming ?? [],
+        hands: entry.hands ?? [],
+        turnPhase: entry.turnPhase,
+        animation,
+        roundNumber: entry.roundNumber,
+        playerId: entry.playerId,
+      });
+    } else if (entry.kind === 'turn') {
+      turnMarkers.push({
+        afterFrame: frames.length,
+        playerId: entry.playerId,
+        roundNumber: entry.roundNumber,
+      });
+    } else if (entry.kind === 'chat') {
+      chat.push({
+        afterFrame: frames.length,
+        senderId: entry.senderId,
+        name: entry.name,
+        message: entry.message,
+      });
+    } else {
+      emoji.push({
+        afterFrame: frames.length,
+        senderId: entry.senderId,
+        targetPlayerId: entry.targetPlayerId,
+        emoji: entry.emoji,
+      });
+    }
+  }
+
+  return {
+    data: {
+      initial: replay.initialTerritories,
+      initialRadiation: replay.initialRadiation,
+      frames,
+    },
+    turnMarkers,
+    chat,
+    emoji,
+  };
+}
+
+export interface ReplayPlayerCounts {
+  territoryCount: number;
+  troopCount: number;
+  capitalCount: number;
+  cardCount: number;
+}
+
+export function replayPlayerCounts(
+  territories: ReplayTerritory[],
+  hands: ReplayHand[],
+  capitalTerritoryIds: Set<number>,
+): Map<number, ReplayPlayerCounts> {
+  const counts = new Map<number, ReplayPlayerCounts>();
+  const entry = (playerId: number) => {
+    let count = counts.get(playerId);
+    if (!count) {
+      count = {
+        territoryCount: 0,
+        troopCount: 0,
+        capitalCount: 0,
+        cardCount: 0,
+      };
+      counts.set(playerId, count);
+    }
+    return count;
+  };
+  for (const territory of territories) {
+    const count = entry(territory.ownerId);
+    count.territoryCount += 1;
+    count.troopCount += territory.troops;
+    if (capitalTerritoryIds.has(territory.id)) count.capitalCount += 1;
+  }
+  for (const hand of hands) entry(hand.playerId).cardCount = hand.cards.length;
+  return counts;
 }
 
 export interface ConquestArrow {
@@ -58,29 +190,33 @@ function conquestArrowAt(
 }
 
 export function useReplay(
-  gameEnded: boolean,
+  source: ReplaySource,
   onEnterFrame: (
     animation: ReplayAnimation,
     partOfConquestPair: boolean,
   ) => void,
 ) {
-  const [replay, setReplay] = useState<ReplayData | null>(null);
-  const [index, setIndex] = useState(0);
+  const staticData = source.kind === 'static' ? source.data : null;
+  const liveEnabled = source.kind === 'live' && source.enabled;
+
+  const [liveReplay, setLiveReplay] = useState<ReplayData | null>(null);
+  const replay = staticData ?? liveReplay;
+  const [index, setIndex] = useState(() => staticData?.frames.length ?? 0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
 
   useEffect(() => {
-    if (!gameEnded) return;
+    if (staticData || !liveEnabled) return;
     connector.replay((res: ReplayAck) => {
       if (!res.ok) return;
-      setReplay({
+      setLiveReplay({
         initial: res.initial,
         initialRadiation: res.initialRadiation,
         frames: res.frames,
       });
       setIndex(res.frames.length);
     });
-  }, [gameEnded]);
+  }, [staticData, liveEnabled]);
 
   const totalFrames = replay?.frames.length ?? 0;
 
@@ -152,6 +288,16 @@ export function useReplay(
       ? replay.initialRadiation
       : replay.frames[index - 1].radiationTerritories
     : null;
+  const radiationUpcoming = replay
+    ? index <= 0
+      ? []
+      : replay.frames[index - 1].radiationUpcoming
+    : null;
+  const hands = replay
+    ? index <= 0
+      ? []
+      : replay.frames[index - 1].hands
+    : null;
 
   return {
     index,
@@ -161,6 +307,9 @@ export function useReplay(
     territories,
     toxinTerritories,
     radiationTerritories,
+    radiationUpcoming,
+    hands,
+    turnPhase: currentFrame ? currentFrame.turnPhase : null,
     roundNumber: currentFrame ? currentFrame.roundNumber : null,
     turnPlayerId: currentFrame ? currentFrame.playerId : null,
     conquestArrow:

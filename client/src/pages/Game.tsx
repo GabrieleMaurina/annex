@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
-import SettingsMenu from '../common/SettingsMenu';
 import { formatError } from '../common/formatError';
+import SettingsMenu from '../common/SettingsMenu';
 import { connector } from '../connector';
 import GameMap from '../game/GameMap';
+import { gameMapDataProps } from '../game/gameMapProps';
 import OfflineHandoffGate from '../game/OfflineHandoffGate';
 import RotateDeviceOverlay from '../game/RotateDeviceOverlay';
 import { useGameLogs } from '../game/useGameLogs';
@@ -45,7 +46,7 @@ function Game({
   const [chatOpen, setChatOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [gamePanelOpen, setGamePanelOpen] = useState(false);
-  const [endView, setEndView] = useState<'auto' | 'map' | 'stats'>('auto');
+  const [endView, setEndView] = useState<'results' | 'replay'>('results');
   const [mission, setMission] = useState<Mission | null>(null);
   const [results, setResults] = useState<Map<number, PlayerResultStats> | null>(
     null,
@@ -58,7 +59,6 @@ function Game({
   function applyGameState(state: GameState) {
     if (!receivedFirstStateRef.current) {
       receivedFirstStateRef.current = true;
-      if (state.state === 'ended') setEndView('stats');
     } else if (prevStateRef.current === 'lobby' && state.state === 'playing') {
       playSound('start');
     } else if (prevStateRef.current === 'playing' && state.state === 'ended') {
@@ -145,13 +145,14 @@ function Game({
   }, []);
 
   useEffect(() => {
-    if (game?.state !== 'ended') return;
-    const timer = setTimeout(
-      () => setEndView((v) => (v === 'auto' ? 'stats' : v)),
-      1000,
-    );
-    return () => clearTimeout(timer);
-  }, [game?.state]);
+    function onStored(payload: { gameId: string }) {
+      navigate(`/games/replay/${payload.gameId}`);
+    }
+    connector.on('game:stored', onStored);
+    return () => {
+      connector.off('game:stored', onStored);
+    };
+  }, [navigate]);
 
   if (needsPassword) {
     return (
@@ -294,8 +295,9 @@ function Game({
     [...game.players, ...game.spectators].map((p) => [p.id, p.name]),
   );
   const colorById = new Map(game.players.map((p) => [p.id, p.color]));
-  const showMap =
-    game.state === 'playing' || (game.state === 'ended' && endView !== 'stats');
+  const ended = game.state === 'ended';
+  const showResults = ended && endView === 'results';
+  const showMap = game.state === 'playing' || (ended && endView === 'replay');
 
   return (
     <>
@@ -304,56 +306,34 @@ function Game({
         hidden={showMap && gamePanelOpen}
         onOpenChange={setSettingsMenuOpen}
       />
-      {showMap ? (
-        <GameMap
+      {game.state === 'lobby' ? (
+        <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
+          <Lobby
+            game={game}
+            gameMeta={gameMeta}
+            setGame={applyGameState}
+            selfId={selfId}
+            mapNames={mapNames}
+            navigate={navigate}
+          />
+        </Container>
+      ) : showResults ? (
+        <EndPage
           game={game}
-          mapName={game.mapName}
-          players={game.players}
-          spectators={game.spectators}
-          ownership={game.territories}
-          visibleTerritoryIds={game.visibleTerritoryIds}
-          gameMode={game.gameMode}
-          isTeamDeathmatch={game.gameMode === 'Team Deathmatch'}
-          isCapitals={game.gameMode === 'Capitals'}
-          continentId={game.continentId}
+          results={results}
+          selfId={selfId}
+          mapNames={mapNames}
+          navigate={navigate}
+          onWatchReplay={() => setEndView('replay')}
+        />
+      ) : (
+        <GameMap
+          {...gameMapDataProps(game, game.mapName)}
           mission={mission}
           selfId={selfId}
-          roundNumber={game.roundNumber}
-          turnPlayerIndex={game.turnPlayerIndex}
-          turnPhase={game.turnPhase}
-          turnDuration={game.turnDuration}
-          fortification={game.fortification}
-          entrenchments={game.entrenchments}
-          toxins={game.toxins}
-          toxinTerritories={game.toxinTerritories}
-          cards={game.cards}
-          portalTerritoryIds={game.portalTerritoryIds}
-          portalsEnabled={game.portalsEnabled}
-          radiationTerritoryIds={game.radiationTerritoryIds}
-          radiationUpcomingTerritoryIds={game.radiationUpcomingTerritoryIds}
-          starvation={game.starvation}
-          bounties={game.bounties}
-          supplyLines={game.supplyLines}
-          alliances={game.alliances}
-          allianceStates={game.allianceStates}
-          territoryTroopsCap={game.territoryTroopsCap}
-          totalTroopsCap={game.totalTroopsCap}
-          troopsToDeploy={game.troopsToDeploy}
-          turnStartedAt={game.turnStartedAt}
-          paused={game.paused}
-          hostId={game.hostId}
           onTogglePause={togglePause}
-          selectedTerritoryId={game.selectedTerritoryId}
-          fortifyStartTerritoryId={game.fortifyStartTerritoryId}
-          fortifyEndTerritoryId={game.fortifyEndTerritoryId}
-          fortifyPathTerritoryIds={game.fortifyPathTerritoryIds}
-          attackStartTerritoryId={game.attackStartTerritoryId}
-          attackEndTerritoryId={game.attackEndTerritoryId}
-          attackConquestMinTroops={game.attackConquestMinTroops}
-          nextSetBaseValues={game.nextSetBaseValues}
-          upcomingSetValues={game.upcomingSetValues}
-          gameEnded={game.state === 'ended'}
-          showReplay={endView === 'map'}
+          gameEnded={ended}
+          showReplay={ended && endView === 'replay'}
           logs={logs}
           setGame={updateGameFromAction}
           adjustTerritoryTroops={adjustTerritoryTroops}
@@ -365,34 +345,14 @@ function Game({
           onPanelOpenChange={setGamePanelOpen}
           navigate={navigate}
         />
-      ) : game.state === 'ended' ? (
-        <EndPage
-          game={game}
-          results={results}
-          selfId={selfId}
-          mapNames={mapNames}
-          navigate={navigate}
-          onViewMap={() => setEndView('map')}
-        />
-      ) : (
-        <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
-          <Lobby
-            game={game}
-            gameMeta={gameMeta}
-            setGame={applyGameState}
-            selfId={selfId}
-            mapNames={mapNames}
-            navigate={navigate}
-          />
-        </Container>
       )}
-      {game.state === 'ended' && endView === 'map' && (
+      {ended && endView === 'replay' && (
         <Button
           variant="secondary"
           size="sm"
           className="position-fixed bottom-0 end-0 m-3"
           style={{ zIndex: 5 }}
-          onClick={() => setEndView('stats')}
+          onClick={() => setEndView('results')}
         >
           Results
         </Button>

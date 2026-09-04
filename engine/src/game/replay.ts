@@ -1,6 +1,7 @@
 import {
   Game,
   ReplayAnimation,
+  ReplayHand,
   ReplayTerritory,
   ReplayToxinTerritory,
 } from '../types';
@@ -32,11 +33,21 @@ function actingPlayerId(animation: ReplayAnimation): number {
     : animation.playerId;
 }
 
+function snapshotHands(game: Game): ReplayHand[] {
+  return game.playerIds.map((playerId) => ({
+    playerId,
+    cards: (game.playerCards.get(playerId) ?? []).map((card) => ({ ...card })),
+  }));
+}
+
 export function recordReplayFrame(game: Game, animation: ReplayAnimation) {
   game.replayFrames.push({
     territories: snapshotTerritories(game),
     toxinTerritories: snapshotToxinTerritories(game),
     radiationTerritories: snapshotRadiationTerritories(game),
+    radiationUpcoming: [...game.radiationUpcomingTerritoryIds],
+    hands: snapshotHands(game),
+    turnPhase: game.turnPhase,
     animation,
     roundNumber: game.roundNumber,
     playerId: actingPlayerId(animation),

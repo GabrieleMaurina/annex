@@ -8,6 +8,7 @@ const INBOUND_EVENTS = [
   'game:turnStarted',
   'game:mission',
   'game:results',
+  'game:stored',
   'game:cards',
   'game:logs',
   'game:mapGenerated',

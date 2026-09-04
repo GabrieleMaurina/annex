@@ -67,13 +67,16 @@ function decodeDataUrl(src: string): { bytes: Buffer; mime: string } | null {
   return { bytes: Buffer.from(match[2], 'base64'), mime: match[1] };
 }
 
-export function persistGameMap(engine: Engine, gameName: string): void {
+export function persistGameMap(
+  engine: Engine,
+  gameName: string,
+): Promise<string | null> {
   const map = engine.mapForGame(gameName);
-  if (!map) return;
+  if (!map) return Promise.resolve(null);
   const image = map.imageSrc
     ? decodeDataUrl(map.imageSrc)
     : builtinImages.get(map.name);
-  if (!image) return;
+  if (!image) return Promise.resolve(null);
 
   const hash = createHash('sha256')
     .update(
@@ -86,7 +89,7 @@ export function persistGameMap(engine: Engine, gameName: string): void {
     .update(image.bytes)
     .digest('hex');
 
-  storeMap({
+  return storeMap({
     _id: hash,
     name: map.name,
     territories: map.territories,
@@ -94,5 +97,7 @@ export function persistGameMap(engine: Engine, gameName: string): void {
     generation: map.generation,
     image: new Binary(image.bytes),
     imageMime: image.mime,
-  }).catch(() => {});
+  })
+    .then(() => hash)
+    .catch(() => null);
 }

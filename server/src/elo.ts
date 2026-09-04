@@ -17,6 +17,10 @@ export function recordGameParticipants(game: {
   participantsByGame.set(game.name, byPlayerId);
 }
 
+export function gameParticipants(gameName: string): Map<number, string> {
+  return participantsByGame.get(gameName) ?? new Map();
+}
+
 export function handleGameEnded(payload: {
   gameName: string;
   gameMode: string;

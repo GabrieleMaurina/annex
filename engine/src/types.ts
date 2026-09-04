@@ -141,13 +141,42 @@ export interface ReplayToxinTerritory {
   roundsRemaining: number;
 }
 
+export interface ReplayHand {
+  playerId: number;
+  cards: Card[];
+}
+
 export interface ReplayFrame {
   territories: ReplayTerritory[];
   toxinTerritories: ReplayToxinTerritory[];
   radiationTerritories: number[];
+  radiationUpcoming: number[];
+  hands: ReplayHand[];
+  turnPhase: TurnPhase;
   animation: ReplayAnimation;
   roundNumber: number;
   playerId: number;
+}
+
+export interface ReplayTurnMarker {
+  playerId: number;
+  roundNumber: number;
+  afterFrame: number;
+}
+
+export interface ReplayChatEntry {
+  senderId: number;
+  name: string;
+  message: string;
+  afterFrame: number;
+}
+
+export interface ReplayEmojiEntry {
+  senderId: number;
+  targetPlayerId: number | null;
+  emoji: EmojiValue;
+  attackTarget: EmojiAttackTarget | null;
+  afterFrame: number;
 }
 
 export interface PlayerStats {
@@ -246,6 +275,9 @@ export interface Game {
   replayInitial: ReplayTerritory[];
   replayInitialRadiation: number[];
   replayFrames: ReplayFrame[];
+  replayTurnMarkers: ReplayTurnMarker[];
+  replayChat: ReplayChatEntry[];
+  replayEmoji: ReplayEmojiEntry[];
   logs: Map<number, GameLogEvent[]>;
 }
 

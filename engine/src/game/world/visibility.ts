@@ -2,6 +2,7 @@ import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { allianceStatesForViewer, alliedIds } from '../alliances';
 import { gameState, isEliminated, territoryStats } from '../state';
+import { SERVER_VIEW_ID } from './fog';
 import { withPortalEdges } from './portals';
 
 export function computeVisibleTerritoryIds(
@@ -49,6 +50,7 @@ export function visibleTerritoryIdsOrAll(
   game: Game,
   viewerId: number,
 ): Set<number> | null {
+  if (viewerId === SERVER_VIEW_ID) return null;
   if (!isFogActive(game, viewerId)) return null;
   return computeVisibleTerritoryIds(game, viewerId);
 }

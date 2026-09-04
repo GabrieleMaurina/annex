@@ -24,6 +24,7 @@ import { CARD_SET_FLASH_DURATION } from '../animations';
 import { CardFace } from '../panels/CardsPanel';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
+import { replayPlayerCounts, type ReplayData } from '../replay';
 import type { LogEntry } from '../useGameLogs';
 import { drawGameMapCanvas } from './draw/drawCanvas';
 import {
@@ -53,7 +54,7 @@ import EmojiOverlay from './overlays/EmojiOverlay';
 import MapButtonsColumn from './overlays/MapButtonsColumn';
 import TurnActionPanels from './overlays/TurnActionPanels';
 
-interface Props {
+export interface GameMapProps {
   game: GameState;
   mapName: string;
   players: GameState['players'];
@@ -102,6 +103,8 @@ interface Props {
   upcomingSetValues: GameState['upcomingSetValues'];
   gameEnded: boolean;
   showReplay: boolean;
+  replayData?: ReplayData | null;
+  onReplayIndexChange?: (index: number) => void;
   logs: LogEntry[];
   setGame: (game: GameState) => void;
   adjustTerritoryTroops: (
@@ -170,6 +173,8 @@ function GameMap({
   upcomingSetValues,
   gameEnded,
   showReplay,
+  replayData,
+  onReplayIndexChange,
   logs,
   setGame,
   adjustTerritoryTroops,
@@ -180,7 +185,7 @@ function GameMap({
   settingsMenuOpen,
   onPanelOpenChange,
   navigate,
-}: Props) {
+}: GameMapProps) {
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteBonusIcon = useWhiteIcon('/icons/bonus.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
@@ -248,6 +253,7 @@ function GameMap({
     replay,
   } = useGameSocketEvents({
     showReplay,
+    replayData,
     fortification,
     portalTerritoryIds,
     portalsEnabled,
@@ -270,6 +276,9 @@ function GameMap({
     territories: replayTerritories,
     toxinTerritories: replayToxinTerritories,
     radiationTerritories: replayRadiationTerritories,
+    radiationUpcoming: replayRadiationUpcoming,
+    hands: replayHands,
+    turnPhase: replayTurnPhase,
     roundNumber: replayRoundNumber,
     turnPlayerId: replayTurnPlayerId,
     conquestArrow: replayConquestArrow,
@@ -281,6 +290,10 @@ function GameMap({
     togglePlay: replayTogglePlay,
     cycleSpeed: replayCycleSpeed,
   } = replay;
+
+  useEffect(() => {
+    onReplayIndexChange?.(replayIndex);
+  }, [replayIndex, onReplayIndexChange]);
 
   const currentTurnPlayer = players[turnPlayerIndex];
   const isMyTurn = currentTurnPlayer?.id === selfId;
@@ -295,6 +308,30 @@ function GameMap({
     () => new Map(displayedOwnership.map((o) => [o.id, o])),
     [displayedOwnership],
   );
+  const replayCounts =
+    showReplay && replayTerritories
+      ? replayPlayerCounts(
+          replayTerritories,
+          replayHands ?? [],
+          new Set(
+            displayedOwnership.filter((o) => o.isCapital).map((o) => o.id),
+          ),
+        )
+      : null;
+  const displayedPlayers = replayCounts
+    ? players.map((p) => ({
+        ...p,
+        territoryCount: 0,
+        troopCount: 0,
+        capitalCount: 0,
+        cardCount: 0,
+        ...replayCounts.get(p.id),
+      }))
+    : players;
+  const panelRoundNumber =
+    showReplay && replayRoundNumber !== null ? replayRoundNumber : roundNumber;
+  const panelTurnPhase =
+    showReplay && replayTurnPhase !== null ? replayTurnPhase : turnPhase;
   const displayedToxinTerritories = replayToxinTerritories ?? toxinTerritories;
   const toxinById = useMemo(
     () => new Set(displayedToxinTerritories.map((t) => t.id)),
@@ -309,13 +346,17 @@ function GameMap({
   const radiationUpcomingById = useMemo(
     () =>
       new Set(
-        showReplay
-          ? []
-          : radiationUpcomingTerritoryIds.filter(
-              (id) => !radiationById.has(id),
-            ),
+        (showReplay
+          ? (replayRadiationUpcoming ?? [])
+          : radiationUpcomingTerritoryIds
+        ).filter((id) => !radiationById.has(id)),
       ),
-    [showReplay, radiationUpcomingTerritoryIds, radiationById],
+    [
+      showReplay,
+      replayRadiationUpcoming,
+      radiationUpcomingTerritoryIds,
+      radiationById,
+    ],
   );
   const unusableTerritoryById = useMemo(
     () => new Set([...toxinById, ...radiationById]),
@@ -814,7 +855,7 @@ function GameMap({
         awardedCards={cardsFlow.awardedCards}
       />
       <PlayersPanel
-        players={players}
+        players={displayedPlayers}
         spectators={spectators}
         gameMode={gameMode}
         isTeamDeathmatch={isTeamDeathmatch}
@@ -827,9 +868,13 @@ function GameMap({
         toxinsCost={turnFlow.toxinsCostValue}
         mission={mission}
         selfId={selfId}
-        roundNumber={roundNumber}
-        turnPhase={turnPhase}
-        turnPlayerId={currentTurnPlayer?.id ?? null}
+        roundNumber={panelRoundNumber}
+        turnPhase={panelTurnPhase}
+        turnPlayerId={
+          showReplay && replayTurnPlayerId !== null
+            ? replayTurnPlayerId
+            : (currentTurnPlayer?.id ?? null)
+        }
         hostId={hostId}
         paused={paused}
         onTogglePause={onTogglePause}

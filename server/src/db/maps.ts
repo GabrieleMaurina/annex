@@ -85,3 +85,27 @@ export function storeMap(doc: MapDoc): Promise<void> {
     .updateOne({ _id }, { $setOnInsert: rest }, { upsert: true })
     .then(() => undefined);
 }
+
+export interface StoredMap {
+  name: string;
+  territories: MapDoc['territories'];
+  bonuses: number[];
+  image: string;
+  imageMime: string;
+}
+
+export function getMapById(id: string): Promise<StoredMap | null> {
+  return collection()
+    .findOne({ _id: id })
+    .then((doc) =>
+      doc
+        ? {
+            name: doc.name,
+            territories: doc.territories,
+            bonuses: doc.bonuses,
+            image: Buffer.from(doc.image.buffer).toString('base64'),
+            imageMime: doc.imageMime,
+          }
+        : null,
+    );
+}

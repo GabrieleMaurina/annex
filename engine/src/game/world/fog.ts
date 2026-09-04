@@ -1,5 +1,7 @@
 import { Game } from '../../types';
 
+export const SERVER_VIEW_ID = -1;
+
 const LOGGED_EVENTS = new Set([
   'game:deployed',
   'game:fortified',
@@ -34,7 +36,11 @@ export function recordLogForAll(
   type: string,
   payload: unknown,
 ): void {
-  for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
+  for (const viewerId of [
+    ...game.playerIds,
+    ...game.spectatorIds,
+    SERVER_VIEW_ID,
+  ]) {
     recordLog(game, viewerId, type, payload);
   }
 }
@@ -45,10 +51,14 @@ export function fogFilterEmit<T>(
   emit: (playerId: number, payload: T) => void,
   buildPayload: (viewerId: number) => T | null,
 ): void {
-  for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
+  for (const viewerId of [
+    ...game.playerIds,
+    ...game.spectatorIds,
+    SERVER_VIEW_ID,
+  ]) {
     const payload = buildPayload(viewerId);
     if (payload === null) continue;
-    emit(viewerId, payload);
+    if (viewerId !== SERVER_VIEW_ID) emit(viewerId, payload);
     recordLog(game, viewerId, eventName, payload);
   }
 }

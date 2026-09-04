@@ -437,6 +437,11 @@ function startDeployPhase(game: Game, playerId: number) {
     callbacks.onTurnStarted(viewerId, turnStartedPayload);
   }
   recordLogForAll(game, 'game:turnStarted', turnStartedPayload);
+  game.replayTurnMarkers.push({
+    playerId,
+    roundNumber: game.roundNumber,
+    afterFrame: game.replayFrames.length,
+  });
 }
 
 function completePendingAttackMove(

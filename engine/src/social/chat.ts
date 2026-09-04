@@ -21,4 +21,13 @@ export function sendChat(playerId: number, message: string): void {
   for (const id of [...game.playerIds, ...game.spectatorIds]) {
     callbacks.onChatMessage(id, payload);
   }
+
+  if (game.state === 'playing' && game.playerIds.includes(playerId)) {
+    game.replayChat.push({
+      senderId: playerId,
+      name: payload.name,
+      message: trimmed,
+      afterFrame: game.replayFrames.length,
+    });
+  }
 }

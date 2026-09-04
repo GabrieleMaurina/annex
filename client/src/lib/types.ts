@@ -63,6 +63,21 @@ export type GameMode =
   | 'Mission'
   | 'Player Kills'
   | 'Troop Kills';
+export const GAME_MODES: GameMode[] = [
+  'Supremacy',
+  'Supremacy 3/4',
+  'Supremacy 2/3',
+  'Capitals',
+  'Team Deathmatch',
+  'Continent',
+  '5-Round',
+  '10-Round',
+  'Assassin',
+  'Mission',
+  'Player Kills',
+  'Troop Kills',
+];
+
 export type Placement = 'Random' | 'Semi' | 'Custom';
 export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
 export type Entrenchments = 'off' | 'on';
@@ -340,10 +355,18 @@ export type ReplayAnimation =
   | { type: 'starve'; territoryId: number; troops: number; playerId: number }
   | { type: 'toxins'; territoryId: number; playerId: number };
 
+export interface ReplayHand {
+  playerId: number;
+  cards: Card[];
+}
+
 export interface ReplayFrame {
   territories: ReplayTerritory[];
   toxinTerritories: ReplayToxinTerritory[];
   radiationTerritories: number[];
+  radiationUpcoming: number[];
+  hands: ReplayHand[];
+  turnPhase: TurnPhase;
   animation: ReplayAnimation;
   roundNumber: number;
   playerId: number;
@@ -357,3 +380,275 @@ export type ReplayAck =
       frames: ReplayFrame[];
     }
   | { ok: false; error: string };
+
+export type ReplayEntry =
+  | {
+      kind: 'action';
+      roundNumber: number;
+      turnPhase: TurnPhase;
+      playerId: number;
+      mapDelta: ReplayTerritory[];
+      toxinTerritories: ReplayToxinTerritory[];
+      radiationTerritories: number[];
+      radiationUpcoming: number[];
+      hands: ReplayHand[];
+      animation: ReplayAnimation;
+    }
+  | { kind: 'turn'; roundNumber: number; playerId: number }
+  | { kind: 'chat'; senderId: number; name: string; message: string }
+  | {
+      kind: 'emoji';
+      senderId: number;
+      targetPlayerId: number | null;
+      emoji: string;
+      attackTarget: EmojiAttackTarget | null;
+    };
+
+export interface StoredGameResult {
+  playerId: number;
+  rank: number;
+  team: number;
+  eliminated: boolean;
+  surrendered: boolean;
+  playersKilled: number[];
+  troopsGained: number;
+  troopsKilled: number;
+  troopsLost: number;
+  territoriesConquered: number;
+  territoriesLost: number;
+  capitalsConquered: number;
+  capitalsLost: number;
+  cardsGained: number;
+  turnsPlayed: number;
+  setsPlayed: number;
+}
+
+export interface StoredGameSettings {
+  gameMode: GameMode;
+  continentId: number | null;
+  slots: number;
+  blitz: Blitz;
+  defenceDice: DefenceDice;
+  cards: CardsMode;
+  placement: Placement;
+  fortification: Fortification;
+  entrenchments: Entrenchments;
+  toxins: Toxins;
+  portals: Portals;
+  radiations: Radiations;
+  starvation: Starvation;
+  roundTroops: RoundTroops;
+  bounties: Bounties;
+  supplyLines: SupplyLines;
+  fogOfWar: FogOfWar;
+  alliances: Alliances;
+  turnDuration: TurnDuration;
+  disconnectBotDifficulty: BotDifficulty | 'random';
+  disconnectBotPersonality: BotPersonality | 'random';
+}
+
+export interface StoredGame {
+  id: string;
+  name: string;
+  mapId: string;
+  mapName: string;
+  mapGeneration: GenerateMapInput | null;
+  originalHostId: number;
+  roundNumber: number;
+  playerCount: number;
+  winnerIds: number[];
+  capitalTerritoryIds: number[];
+  settings: StoredGameSettings;
+  players: {
+    playerId: number;
+    userId: string | null;
+    name: string;
+    isBot: boolean;
+    botDifficulty: BotDifficulty | null;
+    botPersonality: BotPersonality | null;
+    team: number;
+    color: number;
+    turnOrder: number;
+    rank: number;
+    won: boolean;
+  }[];
+  results: StoredGameResult[];
+  serverLog: { type: string; payload: unknown }[];
+  replay: {
+    initialTerritories: ReplayTerritory[];
+    initialRadiation: number[];
+    frames: ReplayEntry[];
+  };
+}
+
+export interface GameHistoryRow {
+  id: string;
+  name: string;
+  mapName: string;
+  gameMode: string;
+  roundNumber: number;
+  playerCount: number;
+  winnerIds: number[];
+  winnerNames: string[];
+  yourRank: number | null;
+  settings: StoredGameSettings;
+  players: { name: string; isBot: boolean; color: number; team: number }[];
+}
+
+export interface GamesQuery {
+  page: number;
+  pageSize: number;
+  search?: string;
+  playersMin?: number;
+  playersMax?: number;
+  mode?: string;
+  mapName?: string;
+  minRounds?: number;
+  maxRounds?: number;
+  settings?: Record<string, string>;
+  outcome?: 'won' | 'lost';
+  positionMin?: number;
+  positionMax?: number;
+  mine?: boolean;
+  sort?: 'newest' | 'rounds' | 'position';
+  sortDir?: 'asc' | 'desc';
+}
+
+export const SETTING_FILTER_SECTIONS = [
+  'Setup',
+  'Combat',
+  'Reinforcements',
+  'Hazards',
+  'Players',
+] as const;
+
+export const SETTING_FILTERS: {
+  key: string;
+  label: string;
+  section: (typeof SETTING_FILTER_SECTIONS)[number];
+  options: string[];
+}[] = [
+  {
+    key: 'placement',
+    label: 'Placement',
+    section: 'Setup',
+    options: ['Random', 'Semi', 'Custom'],
+  },
+  {
+    key: 'fortification',
+    label: 'Fortification',
+    section: 'Setup',
+    options: ['Connected', 'Neighboring', 'Unrestricted'],
+  },
+  {
+    key: 'turnDuration',
+    label: 'Turn duration',
+    section: 'Setup',
+    options: ['60', '90', '120', '150', '180', '300'],
+  },
+  {
+    key: 'blitz',
+    label: 'Blitz',
+    section: 'Combat',
+    options: ['Balanced', 'True'],
+  },
+  {
+    key: 'defenceDice',
+    label: 'Defence dice',
+    section: 'Combat',
+    options: ['2', '3'],
+  },
+  {
+    key: 'entrenchments',
+    label: 'Entrenchments',
+    section: 'Combat',
+    options: ['off', 'on'],
+  },
+  {
+    key: 'cards',
+    label: 'Cards',
+    section: 'Reinforcements',
+    options: [
+      'Constant',
+      'Linear',
+      'Exponential',
+      'Linear Per Player',
+      'Exponential Per Player',
+    ],
+  },
+  {
+    key: 'roundTroops',
+    label: 'Round troops',
+    section: 'Reinforcements',
+    options: ['off', 'on'],
+  },
+  {
+    key: 'bounties',
+    label: 'Bounties',
+    section: 'Reinforcements',
+    options: ['off', 'on'],
+  },
+  {
+    key: 'portals',
+    label: 'Portals',
+    section: 'Hazards',
+    options: ['off', 'static', 'dynamic'],
+  },
+  {
+    key: 'radiations',
+    label: 'Radiation',
+    section: 'Hazards',
+    options: ['off', 'static', 'dynamic', 'expanding'],
+  },
+  {
+    key: 'toxins',
+    label: 'Toxins',
+    section: 'Hazards',
+    options: ['off', 'temporary', 'permanent'],
+  },
+  {
+    key: 'starvation',
+    label: 'Starvation',
+    section: 'Hazards',
+    options: ['off', 'territory', 'total', 'percent'],
+  },
+  {
+    key: 'supplyLines',
+    label: 'Supply lines',
+    section: 'Hazards',
+    options: ['off', 'on'],
+  },
+  {
+    key: 'fogOfWar',
+    label: 'Fog of war',
+    section: 'Players',
+    options: ['off', 'on'],
+  },
+  {
+    key: 'alliances',
+    label: 'Alliances',
+    section: 'Players',
+    options: ['off', 'on'],
+  },
+];
+
+export interface GamesPage {
+  games: GameHistoryRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface StoredMap {
+  name: string;
+  territories: {
+    id: number;
+    continentId: number;
+    x: number;
+    y: number;
+    neighbors: number[];
+  }[];
+  bonuses: number[];
+  image: string;
+  imageMime: string;
+}

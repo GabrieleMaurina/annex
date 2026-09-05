@@ -1,3 +1,4 @@
+import { BUILTIN_MAP_NAMES } from 'engine';
 import { ObjectId, WithId } from 'mongodb';
 import { ensureCollection, getCollection } from './mongo';
 
@@ -35,6 +36,23 @@ export interface GameSettings {
   visibility: string;
 }
 
+export interface HomeFilters {
+  players: { id: string; label: string }[];
+  name: string;
+  mode: string;
+  mapName: string;
+  mapGenerationSize: string;
+  mapGenerationWater: string;
+  playersMin: number;
+  playersMax: number;
+  roundsMin: number;
+  roundsMax: number;
+  phase: string;
+  password: string;
+  settings: Record<string, string>;
+  sort: string;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -44,6 +62,7 @@ export interface User {
   elo: number;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
+  homeFilters: HomeFilters;
 }
 
 interface UserDoc {
@@ -56,6 +75,7 @@ interface UserDoc {
   elo?: number;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
+  homeFilters: HomeFilters;
 }
 
 export function normalizeUsername(username: string): string {
@@ -123,6 +143,30 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   visibility: ['public', 'private'],
 };
 
+const GENERATED_MAP_VALUE = 'generated';
+
+const HOME_MODES = ['', ...(GAME_ENUMS.gameMode as string[])];
+const HOME_MAP_NAMES = ['', GENERATED_MAP_VALUE, ...BUILTIN_MAP_NAMES];
+const HOME_SIZES = ['', ...MAP_SIZES];
+const HOME_WATERS = ['', ...WATER_LEVELS];
+const HOME_PHASES = ['', 'lobby', 'playing', 'ended'];
+const HOME_PASSWORDS = ['', 'yes', 'no'];
+const HOME_SORTS = [
+  'newest',
+  'oldest',
+  'mostPlayers',
+  'fewestPlayers',
+  'mostRounds',
+  'fewestRounds',
+  'nameAsc',
+  'nameDesc',
+];
+const HOME_PLAYERS_MIN = 2;
+const HOME_PLAYERS_MAX = 20;
+const HOME_ROUNDS_MIN = 0;
+const HOME_ROUNDS_MAX = 1000;
+const MAX_FILTER_PLAYERS = 10;
+
 export const DEFAULT_ELO = 0;
 
 export const DEFAULT_CLIENT_SETTINGS: ClientSettings = {
@@ -157,6 +201,23 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   visibility: 'public',
 };
 
+export const DEFAULT_HOME_FILTERS: HomeFilters = {
+  players: [],
+  name: '',
+  mode: '',
+  mapName: '',
+  mapGenerationSize: '',
+  mapGenerationWater: '',
+  playersMin: HOME_PLAYERS_MIN,
+  playersMax: HOME_PLAYERS_MAX,
+  roundsMin: HOME_ROUNDS_MIN,
+  roundsMax: HOME_ROUNDS_MAX,
+  phase: '',
+  password: '',
+  settings: {},
+  sort: 'newest',
+};
+
 const schema = {
   validator: {
     $jsonSchema: {
@@ -170,6 +231,7 @@ const schema = {
         'validated_email',
         'clientSettings',
         'gameSettings',
+        'homeFilters',
       ],
       additionalProperties: false,
       properties: {
@@ -235,6 +297,79 @@ const schema = {
                 { enum: values },
               ]),
             ),
+          },
+        },
+        homeFilters: {
+          bsonType: 'object',
+          required: [
+            'players',
+            'name',
+            'mode',
+            'mapName',
+            'mapGenerationSize',
+            'mapGenerationWater',
+            'playersMin',
+            'playersMax',
+            'roundsMin',
+            'roundsMax',
+            'phase',
+            'password',
+            'settings',
+            'sort',
+          ],
+          additionalProperties: false,
+          properties: {
+            players: {
+              bsonType: 'array',
+              maxItems: MAX_FILTER_PLAYERS,
+              items: {
+                bsonType: 'object',
+                required: ['id', 'label'],
+                additionalProperties: false,
+                properties: {
+                  id: { bsonType: 'string' },
+                  label: { bsonType: 'string', maxLength: 10 },
+                },
+              },
+            },
+            name: { bsonType: 'string', maxLength: 20 },
+            mode: { enum: HOME_MODES },
+            mapName: { enum: HOME_MAP_NAMES },
+            mapGenerationSize: { enum: HOME_SIZES },
+            mapGenerationWater: { enum: HOME_WATERS },
+            playersMin: {
+              bsonType: 'number',
+              minimum: HOME_PLAYERS_MIN,
+              maximum: HOME_PLAYERS_MAX,
+            },
+            playersMax: {
+              bsonType: 'number',
+              minimum: HOME_PLAYERS_MIN,
+              maximum: HOME_PLAYERS_MAX,
+            },
+            roundsMin: {
+              bsonType: 'number',
+              minimum: HOME_ROUNDS_MIN,
+              maximum: HOME_ROUNDS_MAX,
+            },
+            roundsMax: {
+              bsonType: 'number',
+              minimum: HOME_ROUNDS_MIN,
+              maximum: HOME_ROUNDS_MAX,
+            },
+            phase: { enum: HOME_PHASES },
+            password: { enum: HOME_PASSWORDS },
+            settings: {
+              bsonType: 'object',
+              additionalProperties: false,
+              properties: Object.fromEntries(
+                Object.entries(GAME_ENUMS).map(([key, values]) => [
+                  key,
+                  { enum: values.map(String) },
+                ]),
+              ),
+            },
+            sort: { enum: HOME_SORTS },
           },
         },
       },
@@ -306,6 +441,97 @@ function sanitizeGameSettings(raw: unknown): GameSettings {
   return out;
 }
 
+function pickEnum(value: unknown, allowed: string[], fallback: string): string {
+  return typeof value === 'string' && allowed.includes(value)
+    ? value
+    : fallback;
+}
+
+function clampInt(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number,
+): number {
+  return typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= min &&
+    value <= max
+    ? value
+    : fallback;
+}
+
+function sanitizeFilterPlayers(raw: unknown): { id: string; label: string }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { id: string; label: string }[] = [];
+  for (const item of raw) {
+    if (out.length >= MAX_FILTER_PLAYERS) break;
+    const r = (item ?? {}) as Record<string, unknown>;
+    if (
+      typeof r.id === 'string' &&
+      /^[a-f\d]{24}$/i.test(r.id) &&
+      typeof r.label === 'string' &&
+      r.label.length <= 10
+    )
+      out.push({ id: r.id, label: r.label });
+  }
+  return out;
+}
+
+function sanitizeFilterSettings(raw: unknown): Record<string, string> {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const out: Record<string, string> = {};
+  for (const key of Object.keys(GAME_ENUMS)) {
+    const value = r[key];
+    if (
+      typeof value === 'string' &&
+      GAME_ENUMS[key].map(String).includes(value)
+    )
+      out[key] = value;
+  }
+  return out;
+}
+
+function sanitizeHomeFilters(raw: unknown): HomeFilters {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    players: sanitizeFilterPlayers(r.players),
+    name: typeof r.name === 'string' ? r.name.slice(0, 20) : '',
+    mode: pickEnum(r.mode, HOME_MODES, ''),
+    mapName: pickEnum(r.mapName, HOME_MAP_NAMES, ''),
+    mapGenerationSize: pickEnum(r.mapGenerationSize, HOME_SIZES, ''),
+    mapGenerationWater: pickEnum(r.mapGenerationWater, HOME_WATERS, ''),
+    playersMin: clampInt(
+      r.playersMin,
+      HOME_PLAYERS_MIN,
+      HOME_PLAYERS_MAX,
+      HOME_PLAYERS_MIN,
+    ),
+    playersMax: clampInt(
+      r.playersMax,
+      HOME_PLAYERS_MIN,
+      HOME_PLAYERS_MAX,
+      HOME_PLAYERS_MAX,
+    ),
+    roundsMin: clampInt(
+      r.roundsMin,
+      HOME_ROUNDS_MIN,
+      HOME_ROUNDS_MAX,
+      HOME_ROUNDS_MIN,
+    ),
+    roundsMax: clampInt(
+      r.roundsMax,
+      HOME_ROUNDS_MIN,
+      HOME_ROUNDS_MAX,
+      HOME_ROUNDS_MAX,
+    ),
+    phase: pickEnum(r.phase, HOME_PHASES, ''),
+    password: pickEnum(r.password, HOME_PASSWORDS, ''),
+    settings: sanitizeFilterSettings(r.settings),
+    sort: pickEnum(r.sort, HOME_SORTS, 'newest'),
+  };
+}
+
 function toUser(doc: WithId<UserDoc>): User {
   return {
     id: doc._id.toString(),
@@ -316,6 +542,7 @@ function toUser(doc: WithId<UserDoc>): User {
     elo: doc.elo ?? DEFAULT_ELO,
     clientSettings: sanitizeClientSettings(doc.clientSettings),
     gameSettings: sanitizeGameSettings(doc.gameSettings),
+    homeFilters: sanitizeHomeFilters(doc.homeFilters),
   };
 }
 
@@ -353,6 +580,7 @@ export function insertUser(data: {
       elo: DEFAULT_ELO,
       clientSettings: { ...DEFAULT_CLIENT_SETTINGS },
       gameSettings: { ...DEFAULT_GAME_SETTINGS },
+      homeFilters: { ...DEFAULT_HOME_FILTERS },
     })
     .then((res) => ({ id: res.insertedId.toString() }))
     .catch((error: { code?: number }) => {
@@ -384,13 +612,19 @@ export function setPassword(
 
 export function saveSettings(
   userId: string,
-  patch: { clientSettings?: unknown; gameSettings?: unknown },
+  patch: {
+    clientSettings?: unknown;
+    gameSettings?: unknown;
+    homeFilters?: unknown;
+  },
 ): Promise<void> {
   const set: Record<string, unknown> = {};
   if (patch.clientSettings !== undefined)
     set.clientSettings = sanitizeClientSettings(patch.clientSettings);
   if (patch.gameSettings !== undefined)
     set.gameSettings = sanitizeGameSettings(patch.gameSettings);
+  if (patch.homeFilters !== undefined)
+    set.homeFilters = sanitizeHomeFilters(patch.homeFilters);
   if (Object.keys(set).length === 0) return Promise.resolve();
   return collection()
     .updateOne({ _id: new ObjectId(userId) }, { $set: set })

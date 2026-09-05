@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -20,9 +20,15 @@ import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
 import { connector } from '../connector';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import { getPlayerName } from '../lib/player';
+import {
+  getHomeFilters,
+  getPlayerName,
+  isLoggedIn,
+  saveHomeFilters,
+} from '../lib/player';
 import type {
   GameSummary,
+  HomeFilters,
   HomeGamesPage,
   HomeGamesQuery,
   MapSize,
@@ -44,6 +50,23 @@ const PLAYERS_MIN = 2;
 const PLAYERS_MAX = 20;
 const ROUNDS_MIN = 0;
 const ROUNDS_MAX = 1000;
+
+const DEFAULT_FILTERS: HomeFilters = {
+  players: [],
+  name: '',
+  mode: '',
+  mapName: '',
+  mapGenerationSize: '',
+  mapGenerationWater: '',
+  playersMin: PLAYERS_MIN,
+  playersMax: PLAYERS_MAX,
+  roundsMin: ROUNDS_MIN,
+  roundsMax: ROUNDS_MAX,
+  phase: '',
+  password: '',
+  settings: {},
+  sort: 'newest',
+};
 
 const GAME_STATE_COLORS: Record<GameSummary['state'], string> = {
   lobby: playerColor(2),
@@ -99,22 +122,35 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
   const whiteGithubIcon = useWhiteIcon('/icons/github.svg');
   const whiteLockIcon = useWhiteIcon('/icons/lock.svg');
 
+  const initial = getHomeFilters() ?? DEFAULT_FILTERS;
   const [selectedPlayers, setSelectedPlayers] = useState<SearchSelectItem[]>(
-    [],
+    initial.players,
   );
-  const [name, setName] = useState('');
-  const [mode, setMode] = useState('');
-  const [mapName, setMapName] = useState('');
-  const [mapGenerationSize, setMapGenerationSize] = useState('');
-  const [mapGenerationWater, setMapGenerationWater] = useState('');
-  const [playersMin, setPlayersMin] = useState(PLAYERS_MIN);
-  const [playersMax, setPlayersMax] = useState(PLAYERS_MAX);
-  const [roundsMin, setRoundsMin] = useState(ROUNDS_MIN);
-  const [roundsMax, setRoundsMax] = useState(ROUNDS_MAX);
-  const [phase, setPhase] = useState<'' | GameSummary['state']>('');
-  const [password, setPassword] = useState<'' | 'yes' | 'no'>('');
-  const [settings, setSettings] = useState<Record<string, string>>({});
-  const [sortOption, setSortOption] = useState<SortOption>('newest');
+  const [name, setName] = useState(initial.name);
+  const [mode, setMode] = useState(initial.mode);
+  const [mapName, setMapName] = useState(initial.mapName);
+  const [mapGenerationSize, setMapGenerationSize] = useState(
+    initial.mapGenerationSize,
+  );
+  const [mapGenerationWater, setMapGenerationWater] = useState(
+    initial.mapGenerationWater,
+  );
+  const [playersMin, setPlayersMin] = useState(initial.playersMin);
+  const [playersMax, setPlayersMax] = useState(initial.playersMax);
+  const [roundsMin, setRoundsMin] = useState(initial.roundsMin);
+  const [roundsMax, setRoundsMax] = useState(initial.roundsMax);
+  const [phase, setPhase] = useState<'' | GameSummary['state']>(
+    initial.phase as '' | GameSummary['state'],
+  );
+  const [password, setPassword] = useState<'' | 'yes' | 'no'>(
+    initial.password as '' | 'yes' | 'no',
+  );
+  const [settings, setSettings] = useState<Record<string, string>>(
+    initial.settings,
+  );
+  const [sortOption, setSortOption] = useState<SortOption>(
+    initial.sort as SortOption,
+  );
   const [page, setPage] = useState(1);
 
   const playerIds = selectedPlayers.map((p) => p.id);
@@ -134,6 +170,32 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
     password,
     settings,
   });
+
+  const persistedFilters: HomeFilters = {
+    players: selectedPlayers,
+    name,
+    mode,
+    mapName,
+    mapGenerationSize,
+    mapGenerationWater,
+    playersMin,
+    playersMax,
+    roundsMin,
+    roundsMax,
+    phase,
+    password,
+    settings,
+    sort: sortOption,
+  };
+  const persistedFiltersKey = JSON.stringify(persistedFilters);
+  const savedFiltersKey = useRef(persistedFiltersKey);
+
+  useEffect(() => {
+    if (persistedFiltersKey === savedFiltersKey.current) return;
+    savedFiltersKey.current = persistedFiltersKey;
+    if (isLoggedIn()) saveHomeFilters(persistedFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persistedFiltersKey]);
 
   useEffect(() => {
     function refresh() {

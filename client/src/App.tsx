@@ -92,7 +92,12 @@ function App() {
       }
       setAccount(res.account);
       setPlayerName(res.name);
-      applyServerSettings(!!res.account, res.clientSettings, res.gameSettings);
+      applyServerSettings(
+        !!res.account,
+        res.clientSettings,
+        res.gameSettings,
+        res.homeFilters,
+      );
       setSessionReady(true);
     });
   }, []);
@@ -295,6 +300,7 @@ function App() {
           path="/"
           element={
             <Home
+              key={account ? account.username : 'anon'}
               navigate={navigate}
               kickedMessage={kickedMessage}
               clearKickedMessage={() => setKickedMessage('')}

@@ -14,6 +14,7 @@ settingsRouter.patch('/settings', (req, res) => {
   updateUserSettings(session.userId, {
     clientSettings: req.body.clientSettings,
     gameSettings: req.body.gameSettings,
+    homeFilters: req.body.homeFilters,
   })
     .then(() => res.json({ ok: true }))
     .catch(() => res.json({ ok: true }));

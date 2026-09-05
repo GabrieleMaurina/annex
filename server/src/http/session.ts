@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { anonNameFor } from '../anonName';
-import { DEFAULT_CLIENT_SETTINGS, DEFAULT_GAME_SETTINGS } from '../auth';
+import {
+  DEFAULT_CLIENT_SETTINGS,
+  DEFAULT_GAME_SETTINGS,
+  DEFAULT_HOME_FILTERS,
+} from '../auth';
 import { identityOf } from './middleware';
 
 export function sessionRouter(
@@ -19,6 +23,7 @@ export function sessionRouter(
         ? session.clientSettings
         : DEFAULT_CLIENT_SETTINGS,
       gameSettings: session ? session.gameSettings : DEFAULT_GAME_SETTINGS,
+      homeFilters: session ? session.homeFilters : DEFAULT_HOME_FILTERS,
     });
   });
   return router;

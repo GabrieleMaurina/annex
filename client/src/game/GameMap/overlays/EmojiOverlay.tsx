@@ -2,7 +2,7 @@ import type { RefObject } from 'react';
 import Tip from '../../../common/Tip';
 import { isPlayerMuted, toggleMutePlayer } from '../../../common/mutedPlayers';
 import { PANEL_BG_CLASS } from '../../../common/panelStyle';
-import type { EmojiValue } from '../../../lib/types';
+import type { EmojiValue, GameState } from '../../../lib/types';
 import {
   ATTACK_EMOJI,
   EMOJI_LABELS,
@@ -35,6 +35,9 @@ export default function EmojiOverlay({
   emojiPops,
   emojiFlights,
   bumpMuteVersion,
+  gameEnded,
+  players,
+  navigate,
 }: {
   emojiPickerFor: number | null;
   rowRefs: RefObject<Map<number, HTMLElement>>;
@@ -47,10 +50,17 @@ export default function EmojiOverlay({
   emojiPops: EmojiPop[];
   emojiFlights: EmojiFlight[];
   bumpMuteVersion: () => void;
+  gameEnded: boolean;
+  players: GameState['players'];
+  navigate: (path: string) => void;
 }) {
   const pickerRect =
     emojiPickerFor !== null
       ? rowRefs.current.get(emojiPickerFor)?.getBoundingClientRect()
+      : undefined;
+  const pickerPlayer =
+    emojiPickerFor !== null
+      ? players.find((p) => p.id === emojiPickerFor)
       : undefined;
 
   return (
@@ -125,6 +135,25 @@ export default function EmojiOverlay({
                   height={20}
                   alt={isPlayerMuted(emojiPickerFor) ? 'Muted' : 'Unmuted'}
                 />
+              </button>
+            </Tip>
+          )}
+          {gameEnded && pickerPlayer?.userId && (
+            <Tip text="View profile" placement="bottom">
+              <button
+                type="button"
+                className="annex-emoji-btn border-0 border-start d-inline-flex align-items-center justify-content-center lh-1"
+                style={{
+                  fontSize: 24,
+                  padding: '3px 2px 5px 2px',
+                  backgroundColor: 'rgba(180, 180, 180, 0.35)',
+                  borderRadius: 4,
+                }}
+                onClick={() =>
+                  navigate(`/players/${encodeURIComponent(pickerPlayer.name)}`)
+                }
+              >
+                🧑
               </button>
             </Tip>
           )}

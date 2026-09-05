@@ -122,7 +122,7 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   visibility: ['public', 'private'],
 };
 
-export const DEFAULT_ELO = 1500;
+export const DEFAULT_ELO = 0;
 
 export const DEFAULT_CLIENT_SETTINGS: ClientSettings = {
   muted: false,
@@ -252,6 +252,7 @@ export function ensureUsers(): Promise<unknown> {
     Promise.all([
       collection().createIndex({ username_lower: 1 }, { unique: true }),
       collection().createIndex({ email_normalized: 1 }, { unique: true }),
+      collection().createIndex({ elo: -1 }),
     ]),
   );
 }
@@ -448,4 +449,200 @@ export function setElos(
       })),
     )
     .then(() => undefined);
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+interface GameStats {
+  gamesPlayed: number;
+  placingSum: number;
+  wins: number;
+}
+
+interface GamesCollectionDoc {
+  players: { userId: string | null; playerId: number }[];
+  results: { playerId: number; rank: number }[];
+}
+
+function computeGameStats(userIds: string[]): Promise<Map<string, GameStats>> {
+  if (userIds.length === 0) return Promise.resolve(new Map());
+  return getCollection<GamesCollectionDoc>('games')
+    .aggregate<{
+      _id: string;
+      gamesPlayed: number;
+      placingSum: number;
+      wins: number;
+    }>([
+      { $match: { 'players.userId': { $in: userIds } } },
+      { $project: { players: 1, results: 1 } },
+      { $unwind: '$players' },
+      { $match: { 'players.userId': { $in: userIds } } },
+      {
+        $addFields: {
+          _rank: {
+            $first: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$results',
+                    as: 'r',
+                    cond: { $eq: ['$$r.playerId', '$players.playerId'] },
+                  },
+                },
+                as: 'r',
+                in: '$$r.rank',
+              },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$players.userId',
+          gamesPlayed: { $sum: 1 },
+          placingSum: { $sum: '$_rank' },
+          wins: { $sum: { $cond: [{ $eq: ['$_rank', 0] }, 1, 0] } },
+        },
+      },
+    ])
+    .toArray()
+    .then(
+      (rows) =>
+        new Map(
+          rows.map((r) => [
+            r._id,
+            {
+              gamesPlayed: r.gamesPlayed,
+              placingSum: r.placingSum,
+              wins: r.wins,
+            },
+          ]),
+        ),
+    );
+}
+
+function averagePlacing(stats: GameStats | undefined): number | null {
+  if (!stats || stats.gamesPlayed === 0) return null;
+  return stats.placingSum / stats.gamesPlayed + 1;
+}
+
+export interface PlayerRow {
+  id: string;
+  username: string;
+  elo: number;
+  gamesPlayed: number;
+}
+
+export interface PlayersQuery {
+  page: number;
+  pageSize: number;
+  username?: string;
+  eloMin?: number;
+  eloMax?: number;
+  gamesMin?: number;
+  gamesMax?: number;
+  sort: 'elo' | 'username' | 'games';
+  sortDir: 'asc' | 'desc';
+}
+
+export interface PlayersPage {
+  players: PlayerRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface PlayerProfile {
+  id: string;
+  username: string;
+  elo: number;
+  gamesPlayed: number;
+  wins: number;
+  averagePlacing: number | null;
+  percentile: number;
+}
+
+export function listPlayers(query: PlayersQuery): Promise<PlayersPage> {
+  const filter: Record<string, unknown> = {};
+  if (query.username)
+    filter.username = new RegExp(escapeRegex(query.username), 'i');
+  if (query.eloMin !== undefined || query.eloMax !== undefined) {
+    const range: Record<string, number> = {};
+    if (query.eloMin !== undefined) range.$gte = query.eloMin;
+    if (query.eloMax !== undefined) range.$lte = query.eloMax;
+    filter.elo = range;
+  }
+
+  return collection()
+    .find(filter, { projection: { username: 1, elo: 1 } })
+    .toArray()
+    .then((docs) =>
+      computeGameStats(docs.map((doc) => doc._id.toString())).then(
+        (statsById) => {
+          let rows: PlayerRow[] = docs.map((doc) => {
+            const id = doc._id.toString();
+            const stats = statsById.get(id);
+            return {
+              id,
+              username: doc.username,
+              elo: doc.elo ?? DEFAULT_ELO,
+              gamesPlayed: stats?.gamesPlayed ?? 0,
+            };
+          });
+
+          if (query.gamesMin !== undefined)
+            rows = rows.filter((r) => r.gamesPlayed >= query.gamesMin!);
+          if (query.gamesMax !== undefined)
+            rows = rows.filter((r) => r.gamesPlayed <= query.gamesMax!);
+
+          const dir = query.sortDir === 'asc' ? 1 : -1;
+          rows.sort((a, b) => {
+            if (query.sort === 'username')
+              return dir * a.username.localeCompare(b.username);
+            if (query.sort === 'games')
+              return dir * (a.gamesPlayed - b.gamesPlayed);
+            return dir * (a.elo - b.elo);
+          });
+
+          const total = rows.length;
+          const start = (query.page - 1) * query.pageSize;
+          return {
+            players: rows.slice(start, start + query.pageSize),
+            total,
+            page: query.page,
+            pageSize: query.pageSize,
+          };
+        },
+      ),
+    );
+}
+
+export function getPlayerProfile(
+  username: string,
+): Promise<PlayerProfile | null> {
+  return collection()
+    .findOne({ username_lower: normalizeUsername(username) })
+    .then((doc) => {
+      if (!doc) return null;
+      const elo = doc.elo ?? DEFAULT_ELO;
+      const id = doc._id.toString();
+      return Promise.all([
+        collection().countDocuments({}),
+        collection().countDocuments({ elo: { $lt: elo } }),
+        computeGameStats([id]),
+      ]).then(([total, lower, statsById]) => {
+        const stats = statsById.get(id);
+        return {
+          id,
+          username: doc.username,
+          elo,
+          gamesPlayed: stats?.gamesPlayed ?? 0,
+          wins: stats?.wins ?? 0,
+          averagePlacing: averagePlacing(stats),
+          percentile: total > 1 ? Math.round((lower / (total - 1)) * 100) : 100,
+        };
+      });
+    });
 }

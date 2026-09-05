@@ -9,7 +9,8 @@ export function recomputeHost(game: Game) {
   for (const id of game.hostPriority) {
     if (game.surrenderedIds.has(id)) continue;
     if (!game.playerIds.includes(id)) continue;
-    if (!playersById.get(id)?.connected) continue;
+    const member = playersById.get(id);
+    if (!member?.connected || member.isBot) continue;
     game.hostId = id;
     return;
   }

@@ -1,4 +1,3 @@
-import { useReducer } from 'react';
 import {
   ATTACK_EMOJI,
   EMOJI_LABELS,
@@ -6,7 +5,7 @@ import {
   EMOJIS,
   GLOBAL_TARGET_ID,
 } from '../../game/logic/emoji';
-import type { EmojiValue } from '../../lib/types';
+import type { EmojiValue, GameState } from '../../lib/types';
 import { useWhiteIcon } from '../icon';
 import { isPlayerMuted, toggleMutePlayer } from '../mutedPlayers';
 import { PANEL_BG_CLASS } from '../panelStyle';
@@ -23,6 +22,9 @@ interface Props {
   nameCellRefs: React.RefObject<Map<number, HTMLElement>>;
   emojiPickerRef: React.RefObject<HTMLDivElement | null>;
   onPick: (targetPlayerId: number, emoji: EmojiValue) => void;
+  players?: GameState['players'];
+  navigate?: (path: string) => void;
+  bumpMuteVersion: () => void;
 }
 
 function EmojiTableOverlay({
@@ -32,11 +34,13 @@ function EmojiTableOverlay({
   nameCellRefs,
   emojiPickerRef,
   onPick,
+  players,
+  navigate,
+  bumpMuteVersion,
 }: Props) {
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
   const whiteUnmutedIcon = useWhiteIcon('/icons/unmuted.svg');
-  const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
 
   return (
     <>
@@ -50,6 +54,7 @@ function EmojiTableOverlay({
             ?.getBoundingClientRect();
           if (!rowRect || !nameRect) return null;
           const muted = isPlayerMuted(emojiPickerFor);
+          const pickerPlayer = players?.find((p) => p.id === emojiPickerFor);
           return (
             <div
               ref={emojiPickerRef}
@@ -101,6 +106,27 @@ function EmojiTableOverlay({
                       height={20}
                       alt={muted ? 'Muted' : 'Unmuted'}
                     />
+                  </button>
+                </Tip>
+              )}
+              {navigate && pickerPlayer?.userId && (
+                <Tip text="View profile" placement="bottom">
+                  <button
+                    type="button"
+                    className="border-0 border-start d-inline-flex align-items-center justify-content-center lh-1"
+                    style={{
+                      fontSize: 24,
+                      padding: '3px 2px 5px 2px',
+                      backgroundColor: 'rgba(180, 180, 180, 0.35)',
+                      borderRadius: 4,
+                    }}
+                    onClick={() =>
+                      navigate(
+                        `/players/${encodeURIComponent(pickerPlayer.name)}`,
+                      )
+                    }
+                  >
+                    🧑
                   </button>
                 </Tip>
               )}

@@ -21,6 +21,7 @@ import type {
   TurnPhase,
 } from '../../lib/types';
 import { CARD_SET_FLASH_DURATION } from '../animations';
+import type { ResultRow } from '../../common/ResultsTable';
 import { CardFace } from '../panels/CardsPanel';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
@@ -101,6 +102,7 @@ export interface GameMapProps {
   attackConquestMinTroops: number | null;
   nextSetBaseValues: GameState['nextSetBaseValues'];
   upcomingSetValues: GameState['upcomingSetValues'];
+  results: Map<number, ResultRow> | null;
   gameEnded: boolean;
   showReplay: boolean;
   replayData?: ReplayData | null;
@@ -171,6 +173,7 @@ function GameMap({
   attackConquestMinTroops,
   nextSetBaseValues,
   upcomingSetValues,
+  results,
   gameEnded,
   showReplay,
   replayData,
@@ -328,6 +331,10 @@ function GameMap({
         ...replayCounts.get(p.id),
       }))
     : players;
+  const playersWithAccounts = displayedPlayers.map((p) => ({
+    ...p,
+    userId: results?.get(p.id)?.userId ?? p.userId,
+  }));
   const panelRoundNumber =
     showReplay && replayRoundNumber !== null ? replayRoundNumber : roundNumber;
   const panelTurnPhase =
@@ -915,6 +922,9 @@ function GameMap({
         emojiPops={emojiUI.emojiPops}
         emojiFlights={emojiUI.emojiFlights}
         bumpMuteVersion={bumpMuteVersion}
+        gameEnded={gameEnded}
+        players={playersWithAccounts}
+        navigate={navigate}
       />
       {showReplay && replayTerritories && (
         <ReplayPanel

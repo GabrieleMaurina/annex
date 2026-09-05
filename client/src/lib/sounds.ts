@@ -12,6 +12,7 @@ const SOUND_NAMES = [
   'end',
   'phase',
   'turn',
+  'bell',
 ];
 
 const audioByName = new Map<string, HTMLAudioElement>();

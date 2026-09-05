@@ -2,6 +2,12 @@ import { DEFAULT_ELO, getElosByIds, setElos } from './db';
 import { userIdByPlayerId } from './socketRooms';
 
 const K = 32;
+const LOSS_DAMP_ELO = 1500;
+const MAX_ELO = 3100;
+
+function lossDamp(rating: number): number {
+  return Math.min(1, Math.max(0, rating / LOSS_DAMP_ELO));
+}
 
 const participantsByGame = new Map<string, Map<number, string>>();
 
@@ -59,13 +65,17 @@ export function handleGameEnded(payload: {
           const expected =
             1 / (1 + Math.pow(10, (opponentRating - rating) / 400));
           const score = player.rank < opponent.rank ? 1 : 0;
-          delta += K * (score - expected);
+          delta +=
+            score === 1 ? K * (1 - expected) : -K * expected * lossDamp(rating);
           opponents += 1;
         }
         if (opponents === 0) continue;
         updates.push({
           userId: player.userId,
-          elo: Math.round(rating + delta / opponents),
+          elo: Math.min(
+            MAX_ELO,
+            Math.max(0, Math.round(rating + delta / opponents)),
+          ),
         });
       }
       return setElos(updates);

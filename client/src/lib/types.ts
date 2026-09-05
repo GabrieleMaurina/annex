@@ -6,6 +6,7 @@ export interface ClientSettings {
 
 export interface Account {
   username: string;
+  elo: number;
 }
 
 export interface IdentifyResult {
@@ -202,6 +203,7 @@ export interface GameState {
   upcomingSetValues: number[];
   players: {
     id: number;
+    userId?: string | null;
     name: string;
     team: number;
     color: number;
@@ -243,6 +245,7 @@ export interface PlayerResultStats {
   cardsGained: number;
   turnsPlayed: number;
   setsPlayed: number;
+  userId?: string | null;
 }
 
 export interface GameResults {
@@ -521,6 +524,7 @@ export interface GamesQuery {
   positionMin?: number;
   positionMax?: number;
   mine?: boolean;
+  rankUserId?: string;
   sort?: 'newest' | 'rounds' | 'position';
   sortDir?: 'asc' | 'desc';
 }
@@ -653,6 +657,42 @@ export interface GamesPage {
   total: number;
   page: number;
   pageSize: number;
+}
+
+export interface PlayerRow {
+  id: string;
+  username: string;
+  elo: number;
+  gamesPlayed: number;
+}
+
+export interface PlayersQuery {
+  page: number;
+  pageSize: number;
+  username?: string;
+  eloMin?: number;
+  eloMax?: number;
+  gamesMin?: number;
+  gamesMax?: number;
+  sort: 'elo' | 'username' | 'games';
+  sortDir: 'asc' | 'desc';
+}
+
+export interface PlayersPage {
+  players: PlayerRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface PlayerProfile {
+  id: string;
+  username: string;
+  elo: number;
+  gamesPlayed: number;
+  wins: number;
+  averagePlacing: number | null;
+  percentile: number;
 }
 
 export interface StoredMap {

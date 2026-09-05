@@ -39,6 +39,7 @@ import {
   playerIdForIdentity,
   setSocketRoom,
   socketIdByPlayerId,
+  userIdByPlayerId,
 } from './socketRooms';
 import { nodeWorkerPort } from './workers/nodeWorkerPort';
 
@@ -103,8 +104,13 @@ const callbacks: EngineCallbacks = {
   onMission: (playerId, payload) =>
     emitTo(io, playerId, 'game:mission', payload),
   onLogs: (playerId, payload) => emitTo(io, playerId, 'game:logs', payload),
-  onResults: (playerId, payload) =>
-    emitTo(io, playerId, 'game:results', payload),
+  onResults: (playerId, payload) => {
+    const stats = (payload.stats as { id: number }[]).map((s) => ({
+      ...s,
+      userId: userIdByPlayerId(s.id) ?? null,
+    }));
+    emitTo(io, playerId, 'game:results', { stats });
+  },
   onGameEnded: (payload) => {
     persistFinishedGame(engine, payload);
     handleGameEnded(payload);

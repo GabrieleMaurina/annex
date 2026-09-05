@@ -719,7 +719,7 @@ function Games({ account }: Props) {
       ) : (
         <>
           <div className="table-responsive">
-            <Table hover className="align-middle">
+            <Table striped hover className="align-middle">
               <thead>
                 <tr>
                   <th>Date</th>

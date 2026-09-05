@@ -1,5 +1,6 @@
 import { Badge, Button, Form, Table } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
+import { isPlayerMuted } from '../common/mutedPlayers';
 import PlayerNameEditor from '../common/PlayerNameEditor';
 import Tip from '../common/Tip';
 import { connector } from '../connector';
@@ -67,6 +68,7 @@ function PlayerRoster({
   );
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+  const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
   const hasBots = game.players.some((p) => p.isBot);
 
   function rowClick(p: (typeof slotRows)[number]) {
@@ -160,6 +162,22 @@ function PlayerRoster({
                             alt="Bot"
                             className="flex-shrink-0"
                           />
+                        )}
+                        {p.id !== selfId && isPlayerMuted(p.id) && (
+                          <Tip text="Muted">
+                            <img
+                              src={
+                                contrastTextColor(playerColor(p.color)) ===
+                                '#ffffff'
+                                  ? (whiteMutedIcon ?? '/icons/muted.svg')
+                                  : '/icons/muted.svg'
+                              }
+                              width={14}
+                              height={14}
+                              alt="Muted"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
                         )}
                         {p.id === game.hostId && (
                           <Badge bg="primary">Host</Badge>

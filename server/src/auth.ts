@@ -30,6 +30,7 @@ export type { ClientSettings, GameSettings };
 export interface SessionInfo {
   userId: string;
   username: string;
+  elo: number;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
 }
@@ -247,6 +248,7 @@ export function resolveSession(token: string): Promise<SessionInfo | null> {
         ? {
             userId: user.id,
             username: user.username,
+            elo: user.elo,
             clientSettings: user.clientSettings,
             gameSettings: user.gameSettings,
           }

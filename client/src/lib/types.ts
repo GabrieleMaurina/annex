@@ -15,12 +15,30 @@ export interface IdentifyResult {
   name: string;
 }
 
+export interface HomeFilters {
+  players: { id: string; label: string }[];
+  name: string;
+  mode: string;
+  mapName: string;
+  mapGenerationSize: string;
+  mapGenerationWater: string;
+  playersMin: number;
+  playersMax: number;
+  roundsMin: number;
+  roundsMax: number;
+  phase: string;
+  password: string;
+  settings: Record<string, string>;
+  sort: string;
+}
+
 export interface SessionResult {
   account: Account | null;
   name: string;
   gameName?: string | null;
   clientSettings?: ClientSettings;
   gameSettings?: Record<string, unknown>;
+  homeFilters?: HomeFilters;
 }
 
 export interface GameSummary {

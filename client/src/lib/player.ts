@@ -9,12 +9,13 @@ import {
   setSoundMuted,
   setSoundVolume,
 } from './sounds';
-import type { ClientSettings, GameRulesSettings } from './types';
+import type { ClientSettings, GameRulesSettings, HomeFilters } from './types';
 
 let loggedIn = false;
 let playerName = '';
 let gameSettings: Record<string, unknown> = {};
 let gameSlots = 2;
+let homeFilters: HomeFilters | undefined;
 
 const nameListeners = new Set<() => void>();
 
@@ -51,6 +52,7 @@ export function applyServerSettings(
   hasAccount: boolean,
   client: ClientSettings | undefined,
   game: Record<string, unknown> | undefined,
+  home: HomeFilters | undefined,
 ) {
   loggedIn = hasAccount;
   if (client) {
@@ -63,6 +65,7 @@ export function applyServerSettings(
     gameSettings = rest;
     gameSlots = typeof slots === 'number' ? slots : 2;
   }
+  if (home) homeFilters = home;
 }
 
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
@@ -73,6 +76,7 @@ export function pushSettings() {
     httpSend('PATCH', '/settings', {
       clientSettings: currentClientSettings(),
       gameSettings: { ...gameSettings, slots: gameSlots },
+      homeFilters,
     }).catch(() => {});
   }, 500);
 }
@@ -85,8 +89,17 @@ export function getGameSlots(): number {
   return gameSlots;
 }
 
+export function getHomeFilters(): HomeFilters | undefined {
+  return homeFilters;
+}
+
 export function saveGameSettings(settings: GameRulesSettings, slots: number) {
   gameSettings = { ...settings };
   gameSlots = slots;
+  pushSettings();
+}
+
+export function saveHomeFilters(filters: HomeFilters) {
+  homeFilters = { ...filters };
   pushSettings();
 }

@@ -32,7 +32,7 @@ The final ranking is scored as pairwise results: each counted player beats every
 
 ### Settings
 
-Two settings blobs travel in the `GET /session` response (and the login response): **client settings** (`muted`, `volume`, `animationsDisabled`) and **game settings** (the remembered lobby setup: `mapName`, `mapGeneration`, `slots`, and every `game:settings` rule field). For a logged-in client both are persisted in the account and saved via `PATCH /settings` (debounced). For an anonymous client nothing is persisted: it always receives the server defaults and its `PATCH /settings` calls are ignored.
+Three settings blobs travel in the `GET /session` response (client and game settings also in the login/logout responses): **client settings** (`muted`, `volume`, `animationsDisabled`), **game settings** (the remembered lobby setup: `mapName`, `mapGeneration`, `slots`, and every `game:settings` rule field — used as the defaults when the client next creates a game), and **home filters** (the remembered home-screen game search: `players` (`{ id, label }[]`, so the chips render without re-resolving names), `name`, `mode`, `mapName`, `mapGenerationSize`, `mapGenerationWater`, `playersMin`/`playersMax`, `roundsMin`/`roundsMax`, `phase`, `password`, `settings` (per-rule filter map), `sort` — used as the defaults for the home game list). For a logged-in client all three are persisted in the account and saved via `PATCH /settings` (debounced). For an anonymous client nothing is persisted: it always receives the server defaults and its `PATCH /settings` calls are ignored.
 
 ### Leaving and reconnecting
 
@@ -288,7 +288,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `GET /session`
 - **When sent:** on client boot, after login/logout, and polled by the home screen alongside `GET /games/live` (same visibility gate) so its "Resume" button reflects the caller's current game.
-- **Response:** `{ account: { username: string, elo: number } | null, name: string, gameName: string | null, clientSettings: {...}, gameSettings: {...} }` — `name` is the display name (account username, or a `PlayerNNNN` derived deterministically from the anon token, so it matches what a later socket `player:identify` reports); `gameName` is the game the identity is currently seated/spectating in (from the engine — typically a `playing` or `ended` game whose screen the player left, occasionally a `lobby` seat still held for a reclaimable stand-in, `null` otherwise), which the home screen uses to offer a "Resume" link; `account` is `null` when anonymous; the two settings blobs are the account values when logged in, server defaults otherwise. Like every cookie-resolving route it slides a logged-in session's TTL; it is not special in that regard.
+- **Response:** `{ account: { username: string, elo: number } | null, name: string, gameName: string | null, clientSettings: {...}, gameSettings: {...}, homeFilters: {...} }` — `name` is the display name (account username, or a `PlayerNNNN` derived deterministically from the anon token, so it matches what a later socket `player:identify` reports); `gameName` is the game the identity is currently seated/spectating in (from the engine — typically a `playing` or `ended` game whose screen the player left, occasionally a `lobby` seat still held for a reclaimable stand-in, `null` otherwise), which the home screen uses to offer a "Resume" link; `account` is `null` when anonymous; the three settings blobs (see "Settings") are the account values when logged in, server defaults otherwise. Like every cookie-resolving route it slides a logged-in session's TTL; it is not special in that regard.
 
 ### `GET /games/live`
 - **When sent:** while the home screen is open and its tab is visible — once on open, once whenever the tab becomes visible again, on a fixed short interval (~5s) but **only while `document.visibilityState === 'visible'`** (a hidden/backgrounded tab makes no requests), and on every filter / sort / page change.
@@ -373,9 +373,9 @@ A strict-schema MongoDB collection, one document per block: `{ blockerId, blocke
 - **Errors:** `in a game`.
 
 ### `PATCH /settings`
-- **When sent:** a client changes a client setting (sound, volume, animations) or saves its lobby setup, debounced.
-- **Body:** `{ clientSettings?: {...}, gameSettings?: {...} }`
-- **Purpose:** persist the settings on the logged-in account. No-op for an anonymous client.
+- **When sent:** a client changes a client setting (sound, volume, animations), saves its lobby setup, or changes its home-screen game search filters, debounced.
+- **Body:** `{ clientSettings?: {...}, gameSettings?: {...}, homeFilters?: {...} }`
+- **Purpose:** persist the settings on the logged-in account. No-op for an anonymous client. Each blob is strictly sanitised server-side (unknown keys dropped, values clamped to their allowed set) before it is stored.
 - **Response:** `{ ok: true }`.
 
 ### `GET /friends`

@@ -3,6 +3,7 @@ import { containsProfanity } from 'engine';
 import {
   ClientSettings,
   GameSettings,
+  HomeFilters,
   consumeEmailConfirmation,
   consumePasswordReset,
   createEmailConfirmation,
@@ -27,9 +28,10 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5000';
 export {
   DEFAULT_CLIENT_SETTINGS,
   DEFAULT_GAME_SETTINGS,
+  DEFAULT_HOME_FILTERS,
   normalizeEmail,
 } from './db';
-export type { ClientSettings, GameSettings };
+export type { ClientSettings, GameSettings, HomeFilters };
 
 export interface SessionInfo {
   userId: string;
@@ -37,6 +39,7 @@ export interface SessionInfo {
   elo: number;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
+  homeFilters: HomeFilters;
 }
 
 export type LoginResult =
@@ -243,6 +246,7 @@ export function resolveSession(token: string): Promise<SessionInfo | null> {
             elo: user.elo,
             clientSettings: user.clientSettings,
             gameSettings: user.gameSettings,
+            homeFilters: user.homeFilters,
           }
         : null,
     );
@@ -259,7 +263,11 @@ export function destroySession(token: string): Promise<void> {
 
 export function updateUserSettings(
   userId: string,
-  patch: { clientSettings?: unknown; gameSettings?: unknown },
+  patch: {
+    clientSettings?: unknown;
+    gameSettings?: unknown;
+    homeFilters?: unknown;
+  },
 ): Promise<void> {
   return saveSettings(userId, patch);
 }

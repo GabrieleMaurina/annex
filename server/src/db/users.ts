@@ -66,7 +66,8 @@ export function normalizeEmail(email: string): string {
   const lower = email.trim().toLowerCase();
   const at = lower.lastIndexOf('@');
   if (at < 0) return lower;
-  return lower.slice(0, at).replace(/\./g, '') + lower.slice(at);
+  const local = lower.slice(0, at).replace(/\./g, '');
+  return (local.split('+')[0] || local) + lower.slice(at);
 }
 
 export const MAP_SIZES = ['small', 'medium', 'large', 'xlarge'];
@@ -177,12 +178,12 @@ const schema = {
         username: {
           bsonType: 'string',
           maxLength: 10,
-          pattern: '^[A-Za-z0-9_-]+$',
+          pattern: '^[A-Za-z0-9]+$',
         },
         username_lower: {
           bsonType: 'string',
           maxLength: 10,
-          pattern: '^[a-z0-9_-]+$',
+          pattern: '^[a-z0-9]+$',
         },
         email: {
           bsonType: 'string',

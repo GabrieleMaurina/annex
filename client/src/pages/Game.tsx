@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
 import { formatError } from '../common/formatError';
@@ -59,7 +59,7 @@ function Game({
   const eliminatedIdsRef = useRef<Set<number> | null>(null);
   const logs = useGameLogs(game);
 
-  function playEliminationSound(state: GameState) {
+  const playEliminationSound = useCallback((state: GameState) => {
     if (eliminatedIdsRef.current) {
       const newlyEliminated = state.players.some(
         (p) => p.eliminated && !eliminatedIdsRef.current!.has(p.id),
@@ -69,27 +69,36 @@ function Game({
     eliminatedIdsRef.current = new Set(
       state.players.filter((p) => p.eliminated).map((p) => p.id),
     );
-  }
+  }, []);
 
-  function applyGameState(state: GameState) {
-    playEliminationSound(state);
-    if (!receivedFirstStateRef.current) {
-      receivedFirstStateRef.current = true;
-    } else if (prevStateRef.current === 'lobby' && state.state === 'playing') {
-      playSound('start');
-    } else if (prevStateRef.current === 'playing' && state.state === 'ended') {
-      playSound('end');
-    } else if (
-      state.state === 'playing' &&
-      prevTurnPhaseRef.current !== null &&
-      prevTurnPhaseRef.current !== state.turnPhase
-    ) {
-      playSound('phase');
-    }
-    prevStateRef.current = state.state;
-    if (state.state === 'playing') prevTurnPhaseRef.current = state.turnPhase;
-    setGame(state);
-  }
+  const applyGameState = useCallback(
+    (state: GameState) => {
+      playEliminationSound(state);
+      if (!receivedFirstStateRef.current) {
+        receivedFirstStateRef.current = true;
+      } else if (
+        prevStateRef.current === 'lobby' &&
+        state.state === 'playing'
+      ) {
+        playSound('start');
+      } else if (
+        prevStateRef.current === 'playing' &&
+        state.state === 'ended'
+      ) {
+        playSound('end');
+      } else if (
+        state.state === 'playing' &&
+        prevTurnPhaseRef.current !== null &&
+        prevTurnPhaseRef.current !== state.turnPhase
+      ) {
+        playSound('phase');
+      }
+      prevStateRef.current = state.state;
+      if (state.state === 'playing') prevTurnPhaseRef.current = state.turnPhase;
+      setGame(state);
+    },
+    [playEliminationSound],
+  );
 
   function updateGameFromAction(state: GameState) {
     playEliminationSound(state);
@@ -110,7 +119,7 @@ function Game({
     return () => {
       connector.off('game:state', applyGameState);
     };
-  }, []);
+  }, [applyGameState]);
 
   useEffect(() => {
     function onTurnStarted(payload: { playerId: number }) {

@@ -75,6 +75,7 @@ export {
   ReplayEntry,
   ReplayTerritoryDelta,
 } from './game/export';
+export { GameSummary } from './game/state';
 export {
   MAP_SIZE_VALUES,
   MapSize,

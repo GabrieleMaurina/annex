@@ -45,13 +45,42 @@ export function gameSummary(game: Game) {
   return {
     name: game.name,
     mapName: game.mapName,
+    mapGeneration: game.generatedMap
+      ? { size: game.generatedMap.size, water: game.generatedMap.water }
+      : null,
     hostName: playersById.get(game.hostId)?.name ?? '',
+    playerIds: [...game.playerIds],
     playerCount: game.playerIds.length,
     slots: game.slots,
     state: game.state,
     spectatorCount: game.spectatorIds.length,
+    createdAt: game.createdAt,
+    roundNumber: game.roundNumber,
+    settings: {
+      gameMode: game.gameMode,
+      blitz: game.blitz,
+      defenceDice: game.defenceDice,
+      cards: game.cards,
+      placement: game.placement,
+      fortification: game.fortification,
+      entrenchments: game.entrenchments,
+      toxins: game.toxins,
+      portals: game.portals,
+      radiations: game.radiations,
+      starvation: game.starvation,
+      roundTroops: game.roundTroops,
+      bounties: game.bounties,
+      supplyLines: game.supplyLines,
+      fogOfWar: game.fogOfWar,
+      alliances: game.alliances,
+      turnDuration: game.turnDuration,
+      disconnectBotDifficulty: game.disconnectBotDifficulty,
+      disconnectBotPersonality: game.disconnectBotPersonality,
+    },
   };
 }
+
+export type GameSummary = ReturnType<typeof gameSummary>;
 
 export function gameResultsStats(game: Game) {
   return game.playerIds.map((id) => {

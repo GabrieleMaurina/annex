@@ -26,12 +26,15 @@ export interface SessionResult {
 export interface GameSummary {
   name: string;
   mapName: string;
+  mapGeneration: { size: MapSize; water: WaterLevel } | null;
   hostName: string;
   playerCount: number;
   slots: number;
   state: 'lobby' | 'playing' | 'ended';
   spectatorCount: number;
   hasPassword: boolean;
+  createdAt: number;
+  roundNumber: number;
 }
 
 export type CardSymbol = 'soldier' | 'humvee' | 'tank';
@@ -506,6 +509,7 @@ export interface GamesQuery {
   playerIds?: string[];
   playersMin?: number;
   playersMax?: number;
+  name?: string;
   mode?: string;
   mapName?: string;
   startedFrom?: number;
@@ -534,126 +538,36 @@ export interface PlayerSearchResult {
   username: string;
 }
 
-export const SETTING_FILTER_SECTIONS = [
-  'Setup',
-  'Combat',
-  'Reinforcements',
-  'Hazards',
-  'Players',
-] as const;
-
-export const SETTING_FILTERS: {
-  key: string;
-  label: string;
-  section: (typeof SETTING_FILTER_SECTIONS)[number];
-  options: string[];
-}[] = [
-  {
-    key: 'placement',
-    label: 'Placement',
-    section: 'Setup',
-    options: ['Random', 'Semi', 'Custom'],
-  },
-  {
-    key: 'fortification',
-    label: 'Fortification',
-    section: 'Setup',
-    options: ['Connected', 'Neighboring', 'Unrestricted'],
-  },
-  {
-    key: 'turnDuration',
-    label: 'Turn duration',
-    section: 'Setup',
-    options: ['60', '90', '120', '150', '180', '300'],
-  },
-  {
-    key: 'blitz',
-    label: 'Blitz',
-    section: 'Combat',
-    options: ['Balanced', 'True'],
-  },
-  {
-    key: 'defenceDice',
-    label: 'Defence dice',
-    section: 'Combat',
-    options: ['2', '3'],
-  },
-  {
-    key: 'entrenchments',
-    label: 'Entrenchments',
-    section: 'Combat',
-    options: ['off', 'on'],
-  },
-  {
-    key: 'cards',
-    label: 'Cards',
-    section: 'Reinforcements',
-    options: [
-      'Constant',
-      'Linear',
-      'Exponential',
-      'Linear Per Player',
-      'Exponential Per Player',
-    ],
-  },
-  {
-    key: 'roundTroops',
-    label: 'Round troops',
-    section: 'Reinforcements',
-    options: ['off', 'on'],
-  },
-  {
-    key: 'bounties',
-    label: 'Bounties',
-    section: 'Reinforcements',
-    options: ['off', 'on'],
-  },
-  {
-    key: 'portals',
-    label: 'Portals',
-    section: 'Hazards',
-    options: ['off', 'static', 'dynamic'],
-  },
-  {
-    key: 'radiations',
-    label: 'Radiation',
-    section: 'Hazards',
-    options: ['off', 'static', 'dynamic', 'expanding'],
-  },
-  {
-    key: 'toxins',
-    label: 'Toxins',
-    section: 'Hazards',
-    options: ['off', 'temporary', 'permanent'],
-  },
-  {
-    key: 'starvation',
-    label: 'Starvation',
-    section: 'Hazards',
-    options: ['off', 'territory', 'total', 'percent'],
-  },
-  {
-    key: 'supplyLines',
-    label: 'Supply lines',
-    section: 'Hazards',
-    options: ['off', 'on'],
-  },
-  {
-    key: 'fogOfWar',
-    label: 'Fog of war',
-    section: 'Players',
-    options: ['off', 'on'],
-  },
-  {
-    key: 'alliances',
-    label: 'Alliances',
-    section: 'Players',
-    options: ['off', 'on'],
-  },
-];
-
 export interface GamesPage {
   games: GameHistoryRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface HomeGamesQuery {
+  page: number;
+  pageSize: number;
+  playerIds?: string[];
+  name?: string;
+  mode?: string;
+  mapName?: string;
+  generatedMap?: boolean;
+  mapGenerationSize?: MapSize;
+  mapGenerationWater?: WaterLevel;
+  playersMin?: number;
+  playersMax?: number;
+  minRounds?: number;
+  maxRounds?: number;
+  settings?: Record<string, string>;
+  phase?: 'lobby' | 'playing' | 'ended';
+  hasPassword?: boolean;
+  sort?: 'newest' | 'players' | 'rounds' | 'name';
+  sortDir?: 'asc' | 'desc';
+}
+
+export interface HomeGamesPage {
+  games: GameSummary[];
   total: number;
   page: number;
   pageSize: number;
@@ -693,6 +607,18 @@ export interface PlayerProfile {
   wins: number;
   averagePlacing: number | null;
   percentile: number;
+}
+
+export interface Friend {
+  id: string;
+  username: string;
+  elo: number;
+}
+
+export interface FriendsOverview {
+  friends: Friend[];
+  incoming: Friend[];
+  outgoing: Friend[];
 }
 
 export interface StoredMap {

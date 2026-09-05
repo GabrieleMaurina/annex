@@ -1,10 +1,15 @@
-import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { Button, Container, Form, Spinner, Table } from 'react-bootstrap';
+import { Container, Form, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import {
+  Field,
+  FilterDetails,
+  ListPager,
+  RangeField,
+  SortSelect,
+} from '../common/filterControls';
 import { connector } from '../connector';
 import { rankForElo } from '../lib/ranks';
-import { playSound } from '../lib/sounds';
 import type { PlayerRow, PlayersPage, PlayersQuery } from '../lib/types';
 
 const PAGE_SIZE = 20;
@@ -13,8 +18,6 @@ const ELO_MIN = 0;
 const ELO_MAX = 3100;
 const GAMES_MIN = 0;
 const GAMES_MAX = 10000;
-
-const LABEL_STYLE = { minWidth: 120, flexShrink: 0 };
 
 type SortOption =
   | 'highestElo'
@@ -35,97 +38,6 @@ const SORT_TO_QUERY: Record<
   mostGames: { sort: 'games', sortDir: 'desc' },
   fewestGames: { sort: 'games', sortDir: 'asc' },
 };
-
-function clampInt(
-  value: number,
-  lo: number,
-  hi: number,
-  fallback: number,
-): number {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.min(hi, Math.max(lo, Math.trunc(value)));
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="col-12 col-sm-6 col-md-4 d-flex align-items-center gap-2">
-      <Form.Label className="mb-0" style={LABEL_STYLE}>
-        {label}
-      </Form.Label>
-      {children}
-    </div>
-  );
-}
-
-function RangeField({
-  label,
-  min,
-  max,
-  lo,
-  hi,
-  fallbackLo,
-  fallbackHi,
-  setLo,
-  setHi,
-}: {
-  label: string;
-  min: number;
-  max: number;
-  lo: number;
-  hi: number;
-  fallbackLo: number;
-  fallbackHi: number;
-  setLo: (v: number) => void;
-  setHi: (v: number) => void;
-}) {
-  return (
-    <div className="col-12 col-md-4 d-flex align-items-center gap-2">
-      <Form.Label className="mb-0" style={LABEL_STYLE}>
-        {label}
-      </Form.Label>
-      <div className="d-flex align-items-center gap-1 flex-wrap flex-sm-nowrap">
-        <span className="small text-muted">From</span>
-        <Form.Control
-          size="sm"
-          type="number"
-          min={min}
-          max={max}
-          style={{ width: 76 }}
-          value={lo}
-          onChange={(e) =>
-            setLo(
-              clampInt(
-                (e.target as HTMLInputElement).valueAsNumber,
-                min,
-                max,
-                fallbackLo,
-              ),
-            )
-          }
-        />
-        <span className="small text-muted">To</span>
-        <Form.Control
-          size="sm"
-          type="number"
-          min={min}
-          max={max}
-          style={{ width: 76 }}
-          value={hi}
-          onChange={(e) =>
-            setHi(
-              clampInt(
-                (e.target as HTMLInputElement).valueAsNumber,
-                min,
-                max,
-                fallbackHi,
-              ),
-            )
-          }
-        />
-      </div>
-    </div>
-  );
-}
 
 function PlayerRowView({
   row,
@@ -159,7 +71,6 @@ function Players() {
   const [gamesMin, setGamesMin] = useState(GAMES_MIN);
   const [gamesMax, setGamesMax] = useState(GAMES_MAX);
   const [sortOption, setSortOption] = useState<SortOption>('highestElo');
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PlayersPage | null>(null);
 
@@ -222,54 +133,19 @@ function Players() {
     <Container fluid className="py-5 px-2 px-sm-4">
       <h1 className="text-center mb-4">Players</h1>
 
-      <Form
-        className="d-flex flex-wrap align-items-end justify-content-center row-gap-3 column-gap-3 mb-3"
-        onSubmit={(e) => e.preventDefault()}
+      <SortSelect
+        value={sortOption}
+        onChange={(v) => resetPage(setSortOption)(v as SortOption)}
       >
-        <Form.Group className="d-flex align-items-center gap-2">
-          <Form.Label className="mb-0 small">Sort</Form.Label>
-          <Form.Select
-            size="sm"
-            className="w-auto"
-            value={sortOption}
-            onChange={(e) =>
-              resetPage(setSortOption)(e.target.value as SortOption)
-            }
-          >
-            <option value="highestElo">Highest elo</option>
-            <option value="lowestElo">Lowest elo</option>
-            <option value="nameAsc">Name A-Z</option>
-            <option value="nameDesc">Name Z-A</option>
-            <option value="mostGames">Most games</option>
-            <option value="fewestGames">Fewest games</option>
-          </Form.Select>
-        </Form.Group>
-      </Form>
+        <option value="highestElo">Highest elo</option>
+        <option value="lowestElo">Lowest elo</option>
+        <option value="nameAsc">Name A-Z</option>
+        <option value="nameDesc">Name Z-A</option>
+        <option value="mostGames">Most games</option>
+        <option value="fewestGames">Fewest games</option>
+      </SortSelect>
 
-      <details
-        className="mb-3"
-        onToggle={(e) => {
-          playSound('click');
-          setFiltersOpen(e.currentTarget.open);
-        }}
-      >
-        <summary className="fw-bold py-2 position-relative">
-          Filters
-          {filtersOpen && (
-            <Button
-              size="sm"
-              variant="outline-secondary"
-              className="position-absolute top-50 end-0 translate-middle-y"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                clearFilters();
-              }}
-            >
-              Clear filters
-            </Button>
-          )}
-        </summary>
+      <FilterDetails onClear={clearFilters}>
         <div className="border rounded p-2 mb-2">
           <div className="row g-3">
             <Field label="Username">
@@ -305,7 +181,7 @@ function Players() {
             />
           </div>
         </div>
-      </details>
+      </FilterDetails>
 
       {result === null ? (
         <div className="text-center">
@@ -340,27 +216,13 @@ function Players() {
             </Table>
           </div>
 
-          <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Prev
-            </Button>
-            <span className="small text-muted">
-              Page {page} of {totalPages} ({result.total} players)
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
+          <ListPager
+            page={page}
+            totalPages={totalPages}
+            total={result.total}
+            noun="players"
+            onChange={setPage}
+          />
         </>
       )}
     </Container>

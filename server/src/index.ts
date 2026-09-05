@@ -32,6 +32,7 @@ import { getGameMeta, isGamePublic, reconcileGameMeta } from './gameMeta';
 import { persistFinishedGame } from './games';
 import { registerHomeHandlers } from './home';
 import { createHttpApp } from './http/app';
+import { LiveGameRow } from './http/liveGames';
 import { loadMaps, registerMapsHandlers } from './maps';
 import { gameRoomName } from './rooms';
 import {
@@ -43,16 +44,17 @@ import {
 } from './socketRooms';
 import { nodeWorkerPort } from './workers/nodeWorkerPort';
 
-type HomeGameSummary = { name: string };
-
-function listVisibleGames(): unknown[] {
-  const summaries = engine.listGameSummaries() as HomeGameSummary[];
+function listVisibleGames(): LiveGameRow[] {
+  const summaries = engine.listGameSummaries();
   reconcileGameMeta(new Set(summaries.map((game) => game.name)));
   return summaries
     .filter((game) => isGamePublic(game.name))
     .map((game) => ({
       ...game,
       hasPassword: getGameMeta(game.name).password !== null,
+      playerUserIds: game.playerIds
+        .map((id) => userIdByPlayerId(id))
+        .filter((id): id is string => id !== undefined),
     }));
 }
 

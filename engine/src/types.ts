@@ -202,6 +202,7 @@ export interface Game {
   originalHostId: number;
   offline: boolean;
   state: 'lobby' | 'playing' | 'ended';
+  createdAt: number;
   startedAt: number | null;
   endedAt: number | null;
   alliances: Alliances;

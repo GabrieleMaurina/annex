@@ -21,6 +21,7 @@ import Game from './pages/Game';
 import Games from './pages/Games';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Messages from './pages/Messages';
 import PasswordReset from './pages/PasswordReset';
 import PlayerProfile from './pages/PlayerProfile';
 import Players from './pages/Players';
@@ -324,6 +325,16 @@ function App() {
           element={
             !sessionReady ? null : account ? (
               <Friends account={account} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            !sessionReady ? null : account ? (
+              <Messages account={account} />
             ) : (
               <Navigate to="/" replace />
             )

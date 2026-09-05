@@ -621,6 +621,30 @@ export interface FriendsOverview {
   outgoing: Friend[];
 }
 
+export interface ConversationMessage {
+  fromMe: boolean;
+  text: string;
+  createdAt: number;
+}
+
+export interface Conversation {
+  userId: string;
+  username: string;
+  elo: number;
+  messages: ConversationMessage[];
+}
+
+export interface BlockedPlayer {
+  userId: string;
+  username: string;
+  elo: number;
+}
+
+export interface MessagesOverview {
+  conversations: Conversation[];
+  blocked: BlockedPlayer[];
+}
+
 export interface StoredMap {
   name: string;
   territories: {

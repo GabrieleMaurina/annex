@@ -5,9 +5,15 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { Button } from 'react-bootstrap';
+import { Badge, Button } from 'react-bootstrap';
 import { useLocation } from 'react-router-dom';
 import { connector } from '../connector';
+import {
+  getMessagesSnapshot,
+  setMessagesEnabled,
+  subscribeMessages,
+  totalUnread,
+} from '../lib/messages';
 import { getPlayerName, subscribePlayerName } from '../lib/player';
 import { rankForElo } from '../lib/ranks';
 import type { Account } from '../lib/types';
@@ -19,7 +25,10 @@ const LINKS: { label: string; path: string }[] = [
   { label: 'Games', path: '/games/replay' },
   { label: 'Players', path: '/players' },
   { label: 'Friends', path: '/friends' },
+  { label: 'Messages', path: '/messages' },
 ];
+
+const LOGGED_IN_ONLY = ['/friends', '/messages'];
 
 interface Props {
   navigate: (path: string) => void;
@@ -33,6 +42,12 @@ function BurgerMenu({ navigate, account, onSessionChange }: Props) {
   const whiteMenuIcon = useWhiteIcon('/icons/menu.svg');
   const { pathname } = useLocation();
   const name = useSyncExternalStore(subscribePlayerName, getPlayerName);
+  const messages = useSyncExternalStore(subscribeMessages, getMessagesSnapshot);
+  const unread = totalUnread(messages);
+
+  useEffect(() => {
+    setMessagesEnabled(!!account);
+  }, [account]);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -70,7 +85,7 @@ function BurgerMenu({ navigate, account, onSessionChange }: Props) {
   const showAuth = account !== undefined;
   const links = account
     ? LINKS
-    : LINKS.filter((link) => link.path !== '/friends');
+    : LINKS.filter((link) => !LOGGED_IN_ONLY.includes(link.path));
 
   return (
     <div className="position-relative text-end">
@@ -89,6 +104,15 @@ function BurgerMenu({ navigate, account, onSessionChange }: Props) {
             alt="Menu"
           />
         </Button>
+      )}
+      {!open && unread > 0 && (
+        <Badge
+          bg="danger"
+          className="position-absolute top-0 end-0 translate-middle"
+          style={{ zIndex: 11 }}
+        >
+          {unread}
+        </Badge>
       )}
 
       {open && (
@@ -119,6 +143,11 @@ function BurgerMenu({ navigate, account, onSessionChange }: Props) {
               onClick={() => go(link.path)}
             >
               {link.label}
+              {link.path === '/messages' && unread > 0 && (
+                <Badge bg="danger" className="ms-2">
+                  {unread}
+                </Badge>
+              )}
             </Button>
           ))}
           {showAuth &&

@@ -30,19 +30,19 @@ export function allowAuthAttempt(ip: string): boolean {
   return hit(authAttempts, ip, AUTH_WINDOW_MS) <= AUTH_MAX;
 }
 
-export function loginLockedOut(username: string): boolean {
-  const entry = loginFailures.get(username.toLowerCase());
+export function loginLockedOut(email: string): boolean {
+  const entry = loginFailures.get(email.toLowerCase());
   return (
     !!entry && Date.now() < entry.resetAt && entry.count >= LOGIN_FAILURE_MAX
   );
 }
 
-export function recordLoginFailure(username: string): void {
-  hit(loginFailures, username.toLowerCase(), LOGIN_FAILURE_WINDOW_MS);
+export function recordLoginFailure(email: string): void {
+  hit(loginFailures, email.toLowerCase(), LOGIN_FAILURE_WINDOW_MS);
 }
 
-export function clearLoginFailures(username: string): void {
-  loginFailures.delete(username.toLowerCase());
+export function clearLoginFailures(email: string): void {
+  loginFailures.delete(email.toLowerCase());
 }
 
 setInterval(

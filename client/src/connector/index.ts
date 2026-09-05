@@ -17,6 +17,7 @@ import type {
   HomeGamesPage,
   HomeGamesQuery,
   IdentifyResult,
+  MessagesOverview,
   PlayerProfile,
   PlayerSearchResult,
   PlayersPage,
@@ -299,6 +300,31 @@ export const connector = {
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
+  listMessages(cb: (overview: MessagesOverview) => void): void {
+    const empty: MessagesOverview = { conversations: [], blocked: [] };
+    httpGet<MessagesOverview>('/messages')
+      .then(cb)
+      .catch(() => cb(empty));
+  },
+
+  sendMessage(userId: string, text: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/messages', { userId, text })
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  blockUser(userId: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/messages/block', { userId })
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  unblockUser(userId: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/messages/unblock', { userId })
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
   register(
     data: { username: string; email: string; password: string },
     cb: (res: AuthAck) => void,
@@ -312,15 +338,6 @@ export const connector = {
     httpSend<AuthAck>('POST', '/auth/confirm-email', data)
       .then(cb)
       .catch(() => cb({ ok: false, error: 'server error' }));
-  },
-
-  recoverUsername(
-    data: { email: string },
-    cb: (res: { ok: true }) => void,
-  ): void {
-    httpSend<{ ok: true }>('POST', '/auth/recover-username', data)
-      .then(cb)
-      .catch(() => cb({ ok: true }));
   },
 
   requestPasswordReset(
@@ -342,7 +359,7 @@ export const connector = {
   },
 
   login(
-    data: { username: string; password: string; stayLoggedIn: boolean },
+    data: { email: string; password: string; stayLoggedIn: boolean },
     cb: (res: LoginAck) => void,
   ): void {
     httpSend<LoginAck>('POST', '/auth/login', data)

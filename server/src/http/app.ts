@@ -4,6 +4,7 @@ import { friendsRouter } from './friendsRoutes';
 import { gameHistoryRouter, publicGamesRouter } from './gameHistoryRoutes';
 import { gamesRouter } from './gamesRoutes';
 import { LiveGameRow } from './liveGames';
+import { messagesRouter } from './messagesRoutes';
 import { corsMiddleware, identityMiddleware } from './middleware';
 import { playersRouter } from './playersRoutes';
 import { sessionRouter } from './session';
@@ -41,6 +42,7 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   app.use(authRouter(deps.inLiveGame));
   app.use(settingsRouter);
   app.use(friendsRouter);
+  app.use(messagesRouter);
   app.use(errorHandler);
   return app;
 }

@@ -159,7 +159,18 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
           </div>
         </div>
         {canManageFriend && (
-          <FriendshipButton userId={profile.id} username={profile.username} />
+          <div className="d-flex flex-column align-items-center gap-2">
+            <FriendshipButton userId={profile.id} username={profile.username} />
+            <Button
+              size="sm"
+              variant="outline-primary"
+              onClick={() =>
+                navigate(`/messages?to=${encodeURIComponent(profile.username)}`)
+              }
+            >
+              Send message
+            </Button>
+          </div>
         )}
       </div>
 

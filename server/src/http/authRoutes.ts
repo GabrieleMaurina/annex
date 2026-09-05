@@ -7,8 +7,8 @@ import {
   destroySession,
   login,
   LoginResult,
+  normalizeEmail,
   randomToken,
-  recoverUsername,
   registerAccount,
   requestPasswordReset,
   resetPassword,
@@ -69,16 +69,6 @@ export function authRouter(inLiveGame: InLiveGame): Router {
       .catch(() => res.json({ ok: false, error: 'server error' }));
   });
 
-  router.post('/auth/recover-username', (req, res) => {
-    if (rateLimited(req)) {
-      res.json({ ok: true });
-      return;
-    }
-    recoverUsername(body(req).email)
-      .then((result) => res.json(result))
-      .catch(() => res.json({ ok: true }));
-  });
-
   router.post('/auth/request-password-reset', (req, res) => {
     if (rateLimited(req)) {
       res.json({ ok: true });
@@ -100,17 +90,18 @@ export function authRouter(inLiveGame: InLiveGame): Router {
       return;
     }
     const data = body(req);
-    const username = data.username;
-    login({ username, password: data.password })
+    const email = data.email;
+    const failureKey = typeof email === 'string' ? normalizeEmail(email) : null;
+    login({ email, password: data.password })
       .then((result): LoginResult => {
-        if (typeof username !== 'string') return result;
+        if (failureKey === null) return result;
         if (result.ok) {
-          clearLoginFailures(username);
+          clearLoginFailures(failureKey);
           return result;
         }
         if (result.error === 'invalid credentials') {
-          recordLoginFailure(username);
-          if (loginLockedOut(username))
+          recordLoginFailure(failureKey);
+          if (loginLockedOut(failureKey))
             return { ok: false, error: 'too many requests' };
         }
         return result;

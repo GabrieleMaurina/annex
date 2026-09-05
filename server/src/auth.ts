@@ -24,7 +24,11 @@ import { hashPassword, verifyPassword } from './password';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5000';
 
-export { DEFAULT_CLIENT_SETTINGS, DEFAULT_GAME_SETTINGS } from './db';
+export {
+  DEFAULT_CLIENT_SETTINGS,
+  DEFAULT_GAME_SETTINGS,
+  normalizeEmail,
+} from './db';
 export type { ClientSettings, GameSettings };
 
 export interface SessionInfo {
@@ -56,7 +60,7 @@ function sha256(value: string): string {
 function isValidUsername(value: unknown): value is string {
   return (
     typeof value === 'string' &&
-    /^[A-Za-z0-9_-]{3,10}$/.test(value) &&
+    /^[A-Za-z0-9]{3,10}$/.test(value) &&
     !containsProfanity(value)
   );
 }
@@ -169,18 +173,6 @@ export function confirmEmail(
   });
 }
 
-export function recoverUsername(email: unknown): Promise<{ ok: true }> {
-  if (typeof email !== 'string' || !email) return Promise.resolve({ ok: true });
-  return findUserByEmail(email).then((user) => {
-    if (!user) return { ok: true as const };
-    return sendMail(
-      user.email,
-      'Your Annex username',
-      `<p>Your Annex username is: <strong>${user.username}</strong></p>`,
-    ).then(() => ({ ok: true as const }));
-  });
-}
-
 export function requestPasswordReset(email: unknown): Promise<{ ok: true }> {
   if (typeof email !== 'string' || !email) return Promise.resolve({ ok: true });
   return findUserByEmail(email).then((user) => {
@@ -216,13 +208,13 @@ function decoyVerify(password: string): Promise<boolean> {
 }
 
 export function login(data: {
-  username: unknown;
+  email: unknown;
   password: unknown;
 }): Promise<LoginResult> {
-  const { username, password } = data;
-  if (typeof username !== 'string' || typeof password !== 'string')
+  const { email, password } = data;
+  if (typeof email !== 'string' || typeof password !== 'string')
     return Promise.resolve({ ok: false, error: 'invalid credentials' });
-  return findUserByUsername(username).then((user) => {
+  return findUserByEmail(email).then((user) => {
     if (!user)
       return decoyVerify(password).then(() => ({
         ok: false as const,

@@ -1,3 +1,4 @@
+import { containsProfanity } from 'engine';
 import { useState } from 'react';
 import { Alert, Button, Container, Form, InputGroup } from 'react-bootstrap';
 import { formatError } from '../common/formatError';
@@ -5,7 +6,7 @@ import { connector } from '../connector';
 import { getPlayerName } from '../lib/player';
 import type { Account } from '../lib/types';
 
-type Mode = 'login' | 'register' | 'forgotPassword' | 'forgotUsername' | 'info';
+type Mode = 'login' | 'register' | 'forgotPassword' | 'info';
 
 interface Props {
   account: Account | null;
@@ -36,7 +37,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
     e.preventDefault();
     setBusy(true);
     setError('');
-    connector.login({ username, password, stayLoggedIn }, (res) => {
+    connector.login({ email, password, stayLoggedIn }, (res) => {
       if (!res.ok) {
         setError(res.error);
         setBusy(false);
@@ -50,6 +51,14 @@ function Login({ account, onSessionChange, navigate }: Props) {
 
   function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+    if (!/^[A-Za-z0-9]{3,10}$/.test(username)) {
+      setError('username must be 3-10 letters or digits');
+      return;
+    }
+    if (containsProfanity(username)) {
+      setError('username contains profanity');
+      return;
+    }
     if (password !== confirmPassword) {
       setError('passwords do not match');
       return;
@@ -80,19 +89,6 @@ function Login({ account, onSessionChange, navigate }: Props) {
     });
   }
 
-  function handleForgotUsername(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    connector.recoverUsername({ email }, () => {
-      setBusy(false);
-      setInfo(
-        'If that email has an account, its username has been sent to it.',
-      );
-      setMode('info');
-    });
-  }
-
   function handleLogout() {
     setError('');
     connector.logout((res) => {
@@ -108,7 +104,6 @@ function Login({ account, onSessionChange, navigate }: Props) {
     login: handleLogin,
     register: handleRegister,
     forgotPassword: handleForgotPassword,
-    forgotUsername: handleForgotUsername,
     info: (e) => e.preventDefault(),
   };
 
@@ -116,22 +111,18 @@ function Login({ account, onSessionChange, navigate }: Props) {
     login: 'Log in',
     register: 'Create account',
     forgotPassword: 'Send reset link',
-    forgotUsername: 'Send username',
     info: '',
   };
 
-  const showUsername = mode === 'login' || mode === 'register';
+  const showUsername = mode === 'register';
   const showEmail =
-    mode === 'register' ||
-    mode === 'forgotUsername' ||
-    mode === 'forgotPassword';
+    mode === 'login' || mode === 'register' || mode === 'forgotPassword';
   const showPassword = mode === 'login' || mode === 'register';
 
   const title: Record<Mode, string> = {
     login: 'Log in',
     register: 'Create account',
     forgotPassword: 'Reset password',
-    forgotUsername: 'Recover username',
     info: 'Check your email',
   };
 
@@ -271,24 +262,14 @@ function Login({ account, onSessionChange, navigate }: Props) {
                   Create an account
                 </Button>
                 {loginFailed && (
-                  <>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="p-0 text-decoration-none text-start"
-                      onClick={() => goto('forgotPassword')}
-                    >
-                      Forgot password?
-                    </Button>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="p-0 text-decoration-none text-start"
-                      onClick={() => goto('forgotUsername')}
-                    >
-                      Forgot username?
-                    </Button>
-                  </>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 text-decoration-none text-start"
+                    onClick={() => goto('forgotPassword')}
+                  >
+                    Forgot password?
+                  </Button>
                 )}
               </div>
             )}

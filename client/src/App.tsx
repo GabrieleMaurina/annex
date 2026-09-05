@@ -65,6 +65,7 @@ function App() {
   const [account, setAccount] = useState<Account | null>(null);
   const [joinError, setJoinError] = useState('');
   const [needsPassword, setNeedsPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
   const [kickedMessage, setKickedMessage] = useState('');
   const [sessionTakenOver, setSessionTakenOver] = useState(false);
   const [mapNames, setMapNames] = useState<string[]>([]);
@@ -117,11 +118,13 @@ function App() {
         if (res.ok || res.error === 'already in a game') {
           setJoinError('');
           setNeedsPassword(false);
+          setPasswordError(false);
           connector.requestState();
           return;
         }
         if (res.error === 'invalid password') {
           setNeedsPassword(true);
+          setPasswordError(password !== undefined);
           return;
         }
         if (res.error !== 'game not found') {
@@ -149,9 +152,11 @@ function App() {
           connector.joinGame({ gameName: room, password }, (retryRes: Ack) => {
             if (retryRes.ok || retryRes.error === 'already in a game') {
               setJoinError('');
+              setPasswordError(false);
               connector.requestState();
             } else if (retryRes.error === 'invalid password') {
               setNeedsPassword(true);
+              setPasswordError(password !== undefined);
             } else {
               setJoinError(retryRes.error);
             }
@@ -169,6 +174,7 @@ function App() {
     function afterConnect() {
       connector.listMaps(setMapNames);
       setNeedsPassword(false);
+      setPasswordError(false);
       if (isOffline) {
         if (!connector.isConvertingOffline()) applySavedGameSettings();
         setJoinError('');
@@ -261,6 +267,7 @@ function App() {
       selfId={selfId}
       joinError={joinError}
       needsPassword={needsPassword}
+      passwordError={passwordError}
       onSubmitPassword={attemptJoin}
       mapNames={mapNames}
       navigate={navigate}
@@ -312,9 +319,21 @@ function App() {
           path="/password_reset/:code"
           element={<PasswordResetRoute navigate={navigate} />}
         />
-        <Route path="/friends" element={<Friends />} />
+        <Route
+          path="/friends"
+          element={
+            !sessionReady ? null : account ? (
+              <Friends account={account} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
         <Route path="/players" element={<Players />} />
-        <Route path="/players/:username" element={<PlayerProfile />} />
+        <Route
+          path="/players/:username"
+          element={<PlayerProfile account={account} />}
+        />
         <Route path="/games/replay" element={<Games account={account} />} />
         <Route
           path="/games/replay/:id"

@@ -8,12 +8,14 @@ import {
 import type {
   Ack,
   ClientSettings,
+  FriendsOverview,
   GameSettingsInput,
   GamesPage,
   GamesQuery,
   GameState,
-  GameSummary,
   GenerateMapInput,
+  HomeGamesPage,
+  HomeGamesQuery,
   IdentifyResult,
   PlayerProfile,
   PlayerSearchResult,
@@ -75,6 +77,33 @@ function route(event: string, data?: unknown, cb?: (res: never) => void): void {
   else if (data === undefined) socket.emit(event, cb);
   else if (cb === undefined) socket.emit(event, data);
   else socket.emit(event, data, cb);
+}
+
+function appendGameFilterParams(
+  params: URLSearchParams,
+  query: GamesQuery | HomeGamesQuery,
+): void {
+  for (const id of query.playerIds ?? []) params.append('playerIds', id);
+  if (query.name) params.set('name', query.name);
+  if (query.mode) params.set('mode', query.mode);
+  if (query.mapName) params.set('mapName', query.mapName);
+  if (query.generatedMap) params.set('generatedMap', '1');
+  if (query.mapGenerationSize)
+    params.set('mapGenerationSize', query.mapGenerationSize);
+  if (query.mapGenerationWater)
+    params.set('mapGenerationWater', query.mapGenerationWater);
+  if (query.playersMin !== undefined)
+    params.set('playersMin', String(query.playersMin));
+  if (query.playersMax !== undefined)
+    params.set('playersMax', String(query.playersMax));
+  if (query.minRounds !== undefined)
+    params.set('minRounds', String(query.minRounds));
+  if (query.maxRounds !== undefined)
+    params.set('maxRounds', String(query.maxRounds));
+  for (const [key, value] of Object.entries(query.settings ?? {}))
+    if (value) params.set(key, value);
+  if (query.sort) params.set('sort', query.sort);
+  if (query.sortDir) params.set('sortDir', query.sortDir);
 }
 
 export const connector = {
@@ -141,8 +170,15 @@ export const connector = {
       .catch(() => cb({ account: null, name: '' }));
   },
 
-  listGames(cb: (games: GameSummary[]) => void): void {
-    httpGet<GameSummary[]>('/games/live')
+  listGames(query: HomeGamesQuery, cb: (page: HomeGamesPage) => void): void {
+    const params = new URLSearchParams();
+    params.set('page', String(query.page));
+    params.set('pageSize', String(query.pageSize));
+    appendGameFilterParams(params, query);
+    if (query.phase) params.set('phase', query.phase);
+    if (query.hasPassword !== undefined)
+      params.set('hasPassword', query.hasPassword ? '1' : '0');
+    httpGet<HomeGamesPage>('/games/live?' + params.toString())
       .then(cb)
       .catch(() => {});
   },
@@ -151,13 +187,7 @@ export const connector = {
     const params = new URLSearchParams();
     params.set('page', String(query.page));
     params.set('pageSize', String(query.pageSize));
-    for (const id of query.playerIds ?? []) params.append('playerIds', id);
-    if (query.playersMin !== undefined)
-      params.set('playersMin', String(query.playersMin));
-    if (query.playersMax !== undefined)
-      params.set('playersMax', String(query.playersMax));
-    if (query.mode) params.set('mode', query.mode);
-    if (query.mapName) params.set('mapName', query.mapName);
+    appendGameFilterParams(params, query);
     if (query.startedFrom !== undefined)
       params.set('startedFrom', String(query.startedFrom));
     if (query.startedTo !== undefined)
@@ -170,26 +200,13 @@ export const connector = {
       params.set('durationMin', String(query.durationMin));
     if (query.durationMax !== undefined)
       params.set('durationMax', String(query.durationMax));
-    if (query.generatedMap) params.set('generatedMap', '1');
-    if (query.mapGenerationSize)
-      params.set('mapGenerationSize', query.mapGenerationSize);
-    if (query.mapGenerationWater)
-      params.set('mapGenerationWater', query.mapGenerationWater);
-    if (query.minRounds !== undefined)
-      params.set('minRounds', String(query.minRounds));
-    if (query.maxRounds !== undefined)
-      params.set('maxRounds', String(query.maxRounds));
     if (query.outcome) params.set('outcome', query.outcome);
     if (query.positionMin !== undefined)
       params.set('positionMin', String(query.positionMin));
     if (query.positionMax !== undefined)
       params.set('positionMax', String(query.positionMax));
-    for (const [key, value] of Object.entries(query.settings ?? {}))
-      if (value) params.set(key, value);
     if (query.mine) params.set('mine', '1');
     if (query.rankUserId) params.set('rankUserId', query.rankUserId);
-    if (query.sort) params.set('sort', query.sort);
-    if (query.sortDir) params.set('sortDir', query.sortDir);
     const empty: GamesPage = {
       games: [],
       total: 0,
@@ -255,6 +272,31 @@ export const connector = {
     httpGet<PlayerProfile>('/players/' + encodeURIComponent(username))
       .then((profile) => cb('id' in profile ? profile : null))
       .catch(() => cb(null));
+  },
+
+  listFriends(cb: (overview: FriendsOverview) => void): void {
+    const empty: FriendsOverview = { friends: [], incoming: [], outgoing: [] };
+    httpGet<FriendsOverview>('/friends')
+      .then(cb)
+      .catch(() => cb(empty));
+  },
+
+  sendFriendRequest(userId: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/friends/requests', { userId })
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  acceptFriendRequest(userId: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/friends/accept', { userId })
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  removeFriend(userId: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/friends/remove', { userId })
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
   register(

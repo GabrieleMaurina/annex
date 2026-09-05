@@ -7,71 +7,26 @@ import {
   listGames,
   MAP_SIZES,
   searchUsers,
-  SETTINGS_ENUM_KEYS,
   WATER_LEVELS,
 } from '../db';
 import { identityOf } from './middleware';
+import {
+  intParam,
+  optIntParam,
+  parseSettings,
+  stringArrayParam,
+  timeParam,
+} from './queryParams';
 
 export const gameHistoryRouter = Router();
 export const publicGamesRouter = Router();
 
 const GAME_MODES = GAME_ENUMS.gameMode as string[];
-const SETTING_KEYS = SETTINGS_ENUM_KEYS.filter((k) => k !== 'gameMode');
 const MAX_SELECTED_PLAYERS = 10;
 const PLAYER_SEARCH_LIMIT = 8;
 
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function stringArrayParam(value: unknown, max: number): string[] | undefined {
-  const raw = Array.isArray(value) ? value : value !== undefined ? [value] : [];
-  const ids = raw.filter(
-    (v): v is string => typeof v === 'string' && v.trim() !== '',
-  );
-  return ids.length > 0 ? ids.slice(0, max) : undefined;
-}
-
-function intParam(
-  value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-): number {
-  const n = typeof value === 'string' ? Number(value) : NaN;
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, Math.trunc(n)));
-}
-
-function optIntParam(
-  value: unknown,
-  min: number,
-  max: number,
-): number | undefined {
-  if (typeof value !== 'string' || value.trim() === '') return undefined;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return undefined;
-  return Math.min(max, Math.max(min, Math.trunc(n)));
-}
-
-function timeParam(value: unknown): number | undefined {
-  if (typeof value !== 'string' || value.trim() === '') return undefined;
-  const time = Number(value);
-  return Number.isFinite(time) ? time : undefined;
-}
-
-function parseSettings(
-  q: Record<string, unknown>,
-): Record<string, string | number> {
-  const out: Record<string, string | number> = {};
-  for (const key of SETTING_KEYS) {
-    const raw = q[key];
-    if (typeof raw !== 'string' || raw === '') continue;
-    const values = GAME_ENUMS[key];
-    if (values.includes(raw)) out[key] = raw;
-    else if (values.includes(Number(raw))) out[key] = Number(raw);
-  }
-  return out;
 }
 
 gameHistoryRouter.get('/games/history', (req, res) => {
@@ -86,6 +41,10 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     return;
   }
 
+  const name =
+    typeof q.name === 'string' && q.name.trim()
+      ? q.name.trim().slice(0, 100)
+      : undefined;
   const mode =
     typeof q.mode === 'string' && GAME_MODES.includes(q.mode)
       ? q.mode
@@ -114,6 +73,7 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     page,
     pageSize,
     playerIds: stringArrayParam(q.playerIds, MAX_SELECTED_PLAYERS),
+    name,
     mode,
     mapName,
     startedFrom: timeParam(q.startedFrom),

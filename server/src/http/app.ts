@@ -1,14 +1,16 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { authRouter } from './authRoutes';
+import { friendsRouter } from './friendsRoutes';
 import { gameHistoryRouter, publicGamesRouter } from './gameHistoryRoutes';
 import { gamesRouter } from './gamesRoutes';
+import { LiveGameRow } from './liveGames';
 import { corsMiddleware, identityMiddleware } from './middleware';
 import { playersRouter } from './playersRoutes';
 import { sessionRouter } from './session';
 import { settingsRouter } from './settingsRoutes';
 
 export interface HttpDeps {
-  listGames: () => unknown[];
+  listGames: () => LiveGameRow[];
   playerGame: (token: string, userId: string | null) => string | null;
   inLiveGame: (token: string, userId: string | null) => boolean;
 }
@@ -38,6 +40,7 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   app.use(sessionRouter(deps.playerGame));
   app.use(authRouter(deps.inLiveGame));
   app.use(settingsRouter);
+  app.use(friendsRouter);
   app.use(errorHandler);
   return app;
 }

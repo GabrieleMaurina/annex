@@ -25,6 +25,7 @@ interface Props {
   selfId: number | null;
   joinError: string;
   needsPassword: boolean;
+  passwordError: boolean;
   onSubmitPassword: (password: string) => void;
   mapNames: string[];
   navigate: (path: string) => void;
@@ -35,6 +36,7 @@ function Game({
   selfId,
   joinError,
   needsPassword,
+  passwordError,
   onSubmitPassword,
   mapNames,
   navigate,
@@ -163,7 +165,7 @@ function Game({
     return (
       <Container
         fluid
-        className="d-flex justify-content-center align-items-center"
+        className="d-flex flex-column justify-content-center align-items-center gap-2"
         style={{ minHeight: '100vh' }}
       >
         <Form
@@ -186,6 +188,11 @@ function Game({
             Home
           </Button>
         </Form>
+        {passwordError && (
+          <Alert variant="danger" className="mb-0 py-2">
+            Incorrect password
+          </Alert>
+        )}
       </Container>
     );
   }

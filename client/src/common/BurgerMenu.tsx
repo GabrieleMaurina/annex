@@ -68,6 +68,9 @@ function BurgerMenu({ navigate, account, onSessionChange }: Props) {
   }
 
   const showAuth = account !== undefined;
+  const links = account
+    ? LINKS
+    : LINKS.filter((link) => link.path !== '/friends');
 
   return (
     <div className="position-relative text-end">
@@ -107,7 +110,7 @@ function BurgerMenu({ navigate, account, onSessionChange }: Props) {
               {name}
             </div>
           )}
-          {LINKS.map((link) => (
+          {links.map((link) => (
             <Button
               key={link.path}
               variant="secondary"

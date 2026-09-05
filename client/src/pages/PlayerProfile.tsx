@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Button, Container, Spinner, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
+import FriendshipButton from '../common/FriendshipButton';
 import { useWhiteIcon } from '../common/icon';
 import { connector } from '../connector';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import { rankForElo } from '../lib/ranks';
-import type { GameHistoryRow, GamesPage, PlayerProfile } from '../lib/types';
+import type {
+  Account,
+  GameHistoryRow,
+  GamesPage,
+  PlayerProfile,
+} from '../lib/types';
 
 const PAGE_SIZE = 20;
 
@@ -54,7 +60,7 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
   );
 }
 
-function PlayerProfilePage() {
+function PlayerProfilePage({ account }: { account: Account | null }) {
   const { username } = useParams();
   const navigate = useNavigate();
 
@@ -108,6 +114,10 @@ function PlayerProfilePage() {
     );
   }
 
+  const canManageFriend =
+    !!account &&
+    account.username.toLowerCase() !== profile.username.toLowerCase();
+
   const rank = rankForElo(profile.elo);
   const totalPages = result
     ? Math.max(1, Math.ceil(result.total / PAGE_SIZE))
@@ -148,6 +158,9 @@ function PlayerProfilePage() {
               : profile.averagePlacing.toFixed(2)}
           </div>
         </div>
+        {canManageFriend && (
+          <FriendshipButton userId={profile.id} username={profile.username} />
+        )}
       </div>
 
       {result === null ? (

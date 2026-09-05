@@ -52,6 +52,7 @@ export interface GamesQuery {
   playerIds?: string[];
   playersMin?: number;
   playersMax?: number;
+  name?: string;
   mode?: string;
   mapName?: string;
   startedFrom?: number;
@@ -452,6 +453,10 @@ function toRow(
   };
 }
 
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export function listGames(query: GamesQuery): Promise<GamesPage> {
   const viewer = query.rankUserId ?? query.viewerId ?? query.userId;
 
@@ -467,6 +472,8 @@ function queryGames(
 ): Promise<GamesPage> {
   const filter: Record<string, unknown> = {};
 
+  if (query.name)
+    filter.name = { $regex: escapeRegex(query.name), $options: 'i' };
   if (query.mode) filter['settings.gameMode'] = query.mode;
   if (mapNameIds) filter.mapId = { $in: mapNameIds };
   if (query.startedFrom !== undefined || query.startedTo !== undefined) {

@@ -1,15 +1,17 @@
-import { BUILTIN_MAP_NAMES } from 'engine';
-import type { ReactNode } from 'react';
-import { useCallback, useEffect, useState } from 'react';
-import { Button, Container, Form, Spinner, Table } from 'react-bootstrap';
+import { useEffect, useState } from 'react';
+import { Container, Form, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import SearchMultiSelect, {
-  type SearchSelectItem,
-} from '../common/SearchMultiSelect';
+import {
+  Field,
+  FilterDetails,
+  ListPager,
+  RangeField,
+  SortSelect,
+} from '../common/filterControls';
 import { useWhiteIcon } from '../common/icon';
+import type { SearchSelectItem } from '../common/SearchMultiSelect';
 import { connector } from '../connector';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import { playSound } from '../lib/sounds';
 import type {
   Account,
   GameHistoryRow,
@@ -18,11 +20,13 @@ import type {
   MapSize,
   WaterLevel,
 } from '../lib/types';
+import { GAME_MODES } from '../lib/types';
 import {
-  GAME_MODES,
-  SETTING_FILTER_SECTIONS,
-  SETTING_FILTERS,
-} from '../lib/types';
+  MapFilterFields,
+  PlayerFilter,
+  SettingFilterSections,
+} from '../lobby/gameFilters';
+import { GENERATED_MAP_VALUE } from '../lobby/gameSettings';
 
 const PAGE_SIZE = 20;
 
@@ -34,23 +38,6 @@ const POSITION_MIN = 1;
 const POSITION_MAX = 20;
 const DURATION_MIN = 0;
 const DURATION_MAX = 1000;
-const MAX_SELECTED_PLAYERS = 10;
-
-const LABEL_STYLE = { minWidth: 120, flexShrink: 0 };
-
-const GENERATED_MAP_VALUE = 'generated';
-
-const MAP_GENERATION_SIZES: { value: MapSize; label: string }[] = [
-  { value: 'small', label: 'Small' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'large', label: 'Large' },
-  { value: 'xlarge', label: 'Extra Large' },
-];
-const MAP_GENERATION_WATERS: { value: WaterLevel; label: string }[] = [
-  { value: 'land', label: 'Land' },
-  { value: 'mixed', label: 'Mixed' },
-  { value: 'ocean', label: 'Ocean' },
-];
 
 type SortOption =
   | 'newest'
@@ -78,6 +65,7 @@ interface Props {
 
 interface Filters {
   playerIds: string[];
+  name: string;
   mode: string;
   startedFrom: string;
   startedTo: string;
@@ -96,16 +84,6 @@ interface Filters {
   playersMax: number;
   positionMin: number;
   positionMax: number;
-}
-
-function clampInt(
-  value: number,
-  lo: number,
-  hi: number,
-  fallback: number,
-): number {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.min(hi, Math.max(lo, Math.trunc(value)));
 }
 
 function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
@@ -153,94 +131,6 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
   );
 }
 
-function Field({
-  label,
-  children,
-  wide,
-}: {
-  label: string;
-  children: ReactNode;
-  wide?: boolean;
-}) {
-  return (
-    <div
-      className={`${wide ? 'col-12 col-md-8 col-xl-6' : 'col-12 col-sm-6 col-md-4 col-xl-3'} d-flex align-items-center gap-2`}
-    >
-      <Form.Label className="mb-0" style={LABEL_STYLE}>
-        {label}
-      </Form.Label>
-      {children}
-    </div>
-  );
-}
-
-function RangeField({
-  label,
-  min,
-  max,
-  lo,
-  hi,
-  fallbackLo,
-  fallbackHi,
-  setLo,
-  setHi,
-}: {
-  label: string;
-  min: number;
-  max: number;
-  lo: number;
-  hi: number;
-  fallbackLo: number;
-  fallbackHi: number;
-  setLo: (v: number) => void;
-  setHi: (v: number) => void;
-}) {
-  return (
-    <Field label={label} wide>
-      <div className="d-flex align-items-center gap-1 flex-wrap flex-sm-nowrap">
-        <span className="small text-muted">From</span>
-        <Form.Control
-          size="sm"
-          type="number"
-          min={min}
-          max={max}
-          style={{ width: 64 }}
-          value={lo}
-          onChange={(e) =>
-            setLo(
-              clampInt(
-                (e.target as HTMLInputElement).valueAsNumber,
-                min,
-                max,
-                fallbackLo,
-              ),
-            )
-          }
-        />
-        <span className="small text-muted">To</span>
-        <Form.Control
-          size="sm"
-          type="number"
-          min={min}
-          max={max}
-          style={{ width: 64 }}
-          value={hi}
-          onChange={(e) =>
-            setHi(
-              clampInt(
-                (e.target as HTMLInputElement).valueAsNumber,
-                min,
-                max,
-                fallbackHi,
-              ),
-            )
-          }
-        />
-      </div>
-    </Field>
-  );
-}
-
 function DateRangeField({
   label,
   from,
@@ -284,6 +174,7 @@ function Games({ account }: Props) {
   const [selectedPlayers, setSelectedPlayers] = useState<SearchSelectItem[]>(
     [],
   );
+  const [name, setName] = useState('');
   const [mode, setMode] = useState('');
   const [startedFrom, setStartedFrom] = useState('');
   const [startedTo, setStartedTo] = useState('');
@@ -292,10 +183,8 @@ function Games({ account }: Props) {
   const [durationMin, setDurationMin] = useState(DURATION_MIN);
   const [durationMax, setDurationMax] = useState(DURATION_MAX);
   const [mapName, setMapName] = useState('');
-  const [mapGenerationSize, setMapGenerationSize] = useState<'' | MapSize>('');
-  const [mapGenerationWater, setMapGenerationWater] = useState<'' | WaterLevel>(
-    '',
-  );
+  const [mapGenerationSize, setMapGenerationSize] = useState('');
+  const [mapGenerationWater, setMapGenerationWater] = useState('');
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [outcome, setOutcome] = useState<'' | 'won' | 'lost'>('');
   const [roundsMin, setRoundsMin] = useState(ROUNDS_MIN);
@@ -306,23 +195,14 @@ function Games({ account }: Props) {
   const [positionMax, setPositionMax] = useState(POSITION_MAX);
   const [sortOption, setSortOption] = useState<SortOption>('newest');
   const [mineOverride, setMineOverride] = useState<boolean | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<GamesPage | null>(null);
 
   const mineOnly = mineOverride ?? !!account;
 
-  const searchPlayers = useCallback(
-    (q: string, cb: (items: SearchSelectItem[]) => void) => {
-      connector.searchPlayers(q, (results) =>
-        cb(results.map((r) => ({ id: r.id, label: r.username }))),
-      );
-    },
-    [],
-  );
-
   const filters: Filters = {
     playerIds: selectedPlayers.map((p) => p.id),
+    name,
     mode,
     startedFrom,
     startedTo,
@@ -362,6 +242,7 @@ function Games({ account }: Props) {
         selectedPlayers.length > 0
           ? selectedPlayers.map((p) => p.id)
           : undefined,
+      name: name.trim() || undefined,
       mode: mode || undefined,
       startedFrom: startedFrom ? new Date(startedFrom).getTime() : undefined,
       startedTo: startedTo ? new Date(startedTo).getTime() : undefined,
@@ -373,11 +254,11 @@ function Games({ account }: Props) {
       generatedMap: mapName === GENERATED_MAP_VALUE ? true : undefined,
       mapGenerationSize:
         mapName === GENERATED_MAP_VALUE
-          ? mapGenerationSize || undefined
+          ? (mapGenerationSize as MapSize) || undefined
           : undefined,
       mapGenerationWater:
         mapName === GENERATED_MAP_VALUE
-          ? mapGenerationWater || undefined
+          ? (mapGenerationWater as WaterLevel) || undefined
           : undefined,
       settings,
       outcome: outcome || undefined,
@@ -415,6 +296,7 @@ function Games({ account }: Props) {
 
   function clearFilters() {
     setSelectedPlayers([]);
+    setName('');
     setMode('');
     setStartedFrom('');
     setStartedTo('');
@@ -440,78 +322,47 @@ function Games({ account }: Props) {
     <Container fluid className="py-5 px-2 px-sm-4">
       <h1 className="text-center mb-4">Games</h1>
 
-      <Form
-        className="d-flex flex-wrap align-items-end justify-content-center row-gap-3 column-gap-3 mb-3"
-        onSubmit={(e) => e.preventDefault()}
+      <SortSelect
+        value={sortOption}
+        onChange={(v) => resetPage(setSortOption)(v as SortOption)}
+        after={
+          account && (
+            <Form.Check
+              type="switch"
+              id="mine-only"
+              label="My games only"
+              checked={mineOnly}
+              onChange={(e) => resetPage(setMineOverride)(e.target.checked)}
+            />
+          )
+        }
       >
-        <Form.Group className="d-flex align-items-center gap-2">
-          <Form.Label className="mb-0 small">Sort</Form.Label>
-          <Form.Select
-            size="sm"
-            className="w-auto"
-            value={sortOption}
-            onChange={(e) =>
-              resetPage(setSortOption)(e.target.value as SortOption)
-            }
-          >
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="mostRounds">Most rounds</option>
-            <option value="fewestRounds">Fewest rounds</option>
-            {account && <option value="bestPosition">Best position</option>}
-            {account && <option value="worstPosition">Worst position</option>}
-          </Form.Select>
-        </Form.Group>
-        {account && (
-          <Form.Check
-            type="switch"
-            id="mine-only"
-            label="My games only"
-            checked={mineOnly}
-            onChange={(e) => resetPage(setMineOverride)(e.target.checked)}
-          />
-        )}
-      </Form>
+        <option value="newest">Newest</option>
+        <option value="oldest">Oldest</option>
+        <option value="mostRounds">Most rounds</option>
+        <option value="fewestRounds">Fewest rounds</option>
+        {account && <option value="bestPosition">Best position</option>}
+        {account && <option value="worstPosition">Worst position</option>}
+      </SortSelect>
 
-      <details
-        className="mb-3"
-        onToggle={(e) => {
-          playSound('click');
-          setFiltersOpen(e.currentTarget.open);
-        }}
-      >
-        <summary className="fw-bold py-2 position-relative">
-          Filters
-          {filtersOpen && (
-            <Button
-              size="sm"
-              variant="outline-secondary"
-              className="position-absolute top-50 end-0 translate-middle-y"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                clearFilters();
-              }}
-            >
-              Clear filters
-            </Button>
-          )}
-        </summary>
+      <FilterDetails onClear={clearFilters}>
         <div className="border rounded p-2 mb-2">
           <div className="fw-bold text-muted small mb-2">Match</div>
           <div className="row g-3">
-            <div className="col-12 col-sm-6 col-md-4 col-xl-3">
-              <SearchMultiSelect
-                label="Players"
-                placeholder="Name"
-                inputWidth="10ch"
-                maxLength={10}
-                maxSelected={MAX_SELECTED_PLAYERS}
-                search={searchPlayers}
-                selected={selectedPlayers}
-                onChange={resetPage(setSelectedPlayers)}
+            <PlayerFilter
+              selected={selectedPlayers}
+              onChange={resetPage(setSelectedPlayers)}
+            />
+            <Field label="Name">
+              <Form.Control
+                size="sm"
+                className="w-auto"
+                placeholder="Game name"
+                maxLength={20}
+                value={name}
+                onChange={(e) => resetPage(setName)(e.target.value)}
               />
-            </div>
+            </Field>
             <Field label="Mode">
               <Form.Select
                 size="sm"
@@ -609,105 +460,24 @@ function Games({ account }: Props) {
         <div className="border rounded p-2 mb-2">
           <div className="fw-bold text-muted small mb-2">Map</div>
           <div className="row g-3">
-            <Field label="Map">
-              <Form.Select
-                size="sm"
-                className="w-auto"
-                value={mapName}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  resetPage(setMapName)(value);
-                  if (value !== GENERATED_MAP_VALUE) {
-                    setMapGenerationSize('');
-                    setMapGenerationWater('');
-                  }
-                }}
-              >
-                <option value="">Any</option>
-                <option value={GENERATED_MAP_VALUE}>Generated</option>
-                {BUILTIN_MAP_NAMES.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </Form.Select>
-            </Field>
-            {mapName === GENERATED_MAP_VALUE && (
-              <>
-                <Field label="Generated map size">
-                  <Form.Select
-                    size="sm"
-                    className="w-auto"
-                    value={mapGenerationSize}
-                    onChange={(e) =>
-                      resetPage(setMapGenerationSize)(
-                        e.target.value as '' | MapSize,
-                      )
-                    }
-                  >
-                    <option value="">Any</option>
-                    {MAP_GENERATION_SIZES.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Field>
-                <Field label="Generated map water">
-                  <Form.Select
-                    size="sm"
-                    className="w-auto"
-                    value={mapGenerationWater}
-                    onChange={(e) =>
-                      resetPage(setMapGenerationWater)(
-                        e.target.value as '' | WaterLevel,
-                      )
-                    }
-                  >
-                    <option value="">Any</option>
-                    {MAP_GENERATION_WATERS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Field>
-              </>
-            )}
+            <MapFilterFields
+              mapName={mapName}
+              size={mapGenerationSize}
+              water={mapGenerationWater}
+              onMapName={resetPage(setMapName)}
+              onSize={resetPage(setMapGenerationSize)}
+              onWater={resetPage(setMapGenerationWater)}
+            />
           </div>
         </div>
 
-        {SETTING_FILTER_SECTIONS.map((section) => (
-          <div key={section} className="border rounded p-2 mb-2">
-            <div className="fw-bold text-muted small mb-2">{section}</div>
-            <div className="row g-3">
-              {SETTING_FILTERS.filter((f) => f.section === section).map((f) => (
-                <Field key={f.key} label={f.label}>
-                  <Form.Select
-                    size="sm"
-                    className="w-auto"
-                    value={settings[f.key] ?? ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      resetPage(setSettings)((s) => ({
-                        ...s,
-                        [f.key]: value,
-                      }));
-                    }}
-                  >
-                    <option value="">Any</option>
-                    {f.options.map((o) => (
-                      <option key={o} value={o}>
-                        {o.charAt(0).toUpperCase() + o.slice(1)}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Field>
-              ))}
-            </div>
-          </div>
-        ))}
-      </details>
+        <SettingFilterSections
+          settings={settings}
+          onChange={(key, value) =>
+            resetPage(setSettings)((s) => ({ ...s, [key]: value }))
+          }
+        />
+      </FilterDetails>
 
       {result === null ? (
         <div className="text-center">
@@ -745,27 +515,13 @@ function Games({ account }: Props) {
             </Table>
           </div>
 
-          <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Prev
-            </Button>
-            <span className="small text-muted">
-              Page {page} of {totalPages} ({result.total} games)
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
+          <ListPager
+            page={page}
+            totalPages={totalPages}
+            total={result.total}
+            noun="games"
+            onChange={setPage}
+          />
         </>
       )}
     </Container>

@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { Toast, ToastContainer } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
+import type { ResultRow } from '../../common/ResultsTable';
 import { connector } from '../../connector';
 import { playerColor } from '../../lib/palette';
 import type {
@@ -21,7 +22,6 @@ import type {
   TurnPhase,
 } from '../../lib/types';
 import { CARD_SET_FLASH_DURATION } from '../animations';
-import type { ResultRow } from '../../common/ResultsTable';
 import { CardFace } from '../panels/CardsPanel';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';

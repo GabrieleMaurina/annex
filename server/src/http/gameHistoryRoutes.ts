@@ -135,6 +135,10 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     positionMax: optIntParam(q.positionMax, 1, 100),
     userId: q.mine === '1' ? session?.userId : undefined,
     viewerId: session?.userId,
+    rankUserId:
+      typeof q.rankUserId === 'string' && q.rankUserId.trim()
+        ? q.rankUserId.trim()
+        : undefined,
     sort,
     sortDir,
   };

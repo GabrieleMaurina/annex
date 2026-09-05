@@ -36,6 +36,10 @@ export function joinGame(playerId: number, gameName: string): GameResponse {
       game.playerColors.set(player.id, departed.color);
     else assignRandomColor(game, player.id);
     addHostCandidate(game, player.id);
+    if (departed)
+      game.playerIds.sort(
+        (a, b) => game.hostPriority.indexOf(a) - game.hostPriority.indexOf(b),
+      );
     recomputeHost(game);
   } else {
     game.lobbyDeparted.delete(player.id);

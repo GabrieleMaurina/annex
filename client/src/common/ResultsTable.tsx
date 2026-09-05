@@ -2,6 +2,7 @@ import { Badge, Table } from 'react-bootstrap';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import { useWhiteIcon } from './icon';
+import { isPlayerMuted } from './mutedPlayers';
 import Tip from './Tip';
 
 export interface ResultRow {
@@ -15,6 +16,7 @@ export interface ResultRow {
   cardsGained: number;
   turnsPlayed: number;
   setsPlayed: number;
+  userId?: string | null;
 }
 
 const EMPTY_ROW: ResultRow = {
@@ -43,6 +45,8 @@ interface Props {
   nameRef?: (playerId: number) => (el: HTMLDivElement | null) => void;
   onRowClick?: (playerId: number) => void;
   rowClickable?: (player: GameState['players'][number]) => boolean;
+  navigate?: (path: string) => void;
+  showMuted?: boolean;
 }
 
 function ResultsTable({
@@ -58,8 +62,11 @@ function ResultsTable({
   nameRef,
   onRowClick,
   rowClickable,
+  navigate,
+  showMuted = false,
 }: Props) {
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+  const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
@@ -94,11 +101,17 @@ function ResultsTable({
           {rankedPlayers.map((p, index) => {
             const bg = playerColor(p.color);
             const fg = contrastTextColor(bg);
+            const goToProfile =
+              !onRowClick && p.userId && navigate
+                ? () => navigate(`/players/${encodeURIComponent(p.name)}`)
+                : undefined;
             const clickable = rowClickable ? rowClickable(p) : false;
+            const rowClick =
+              goToProfile ?? (clickable ? () => onRowClick?.(p.id) : undefined);
             const rowStyle = {
               backgroundColor: bg,
               color: fg,
-              cursor: clickable ? 'pointer' : 'default',
+              cursor: rowClick ? 'pointer' : 'default',
             };
             const isDark = fg === '#ffffff';
             const rowIcon = (white: string | undefined, path: string) =>
@@ -111,9 +124,9 @@ function ResultsTable({
               <tr
                 key={p.id}
                 ref={rowRef?.(p.id)}
-                role={clickable ? 'button' : undefined}
+                role={rowClick ? 'button' : undefined}
                 data-no-click-sound
-                onClick={clickable ? () => onRowClick?.(p.id) : undefined}
+                onClick={rowClick}
                 style={{
                   outline: p.id === selfId ? '2px solid #fff' : undefined,
                   outlineOffset: p.id === selfId ? '-2px' : undefined,
@@ -136,6 +149,17 @@ function ResultsTable({
                         alt="Bot"
                         className="flex-shrink-0"
                       />
+                    )}
+                    {showMuted && p.id !== selfId && isPlayerMuted(p.id) && (
+                      <Tip text="Muted">
+                        <img
+                          src={rowIcon(whiteMutedIcon, '/icons/muted.svg')}
+                          width={12}
+                          height={12}
+                          alt="Muted"
+                          className="flex-shrink-0"
+                        />
+                      </Tip>
                     )}
                     {p.id === originalHostId && (
                       <Badge bg="primary" className="flex-shrink-0">

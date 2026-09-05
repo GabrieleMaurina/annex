@@ -3,6 +3,7 @@ import { authRouter } from './authRoutes';
 import { gameHistoryRouter, publicGamesRouter } from './gameHistoryRoutes';
 import { gamesRouter } from './gamesRoutes';
 import { corsMiddleware, identityMiddleware } from './middleware';
+import { playersRouter } from './playersRoutes';
 import { sessionRouter } from './session';
 import { settingsRouter } from './settingsRoutes';
 
@@ -30,6 +31,7 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   app.use(corsMiddleware);
   app.use(gamesRouter(deps.listGames));
   app.use(publicGamesRouter);
+  app.use(playersRouter);
   app.use(express.json({ limit: '16kb' }));
   app.use(identityMiddleware);
   app.use(gameHistoryRouter);

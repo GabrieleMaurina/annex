@@ -71,6 +71,7 @@ export interface GamesQuery {
   positionMax?: number;
   userId?: string;
   viewerId?: string;
+  rankUserId?: string;
   sort: 'newest' | 'rounds' | 'position';
   sortDir: 'asc' | 'desc';
 }
@@ -452,7 +453,7 @@ function toRow(
 }
 
 export function listGames(query: GamesQuery): Promise<GamesPage> {
-  const viewer = query.viewerId ?? query.userId;
+  const viewer = query.rankUserId ?? query.viewerId ?? query.userId;
 
   return (
     query.mapName ? findMapIdsByName(query.mapName) : Promise.resolve(null)

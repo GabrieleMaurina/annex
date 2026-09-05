@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import BurgerMenu from '../common/BurgerMenu';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
@@ -33,6 +33,7 @@ interface Props {
 function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
   const [settingsError, setSettingsError] = useState('');
   const bannedIdsRef = useRef<number[]>([]);
+  const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
   const {
     emojiPickerFor,
     emojiPops,
@@ -290,6 +291,7 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
           nameCellRefs={nameCellRefs}
           emojiPickerRef={emojiPickerRef}
           onPick={handleEmojiPick}
+          bumpMuteVersion={bumpMuteVersion}
         />
       )}
 

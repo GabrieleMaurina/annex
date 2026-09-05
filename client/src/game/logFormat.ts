@@ -7,11 +7,38 @@ export interface FormatPlayer {
   id: number;
   name: string;
   color: number;
+  isBot: boolean;
+}
+
+export interface LogColorRange {
+  start: number;
+  end: number;
+  color?: string;
+  badge?: boolean;
+  isBot?: boolean;
 }
 
 interface LogPart {
   color: string;
   text: string;
+  colorRanges?: LogColorRange[];
+}
+
+type LogHighlight = { color?: string; badge?: boolean; isBot?: boolean };
+
+function buildText() {
+  let text = '';
+  const colorRanges: LogColorRange[] = [];
+  const append = (piece: string, highlight?: LogHighlight) => {
+    if (highlight)
+      colorRanges.push({
+        start: text.length,
+        end: text.length + piece.length,
+        ...highlight,
+      });
+    text += piece;
+  };
+  return { append, finish: () => ({ text, colorRanges }) };
 }
 
 export function createLogFormatter() {
@@ -29,15 +56,20 @@ export function createLogFormatter() {
     };
     const nameFor = (id: number | undefined) =>
       (id === undefined ? undefined : playerById.get(id)?.name) ?? 'a player';
+    const isBotFor = (id: number | undefined) =>
+      (id === undefined ? undefined : playerById.get(id)?.isBot) ?? false;
+    const botHighlight = (id: number | undefined): LogHighlight | undefined =>
+      isBotFor(id) ? { isBot: true } : undefined;
 
     const parts: LogPart[] = [];
-    const push = (color: string, text: string) => parts.push({ color, text });
+    const push = (color: string, text: string, colorRanges?: LogColorRange[]) =>
+      parts.push({ color, text, colorRanges });
     const p = entry.payload as Record<string, unknown>;
     const n = (key: string) => p[key] as number;
     const deploy = (playerId: number, territoryId: number, troops: number) =>
       push(
         colorFor(playerId),
-        `Deployed ${troops} troops to territory #${territoryId + 1}`,
+        `${nameFor(playerId)} deployed ${troops} troops to territory #${territoryId + 1}`,
       );
 
     switch (entry.type) {
@@ -54,27 +86,27 @@ export function createLogFormatter() {
       case 'game:fortified':
         push(
           colorFor(n('playerId')),
-          `Fortified ${n('troops')} troops from territory #${n('fromTerritoryId') + 1} to territory #${n('territoryId') + 1}`,
+          `${nameFor(n('playerId'))} fortified ${n('troops')} troops from territory #${n('fromTerritoryId') + 1} to territory #${n('territoryId') + 1}`,
         );
         break;
       case 'game:attackMoved':
         push(
           colorFor(lastConquestAttackerId),
-          `Moved ${n('troops')} troops into conquered territory #${n('territoryId') + 1}`,
+          `${nameFor(lastConquestAttackerId)} moved ${n('troops')} troops into conquered territory #${n('territoryId') + 1}`,
         );
         break;
       case 'game:entrenched':
         push(
           colorFor(n('playerId')),
-          `Entrenched territory #${n('territoryId') + 1} with ${n('troops')} troops (now ${n('turnsRemaining')} turns)`,
+          `${nameFor(n('playerId'))} entrenched territory #${n('territoryId') + 1} with ${n('troops')} troops (now ${n('turnsRemaining')} turns)`,
         );
         break;
       case 'game:toxined':
         push(
           colorFor(n('playerId')),
           p.permanent
-            ? `Released toxin on territory #${n('territoryId') + 1} permanently`
-            : `Released toxin on territory #${n('territoryId') + 1} for ${n('roundsRemaining')} rounds`,
+            ? `${nameFor(n('playerId'))} released toxin on territory #${n('territoryId') + 1} permanently`
+            : `${nameFor(n('playerId'))} released toxin on territory #${n('territoryId') + 1} for ${n('roundsRemaining')} rounds`,
         );
         break;
       case 'game:radiationChanged': {
@@ -85,24 +117,56 @@ export function createLogFormatter() {
             `Radiation spread to territor${newly.length === 1 ? 'y' : 'ies'} ${newly.map((id) => `#${id + 1}`).join(', ')}`,
           );
         for (const id of p.eliminatedPlayerIds as number[])
-          push(colorFor(id), 'Eliminated by radiation');
+          push(colorFor(id), `${nameFor(id)} was eliminated by radiation`);
         break;
       }
       case 'game:attacked': {
         if (p.conquered) lastConquestAttackerId = n('attackerId');
-        let text = `${p.conquered ? 'Conquered' : 'Attacked'} territory #${n('defendingTerritoryId') + 1} from #${n('attackingTerritoryId') + 1}`;
-        if (p.attackingTroops !== undefined && p.defendingTroops !== undefined)
-          text += `: ${n('attackingTroops')} vs ${n('defendingTroops')} troops`;
-        if (p.attackLosses !== undefined) text += `, lost ${n('attackLosses')}`;
-        if (p.defenceLosses !== undefined)
-          text += ` and killed ${n('defenceLosses')}`;
-        push(colorFor(n('attackerId')), text);
+        const attackerId = n('attackerId');
+        const defenderId = p.defenderId as number | undefined;
+        const defenderColor = colorFor(defenderId);
+        const defenderHighlight =
+          defenderId !== undefined
+            ? { color: defenderColor, badge: true }
+            : undefined;
+
+        const b = buildText();
+        b.append(nameFor(attackerId), botHighlight(attackerId));
+        b.append(p.conquered ? ' conquered' : ' attacked');
+        if (defenderId !== undefined) {
+          b.append(' ');
+          b.append(nameFor(defenderId), {
+            ...defenderHighlight!,
+            isBot: isBotFor(defenderId),
+          });
+          b.append("'s");
+        }
+        b.append(' territory ');
+        b.append(`#${n('defendingTerritoryId') + 1}`, defenderHighlight);
+        b.append(` from #${n('attackingTerritoryId') + 1}`);
+        if (
+          p.attackingTroops !== undefined &&
+          p.defendingTroops !== undefined
+        ) {
+          b.append(`: ${n('attackingTroops')} vs `);
+          b.append(String(n('defendingTroops')), defenderHighlight);
+          b.append(' troops');
+        }
+        if (p.attackLosses !== undefined)
+          b.append(`, lost ${n('attackLosses')}`);
+        if (p.defenceLosses !== undefined) {
+          b.append(' and killed ');
+          b.append(String(n('defenceLosses')), defenderHighlight);
+        }
+
+        const { text, colorRanges } = b.finish();
+        push(colorFor(attackerId), text, colorRanges);
         break;
       }
       case 'game:cardSetPlayed':
         push(
           colorFor(n('playerId')),
-          `Received ${n('troops') - n('territoryBonusCount') * 2} troops from a set`,
+          `${nameFor(n('playerId'))} received ${n('troops') - n('territoryBonusCount') * 2} troops from a set`,
         );
         break;
       case 'game:turnStarted': {
@@ -112,9 +176,10 @@ export function createLogFormatter() {
           push(NEUTRAL_LOG_COLOR, `Started round ${round + 1}`);
         }
         const color = colorFor(n('playerId'));
+        const name = nameFor(n('playerId'));
         const source = (key: string, label: string) => {
           if (n(key) > 0)
-            push(color, `Received ${n(key)} troops from ${label}`);
+            push(color, `${name} received ${n(key)} troops from ${label}`);
         };
         source('troopsFromTerritories', 'territories');
         source('troopsFromBonuses', 'bonuses');
@@ -128,28 +193,42 @@ export function createLogFormatter() {
         break;
       case 'game:territoryClaimed': {
         const color = colorFor(n('playerId'));
-        push(color, `Claimed territory #${n('territoryId') + 1}`);
-        push(color, `Deployed 1 troops to territory #${n('territoryId') + 1}`);
+        const name = nameFor(n('playerId'));
+        push(color, `${name} claimed territory #${n('territoryId') + 1}`);
+        push(
+          color,
+          `${name} deployed 1 troops to territory #${n('territoryId') + 1}`,
+        );
         break;
       }
       case 'game:allianceFormed': {
         const actor = p.playerId as number | undefined;
-        push(
-          colorFor(actor ?? n('withId')),
-          actor === undefined
-            ? `Formed an alliance with ${nameFor(n('withId'))}`
-            : `${nameFor(actor)} formed an alliance with ${nameFor(n('withId'))}`,
-        );
+        const withId = n('withId');
+        const b = buildText();
+        if (actor === undefined) {
+          b.append('Formed an alliance with ');
+        } else {
+          b.append(nameFor(actor), botHighlight(actor));
+          b.append(' formed an alliance with ');
+        }
+        b.append(nameFor(withId), botHighlight(withId));
+        const { text, colorRanges } = b.finish();
+        push(colorFor(actor ?? withId), text, colorRanges);
         break;
       }
       case 'game:allianceTerminated': {
         const actor = p.playerId as number | undefined;
-        push(
-          colorFor(actor ?? n('withId')),
-          actor === undefined
-            ? `Terminated the alliance with ${nameFor(n('withId'))}`
-            : `${nameFor(actor)} terminated the alliance with ${nameFor(n('withId'))}`,
-        );
+        const withId = n('withId');
+        const b = buildText();
+        if (actor === undefined) {
+          b.append('Terminated the alliance with ');
+        } else {
+          b.append(nameFor(actor), botHighlight(actor));
+          b.append(' terminated the alliance with ');
+        }
+        b.append(nameFor(withId), botHighlight(withId));
+        const { text, colorRanges } = b.finish();
+        push(colorFor(actor ?? withId), text, colorRanges);
         break;
       }
     }

@@ -11,6 +11,7 @@ interface Props {
   results: Map<number, ResultRow> | null;
   selfId: number | null;
   mapNames: string[];
+  navigate?: (path: string) => void;
   onWatchReplay: () => void;
   showYouLabel?: boolean;
   rowClickable?: (player: GameState['players'][number]) => boolean;
@@ -19,6 +20,7 @@ interface Props {
   onRowClick?: (playerId: number) => void;
   belowTable?: ReactNode;
   overlay?: ReactNode;
+  showMuted?: boolean;
 }
 
 function GameEndResults({
@@ -26,6 +28,7 @@ function GameEndResults({
   results,
   selfId,
   mapNames,
+  navigate,
   onWatchReplay,
   showYouLabel,
   rowClickable,
@@ -34,6 +37,7 @@ function GameEndResults({
   onRowClick,
   belowTable,
   overlay,
+  showMuted,
 }: Props) {
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
   const won = selfId !== null && game.winnerIds.includes(selfId);
@@ -71,6 +75,8 @@ function GameEndResults({
         rowRef={rowRef}
         nameRef={nameRef}
         onRowClick={onRowClick}
+        navigate={navigate}
+        showMuted={showMuted}
       />
 
       {belowTable}

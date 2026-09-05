@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
 import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
+import { isPlayerMuted } from '../../common/mutedPlayers';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { connector } from '../../connector';
 import { contrastTextColor, playerColor } from '../../lib/palette';
@@ -143,6 +144,7 @@ function PlayersPanel({
   const showAllianceColumn = alliances === 'on' && !isSpectator && !gameEnded;
 
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+  const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
   const whiteCapitalIcon = useWhiteIcon('/icons/capital.svg');
@@ -484,6 +486,21 @@ function PlayersPanel({
                           alt="Bot"
                           className="flex-shrink-0"
                         />
+                      )}
+                      {p.id !== selfId && isPlayerMuted(p.id) && (
+                        <Tip text="Muted">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteMutedIcon ?? '/icons/muted.svg')
+                                : '/icons/muted.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Muted"
+                            className="flex-shrink-0"
+                          />
+                        </Tip>
                       )}
                       {p.eliminated && (
                         <Tip text="Eliminated">

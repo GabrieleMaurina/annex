@@ -54,9 +54,23 @@ function Game({
   const receivedFirstStateRef = useRef(false);
   const prevStateRef = useRef<GameState['state'] | null>(null);
   const prevTurnPhaseRef = useRef<GameState['turnPhase'] | null>(null);
+  const eliminatedIdsRef = useRef<Set<number> | null>(null);
   const logs = useGameLogs(game);
 
+  function playEliminationSound(state: GameState) {
+    if (eliminatedIdsRef.current) {
+      const newlyEliminated = state.players.some(
+        (p) => p.eliminated && !eliminatedIdsRef.current!.has(p.id),
+      );
+      if (newlyEliminated && state.state !== 'ended') playSound('bell');
+    }
+    eliminatedIdsRef.current = new Set(
+      state.players.filter((p) => p.eliminated).map((p) => p.id),
+    );
+  }
+
   function applyGameState(state: GameState) {
+    playEliminationSound(state);
     if (!receivedFirstStateRef.current) {
       receivedFirstStateRef.current = true;
     } else if (prevStateRef.current === 'lobby' && state.state === 'playing') {
@@ -76,6 +90,7 @@ function Game({
   }
 
   function updateGameFromAction(state: GameState) {
+    playEliminationSound(state);
     if (
       game?.state === 'playing' &&
       state.state === 'playing' &&
@@ -325,6 +340,7 @@ function Game({
           mission={mission}
           selfId={selfId}
           onTogglePause={togglePause}
+          results={results}
           gameEnded={false}
           showReplay={false}
           logs={logs}

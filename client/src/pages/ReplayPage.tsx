@@ -89,6 +89,7 @@ function buildGameState(
       const result = resultById.get(p.playerId);
       return {
         id: p.playerId,
+        userId: p.userId,
         name: p.name,
         team: p.team,
         color: p.color,
@@ -171,6 +172,7 @@ function ReplayPage({ navigate }: Props) {
               id: p.playerId,
               name: p.name,
               color: p.color,
+              isBot: p.isBot,
             })),
           )
         : [],

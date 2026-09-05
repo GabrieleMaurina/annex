@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { useReducer } from 'react';
 import { Button } from 'react-bootstrap';
 import BurgerMenu from '../common/BurgerMenu';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
@@ -47,6 +48,11 @@ function EndPage({
     nameCellRefs,
   } = useTableEmojiReactions(selfId);
   const tableEmojiEnabled = !connector.isOffline();
+  const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
+  const playersWithAccounts = game.players.map((p) => ({
+    ...p,
+    userId: results?.get(p.id)?.userId ?? p.userId,
+  }));
 
   return (
     <>
@@ -74,6 +80,7 @@ function EndPage({
           if (el) nameCellRefs.current.set(id, el);
         }}
         onRowClick={handleRowClick}
+        showMuted
         belowTable={
           tableEmojiEnabled && (
             <div className="d-flex justify-content-start mt-1">
@@ -114,6 +121,9 @@ function EndPage({
               nameCellRefs={nameCellRefs}
               emojiPickerRef={emojiPickerRef}
               onPick={handleEmojiPick}
+              players={playersWithAccounts}
+              navigate={navigate}
+              bumpMuteVersion={bumpMuteVersion}
             />
           )
         }

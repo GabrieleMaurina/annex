@@ -9,15 +9,16 @@ import { Button } from 'react-bootstrap';
 import { useLocation } from 'react-router-dom';
 import { connector } from '../connector';
 import { getPlayerName, subscribePlayerName } from '../lib/player';
+import { rankForElo } from '../lib/ranks';
 import type { Account } from '../lib/types';
 import { useWhiteIcon } from './icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from './panelStyle';
 
 const LINKS: { label: string; path: string }[] = [
   { label: 'Home', path: '/' },
+  { label: 'Games', path: '/games/replay' },
   { label: 'Players', path: '/players' },
   { label: 'Friends', path: '/friends' },
-  { label: 'Games', path: '/games/replay' },
 ];
 
 interface Props {
@@ -94,7 +95,17 @@ function BurgerMenu({ navigate, account, onSessionChange }: Props) {
           style={{ width: 200, zIndex: 10 }}
         >
           {name && (
-            <div className="text-center fw-semibold text-truncate">{name}</div>
+            <div className="text-center fw-semibold text-truncate d-flex align-items-center justify-content-center gap-1">
+              {account && (
+                <img
+                  src={`/ranks/${rankForElo(account.elo).image}.svg`}
+                  width={20}
+                  height={20}
+                  alt={rankForElo(account.elo).name}
+                />
+              )}
+              {name}
+            </div>
           )}
           {LINKS.map((link) => (
             <Button

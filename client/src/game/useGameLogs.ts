@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../connector';
 import type { GameState } from '../lib/types';
+import type { LogColorRange } from './logFormat';
 import { createLogFormatter } from './logFormat';
 
 export interface LogEntry {
   id: number;
   color: string;
   text: string;
+  colorRanges?: LogColorRange[];
 }
 
 const LIVE_EVENTS = [
@@ -47,27 +49,43 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     });
   }, []);
 
+  const rebuild = useCallback(
+    (entries: { type: string; payload: unknown }[]) => {
+      formatRef.current = createLogFormatter();
+      let id = 0;
+      const rebuilt: LogEntry[] = [];
+      for (const entry of entries)
+        for (const part of formatRef.current(
+          entry,
+          gameRef.current?.players ?? [],
+        ))
+          rebuilt.push({ id: ++id, ...part });
+      setLogs(rebuilt);
+    },
+    [],
+  );
+
   const pendingRef = useRef<{ type: string; payload: unknown }[] | null>(null);
 
   useEffect(() => {
     function onGameLogs(payload: {
       entries: { type: string; payload: unknown }[];
     }) {
-      if (gameRef.current) for (const entry of payload.entries) append(entry);
+      if (gameRef.current) rebuild(payload.entries);
       else pendingRef.current = payload.entries;
     }
     connector.on('game:logs', onGameLogs);
     return () => {
       connector.off('game:logs', onGameLogs);
     };
-  }, [append]);
+  }, [rebuild]);
 
   useEffect(() => {
     if (!game || !pendingRef.current) return;
     const entries = pendingRef.current;
     pendingRef.current = null;
-    for (const entry of entries) append(entry);
-  }, [game, append]);
+    rebuild(entries);
+  }, [game, rebuild]);
 
   useEffect(() => {
     const handlers = LIVE_EVENTS.map((type) => {

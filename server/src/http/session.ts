@@ -10,7 +10,9 @@ export function sessionRouter(
   router.get('/session', (_req, res) => {
     const { token, session } = identityOf(res);
     res.json({
-      account: session ? { username: session.username } : null,
+      account: session
+        ? { username: session.username, elo: session.elo }
+        : null,
       name: session ? session.username : anonNameFor(token),
       gameName: playerGame(token, session ? session.userId : null),
       clientSettings: session

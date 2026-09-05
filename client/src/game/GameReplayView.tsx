@@ -32,6 +32,7 @@ interface Props {
   settingsMenuOpen?: boolean;
   onPanelOpenChange?: (open: boolean) => void;
   onViewChange?: (view: 'results' | 'replay') => void;
+  showMuted?: boolean;
 }
 
 function GameReplayView({
@@ -56,6 +57,7 @@ function GameReplayView({
   settingsMenuOpen,
   onPanelOpenChange,
   onViewChange,
+  showMuted,
 }: Props) {
   const [view, setView] = useState<'results' | 'replay'>('results');
   const [replayIndex, setReplayIndex] = useState(0);
@@ -71,6 +73,7 @@ function GameReplayView({
         results={results}
         selfId={selfId}
         mapNames={mapNames}
+        navigate={navigate}
         onWatchReplay={() => setView('replay')}
         showYouLabel={showYouLabel}
         rowClickable={rowClickable}
@@ -79,6 +82,7 @@ function GameReplayView({
         onRowClick={onRowClick}
         belowTable={belowTable}
         overlay={overlay}
+        showMuted={showMuted}
       />
     );
   }
@@ -101,6 +105,7 @@ function GameReplayView({
         }
         mission={null}
         selfId={selfId}
+        results={results}
         gameEnded
         showReplay
         replayData={replayData}

@@ -4,6 +4,7 @@ import {
   resolveDifficulty,
   resolvePersonality,
 } from '../bots/randomProfile';
+import { addHostCandidate } from '../game/host';
 import { assignRandomColor, cycleColor } from '../game/mechanics';
 import { GameResponse } from '../session/context';
 import { createBotPlayer, playersById } from '../session/players';
@@ -65,6 +66,7 @@ export function addBot(
   game.playerIds.push(bot.id);
   game.playerTeams.set(bot.id, 0);
   assignRandomColor(game, bot.id);
+  addHostCandidate(game, bot.id);
 
   return respondGameState(game, player.id);
 }

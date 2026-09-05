@@ -15,7 +15,10 @@ import type {
   GameSummary,
   GenerateMapInput,
   IdentifyResult,
+  PlayerProfile,
   PlayerSearchResult,
+  PlayersPage,
+  PlayersQuery,
   ReplayAck,
   SessionResult,
   StoredGame,
@@ -184,6 +187,7 @@ export const connector = {
     for (const [key, value] of Object.entries(query.settings ?? {}))
       if (value) params.set(key, value);
     if (query.mine) params.set('mine', '1');
+    if (query.rankUserId) params.set('rankUserId', query.rankUserId);
     if (query.sort) params.set('sort', query.sort);
     if (query.sortDir) params.set('sortDir', query.sortDir);
     const empty: GamesPage = {
@@ -218,6 +222,39 @@ export const connector = {
     )
       .then(cb)
       .catch(() => cb([]));
+  },
+
+  listPlayers(query: PlayersQuery, cb: (page: PlayersPage) => void): void {
+    const params = new URLSearchParams();
+    params.set('page', String(query.page));
+    params.set('pageSize', String(query.pageSize));
+    if (query.username) params.set('username', query.username);
+    if (query.eloMin !== undefined) params.set('eloMin', String(query.eloMin));
+    if (query.eloMax !== undefined) params.set('eloMax', String(query.eloMax));
+    if (query.gamesMin !== undefined)
+      params.set('gamesMin', String(query.gamesMin));
+    if (query.gamesMax !== undefined)
+      params.set('gamesMax', String(query.gamesMax));
+    params.set('sort', query.sort);
+    params.set('sortDir', query.sortDir);
+    const empty: PlayersPage = {
+      players: [],
+      total: 0,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+    httpGet<PlayersPage>('/players?' + params.toString())
+      .then(cb)
+      .catch(() => cb(empty));
+  },
+
+  getPlayerProfile(
+    username: string,
+    cb: (profile: PlayerProfile | null) => void,
+  ): void {
+    httpGet<PlayerProfile>('/players/' + encodeURIComponent(username))
+      .then((profile) => cb('id' in profile ? profile : null))
+      .catch(() => cb(null));
   },
 
   register(

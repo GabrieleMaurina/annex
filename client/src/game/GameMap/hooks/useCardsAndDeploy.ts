@@ -127,12 +127,13 @@ export function useCardsAndDeploy({
           setAwardedCards((prev) => [...prev, { id, card }]);
           setTimeout(() => {
             setAwardedCards((prev) => prev.filter((a) => a.id !== id));
-          }, 4000);
+          }, 3000);
         }
       }
       receivedFirstHand = true;
-      handRef.current = payload.cards;
-      setHand(payload.cards);
+      const cards = [...payload.cards];
+      handRef.current = cards;
+      setHand(cards);
     }
     connector.on('game:cards', onCards);
     connector.requestCards();

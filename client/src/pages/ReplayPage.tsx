@@ -71,6 +71,8 @@ function buildGameState(
     turnPhase: 'deploy',
     troopsToDeploy: 0,
     turnStartedAt: Date.now(),
+    startedAt: doc.startedAt,
+    endedAt: doc.endedAt,
     paused: false,
     selectedTerritoryId: null,
     fortifyStartTerritoryId: null,

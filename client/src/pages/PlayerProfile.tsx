@@ -4,16 +4,27 @@ import { useNavigate, useParams } from 'react-router-dom';
 import FriendshipButton from '../common/FriendshipButton';
 import { useWhiteIcon } from '../common/icon';
 import { connector } from '../connector';
-import { contrastTextColor, playerColor } from '../lib/palette';
+import {
+  contrastTextColor,
+  GAME_STATE_COLORS,
+  playerColor,
+} from '../lib/palette';
 import { rankForElo } from '../lib/ranks';
 import type {
   Account,
   GameHistoryRow,
   GamesPage,
+  GameSummary,
   PlayerProfile,
 } from '../lib/types';
 
 const PAGE_SIZE = 20;
+
+const LIVE_GAME_LABEL: Record<GameSummary['state'], string> = {
+  lobby: 'Join',
+  playing: 'Spectate',
+  ended: 'View',
+};
 
 function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
@@ -69,11 +80,26 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   );
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<GamesPage | null>(null);
+  const [liveGame, setLiveGame] = useState<GameSummary | null>(null);
 
   useEffect(() => {
     if (!username) return;
     connector.getPlayerProfile(username, setProfile);
   }, [username]);
+
+  useEffect(() => {
+    if (!profile) return;
+    let stale = false;
+    connector.listGames(
+      { page: 1, pageSize: 1, playerIds: [profile.id] },
+      (r) => {
+        if (!stale) setLiveGame(r.games[0] ?? null);
+      },
+    );
+    return () => {
+      stale = true;
+    };
+  }, [profile]);
 
   useEffect(() => {
     if (!profile) return;
@@ -119,6 +145,13 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
     account.username.toLowerCase() !== profile.username.toLowerCase();
 
   const rank = rankForElo(profile.elo);
+  const liveGameState: GameSummary['state'] | undefined =
+    liveGame &&
+    liveGame.state === 'lobby' &&
+    liveGame.playerCount >= liveGame.slots
+      ? 'playing'
+      : liveGame?.state;
+  const liveGameColor = liveGameState ? GAME_STATE_COLORS[liveGameState] : '';
   const totalPages = result
     ? Math.max(1, Math.ceil(result.total / PAGE_SIZE))
     : 1;
@@ -158,6 +191,12 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
               : profile.averagePlacing.toFixed(2)}
           </div>
         </div>
+        <div className="text-center">
+          <div className="small text-muted">Member since</div>
+          <div className="fs-5">
+            {new Date(profile.createdAt).toLocaleDateString()}
+          </div>
+        </div>
         {canManageFriend && (
           <div className="d-flex flex-column align-items-center gap-2">
             <FriendshipButton userId={profile.id} username={profile.username} />
@@ -173,6 +212,25 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
           </div>
         )}
       </div>
+
+      {liveGame && liveGameState && (
+        <div className="d-flex justify-content-center mb-4">
+          <button
+            type="button"
+            className="btn"
+            style={{
+              backgroundColor: liveGameColor,
+              borderColor: liveGameColor,
+              color: contrastTextColor(liveGameColor),
+            }}
+            onClick={() =>
+              navigate(`/games/live/${encodeURIComponent(liveGame.name)}`)
+            }
+          >
+            {LIVE_GAME_LABEL[liveGameState]}: {liveGame.name}
+          </button>
+        </div>
+      )}
 
       {result === null ? (
         <div className="text-center">

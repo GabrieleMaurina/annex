@@ -32,17 +32,21 @@ function errorHandler(
 export function createHttpApp(deps: HttpDeps): express.Express {
   const app = express();
   app.use(corsMiddleware);
-  app.use(gamesRouter(deps.listGames));
-  app.use(publicGamesRouter);
-  app.use(playersRouter);
-  app.use(express.json({ limit: '16kb' }));
-  app.use(identityMiddleware);
-  app.use(gameHistoryRouter);
-  app.use(sessionRouter(deps.playerGame));
-  app.use(authRouter(deps.inLiveGame));
-  app.use(settingsRouter);
-  app.use(friendsRouter);
-  app.use(messagesRouter);
+
+  const api = express.Router();
+  api.use(gamesRouter(deps.listGames));
+  api.use(publicGamesRouter);
+  api.use(playersRouter);
+  api.use(express.json({ limit: '16kb' }));
+  api.use(identityMiddleware);
+  api.use(gameHistoryRouter);
+  api.use(sessionRouter(deps.playerGame));
+  api.use(authRouter(deps.inLiveGame));
+  api.use(settingsRouter);
+  api.use(friendsRouter);
+  api.use(messagesRouter);
+  app.use('/api', api);
+
   app.use(errorHandler);
   return app;
 }

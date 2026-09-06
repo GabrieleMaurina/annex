@@ -19,7 +19,7 @@ import type { SearchSelectItem } from '../common/SearchMultiSelect';
 import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
 import { connector } from '../connector';
-import { contrastTextColor, playerColor } from '../lib/palette';
+import { GAME_STATE_COLORS, contrastTextColor } from '../lib/palette';
 import {
   getHomeFilters,
   getPlayerName,
@@ -66,12 +66,6 @@ const DEFAULT_FILTERS: HomeFilters = {
   password: '',
   settings: {},
   sort: 'newest',
-};
-
-const GAME_STATE_COLORS: Record<GameSummary['state'], string> = {
-  lobby: playerColor(2),
-  playing: playerColor(3),
-  ended: playerColor(0),
 };
 
 type SortOption =

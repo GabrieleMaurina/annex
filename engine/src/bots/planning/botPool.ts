@@ -4,9 +4,9 @@ import { getBotWorkerConfig } from '../../workers/registry';
 import { WorkerResult } from '../../workers/types';
 import { WorkerPool } from '../../workers/workerPool';
 import {
-  CampaignCache,
   PlanBotTurnInput,
   PlanBotTurnResult,
+  TurnPlanCache,
 } from './planBotTurn';
 
 let pool: WorkerPool<PlanBotTurnInput, PlanBotTurnResult> | null = null;
@@ -23,11 +23,11 @@ export function planBotTurnAsync(
   game: Game,
   botId: number,
   botProfile: BotProfile,
-  cachedCampaign: CampaignCache | null,
+  cachedPlan: TurnPlanCache | null,
   callback: (result: WorkerResult<PlanBotTurnResult>) => void,
 ): void {
   getPool().run(
-    { game, map: getGameMap(game), botId, botProfile, cachedCampaign },
+    { game, map: getGameMap(game), botId, botProfile, cachedPlan },
     callback,
   );
 }

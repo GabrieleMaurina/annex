@@ -5,9 +5,11 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "lint": "eslint src",
-    "format": "prettier --write src",
-    "types": "tsc --noEmit",
+    "lint": "eslint src test",
+    "format": "prettier --write src test",
+    "types": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "node --require ts-node/register --test \"test/*.test.ts\"",
+    "botsim": "ts-node test/botSim.ts",
     "check": "npm run format && npm run lint && npm run types"
   },
   "keywords": [],

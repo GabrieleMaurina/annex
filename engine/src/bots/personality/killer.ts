@@ -7,6 +7,9 @@ export const killerWeights: Weights = {
   stack: 2.5,
   grudge: 0.3,
   defendFrontier: 0.5,
+  antiLeader: 2,
+  defense: 0.5,
+  holdChokepoint: 1,
 };
 
 export const killerWeaknessThreshold = 0.35;

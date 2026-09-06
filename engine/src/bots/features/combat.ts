@@ -14,6 +14,8 @@ export function attackWinProbability(
 ): number {
   if (attackingTroops <= 0) return 0;
   if (defendingTroops <= 0) return 1;
+  if (attackingTroops > 80 && attackingTroops > defendingTroops * 3)
+    return 0.99;
   return trueWinProb(attackingTroops, defendingTroops, defendingDice);
 }
 

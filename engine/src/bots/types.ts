@@ -5,22 +5,15 @@ export interface Weights {
   stack: number;
   grudge: number;
   defendFrontier: number;
+  antiLeader: number;
+  defense: number;
+  holdChokepoint: number;
 }
 
 export interface DifficultyParams {
   noise: number;
   planningConfidence: number;
-}
-
-export type CampaignType = 'complete' | 'break' | 'eliminate';
-
-export interface CampaignPlan {
-  type: CampaignType;
-  targetPlayerId: number | null;
-  continentId: number | null;
-  orderedTargetIds: number[];
-  stagingTerritoryId: number;
-  probability: number;
-  expectedTroopsRemaining: number;
-  score: number;
+  maxPlanDepth: number;
+  optimizeFortify: boolean;
+  maxCampaigns: number;
 }

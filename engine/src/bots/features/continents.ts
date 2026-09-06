@@ -29,6 +29,7 @@ export function continentCompletionCandidates(
   const map = getGameMap(game);
   const candidates: ContinentCompletionCandidate[] = [];
   for (const [continentId, territoryIds] of continentGroups(game)) {
+    if ((map.bonuses[continentId] ?? 0) <= 0) continue;
     const owned = territoryIds.filter(
       (id) => ownerOf(game, view, id) === botId,
     );
@@ -68,6 +69,8 @@ export function continentBreakCandidates(
   const map = getGameMap(game);
   const candidates: ContinentBreakCandidate[] = [];
   for (const [continentId, territoryIds] of continentGroups(game)) {
+    if ((map.bonuses[continentId] ?? 0) <= 0 || territoryIds.length < 2)
+      continue;
     const owners = territoryIds.map((id) => ownerOf(game, view, id));
     const firstOwner = owners[0];
     if (

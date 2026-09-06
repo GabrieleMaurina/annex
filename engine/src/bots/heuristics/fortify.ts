@@ -5,7 +5,7 @@ import {
   neighborsOf,
   ownedTerritoryIds,
 } from '../features/territory';
-import { CampaignPlan, Weights } from '../types';
+import { Weights } from '../types';
 import { BotView } from '../view';
 
 export interface FortifyChoice {
@@ -31,15 +31,12 @@ export function chooseFortify(
   view: BotView,
   botId: number,
   weights: Weights,
-  campaign: CampaignPlan | null,
 ): FortifyChoice | null {
   const frontier = frontierTerritories(game, view, botId);
-  const target =
-    campaign?.stagingTerritoryId ??
-    frontier.sort(
-      (a, b) =>
-        (game.territoryTroops.get(a) ?? 0) - (game.territoryTroops.get(b) ?? 0),
-    )[0];
+  const target = frontier.sort(
+    (a, b) =>
+      (game.territoryTroops.get(a) ?? 0) - (game.territoryTroops.get(b) ?? 0),
+  )[0];
   if (target === undefined) return null;
 
   const frontierSet = new Set(frontier);
@@ -65,7 +62,7 @@ export function chooseFortify(
         (game.territoryTroops.get(b) ?? 0) - (game.territoryTroops.get(a) ?? 0),
     );
 
-  const shouldStack = weights.stack >= 1.5 || campaign !== null;
+  const shouldStack = weights.stack >= 1.5;
   if (!shouldStack && sourceCandidates.length === 0) return null;
 
   const source = sourceCandidates[0];

@@ -5,12 +5,8 @@ import {
   continentCompletionCandidates,
 } from '../features/continents';
 import { grudgeAgainst } from '../features/grudge';
-import {
-  frontierTerritories,
-  hostileNeighbors,
-  neighborsOf,
-} from '../features/territory';
-import { CampaignPlan, Weights } from '../types';
+import { frontierTerritories, hostileNeighbors } from '../features/territory';
+import { Weights } from '../types';
 import { BotView, ownerOf } from '../view';
 
 export interface AttackChoice {
@@ -29,37 +25,18 @@ function blitzAllTroops(attackingTroops: number): {
   return { type: 'blitz', troops: attackingTroops - 1 };
 }
 
-function sourceForCampaignStep(
-  game: Game,
-  botId: number,
-  endId: number,
-): number | null {
-  let best: number | null = null;
-  let bestTroops = -1;
-  for (const n of neighborsOf(game, endId)) {
-    if (game.territoryOwners.get(n) !== botId) continue;
-    const troops = game.territoryTroops.get(n) ?? 0;
-    if (troops > bestTroops) {
-      bestTroops = troops;
-      best = n;
-    }
-  }
-  return best;
-}
-
 export function chooseAttackMoveTroops(
   game: Game,
   view: BotView,
   botId: number,
-  campaign: CampaignPlan | null,
-  campaignStep: number,
+  moveMax: boolean,
 ): number {
   const startId = game.attackStartTerritoryId!;
   const startTroops = game.territoryTroops.get(startId) ?? 0;
   const min = game.attackConquestMinTroops ?? 1;
   const max = startTroops - 1;
 
-  if (campaign && campaignStep < campaign.orderedTargetIds.length) return max;
+  if (moveMax) return max;
   if (hostileNeighbors(game, view, botId, startId).length > 0)
     return Math.max(min, Math.floor(max / 2));
   return max;
@@ -70,28 +47,8 @@ export function chooseAttack(
   view: BotView,
   botId: number,
   weights: Weights,
-  campaign: CampaignPlan | null,
-  campaignStep: number,
   noise: number,
 ): AttackChoice | null {
-  if (campaign && campaignStep < campaign.orderedTargetIds.length) {
-    const endId = campaign.orderedTargetIds[campaignStep];
-    const startId = sourceForCampaignStep(game, botId, endId);
-    if (startId !== null) {
-      const attackingTroops = game.territoryTroops.get(startId) ?? 0;
-      const defendingTroops = game.territoryTroops.get(endId) ?? 0;
-      const winProb = attackWinProbability(
-        attackingTroops - 1,
-        defendingTroops,
-        defenceDiceFor(game, endId),
-      );
-      if (attackingTroops >= 2 && winProb >= MIN_WIN_PROBABILITY) {
-        const { type, troops } = blitzAllTroops(attackingTroops);
-        return { startId, endId, troops, type };
-      }
-    }
-  }
-
   const breakTargets = new Set(
     continentBreakCandidates(game, view, botId).map(
       (c) => c.weakestTerritoryId,

@@ -4,12 +4,12 @@ import { broadcastGameState, games } from '../session/store';
 import { BotProfile, Game, Player } from '../types';
 import { dispatchBotAction } from './dispatch';
 import { planBotTurnAsync } from './planning/botPool';
-import { BotAction, CampaignCache } from './planning/planBotTurn';
+import { BotAction, TurnPlanCache } from './planning/planBotTurn';
 import { thinkDelayMs } from './thinkTime';
 
 const pendingActs = new Map<string, NodeJS.Timeout>();
 const inFlight = new Set<string>();
-const campaignByGame = new Map<string, CampaignCache>();
+const turnPlanByGame = new Map<string, TurnPlanCache>();
 
 function currentBot(game: Game): (Player & { botProfile: BotProfile }) | null {
   if (game.state !== 'playing' || game.paused) return null;
@@ -76,7 +76,7 @@ function performPhaseStep(
     game,
     botId,
     botProfile,
-    campaignByGame.get(gameName) ?? null,
+    turnPlanByGame.get(gameName) ?? null,
     (res) => {
       inFlight.delete(gameName);
       if (!res.ok) {
@@ -94,7 +94,7 @@ function performPhaseStep(
       )
         return;
 
-      campaignByGame.set(gameName, res.result.campaign);
+      turnPlanByGame.set(gameName, res.result.plan);
       dispatchActions(player, res.result.actions);
     },
   );

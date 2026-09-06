@@ -21,6 +21,9 @@ function randomWeights(): Weights {
     stack: Math.random() * 3,
     grudge: Math.random() * 3,
     defendFrontier: Math.random() * 3,
+    antiLeader: Math.random() * 3,
+    defense: Math.random() * 3,
+    holdChokepoint: Math.random() * 3,
   };
 }
 

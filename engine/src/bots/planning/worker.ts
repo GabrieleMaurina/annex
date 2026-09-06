@@ -16,7 +16,7 @@ export function runBotWorker(scope: EngineWorkerScope): void {
         input.game,
         input.botId,
         input.botProfile,
-        input.cachedCampaign,
+        input.cachedPlan,
       );
       scope.postMessage({ ok: true, result });
     } catch (err) {

@@ -4,7 +4,7 @@ import {
   continentCompletionCandidates,
 } from '../features/continents';
 import { hostileNeighbors, ownedTerritoryIds } from '../features/territory';
-import { CampaignPlan, Weights } from '../types';
+import { Weights } from '../types';
 import { BotView, troopsAt } from '../view';
 
 export interface DeployChoice {
@@ -35,17 +35,9 @@ export function chooseDeploy(
   view: BotView,
   botId: number,
   weights: Weights,
-  campaign: CampaignPlan | null,
 ): DeployChoice | null {
   const troopsToDeploy = game.troopsToDeploy;
   if (troopsToDeploy <= 0) return null;
-
-  if (campaign) {
-    return {
-      territoryId: campaign.stagingTerritoryId,
-      troops: troopsToDeploy,
-    };
-  }
 
   const bordering = ownedTerritoryIds(game, botId).filter(
     (id) => hostileNeighbors(game, view, botId, id).length > 0,

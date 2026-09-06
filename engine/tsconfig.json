@@ -11,5 +11,13 @@
     "composite": true,
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
     "types": ["node"]
+  },
+  "exclude": ["dist", "test", "node_modules"],
+  "ts-node": {
+    "compilerOptions": {
+      "rootDir": ".",
+      "composite": false,
+      "declaration": false
+    }
   }
 }

@@ -7,4 +7,7 @@ export const takerWeights: Weights = {
   stack: 0.5,
   grudge: 0.2,
   defendFrontier: 1,
+  antiLeader: 0.3,
+  defense: 1,
+  holdChokepoint: 0.5,
 };

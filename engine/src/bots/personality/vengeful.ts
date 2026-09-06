@@ -7,4 +7,7 @@ export const vengefulWeights: Weights = {
   stack: 0.5,
   grudge: 3,
   defendFrontier: 1,
+  antiLeader: 1,
+  defense: 1,
+  holdChokepoint: 1,
 };

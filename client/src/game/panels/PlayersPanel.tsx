@@ -555,11 +555,11 @@ function PlayersPanel({
                     </td>
                   )}
                   <td className="align-middle text-center" style={rowStyle}>
-                    {p.territoryCount ?? '?'}
+                    {p.eliminated ? '-' : (p.territoryCount ?? '?')}
                   </td>
                   {isCapitals && (
                     <td className="align-middle text-center" style={rowStyle}>
-                      {p.capitalCount}
+                      {p.eliminated ? '-' : p.capitalCount}
                     </td>
                   )}
                   {bounties === 'on' && (
@@ -568,10 +568,10 @@ function PlayersPanel({
                     </td>
                   )}
                   <td className="align-middle text-center" style={rowStyle}>
-                    {p.troopCount ?? '?'}
+                    {p.eliminated ? '-' : (p.troopCount ?? '?')}
                   </td>
                   <td className="align-middle text-center" style={rowStyle}>
-                    {p.cardCount}
+                    {p.eliminated ? '-' : p.cardCount}
                   </td>
                 </tr>
               );

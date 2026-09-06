@@ -150,6 +150,8 @@ A private game (visibility, a server-only attribute; see "Password and visibilit
   turnPhase: 'territory' | 'troop' | 'capital' | 'deploy' | 'attack' | 'fortify' | 'entrench' | 'toxins';
   troopsToDeploy: number;
   turnStartedAt: number; // ms since epoch
+  startedAt: number | null; // ms since epoch when `game:start` ran, null while still in `lobby`
+  endedAt: number | null; // ms since epoch when the game reached `state: 'ended'`, null before that
   paused: boolean;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
@@ -284,7 +286,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ## HTTP API
 
-**Everything except an active game is HTTP.** The home screen (game list), account, and all the other pages are plain HTTP requests to Express; a Socket.IO connection exists **only** while the client is on a live game's screen (see "Player identity" and `player:identify`). Requests carry the `anx` cookie (`credentials: 'include'`); responses are JSON and ack-shaped `{ ok: true, ... } | { ok: false, error: string }` (except `GET /session`, `GET /games/live`, `GET /friends`, and `GET /messages`) — HTTP `200` for normal responses, `500` with `{ ok: false, error: 'server error' }` for an unexpected fault. CORS allows credentials for the one configured client origin (same-site in production). Every route except `GET /games/live` (which is public and identity-free, so it never touches the cookie or the session store) resolves the `anx` cookie: one with no valid cookie is minted a fresh anonymous one in the response's `Set-Cookie`, and a logged-in one has its 30-day TTL slid (180-day cap enforced). All `/auth/*` routes are rate-limited per client IP; over the limit they answer `{ ok: false, error: 'too many requests' }`, or `{ ok: true }` for the two "always ok" routes.
+**Everything except an active game is HTTP.** The home screen (game list), account, and all the other pages are plain HTTP requests to Express; a Socket.IO connection exists **only** while the client is on a live game's screen (see "Player identity" and `player:identify`). Every HTTP route below is served under the `/api` prefix (`GET /session` is `GET /api/session` on the wire, and so on) — the headings drop it for brevity; only `/socket.io/` sits outside `/api`. Requests carry the `anx` cookie (`credentials: 'include'`); responses are JSON and ack-shaped `{ ok: true, ... } | { ok: false, error: string }` (except `GET /session`, `GET /games/live`, `GET /friends`, and `GET /messages`) — HTTP `200` for normal responses, `500` with `{ ok: false, error: 'server error' }` for an unexpected fault. CORS allows credentials for the one configured client origin (same-site in production). Every route except `GET /games/live` (which is public and identity-free, so it never touches the cookie or the session store) resolves the `anx` cookie: one with no valid cookie is minted a fresh anonymous one in the response's `Set-Cookie`, and a logged-in one has its 30-day TTL slid (180-day cap enforced). All `/auth/*` routes are rate-limited per client IP; over the limit they answer `{ ok: false, error: 'too many requests' }`, or `{ ok: true }` for the two "always ok" routes.
 
 ### `GET /session`
 - **When sent:** on client boot, after login/logout, and polled by the home screen alongside `GET /games/live` (same visibility gate) so its "Resume" button reflects the caller's current game.
@@ -317,7 +319,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `GET /players/:username`
 - **When sent:** the player profile page (`/players/<username>`) loads.
-- **Response:** `{ id, username, elo, gamesPlayed, wins, averagePlacing, percentile }`, or `404 { ok: false, error: 'not found' }` for an unknown username. `averagePlacing` is the account's mean finishing position across every game it's been recorded in (1-based; `null` if `gamesPlayed` is 0). `percentile` is the share of all other registered accounts this one's `elo` beats (0–100, rounded; 100 when there's only one account). The page's own games table is a separate `GET /games/history?playerIds=<id>&rankUserId=<id>&sort=newest` request (see above), not part of this response. Public and unrestricted, like the rest of this router.
+- **Response:** `{ id, username, elo, gamesPlayed, wins, averagePlacing, percentile, createdAt }`, or `404 { ok: false, error: 'not found' }` for an unknown username. `averagePlacing` is the account's mean finishing position across every game it's been recorded in (1-based; `null` if `gamesPlayed` is 0). `percentile` is the share of all other registered accounts this one's `elo` beats (0–100, rounded; 100 when there's only one account). `createdAt` is the epoch ms the account was created, derived from the Mongo `_id` timestamp. The page's own games table is a separate `GET /games/history?playerIds=<id>&rankUserId=<id>&sort=newest` request (see above), not part of this response. Public and unrestricted, like the rest of this router.
 
 ### `GET /maps/:id`
 - **When sent:** the replay page, as its own request after `GET /games/replay/:id` returns, using that document's `mapId`.

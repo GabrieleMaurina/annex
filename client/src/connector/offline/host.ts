@@ -5,6 +5,7 @@ import {
   type MapSize,
   type WaterLevel,
 } from 'engine';
+import { getPlayerName, subscribePlayerName } from '../../lib/player';
 import type { GameState } from '../../lib/types';
 import { publish } from '../inbound';
 import { browserWorkerPort } from './browserWorkerPort';
@@ -24,7 +25,12 @@ let lastState: GameState | null = null;
 let pendingActor: number | null = null;
 let bufferedTurnStarted: unknown = null;
 let pausedForHandoff = false;
+let unsubscribeName: (() => void) | null = null;
 const queue: (() => void)[] = [];
+
+function localHostName(): string {
+  return getPlayerName() || 'You';
+}
 
 interface OfflineSeed {
   settings: Record<string, unknown>;
@@ -265,11 +271,18 @@ export function startOffline(): void {
     if (!engine) engine = buildEngine();
     engine.loadMaps(maps);
     session += 1;
-    const hostName = 'You';
+    const hostName = localHostName();
     hostId = engine.addPlayer(hostName).id;
     currentActorId = hostId;
     localPlayerIds = [hostId];
     gameName = `Game with ${hostName}`;
+    const boundHostId = hostId;
+    unsubscribeName?.();
+    unsubscribeName = subscribePlayerName(() => {
+      if (!engine) return;
+      engine.setName(boundHostId, localHostName());
+      if (currentActorId !== null) engine.requestState(currentActorId);
+    });
     if (!engine.createGame(hostId, { name: gameName }, true).ok) {
       gameName = `${URL_ROOM}-${session}`;
       engine.createGame(hostId, { name: gameName }, true);
@@ -291,6 +304,8 @@ export function stopOffline(): void {
   ready = false;
   seed = null;
   queue.length = 0;
+  unsubscribeName?.();
+  unsubscribeName = null;
   if (engine && hostId !== null) engine.disconnect(hostId);
   hostId = null;
   currentActorId = null;
@@ -337,7 +352,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       cb?.({
         id,
         gameName: URL_ROOM,
-        name: 'You',
+        name: localHostName(),
         account: null,
       });
       return;

@@ -480,7 +480,11 @@ export function useCanvasInteractions({
         return;
       }
       if (!vertex || !isInteractable(vertex)) {
-        if (fortifyStartTerritoryId !== null) cancelFortify();
+        if (
+          fortifyStartTerritoryId !== null &&
+          vertex?.id !== fortifyStartTerritoryId
+        )
+          cancelFortify();
         return;
       }
       if (fortifyStartTerritoryId === null) {
@@ -511,7 +515,7 @@ export function useCanvasInteractions({
       }
       if (!vertex || !isInteractable(vertex)) {
         if (attackStartTerritoryId !== null) {
-          cancelAttack();
+          if (vertex?.id !== attackStartTerritoryId) cancelAttack();
         } else if (attackDiceRoll !== null) {
           setAttackDiceRoll(null);
         }
@@ -527,7 +531,8 @@ export function useCanvasInteractions({
 
     if (turnPhase === 'entrench') {
       if (!vertex || !isInteractable(vertex)) {
-        if (selectedTerritoryId !== null) selectTerritory(null);
+        if (selectedTerritoryId !== null && vertex?.id !== selectedTerritoryId)
+          selectTerritory(null);
         return;
       }
       if (selectedTerritoryId === vertex.id) {
@@ -540,7 +545,8 @@ export function useCanvasInteractions({
 
     if (turnPhase === 'toxins') {
       if (!vertex || !isInteractable(vertex)) {
-        if (selectedTerritoryId !== null) selectTerritory(null);
+        if (selectedTerritoryId !== null && vertex?.id !== selectedTerritoryId)
+          selectTerritory(null);
         return;
       }
       if (selectedTerritoryId === vertex.id) {
@@ -552,7 +558,8 @@ export function useCanvasInteractions({
     }
 
     if (!vertex || !isInteractable(vertex)) {
-      if (selectedTerritoryId !== null) selectTerritory(null);
+      if (selectedTerritoryId !== null && vertex?.id !== selectedTerritoryId)
+        selectTerritory(null);
       return;
     }
     if (selectedTerritoryId === vertex.id) {

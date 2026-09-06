@@ -6,6 +6,13 @@ import { playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/SettingsPanel';
 
+function formatDuration(ms: number): string {
+  const totalMinutes = Math.max(0, Math.round(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
 interface Props {
   game: GameState;
   results: Map<number, ResultRow> | null;
@@ -42,6 +49,10 @@ function GameEndResults({
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
   const won = selfId !== null && game.winnerIds.includes(selfId);
   const isTeamDeathmatch = game.gameMode === 'Team Deathmatch';
+  const duration =
+    game.startedAt !== null && game.endedAt !== null
+      ? formatDuration(game.endedAt - game.startedAt)
+      : null;
 
   return (
     <Container fluid className="pt-5 pb-5 px-2 px-sm-4 bg-body min-vh-100">
@@ -59,6 +70,9 @@ function GameEndResults({
           >
             {winners[0]?.name} wins!
           </p>
+        )}
+        {duration && (
+          <p className="text-body-secondary mb-0 mt-2">Duration: {duration}</p>
         )}
       </div>
 

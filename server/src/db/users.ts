@@ -797,6 +797,7 @@ export interface PlayerProfile {
   wins: number;
   averagePlacing: number | null;
   percentile: number;
+  createdAt: number;
 }
 
 export function listPlayers(query: PlayersQuery): Promise<PlayersPage> {
@@ -877,6 +878,7 @@ export function getPlayerProfile(
           wins: stats?.wins ?? 0,
           averagePlacing: averagePlacing(stats),
           percentile: total > 1 ? Math.round((lower / (total - 1)) * 100) : 100,
+          createdAt: doc._id.getTimestamp().getTime(),
         };
       });
     });

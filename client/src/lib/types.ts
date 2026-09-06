@@ -210,6 +210,8 @@ export interface GameState {
   turnPhase: TurnPhase;
   troopsToDeploy: number;
   turnStartedAt: number;
+  startedAt: number | null;
+  endedAt: number | null;
   paused: boolean;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
@@ -478,6 +480,8 @@ export interface StoredGame {
   mapName: string;
   mapGeneration: GenerateMapInput | null;
   originalHostId: number;
+  startedAt: number;
+  endedAt: number;
   roundNumber: number;
   playerCount: number;
   winnerIds: number[];
@@ -625,6 +629,7 @@ export interface PlayerProfile {
   wins: number;
   averagePlacing: number | null;
   percentile: number;
+  createdAt: number;
 }
 
 export interface Friend {

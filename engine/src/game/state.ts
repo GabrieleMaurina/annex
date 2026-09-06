@@ -173,6 +173,8 @@ export function gameState(game: Game) {
       game.paused && game.pausedAt !== null
         ? game.turnStartedAt + (Date.now() - game.pausedAt)
         : game.turnStartedAt,
+    startedAt: game.startedAt,
+    endedAt: game.endedAt,
     paused: game.paused,
     selectedTerritoryId: game.selectedTerritoryId,
     fortifyStartTerritoryId: game.fortifyStartTerritoryId,

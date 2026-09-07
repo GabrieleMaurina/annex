@@ -27,12 +27,13 @@ import {
   saveHomeFilters,
 } from '../lib/player';
 import type {
+  Fill,
   GameSummary,
+  GenerationType,
   HomeFilters,
   HomeGamesPage,
   HomeGamesQuery,
   MapSize,
-  WaterLevel,
 } from '../lib/types';
 import { GAME_MODES } from '../lib/types';
 import {
@@ -57,7 +58,8 @@ const DEFAULT_FILTERS: HomeFilters = {
   mode: '',
   mapName: '',
   mapGenerationSize: '',
-  mapGenerationWater: '',
+  mapGenerationType: '',
+  mapGenerationFill: '',
   playersMin: PLAYERS_MIN,
   playersMax: PLAYERS_MAX,
   roundsMin: ROUNDS_MIN,
@@ -126,8 +128,11 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
   const [mapGenerationSize, setMapGenerationSize] = useState(
     initial.mapGenerationSize,
   );
-  const [mapGenerationWater, setMapGenerationWater] = useState(
-    initial.mapGenerationWater,
+  const [mapGenerationType, setMapGenerationType] = useState(
+    initial.mapGenerationType,
+  );
+  const [mapGenerationFill, setMapGenerationFill] = useState(
+    initial.mapGenerationFill,
   );
   const [playersMin, setPlayersMin] = useState(initial.playersMin);
   const [playersMax, setPlayersMax] = useState(initial.playersMax);
@@ -155,7 +160,8 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
     mode,
     mapName,
     mapGenerationSize,
-    mapGenerationWater,
+    mapGenerationType,
+    mapGenerationFill,
     playersMin,
     playersMax,
     roundsMin,
@@ -171,7 +177,8 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
     mode,
     mapName,
     mapGenerationSize,
-    mapGenerationWater,
+    mapGenerationType,
+    mapGenerationFill,
     playersMin,
     playersMax,
     roundsMin,
@@ -211,8 +218,11 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
         mapGenerationSize: generated
           ? (mapGenerationSize as MapSize) || undefined
           : undefined,
-        mapGenerationWater: generated
-          ? (mapGenerationWater as WaterLevel) || undefined
+        mapGenerationType: generated
+          ? (mapGenerationType as GenerationType) || undefined
+          : undefined,
+        mapGenerationFill: generated
+          ? (mapGenerationFill as Fill) || undefined
           : undefined,
         playersMin: playersNarrowed ? playersMin : undefined,
         playersMax: playersNarrowed ? playersMax : undefined,
@@ -251,7 +261,8 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
     setMode('');
     setMapName('');
     setMapGenerationSize('');
-    setMapGenerationWater('');
+    setMapGenerationType('');
+    setMapGenerationFill('');
     setPlayersMin(PLAYERS_MIN);
     setPlayersMax(PLAYERS_MAX);
     setRoundsMin(ROUNDS_MIN);
@@ -449,10 +460,12 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
             <MapFilterFields
               mapName={mapName}
               size={mapGenerationSize}
-              water={mapGenerationWater}
+              type={mapGenerationType}
+              fill={mapGenerationFill}
               onMapName={resetPage(setMapName)}
               onSize={resetPage(setMapGenerationSize)}
-              onWater={resetPage(setMapGenerationWater)}
+              onType={resetPage(setMapGenerationType)}
+              onFill={resetPage(setMapGenerationFill)}
             />
           </div>
         </div>

@@ -21,7 +21,8 @@ export interface HomeFilters {
   mode: string;
   mapName: string;
   mapGenerationSize: string;
-  mapGenerationWater: string;
+  mapGenerationType: string;
+  mapGenerationFill: string;
   playersMin: number;
   playersMax: number;
   roundsMin: number;
@@ -44,7 +45,7 @@ export interface SessionResult {
 export interface GameSummary {
   name: string;
   mapName: string;
-  mapGeneration: { size: MapSize; water: WaterLevel } | null;
+  mapGeneration: { size: MapSize; type: GenerationType; fill: Fill } | null;
   hostName: string;
   playerCount: number;
   slots: number;
@@ -332,12 +333,14 @@ export type GameRulesSettings = Pick<
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 
 export type MapSize = 'small' | 'medium' | 'large' | 'xlarge';
-export type WaterLevel = 'land' | 'mixed' | 'ocean';
+export type GenerationType = 'terrain' | 'dungeon' | 'temple';
+export type Fill = 'full' | 'mixed' | 'sparse';
 
 export interface GenerateMapInput {
   seed: string;
   size: MapSize;
-  water: WaterLevel;
+  type: GenerationType;
+  fill: Fill;
 }
 
 export interface ChatMessage {
@@ -542,7 +545,8 @@ export interface GamesQuery {
   durationMax?: number;
   generatedMap?: boolean;
   mapGenerationSize?: MapSize;
-  mapGenerationWater?: WaterLevel;
+  mapGenerationType?: GenerationType;
+  mapGenerationFill?: Fill;
   minRounds?: number;
   maxRounds?: number;
   settings?: Record<string, string>;
@@ -576,7 +580,8 @@ export interface HomeGamesQuery {
   mapName?: string;
   generatedMap?: boolean;
   mapGenerationSize?: MapSize;
-  mapGenerationWater?: WaterLevel;
+  mapGenerationType?: GenerationType;
+  mapGenerationFill?: Fill;
   playersMin?: number;
   playersMax?: number;
   minRounds?: number;

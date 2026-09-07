@@ -18,7 +18,8 @@ export interface LiveGamesQuery {
   mapName?: string;
   generatedMap?: boolean;
   mapGenerationSize?: string;
-  mapGenerationWater?: string;
+  mapGenerationType?: string;
+  mapGenerationFill?: string;
   playersMin?: number;
   playersMax?: number;
   minRounds?: number;
@@ -49,8 +50,13 @@ function matches(game: LiveGameRow, query: LiveGamesQuery): boolean {
   )
     return false;
   if (
-    query.mapGenerationWater &&
-    game.mapGeneration?.water !== query.mapGenerationWater
+    query.mapGenerationType &&
+    game.mapGeneration?.type !== query.mapGenerationType
+  )
+    return false;
+  if (
+    query.mapGenerationFill &&
+    game.mapGeneration?.fill !== query.mapGenerationFill
   )
     return false;
   if (query.playersMin !== undefined && game.playerCount < query.playersMin)

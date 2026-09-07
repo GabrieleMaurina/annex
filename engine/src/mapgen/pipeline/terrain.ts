@@ -1,5 +1,5 @@
 import { Perlin2D } from '../core/noise';
-import { GridDimensions, WATER_THRESHOLDS, WaterLevel } from '../core/params';
+import { Fill, FILL_THRESHOLDS, GridDimensions } from '../core/params';
 import { Rng } from '../core/rng';
 
 const PERSISTENCE = 0.44;
@@ -8,9 +8,9 @@ const LACUNARITY = 2;
 const ISLAND_BORDER_FRACTION = 0.05;
 const ISLAND_BORDER_DEPTH = 1.2;
 
-function shouldCarveIslandBorder(rng: Rng, water: WaterLevel): boolean {
-  if (water === 'ocean') return true;
-  if (water === 'land') return false;
+function shouldCarveIslandBorder(rng: Rng, fill: Fill): boolean {
+  if (fill === 'sparse') return true;
+  if (fill === 'full') return false;
   return rng() < 0.5;
 }
 
@@ -36,23 +36,20 @@ function carveIslandBorder(
   }
 }
 
-const TERRAIN_PARAMS: Record<
-  WaterLevel,
-  { frequency: number; octaves: number }
-> = {
-  land: { frequency: 7.2, octaves: 6 },
+const TERRAIN_PARAMS: Record<Fill, { frequency: number; octaves: number }> = {
+  full: { frequency: 7.2, octaves: 6 },
   mixed: { frequency: 3.2, octaves: 5 },
-  ocean: { frequency: 6.5, octaves: 6 },
+  sparse: { frequency: 6.5, octaves: 6 },
 };
 
 export function buildLandMask(
   rng: Rng,
-  water: WaterLevel,
+  fill: Fill,
   dims: GridDimensions,
 ): Uint8Array {
   const perlin = new Perlin2D(rng);
-  const threshold = WATER_THRESHOLDS[water];
-  const { frequency, octaves } = TERRAIN_PARAMS[water];
+  const threshold = FILL_THRESHOLDS[fill];
+  const { frequency, octaves } = TERRAIN_PARAMS[fill];
   const { width, height: gridHeight } = dims;
 
   let min = Infinity;
@@ -72,7 +69,7 @@ export function buildLandMask(
   }
 
   const range = max - min || 1;
-  if (shouldCarveIslandBorder(rng, water)) {
+  if (shouldCarveIslandBorder(rng, fill)) {
     carveIslandBorder(heights, dims, min, range);
   }
   const land = new Uint8Array(width * gridHeight);

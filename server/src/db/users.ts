@@ -12,7 +12,12 @@ export interface ClientSettings {
 
 export interface GameSettings {
   mapName: string;
-  mapGeneration: { seed: string; size: string; water: string } | null;
+  mapGeneration: {
+    seed: string;
+    size: string;
+    type: string;
+    fill: string;
+  } | null;
   slots: number;
   gameMode: string;
   blitz: string;
@@ -42,7 +47,8 @@ export interface HomeFilters {
   mode: string;
   mapName: string;
   mapGenerationSize: string;
-  mapGenerationWater: string;
+  mapGenerationType: string;
+  mapGenerationFill: string;
   playersMin: number;
   playersMax: number;
   roundsMin: number;
@@ -91,7 +97,8 @@ export function normalizeEmail(email: string): string {
 }
 
 export const MAP_SIZES = ['small', 'medium', 'large', 'xlarge'];
-export const WATER_LEVELS = ['land', 'mixed', 'ocean'];
+export const FILL_VALUES = ['full', 'mixed', 'sparse'];
+export const GENERATION_TYPES = ['terrain', 'dungeon', 'temple'];
 
 export const GAME_ENUMS: Record<string, unknown[]> = {
   gameMode: [
@@ -148,7 +155,8 @@ const GENERATED_MAP_VALUE = 'generated';
 const HOME_MODES = ['', ...(GAME_ENUMS.gameMode as string[])];
 const HOME_MAP_NAMES = ['', GENERATED_MAP_VALUE, ...BUILTIN_MAP_NAMES];
 const HOME_SIZES = ['', ...MAP_SIZES];
-const HOME_WATERS = ['', ...WATER_LEVELS];
+const HOME_GENERATION_TYPES = ['', ...GENERATION_TYPES];
+const HOME_FILLS = ['', ...FILL_VALUES];
 const HOME_PHASES = ['', 'lobby', 'playing', 'ended'];
 const HOME_PASSWORDS = ['', 'yes', 'no'];
 const HOME_SORTS = [
@@ -207,7 +215,8 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
   mode: '',
   mapName: '',
   mapGenerationSize: '',
-  mapGenerationWater: '',
+  mapGenerationType: '',
+  mapGenerationFill: '',
   playersMin: HOME_PLAYERS_MIN,
   playersMax: HOME_PLAYERS_MAX,
   roundsMin: HOME_ROUNDS_MIN,
@@ -282,12 +291,13 @@ const schema = {
             mapName: { bsonType: 'string' },
             mapGeneration: {
               bsonType: ['object', 'null'],
-              required: ['seed', 'size', 'water'],
+              required: ['seed', 'size', 'type', 'fill'],
               additionalProperties: false,
               properties: {
                 seed: { bsonType: 'string' },
                 size: { enum: MAP_SIZES },
-                water: { enum: WATER_LEVELS },
+                type: { enum: GENERATION_TYPES },
+                fill: { enum: FILL_VALUES },
               },
             },
             slots: { bsonType: 'number', minimum: 2, maximum: 20 },
@@ -307,7 +317,8 @@ const schema = {
             'mode',
             'mapName',
             'mapGenerationSize',
-            'mapGenerationWater',
+            'mapGenerationType',
+            'mapGenerationFill',
             'playersMin',
             'playersMax',
             'roundsMin',
@@ -336,7 +347,8 @@ const schema = {
             mode: { enum: HOME_MODES },
             mapName: { enum: HOME_MAP_NAMES },
             mapGenerationSize: { enum: HOME_SIZES },
-            mapGenerationWater: { enum: HOME_WATERS },
+            mapGenerationType: { enum: HOME_GENERATION_TYPES },
+            mapGenerationFill: { enum: HOME_FILLS },
             playersMin: {
               bsonType: 'number',
               minimum: HOME_PLAYERS_MIN,
@@ -415,10 +427,16 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
   if (
     typeof r.seed !== 'string' ||
     !MAP_SIZES.includes(r.size as string) ||
-    !WATER_LEVELS.includes(r.water as string)
+    !GENERATION_TYPES.includes(r.type as string) ||
+    !FILL_VALUES.includes(r.fill as string)
   )
     return null;
-  return { seed: r.seed, size: r.size as string, water: r.water as string };
+  return {
+    seed: r.seed,
+    size: r.size as string,
+    type: r.type as string,
+    fill: r.fill as string,
+  };
 }
 
 function sanitizeGameSettings(raw: unknown): GameSettings {
@@ -500,7 +518,8 @@ function sanitizeHomeFilters(raw: unknown): HomeFilters {
     mode: pickEnum(r.mode, HOME_MODES, ''),
     mapName: pickEnum(r.mapName, HOME_MAP_NAMES, ''),
     mapGenerationSize: pickEnum(r.mapGenerationSize, HOME_SIZES, ''),
-    mapGenerationWater: pickEnum(r.mapGenerationWater, HOME_WATERS, ''),
+    mapGenerationType: pickEnum(r.mapGenerationType, HOME_GENERATION_TYPES, ''),
+    mapGenerationFill: pickEnum(r.mapGenerationFill, HOME_FILLS, ''),
     playersMin: clampInt(
       r.playersMin,
       HOME_PLAYERS_MIN,

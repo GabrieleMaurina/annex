@@ -1,9 +1,11 @@
 import {
   Engine,
+  Fill,
+  FILL_VALUES,
+  GENERATION_TYPE_VALUES,
+  GenerationType,
   MAP_SIZE_VALUES,
   MapSize,
-  WATER_LEVEL_VALUES,
-  WaterLevel,
 } from 'engine';
 import { Socket } from 'socket.io';
 import { playerIdBySocketId } from '../../socketRooms';
@@ -26,14 +28,19 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
         return callback({ ok: false, error: 'invalid seed' });
       if (!(MAP_SIZE_VALUES as unknown[]).includes(input.size))
         return callback({ ok: false, error: 'invalid size' });
-      if (!(WATER_LEVEL_VALUES as unknown[]).includes(input.water))
-        return callback({ ok: false, error: 'invalid water' });
+      if (!(GENERATION_TYPE_VALUES as unknown[]).includes(input.type))
+        return callback({ ok: false, error: 'invalid type' });
+      if (!(FILL_VALUES as unknown[]).includes(input.fill))
+        return callback({ ok: false, error: 'invalid fill' });
 
       engine.generateMap(
         playerId,
-        seed,
-        input.size as MapSize,
-        input.water as WaterLevel,
+        {
+          seed,
+          size: input.size as MapSize,
+          type: input.type as GenerationType,
+          fill: input.fill as Fill,
+        },
         callback,
       );
     },

@@ -3,10 +3,11 @@ import { ObjectId } from 'mongodb';
 import { findMapIdsByName, getMapNamesByIds } from './maps';
 import { ensureCollection, getCollection } from './mongo';
 import {
+  FILL_VALUES,
   GAME_ENUMS,
+  GENERATION_TYPES,
   getUsernamesByIds,
   MAP_SIZES,
-  WATER_LEVELS,
 } from './users';
 
 const NAME = 'games';
@@ -63,7 +64,8 @@ export interface GamesQuery {
   durationMax?: number;
   generatedMap?: boolean;
   mapGenerationSize?: string;
-  mapGenerationWater?: string;
+  mapGenerationType?: string;
+  mapGenerationFill?: string;
   minRounds?: number;
   maxRounds?: number;
   settings?: Record<string, string | number>;
@@ -302,12 +304,13 @@ const schema = {
         endedAt: int,
         mapGeneration: {
           bsonType: ['object', 'null'],
-          required: ['seed', 'size', 'water'],
+          required: ['seed', 'size', 'type', 'fill'],
           additionalProperties: false,
           properties: {
             seed: string,
             size: { enum: MAP_SIZES },
-            water: { enum: WATER_LEVELS },
+            type: { enum: GENERATION_TYPES },
+            fill: { enum: FILL_VALUES },
           },
         },
         settings,
@@ -491,8 +494,10 @@ function queryGames(
   if (query.generatedMap) filter.mapGeneration = { $ne: null };
   if (query.mapGenerationSize)
     filter['mapGeneration.size'] = query.mapGenerationSize;
-  if (query.mapGenerationWater)
-    filter['mapGeneration.water'] = query.mapGenerationWater;
+  if (query.mapGenerationType)
+    filter['mapGeneration.type'] = query.mapGenerationType;
+  if (query.mapGenerationFill)
+    filter['mapGeneration.fill'] = query.mapGenerationFill;
   if (query.minRounds !== undefined || query.maxRounds !== undefined) {
     const range: Record<string, number> = {};
     if (query.minRounds !== undefined) range.$gte = query.minRounds;

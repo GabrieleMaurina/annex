@@ -1,5 +1,5 @@
 import { callbacks } from '../callbacks';
-import { MapSize, WaterLevel } from '../mapgen/core/params';
+import { GenerateMapParams } from '../mapgen/core/params';
 import { generateMapAsync } from '../mapgen/mapgenPool';
 import { listMapNames } from '../maps/maps';
 import { GameResponse } from '../session/context';
@@ -16,9 +16,7 @@ export function listMaps(): string[] {
 
 export function generateMap(
   playerId: number,
-  seed: string,
-  size: MapSize,
-  water: WaterLevel,
+  input: GenerateMapParams,
   callback: (response: GameResponse) => void,
 ): void {
   const player = playersById.get(playerId);
@@ -32,7 +30,7 @@ export function generateMap(
   if (game.state !== 'lobby')
     return callback({ ok: false, error: 'game already started' });
 
-  const trimmedSeed = seed.trim();
+  const trimmedSeed = input.seed.trim();
   if (
     trimmedSeed.length === 0 ||
     trimmedSeed.length > MAX_SEED_LENGTH ||
@@ -43,8 +41,9 @@ export function generateMap(
 
   const gameName = game.name;
   const hostId = player.id;
+  const { size, type, fill } = input;
 
-  generateMapAsync({ seed: trimmedSeed, size, water }, (res) => {
+  generateMapAsync({ seed: trimmedSeed, size, type, fill }, (res) => {
     const current = games.get(gameName);
     if (!current || current.state !== 'lobby' || current.hostId !== hostId)
       return callback({ ok: false, error: 'game no longer available' });
@@ -58,7 +57,8 @@ export function generateMap(
       imageSrc: generated.imageSrc,
       seed: trimmedSeed,
       size,
-      water,
+      type,
+      fill,
     };
 
     for (const viewerId of [...current.playerIds, ...current.spectatorIds]) {

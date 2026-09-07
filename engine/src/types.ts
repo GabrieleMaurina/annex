@@ -1,4 +1,4 @@
-import type { MapSize, WaterLevel } from './mapgen/core/params';
+import type { Fill, GenerationType, MapSize } from './mapgen/core/params';
 
 export const HOME_ROOM = 'home';
 export const OFFLINE_ROOM = 'offline';
@@ -23,7 +23,8 @@ export interface GeneratedGameMap {
   imageSrc: string;
   seed: string;
   size: MapSize;
-  water: WaterLevel;
+  type: GenerationType;
+  fill: Fill;
 }
 
 export interface Player {

@@ -5,7 +5,12 @@ import { useWhiteIcon } from '../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
 import { getGeneratedMapData } from '../game/mapData';
 import { getGameSettings } from '../lib/player';
-import type { GenerateMapInput, MapSize, WaterLevel } from '../lib/types';
+import type {
+  Fill,
+  GenerateMapInput,
+  GenerationType,
+  MapSize,
+} from '../lib/types';
 
 export interface MapGenerationPanelHandle {
   generate: () => void;
@@ -57,7 +62,10 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
   ) {
     const saved = getGameSettings().mapGeneration;
     const [seed, setSeed] = useState(() => saved?.seed ?? randomSeed());
-    const [genType, setGenType] = useState<WaterLevel>(saved?.water ?? 'mixed');
+    const [genType, setGenType] = useState<GenerationType>(
+      saved?.type ?? 'terrain',
+    );
+    const [genFill, setGenFill] = useState<Fill>(saved?.fill ?? 'mixed');
     const [genSize, setGenSize] = useState<MapSize>(saved?.size ?? 'medium');
     const [generating, setGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState<GenerateMapInput | null>(
@@ -77,7 +85,8 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         lastGenerated &&
         lastGenerated.seed === trimmedSeed &&
         lastGenerated.size === genSize &&
-        lastGenerated.water === genType
+        lastGenerated.type === genType &&
+        lastGenerated.fill === genFill
       ) {
         effectiveSeed = randomSeed();
         setSeed(effectiveSeed);
@@ -86,7 +95,8 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
       const input: GenerateMapInput = {
         seed: effectiveSeed,
         size: genSize,
-        water: genType,
+        type: genType,
+        fill: genFill,
       };
       setGenerating(true);
       generateMap(input, (ok) => {
@@ -145,11 +155,25 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
               <Form.Select
                 className="w-auto"
                 value={genType}
-                onChange={(e) => setGenType(e.target.value as WaterLevel)}
+                onChange={(e) => setGenType(e.target.value as GenerationType)}
               >
-                <option value="land">Land</option>
+                <option value="terrain">Terrain</option>
+                <option value="dungeon">Dungeon</option>
+                <option value="temple">Temple</option>
+              </Form.Select>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Label className="mb-0" style={{ minWidth: 40 }}>
+                Fill
+              </Form.Label>
+              <Form.Select
+                className="w-auto"
+                value={genFill}
+                onChange={(e) => setGenFill(e.target.value as Fill)}
+              >
+                <option value="full">Full</option>
                 <option value="mixed">Mixed</option>
-                <option value="ocean">Ocean</option>
+                <option value="sparse">Sparse</option>
               </Form.Select>
             </div>
             <div className="d-flex align-items-center gap-2">
@@ -189,7 +213,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
             )}
           </div>
           <div
-            className="rounded bg-black bg-opacity-25 ms-auto"
+            className="ms-auto d-flex align-items-center justify-content-center"
             style={{
               flex: '1 1 auto',
               width: '100%',
@@ -202,7 +226,11 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                 src={generated.imageSrc}
                 alt=""
                 className="rounded"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  display: 'block',
+                }}
               />
             )}
           </div>

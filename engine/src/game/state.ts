@@ -46,7 +46,11 @@ export function gameSummary(game: Game) {
     name: game.name,
     mapName: game.mapName,
     mapGeneration: game.generatedMap
-      ? { size: game.generatedMap.size, water: game.generatedMap.water }
+      ? {
+          size: game.generatedMap.size,
+          type: game.generatedMap.type,
+          fill: game.generatedMap.fill,
+        }
       : null,
     hostName: playersById.get(game.hostId)?.name ?? '',
     playerIds: [...game.playerIds],
@@ -127,7 +131,8 @@ export function gameState(game: Game) {
       ? {
           seed: game.generatedMap.seed,
           size: game.generatedMap.size,
-          water: game.generatedMap.water,
+          type: game.generatedMap.type,
+          fill: game.generatedMap.fill,
         }
       : null,
     slots: game.slots,

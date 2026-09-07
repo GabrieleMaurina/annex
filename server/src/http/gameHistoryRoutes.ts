@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import {
+  FILL_VALUES,
   GAME_ENUMS,
   GamesQuery,
+  GENERATION_TYPES,
   getGameById,
   getMapById,
   listGames,
   MAP_SIZES,
   searchUsers,
-  WATER_LEVELS,
 } from '../db';
 import { identityOf } from './middleware';
 import {
@@ -59,10 +60,15 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     MAP_SIZES.includes(q.mapGenerationSize)
       ? q.mapGenerationSize
       : undefined;
-  const mapGenerationWater =
-    typeof q.mapGenerationWater === 'string' &&
-    WATER_LEVELS.includes(q.mapGenerationWater)
-      ? q.mapGenerationWater
+  const mapGenerationType =
+    typeof q.mapGenerationType === 'string' &&
+    GENERATION_TYPES.includes(q.mapGenerationType)
+      ? q.mapGenerationType
+      : undefined;
+  const mapGenerationFill =
+    typeof q.mapGenerationFill === 'string' &&
+    FILL_VALUES.includes(q.mapGenerationFill)
+      ? q.mapGenerationFill
       : undefined;
   const outcome =
     q.outcome === 'won' || q.outcome === 'lost' ? q.outcome : undefined;
@@ -84,7 +90,8 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     durationMax: optIntParam(q.durationMax, 0, 100000),
     generatedMap,
     mapGenerationSize,
-    mapGenerationWater,
+    mapGenerationType,
+    mapGenerationFill,
     playersMin: optIntParam(q.playersMin, 1, 100),
     playersMax: optIntParam(q.playersMax, 1, 100),
     minRounds: optIntParam(q.minRounds, 1, 100000),

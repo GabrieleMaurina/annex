@@ -57,7 +57,7 @@ export const GAME_MODE_HELP = (
 export const MAP_HELP = 'Which territory layout the game is played on.';
 
 export const MAP_GEN_HELP =
-  'Procedurally generate a new map instead of picking an existing one. The same seed and settings always produce the same map. Size only roughly determines the resulting territory count, and water level controls how much of the map is ocean.';
+  'Procedurally generate a new map instead of picking an existing one. The same seed and settings always produce the same map. Type picks the layout style (Terrain islands, a Dungeon maze, or a Temple maze), Size roughly determines the territory count, and Fill controls how much of the map is playable territory versus water or inaccessible space.';
 
 export const BLITZ_HELP = (
   <>

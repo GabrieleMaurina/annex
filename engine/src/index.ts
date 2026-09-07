@@ -77,10 +77,12 @@ export {
 } from './game/export';
 export { GameSummary } from './game/state';
 export {
+  Fill,
+  FILL_VALUES,
+  GENERATION_TYPE_VALUES,
+  GenerationType,
   MAP_SIZE_VALUES,
   MapSize,
-  WATER_LEVEL_VALUES,
-  WaterLevel,
 } from './mapgen/core/params';
 export { runMapgenWorker } from './mapgen/worker';
 export { ArchivedMap, BUILTIN_MAP_NAMES } from './maps/maps';

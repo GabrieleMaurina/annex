@@ -14,7 +14,12 @@ export interface MapDoc {
     neighbors: number[];
   }[];
   bonuses: number[];
-  generation: { seed: string; size: string; water: string } | null;
+  generation: {
+    seed: string;
+    size: string;
+    type: string;
+    fill: string;
+  } | null;
   image: Binary;
   imageMime: string;
 }
@@ -54,12 +59,13 @@ const schema = {
         bonuses: { bsonType: 'array', items: { bsonType: 'number' } },
         generation: {
           bsonType: ['object', 'null'],
-          required: ['seed', 'size', 'water'],
+          required: ['seed', 'size', 'type', 'fill'],
           additionalProperties: false,
           properties: {
             seed: { bsonType: 'string' },
             size: { enum: ['small', 'medium', 'large', 'xlarge'] },
-            water: { enum: ['land', 'mixed', 'ocean'] },
+            type: { enum: ['terrain', 'dungeon', 'temple'] },
+            fill: { enum: ['full', 'mixed', 'sparse'] },
           },
         },
         image: { bsonType: 'binData' },

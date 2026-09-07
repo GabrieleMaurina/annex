@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { GAME_ENUMS, MAP_SIZES, WATER_LEVELS } from '../db';
+import { FILL_VALUES, GAME_ENUMS, GENERATION_TYPES, MAP_SIZES } from '../db';
 import { filterLiveGames, LiveGameRow, LiveGamesQuery } from './liveGames';
 import {
   intParam,
@@ -37,10 +37,15 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
         MAP_SIZES.includes(q.mapGenerationSize)
           ? q.mapGenerationSize
           : undefined,
-      mapGenerationWater:
-        typeof q.mapGenerationWater === 'string' &&
-        WATER_LEVELS.includes(q.mapGenerationWater)
-          ? q.mapGenerationWater
+      mapGenerationType:
+        typeof q.mapGenerationType === 'string' &&
+        GENERATION_TYPES.includes(q.mapGenerationType)
+          ? q.mapGenerationType
+          : undefined,
+      mapGenerationFill:
+        typeof q.mapGenerationFill === 'string' &&
+        FILL_VALUES.includes(q.mapGenerationFill)
+          ? q.mapGenerationFill
           : undefined,
       playersMin: optIntParam(q.playersMin, 1, 100),
       playersMax: optIntParam(q.playersMax, 1, 100),

@@ -14,11 +14,12 @@ import { connector } from '../connector';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type {
   Account,
+  Fill,
   GameHistoryRow,
   GamesPage,
   GamesQuery,
+  GenerationType,
   MapSize,
-  WaterLevel,
 } from '../lib/types';
 import { GAME_MODES } from '../lib/types';
 import {
@@ -75,7 +76,8 @@ interface Filters {
   durationMax: number;
   mapName: string;
   mapGenerationSize: string;
-  mapGenerationWater: string;
+  mapGenerationType: string;
+  mapGenerationFill: string;
   settings: Record<string, string>;
   outcome: '' | 'won' | 'lost';
   roundsMin: number;
@@ -184,7 +186,8 @@ function Games({ account }: Props) {
   const [durationMax, setDurationMax] = useState(DURATION_MAX);
   const [mapName, setMapName] = useState('');
   const [mapGenerationSize, setMapGenerationSize] = useState('');
-  const [mapGenerationWater, setMapGenerationWater] = useState('');
+  const [mapGenerationType, setMapGenerationType] = useState('');
+  const [mapGenerationFill, setMapGenerationFill] = useState('');
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [outcome, setOutcome] = useState<'' | 'won' | 'lost'>('');
   const [roundsMin, setRoundsMin] = useState(ROUNDS_MIN);
@@ -212,7 +215,8 @@ function Games({ account }: Props) {
     durationMax,
     mapName,
     mapGenerationSize,
-    mapGenerationWater,
+    mapGenerationType,
+    mapGenerationFill,
     settings,
     outcome,
     roundsMin,
@@ -256,9 +260,13 @@ function Games({ account }: Props) {
         mapName === GENERATED_MAP_VALUE
           ? (mapGenerationSize as MapSize) || undefined
           : undefined,
-      mapGenerationWater:
+      mapGenerationType:
         mapName === GENERATED_MAP_VALUE
-          ? (mapGenerationWater as WaterLevel) || undefined
+          ? (mapGenerationType as GenerationType) || undefined
+          : undefined,
+      mapGenerationFill:
+        mapName === GENERATED_MAP_VALUE
+          ? (mapGenerationFill as Fill) || undefined
           : undefined,
       settings,
       outcome: outcome || undefined,
@@ -306,7 +314,8 @@ function Games({ account }: Props) {
     setDurationMax(DURATION_MAX);
     setMapName('');
     setMapGenerationSize('');
-    setMapGenerationWater('');
+    setMapGenerationType('');
+    setMapGenerationFill('');
     setSettings({});
     setOutcome('');
     setRoundsMin(ROUNDS_MIN);
@@ -463,10 +472,12 @@ function Games({ account }: Props) {
             <MapFilterFields
               mapName={mapName}
               size={mapGenerationSize}
-              water={mapGenerationWater}
+              type={mapGenerationType}
+              fill={mapGenerationFill}
               onMapName={resetPage(setMapName)}
               onSize={resetPage(setMapGenerationSize)}
-              onWater={resetPage(setMapGenerationWater)}
+              onType={resetPage(setMapGenerationType)}
+              onFill={resetPage(setMapGenerationFill)}
             />
           </div>
         </div>

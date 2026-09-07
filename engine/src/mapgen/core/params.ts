@@ -1,10 +1,12 @@
 export type MapSize = 'small' | 'medium' | 'large' | 'xlarge';
-export type WaterLevel = 'land' | 'mixed' | 'ocean';
+export type Fill = 'full' | 'mixed' | 'sparse';
+export type GenerationType = 'terrain' | 'dungeon' | 'temple';
 
 export interface GenerateMapParams {
   seed: string;
   size: MapSize;
-  water: WaterLevel;
+  type: GenerationType;
+  fill: Fill;
 }
 
 export const MAP_SIZE_VALUES: MapSize[] = [
@@ -13,7 +15,12 @@ export const MAP_SIZE_VALUES: MapSize[] = [
   'large',
   'xlarge',
 ];
-export const WATER_LEVEL_VALUES: WaterLevel[] = ['land', 'mixed', 'ocean'];
+export const FILL_VALUES: Fill[] = ['full', 'mixed', 'sparse'];
+export const GENERATION_TYPE_VALUES: GenerationType[] = [
+  'terrain',
+  'dungeon',
+  'temple',
+];
 
 export const TERRITORY_COUNT_RANGES: Record<MapSize, [number, number]> = {
   small: [20, 40],
@@ -29,10 +36,10 @@ export const TERRITORY_MERGE_COUNTS: Record<MapSize, number> = {
   xlarge: 12,
 };
 
-export const WATER_THRESHOLDS: Record<WaterLevel, number> = {
-  land: 0.36,
+export const FILL_THRESHOLDS: Record<Fill, number> = {
+  full: 0.36,
   mixed: 0.48,
-  ocean: 0.62,
+  sparse: 0.62,
 };
 
 export interface GridDimensions {
@@ -63,10 +70,14 @@ export function mapSizeLabel(size: MapSize): string {
   }[size];
 }
 
-export function waterLevelLabel(water: WaterLevel): string {
-  return { land: 'Land', mixed: 'Mixed', ocean: 'Ocean' }[water];
+export function fillLabel(fill: Fill): string {
+  return { full: 'Full', mixed: 'Mixed', sparse: 'Sparse' }[fill];
+}
+
+export function generationTypeLabel(type: GenerationType): string {
+  return { terrain: 'Terrain', dungeon: 'Dungeon', temple: 'Temple' }[type];
 }
 
 export function generatedMapName(params: GenerateMapParams): string {
-  return `${waterLevelLabel(params.water)} (${mapSizeLabel(params.size)})`;
+  return `${generationTypeLabel(params.type)} ${fillLabel(params.fill)} (${mapSizeLabel(params.size)})`;
 }

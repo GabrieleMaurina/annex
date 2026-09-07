@@ -95,6 +95,7 @@ function SettingsPanel({
   >({});
   const loadedMapNamesRef = useRef(new Set<string>());
   const [mapGenOpen, setMapGenOpen] = useState(false);
+  const [mapMenuOpen, setMapMenuOpen] = useState(false);
   const [mapRegenerating, setMapRegenerating] = useState(isRegeneratingMap);
   const [seedCopied, setSeedCopied] = useState(false);
   const mapGenRef = useRef<MapGenerationPanelHandle>(null);
@@ -290,6 +291,7 @@ function SettingsPanel({
             </Form.Label>
             {isHost ? (
               <Dropdown
+                onToggle={(next) => setMapMenuOpen(next)}
                 onSelect={(name) => {
                   if (!name) return;
                   if (name === GENERATE_MAP_OPTION) {
@@ -339,15 +341,10 @@ function SettingsPanel({
                     />
                     Generate
                   </Dropdown.Item>
-                  {mapNames.map((name) => (
-                    <Tip
-                      key={name}
-                      text={mapTooltip(name)}
-                      placement="right"
-                      style={MAP_TOOLTIP_STYLE}
-                      popperConfig={MAP_TOOLTIP_POPPER}
-                    >
+                  {mapNames.map((name) => {
+                    const item = (
                       <Dropdown.Item
+                        key={name}
                         eventKey={name}
                         className="d-flex align-items-center gap-2"
                       >
@@ -363,8 +360,21 @@ function SettingsPanel({
                         )}
                         {name}
                       </Dropdown.Item>
-                    </Tip>
-                  ))}
+                    );
+                    return mapMenuOpen ? (
+                      <Tip
+                        key={name}
+                        text={mapTooltip(name)}
+                        placement="right"
+                        style={MAP_TOOLTIP_STYLE}
+                        popperConfig={MAP_TOOLTIP_POPPER}
+                      >
+                        {item}
+                      </Tip>
+                    ) : (
+                      item
+                    );
+                  })}
                 </Dropdown.Menu>
               </Dropdown>
             ) : (

@@ -2,8 +2,9 @@ import {
   createEngine,
   type Engine,
   type EngineCallbacks,
+  type Fill,
+  type GenerationType,
   type MapSize,
-  type WaterLevel,
 } from 'engine';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
 import type { GameState } from '../../lib/types';
@@ -107,14 +108,7 @@ function applySeed(s: OfflineSeed): void {
     engine?.startGame(id);
     flushQueue();
   };
-  if (s.mapGeneration)
-    engine.generateMap(
-      id,
-      s.mapGeneration.seed,
-      s.mapGeneration.size,
-      s.mapGeneration.water,
-      finish,
-    );
+  if (s.mapGeneration) engine.generateMap(id, s.mapGeneration, finish);
   else {
     engine.updateSettings(id, { mapName: s.mapName });
     finish();
@@ -389,9 +383,12 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
     case 'game:generateMap':
       engine.generateMap(
         id,
-        d.seed as string,
-        d.size as MapSize,
-        d.water as WaterLevel,
+        {
+          seed: d.seed as string,
+          size: d.size as MapSize,
+          type: d.type as GenerationType,
+          fill: d.fill as Fill,
+        },
         cb ?? (() => {}),
       );
       return;

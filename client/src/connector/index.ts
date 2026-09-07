@@ -91,8 +91,10 @@ function appendGameFilterParams(
   if (query.generatedMap) params.set('generatedMap', '1');
   if (query.mapGenerationSize)
     params.set('mapGenerationSize', query.mapGenerationSize);
-  if (query.mapGenerationWater)
-    params.set('mapGenerationWater', query.mapGenerationWater);
+  if (query.mapGenerationType)
+    params.set('mapGenerationType', query.mapGenerationType);
+  if (query.mapGenerationFill)
+    params.set('mapGenerationFill', query.mapGenerationFill);
   if (query.playersMin !== undefined)
     params.set('playersMin', String(query.playersMin));
   if (query.playersMax !== undefined)

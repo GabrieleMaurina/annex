@@ -5,7 +5,7 @@ import SearchMultiSelect, {
   type SearchSelectItem,
 } from '../common/SearchMultiSelect';
 import { connector } from '../connector';
-import type { MapSize, WaterLevel } from '../lib/types';
+import type { Fill, GenerationType, MapSize } from '../lib/types';
 import {
   GAME_SETTING_SECTIONS,
   GAME_SETTINGS,
@@ -30,10 +30,16 @@ const MAP_GENERATION_SIZES: { value: MapSize; label: string }[] = [
   { value: 'xlarge', label: 'Extra Large' },
 ];
 
-const MAP_GENERATION_WATERS: { value: WaterLevel; label: string }[] = [
-  { value: 'land', label: 'Land' },
+const MAP_GENERATION_TYPES: { value: GenerationType; label: string }[] = [
+  { value: 'terrain', label: 'Terrain' },
+  { value: 'dungeon', label: 'Dungeon' },
+  { value: 'temple', label: 'Temple' },
+];
+
+const MAP_GENERATION_FILLS: { value: Fill; label: string }[] = [
+  { value: 'full', label: 'Full' },
   { value: 'mixed', label: 'Mixed' },
-  { value: 'ocean', label: 'Ocean' },
+  { value: 'sparse', label: 'Sparse' },
 ];
 
 export function PlayerFilter({
@@ -62,17 +68,21 @@ export function PlayerFilter({
 export function MapFilterFields({
   mapName,
   size,
-  water,
+  type,
+  fill,
   onMapName,
   onSize,
-  onWater,
+  onType,
+  onFill,
 }: {
   mapName: string;
   size: string;
-  water: string;
+  type: string;
+  fill: string;
   onMapName: (v: string) => void;
   onSize: (v: string) => void;
-  onWater: (v: string) => void;
+  onType: (v: string) => void;
+  onFill: (v: string) => void;
 }) {
   return (
     <>
@@ -86,7 +96,8 @@ export function MapFilterFields({
             onMapName(value);
             if (value !== GENERATED_MAP_VALUE) {
               onSize('');
-              onWater('');
+              onType('');
+              onFill('');
             }
           }}
         >
@@ -116,15 +127,30 @@ export function MapFilterFields({
               ))}
             </Form.Select>
           </Field>
-          <Field label="Generated map water">
+          <Field label="Generated map type">
             <Form.Select
               size="sm"
               className="w-auto"
-              value={water}
-              onChange={(e) => onWater(e.target.value)}
+              value={type}
+              onChange={(e) => onType(e.target.value)}
             >
               <option value="">Any</option>
-              {MAP_GENERATION_WATERS.map((o) => (
+              {MAP_GENERATION_TYPES.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Form.Select>
+          </Field>
+          <Field label="Generated map fill">
+            <Form.Select
+              size="sm"
+              className="w-auto"
+              value={fill}
+              onChange={(e) => onFill(e.target.value)}
+            >
+              <option value="">Any</option>
+              {MAP_GENERATION_FILLS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>

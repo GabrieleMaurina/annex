@@ -75,7 +75,12 @@ export interface GameResultExport {
 export interface GameExport {
   name: string;
   mapName: string;
-  mapGeneration: { seed: string; size: string; water: string } | null;
+  mapGeneration: {
+    seed: string;
+    size: string;
+    type: string;
+    fill: string;
+  } | null;
   originalHostId: number;
   startedAt: number;
   endedAt: number;
@@ -261,7 +266,8 @@ export function exportGame(gameName: string): GameExport | null {
       ? {
           seed: game.generatedMap.seed,
           size: game.generatedMap.size,
-          water: game.generatedMap.water,
+          type: game.generatedMap.type,
+          fill: game.generatedMap.fill,
         }
       : null,
     settings: {

@@ -34,7 +34,7 @@ import { isInteger } from '../util/validate';
 import { validateGameName } from './create';
 
 const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
-const BLITZ_VALUES: Blitz[] = ['Balanced', 'True'];
+const BLITZ_VALUES: Blitz[] = ['Balanced', 'True', 'Fair'];
 const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
 const CARDS_VALUES: CardsMode[] = [
   'Constant',

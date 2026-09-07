@@ -3,6 +3,8 @@ import { hasAnyAttack } from '../game/combat/autoSkip';
 import {
   balancedBlitz,
   balancedWinProbs,
+  fairBlitz,
+  fairBlitzOutcomes,
   attack as rollAttack,
   trueBlitz,
   trueWinProbs,
@@ -29,11 +31,14 @@ import {
 import { Game } from '../types';
 import { isInteger, isNullableInteger } from '../util/validate';
 
+export type BlitzOutcome = { attackLosses: number; defenceLosses: number };
+
 export type AttackProbabilitiesResponse =
   | {
       ok: true;
       game: ReturnType<typeof gameState>;
       blitzWinProbabilities: number[];
+      blitzOutcomes?: BlitzOutcome[];
     }
   | { ok: false; error: string };
 
@@ -42,6 +47,7 @@ export type AttackResultResponse =
       ok: true;
       game: ReturnType<typeof gameState>;
       blitzWinProbabilities: number[];
+      blitzOutcomes?: BlitzOutcome[];
       attackerDice: number[];
       defenderDice: number[];
     }
@@ -60,8 +66,22 @@ function computeBlitzWinProbabilities(
   defendingDice: number,
 ): number[] {
   const maxBlitz = attackingTroops - 1;
+  if (game.blitz === 'Fair')
+    return trueWinProbs(maxBlitz, defendingTroops, defendingDice).map((p) =>
+      p >= 0.5 ? 1 : 0,
+    );
   const blitzWinProbs = game.blitz === 'True' ? trueWinProbs : balancedWinProbs;
   return blitzWinProbs(maxBlitz, defendingTroops, defendingDice);
+}
+
+function computeBlitzOutcomes(
+  game: Game,
+  attackingTroops: number,
+  defendingTroops: number,
+  defendingDice: number,
+): BlitzOutcome[] | undefined {
+  if (game.blitz !== 'Fair') return undefined;
+  return fairBlitzOutcomes(attackingTroops - 1, defendingTroops, defendingDice);
 }
 
 function isAttackStartCandidate(
@@ -186,16 +206,27 @@ export function attackSelectEnd(
   const attackingTroops =
     game.territoryTroops.get(game.attackStartTerritoryId) ?? 0;
   const defendingTroops = game.territoryTroops.get(territoryId) ?? 0;
+  const defendingDice = defenceDiceFor(game, territoryId);
   const blitzWinProbabilities = computeBlitzWinProbabilities(
     game,
     attackingTroops,
     defendingTroops,
-    defenceDiceFor(game, territoryId),
+    defendingDice,
+  );
+  const blitzOutcomes = computeBlitzOutcomes(
+    game,
+    attackingTroops,
+    defendingTroops,
+    defendingDice,
   );
 
   broadcastSelected(game, territoryId);
   const response = respondGameState(game, playerId);
-  return { ...response, blitzWinProbabilities };
+  return {
+    ...response,
+    blitzWinProbabilities,
+    ...(blitzOutcomes ? { blitzOutcomes } : {}),
+  };
 }
 
 export function attack(
@@ -244,11 +275,13 @@ export function attack(
     attackerDice = result.attackDice;
     defenderDice = result.defenceDice;
   } else {
-    const result = (game.blitz === 'True' ? trueBlitz : balancedBlitz)(
-      troops,
-      defendingTroops,
-      defendingDice,
-    );
+    const blitz =
+      game.blitz === 'True'
+        ? trueBlitz
+        : game.blitz === 'Fair'
+          ? fairBlitz
+          : balancedBlitz;
+    const result = blitz(troops, defendingTroops, defendingDice);
     attackLosses = result.attackLosses;
     defenceLosses = result.defenceLosses;
   }
@@ -282,6 +315,7 @@ export function attack(
   });
 
   let blitzWinProbabilities: number[] = [];
+  let blitzOutcomes: BlitzOutcome[] | undefined;
   let autoConquestMove: {
     territoryId: number;
     fromTerritoryId: number;
@@ -338,6 +372,12 @@ export function attack(
     const remainingDefenders = defendingTroops - defenceLosses;
     if (remainingAttackers > 1) {
       blitzWinProbabilities = computeBlitzWinProbabilities(
+        game,
+        remainingAttackers,
+        remainingDefenders,
+        defendingDice,
+      );
+      blitzOutcomes = computeBlitzOutcomes(
         game,
         remainingAttackers,
         remainingDefenders,
@@ -410,7 +450,13 @@ export function attack(
   }
 
   const response = respondGameState(game, playerId);
-  return { ...response, blitzWinProbabilities, attackerDice, defenderDice };
+  return {
+    ...response,
+    blitzWinProbabilities,
+    ...(blitzOutcomes ? { blitzOutcomes } : {}),
+    attackerDice,
+    defenderDice,
+  };
 }
 
 export function attackMove(playerId: number, rawTroops: unknown): GameResponse {

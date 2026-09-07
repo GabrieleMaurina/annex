@@ -79,5 +79,5 @@ export function generationTypeLabel(type: GenerationType): string {
 }
 
 export function generatedMapName(params: GenerateMapParams): string {
-  return `${generationTypeLabel(params.type)} ${fillLabel(params.fill)} (${mapSizeLabel(params.size)})`;
+  return `${generationTypeLabel(params.type)} (${fillLabel(params.fill)}-${mapSizeLabel(params.size)})`;
 }

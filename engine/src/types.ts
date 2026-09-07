@@ -52,7 +52,7 @@ export interface Card {
   symbol: CardSymbol | null;
 }
 
-export type Blitz = 'Balanced' | 'True';
+export type Blitz = 'Balanced' | 'True' | 'Fair';
 export type DefenceDice = 2 | 3;
 export type CardsMode =
   | 'Constant'

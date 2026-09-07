@@ -115,7 +115,7 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'Player Kills',
     'Troop Kills',
   ],
-  blitz: ['Balanced', 'True'],
+  blitz: ['Balanced', 'True', 'Fair'],
   defenceDice: [2, 3],
   cards: [
     'Constant',

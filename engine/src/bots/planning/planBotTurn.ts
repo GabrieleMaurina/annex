@@ -267,6 +267,7 @@ function stepStatus(
     return 'invalid';
   const endTroops = game.territoryTroops.get(step.endId) ?? 0;
   const winProb = attackWinProbability(
+    game,
     startTroops - 1,
     endTroops,
     defenceDiceFor(game, step.endId),

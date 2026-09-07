@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../../../connector';
 import { playSound } from '../../../lib/sounds';
-import type { Ack, GameState } from '../../../lib/types';
+import type { Ack, BlitzOutcome, GameState } from '../../../lib/types';
 import { DICE_ROLL_STEP_DURATION, DICE_ROLL_STEPS } from '../../animations';
 import {
   getAttackEndCandidates,
@@ -11,7 +11,12 @@ import type { Territory } from '../../mapData';
 import type { AttackType, DiceRoll } from '../../panels/AttackPanel';
 
 type AttackSelectEndAck =
-  | { ok: true; game: GameState; blitzWinProbabilities: number[] }
+  | {
+      ok: true;
+      game: GameState;
+      blitzWinProbabilities: number[];
+      blitzOutcomes?: BlitzOutcome[];
+    }
   | { ok: false; error: string };
 
 type AttackResultAck =
@@ -19,6 +24,7 @@ type AttackResultAck =
       ok: true;
       game: GameState;
       blitzWinProbabilities: number[];
+      blitzOutcomes?: BlitzOutcome[];
       attackerDice: number[];
       defenderDice: number[];
     }
@@ -56,6 +62,9 @@ export function useAttackFlow({
   const [attackWinProbabilities, setAttackWinProbabilities] = useState<
     number[] | null
   >(null);
+  const [attackBlitzOutcomes, setAttackBlitzOutcomes] = useState<
+    BlitzOutcome[] | null
+  >(null);
   const [attackSelectedType, setAttackSelectedType] =
     useState<AttackType>('regular');
   const [attackRegularTroops, setAttackRegularTroops] = useState<1 | 2 | 3>(1);
@@ -69,6 +78,7 @@ export function useAttackFlow({
   const [attackPreRevealSnapshot, setAttackPreRevealSnapshot] = useState<{
     maxBlitzTroops: number;
     blitzWinProbabilities: number[];
+    blitzOutcomes: BlitzOutcome[];
     selectedType: AttackType;
     regularTroops: 1 | 2 | 3;
     blitzTroops: number;
@@ -97,8 +107,9 @@ export function useAttackFlow({
   );
 
   const applyAttackProbabilities = useCallback(
-    (blitzWinProbabilities: number[]) => {
+    (blitzWinProbabilities: number[], blitzOutcomes: BlitzOutcome[] | null) => {
       setAttackWinProbabilities(blitzWinProbabilities);
+      setAttackBlitzOutcomes(blitzOutcomes);
       setAttackSelectedType('blitz');
       setAttackRegularTroops(1);
       setAttackBlitzTroops(Math.max(1, blitzWinProbabilities.length));
@@ -107,8 +118,9 @@ export function useAttackFlow({
   );
 
   const continueAttackSelection = useCallback(
-    (blitzWinProbabilities: number[]) => {
+    (blitzWinProbabilities: number[], blitzOutcomes: BlitzOutcome[] | null) => {
       setAttackWinProbabilities(blitzWinProbabilities);
+      setAttackBlitzOutcomes(blitzOutcomes);
       const newMaxBlitz = blitzWinProbabilities.length;
       const newMaxRegular = Math.min(newMaxBlitz, 3);
       setAttackRegularTroops(
@@ -124,7 +136,10 @@ export function useAttackFlow({
       connector.attackSelectEnd({ territoryId }, (res: AttackSelectEndAck) => {
         if (!res.ok) return;
         setGame(res.game);
-        applyAttackProbabilities(res.blitzWinProbabilities);
+        applyAttackProbabilities(
+          res.blitzWinProbabilities,
+          res.blitzOutcomes ?? null,
+        );
       });
     },
     [setGame, applyAttackProbabilities],
@@ -168,6 +183,7 @@ export function useAttackFlow({
     const preRevealSnapshot = {
       maxBlitzTroops,
       blitzWinProbabilities: attackWinProbabilities ?? [],
+      blitzOutcomes: attackBlitzOutcomes ?? [],
       selectedType: attackSelectedType,
       regularTroops: attackRegularTroops,
       blitzTroops: attackBlitzTroops,
@@ -225,7 +241,10 @@ export function useAttackFlow({
               setAttackDiceRoll((prev) => (prev?.id === rollId ? null : prev));
             }
           } else if (res.game.attackEndTerritoryId !== null) {
-            continueAttackSelection(res.blitzWinProbabilities);
+            continueAttackSelection(
+              res.blitzWinProbabilities,
+              res.blitzOutcomes ?? null,
+            );
           }
         }, DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION);
       } else if (autoMoveTroops !== null) {
@@ -234,7 +253,10 @@ export function useAttackFlow({
         res.game.attackConquestMinTroops === null &&
         res.game.attackEndTerritoryId !== null
       ) {
-        continueAttackSelection(res.blitzWinProbabilities);
+        continueAttackSelection(
+          res.blitzWinProbabilities,
+          res.blitzOutcomes ?? null,
+        );
       }
     });
   }, [
@@ -245,6 +267,7 @@ export function useAttackFlow({
     attackEndTerritoryId,
     maxBlitzTroops,
     attackWinProbabilities,
+    attackBlitzOutcomes,
     setGame,
     continueAttackSelection,
     performAttackMove,
@@ -315,6 +338,9 @@ export function useAttackFlow({
   if (attackEndTerritoryId === null && attackWinProbabilities !== null) {
     setAttackWinProbabilities(null);
   }
+  if (attackEndTerritoryId === null && attackBlitzOutcomes !== null) {
+    setAttackBlitzOutcomes(null);
+  }
 
   const attackRevealing = attackDiceRoll !== null && !attackDiceSettled;
   const attackDiceOnly =
@@ -352,6 +378,7 @@ export function useAttackFlow({
       : {
           maxBlitzTroops,
           blitzWinProbabilities: attackWinProbabilities ?? [],
+          blitzOutcomes: attackBlitzOutcomes ?? [],
           selectedType: attackSelectedType,
           regularTroops: attackRegularTroops,
           blitzTroops: attackBlitzTroops,

@@ -1,4 +1,9 @@
-import { battleStatistics, trueWinProb } from '../../game/combat/dice';
+import {
+  battleStatistics,
+  distortProbability,
+  fairBlitz,
+  trueWinProb,
+} from '../../game/combat/dice';
 import { Game } from '../../types';
 
 export function defenceDiceFor(game: Game, territoryId: number): number {
@@ -8,6 +13,7 @@ export function defenceDiceFor(game: Game, territoryId: number): number {
 }
 
 export function attackWinProbability(
+  game: Game,
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
@@ -16,7 +22,10 @@ export function attackWinProbability(
   if (defendingTroops <= 0) return 1;
   if (attackingTroops > 80 && attackingTroops > defendingTroops * 3)
     return 0.99;
-  return trueWinProb(attackingTroops, defendingTroops, defendingDice);
+  const trueProb = trueWinProb(attackingTroops, defendingTroops, defendingDice);
+  if (game.blitz === 'Fair') return trueProb >= 0.5 ? 1 : 0;
+  if (game.blitz === 'Balanced') return distortProbability(trueProb);
+  return trueProb;
 }
 
 const CONQUEST_TROOPS_MULTIPLIER = 4;
@@ -45,6 +54,7 @@ export interface ExpectedOutcome {
 }
 
 export function expectedOutcome(
+  game: Game,
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
@@ -53,13 +63,24 @@ export function expectedOutcome(
     return { winProbability: 0, attackerSurvivorsMean: 0 };
   if (defendingTroops <= 0)
     return { winProbability: 1, attackerSurvivorsMean: attackingTroops };
+  if (game.blitz === 'Fair') {
+    const outcome = fairBlitz(attackingTroops, defendingTroops, defendingDice);
+    const win = outcome.defenceLosses >= defendingTroops;
+    return {
+      winProbability: win ? 1 : 0,
+      attackerSurvivorsMean: win ? attackingTroops - outcome.attackLosses : 0,
+    };
+  }
   const stats = battleStatistics(
     attackingTroops,
     defendingTroops,
     defendingDice,
   );
   return {
-    winProbability: stats.winProbability,
+    winProbability:
+      game.blitz === 'Balanced'
+        ? distortProbability(stats.winProbability)
+        : stats.winProbability,
     attackerSurvivorsMean: stats.attackerMeanAtInput,
   };
 }

@@ -267,7 +267,7 @@ export function battleStatistics(
   };
 }
 
-function distortProbability(probability: number): number {
+export function distortProbability(probability: number): number {
   const lowSaturation = 0.1;
   const lowMid = 0.25;
   const highMid = 0.75;
@@ -356,4 +356,49 @@ export function trueBlitz(
     attackLosses: attackingTroops - remainingAttackers,
     defenceLosses: defendingTroops - remainingDefenders,
   };
+}
+
+export function fairBlitz(
+  attackingTroops: number,
+  defendingTroops: number,
+  defendingDice: number,
+): { attackLosses: number; defenceLosses: number } {
+  const stats = battleStatistics(
+    attackingTroops,
+    defendingTroops,
+    defendingDice,
+  );
+  const winProbability = stats.winProbability;
+  if (winProbability >= 0.5) {
+    const expectedAttackLosses =
+      winProbability * (attackingTroops - stats.attackerMeanAtInput) +
+      (1 - winProbability) * attackingTroops;
+    return {
+      attackLosses: Math.min(
+        Math.round(expectedAttackLosses),
+        attackingTroops - 1,
+      ),
+      defenceLosses: defendingTroops,
+    };
+  }
+  const expectedDefenceLosses =
+    winProbability * defendingTroops +
+    (1 - winProbability) * (defendingTroops - stats.defenderMean);
+  return {
+    attackLosses: attackingTroops,
+    defenceLosses: Math.min(
+      Math.round(expectedDefenceLosses),
+      defendingTroops - 1,
+    ),
+  };
+}
+
+export function fairBlitzOutcomes(
+  maxAttackingTroops: number,
+  defendingTroops: number,
+  defendingDice: number,
+): { attackLosses: number; defenceLosses: number }[] {
+  return Array.from({ length: maxAttackingTroops }, (_, i) =>
+    fairBlitz(i + 1, defendingTroops, defendingDice),
+  );
 }

@@ -99,7 +99,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     key: 'blitz',
     label: 'Blitz',
     section: 'Combat',
-    options: options('Balanced', 'True'),
+    options: options('Balanced', 'True', 'Fair'),
     help: BLITZ_HELP,
   },
   {

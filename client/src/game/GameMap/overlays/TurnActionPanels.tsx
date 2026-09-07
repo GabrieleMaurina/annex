@@ -1,6 +1,11 @@
 import type { CSSProperties, Dispatch, RefObject, SetStateAction } from 'react';
 import { playerColor } from '../../../lib/palette';
-import type { GameState, TurnDuration, TurnPhase } from '../../../lib/types';
+import type {
+  BlitzOutcome,
+  GameState,
+  TurnDuration,
+  TurnPhase,
+} from '../../../lib/types';
 import AttackPanel, {
   type AttackType,
   type DiceRoll,
@@ -108,6 +113,7 @@ export default function TurnActionPanels({
   attackDisplay: {
     maxBlitzTroops: number;
     blitzWinProbabilities: number[];
+    blitzOutcomes: BlitzOutcome[];
     selectedType: AttackType;
     regularTroops: 1 | 2 | 3;
     blitzTroops: number;
@@ -215,6 +221,7 @@ export default function TurnActionPanels({
       {attackPanelOpen && attackPanelStyle && (
         <AttackPanel
           blitzWinProbabilities={attackDisplay.blitzWinProbabilities}
+          blitzOutcomes={attackDisplay.blitzOutcomes}
           maxBlitzTroops={attackDisplay.maxBlitzTroops}
           selectedType={attackDisplay.selectedType}
           regularTroops={attackDisplay.regularTroops}

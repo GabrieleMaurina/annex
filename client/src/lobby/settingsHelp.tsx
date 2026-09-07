@@ -72,6 +72,11 @@ export const BLITZ_HELP = (
         True: uses the exact same odds as fighting it out exchange by exchange,
         so a much stronger army will crush a weaker one almost every time.
       </li>
+      <li>
+        Fair: no dice at all. The outcome is fixed in advance from the troop
+        counts and defence dice, set to the average of a True blitz, so the same
+        attack always costs the same.
+      </li>
     </ul>
   </>
 );

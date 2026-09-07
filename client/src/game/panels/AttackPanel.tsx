@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import { useEffect, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useDragNumber } from '../../common/useDragNumber';
+import type { BlitzOutcome } from '../../lib/types';
 import {
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
@@ -19,6 +20,7 @@ export interface DiceRoll {
 
 interface Props {
   blitzWinProbabilities: number[];
+  blitzOutcomes: BlitzOutcome[];
   maxBlitzTroops: number;
   selectedType: AttackType;
   regularTroops: 1 | 2 | 3;
@@ -167,6 +169,7 @@ function DiceRollDisplay({
 
 function AttackPanel({
   blitzWinProbabilities,
+  blitzOutcomes,
   maxBlitzTroops,
   selectedType,
   regularTroops,
@@ -190,6 +193,7 @@ function AttackPanel({
   style,
 }: Props) {
   const blitzProbability = blitzWinProbabilities[blitzTroops - 1] ?? 0;
+  const blitzOutcome = blitzOutcomes[blitzTroops - 1];
   const maxRegularTroops = Math.min(maxBlitzTroops, 3);
 
   const moveDragNumber = useDragNumber({
@@ -309,7 +313,9 @@ function AttackPanel({
                 style={{ ...blitzDragNumber.style, width: 60 }}
               />
               <span className="small">
-                {formatProbability(blitzProbability)}
+                {blitzOutcome
+                  ? `Lose ${blitzOutcome.attackLosses} / Kill ${blitzOutcome.defenceLosses}`
+                  : formatProbability(blitzProbability)}
               </span>
             </div>
           </div>

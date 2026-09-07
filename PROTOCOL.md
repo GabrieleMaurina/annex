@@ -120,7 +120,7 @@ A private game (visibility, a server-only attribute; see "Password and visibilit
   state: 'lobby' | 'playing' | 'ended';
   gameMode: 'Supremacy' | 'Supremacy 3/4' | 'Supremacy 2/3' | 'Capitals' | 'Team Deathmatch' | 'Continent' | '5-Round' | '10-Round' | 'Assassin' | 'Mission' | 'Player Kills' | 'Troop Kills';
   continentId: number | null; // only set in 'Continent', otherwise null; see below
-  blitz: 'Balanced' | 'True';
+  blitz: 'Balanced' | 'True' | 'Fair';
   defenceDice: 2 | 3;
   cards: 'Constant' | 'Linear' | 'Exponential' | 'Linear Per Player' | 'Exponential Per Player';
   placement: 'Random' | 'Semi' | 'Custom';
@@ -470,7 +470,7 @@ A strict-schema MongoDB collection, one document per block: `{ blockerId, blocke
   {
     alliances?: 'off' | 'on'; // 'on' is rejected while gameMode is (or becomes, in this same call) 'Team Deathmatch'
     bannedPlayerIds?: number[]; // replaces the game's entire ban list
-    blitz?: 'Balanced' | 'True';
+    blitz?: 'Balanced' | 'True' | 'Fair';
     bounties?: 'off' | 'on';
     cards?: 'Constant' | 'Linear' | 'Exponential' | 'Linear Per Player' | 'Exponential Per Player';
     defenceDice?: 2 | 3;
@@ -736,7 +736,8 @@ A strict-schema MongoDB collection, one document per block: `{ blockerId, blocke
   | {
       ok: true;
       game: GameState;
-      blitzWinProbabilities: number[]; // index i = probability of winning with i+1 troops via blitz (trueWinProb or balancedWinProb, chosen by the game's blitz setting), length attacking territory's troops − 1
+      blitzWinProbabilities: number[]; // index i = probability of winning with i+1 troops via blitz (trueWinProb or balancedWinProb, chosen by the game's blitz setting), length attacking territory's troops − 1. In 'Fair' blitz each entry is 1 or 0: whether committing i+1 troops conquers the territory.
+      blitzOutcomes?: { attackLosses: number; defenceLosses: number }[]; // only present when blitz is 'Fair'; index i = the predetermined losses of committing i+1 troops, same length as blitzWinProbabilities
     }
   | { ok: false; error: string }
   ```
@@ -744,7 +745,7 @@ A strict-schema MongoDB collection, one document per block: `{ blockerId, blocke
 
 ### `game:attack`
 - **When sent:** the player whose turn it currently is, during `'attack'` with both attack territories selected, confirms an attack option from the attack panel (its confirm button, or Enter).
-- **Purpose:** resolve one battle between `attackStartTerritoryId` and `attackEndTerritoryId`. If the defending territory is unowned (a free-conquest target; see the `toxins` paragraph above), no dice are rolled at all regardless of `type`: the attack always succeeds with `attackLosses: 0` and `defenceLosses: 0` (there are never any troops to lose either side, since a free-conquest territory always holds `0`), and `attackerDice`/`defenderDice` both come back empty, same as they would for `type: 'blitz'`; the caller still picks `type`/`troops` as normal and still moves troops in afterward exactly as any other conquest. Otherwise, the defending territory rolls `min(its troops, defenceDice)` dice per exchange: except a capital (`isCapital: true`, see `turnPhase` above) or an entrenched territory (`entrenchedTurns > 0`, see `turnPhase` above), either of which always uses `3` in place of `defenceDice`, win or lose, regardless of the game's `defenceDice` setting. For `type: 'regular'`, `troops` (1–3, capped at the attacking territory's troops − 1) fight exactly one exchange via `attack()` in `dice.ts`, and the raw dice results are returned (see Ack below) so the client can animate the roll. For `type: 'blitz'`, `troops` (1 up to the attacking territory's troops − 1) fight to elimination of one side via `trueBlitz()` or `balancedBlitz()` (chosen by the game's `blitz` setting). Losses on both sides are applied immediately. If the defending territory's troops reach `0`, it's conquered: ownership transfers to the caller right away, the end-of-game check described under `GameState.territories` above runs immediately (possibly moving `state` to `'ended'`, in which case every surviving attacking troop is moved into the newly conquered territory automatically, broadcast via `game:attackMoved` since there's no further turn left for the player to choose a smaller amount, and nothing further below in this paragraph happens), and otherwise `attackConquestMinTroops` is set to `min(troops used, 3, remaining attacking-territory troops − 1)` with both attack territory ids left set awaiting `game:attackMove`, regardless of whether the conquest eliminated the defender (see "Territory cards" above for the card transfer and its side effects, including what happens once that move is made). Otherwise, if the attacking territory still has more than 1 troop left, both attack territory ids are left set (so the attack panel stays open against the same defending territory) and blitz win probabilities are recomputed for the reduced troop counts; if it's down to 1 troop (can't attack again), both reset to `null` instead. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'attack'` with both territories selected, and no conquest may already be pending.
+- **Purpose:** resolve one battle between `attackStartTerritoryId` and `attackEndTerritoryId`. If the defending territory is unowned (a free-conquest target; see the `toxins` paragraph above), no dice are rolled at all regardless of `type`: the attack always succeeds with `attackLosses: 0` and `defenceLosses: 0` (there are never any troops to lose either side, since a free-conquest territory always holds `0`), and `attackerDice`/`defenderDice` both come back empty, same as they would for `type: 'blitz'`; the caller still picks `type`/`troops` as normal and still moves troops in afterward exactly as any other conquest. Otherwise, the defending territory rolls `min(its troops, defenceDice)` dice per exchange: except a capital (`isCapital: true`, see `turnPhase` above) or an entrenched territory (`entrenchedTurns > 0`, see `turnPhase` above), either of which always uses `3` in place of `defenceDice`, win or lose, regardless of the game's `defenceDice` setting. For `type: 'regular'`, `troops` (1–3, capped at the attacking territory's troops − 1) fight exactly one exchange via `attack()` in `dice.ts`, and the raw dice results are returned (see Ack below) so the client can animate the roll. For `type: 'blitz'`, `troops` (1 up to the attacking territory's troops − 1) fight to elimination of one side via `trueBlitz()` or `balancedBlitz()` (chosen by the game's `blitz` setting). In `'Fair'` blitz no dice are rolled at all: the losses are `fairBlitz()`, fixed in advance from the troop counts and defence dice — the side favoured by the exact odds wins, the loser is wiped, and the winner's losses are its average losses in a true blitz. Because it never rolls, a `'Fair'` blitz always resolves to one side eliminated. Losses on both sides are applied immediately. If the defending territory's troops reach `0`, it's conquered: ownership transfers to the caller right away, the end-of-game check described under `GameState.territories` above runs immediately (possibly moving `state` to `'ended'`, in which case every surviving attacking troop is moved into the newly conquered territory automatically, broadcast via `game:attackMoved` since there's no further turn left for the player to choose a smaller amount, and nothing further below in this paragraph happens), and otherwise `attackConquestMinTroops` is set to `min(troops used, 3, remaining attacking-territory troops − 1)` with both attack territory ids left set awaiting `game:attackMove`, regardless of whether the conquest eliminated the defender (see "Territory cards" above for the card transfer and its side effects, including what happens once that move is made). Otherwise, if the attacking territory still has more than 1 troop left, both attack territory ids are left set (so the attack panel stays open against the same defending territory) and blitz win probabilities are recomputed for the reduced troop counts; if it's down to 1 troop (can't attack again), both reset to `null` instead. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'attack'` with both territories selected, and no conquest may already be pending.
 - **Content:**
   ```ts
   { type: 'regular'; troops: 1 | 2 | 3 } | { type: 'blitz'; troops: number }
@@ -755,6 +756,7 @@ A strict-schema MongoDB collection, one document per block: `{ blockerId, blocke
       ok: true;
       game: GameState;
       blitzWinProbabilities: number[];
+      blitzOutcomes?: { attackLosses: number; defenceLosses: number }[]; // only present when blitz is 'Fair' and the panel stays open; see `game:attackSelectEnd`
       attackerDice: number[];
       defenderDice: number[];
     }

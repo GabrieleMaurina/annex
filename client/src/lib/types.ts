@@ -64,7 +64,11 @@ export interface Card {
   symbol: CardSymbol | null;
 }
 
-export type Blitz = 'Balanced' | 'True';
+export type Blitz = 'Balanced' | 'True' | 'Fair';
+export interface BlitzOutcome {
+  attackLosses: number;
+  defenceLosses: number;
+}
 export type DefenceDice = 2 | 3;
 export type CardsMode =
   | 'Constant'

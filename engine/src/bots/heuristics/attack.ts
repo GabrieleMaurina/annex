@@ -69,6 +69,7 @@ export function chooseAttack(
     for (const endId of hostileNeighbors(game, view, botId, startId)) {
       const defendingTroops = game.territoryTroops.get(endId) ?? 0;
       const winProb = attackWinProbability(
+        game,
         attackingTroops - 1,
         defendingTroops,
         defenceDiceFor(game, endId),

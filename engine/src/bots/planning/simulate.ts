@@ -50,12 +50,13 @@ const EXACT_COMBAT_CAP = 60;
 const FEASIBILITY_RATIO = 0.55;
 
 function stepOutcome(
+  ctx: PlanContext,
   attackers: number,
   defenders: number,
   dice: number,
 ): { winProbability: number; attackerSurvivorsMean: number } {
   if (attackers <= EXACT_COMBAT_CAP && defenders <= EXACT_COMBAT_CAP)
-    return expectedOutcome(attackers, defenders, dice);
+    return expectedOutcome(ctx.game, attackers, defenders, dice);
   const lossPerDefender = dice === 3 ? 1.4 : 0.9;
   return {
     winProbability: attackers > defenders * 2 ? 0.98 : 0.6,
@@ -89,7 +90,12 @@ export function walkStack(
     const attackers = troopsIn(state, cur) - 1;
     if (attackers < 1) break;
     const defenders = troopsIn(state, next);
-    const outcome = stepOutcome(attackers, defenders, defenceDiceAt(ctx, next));
+    const outcome = stepOutcome(
+      ctx,
+      attackers,
+      defenders,
+      defenceDiceAt(ctx, next),
+    );
     if (outcome.winProbability < HOPELESS_FLOOR) break;
     if (outcome.winProbability < STEP_FLOOR && i > 0) break;
 

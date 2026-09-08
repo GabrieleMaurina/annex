@@ -2,6 +2,7 @@ import {
   Game,
   ReplayAnimation,
   ReplayHand,
+  ReplayPlayerState,
   ReplayTerritory,
   ReplayToxinTerritory,
 } from '../types';
@@ -40,6 +41,23 @@ function snapshotHands(game: Game): ReplayHand[] {
   }));
 }
 
+function snapshotPlayerStates(game: Game): ReplayPlayerState[] {
+  return game.playerIds.map((playerId) => {
+    const arsenal = game.arsenal.get(playerId) ?? { nukes: 0, antiNukes: 0 };
+    return {
+      playerId,
+      eliminated: game.deathOrder.includes(playerId),
+      surrendered: game.surrenderedIds.has(playerId),
+      killedPlayerIds: [...(game.stats.get(playerId)?.playersKilled ?? [])],
+      nukes: arsenal.nukes,
+      antiNukes: arsenal.antiNukes,
+      nukeProjects: (game.nukeProjects.get(playerId) ?? []).map((p) => ({
+        ...p,
+      })),
+    };
+  });
+}
+
 export function recordReplayFrame(game: Game, animation: ReplayAnimation) {
   game.replayFrames.push({
     territories: snapshotTerritories(game),
@@ -47,6 +65,7 @@ export function recordReplayFrame(game: Game, animation: ReplayAnimation) {
     radiationTerritories: snapshotRadiationTerritories(game),
     radiationUpcoming: [...game.radiationUpcomingTerritoryIds],
     hands: snapshotHands(game),
+    playerStates: snapshotPlayerStates(game),
     turnPhase: game.turnPhase,
     animation,
     roundNumber: game.roundNumber,

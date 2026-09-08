@@ -80,6 +80,7 @@ export function startGame(playerId: number): GameResponse {
   game.replayTurnMarkers = [];
   game.replayChat = [];
   game.replayEmoji = [];
+  game.replayLog = [];
   game.logs = new Map();
   const map = getGameMap(game);
   game.deck = buildCardDeck(map.territories.map((t) => t.id));

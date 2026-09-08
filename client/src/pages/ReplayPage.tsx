@@ -3,7 +3,6 @@ import { Button, Spinner } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
 import { connector } from '../connector';
 import GameReplayView from '../game/GameReplayView';
-import { formatLogEntries } from '../game/logFormat';
 import { registerGeneratedMap } from '../game/mapData';
 import { foldStoredReplay } from '../game/replay';
 import type { GameState, ReplayTerritory, StoredGame } from '../lib/types';
@@ -167,22 +166,7 @@ function ReplayPage({ navigate, onViewChange }: Props) {
   const doc = resolved?.doc ?? null;
 
   const folded = useMemo(
-    () => (doc ? foldStoredReplay(doc.replay) : null),
-    [doc],
-  );
-  const logs = useMemo(
-    () =>
-      doc
-        ? formatLogEntries(
-            doc.serverLog,
-            doc.players.map((p) => ({
-              id: p.playerId,
-              name: p.name,
-              color: p.color,
-              isBot: p.isBot,
-            })),
-          )
-        : [],
+    () => (doc ? foldStoredReplay(doc.replay, doc.serverLog) : null),
     [doc],
   );
 
@@ -216,7 +200,7 @@ function ReplayPage({ navigate, onViewChange }: Props) {
       mapNames={[]}
       mapRenderName={resolved.mapRenderName}
       replayData={folded.data}
-      logs={logs}
+      logs={[]}
       navigate={navigate}
       onViewChange={onViewChange}
       chatLog={folded.chat}

@@ -17,6 +17,7 @@ interface Props {
   turnPhase: string;
   paused: boolean;
   targeting: 'launch' | 'antiNuke' | null;
+  readOnly?: boolean;
   onBuildNuke: () => void;
   onBuildAntiNuke: () => void;
   onAdvance: (index: number) => void;
@@ -41,14 +42,15 @@ function NukesPanel({
   turnPhase,
   paused,
   targeting,
+  readOnly,
   onBuildNuke,
   onBuildAntiNuke,
   onAdvance,
   onArm,
   onClose,
 }: Props) {
-  const canBuild = isMyTurn && !paused && turnPhase === 'deploy';
-  const canUse = isMyTurn && !paused && turnPhase === 'attack';
+  const canBuild = !readOnly && isMyTurn && !paused && turnPhase === 'deploy';
+  const canUse = !readOnly && isMyTurn && !paused && turnPhase === 'attack';
 
   return (
     <div className={`${PANEL_BG_CLASS} ${PANEL_CLASS}`} style={{ width: 344 }}>
@@ -155,7 +157,7 @@ function NukesPanel({
         </div>
       )}
 
-      {!canBuild && !canUse && (
+      {!readOnly && !canBuild && !canUse && (
         <div className="text-muted small">
           Build during your deploy phase, launch during your attack phase.
         </div>

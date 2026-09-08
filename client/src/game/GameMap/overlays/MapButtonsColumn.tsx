@@ -40,6 +40,8 @@ export default function MapButtonsColumn({
   cardsButtonRef,
   whiteCardsIcon,
   gameEnded,
+  showReplay,
+  cardsTitle,
   hasSetToPlay,
   setAwardedCards,
   logsOpen,
@@ -83,6 +85,8 @@ export default function MapButtonsColumn({
   cardsButtonRef: RefObject<HTMLButtonElement | null>;
   whiteCardsIcon: string | undefined;
   gameEnded: boolean;
+  showReplay: boolean;
+  cardsTitle?: string;
   hasSetToPlay: boolean;
   setAwardedCards: (cards: { id: number; card: Card }[]) => void;
   logsOpen: boolean;
@@ -115,6 +119,7 @@ export default function MapButtonsColumn({
   const panelExpanded =
     cardsOpen || bonusesOpen || logsOpen || settingsOpen || nukesOpen;
   const anyPanelOpen = panelExpanded || settingsMenuOpen;
+  const showBadges = !gameEnded || showReplay;
   return (
     <div
       className="position-absolute start-0 ms-3 d-flex flex-column align-items-start gap-2"
@@ -157,6 +162,7 @@ export default function MapButtonsColumn({
               canPlay={isMyTurn && turnPhase === 'deploy'}
               onPlaySet={playCardSet}
               onClose={() => setOpenPanel(null)}
+              title={cardsTitle}
             />
           </div>
         ) : anyPanelOpen ? null : (
@@ -178,7 +184,7 @@ export default function MapButtonsColumn({
                 height={16}
                 alt="Cards"
               />
-              {!gameEnded && hand.length > 0 && (
+              {showBadges && hand.length > 0 && (
                 <Badge
                   bg={hasSetToPlay ? 'danger' : 'secondary'}
                   pill
@@ -263,6 +269,7 @@ export default function MapButtonsColumn({
                 onBuildAntiNuke={nukes.onBuildAntiNuke}
                 onAdvance={nukes.onAdvanceNuke}
                 onArm={nukes.onArmNuke}
+                readOnly={showReplay}
                 onClose={() => setOpenPanel(null)}
               />
             </div>
@@ -282,7 +289,7 @@ export default function MapButtonsColumn({
                   height={16}
                   alt="Nukes"
                 />
-                {!gameEnded && nukeQueue > 0 && (
+                {showBadges && nukeQueue > 0 && (
                   <Badge
                     bg={nukesReady ? 'danger' : 'secondary'}
                     pill

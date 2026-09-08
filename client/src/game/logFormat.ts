@@ -252,14 +252,14 @@ export function createLogFormatter() {
   };
 }
 
-export function formatLogEntries(
-  entries: { type: string; payload: unknown }[],
+export function formatLogEntriesWithFrames(
+  entries: { type: string; payload: unknown; afterFrame: number }[],
   players: FormatPlayer[],
-): LogEntry[] {
+): (LogEntry & { afterFrame: number })[] {
   const format = createLogFormatter();
-  const logs: LogEntry[] = [];
+  const logs: (LogEntry & { afterFrame: number })[] = [];
   for (const entry of entries)
     for (const part of format(entry, players))
-      logs.push({ id: logs.length + 1, ...part });
+      logs.push({ id: logs.length + 1, afterFrame: entry.afterFrame, ...part });
   return logs;
 }

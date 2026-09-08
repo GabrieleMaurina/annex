@@ -167,16 +167,33 @@ export interface ReplayHand {
   cards: Card[];
 }
 
+export interface ReplayPlayerState {
+  playerId: number;
+  eliminated: boolean;
+  surrendered: boolean;
+  killedPlayerIds: number[];
+  nukes: number;
+  antiNukes: number;
+  nukeProjects: NukeProject[];
+}
+
 export interface ReplayFrame {
   territories: ReplayTerritory[];
   toxinTerritories: ReplayToxinTerritory[];
   radiationTerritories: number[];
   radiationUpcoming: number[];
   hands: ReplayHand[];
+  playerStates: ReplayPlayerState[];
   turnPhase: TurnPhase;
   animation: ReplayAnimation;
   roundNumber: number;
   playerId: number;
+}
+
+export interface ReplayLogEntry {
+  afterFrame: number;
+  type: string;
+  payload: unknown;
 }
 
 export interface ReplayTurnMarker {
@@ -306,6 +323,7 @@ export interface Game {
   replayTurnMarkers: ReplayTurnMarker[];
   replayChat: ReplayChatEntry[];
   replayEmoji: ReplayEmojiEntry[];
+  replayLog: ReplayLogEntry[];
   logs: Map<number, GameLogEvent[]>;
 }
 

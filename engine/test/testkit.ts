@@ -168,6 +168,7 @@ function baseGame(name: string): Game {
     replayTurnMarkers: [],
     replayChat: [],
     replayEmoji: [],
+    replayLog: [],
     logs: new Map(),
   };
 }

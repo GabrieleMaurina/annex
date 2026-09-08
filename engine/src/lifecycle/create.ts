@@ -130,6 +130,7 @@ export function createGame(
     replayTurnMarkers: [],
     replayChat: [],
     replayEmoji: [],
+    replayLog: [],
     logs: new Map(),
   };
   games.set(game.name, game);

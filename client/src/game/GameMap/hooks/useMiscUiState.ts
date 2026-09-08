@@ -282,6 +282,7 @@ export function useAutoAdvancePhase({
   turnPhase,
   attackPendingConquest,
   attackStartCandidatesSize,
+  nukeReady,
   fortifyStartCandidatesSize,
   entrenchCandidatesSize,
   toxinsCandidatesSize,
@@ -295,6 +296,7 @@ export function useAutoAdvancePhase({
   turnPhase: TurnPhase;
   attackPendingConquest: boolean;
   attackStartCandidatesSize: number;
+  nukeReady: boolean;
   fortifyStartCandidatesSize: number;
   entrenchCandidatesSize: number;
   toxinsCandidatesSize: number;
@@ -308,7 +310,8 @@ export function useAutoAdvancePhase({
     const noAttackPossible =
       turnPhase === 'attack' &&
       !attackPendingConquest &&
-      attackStartCandidatesSize === 0;
+      attackStartCandidatesSize === 0 &&
+      !nukeReady;
     const noFortifyPossible =
       turnPhase === 'fortify' && fortifyStartCandidatesSize === 0;
     const noEntrenchPossible =

@@ -272,6 +272,26 @@ export const RADIATIONS_HELP = (
   </>
 );
 
+export const NUKES_HELP = (
+  <>
+    Whether players can build nukes and anti-nukes. During the deploy phase a
+    player spends deploy troops on construction instead of placing them on the
+    map: a nuke costs 5 troops per turn for 5 turns, an anti-nuke 3 troops per
+    turn for 5 turns. Construction is advanced manually each turn and can be
+    paused, but never rushed; each finished device sits in a private arsenal
+    until used. In the attack phase a nuke can be launched at any territory not
+    your own, obliterating it (owner and troops removed, territory modifiers
+    such as a capital left intact). An anti-nuke is deployed on one of your
+    territories and automatically intercepts the first nuke aimed at any
+    territory it is connected to; it stays bound to that territory and changes
+    hands if the territory is captured.
+    <ul className="mb-0 ps-3">
+      <li>Off: no nukes.</li>
+      <li>On: nukes and anti-nukes can be built.</li>
+    </ul>
+  </>
+);
+
 export const ROUND_TROOPS_HELP = (
   <>
     Whether players get extra troops each turn on top of the normal deploy pool.

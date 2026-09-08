@@ -14,6 +14,13 @@ import {
   fortifySelectEnd,
   fortifySelectStart,
 } from '../territory/fortify';
+import {
+  advanceNuke,
+  buildAntiNuke,
+  buildNuke,
+  deployAntiNukeAction,
+  launchNukeAction,
+} from '../territory/nukes';
 import { claimTerritory } from '../territory/territory';
 import { placeTroop } from '../territory/troop';
 
@@ -63,6 +70,16 @@ export function dispatchBotAction(
       return fortify(playerId, p.troops as number);
     case 'game:entrench':
       return entrench(playerId, p.territoryId as number, p.troops as number);
+    case 'game:buildNuke':
+      return buildNuke(playerId);
+    case 'game:buildAntiNuke':
+      return buildAntiNuke(playerId);
+    case 'game:advanceNuke':
+      return advanceNuke(playerId, p.index as number);
+    case 'game:launchNuke':
+      return launchNukeAction(playerId, p.territoryId as number);
+    case 'game:deployAntiNuke':
+      return deployAntiNukeAction(playerId, p.territoryId as number);
     default:
       return { ok: false, error: 'unknown bot action' };
   }

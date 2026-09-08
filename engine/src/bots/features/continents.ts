@@ -30,13 +30,16 @@ export function continentCompletionCandidates(
   const candidates: ContinentCompletionCandidate[] = [];
   for (const [continentId, territoryIds] of continentGroups(game)) {
     if ((map.bonuses[continentId] ?? 0) <= 0) continue;
-    const owned = territoryIds.filter(
-      (id) => ownerOf(game, view, id) === botId,
+    const contested = territoryIds.filter(
+      (id) => !isHazardTerritory(game, view, id),
     );
-    if (owned.length === 0 || owned.length === territoryIds.length) continue;
-    const remaining = territoryIds.filter(
-      (id) => ownerOf(game, view, id) !== botId,
-    );
+    const owned = contested.filter((id) => ownerOf(game, view, id) === botId);
+    if (owned.length === 0) continue;
+    const remaining = contested.filter((id) => {
+      const ownerId = ownerOf(game, view, id);
+      return ownerId !== undefined && ownerId !== botId;
+    });
+    if (remaining.length === 0) continue;
     if (
       remaining.some((id) => {
         const ownerId = ownerOf(game, view, id);
@@ -44,7 +47,6 @@ export function continentCompletionCandidates(
       })
     )
       continue;
-    if (remaining.some((id) => isHazardTerritory(game, view, id))) continue;
     candidates.push({
       continentId,
       bonus: map.bonuses[continentId] ?? 0,
@@ -71,19 +73,24 @@ export function continentBreakCandidates(
   for (const [continentId, territoryIds] of continentGroups(game)) {
     if ((map.bonuses[continentId] ?? 0) <= 0 || territoryIds.length < 2)
       continue;
-    const owners = territoryIds.map((id) => ownerOf(game, view, id));
-    const firstOwner = owners[0];
+    const held = territoryIds.filter(
+      (id) =>
+        !isHazardTerritory(game, view, id) &&
+        ownerOf(game, view, id) !== undefined,
+    );
+    if (held.length === 0) continue;
+    const ownerId = ownerOf(game, view, held[0]);
     if (
-      firstOwner === undefined ||
-      firstOwner === botId ||
-      isTeammate(game, botId, firstOwner) ||
-      !owners.every((o) => o === firstOwner)
+      ownerId === undefined ||
+      ownerId === botId ||
+      isTeammate(game, botId, ownerId) ||
+      !held.every((id) => ownerOf(game, view, id) === ownerId)
     )
       continue;
 
-    let weakestId = territoryIds[0];
+    let weakestId = held[0];
     let weakestTroops = Infinity;
-    for (const id of territoryIds) {
+    for (const id of held) {
       const troops = game.territoryTroops.get(id) ?? 0;
       if (troops < weakestTroops) {
         weakestTroops = troops;
@@ -92,7 +99,7 @@ export function continentBreakCandidates(
     }
     candidates.push({
       continentId,
-      ownerId: firstOwner,
+      ownerId,
       bonus: map.bonuses[continentId] ?? 0,
       weakestTerritoryId: weakestId,
     });

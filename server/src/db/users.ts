@@ -29,6 +29,7 @@ export interface GameSettings {
   toxins: string;
   portals: string;
   radiations: string;
+  nukes: string;
   starvation: string;
   roundTroops: string;
   bounties: string;
@@ -130,6 +131,7 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   toxins: ['off', 'temporary', 'permanent'],
   portals: ['off', 'static', 'dynamic'],
   radiations: ['off', 'static', 'dynamic', 'expanding'],
+  nukes: ['off', 'on'],
   starvation: ['off', 'territory', 'total', 'percent'],
   roundTroops: ['off', 'on'],
   bounties: ['off', 'on'],
@@ -197,6 +199,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   toxins: 'off',
   portals: 'off',
   radiations: 'off',
+  nukes: 'off',
   starvation: 'off',
   roundTroops: 'off',
   bounties: 'off',

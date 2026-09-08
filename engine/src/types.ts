@@ -86,6 +86,18 @@ export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
+export type Nukes = 'off' | 'on';
+
+export interface NukeProject {
+  kind: 'nuke' | 'antiNuke';
+  installmentsPaid: number;
+  lastPaidRound: number;
+}
+
+export interface Arsenal {
+  nukes: number;
+  antiNukes: number;
+}
 export type TurnPhase =
   | 'territory'
   | 'troop'
@@ -127,7 +139,15 @@ export type ReplayAnimation =
     }
   | { type: 'entrench'; territoryId: number; troops: number; playerId: number }
   | { type: 'starve'; territoryId: number; troops: number; playerId: number }
-  | { type: 'toxins'; territoryId: number; playerId: number };
+  | { type: 'toxins'; territoryId: number; playerId: number }
+  | {
+      type: 'nuke';
+      fromTerritoryId: number;
+      targetTerritoryId: number;
+      intercepted: boolean;
+      interceptFromTerritoryId: number | null;
+      playerId: number;
+    };
 
 export interface ReplayTerritory {
   id: number;
@@ -229,6 +249,10 @@ export interface Game {
   radiations: Radiations;
   radiationTerritoryIds: Set<number>;
   radiationUpcomingTerritoryIds: Set<number>;
+  nukes: Nukes;
+  nukeProjects: Map<number, NukeProject[]>;
+  arsenal: Map<number, Arsenal>;
+  antiNukeTerritoryIds: Set<number>;
   starvation: Starvation;
   supplyLines: SupplyLines;
   toxins: Toxins;

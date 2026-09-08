@@ -286,10 +286,16 @@ export function calculateDeployTroopsBreakdown(
 
   let bonuses = 0;
   for (const [continentId, territoryIds] of continents) {
-    const controlsAll = territoryIds.every(
-      (id) => game.territoryOwners.get(id) === playerId,
-    );
-    if (controlsAll) bonuses += map.bonuses[continentId] ?? 0;
+    const owners = territoryIds
+      .filter(
+        (id) =>
+          !game.radiationTerritoryIds.has(id) && !game.territoryToxins.has(id),
+      )
+      .map((id) => game.territoryOwners.get(id))
+      .filter((ownerId) => ownerId !== undefined);
+    const controlsContinent =
+      owners.length > 0 && owners.every((ownerId) => ownerId === playerId);
+    if (controlsContinent) bonuses += map.bonuses[continentId] ?? 0;
   }
 
   let capitals = 0;

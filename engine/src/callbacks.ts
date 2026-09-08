@@ -120,6 +120,17 @@ export interface EngineCallbacks {
     playerId: number,
     payload: { losses: { territoryId: number; troops: number }[] },
   ): void;
+  onNukeLaunched(
+    playerId: number,
+    payload: {
+      playerId: number;
+      fromTerritoryId: number;
+      targetTerritoryId: number;
+      intercepted: boolean;
+      interceptFromTerritoryId: number | null;
+      eliminatedPlayerIds: number[];
+    },
+  ): void;
   onAttacked(
     playerId: number,
     payload: {

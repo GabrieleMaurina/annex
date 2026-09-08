@@ -40,6 +40,7 @@ export function toxin(playerId: number, rawTerritoryId: unknown): GameResponse {
   game.territoryOwners.delete(territoryId);
   game.territoryTroops.delete(territoryId);
   game.territoryEntrenchment.delete(territoryId);
+  game.antiNukeTerritoryIds.delete(territoryId);
   const permanent = game.toxins === 'permanent';
   const roundsRemaining = permanent ? 0 : 3;
   game.territoryToxins.set(territoryId, { permanent, roundsRemaining });

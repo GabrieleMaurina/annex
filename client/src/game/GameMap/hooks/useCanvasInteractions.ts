@@ -88,6 +88,9 @@ export function useCanvasInteractions({
   entrenchMaxTroops,
   entrenchInputRef,
   toxinsCandidates,
+  nukeTargeting,
+  setNukeTargeting,
+  antiNukeTerritoryIds,
   pendingAttackEmoji,
   setPendingAttackEmoji,
   sendEmoji,
@@ -172,6 +175,9 @@ export function useCanvasInteractions({
   entrenchMaxTroops: number;
   entrenchInputRef: RefObject<HTMLInputElement | null>;
   toxinsCandidates: Set<number>;
+  nukeTargeting: 'launch' | 'antiNuke' | null;
+  setNukeTargeting: (mode: 'launch' | 'antiNuke' | null) => void;
+  antiNukeTerritoryIds: number[];
   pendingAttackEmoji: { targetPlayerId: number } | null;
   setPendingAttackEmoji: Dispatch<
     SetStateAction<{ targetPlayerId: number } | null>
@@ -189,9 +195,9 @@ export function useCanvasInteractions({
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   setPanelCollapsed: Dispatch<SetStateAction<boolean>>;
-  openPanel: 'cards' | 'bonuses' | 'logs' | 'settings' | null;
+  openPanel: 'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null;
   setOpenPanel: (
-    panel: 'cards' | 'bonuses' | 'logs' | 'settings' | null,
+    panel: 'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null,
   ) => void;
   cardsOpen: boolean;
   selectedCombo: EvaluatedCombo | undefined;
@@ -266,9 +272,26 @@ export function useCanvasInteractions({
     [setGame],
   );
 
+  const nukeCandidates = new Set<number>(
+    nukeTargeting === null
+      ? []
+      : nukeTargeting === 'launch'
+        ? territories
+            .filter((t) => ownerById.get(t.id)?.ownerId !== selfId)
+            .map((t) => t.id)
+        : territories
+            .filter(
+              (t) =>
+                ownerById.get(t.id)?.ownerId === selfId &&
+                !antiNukeTerritoryIds.includes(t.id),
+            )
+            .map((t) => t.id),
+  );
+
   function isInteractable(t: Territory): boolean {
     if (pendingAttackEmoji) return true;
     if (gameEnded || !isMyTurn || paused) return false;
+    if (nukeTargeting) return nukeCandidates.has(t.id);
     if (turnPhase === 'territory') return territoryClaimCandidates.has(t.id);
     if (turnPhase === 'capital') return ownerById.get(t.id)?.ownerId === selfId;
     if (turnPhase === 'deploy' || turnPhase === 'troop')
@@ -299,6 +322,10 @@ export function useCanvasInteractions({
   function nodeState(
     id: number,
   ): 'normal' | 'selectable' | 'hovered' | 'selected' {
+    if (nukeTargeting) {
+      if (id === hoveredId) return 'hovered';
+      return nukeCandidates.has(id) ? 'selectable' : 'normal';
+    }
     if (turnPhase === 'territory') {
       if (id === hoveredId) return 'hovered';
       return territoryClaimCandidates.has(id) ? 'selectable' : 'normal';
@@ -455,6 +482,25 @@ export function useCanvasInteractions({
     }
 
     if (gameEnded || !isMyTurn || paused) return;
+
+    if (nukeTargeting && turnPhase === 'attack') {
+      if (vertex && nukeCandidates.has(vertex.id)) {
+        const submit =
+          nukeTargeting === 'launch'
+            ? connector.launchNuke
+            : connector.deployAntiNuke;
+        submit({ territoryId: vertex.id }, (res: Ack) => {
+          if (res.ok) setGame(res.game);
+          else
+            setToasts((prev) => [
+              ...prev,
+              { id: Date.now(), message: res.error },
+            ]);
+        });
+      }
+      setNukeTargeting(null);
+      return;
+    }
 
     if (turnPhase === 'territory') {
       if (vertex && isInteractable(vertex)) claimTerritory(vertex.id);
@@ -654,6 +700,10 @@ export function useCanvasInteractions({
       return;
     }
     if (gameEnded || !isMyTurn || paused) return;
+    if (nukeTargeting) {
+      setNukeTargeting(null);
+      return;
+    }
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId !== null) cancelFortify();
       return;
@@ -683,6 +733,10 @@ export function useCanvasInteractions({
         }
         if (alliancePopupFor !== null) {
           setAlliancePopupFor(null);
+          return;
+        }
+        if (nukeTargeting) {
+          setNukeTargeting(null);
           return;
         }
         if (openPanel !== null) {
@@ -839,6 +893,8 @@ export function useCanvasInteractions({
     setPendingAttackEmoji,
     emojiPickerFor,
     alliancePopupFor,
+    nukeTargeting,
+    setNukeTargeting,
     openPanel,
     isMyTurn,
     turnPhase,

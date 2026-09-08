@@ -196,6 +196,7 @@ function GameMap({
   const whiteUnmutedIcon = useWhiteIcon('/icons/unmuted.svg');
   const whiteLogsIcon = useWhiteIcon('/icons/logs.svg');
   const whiteSettingsIcon = useWhiteIcon('/icons/sliders.svg');
+  const whiteNukesIcon = useWhiteIcon('/icons/nuke.svg');
 
   const {
     canvasRef,
@@ -369,6 +370,10 @@ function GameMap({
     () => new Set([...toxinById, ...radiationById]),
     [toxinById, radiationById],
   );
+  const antiNukeById = useMemo(
+    () => new Set(showReplay ? [] : game.antiNukeTerritoryIds),
+    [showReplay, game.antiNukeTerritoryIds],
+  );
   const visibleTerritoryById = useMemo(
     () => (visibleTerritoryIds ? new Set(visibleTerritoryIds) : null),
     [visibleTerritoryIds],
@@ -435,6 +440,7 @@ function GameMap({
     bonusesOpen,
     logsOpen,
     settingsOpen,
+    nukesOpen,
     cardsButtonsTop,
     cardsPanelRef,
     cardsButtonRef,
@@ -443,6 +449,8 @@ function GameMap({
     logsPanelRef,
     settingsButtonRef,
     settingsPanelRef,
+    nukesButtonRef,
+    nukesPanelRef,
     buttonColumnRef,
     logsPanelTop,
     settingsPanelTop,
@@ -453,6 +461,56 @@ function GameMap({
   useEffect(() => {
     onPanelOpenChange(openPanel !== null);
   }, [openPanel, onPanelOpenChange]);
+
+  const [armedNuke, setArmedNuke] = useState<{
+    mode: 'launch' | 'antiNuke';
+    turnId: string;
+  } | null>(null);
+  const nukesEnabled = game.nukes === 'on';
+  const nukeTurnId = `${roundNumber}-${turnPlayerIndex}`;
+  const canUseNuke =
+    nukesEnabled && isMyTurn && turnPhase === 'attack' && !paused;
+  const nukeReady =
+    canUseNuke && (game.arsenal.nukes > 0 || game.arsenal.antiNukes > 0);
+  const nukeTargeting =
+    canUseNuke && nukesOpen && armedNuke?.turnId === nukeTurnId
+      ? armedNuke.mode
+      : null;
+  const setNukeTargeting = useCallback(
+    (mode: 'launch' | 'antiNuke' | null) =>
+      setArmedNuke(mode === null ? null : { mode, turnId: nukeTurnId }),
+    [nukeTurnId],
+  );
+
+  const runNukeAck = useCallback(
+    (res: Ack) => {
+      if (res.ok) setGame(res.game);
+      else
+        setToasts((prev) => [...prev, { id: Date.now(), message: res.error }]);
+    },
+    [setGame],
+  );
+  const buildNuke = useCallback(
+    () => connector.buildNuke(runNukeAck),
+    [runNukeAck],
+  );
+  const buildAntiNuke = useCallback(
+    () => connector.buildAntiNuke(runNukeAck),
+    [runNukeAck],
+  );
+  const advanceNuke = useCallback(
+    (index: number) => connector.advanceNuke({ index }, runNukeAck),
+    [runNukeAck],
+  );
+  const armNuke = useCallback(
+    (mode: 'launch' | 'antiNuke') =>
+      setArmedNuke((current) =>
+        current?.mode === mode && current.turnId === nukeTurnId
+          ? null
+          : { mode, turnId: nukeTurnId },
+      ),
+    [nukeTurnId],
+  );
 
   const cardsFlow = useCardsAndDeploy({
     turnPhase,
@@ -571,6 +629,9 @@ function GameMap({
     entrenchMaxTroops: turnFlow.entrenchMaxTroops,
     entrenchInputRef: turnFlow.entrenchInputRef,
     toxinsCandidates: turnFlow.toxinsCandidates,
+    nukeTargeting,
+    setNukeTargeting,
+    antiNukeTerritoryIds: game.antiNukeTerritoryIds,
     pendingAttackEmoji: emojiUI.pendingAttackEmoji,
     setPendingAttackEmoji: emojiUI.setPendingAttackEmoji,
     sendEmoji: emojiUI.sendEmoji,
@@ -629,6 +690,7 @@ function GameMap({
     turnPhase,
     attackPendingConquest: attackFlow.attackPendingConquest,
     attackStartCandidatesSize: attackFlow.attackStartCandidates.size,
+    nukeReady,
     fortifyStartCandidatesSize: turnFlow.fortifyStartCandidates.size,
     entrenchCandidatesSize: turnFlow.entrenchCandidates.size,
     toxinsCandidatesSize: turnFlow.toxinsCandidates.size,
@@ -739,6 +801,7 @@ function GameMap({
       players,
       displayedToxinTerritories,
       radiationById,
+      antiNukeById,
       radiationPlacedAtRef,
       visibleTerritoryIds,
       frozenVisibleTerritoryIdsRef,
@@ -860,6 +923,22 @@ function GameMap({
         settingsMenuOpen={settingsMenuOpen}
         game={game}
         awardedCards={cardsFlow.awardedCards}
+        nukesButtonRef={nukesButtonRef}
+        nukesPanelRef={nukesPanelRef}
+        whiteNukesIcon={whiteNukesIcon}
+        nukes={
+          nukesEnabled && !showReplay
+            ? {
+                open: nukesOpen,
+                paused,
+                targeting: nukeTargeting,
+                onBuildNuke: buildNuke,
+                onBuildAntiNuke: buildAntiNuke,
+                onAdvanceNuke: advanceNuke,
+                onArmNuke: armNuke,
+              }
+            : null
+        }
       />
       <PlayersPanel
         players={displayedPlayers}

@@ -6,7 +6,18 @@ import { comboKey, type EvaluatedCombo } from '../../logic/cards';
 import CardsPanel, { CardFace } from '../../panels/CardsPanel';
 import GameSettingsPanel from '../../panels/GameSettingsPanel';
 import LogsPanel from '../../panels/LogsPanel';
+import NukesPanel from '../../panels/NukesPanel';
 import type { LogEntry } from '../../useGameLogs';
+
+export interface NukesColumnProps {
+  open: boolean;
+  paused: boolean;
+  targeting: 'launch' | 'antiNuke' | null;
+  onBuildNuke: () => void;
+  onBuildAntiNuke: () => void;
+  onAdvanceNuke: (index: number) => void;
+  onArmNuke: (mode: 'launch' | 'antiNuke') => void;
+}
 
 export default function MapButtonsColumn({
   cardsButtonsTop,
@@ -45,13 +56,17 @@ export default function MapButtonsColumn({
   settingsMenuOpen,
   game,
   awardedCards,
+  nukes,
+  nukesButtonRef,
+  nukesPanelRef,
+  whiteNukesIcon,
 }: {
   cardsButtonsTop: number;
   buttonColumnRef: RefObject<HTMLDivElement | null>;
   bonusesButtonRef: RefObject<HTMLButtonElement | null>;
   whiteBonusIcon: string | undefined;
   setOpenPanel: Dispatch<
-    SetStateAction<'cards' | 'bonuses' | 'logs' | 'settings' | null>
+    SetStateAction<'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null>
   >;
   bonusesOpen: boolean;
   cardsOpen: boolean;
@@ -84,8 +99,21 @@ export default function MapButtonsColumn({
   settingsMenuOpen: boolean;
   game: GameState;
   awardedCards: { id: number; card: Card }[];
+  nukes: NukesColumnProps | null;
+  nukesButtonRef: RefObject<HTMLButtonElement | null>;
+  nukesPanelRef: RefObject<HTMLDivElement | null>;
+  whiteNukesIcon: string | undefined;
 }) {
-  const panelExpanded = cardsOpen || bonusesOpen || logsOpen || settingsOpen;
+  const nukesOpen = nukes?.open ?? false;
+  const nukesReady =
+    game.nukes === 'on' &&
+    (game.arsenal.nukes > 0 || game.arsenal.antiNukes > 0);
+  const nukeQueue =
+    game.nukes === 'on'
+      ? game.arsenal.nukes + game.arsenal.antiNukes + game.nukeProjects.length
+      : 0;
+  const panelExpanded =
+    cardsOpen || bonusesOpen || logsOpen || settingsOpen || nukesOpen;
   const anyPanelOpen = panelExpanded || settingsMenuOpen;
   return (
     <div
@@ -218,6 +246,55 @@ export default function MapButtonsColumn({
             </Button>
           </Tip>
         )}
+        {game.nukes === 'on' &&
+          nukes &&
+          (nukesOpen ? (
+            <div ref={nukesPanelRef}>
+              <NukesPanel
+                arsenal={game.arsenal}
+                projects={game.nukeProjects}
+                roundNumber={game.roundNumber}
+                troopsToDeploy={game.troopsToDeploy}
+                isMyTurn={isMyTurn}
+                turnPhase={turnPhase}
+                paused={nukes.paused}
+                targeting={nukes.targeting}
+                onBuildNuke={nukes.onBuildNuke}
+                onBuildAntiNuke={nukes.onBuildAntiNuke}
+                onAdvance={nukes.onAdvanceNuke}
+                onArm={nukes.onArmNuke}
+                onClose={() => setOpenPanel(null)}
+              />
+            </div>
+          ) : anyPanelOpen ? null : (
+            <Tip text="Nukes">
+              <Button
+                ref={nukesButtonRef}
+                variant="secondary"
+                size="sm"
+                className="position-relative d-flex align-items-center justify-content-center"
+                style={{ width: 28, height: 28, padding: 0 }}
+                onClick={() => setOpenPanel('nukes')}
+              >
+                <img
+                  src={whiteNukesIcon ?? '/icons/nuke.svg'}
+                  width={16}
+                  height={16}
+                  alt="Nukes"
+                />
+                {!gameEnded && nukeQueue > 0 && (
+                  <Badge
+                    bg={nukesReady ? 'danger' : 'secondary'}
+                    pill
+                    className="position-absolute top-0 start-100 translate-middle"
+                    style={{ fontSize: 10 }}
+                  >
+                    {nukeQueue}
+                  </Badge>
+                )}
+              </Button>
+            </Tip>
+          ))}
       </div>
       {!gameEnded && awardedCards.length > 0 && (
         <div className="d-flex flex-column gap-2">

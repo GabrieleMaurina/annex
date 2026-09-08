@@ -10,6 +10,7 @@ import type { GameState, ReplayTerritory, StoredGame } from '../lib/types';
 
 interface Props {
   navigate: (path: string) => void;
+  onViewChange?: (view: 'results' | 'replay') => void;
 }
 
 function countsByOwner(territories: ReplayTerritory[]) {
@@ -59,6 +60,10 @@ function buildGameState(
     radiations: s.radiations,
     radiationTerritoryIds: [],
     radiationUpcomingTerritoryIds: [],
+    nukes: s.nukes,
+    arsenal: { nukes: 0, antiNukes: 0 },
+    nukeProjects: [],
+    antiNukeTerritoryIds: [],
     starvation: s.starvation,
     supplyLines: s.supplyLines,
     toxins: s.toxins,
@@ -125,7 +130,7 @@ function buildGameState(
   };
 }
 
-function ReplayPage({ navigate }: Props) {
+function ReplayPage({ navigate, onViewChange }: Props) {
   const { id = '' } = useParams();
   const [resolved, setResolved] = useState<{
     doc: StoredGame;
@@ -213,6 +218,7 @@ function ReplayPage({ navigate }: Props) {
       replayData={folded.data}
       logs={logs}
       navigate={navigate}
+      onViewChange={onViewChange}
       chatLog={folded.chat}
       emojiLog={folded.emoji}
     />

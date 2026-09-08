@@ -51,6 +51,13 @@ import {
   fortifySelectEnd,
   fortifySelectStart,
 } from './territory/fortify';
+import {
+  advanceNuke,
+  buildAntiNuke,
+  buildNuke,
+  deployAntiNukeAction,
+  launchNukeAction,
+} from './territory/nukes';
 import { requestReplay } from './territory/replay';
 import { claimTerritory } from './territory/territory';
 import { toxin } from './territory/toxins';
@@ -75,6 +82,11 @@ export {
   ReplayEntry,
   ReplayTerritoryDelta,
 } from './game/export';
+export {
+  ANTI_NUKE_INSTALLMENT,
+  NUKE_INSTALLMENT,
+  NUKE_INSTALLMENTS,
+} from './game/nukes/nukes';
 export { GameSummary } from './game/state';
 export {
   Fill,
@@ -156,6 +168,12 @@ export function createEngine(
 
     entrench,
     toxin,
+
+    buildNuke,
+    buildAntiNuke,
+    advanceNuke,
+    launchNuke: launchNukeAction,
+    deployAntiNuke: deployAntiNukeAction,
 
     attackSelectStart,
     attackSelectEnd,

@@ -60,8 +60,10 @@ export function foldStoredReplay(replay: StoredGame['replay']): FoldedReplay {
 
   for (const entry of replay.frames) {
     if (entry.kind === 'action') {
-      for (const delta of entry.mapDelta)
-        territoryById.set(delta.id, { ...delta });
+      for (const delta of entry.mapDelta) {
+        if (delta.ownerId === -1) territoryById.delete(delta.id);
+        else territoryById.set(delta.id, { ...delta });
+      }
       const animation =
         entry.animation.type === 'attack' && entry.animation.defenderId == null
           ? { ...entry.animation, defenderId: undefined }

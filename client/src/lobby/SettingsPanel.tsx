@@ -39,6 +39,10 @@ const MAP_TOOLTIP_POPPER = {
 
 const GENERATE_MAP_OPTION = '__generateMap__';
 
+const COARSE_POINTER =
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(pointer: coarse)').matches;
+
 interface Props {
   game: GameState;
   gameMeta?: GameMeta | null;
@@ -69,6 +73,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   placement: 'Random',
   portals: 'off',
   radiations: 'off',
+  nukes: 'off',
   starvation: 'off',
   supplyLines: 'off',
   toxins: 'off',
@@ -305,7 +310,7 @@ function SettingsPanel({
                   applySettings({ mapName: name });
                 }}
               >
-                {mapGenOpen ? (
+                {mapGenOpen || COARSE_POINTER ? (
                   mapToggle
                 ) : (
                   <Tip
@@ -361,7 +366,7 @@ function SettingsPanel({
                         {name}
                       </Dropdown.Item>
                     );
-                    return mapMenuOpen ? (
+                    return mapMenuOpen && !COARSE_POINTER ? (
                       <Tip
                         key={name}
                         text={mapTooltip(name)}

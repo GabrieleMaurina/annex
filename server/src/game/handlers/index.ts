@@ -10,6 +10,7 @@ export { registerCardHandlers } from './turn/cards';
 export { registerDeployHandlers } from './turn/deploy';
 export { registerEntrenchHandlers } from './turn/entrench';
 export { registerFortifyHandlers } from './turn/fortify';
+export { registerNukeHandlers } from './turn/nukes';
 export { registerTerritoryHandlers } from './turn/territory';
 export { registerToxinsHandlers } from './turn/toxins';
 export { registerTroopHandlers } from './turn/troop';

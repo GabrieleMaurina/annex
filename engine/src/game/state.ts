@@ -71,6 +71,7 @@ export function gameSummary(game: Game) {
       toxins: game.toxins,
       portals: game.portals,
       radiations: game.radiations,
+      nukes: game.nukes,
       starvation: game.starvation,
       roundTroops: game.roundTroops,
       bounties: game.bounties,
@@ -163,6 +164,14 @@ export function gameState(game: Game) {
     radiations: game.radiations,
     radiationTerritoryIds: [...game.radiationTerritoryIds],
     radiationUpcomingTerritoryIds: [...game.radiationUpcomingTerritoryIds],
+    nukes: game.nukes,
+    arsenal: { nukes: 0, antiNukes: 0 } as { nukes: number; antiNukes: number },
+    nukeProjects: [] as {
+      kind: 'nuke' | 'antiNuke';
+      installmentsPaid: number;
+      lastPaidRound: number;
+    }[],
+    antiNukeTerritoryIds: [] as number[],
     starvation: game.starvation,
     supplyLines: game.supplyLines,
     toxins: game.toxins,

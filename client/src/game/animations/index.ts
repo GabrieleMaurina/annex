@@ -2,6 +2,7 @@ import { buildWrappedPathSegments } from '../mapMath';
 import { drawFortifyPath } from './arrow';
 import { drawEntrench } from './entrench';
 import { drawExplosion } from './explosion';
+import { drawNuke } from './nuke';
 import {
   drawLabel,
   DURATIONS,
@@ -23,6 +24,8 @@ export function drawAnimations(
 
     if (a.type === 'explosion') {
       drawExplosion(ctx, a, p, radius, now);
+    } else if (a.type === 'nuke') {
+      drawNuke(ctx, a, toScreen, radius, now);
     } else if (a.type === 'entrench') {
       drawEntrench(ctx, a, p, radius, now);
     } else if (a.type === 'add' || a.type === 'remove') {
@@ -78,6 +81,7 @@ export {
   setRadiationActive,
   setToxinsActive,
   startAnimation,
+  startNukeAnimation,
   toggleAnimationsDisabled,
 } from './state';
 export type { AnimationType } from './state';

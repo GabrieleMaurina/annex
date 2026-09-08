@@ -11,6 +11,8 @@ import { selectRadiationTerritories } from './selection';
 
 const TERRITORIES_PER_RADIATION = 10;
 const MAX_RADIATION_TERRITORIES = 8;
+const TERRITORIES_PER_DYNAMIC_RADIATION = 12;
+const MAX_DYNAMIC_RADIATION_TERRITORIES = 6;
 
 export function radiationInitialCount(
   radiations: Radiations,
@@ -18,6 +20,11 @@ export function radiationInitialCount(
 ): number {
   if (radiations === 'off') return 0;
   if (radiations === 'expanding') return 1;
+  if (radiations === 'dynamic')
+    return Math.min(
+      MAX_DYNAMIC_RADIATION_TERRITORIES,
+      Math.ceil(territoryCount / TERRITORIES_PER_DYNAMIC_RADIATION),
+    );
   return Math.min(
     MAX_RADIATION_TERRITORIES,
     Math.ceil(territoryCount / TERRITORIES_PER_RADIATION),
@@ -107,6 +114,7 @@ function applyRadiation(game: Game): {
     if (game.radiations === 'expanding')
       removePortalTerritory(game, territoryId);
     game.territoryToxins.delete(territoryId);
+    game.antiNukeTerritoryIds.delete(territoryId);
 
     const ownerId = game.territoryOwners.get(territoryId);
     if (ownerId === undefined) continue;

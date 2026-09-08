@@ -3,12 +3,13 @@ import { DEFAULT_CARDS_BUTTONS_TOP, TOP_BUTTON_GAP } from '../helpers';
 
 export function usePanelsUI() {
   const [openPanel, setOpenPanel] = useState<
-    'cards' | 'bonuses' | 'logs' | 'settings' | null
+    'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null
   >(null);
   const cardsOpen = openPanel === 'cards';
   const bonusesOpen = openPanel === 'bonuses';
   const logsOpen = openPanel === 'logs';
   const settingsOpen = openPanel === 'settings';
+  const nukesOpen = openPanel === 'nukes';
   const [cardsButtonsTop, setCardsButtonsTop] = useState(
     DEFAULT_CARDS_BUTTONS_TOP,
   );
@@ -19,6 +20,8 @@ export function usePanelsUI() {
   const logsPanelRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsPanelRef = useRef<HTMLDivElement>(null);
+  const nukesButtonRef = useRef<HTMLButtonElement>(null);
+  const nukesPanelRef = useRef<HTMLDivElement>(null);
   const buttonColumnRef = useRef<HTMLDivElement>(null);
   const [logsPanelTop, setLogsPanelTop] = useState(DEFAULT_CARDS_BUTTONS_TOP);
   const [settingsPanelTop, setSettingsPanelTop] = useState(
@@ -78,9 +81,11 @@ export function usePanelsUI() {
       if (bonusesButtonRef.current?.contains(target)) return;
       if (logsButtonRef.current?.contains(target)) return;
       if (settingsButtonRef.current?.contains(target)) return;
+      if (nukesButtonRef.current?.contains(target)) return;
       if (cardsPanelRef.current?.contains(target)) return;
       if (logsPanelRef.current?.contains(target)) return;
       if (settingsPanelRef.current?.contains(target)) return;
+      if (nukesPanelRef.current?.contains(target)) return;
       setOpenPanel(null);
     }
     document.addEventListener('mousedown', handleOutside);
@@ -98,6 +103,7 @@ export function usePanelsUI() {
     bonusesOpen,
     logsOpen,
     settingsOpen,
+    nukesOpen,
     cardsButtonsTop,
     cardsPanelRef,
     cardsButtonRef,
@@ -106,6 +112,8 @@ export function usePanelsUI() {
     logsPanelRef,
     settingsButtonRef,
     settingsPanelRef,
+    nukesButtonRef,
+    nukesPanelRef,
     buttonColumnRef,
     logsPanelTop,
     settingsPanelTop,

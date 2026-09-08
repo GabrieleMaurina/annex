@@ -72,6 +72,7 @@ function App() {
   const [mapNames, setMapNames] = useState<string[]>([]);
   const [selfId, setSelfId] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [replayMapOpen, setReplayMapOpen] = useState(false);
 
   const { pathname } = useLocation();
   const routerNavigate = useNavigate();
@@ -83,6 +84,8 @@ function App() {
   const room = roomFromPath(pathname);
   const isOffline = room === 'offline';
   const inGame = room !== 'home';
+  const onReplayMap =
+    /^\/games\/replay\/[^/]+$/.test(pathname) && replayMapOpen;
 
   const refreshSession = useCallback(function load() {
     connector.session((res) => {
@@ -283,7 +286,7 @@ function App() {
 
   return (
     <>
-      {!inGame && (
+      {!inGame && !onReplayMap && (
         <div
           className="position-fixed top-0 end-0 m-3"
           style={{ zIndex: 1030 }}
@@ -354,7 +357,12 @@ function App() {
         <Route path="/games/replay" element={<Games account={account} />} />
         <Route
           path="/games/replay/:id"
-          element={<ReplayPage navigate={navigate} />}
+          element={
+            <ReplayPage
+              navigate={navigate}
+              onViewChange={(view) => setReplayMapOpen(view === 'replay')}
+            />
+          }
         />
         <Route path="/games/offline" element={gameElement} />
         <Route path="/games/live/:gameName" element={gameElement} />

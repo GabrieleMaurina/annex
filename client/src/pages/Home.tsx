@@ -66,6 +66,7 @@ const DEFAULT_FILTERS: HomeFilters = {
   roundsMax: ROUNDS_MAX,
   phase: '',
   password: '',
+  hasBots: '',
   settings: {},
   sort: 'newest',
 };
@@ -144,6 +145,9 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
   const [password, setPassword] = useState<'' | 'yes' | 'no'>(
     initial.password as '' | 'yes' | 'no',
   );
+  const [hasBots, setHasBots] = useState<'' | 'yes' | 'no'>(
+    initial.hasBots as '' | 'yes' | 'no',
+  );
   const [settings, setSettings] = useState<Record<string, string>>(
     initial.settings,
   );
@@ -168,6 +172,7 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
     roundsMax,
     phase,
     password,
+    hasBots,
     settings,
   });
 
@@ -185,6 +190,7 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
     roundsMax,
     phase,
     password,
+    hasBots,
     settings,
     sort: sortOption,
   };
@@ -232,6 +238,8 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
         phase: phase || undefined,
         hasPassword:
           password === 'yes' ? true : password === 'no' ? false : undefined,
+        hasBots:
+          hasBots === 'yes' ? true : hasBots === 'no' ? false : undefined,
         sort,
         sortDir,
       };
@@ -269,6 +277,7 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
     setRoundsMax(ROUNDS_MAX);
     setPhase('');
     setPassword('');
+    setHasBots('');
     setSettings({});
     setPage(1);
   }
@@ -427,6 +436,20 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
                 <option value="">Any</option>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
+              </Form.Select>
+            </Field>
+            <Field label="Bots">
+              <Form.Select
+                size="sm"
+                className="w-auto"
+                value={hasBots}
+                onChange={(e) =>
+                  resetPage(setHasBots)(e.target.value as '' | 'yes' | 'no')
+                }
+              >
+                <option value="">Any</option>
+                <option value="yes">Has bots</option>
+                <option value="no">No bots</option>
               </Form.Select>
             </Field>
             <RangeField

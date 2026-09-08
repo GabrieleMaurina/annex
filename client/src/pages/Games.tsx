@@ -79,6 +79,7 @@ interface Filters {
   mapGenerationType: string;
   mapGenerationFill: string;
   settings: Record<string, string>;
+  hasBots: '' | 'yes' | 'no';
   outcome: '' | 'won' | 'lost';
   roundsMin: number;
   roundsMax: number;
@@ -189,6 +190,7 @@ function Games({ account }: Props) {
   const [mapGenerationType, setMapGenerationType] = useState('');
   const [mapGenerationFill, setMapGenerationFill] = useState('');
   const [settings, setSettings] = useState<Record<string, string>>({});
+  const [hasBots, setHasBots] = useState<'' | 'yes' | 'no'>('');
   const [outcome, setOutcome] = useState<'' | 'won' | 'lost'>('');
   const [roundsMin, setRoundsMin] = useState(ROUNDS_MIN);
   const [roundsMax, setRoundsMax] = useState(ROUNDS_MAX);
@@ -218,6 +220,7 @@ function Games({ account }: Props) {
     mapGenerationType,
     mapGenerationFill,
     settings,
+    hasBots,
     outcome,
     roundsMin,
     roundsMax,
@@ -269,6 +272,7 @@ function Games({ account }: Props) {
           ? (mapGenerationFill as Fill) || undefined
           : undefined,
       settings,
+      hasBots: hasBots === 'yes' ? true : hasBots === 'no' ? false : undefined,
       outcome: outcome || undefined,
       minRounds: roundsNarrowed ? roundsMin : undefined,
       maxRounds: roundsNarrowed ? roundsMax : undefined,
@@ -317,6 +321,7 @@ function Games({ account }: Props) {
     setMapGenerationType('');
     setMapGenerationFill('');
     setSettings({});
+    setHasBots('');
     setOutcome('');
     setRoundsMin(ROUNDS_MIN);
     setRoundsMax(ROUNDS_MAX);
@@ -385,6 +390,20 @@ function Games({ account }: Props) {
                     {m}
                   </option>
                 ))}
+              </Form.Select>
+            </Field>
+            <Field label="Bots">
+              <Form.Select
+                size="sm"
+                className="w-auto"
+                value={hasBots}
+                onChange={(e) =>
+                  resetPage(setHasBots)(e.target.value as '' | 'yes' | 'no')
+                }
+              >
+                <option value="">Any</option>
+                <option value="yes">Has bots</option>
+                <option value="no">No bots</option>
               </Form.Select>
             </Field>
             <DateRangeField

@@ -27,6 +27,7 @@ export interface LiveGamesQuery {
   settings: Record<string, string | number>;
   phase?: 'lobby' | 'playing' | 'ended';
   hasPassword?: boolean;
+  hasBots?: boolean;
   sort: 'newest' | 'players' | 'rounds' | 'name';
   sortDir: 'asc' | 'desc';
 }
@@ -70,6 +71,8 @@ function matches(game: LiveGameRow, query: LiveGamesQuery): boolean {
   if (query.phase && game.state !== query.phase) return false;
   if (query.hasPassword !== undefined && game.hasPassword !== query.hasPassword)
     return false;
+  if (query.hasBots !== undefined && (game.hasBots ?? false) !== query.hasBots)
+    return false;
   if (query.playerIds) {
     for (const userId of query.playerIds)
       if (!game.playerUserIds.includes(userId)) return false;
@@ -108,6 +111,7 @@ function toSummary(row: LiveGameRow): LiveGameSummary {
     createdAt: row.createdAt,
     roundNumber: row.roundNumber,
     hasPassword: row.hasPassword,
+    hasBots: row.hasBots,
   };
 }
 

@@ -55,6 +55,7 @@ export function gameSummary(game: Game) {
     hostName: playersById.get(game.hostId)?.name ?? '',
     playerIds: [...game.playerIds],
     playerCount: game.playerIds.length,
+    hasBots: game.playerIds.some((id) => playersById.get(id)?.isBot ?? false),
     slots: game.slots,
     state: game.state,
     spectatorCount: game.spectatorIds.length,

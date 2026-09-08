@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
 import {
   Navigate,
@@ -73,6 +73,7 @@ function App() {
   const [selfId, setSelfId] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [replayMapOpen, setReplayMapOpen] = useState(false);
+  const offlineSetupApplied = useRef(false);
 
   const { pathname } = useLocation();
   const routerNavigate = useNavigate();
@@ -111,6 +112,7 @@ function App() {
 
   useEffect(() => {
     connector.setMode(isOffline);
+    if (!isOffline) offlineSetupApplied.current = false;
   }, [isOffline]);
 
   const renameRoom = useCallback(
@@ -185,7 +187,10 @@ function App() {
       setNeedsPassword(false);
       setPasswordError(false);
       if (isOffline) {
-        if (!connector.isConvertingOffline()) applySavedGameSettings();
+        if (sessionReady && !offlineSetupApplied.current) {
+          offlineSetupApplied.current = true;
+          if (!connector.isConvertingOffline()) applySavedGameSettings();
+        }
         setJoinError('');
       }
       connector.identify({ room }, (res: IdentifyResult) => {

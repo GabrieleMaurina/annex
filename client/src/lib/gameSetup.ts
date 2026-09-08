@@ -1,6 +1,14 @@
 import { connector } from '../connector';
 import { publish } from '../connector/inbound';
-import { getGameSettings, getGameSlots, isLoggedIn } from './player';
+import {
+  getGameBots,
+  getGameLocalPlayers,
+  getGameSettings,
+  getGameSlots,
+  isLoggedIn,
+  recordRestoredBotInput,
+  resetRestoredBotInputs,
+} from './player';
 import type { Ack } from './types';
 
 let regeneratingMap = false;
@@ -20,6 +28,7 @@ function apply(res: Ack): void {
 
 export function applySavedGameSettings(): void {
   if (!isLoggedIn()) return;
+  resetRestoredBotInputs();
   const { mapGeneration, ...rules } = getGameSettings();
   if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
   if (mapGeneration) {
@@ -30,4 +39,17 @@ export function applySavedGameSettings(): void {
     });
   }
   connector.updateSettings({ slots: getGameSlots() }, apply);
+  getGameBots().forEach((bot, index) => {
+    connector.addBot(
+      { difficulty: bot.difficulty, personality: bot.personality },
+      (res: Ack) => {
+        apply(res);
+        if (!res.ok) return;
+        const seated = res.game.players.filter((p) => p.isBot);
+        if (seated[index]) recordRestoredBotInput(seated[index].id, bot);
+      },
+    );
+  });
+  if (connector.isOffline())
+    for (const name of getGameLocalPlayers()) connector.addLocalPlayer(name);
 }

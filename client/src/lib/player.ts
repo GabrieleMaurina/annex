@@ -9,13 +9,21 @@ import {
   setSoundMuted,
   setSoundVolume,
 } from './sounds';
-import type { ClientSettings, GameRulesSettings, HomeFilters } from './types';
+import type {
+  ClientSettings,
+  GameRulesSettings,
+  HomeFilters,
+  SavedBot,
+} from './types';
 
 let loggedIn = false;
 let playerName = '';
 let gameSettings: Record<string, unknown> = {};
 let gameSlots = 2;
+let gameBots: SavedBot[] = [];
+let gameLocalPlayers: string[] = [];
 let homeFilters: HomeFilters | undefined;
+const restoredBotInputs = new Map<number, SavedBot>();
 
 const nameListeners = new Set<() => void>();
 
@@ -61,9 +69,13 @@ export function applyServerSettings(
     if (typeof client.volume === 'number') setSoundVolume(client.volume);
   }
   if (game) {
-    const { slots, ...rest } = game;
+    const { slots, bots, localPlayers, ...rest } = game;
     gameSettings = rest;
     gameSlots = typeof slots === 'number' ? slots : 2;
+    gameBots = Array.isArray(bots) ? (bots as SavedBot[]) : [];
+    gameLocalPlayers = Array.isArray(localPlayers)
+      ? (localPlayers as string[])
+      : [];
   }
   if (home) homeFilters = home;
 }
@@ -75,7 +87,12 @@ export function pushSettings() {
   pushTimer = setTimeout(() => {
     httpSend('PATCH', '/settings', {
       clientSettings: currentClientSettings(),
-      gameSettings: { ...gameSettings, slots: gameSlots },
+      gameSettings: {
+        ...gameSettings,
+        slots: gameSlots,
+        bots: gameBots,
+        localPlayers: gameLocalPlayers,
+      },
       homeFilters,
     }).catch(() => {});
   }, 500);
@@ -89,13 +106,40 @@ export function getGameSlots(): number {
   return gameSlots;
 }
 
+export function getGameBots(): SavedBot[] {
+  return gameBots;
+}
+
+export function getGameLocalPlayers(): string[] {
+  return gameLocalPlayers;
+}
+
+export function resetRestoredBotInputs(): void {
+  restoredBotInputs.clear();
+}
+
+export function recordRestoredBotInput(botId: number, bot: SavedBot): void {
+  restoredBotInputs.set(botId, bot);
+}
+
+export function getRestoredBotInput(botId: number): SavedBot | undefined {
+  return restoredBotInputs.get(botId);
+}
+
 export function getHomeFilters(): HomeFilters | undefined {
   return homeFilters;
 }
 
-export function saveGameSettings(settings: GameRulesSettings, slots: number) {
+export function saveGameSettings(
+  settings: GameRulesSettings,
+  slots: number,
+  bots: SavedBot[],
+  localPlayers: string[],
+) {
   gameSettings = { ...settings };
   gameSlots = slots;
+  gameBots = bots;
+  gameLocalPlayers = localPlayers;
   pushSettings();
 }
 

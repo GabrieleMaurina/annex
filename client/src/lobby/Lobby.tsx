@@ -5,7 +5,11 @@ import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { formatError } from '../common/formatError';
 import { connector } from '../connector';
-import { saveGameSettings } from '../lib/player';
+import {
+  getGameLocalPlayers,
+  getRestoredBotInput,
+  saveGameSettings,
+} from '../lib/player';
 import type {
   Ack,
   BotDifficulty,
@@ -14,6 +18,7 @@ import type {
   GameSettingsInput,
   GameState,
   GenerateMapInput,
+  SavedBot,
 } from '../lib/types';
 import BannedList from './BannedList';
 import Header from './Header';
@@ -33,6 +38,7 @@ interface Props {
 function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
   const [settingsError, setSettingsError] = useState('');
   const bannedIdsRef = useRef<number[]>([]);
+  const botInputsRef = useRef<Map<number, SavedBot>>(new Map());
   const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
   const {
     emojiPickerFor,
@@ -92,7 +98,8 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
   function removeSlot(index: number) {
     const player = game.players[index];
     if (player) {
-      banId(player.id);
+      if (connector.isOffline()) connector.removeLocalPlayer(player.id);
+      else banId(player.id);
     } else {
       applySettings({ slots: game.slots - 1 });
     }
@@ -118,16 +125,35 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
     applySettings({ slots: game.slots + 1 });
   }
 
+  function savedBots(state: GameState): SavedBot[] {
+    return state.players
+      .filter((p) => p.isBot)
+      .map(
+        (p) =>
+          botInputsRef.current.get(p.id) ??
+          getRestoredBotInput(p.id) ?? {
+            difficulty: p.botDifficulty ?? 'easy',
+            personality: p.botPersonality ?? 'balanced',
+          },
+      );
+  }
+
   function addBot() {
     const lastBot = [...game.players].reverse().find((p) => p.isBot);
     const difficulty = lastBot?.botDifficulty ?? 'easy';
     const personality = lastBot?.botPersonality ?? 'balanced';
+    const knownBotIds = new Set(game.players.map((p) => p.id));
     connector.addBot({ difficulty, personality }, (res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);
         return;
       }
       setSettingsError('');
+      const added = res.game.players.find(
+        (p) => p.isBot && !knownBotIds.has(p.id),
+      );
+      if (added)
+        botInputsRef.current.set(added.id, { difficulty, personality });
       setGame(res.game);
     });
   }
@@ -145,6 +171,7 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
           return;
         }
         setSettingsError('');
+        botInputsRef.current.set(botPlayerId, { difficulty, personality });
         setGame(res.game);
       },
     );
@@ -168,11 +195,50 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
     applySettings({ bannedPlayerIds: bannedIdsRef.current });
   }
 
+  function persistSettings(state: GameState) {
+    saveGameSettings(
+      {
+        ...(state.mapGeneration
+          ? { mapGeneration: state.mapGeneration }
+          : { mapName: state.mapName }),
+        gameMode: state.gameMode,
+        blitz: state.blitz,
+        defenceDice: state.defenceDice,
+        cards: state.cards,
+        placement: state.placement,
+        fortification: state.fortification,
+        entrenchments: state.entrenchments,
+        toxins: state.toxins,
+        portals: state.portals,
+        radiations: state.radiations,
+        nukes: state.nukes,
+        starvation: state.starvation,
+        roundTroops: state.roundTroops,
+        bounties: state.bounties,
+        supplyLines: state.supplyLines,
+        fogOfWar: state.fogOfWar,
+        alliances: state.alliances,
+        turnDuration: state.turnDuration,
+        disconnectBotDifficulty: state.disconnectBotDifficulty,
+        disconnectBotPersonality: state.disconnectBotPersonality,
+        ...(gameMeta ? { visibility: gameMeta.visibility } : {}),
+      },
+      state.slots,
+      savedBots(state),
+      connector.isOffline()
+        ? state.players
+            .filter((p) => !p.isBot && p.id !== state.hostId)
+            .map((p) => p.name)
+        : getGameLocalPlayers(),
+    );
+  }
+
   function startGame() {
     if (
       !connector.isOffline() &&
       game.players.filter((p) => !p.isBot).length < 2
     ) {
+      persistSettings(game);
       connector.convertToOffline(game);
       navigate('/games/offline');
       return;
@@ -183,34 +249,7 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
         return;
       }
       setSettingsError('');
-      saveGameSettings(
-        {
-          ...(res.game.mapGeneration
-            ? { mapGeneration: res.game.mapGeneration }
-            : { mapName: res.game.mapName }),
-          gameMode: res.game.gameMode,
-          blitz: res.game.blitz,
-          defenceDice: res.game.defenceDice,
-          cards: res.game.cards,
-          placement: res.game.placement,
-          fortification: res.game.fortification,
-          entrenchments: res.game.entrenchments,
-          toxins: res.game.toxins,
-          portals: res.game.portals,
-          radiations: res.game.radiations,
-          starvation: res.game.starvation,
-          roundTroops: res.game.roundTroops,
-          bounties: res.game.bounties,
-          supplyLines: res.game.supplyLines,
-          fogOfWar: res.game.fogOfWar,
-          alliances: res.game.alliances,
-          turnDuration: res.game.turnDuration,
-          disconnectBotDifficulty: res.game.disconnectBotDifficulty,
-          disconnectBotPersonality: res.game.disconnectBotPersonality,
-          ...(gameMeta ? { visibility: gameMeta.visibility } : {}),
-        },
-        res.game.slots,
-      );
+      persistSettings(res.game);
       setGame(res.game);
     });
   }

@@ -29,6 +29,7 @@ export interface HomeFilters {
   roundsMax: number;
   phase: string;
   password: string;
+  hasBots: string;
   settings: Record<string, string>;
   sort: string;
 }
@@ -52,6 +53,7 @@ export interface GameSummary {
   state: 'lobby' | 'playing' | 'ended';
   spectatorCount: number;
   hasPassword: boolean;
+  hasBots: boolean;
   createdAt: number;
   roundNumber: number;
 }
@@ -182,6 +184,11 @@ export type Mission =
 export type BotDifficulty = 'idle' | 'easy' | 'medium' | 'hard';
 export type BotPersonality =
   'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic';
+
+export interface SavedBot {
+  difficulty: BotDifficulty | 'random';
+  personality: BotPersonality | 'random';
+}
 
 export interface GameState {
   name: string;
@@ -599,6 +606,7 @@ export interface GamesQuery {
   mapGenerationFill?: Fill;
   minRounds?: number;
   maxRounds?: number;
+  hasBots?: boolean;
   settings?: Record<string, string>;
   outcome?: 'won' | 'lost';
   positionMin?: number;
@@ -639,6 +647,7 @@ export interface HomeGamesQuery {
   settings?: Record<string, string>;
   phase?: 'lobby' | 'playing' | 'ended';
   hasPassword?: boolean;
+  hasBots?: boolean;
   sort?: 'newest' | 'players' | 'rounds' | 'name';
   sortDir?: 'asc' | 'desc';
 }

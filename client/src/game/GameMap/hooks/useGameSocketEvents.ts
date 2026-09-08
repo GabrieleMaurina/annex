@@ -17,7 +17,9 @@ import {
   onAnimationsToggle,
   pruneAnimations,
   startAnimation,
+  startNukeAnimation,
 } from '../../animations';
+import { NUKE_FLIGHT_MS } from '../../animations/state';
 import { getFortifyPath } from '../../logic/fortify';
 import type { Territory } from '../../mapData';
 import { isPortalHop } from '../../portals';
@@ -185,6 +187,51 @@ export function useGameSocketEvents({
       startAnimation('entrench', territory.x, territory.y);
     },
     [territoriesRef],
+  );
+
+  const nukeEffect = useCallback(
+    (payload: {
+      fromTerritoryId: number;
+      targetTerritoryId: number;
+      intercepted: boolean;
+      interceptFromTerritoryId: number | null;
+    }) => {
+      const territory = (id: number) =>
+        territoriesRef.current.find((t) => t.id === id);
+      const target = territory(payload.targetTerritoryId);
+      if (!target) return;
+      if (areAnimationsDisabled()) {
+        playSound('explode');
+        return;
+      }
+      const from = territory(payload.fromTerritoryId) ?? target;
+      const interceptFrom =
+        payload.interceptFromTerritoryId !== null
+          ? territory(payload.interceptFromTerritoryId)
+          : undefined;
+
+      startNukeAnimation(
+        { x: from.x, y: from.y },
+        { x: target.x, y: target.y },
+        payload.intercepted,
+        interceptFrom ? { x: interceptFrom.x, y: interceptFrom.y } : null,
+      );
+
+      if (!payload.intercepted) {
+        const before = ownerByIdRef.current.get(payload.targetTerritoryId);
+        if (before)
+          frozenTerritoryDataRef.current.set(payload.targetTerritoryId, {
+            ...before,
+          });
+      }
+
+      window.setTimeout(() => {
+        playSound('explode');
+        frozenTerritoryDataRef.current.delete(payload.targetTerritoryId);
+        startAnimationLoop();
+      }, NUKE_FLIGHT_MS);
+    },
+    [territoriesRef, ownerByIdRef, startAnimationLoop],
   );
 
   const toxinPlaceEffect = useCallback((territoryId: number) => {
@@ -433,6 +480,8 @@ export function useGameSocketEvents({
       } else if (animation.type === 'toxins') {
         playSound('toxins');
         toxinPlaceEffect(animation.territoryId);
+      } else if (animation.type === 'nuke') {
+        nukeEffect(animation);
       } else {
         if (animation.defenderId !== undefined) playSound('explode');
         const arrowPath = partOfConquestPair
@@ -459,6 +508,7 @@ export function useGameSocketEvents({
       entrenchEffect,
       animateStarve,
       toxinPlaceEffect,
+      nukeEffect,
       playAttackLossEffects,
       arrowRunsForPath,
       fortification,
@@ -629,6 +679,15 @@ export function useGameSocketEvents({
       setRadiationUpcomingTerritoryIds([]);
       startAnimationLoop();
     }
+    function onNukeLaunched(payload: {
+      fromTerritoryId: number;
+      targetTerritoryId: number;
+      intercepted: boolean;
+      interceptFromTerritoryId: number | null;
+    }) {
+      nukeEffect(payload);
+      startAnimationLoop();
+    }
     connector.on('game:deployed', onDeployed);
     connector.on('game:fortified', onFortified);
     connector.on('game:attackMoved', onAttackMoved);
@@ -639,6 +698,7 @@ export function useGameSocketEvents({
     connector.on('game:toxinExpired', onToxinExpired);
     connector.on('game:radiationUpcoming', onRadiationUpcoming);
     connector.on('game:radiationChanged', onRadiationChanged);
+    connector.on('game:nukeLaunched', onNukeLaunched);
     return () => {
       connector.off('game:deployed', onDeployed);
       connector.off('game:fortified', onFortified);
@@ -650,6 +710,7 @@ export function useGameSocketEvents({
       connector.off('game:toxinExpired', onToxinExpired);
       connector.off('game:radiationUpcoming', onRadiationUpcoming);
       connector.off('game:radiationChanged', onRadiationChanged);
+      connector.off('game:nukeLaunched', onNukeLaunched);
     };
   }, [
     animateAdd,
@@ -663,6 +724,7 @@ export function useGameSocketEvents({
     radiationTerritoryIds,
     setRadiationTerritoryIds,
     setRadiationUpcomingTerritoryIds,
+    nukeEffect,
     flashArrow,
     flashArrowRuns,
     startAnimationLoop,

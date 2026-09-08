@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useReducer } from 'react';
+import { useReducer, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import BurgerMenu from '../common/BurgerMenu';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
@@ -37,6 +37,7 @@ function EndPage({
   onPanelOpenChange,
   onViewChange,
 }: Props) {
+  const [view, setView] = useState<'results' | 'replay'>('results');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const {
     emojiPickerFor,
@@ -56,9 +57,14 @@ function EndPage({
 
   return (
     <>
-      <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1030 }}>
-        <BurgerMenu navigate={navigate} />
-      </div>
+      {view === 'results' && (
+        <div
+          className="position-fixed top-0 end-0 m-3"
+          style={{ zIndex: 1030 }}
+        >
+          <BurgerMenu navigate={navigate} />
+        </div>
+      )}
       <GameReplayView
         game={game}
         results={results}
@@ -70,7 +76,10 @@ function EndPage({
         setChatOpen={setChatOpen}
         settingsMenuOpen={settingsMenuOpen}
         onPanelOpenChange={onPanelOpenChange}
-        onViewChange={onViewChange}
+        onViewChange={(v) => {
+          setView(v);
+          onViewChange(v);
+        }}
         showYouLabel={!connector.isOffline()}
         rowClickable={(p) => tableEmojiEnabled && p.id !== selfId && !p.isBot}
         rowRef={(id) => (el) => {

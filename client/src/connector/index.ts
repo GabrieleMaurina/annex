@@ -517,6 +517,26 @@ export const connector = {
     route('game:toxins', data, cb);
   },
 
+  buildNuke(cb: AckCallback): void {
+    route('game:buildNuke', {}, cb);
+  },
+
+  buildAntiNuke(cb: AckCallback): void {
+    route('game:buildAntiNuke', {}, cb);
+  },
+
+  advanceNuke(data: { index: number }, cb: AckCallback): void {
+    route('game:advanceNuke', data, cb);
+  },
+
+  launchNuke(data: { territoryId: number }, cb: AckCallback): void {
+    route('game:launchNuke', data, cb);
+  },
+
+  deployAntiNuke(data: { territoryId: number }, cb: AckCallback): void {
+    route('game:deployAntiNuke', data, cb);
+  },
+
   attackSelectStart(
     data: { territoryId: number | null },
     cb: AckCallback,

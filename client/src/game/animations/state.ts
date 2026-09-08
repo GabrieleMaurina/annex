@@ -2,7 +2,7 @@ import { makeEntrenchParticles } from './entrench';
 import { makeExplosionParticles } from './explosion';
 
 export type AnimationType =
-  'add' | 'remove' | 'explosion' | 'entrench' | 'starve' | 'arrow';
+  'add' | 'remove' | 'explosion' | 'entrench' | 'starve' | 'arrow' | 'nuke';
 
 export interface Particle {
   angle: number;
@@ -28,7 +28,15 @@ export interface Animation {
   particles?: Particle[];
   arrowPath?: { x: number; y: number }[][];
   arrowFades?: ('start' | 'end' | undefined)[][];
+  fromX?: number;
+  fromY?: number;
+  intercepted?: boolean;
+  interceptFromX?: number;
+  interceptFromY?: number;
 }
+
+export const NUKE_FLIGHT_MS = 1200;
+export const NUKE_MUSHROOM_MS = 1800;
 
 export const DURATIONS: Record<AnimationType, number> = {
   add: 400,
@@ -37,6 +45,7 @@ export const DURATIONS: Record<AnimationType, number> = {
   entrench: 700,
   starve: 1000,
   arrow: 500,
+  nuke: NUKE_FLIGHT_MS + NUKE_MUSHROOM_MS,
 };
 export const TROOP_CHANGE_RING_COLOR = '255, 255, 255';
 const LABEL_DURATION = 1500;
@@ -133,6 +142,27 @@ export function startAnimation(
           : undefined,
     arrowPath,
     arrowFades,
+  });
+}
+
+export function startNukeAnimation(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  intercepted: boolean,
+  interceptFrom: { x: number; y: number } | null,
+) {
+  if (disabled) return;
+  animations.push({
+    type: 'nuke',
+    x: to.x,
+    y: to.y,
+    fromX: from.x,
+    fromY: from.y,
+    intercepted,
+    interceptFromX: interceptFrom?.x,
+    interceptFromY: interceptFrom?.y,
+    startedAt: performance.now(),
+    particles: makeExplosionParticles(),
   });
 }
 

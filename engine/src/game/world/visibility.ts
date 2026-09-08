@@ -99,6 +99,13 @@ export function filterGameStateForViewer(
   const withAlliances = {
     ...base,
     allianceStates: allianceStatesForViewer(game, viewerId),
+    arsenal: { ...(game.arsenal.get(viewerId) ?? { nukes: 0, antiNukes: 0 }) },
+    nukeProjects: (game.nukeProjects.get(viewerId) ?? []).map((p) => ({
+      ...p,
+    })),
+    antiNukeTerritoryIds: [...game.antiNukeTerritoryIds].filter(
+      (id) => game.territoryOwners.get(id) === viewerId,
+    ),
   };
   if (!isFogActive(game, viewerId)) return withAlliances;
 

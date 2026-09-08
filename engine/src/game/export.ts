@@ -103,6 +103,7 @@ export interface GameExport {
     supplyLines: string;
     fogOfWar: string;
     alliances: string;
+    nukes: string;
     turnDuration: number;
     disconnectBotDifficulty: string;
     disconnectBotPersonality: string;
@@ -137,6 +138,7 @@ function territoryDelta(
   current: ReplayTerritory[],
 ): ReplayTerritoryDelta[] {
   const before = new Map(previous.map((t) => [t.id, t]));
+  const currentIds = new Set(current.map((t) => t.id));
   const delta: ReplayTerritoryDelta[] = [];
   for (const t of current) {
     const prev = before.get(t.id);
@@ -152,6 +154,10 @@ function territoryDelta(
         troops: t.troops,
         entrenchedTurns: t.entrenchedTurns,
       });
+  }
+  for (const t of previous) {
+    if (!currentIds.has(t.id))
+      delta.push({ id: t.id, ownerId: -1, troops: 0, entrenchedTurns: 0 });
   }
   return delta;
 }
@@ -289,6 +295,7 @@ export function exportGame(gameName: string): GameExport | null {
       supplyLines: game.supplyLines,
       fogOfWar: game.fogOfWar,
       alliances: game.alliances,
+      nukes: game.nukes,
       turnDuration: game.turnDuration,
       disconnectBotDifficulty: game.disconnectBotDifficulty,
       disconnectBotPersonality: game.disconnectBotPersonality,

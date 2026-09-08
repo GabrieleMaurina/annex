@@ -63,6 +63,7 @@ export function seedOffline(state: GameState): void {
       placement: state.placement,
       portals: state.portals,
       radiations: state.radiations,
+      nukes: state.nukes,
       starvation: state.starvation,
       supplyLines: state.supplyLines,
       toxins: state.toxins,
@@ -219,6 +220,7 @@ const callbacks: EngineCallbacks = {
   onRadiationUpcoming: forward('game:radiationUpcoming'),
   onRadiationChanged: forward('game:radiationChanged'),
   onStarved: forward('game:starved'),
+  onNukeLaunched: forward('game:nukeLaunched'),
   onAttacked: forward('game:attacked'),
   onTankFired: forward('game:tankFired'),
   onAttackMoved: forward('game:attackMoved'),
@@ -446,6 +448,21 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     case 'game:toxins':
       cb?.(engine.toxin(id, d.territoryId));
+      return;
+    case 'game:buildNuke':
+      cb?.(engine.buildNuke(id));
+      return;
+    case 'game:buildAntiNuke':
+      cb?.(engine.buildAntiNuke(id));
+      return;
+    case 'game:advanceNuke':
+      cb?.(engine.advanceNuke(id, d.index));
+      return;
+    case 'game:launchNuke':
+      cb?.(engine.launchNuke(id, d.territoryId));
+      return;
+    case 'game:deployAntiNuke':
+      cb?.(engine.deployAntiNuke(id, d.territoryId));
       return;
     case 'game:attackSelectStart':
       cb?.(engine.attackSelectStart(id, d.territoryId));

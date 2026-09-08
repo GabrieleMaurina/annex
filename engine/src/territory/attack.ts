@@ -10,6 +10,7 @@ import {
   trueWinProbs,
 } from '../game/combat/dice';
 import { checkGameEnd } from '../game/end';
+import { hasReadyNuke } from '../game/nukes/nukes';
 import { recordElimination } from '../game/progression/stats';
 import { recordReplayFrame } from '../game/replay';
 import { gameState } from '../game/state';
@@ -444,7 +445,8 @@ export function attack(
     game.state === 'playing' &&
     game.turnPhase === 'attack' &&
     game.attackConquestMinTroops === null &&
-    !hasAnyAttack(game, playerId)
+    !hasAnyAttack(game, playerId) &&
+    !hasReadyNuke(game, playerId)
   ) {
     advanceTurnPhase(game);
   }
@@ -509,7 +511,7 @@ export function attackMove(playerId: number, rawTroops: unknown): GameResponse {
     game.turnPhase = 'deploy';
     game.deployCardMandate = true;
     rewindTurnTimerIfBelowHalf(game);
-  } else if (!hasAnyAttack(game, playerId)) {
+  } else if (!hasAnyAttack(game, playerId) && !hasReadyNuke(game, playerId)) {
     advanceTurnPhase(game);
   }
 

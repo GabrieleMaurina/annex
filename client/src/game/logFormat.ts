@@ -109,6 +109,22 @@ export function createLogFormatter() {
             : `${nameFor(n('playerId'))} released toxin on territory #${n('territoryId') + 1} for ${n('roundsRemaining')} rounds`,
         );
         break;
+      case 'game:nukeLaunched': {
+        const launcherId = n('playerId');
+        if (p.intercepted)
+          push(
+            colorFor(launcherId),
+            `${nameFor(launcherId)}'s nuke aimed at territory #${n('targetTerritoryId') + 1} was intercepted`,
+          );
+        else
+          push(
+            colorFor(launcherId),
+            `${nameFor(launcherId)} nuked territory #${n('targetTerritoryId') + 1}`,
+          );
+        for (const id of (p.eliminatedPlayerIds as number[]) ?? [])
+          push(colorFor(id), `${nameFor(id)} was eliminated by a nuke`);
+        break;
+      }
       case 'game:radiationChanged': {
         const newly = p.newlyRadiatedIds as number[];
         if (newly.length > 0)

@@ -15,6 +15,7 @@ import {
   ownsAnyTerritory,
   turnOrderBonus,
 } from './mechanics';
+import { hasReadyNuke } from './nukes/nukes';
 import {
   counterKey,
   pickBestSet,
@@ -717,7 +718,11 @@ export function advanceTurnPhase(game: Game) {
     game.attackConquestMinTroops = null;
 
     const playerId = game.playerIds[game.turnPlayerIndex];
-    if (game.turnPhase === 'attack' && !hasAnyAttack(game, playerId)) {
+    if (
+      game.turnPhase === 'attack' &&
+      !hasAnyAttack(game, playerId) &&
+      !hasReadyNuke(game, playerId)
+    ) {
       advanceTurnPhase(game);
     } else if (game.turnPhase === 'fortify' && !hasAnyFortify(game, playerId)) {
       advanceTurnPhase(game);

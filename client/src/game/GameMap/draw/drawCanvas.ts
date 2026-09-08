@@ -51,6 +51,7 @@ export interface DrawCanvasParams {
   players: GameState['players'];
   displayedToxinTerritories: GameState['toxinTerritories'];
   radiationById: Set<number>;
+  antiNukeById: Set<number>;
   radiationPlacedAtRef: RefObject<Map<number, number>>;
   visibleTerritoryIds: GameState['visibleTerritoryIds'];
   frozenVisibleTerritoryIdsRef: RefObject<Set<number> | null>;
@@ -103,6 +104,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     players,
     displayedToxinTerritories,
     radiationById,
+    antiNukeById,
     radiationPlacedAtRef,
     visibleTerritoryIds,
     frozenVisibleTerritoryIdsRef,
@@ -450,6 +452,16 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
             -Infinity,
           );
         }
+      }
+
+      if (antiNukeById.has(t.id)) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, (VERTEX_RADIUS + 3) * scaleX, 0, Math.PI * 2);
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 2 * zoom;
+        ctx.setLineDash([4 * zoom, 3 * zoom]);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
 
       if (owner) {

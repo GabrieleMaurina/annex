@@ -21,6 +21,7 @@ import {
   FogOfWar,
   Fortification,
   GameMode,
+  Nukes,
   Placement,
   Portals,
   Radiations,
@@ -80,6 +81,7 @@ const STARVATION_VALUES: Starvation[] = [
   'percent',
 ];
 const SUPPLY_LINES_VALUES: SupplyLines[] = ['off', 'on'];
+const NUKES_VALUES: Nukes[] = ['off', 'on'];
 const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const ROUND_TROOPS_VALUES: RoundTroops[] = ['off', 'on'];
@@ -269,6 +271,12 @@ export function updateSettings(
     if (!(RADIATIONS_VALUES as unknown[]).includes(settings.radiations))
       return { ok: false, error: 'invalid radiations' };
     game.radiations = settings.radiations as Radiations;
+  }
+
+  if (settings.nukes !== undefined) {
+    if (!(NUKES_VALUES as unknown[]).includes(settings.nukes))
+      return { ok: false, error: 'invalid nukes' };
+    game.nukes = settings.nukes as Nukes;
   }
 
   if (settings.slots !== undefined) {

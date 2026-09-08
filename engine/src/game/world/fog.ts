@@ -10,6 +10,7 @@ const LOGGED_EVENTS = new Set([
   'game:entrenched',
   'game:toxined',
   'game:radiationChanged',
+  'game:nukeLaunched',
   'game:attacked',
   'game:cardSetPlayed',
   'game:turnStarted',

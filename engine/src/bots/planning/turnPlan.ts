@@ -52,6 +52,8 @@ export interface TurnPlan {
   attacksIssued: number;
   roundNumber: number;
   playerId: number;
+  nukeLaunched?: boolean;
+  antiNukeDeployed?: boolean;
 }
 
 export function emptyPlan(roundNumber: number, playerId: number): TurnPlan {

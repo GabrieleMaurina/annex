@@ -23,6 +23,7 @@ import {
   registerFortifyHandlers,
   registerGameHandlers,
   registerMapGenHandlers,
+  registerNukeHandlers,
   registerReplayHandlers,
   registerTerritoryHandlers,
   registerToxinsHandlers,
@@ -156,6 +157,8 @@ const callbacks: EngineCallbacks = {
     emitTo(io, playerId, 'game:radiationChanged', payload),
   onStarved: (playerId, payload) =>
     emitTo(io, playerId, 'game:starved', payload),
+  onNukeLaunched: (playerId, payload) =>
+    emitTo(io, playerId, 'game:nukeLaunched', payload),
   onAttacked: (playerId, payload) =>
     emitTo(io, playerId, 'game:attacked', payload),
   onTankFired: (playerId, payload) =>
@@ -198,6 +201,7 @@ io.on('connection', (socket) => {
   registerFortifyHandlers(socket, engine);
   registerEntrenchHandlers(socket, engine);
   registerToxinsHandlers(socket, engine);
+  registerNukeHandlers(socket, engine);
   registerAttackHandlers(socket, engine);
   registerCardHandlers(socket, engine);
   registerAllianceHandlers(socket, engine);

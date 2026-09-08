@@ -30,6 +30,7 @@ const INBOUND_EVENTS = [
   'game:radiationUpcoming',
   'game:radiationChanged',
   'game:starved',
+  'game:nukeLaunched',
   'game:allianceRequested',
   'game:allianceFormed',
   'game:allianceDeclined',

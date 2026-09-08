@@ -117,6 +117,18 @@ export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
+export type Nukes = 'off' | 'on';
+
+export interface NukeProject {
+  kind: 'nuke' | 'antiNuke';
+  installmentsPaid: number;
+  lastPaidRound: number;
+}
+
+export interface Arsenal {
+  nukes: number;
+  antiNukes: number;
+}
 export type AllianceViewState =
   'allied' | 'requestSent' | 'requestReceived' | 'none';
 export type TurnPhase =
@@ -203,6 +215,10 @@ export interface GameState {
   radiations: Radiations;
   radiationTerritoryIds: number[];
   radiationUpcomingTerritoryIds: number[];
+  nukes: Nukes;
+  arsenal: Arsenal;
+  nukeProjects: NukeProject[];
+  antiNukeTerritoryIds: number[];
   starvation: Starvation;
   supplyLines: SupplyLines;
   toxins: Toxins;
@@ -293,6 +309,7 @@ export interface GameSettingsInput {
   fogOfWar?: FogOfWar;
   fortification?: Fortification;
   gameMode?: GameMode;
+  nukes?: Nukes;
   mapName?: string;
   name?: string;
   password?: string | null;
@@ -322,6 +339,7 @@ export type GameRulesSettings = Pick<
   | 'fogOfWar'
   | 'fortification'
   | 'gameMode'
+  | 'nukes'
   | 'mapName'
   | 'placement'
   | 'portals'
@@ -386,7 +404,15 @@ export type ReplayAnimation =
     }
   | { type: 'entrench'; territoryId: number; troops: number; playerId: number }
   | { type: 'starve'; territoryId: number; troops: number; playerId: number }
-  | { type: 'toxins'; territoryId: number; playerId: number };
+  | { type: 'toxins'; territoryId: number; playerId: number }
+  | {
+      type: 'nuke';
+      fromTerritoryId: number;
+      targetTerritoryId: number;
+      intercepted: boolean;
+      interceptFromTerritoryId: number | null;
+      playerId: number;
+    };
 
 export interface ReplayHand {
   playerId: number;
@@ -475,6 +501,7 @@ export interface StoredGameSettings {
   supplyLines: SupplyLines;
   fogOfWar: FogOfWar;
   alliances: Alliances;
+  nukes: Nukes;
   turnDuration: TurnDuration;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';

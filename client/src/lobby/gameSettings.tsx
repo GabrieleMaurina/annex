@@ -16,6 +16,7 @@ import {
   ENTRENCHMENTS_HELP,
   FOG_OF_WAR_HELP,
   FORTIFICATION_HELP,
+  NUKES_HELP,
   PLACEMENT_HELP,
   PORTALS_HELP,
   RADIATIONS_HELP,
@@ -164,6 +165,13 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     section: 'Hazards',
     options: caps('off', 'static', 'dynamic', 'expanding'),
     help: RADIATIONS_HELP,
+  },
+  {
+    key: 'nukes',
+    label: 'Nukes',
+    section: 'Hazards',
+    options: onOff(),
+    help: NUKES_HELP,
   },
   {
     key: 'toxins',

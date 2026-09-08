@@ -12,6 +12,11 @@ import {
   chooseTerritoryClaim,
   chooseTroopPlacement,
 } from '../heuristics/misc';
+import {
+  chooseAntiNukeDeploy,
+  chooseNukeConstruction,
+  chooseNukeLaunch,
+} from '../heuristics/nukes';
 import { PlanContext, buildContext } from './context';
 import { buildTurnPlan, repairPlan } from './enumerate';
 import {
@@ -124,6 +129,9 @@ function planDeploy(
     );
   }
 
+  const construction = chooseNukeConstruction(ctx);
+  if (construction) return result([construction], plan);
+
   if (game.troopsToDeploy > 0) {
     const deployment = nextDeployment(ctx, game, plan);
     if (deployment)
@@ -186,6 +194,22 @@ function planAttack(
     const scripted = plan.step < plan.attackSteps.length;
     const troops = chooseAttackMoveTroops(game, ctx.view, ctx.botId, scripted);
     return result([{ event: 'game:attackMove', payload: { troops } }], plan);
+  }
+
+  if (!plan.antiNukeDeployed) {
+    plan.antiNukeDeployed = true;
+    const antiNuke = chooseAntiNukeDeploy(ctx);
+    if (antiNuke)
+      return result(
+        [{ event: 'game:deployAntiNuke', payload: antiNuke }],
+        plan,
+      );
+  }
+  if (!plan.nukeLaunched) {
+    plan.nukeLaunched = true;
+    const launch = chooseNukeLaunch(ctx);
+    if (launch)
+      return result([{ event: 'game:launchNuke', payload: launch }], plan);
   }
 
   let repaired = false;

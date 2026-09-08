@@ -19,6 +19,7 @@ const LIVE_EVENTS = [
   'game:entrenched',
   'game:toxined',
   'game:radiationChanged',
+  'game:nukeLaunched',
   'game:attacked',
   'game:cardSetPlayed',
   'game:turnStarted',

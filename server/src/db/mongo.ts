@@ -26,6 +26,10 @@ export function getCollection<T extends Document>(name: string): Collection<T> {
   return db.collection<T>(name);
 }
 
+export function getDb(): Db {
+  return db;
+}
+
 export function ensureCollection(
   name: string,
   schema: Record<string, unknown>,

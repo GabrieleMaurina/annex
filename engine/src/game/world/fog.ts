@@ -27,6 +27,14 @@ export function recordLog(
   payload: unknown,
 ): void {
   if (!LOGGED_EVENTS.has(type)) return;
+  if (viewerId === SERVER_VIEW_ID) {
+    game.replayLog.push({
+      afterFrame: game.replayFrames.length,
+      type,
+      payload,
+    });
+    return;
+  }
   const entries = game.logs.get(viewerId);
   if (entries) entries.push({ type, payload });
   else game.logs.set(viewerId, [{ type, payload }]);

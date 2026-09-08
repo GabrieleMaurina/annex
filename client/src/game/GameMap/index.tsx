@@ -22,6 +22,7 @@ import type {
   TurnPhase,
 } from '../../lib/types';
 import { CARD_SET_FLASH_DURATION } from '../animations';
+import { formatLogEntriesWithFrames } from '../logFormat';
 import { CardFace } from '../panels/CardsPanel';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
@@ -282,6 +283,8 @@ function GameMap({
     radiationTerritories: replayRadiationTerritories,
     radiationUpcoming: replayRadiationUpcoming,
     hands: replayHands,
+    playerStates: replayPlayerStates,
+    log: replayLog,
     turnPhase: replayTurnPhase,
     roundNumber: replayRoundNumber,
     turnPlayerId: replayTurnPlayerId,
@@ -322,15 +325,29 @@ function GameMap({
           ),
         )
       : null;
+  const replayStateById =
+    showReplay && replayPlayerStates && replayPlayerStates.length > 0
+      ? new Map(replayPlayerStates.map((s) => [s.playerId, s]))
+      : null;
   const displayedPlayers = replayCounts
-    ? players.map((p) => ({
-        ...p,
-        territoryCount: 0,
-        troopCount: 0,
-        capitalCount: 0,
-        cardCount: 0,
-        ...replayCounts.get(p.id),
-      }))
+    ? players.map((p) => {
+        const state = replayStateById?.get(p.id);
+        return {
+          ...p,
+          territoryCount: 0,
+          troopCount: 0,
+          capitalCount: 0,
+          cardCount: 0,
+          ...replayCounts.get(p.id),
+          ...(state
+            ? {
+                eliminated: state.eliminated,
+                surrendered: state.surrendered,
+                playersKilled: state.killedPlayerIds,
+              }
+            : {}),
+        };
+      })
     : players;
   const playersWithAccounts = displayedPlayers.map((p) => ({
     ...p,
@@ -562,6 +579,55 @@ function GameMap({
   const replayPlayerColor = replayPlayer
     ? playerColor(replayPlayer.color)
     : '#ffffff';
+
+  const replayActingId = showReplay ? replayTurnPlayerId : null;
+  const replayHandCards =
+    replayActingId !== null
+      ? ((replayHands ?? []).find((h) => h.playerId === replayActingId)
+          ?.cards ?? [])
+      : [];
+  const replayActingOwnedIds =
+    replayActingId !== null && replayTerritories
+      ? new Set(
+          replayTerritories
+            .filter((t) => t.ownerId === replayActingId)
+            .map((t) => t.id),
+        )
+      : new Set<number>();
+  const replayActingState =
+    replayActingId !== null
+      ? (replayPlayerStates ?? []).find((s) => s.playerId === replayActingId)
+      : undefined;
+  const replayFormattedLog = useMemo(
+    () =>
+      showReplay && replayLog
+        ? formatLogEntriesWithFrames(
+            replayLog,
+            players.map((p) => ({
+              id: p.id,
+              name: p.name,
+              color: p.color,
+              isBot: p.isBot,
+            })),
+          )
+        : null,
+    [showReplay, replayLog, players],
+  );
+  const displayedLogs = replayFormattedLog
+    ? replayFormattedLog.filter((l) => l.afterFrame <= replayIndex)
+    : logs;
+  const nukesGame = showReplay
+    ? {
+        ...game,
+        arsenal: {
+          nukes: replayActingState?.nukes ?? 0,
+          antiNukes: replayActingState?.antiNukes ?? 0,
+        },
+        nukeProjects: replayActingState?.nukeProjects ?? [],
+        roundNumber: panelRoundNumber,
+        troopsToDeploy: 0,
+      }
+    : game;
 
   const territoryClaimCandidates =
     turnPhase === 'territory' && isMyTurn
@@ -833,9 +899,9 @@ function GameMap({
   });
 
   const attackDisplay = attackFlow.attackDisplay;
-  const hand = cardsFlow.hand;
-  const combos = cardsFlow.combos;
-  const hasSetToPlay = cardsFlow.hasSetToPlay;
+  const hand = showReplay ? replayHandCards : cardsFlow.hand;
+  const combos = showReplay ? [] : cardsFlow.combos;
+  const hasSetToPlay = showReplay ? false : cardsFlow.hasSetToPlay;
 
   const surrender = useCallback(() => {
     connector.surrender((res: Ack) => {
@@ -896,22 +962,30 @@ function GameMap({
         cardsOpen={cardsOpen}
         cardsPanelRef={cardsPanelRef}
         hand={hand}
-        ownedTerritoryIds={ownedTerritoryIds}
+        ownedTerritoryIds={
+          showReplay ? replayActingOwnedIds : ownedTerritoryIds
+        }
         upcomingSetValues={upcomingSetValues}
         combos={combos}
-        selectedCombo={cardsFlow.selectedCombo}
+        selectedCombo={showReplay ? undefined : cardsFlow.selectedCombo}
         setSelectedComboKey={cardsFlow.setSelectedComboKey}
-        isMyTurn={isMyTurn}
+        isMyTurn={showReplay ? false : isMyTurn}
         turnPhase={turnPhase}
         playCardSet={cardsFlow.playCardSet}
         cardsButtonRef={cardsButtonRef}
         whiteCardsIcon={whiteCardsIcon}
         gameEnded={gameEnded}
+        showReplay={showReplay}
+        cardsTitle={
+          showReplay && replayPlayer
+            ? `${replayPlayer.name}'s Cards`
+            : undefined
+        }
         hasSetToPlay={hasSetToPlay}
         setAwardedCards={cardsFlow.setAwardedCards}
         logsOpen={logsOpen}
         logsPanelRef={logsPanelRef}
-        logs={logs}
+        logs={displayedLogs}
         logsPanelTop={logsPanelTop}
         logsButtonRef={logsButtonRef}
         whiteLogsIcon={whiteLogsIcon}
@@ -921,22 +995,32 @@ function GameMap({
         settingsButtonRef={settingsButtonRef}
         whiteSettingsIcon={whiteSettingsIcon}
         settingsMenuOpen={settingsMenuOpen}
-        game={game}
+        game={nukesGame}
         awardedCards={cardsFlow.awardedCards}
         nukesButtonRef={nukesButtonRef}
         nukesPanelRef={nukesPanelRef}
         whiteNukesIcon={whiteNukesIcon}
         nukes={
-          nukesEnabled && !showReplay
-            ? {
-                open: nukesOpen,
-                paused,
-                targeting: nukeTargeting,
-                onBuildNuke: buildNuke,
-                onBuildAntiNuke: buildAntiNuke,
-                onAdvanceNuke: advanceNuke,
-                onArmNuke: armNuke,
-              }
+          nukesEnabled
+            ? showReplay
+              ? {
+                  open: nukesOpen,
+                  paused: true,
+                  targeting: null,
+                  onBuildNuke: () => {},
+                  onBuildAntiNuke: () => {},
+                  onAdvanceNuke: () => {},
+                  onArmNuke: () => {},
+                }
+              : {
+                  open: nukesOpen,
+                  paused,
+                  targeting: nukeTargeting,
+                  onBuildNuke: buildNuke,
+                  onBuildAntiNuke: buildAntiNuke,
+                  onAdvanceNuke: advanceNuke,
+                  onArmNuke: armNuke,
+                }
             : null
         }
       />

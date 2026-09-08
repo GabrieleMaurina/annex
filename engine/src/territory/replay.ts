@@ -1,5 +1,5 @@
 import { requireGame } from '../session/context';
-import { ReplayFrame, ReplayTerritory } from '../types';
+import { ReplayFrame, ReplayLogEntry, ReplayTerritory } from '../types';
 
 export type ReplayResponse =
   | {
@@ -7,6 +7,7 @@ export type ReplayResponse =
       initial: ReplayTerritory[];
       initialRadiation: number[];
       frames: ReplayFrame[];
+      log: ReplayLogEntry[];
     }
   | { ok: false; error: string };
 
@@ -21,5 +22,6 @@ export function requestReplay(playerId: number): ReplayResponse {
     initial: game.replayInitial,
     initialRadiation: game.replayInitialRadiation,
     frames: game.replayFrames,
+    log: game.replayLog,
   };
 }

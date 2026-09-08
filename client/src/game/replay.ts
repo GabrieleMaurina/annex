@@ -5,6 +5,7 @@ import type {
   ReplayAnimation,
   ReplayFrame,
   ReplayHand,
+  ReplayLogEntry,
   ReplayTerritory,
   StoredGame,
 } from '../lib/types';
@@ -16,6 +17,7 @@ export interface ReplayData {
   initial: ReplayTerritory[];
   initialRadiation: number[];
   frames: ReplayFrame[];
+  log: ReplayLogEntry[];
 }
 
 export type ReplaySource =
@@ -49,7 +51,10 @@ export interface FoldedReplay {
   emoji: ReplayEmoji[];
 }
 
-export function foldStoredReplay(replay: StoredGame['replay']): FoldedReplay {
+export function foldStoredReplay(
+  replay: StoredGame['replay'],
+  serverLog: ReplayLogEntry[],
+): FoldedReplay {
   const territoryById = new Map(
     replay.initialTerritories.map((t) => [t.id, { ...t }]),
   );
@@ -74,6 +79,7 @@ export function foldStoredReplay(replay: StoredGame['replay']): FoldedReplay {
         radiationTerritories: entry.radiationTerritories,
         radiationUpcoming: entry.radiationUpcoming ?? [],
         hands: entry.hands ?? [],
+        playerStates: entry.playerStates ?? [],
         turnPhase: entry.turnPhase,
         animation,
         roundNumber: entry.roundNumber,
@@ -107,6 +113,7 @@ export function foldStoredReplay(replay: StoredGame['replay']): FoldedReplay {
       initial: replay.initialTerritories,
       initialRadiation: replay.initialRadiation,
       frames,
+      log: serverLog.map((e) => ({ ...e, afterFrame: e.afterFrame ?? 0 })),
     },
     turnMarkers,
     chat,
@@ -215,6 +222,7 @@ export function useReplay(
         initial: res.initial,
         initialRadiation: res.initialRadiation,
         frames: res.frames,
+        log: res.log ?? [],
       });
       setIndex(res.frames.length);
     });
@@ -300,6 +308,10 @@ export function useReplay(
       ? []
       : replay.frames[index - 1].hands
     : null;
+  const playerStates = replay
+    ? ((index <= 0 ? replay.frames[0] : replay.frames[index - 1])
+        ?.playerStates ?? [])
+    : null;
 
   return {
     index,
@@ -311,6 +323,8 @@ export function useReplay(
     radiationTerritories,
     radiationUpcoming,
     hands,
+    playerStates,
+    log: replay ? replay.log : null,
     turnPhase: currentFrame ? currentFrame.turnPhase : null,
     roundNumber: currentFrame ? currentFrame.roundNumber : null,
     turnPlayerId: currentFrame ? currentFrame.playerId : null,

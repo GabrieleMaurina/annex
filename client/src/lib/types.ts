@@ -419,12 +419,29 @@ export interface ReplayHand {
   cards: Card[];
 }
 
+export interface ReplayPlayerState {
+  playerId: number;
+  eliminated: boolean;
+  surrendered: boolean;
+  killedPlayerIds: number[];
+  nukes: number;
+  antiNukes: number;
+  nukeProjects: NukeProject[];
+}
+
+export interface ReplayLogEntry {
+  afterFrame: number;
+  type: string;
+  payload: unknown;
+}
+
 export interface ReplayFrame {
   territories: ReplayTerritory[];
   toxinTerritories: ReplayToxinTerritory[];
   radiationTerritories: number[];
   radiationUpcoming: number[];
   hands: ReplayHand[];
+  playerStates: ReplayPlayerState[];
   turnPhase: TurnPhase;
   animation: ReplayAnimation;
   roundNumber: number;
@@ -437,6 +454,7 @@ export type ReplayAck =
       initial: ReplayTerritory[];
       initialRadiation: number[];
       frames: ReplayFrame[];
+      log: ReplayLogEntry[];
     }
   | { ok: false; error: string };
 
@@ -451,6 +469,7 @@ export type ReplayEntry =
       radiationTerritories: number[];
       radiationUpcoming: number[];
       hands: ReplayHand[];
+      playerStates: ReplayPlayerState[];
       animation: ReplayAnimation;
     }
   | { kind: 'turn'; roundNumber: number; playerId: number }
@@ -535,7 +554,7 @@ export interface StoredGame {
     won: boolean;
   }[];
   results: StoredGameResult[];
-  serverLog: { type: string; payload: unknown }[];
+  serverLog: ReplayLogEntry[];
   replay: {
     initialTerritories: ReplayTerritory[];
     initialRadiation: number[];

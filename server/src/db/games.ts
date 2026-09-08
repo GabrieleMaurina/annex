@@ -126,6 +126,33 @@ const hand = object(['playerId', 'cards'], {
   cards: array(card),
 });
 
+const nukeProject = object(['kind', 'installmentsPaid', 'lastPaidRound'], {
+  kind: { enum: ['nuke', 'antiNuke'] },
+  installmentsPaid: int,
+  lastPaidRound: int,
+});
+
+const playerState = object(
+  [
+    'playerId',
+    'eliminated',
+    'surrendered',
+    'killedPlayerIds',
+    'nukes',
+    'antiNukes',
+    'nukeProjects',
+  ],
+  {
+    playerId: int,
+    eliminated: bool,
+    surrendered: bool,
+    killedPlayerIds: array(int),
+    nukes: int,
+    antiNukes: int,
+    nukeProjects: array(nukeProject),
+  },
+);
+
 const animation = { bsonType: 'object' };
 
 const actionFrame = object(
@@ -139,6 +166,7 @@ const actionFrame = object(
     'radiationTerritories',
     'radiationUpcoming',
     'hands',
+    'playerStates',
     'animation',
   ],
   {
@@ -151,6 +179,7 @@ const actionFrame = object(
     radiationTerritories: array(int),
     radiationUpcoming: array(int),
     hands: array(hand),
+    playerStates: array(playerState),
     animation,
   },
 );
@@ -322,9 +351,10 @@ const schema = {
         capitalTerritoryIds: array(int),
         results: array(result),
         serverLog: array(
-          object(['type', 'payload'], {
+          object(['type', 'payload', 'afterFrame'], {
             type: string,
             payload: { bsonType: 'object' },
+            afterFrame: int,
           }),
         ),
         replay: object(['initialTerritories', 'initialRadiation', 'frames'], {

@@ -5,14 +5,14 @@ import {
   EmojiAttackTarget,
   EmojiValue,
   Game,
-  GameLogEvent,
   ReplayAnimation,
   ReplayFrame,
+  ReplayLogEntry,
+  ReplayPlayerState,
   ReplayTerritory,
   TurnPhase,
 } from '../types';
 import { isEliminated, territoryStats } from './state';
-import { SERVER_VIEW_ID } from './world/fog';
 
 export interface ReplayHandExport {
   playerId: number;
@@ -41,6 +41,7 @@ export type ReplayEntry =
       radiationTerritories: number[];
       radiationUpcoming: number[];
       hands: ReplayHandExport[];
+      playerStates: ReplayPlayerState[];
       animation: ReplayAnimation;
     }
   | { kind: 'turn'; roundNumber: number; playerId: number }
@@ -125,7 +126,7 @@ export interface GameExport {
   playerCount: number;
   capitalTerritoryIds: number[];
   results: GameResultExport[];
-  serverLog: GameLogEvent[];
+  serverLog: ReplayLogEntry[];
   replay: {
     initialTerritories: ReplayTerritory[];
     initialRadiation: number[];
@@ -176,6 +177,7 @@ function actionEntry(
     radiationTerritories: frame.radiationTerritories,
     radiationUpcoming: frame.radiationUpcoming,
     hands: frame.hands,
+    playerStates: frame.playerStates,
     animation: frame.animation,
   };
 }
@@ -323,7 +325,7 @@ export function exportGame(gameName: string): GameExport | null {
     endedAt: game.endedAt,
     capitalTerritoryIds: [...game.capitalTerritoryIds],
     results,
-    serverLog: game.logs.get(SERVER_VIEW_ID) ?? [],
+    serverLog: game.replayLog,
     replay: {
       initialTerritories: game.replayInitial,
       initialRadiation: game.replayInitialRadiation,

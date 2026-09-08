@@ -14,6 +14,7 @@ interface Props {
   canPlay: boolean;
   onPlaySet: (combo: EvaluatedCombo) => void;
   onClose: () => void;
+  title?: string;
 }
 
 const SELECTED_BORDER_COLOR = '#0d6efd';
@@ -125,6 +126,7 @@ function CardsPanel({
   canPlay,
   onPlaySet,
   onClose,
+  title,
 }: Props) {
   function handleWheel(e: React.WheelEvent) {
     if (combos.length === 0) return;
@@ -141,7 +143,7 @@ function CardsPanel({
 
   return (
     <div className={`${PANEL_BG_CLASS} ${PANEL_CLASS}`} style={{ width: 268 }}>
-      <PanelHeader title="Your Cards" onClose={onClose} />
+      <PanelHeader title={title ?? 'Your Cards'} onClose={onClose} />
       {hand.length === 0 ? (
         <div className="text-muted small">No cards yet</div>
       ) : (

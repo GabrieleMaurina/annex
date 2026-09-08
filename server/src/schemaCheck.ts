@@ -1,5 +1,6 @@
 import { Binary, Document, FindCursor, ObjectId } from 'mongodb';
-import { connect, getCollection, getDb } from './db/mongo';
+import { connectDb } from './db';
+import { getCollection, getDb } from './db/mongo';
 
 type Node = Record<string, unknown>;
 
@@ -217,7 +218,7 @@ function checkCollection(name: string, schema: Document): Promise<void> {
 }
 
 export function checkDbSchema(): Promise<void> {
-  return connect()
+  return connectDb()
     .then(() => getDb().listCollections({}, { nameOnly: false }).toArray())
     .then((infos) =>
       infos.reduce((chain, info) => {

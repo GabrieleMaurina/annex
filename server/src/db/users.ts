@@ -19,6 +19,8 @@ export interface GameSettings {
     fill: string;
   } | null;
   slots: number;
+  bots: { difficulty: string; personality: string }[];
+  localPlayers: string[];
   gameMode: string;
   blitz: string;
   defenceDice: number;
@@ -56,6 +58,7 @@ export interface HomeFilters {
   roundsMax: number;
   phase: string;
   password: string;
+  hasBots: string;
   settings: Record<string, string>;
   sort: string;
 }
@@ -152,6 +155,12 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   visibility: ['public', 'private'],
 };
 
+const BOT_DIFFICULTIES = GAME_ENUMS.disconnectBotDifficulty as string[];
+const BOT_PERSONALITIES = GAME_ENUMS.disconnectBotPersonality as string[];
+const MAX_SAVED_BOTS = 19;
+const MAX_SAVED_LOCAL_PLAYERS = 19;
+const MAX_PLAYER_NAME_LENGTH = 10;
+
 const GENERATED_MAP_VALUE = 'generated';
 
 const HOME_MODES = ['', ...(GAME_ENUMS.gameMode as string[])];
@@ -161,6 +170,7 @@ const HOME_GENERATION_TYPES = ['', ...GENERATION_TYPES];
 const HOME_FILLS = ['', ...FILL_VALUES];
 const HOME_PHASES = ['', 'lobby', 'playing', 'ended'];
 const HOME_PASSWORDS = ['', 'yes', 'no'];
+const HOME_HAS_BOTS = ['', 'yes', 'no'];
 const HOME_SORTS = [
   'newest',
   'oldest',
@@ -189,6 +199,8 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   mapName: 'World',
   mapGeneration: null,
   slots: 2,
+  bots: [],
+  localPlayers: [],
   gameMode: 'Supremacy',
   blitz: 'Balanced',
   defenceDice: 2,
@@ -226,6 +238,7 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
   roundsMax: HOME_ROUNDS_MAX,
   phase: '',
   password: '',
+  hasBots: '',
   settings: {},
   sort: 'newest',
 };
@@ -287,11 +300,31 @@ const schema = {
             'mapName',
             'mapGeneration',
             'slots',
+            'bots',
+            'localPlayers',
             ...Object.keys(GAME_ENUMS),
           ],
           additionalProperties: false,
           properties: {
             mapName: { bsonType: 'string' },
+            bots: {
+              bsonType: 'array',
+              maxItems: MAX_SAVED_BOTS,
+              items: {
+                bsonType: 'object',
+                required: ['difficulty', 'personality'],
+                additionalProperties: false,
+                properties: {
+                  difficulty: { enum: BOT_DIFFICULTIES },
+                  personality: { enum: BOT_PERSONALITIES },
+                },
+              },
+            },
+            localPlayers: {
+              bsonType: 'array',
+              maxItems: MAX_SAVED_LOCAL_PLAYERS,
+              items: { bsonType: 'string', maxLength: MAX_PLAYER_NAME_LENGTH },
+            },
             mapGeneration: {
               bsonType: ['object', 'null'],
               required: ['seed', 'size', 'type', 'fill'],
@@ -328,6 +361,7 @@ const schema = {
             'roundsMax',
             'phase',
             'password',
+            'hasBots',
             'settings',
             'sort',
           ],
@@ -374,6 +408,7 @@ const schema = {
             },
             phase: { enum: HOME_PHASES },
             password: { enum: HOME_PASSWORDS },
+            hasBots: { enum: HOME_HAS_BOTS },
             settings: {
               bsonType: 'object',
               additionalProperties: false,
@@ -442,12 +477,43 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
   };
 }
 
+function sanitizeSavedBots(raw: unknown): GameSettings['bots'] {
+  if (!Array.isArray(raw)) return [];
+  const out: GameSettings['bots'] = [];
+  for (const item of raw) {
+    if (out.length >= MAX_SAVED_BOTS) break;
+    const r = (item ?? {}) as Record<string, unknown>;
+    if (
+      typeof r.difficulty === 'string' &&
+      BOT_DIFFICULTIES.includes(r.difficulty) &&
+      typeof r.personality === 'string' &&
+      BOT_PERSONALITIES.includes(r.personality)
+    )
+      out.push({ difficulty: r.difficulty, personality: r.personality });
+  }
+  return out;
+}
+
+function sanitizeLocalPlayers(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (out.length >= MAX_SAVED_LOCAL_PLAYERS) break;
+    if (typeof item !== 'string') continue;
+    const trimmed = item.trim().slice(0, MAX_PLAYER_NAME_LENGTH);
+    if (trimmed) out.push(trimmed);
+  }
+  return out;
+}
+
 function sanitizeGameSettings(raw: unknown): GameSettings {
   const r = (raw ?? {}) as Record<string, unknown>;
   const out: GameSettings = { ...DEFAULT_GAME_SETTINGS };
   if (typeof r.mapName === 'string' && r.mapName.length <= 100)
     out.mapName = r.mapName;
   out.mapGeneration = sanitizeMapGeneration(r.mapGeneration);
+  out.bots = sanitizeSavedBots(r.bots);
+  out.localPlayers = sanitizeLocalPlayers(r.localPlayers);
   if (
     typeof r.slots === 'number' &&
     Number.isInteger(r.slots) &&
@@ -549,6 +615,7 @@ function sanitizeHomeFilters(raw: unknown): HomeFilters {
     ),
     phase: pickEnum(r.phase, HOME_PHASES, ''),
     password: pickEnum(r.password, HOME_PASSWORDS, ''),
+    hasBots: pickEnum(r.hasBots, HOME_HAS_BOTS, ''),
     settings: sanitizeFilterSettings(r.settings),
     sort: pickEnum(r.sort, HOME_SORTS, 'newest'),
   };

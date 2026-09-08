@@ -72,6 +72,8 @@ gameHistoryRouter.get('/games/history', (req, res) => {
       : undefined;
   const outcome =
     q.outcome === 'won' || q.outcome === 'lost' ? q.outcome : undefined;
+  const hasBots =
+    q.hasBots === '1' ? true : q.hasBots === '0' ? false : undefined;
   const sort = q.sort === 'rounds' || q.sort === 'position' ? q.sort : 'newest';
   const sortDir = q.sortDir === 'asc' ? 'asc' : 'desc';
 
@@ -96,6 +98,7 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     playersMax: optIntParam(q.playersMax, 1, 100),
     minRounds: optIntParam(q.minRounds, 1, 100000),
     maxRounds: optIntParam(q.maxRounds, 1, 100000),
+    hasBots,
     settings: parseSettings(q),
     outcome,
     positionMin: optIntParam(q.positionMin, 1, 100),

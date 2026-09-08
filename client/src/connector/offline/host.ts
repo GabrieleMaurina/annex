@@ -319,13 +319,27 @@ export function setLocalPlayerName(playerId: number, name: string): void {
 }
 
 export function addLocalPlayer(name: string): void {
-  if (!engine || !ready || hostId === null || !lastState) return;
-  if (lastState.players.length >= lastState.slots)
-    engine.updateSettings(hostId, { slots: lastState.players.length + 1 });
-  const seatName = name.trim() || `Player ${lastState.players.length + 1}`;
+  if (!active) return;
+  if (!ready) {
+    queue.push(() => addLocalPlayer(name));
+    return;
+  }
+  if (!engine || hostId === null) return;
+  const summary = engine.listGameSummaries().find((g) => g.name === gameName);
+  if (!summary) return;
+  if (summary.playerCount >= summary.slots)
+    engine.updateSettings(hostId, { slots: summary.playerCount + 1 });
+  const seatName = name.trim() || `Player ${summary.playerCount + 1}`;
   const seatId = engine.addPlayer(seatName).id;
   engine.joinGame(seatId, gameName);
   localPlayerIds.push(seatId);
+}
+
+export function removeLocalPlayer(playerId: number): void {
+  if (!active || !engine || hostId === null || playerId === hostId) return;
+  if (!localPlayerIds.includes(playerId)) return;
+  engine.disconnect(playerId);
+  localPlayerIds = localPlayerIds.filter((id) => id !== playerId);
 }
 
 export function dispatch(

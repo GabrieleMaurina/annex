@@ -34,6 +34,7 @@ import {
   addLocalPlayer as offlineAddLocalPlayer,
   continueHandoff as offlineContinueHandoff,
   dispatch as offlineDispatch,
+  removeLocalPlayer as offlineRemoveLocalPlayer,
   setLocalPlayerName as offlineSetLocalPlayerName,
   seedOffline,
   startOffline,
@@ -105,6 +106,8 @@ function appendGameFilterParams(
     params.set('maxRounds', String(query.maxRounds));
   for (const [key, value] of Object.entries(query.settings ?? {}))
     if (value) params.set(key, value);
+  if (query.hasBots !== undefined)
+    params.set('hasBots', query.hasBots ? '1' : '0');
   if (query.sort) params.set('sort', query.sort);
   if (query.sortDir) params.set('sortDir', query.sortDir);
 }
@@ -141,6 +144,10 @@ export const connector = {
 
   addLocalPlayer(name: string): void {
     if (isOffline()) offlineAddLocalPlayer(name);
+  },
+
+  removeLocalPlayer(playerId: number): void {
+    if (isOffline()) offlineRemoveLocalPlayer(playerId);
   },
 
   setLocalPlayerName(playerId: number, name: string): void {

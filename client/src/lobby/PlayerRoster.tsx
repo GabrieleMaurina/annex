@@ -312,7 +312,13 @@ function PlayerRoster({
                       {p?.id !== selfId && (
                         <Tip
                           text={
-                            p ? (p.isBot ? 'Remove bot' : 'Kick/Ban') : 'Remove'
+                            p
+                              ? p.isBot
+                                ? 'Remove bot'
+                                : connector.isOffline()
+                                  ? 'Remove player'
+                                  : 'Kick/Ban'
+                              : 'Remove'
                           }
                         >
                           <Button

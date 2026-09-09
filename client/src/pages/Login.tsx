@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, Button, Container, Form, InputGroup } from 'react-bootstrap';
 import { formatError } from '../common/formatError';
 import { connector } from '../connector';
+import { passwordProblem } from '../lib/password';
 import { getPlayerName } from '../lib/player';
 import type { Account } from '../lib/types';
 
@@ -61,6 +62,11 @@ function Login({ account, onSessionChange, navigate }: Props) {
     }
     if (password !== confirmPassword) {
       setError('passwords do not match');
+      return;
+    }
+    const problem = passwordProblem(password);
+    if (problem) {
+      setError(problem);
       return;
     }
     setBusy(true);

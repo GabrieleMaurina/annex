@@ -6,6 +6,7 @@ import {
   openSocket,
 } from '../lib/socket';
 import type {
+  AccountResult,
   Ack,
   ClientSettings,
   FriendsOverview,
@@ -378,6 +379,39 @@ export const connector = {
 
   logout(cb: (res: LogoutAck) => void): void {
     httpSend<LogoutAck>('POST', '/auth/logout', {})
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  getAccount(cb: (res: AccountResult) => void): void {
+    httpGet<AccountResult>('/account')
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  changePassword(
+    data: { currentPassword: string; newPassword: string },
+    cb: (res: AuthAck) => void,
+  ): void {
+    httpSend<AuthAck>('POST', '/account/password', data)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  uploadPicture(data: { image: string }, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/account/picture', data)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  removePicture(cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/account/picture/remove', {})
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  reportPicture(userId: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/account/report', { userId })
       .then(cb)
       .catch(() => cb({ ok: false, error: 'server error' }));
   },

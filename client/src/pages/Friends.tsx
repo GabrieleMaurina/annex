@@ -1,6 +1,14 @@
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Container, Form, ListGroup } from 'react-bootstrap';
+import {
+  Alert,
+  Button,
+  Col,
+  Container,
+  Form,
+  ListGroup,
+  Row,
+} from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { formatError } from '../common/formatError';
 import { connector } from '../connector';
@@ -98,7 +106,7 @@ function Friends({ account }: Props) {
   ]);
 
   return (
-    <Container fluid className="py-5 px-2 px-sm-4" style={{ maxWidth: 640 }}>
+    <Container fluid className="py-5 px-2 px-sm-4">
       <h1 className="text-center mb-4">Friends</h1>
 
       {notice && (
@@ -162,92 +170,108 @@ function Friends({ account }: Props) {
         </ListGroup>
       )}
 
-      {incoming.length > 0 && (
-        <>
-          <h2 className="h5 mt-4">Requests</h2>
-          <ListGroup>
-            {incoming.map((person) => (
-              <PersonRow
-                key={person.id}
-                person={person}
-                onOpen={() => open(person.username)}
-              >
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    run(
-                      connector.acceptFriendRequest,
-                      person.id,
-                      'Friend added.',
-                    )
-                  }
+      <Row className="g-4 mt-1">
+        <Col md={4}>
+          <h2 className="h5">Requests</h2>
+          {incoming.length === 0 ? (
+            <p className="text-muted">No incoming requests.</p>
+          ) : (
+            <ListGroup>
+              {incoming.map((person) => (
+                <PersonRow
+                  key={person.id}
+                  person={person}
+                  onOpen={() => open(person.username)}
                 >
-                  Accept
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline-secondary"
-                  onClick={() =>
-                    run(connector.removeFriend, person.id, 'Request rejected.')
-                  }
-                >
-                  Reject
-                </Button>
-              </PersonRow>
-            ))}
-          </ListGroup>
-        </>
-      )}
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      run(
+                        connector.acceptFriendRequest,
+                        person.id,
+                        'Friend added.',
+                      )
+                    }
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() =>
+                      run(
+                        connector.removeFriend,
+                        person.id,
+                        'Request rejected.',
+                      )
+                    }
+                  >
+                    Reject
+                  </Button>
+                </PersonRow>
+              ))}
+            </ListGroup>
+          )}
+        </Col>
 
-      {outgoing.length > 0 && (
-        <>
-          <h2 className="h5 mt-4">Sent requests</h2>
-          <ListGroup>
-            {outgoing.map((person) => (
-              <PersonRow
-                key={person.id}
-                person={person}
-                onOpen={() => open(person.username)}
-              >
-                <Button
-                  size="sm"
-                  variant="outline-secondary"
-                  onClick={() =>
-                    run(connector.removeFriend, person.id, 'Request cancelled.')
-                  }
+        <Col md={4}>
+          <h2 className="h5">Sent requests</h2>
+          {outgoing.length === 0 ? (
+            <p className="text-muted">No sent requests.</p>
+          ) : (
+            <ListGroup>
+              {outgoing.map((person) => (
+                <PersonRow
+                  key={person.id}
+                  person={person}
+                  onOpen={() => open(person.username)}
                 >
-                  Cancel
-                </Button>
-              </PersonRow>
-            ))}
-          </ListGroup>
-        </>
-      )}
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() =>
+                      run(
+                        connector.removeFriend,
+                        person.id,
+                        'Request cancelled.',
+                      )
+                    }
+                  >
+                    Cancel
+                  </Button>
+                </PersonRow>
+              ))}
+            </ListGroup>
+          )}
+        </Col>
 
-      <h2 className="h5 mt-4">Your friends</h2>
-      {friends.length === 0 ? (
-        <p className="text-muted">No friends yet.</p>
-      ) : (
-        <ListGroup>
-          {friends.map((person) => (
-            <PersonRow
-              key={person.id}
-              person={person}
-              onOpen={() => open(person.username)}
-            >
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                onClick={() =>
-                  run(connector.removeFriend, person.id, 'Friend removed.')
-                }
-              >
-                Remove
-              </Button>
-            </PersonRow>
-          ))}
-        </ListGroup>
-      )}
+        <Col md={4}>
+          <h2 className="h5">Your friends</h2>
+          {friends.length === 0 ? (
+            <p className="text-muted">No friends yet.</p>
+          ) : (
+            <ListGroup>
+              {friends.map((person) => (
+                <PersonRow
+                  key={person.id}
+                  person={person}
+                  onOpen={() => open(person.username)}
+                >
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() =>
+                      run(connector.removeFriend, person.id, 'Friend removed.')
+                    }
+                  >
+                    Remove
+                  </Button>
+                </PersonRow>
+              ))}
+            </ListGroup>
+          )}
+        </Col>
+      </Row>
     </Container>
   );
 }

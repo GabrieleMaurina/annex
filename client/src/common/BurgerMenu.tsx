@@ -121,19 +121,28 @@ function BurgerMenu({ navigate, account, onSessionChange }: Props) {
           className={`${PANEL_BG_CLASS} ${PANEL_CLASS} position-absolute end-0 mt-2 d-flex flex-column gap-2`}
           style={{ width: 200, zIndex: 10 }}
         >
-          {name && (
-            <div className="text-center fw-semibold text-truncate d-flex align-items-center justify-content-center gap-1">
-              {account && (
+          {name &&
+            (account ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="p-0 text-decoration-none fw-semibold text-truncate d-flex align-items-center justify-content-center gap-1"
+                disabled={pathname === '/account'}
+                onClick={() => go('/account')}
+              >
                 <img
                   src={`/ranks/${rankForElo(account.elo).image}.svg`}
                   width={20}
                   height={20}
                   alt={rankForElo(account.elo).name}
                 />
-              )}
-              {name}
-            </div>
-          )}
+                {name}
+              </Button>
+            ) : (
+              <div className="text-center fw-semibold text-truncate">
+                {name}
+              </div>
+            ))}
           {links.map((link) => (
             <Button
               key={link.path}

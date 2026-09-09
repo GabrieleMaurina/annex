@@ -76,8 +76,15 @@ function isValidEmail(value: unknown): value is string {
   );
 }
 
-function isValidPassword(value: unknown): value is string {
-  return typeof value === 'string' && value.length >= 8 && value.length <= 128;
+export function isValidPassword(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length >= 8 &&
+    value.length <= 128 &&
+    /[a-z]/.test(value) &&
+    /[A-Z]/.test(value) &&
+    /[0-9]/.test(value)
+  );
 }
 
 function sendMail(to: string, subject: string, html: string): Promise<void> {

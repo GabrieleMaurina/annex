@@ -336,7 +336,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `GET /players/:username`
 - **When sent:** the player profile page (`/players/<username>`) loads.
-- **Response:** `{ id, username, elo, gamesPlayed, wins, averagePlacing, percentile, createdAt }`, or `404 { ok: false, error: 'not found' }` for an unknown username. `averagePlacing` is the account's mean finishing position across every game it's been recorded in (1-based; `null` if `gamesPlayed` is 0). `percentile` is the share of all other registered accounts this one's `elo` beats (0–100, rounded; 100 when there's only one account). `createdAt` is the epoch ms the account was created, derived from the Mongo `_id` timestamp. The page's own games table is a separate `GET /games/history?playerIds=<id>&rankUserId=<id>&sort=newest` request (see above), not part of this response. Public and unrestricted, like the rest of this router.
+- **Response:** `{ id, username, elo, gamesPlayed, wins, averagePlacing, percentile, createdAt, picture }`, or `404 { ok: false, error: 'not found' }` for an unknown username. `averagePlacing` is the account's mean finishing position across every game it's been recorded in (1-based; `null` if `gamesPlayed` is 0). `percentile` is the share of all other registered accounts this one's `elo` beats (0–100, rounded; 100 when there's only one account). `createdAt` is the epoch ms the account was created, derived from the Mongo `_id` timestamp. `picture` is a `data:` URL of the account's 1000×1000 profile picture (see the `users` collection and `POST /account/picture` below), or `null` when it has none or the current one has been hidden after reports. The page's own games table is a separate `GET /games/history?playerIds=<id>&rankUserId=<id>&sort=newest` request (see above), not part of this response. Public and unrestricted, like the rest of this router.
 
 ### `GET /maps/:id`
 - **When sent:** the replay page, as its own request after `GET /games/replay/:id` returns, using that document's `mapId`.
@@ -355,7 +355,7 @@ A strict-schema MongoDB collection, one document per direct message: `{ senderId
 A strict-schema MongoDB collection, one document per block: `{ blockerId, blockedId, createdAt }`, with a unique compound index on `{ blockerId, blockedId }` (the `blockerId` prefix answers "everyone this account has blocked"). **Blocking is asymmetrical and only constrains the blocker:** while A blocks B, `POST /messages` from A to B is rejected `blocked`, and the entire A↔B conversation is dropped from A's `GET /messages` — B shows up only in that response's `blocked` list, never in `conversations`. Nothing is deleted: unblocking makes the conversation reappear with its full history. B is never told, and B's sends to A still succeed and are stored. Independent of `friendships` — an account can be both a friend and blocked.
 
 ### `POST /auth/register`
-- **Body:** `{ username, email, password }` — username 3–10 chars matching `^[A-Za-z0-9]+$` and not profane (the client runs the same `obscenity` check and blocks the form first; the server rejects it authoritatively), email ≤50 chars, password 8–128 chars.
+- **Body:** `{ username, email, password }` — username 3–10 chars matching `^[A-Za-z0-9]+$` and not profane (the client runs the same `obscenity` check and blocks the form first; the server rejects it authoritatively), email ≤50 chars, password 8–128 chars with at least one lowercase letter, one uppercase letter, and one digit (the same rule everywhere a password is set — register, `/auth/reset-password`, `/account/password` — checked on the client first and enforced authoritatively by the server).
 - **Purpose:** create the account with `validated_email: false` and email a confirmation link to `.../email_confirmation/<code>` (code TTL 24h). Does **not** log in. If the (normalised) email is already registered, no account is created and `{ ok: true }` is still returned, but the mail to that address says an account already exists — so the response never reveals whether an email is taken.
 - **Errors:** `invalid username`, `invalid email`, `invalid password`, `username already taken`, `too many requests`, `server error`. `{ ok: true }` means "check your email".
 
@@ -373,7 +373,7 @@ A strict-schema MongoDB collection, one document per block: `{ blockerId, blocke
 
 ### `POST /auth/reset-password`
 - **When sent:** the `/password_reset/<code>` client page submits a new password.
-- **Body:** `{ code, password }` — password 8–128 chars.
+- **Body:** `{ code, password }` — password 8–128 chars with at least one lowercase letter, one uppercase letter, and one digit (see `POST /auth/register`).
 - **Purpose:** set the new password hash, mark `validated_email` true, delete the reset code, and delete every `sessions` row for that account. Does **not** log in — the user logs in afterwards, so a browser already logged into another account is untouched.
 - **Errors:** `invalid code`, `invalid password`, `invalid or expired code`, `too many requests`, `server error`.
 
@@ -396,6 +396,40 @@ A strict-schema MongoDB collection, one document per block: `{ blockerId, blocke
 - **Body:** `{ clientSettings?: {...}, gameSettings?: {...}, homeFilters?: {...} }`
 - **Purpose:** persist the settings on the logged-in account. No-op for an anonymous client. Each blob is strictly sanitised server-side (unknown keys dropped, values clamped to their allowed set) before it is stored.
 - **Response:** `{ ok: true }`.
+
+### `GET /account`
+- **When sent:** the "Account" page (`/account`) loads. Logged-in only — the client hides the menu entry and redirects `/account` to home for an anonymous visitor.
+- **Response:** `{ ok: true, username, email, picture, pictureDangerous } | { ok: false, error: 'not logged in' }`. `username` and `email` are shown read-only (neither is changeable). `picture` is a `data:` URL of the current 1000×1000 profile picture, or `null` when there is none or it has been hidden after reports; `pictureDangerous` is `true` in that hidden-after-reports case, so the page can prompt for a replacement.
+
+### `POST /account/password`
+- **When sent:** the "Change password" form on the Account page.
+- **Body:** `{ currentPassword, newPassword }` — `newPassword` 8–128 chars with at least one lowercase letter, one uppercase letter, and one digit (see `POST /auth/register`).
+- **Purpose:** verify `currentPassword` against the account and set the new hash (Argon2id). The current session is kept; other sessions are not touched.
+- **Errors:** `not logged in`, `invalid password` (new one fails the rules), `incorrect password` (current one wrong), `new password must be different` (new one equals the current one), `too many requests` (per-IP, shared with `/auth/*`), `server error`.
+
+### `POST /account/picture`
+- **When sent:** the user saves a crop on the Account page. The client crops to a 1000×1000 square canvas and sends it as a JPEG (a smaller source image is upscaled to fill the canvas).
+- **Body:** `{ image }` — a `data:image/(png|jpeg|webp);base64,<...>` URL, at most ~2.5 MB decoded.
+- **Purpose:** run the image through the OpenAI image-moderation API (`omni-moderation-latest`); if it is not flagged, store it in the caller's `users` document (replacing any previous one, and clearing that previous picture's reports), visible to everyone via `GET /players/:username`. A flagged image is rejected and nothing is stored.
+- **Errors:** `not logged in`, `invalid image` (bad data URL / mime / size), `image rejected` (moderation flagged it), `moderation failed` (the moderation call itself errored — the upload is refused, fail-closed), `too many requests`, `server error`.
+
+### `POST /account/picture/remove`
+- **When sent:** "Remove picture" on the Account page (shown whenever the account has a picture, or has one that was hidden after reports).
+- **Body:** none.
+- **Purpose:** delete the caller's `users.picture` entirely and drop that picture's reports. The account is then left with no picture; a replacement is optional. Idempotent — `{ ok: true }` even if there was nothing to remove.
+- **Errors:** `not logged in`, `server error`.
+
+### `POST /account/report`
+- **When sent:** a logged-in viewer right-clicks another player's profile picture and picks "Report picture".
+- **Body:** `{ userId }` — the account whose current picture is being reported.
+- **Purpose:** record one report against that account's current picture. A user may report a given picture at most once. Once three different users have reported the same picture, it is immediately marked dangerous and stops being served (`GET /players/:username` and `GET /account` return `picture: null`) until that account uploads a replacement.
+- **Errors:** `not logged in`, `user not found`, `cannot report yourself`, `no picture` (the account has no picture, or its current one is already hidden), `already reported`, `server error`.
+
+### `picture_reports` collection (server-side, not a wire type)
+A strict-schema MongoDB collection, one document per report: `{ pictureId, targetUserId, reporterId, createdAt }`. `pictureId` is the per-upload id stored on `users.picture.id` (a fresh id each time a picture is uploaded, so replacing a picture orphans its old reports — and both `POST /account/picture` and `POST /account/picture/remove` delete them outright). A unique compound index on `{ pictureId, reporterId }` enforces one report per user per picture; `{ pictureId }` backs the count. At three reports the target's `users.picture.dangerous` is set `true` and the picture is no longer served.
+
+### `users.picture` (server-side, not a wire type)
+Optional field on a `users` document: `{ id, data (binData), mime ('image/png' | 'image/jpeg' | 'image/webp'), dangerous }`. Written only by `POST /account/picture` after moderation passes (`dangerous` reset to `false` on every upload), `$unset` by `POST /account/picture/remove`, read out as a `data:` URL by `GET /account` / `GET /players/:username` (both return `null` while `dangerous`), and flipped to `dangerous: true` by the third `POST /account/report`. Excluded from every other `users` read (`projection`) so it never rides along on session resolution.
 
 ### `GET /friends`
 - **When sent:** the "Friends" page (`/friends`) loads, a logged-in viewer opens a player's profile (`/players/<username>`), and after every friend mutation below. The Friends page is logged-in only — the client hides it from the menu and redirects `/friends` to home for an anonymous visitor.

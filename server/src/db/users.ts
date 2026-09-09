@@ -1,5 +1,5 @@
 import { BUILTIN_MAP_NAMES } from 'engine';
-import { ObjectId, WithId } from 'mongodb';
+import { Binary, ObjectId, WithId } from 'mongodb';
 import { ensureCollection, getCollection } from './mongo';
 
 const NAME = 'users';
@@ -75,6 +75,13 @@ export interface User {
   homeFilters: HomeFilters;
 }
 
+interface PictureDoc {
+  id: string;
+  data: Binary;
+  mime: string;
+  dangerous: boolean;
+}
+
 interface UserDoc {
   username: string;
   username_lower: string;
@@ -86,7 +93,17 @@ interface UserDoc {
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
+  picture?: PictureDoc;
 }
+
+export interface StoredPicture {
+  id: string;
+  data: string;
+  mime: string;
+  dangerous: boolean;
+}
+
+const PICTURE_MIMES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
@@ -262,6 +279,17 @@ const schema = {
       properties: {
         _id: {},
         elo: { bsonType: 'number' },
+        picture: {
+          bsonType: ['object', 'null'],
+          required: ['id', 'data', 'mime', 'dangerous'],
+          additionalProperties: false,
+          properties: {
+            id: { bsonType: 'string' },
+            data: { bsonType: 'binData' },
+            mime: { enum: PICTURE_MIMES },
+            dangerous: { bsonType: 'bool' },
+          },
+        },
         username: {
           bsonType: 'string',
           maxLength: 10,
@@ -637,20 +665,81 @@ function toUser(doc: WithId<UserDoc>): User {
 
 export function findUserByUsername(username: string): Promise<User | null> {
   return collection()
-    .findOne({ username_lower: normalizeUsername(username) })
+    .findOne(
+      { username_lower: normalizeUsername(username) },
+      { projection: { picture: 0 } },
+    )
     .then((doc) => (doc ? toUser(doc) : null));
 }
 
 export function findUserByEmail(email: string): Promise<User | null> {
   return collection()
-    .findOne({ email_normalized: normalizeEmail(email) })
+    .findOne(
+      { email_normalized: normalizeEmail(email) },
+      { projection: { picture: 0 } },
+    )
     .then((doc) => (doc ? toUser(doc) : null));
 }
 
 export function findUserById(id: string): Promise<User | null> {
   return collection()
-    .findOne({ _id: new ObjectId(id) })
+    .findOne({ _id: new ObjectId(id) }, { projection: { picture: 0 } })
     .then((doc) => (doc ? toUser(doc) : null));
+}
+
+export function getUserPicture(id: string): Promise<StoredPicture | null> {
+  if (!ObjectId.isValid(id)) return Promise.resolve(null);
+  return collection()
+    .findOne({ _id: new ObjectId(id) }, { projection: { picture: 1 } })
+    .then((doc) => {
+      const picture = doc?.picture;
+      if (!picture) return null;
+      return {
+        id: picture.id,
+        data: Buffer.from(picture.data.buffer).toString('base64'),
+        mime: picture.mime,
+        dangerous: picture.dangerous,
+      };
+    });
+}
+
+export function setUserPicture(
+  userId: string,
+  picture: { id: string; data: Buffer; mime: string },
+): Promise<void> {
+  return collection()
+    .updateOne(
+      { _id: new ObjectId(userId) },
+      {
+        $set: {
+          picture: {
+            id: picture.id,
+            data: new Binary(picture.data),
+            mime: picture.mime,
+            dangerous: false,
+          },
+        },
+      },
+    )
+    .then(() => undefined);
+}
+
+export function unsetUserPicture(userId: string): Promise<void> {
+  return collection()
+    .updateOne({ _id: new ObjectId(userId) }, { $unset: { picture: '' } })
+    .then(() => undefined);
+}
+
+export function markPictureDangerous(
+  userId: string,
+  pictureId: string,
+): Promise<void> {
+  return collection()
+    .updateOne(
+      { _id: new ObjectId(userId), 'picture.id': pictureId },
+      { $set: { 'picture.dangerous': true } },
+    )
+    .then(() => undefined);
 }
 
 export function insertUser(data: {
@@ -694,7 +783,7 @@ export function setPassword(
   return collection()
     .updateOne(
       { _id: new ObjectId(userId) },
-      { $set: { password: passwordHash, validated_email: true } },
+      { $set: { password: passwordHash } },
     )
     .then(() => undefined);
 }
@@ -749,7 +838,10 @@ export function getUsernamesByIds(ids: string[]): Promise<Map<string, string>> {
 
 export function getElosByIds(ids: string[]): Promise<Map<string, number>> {
   return collection()
-    .find({ _id: { $in: ids.map((id) => new ObjectId(id)) } })
+    .find(
+      { _id: { $in: ids.map((id) => new ObjectId(id)) } },
+      { projection: { elo: 1 } },
+    )
     .toArray()
     .then(
       (docs) =>
@@ -887,6 +979,7 @@ export interface PlayerProfile {
   averagePlacing: number | null;
   percentile: number;
   createdAt: number;
+  picture: string | null;
 }
 
 export function listPlayers(query: PlayersQuery): Promise<PlayersPage> {
@@ -968,6 +1061,12 @@ export function getPlayerProfile(
           averagePlacing: averagePlacing(stats),
           percentile: total > 1 ? Math.round((lower / (total - 1)) * 100) : 100,
           createdAt: doc._id.getTimestamp().getTime(),
+          picture:
+            doc.picture && !doc.picture.dangerous
+              ? `data:${doc.picture.mime};base64,${Buffer.from(
+                  doc.picture.data.buffer,
+                ).toString('base64')}`
+              : null,
         };
       });
     });

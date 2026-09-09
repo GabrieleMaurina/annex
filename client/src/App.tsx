@@ -325,7 +325,16 @@ function App() {
             />
           }
         />
-        <Route path="/account" element={<AccountPage />} />
+        <Route
+          path="/account"
+          element={
+            !sessionReady ? null : account ? (
+              <AccountPage account={account} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
         <Route
           path="/email_confirmation/:code"
           element={<EmailConfirmationRoute navigate={navigate} />}

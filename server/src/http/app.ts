@@ -1,4 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express';
+import { accountRouter } from './accountRoutes';
 import { authRouter } from './authRoutes';
 import { friendsRouter } from './friendsRoutes';
 import { gameHistoryRouter, publicGamesRouter } from './gameHistoryRoutes';
@@ -37,12 +38,14 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   api.use(gamesRouter(deps.listGames));
   api.use(publicGamesRouter);
   api.use(playersRouter);
+  api.use('/account/picture', express.json({ limit: '4mb' }));
   api.use(express.json({ limit: '16kb' }));
   api.use(identityMiddleware);
   api.use(gameHistoryRouter);
   api.use(sessionRouter(deps.playerGame));
   api.use(authRouter(deps.inLiveGame));
   api.use(settingsRouter);
+  api.use(accountRouter);
   api.use(friendsRouter);
   api.use(messagesRouter);
   app.use('/api', api);

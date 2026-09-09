@@ -9,6 +9,16 @@ export interface Account {
   elo: number;
 }
 
+export type AccountResult =
+  | {
+      ok: true;
+      username: string;
+      email: string;
+      picture: string | null;
+      pictureDangerous: boolean;
+    }
+  | { ok: false; error: string };
+
 export interface IdentifyResult {
   id: number;
   gameName: string | null;
@@ -694,6 +704,7 @@ export interface PlayerProfile {
   averagePlacing: number | null;
   percentile: number;
   createdAt: number;
+  picture: string | null;
 }
 
 export interface Friend {

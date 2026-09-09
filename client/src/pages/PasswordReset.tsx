@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, Button, Container, Form } from 'react-bootstrap';
 import { formatError } from '../common/formatError';
 import { connector } from '../connector';
+import { passwordProblem } from '../lib/password';
 
 interface Props {
   code: string;
@@ -16,6 +17,11 @@ function PasswordReset({ code, navigate }: Props) {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    const problem = passwordProblem(password);
+    if (problem) {
+      setError(problem);
+      return;
+    }
     setBusy(true);
     setError('');
     connector.resetPassword({ code, password }, (res) => {

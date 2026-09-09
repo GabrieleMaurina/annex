@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Button, Container, Spinner, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
+import { formatError } from '../common/formatError';
 import FriendshipButton from '../common/FriendshipButton';
 import { useWhiteIcon } from '../common/icon';
+import { PANEL_BG_CLASS } from '../common/panelStyle';
 import { connector } from '../connector';
 import {
   contrastTextColor,
@@ -81,11 +83,35 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<GamesPage | null>(null);
   const [liveGame, setLiveGame] = useState<GameSummary | null>(null);
+  const [reportMenu, setReportMenu] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  const [reportMessage, setReportMessage] = useState('');
 
   useEffect(() => {
     if (!username) return;
     connector.getPlayerProfile(username, setProfile);
   }, [username]);
+
+  useEffect(() => {
+    if (!reportMenu) return;
+    function close() {
+      setReportMenu(null);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') close();
+    }
+    document.addEventListener('mousedown', close);
+    document.addEventListener('scroll', close, true);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('scroll', close, true);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', close);
+    };
+  }, [reportMenu]);
 
   useEffect(() => {
     if (!profile) return;
@@ -143,6 +169,8 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   const canManageFriend =
     !!account &&
     account.username.toLowerCase() !== profile.username.toLowerCase();
+  const canReport = canManageFriend && !!profile.picture;
+  const profileId = profile.id;
 
   const rank = rankForElo(profile.elo);
   const liveGameState: GameSummary['state'] | undefined =
@@ -160,7 +188,66 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
 
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
-      <h1 className="text-center mb-4">{profile.username}</h1>
+      <h1 className="text-center mb-2">{profile.username}</h1>
+
+      <div className="d-flex flex-column align-items-center gap-1 mb-4">
+        {profile.picture ? (
+          <img
+            src={profile.picture}
+            alt={profile.username}
+            width={120}
+            height={120}
+            className="rounded"
+            onContextMenu={
+              canReport
+                ? (e) => {
+                    e.preventDefault();
+                    setReportMessage('');
+                    setReportMenu({ x: e.clientX, y: e.clientY });
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <div
+            className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50"
+            style={{ width: 120, height: 120 }}
+          >
+            No picture
+          </div>
+        )}
+        {reportMessage && (
+          <span className="small text-muted">{formatError(reportMessage)}</span>
+        )}
+      </div>
+
+      {reportMenu && (
+        <div
+          className={`${PANEL_BG_CLASS} border rounded shadow position-fixed p-1`}
+          style={{
+            left: reportMenu.x,
+            top: reportMenu.y,
+            transform: `translate(${
+              reportMenu.x > window.innerWidth - 160 ? '-100%' : '0'
+            }, ${reportMenu.y > window.innerHeight - 80 ? '-100%' : '0'})`,
+            zIndex: 1080,
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <Button
+            size="sm"
+            variant="outline-danger"
+            onClick={() => {
+              setReportMenu(null);
+              connector.reportPicture(profileId, (res) =>
+                setReportMessage(res.ok ? 'report submitted' : res.error),
+              );
+            }}
+          >
+            Report picture
+          </Button>
+        </div>
+      )}
 
       <div className="d-flex flex-wrap justify-content-evenly gap-5 mb-4 w-100">
         <div className="d-flex align-items-center gap-2">

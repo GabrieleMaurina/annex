@@ -49,6 +49,103 @@ function isTerritory(value: unknown): value is MapTerritory {
   );
 }
 
+function readPngDimensions(
+  data: Buffer,
+): { width: number; height: number } | null {
+  const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (data.length < 24 || !data.subarray(0, 8).equals(PNG_SIG)) return null;
+  if (data.toString('ascii', 12, 16) !== 'IHDR') return null;
+  return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
+}
+
+function readJpegDimensions(
+  data: Buffer,
+): { width: number; height: number } | null {
+  if (data.length < 4 || data.readUInt16BE(0) !== 0xffd8) return null;
+  let offset = 2;
+  while (offset + 4 <= data.length) {
+    if (data[offset] !== 0xff) {
+      offset++;
+      continue;
+    }
+    const marker = data[offset + 1];
+    if (
+      marker === 0xd8 ||
+      marker === 0xd9 ||
+      (marker >= 0xd0 && marker <= 0xd7)
+    ) {
+      offset += 2;
+      continue;
+    }
+    const length = data.readUInt16BE(offset + 2);
+    const isSOF =
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc;
+    if (isSOF) {
+      if (offset + 9 > data.length) return null;
+      return {
+        height: data.readUInt16BE(offset + 5),
+        width: data.readUInt16BE(offset + 7),
+      };
+    }
+    offset += 2 + length;
+  }
+  return null;
+}
+
+function readWebpDimensions(
+  data: Buffer,
+): { width: number; height: number } | null {
+  if (
+    data.length < 30 ||
+    data.toString('ascii', 0, 4) !== 'RIFF' ||
+    data.toString('ascii', 8, 12) !== 'WEBP'
+  )
+    return null;
+  const fourCC = data.toString('ascii', 12, 16);
+  if (fourCC === 'VP8 ') {
+    if (data.toString('hex', 23, 26) !== '9d012a') return null;
+    return {
+      width: data.readUInt16LE(26) & 0x3fff,
+      height: data.readUInt16LE(28) & 0x3fff,
+    };
+  }
+  if (fourCC === 'VP8L') {
+    if (data[20] !== 0x2f) return null;
+    const bits = data.readUInt32LE(21);
+    return {
+      width: (bits & 0x3fff) + 1,
+      height: ((bits >>> 14) & 0x3fff) + 1,
+    };
+  }
+  if (fourCC === 'VP8X') {
+    return {
+      width: data.readUIntLE(24, 3) + 1,
+      height: data.readUIntLE(27, 3) + 1,
+    };
+  }
+  return null;
+}
+
+export function readImageDimensions(
+  data: Buffer,
+  mime: string,
+): { width: number; height: number } | null {
+  const dims =
+    mime === 'image/png'
+      ? readPngDimensions(data)
+      : mime === 'image/jpeg'
+        ? readJpegDimensions(data)
+        : mime === 'image/webp'
+          ? readWebpDimensions(data)
+          : null;
+  if (!dims || dims.width <= 0 || dims.height <= 0) return null;
+  return dims;
+}
+
 function allConnected(
   territories: MapTerritory[],
   byId: Map<number, MapTerritory>,
@@ -105,6 +202,8 @@ export function validateMapGeneration(
 export function validateMapGeometry(
   territoriesRaw: unknown,
   bonusesRaw: unknown,
+  imageWidth: number,
+  imageHeight: number,
 ):
   | { ok: true; territories: MapTerritory[]; bonuses: number[] }
   | { ok: false; error: string } {
@@ -136,6 +235,8 @@ export function validateMapGeometry(
 
   const byId = new Map(territories.map((t) => [t.id, t]));
   for (const t of territories) {
+    if (t.x < 0 || t.x > imageWidth || t.y < 0 || t.y > imageHeight)
+      return { ok: false, error: 'territory out of bounds' };
     if (t.continentId < 0 || t.continentId >= bonuses.length)
       return { ok: false, error: 'invalid continent' };
     if (t.neighbors.some((n) => n === t.id || !ids.has(n)))

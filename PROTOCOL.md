@@ -341,7 +341,7 @@ Players who never held a slot and couldn't be seated (lobby full, or the game al
 
 ### `GET /replay-maps/:id`
 - **When sent:** the replay page, as its own request after `GET /games/replay/:id` returns, using that document's `mapId`.
-- **Response:** `{ name, territories, bonuses, image, imageMime }` (`image` base64) — the archived map geometry and picture from the `replay_maps` collection, so the replay page can render the board without the geometry ever being embedded in the game document. `404 { ok: false, error: 'not found' }` if unknown. Public and unrestricted — any id, any caller; runs ahead of the identity middleware and touches no cookie. (The `replay_maps` collection was formerly `maps`; a one-time startup migration renames it in place.)
+- **Response:** `{ name, territories, bonuses, image, imageMime }` (`image` base64) — the archived map geometry and picture from the `replay_maps` collection, so the replay page can render the board without the geometry ever being embedded in the game document. `404 { ok: false, error: 'not found' }` if unknown. Public and unrestricted — any id, any caller; runs ahead of the identity middleware and touches no cookie.
 
 ### Map library (`/player-maps`)
 

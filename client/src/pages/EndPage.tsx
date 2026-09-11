@@ -10,12 +10,13 @@ import { connector } from '../connector';
 import GameReplayView from '../game/GameReplayView';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import type { LogEntry } from '../game/useGameLogs';
-import type { GameState, PlayerResultStats } from '../lib/types';
+import type { Account, GameState, PlayerResultStats } from '../lib/types';
 
 interface Props {
   game: GameState;
   results: Map<number, PlayerResultStats> | null;
   selfId: number | null;
+  account: Account | null;
   navigate: (path: string) => void;
   logs: LogEntry[];
   setChatOpen: Dispatch<SetStateAction<boolean>>;
@@ -28,6 +29,7 @@ function EndPage({
   game,
   results,
   selfId,
+  account,
   navigate,
   logs,
   setChatOpen,
@@ -60,7 +62,7 @@ function EndPage({
           className="position-fixed top-0 end-0 m-3"
           style={{ zIndex: 1030 }}
         >
-          <BurgerMenu navigate={navigate} />
+          <BurgerMenu navigate={navigate} account={account} hideLogout />
         </div>
       )}
       <GameReplayView

@@ -35,9 +35,10 @@ interface Props {
   navigate: (path: string) => void;
   account?: Account | null;
   onSessionChange?: () => void;
+  hideLogout?: boolean;
 }
 
-function BurgerMenu({ navigate, account, onSessionChange }: Props) {
+function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const whiteMenuIcon = useWhiteIcon('/icons/menu.svg');
@@ -162,9 +163,11 @@ function BurgerMenu({ navigate, account, onSessionChange }: Props) {
           ))}
           {showAuth &&
             (account ? (
-              <Button variant="secondary" size="sm" onClick={logOut}>
-                Log out
-              </Button>
+              !hideLogout && (
+                <Button variant="secondary" size="sm" onClick={logOut}>
+                  Log out
+                </Button>
+              )
             ) : (
               <Button
                 variant="secondary"

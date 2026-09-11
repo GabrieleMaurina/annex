@@ -273,7 +273,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
   return (
     <>
       <div className="position-fixed top-0 end-0 m-3" style={{ zIndex: 1030 }}>
-        <BurgerMenu navigate={navigate} />
+        <BurgerMenu navigate={navigate} account={account} hideLogout />
       </div>
       <div className="text-center mb-2">
         <span

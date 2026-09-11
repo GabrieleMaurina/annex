@@ -569,9 +569,9 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   }
 
   function addVertexAt(pos: Point): number {
-    const { scaleX, scaleY, offsetX, offsetY } = getViewport();
-    const worldX = (pos.x - offsetX) / scaleX;
-    const worldY = (pos.y - offsetY) / scaleY;
+    const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = getViewport();
+    const worldX = clamp((pos.x - offsetX) / scaleX, 0, imgW);
+    const worldY = clamp((pos.y - offsetY) / scaleY, 0, imgH);
     const nextId = territories.length
       ? Math.max(...territories.map((t) => t.id)) + 1
       : 0;
@@ -756,7 +756,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         setIsDragging(true);
       }
     } else {
-      const { scaleX, scaleY } = getViewport();
+      const { imgW, imgH, scaleX, scaleY } = getViewport();
       const dx = pos.x - drag.lastPos.x;
       const dy = pos.y - drag.lastPos.y;
       if (
@@ -772,7 +772,11 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       setTerritories((prev) =>
         prev.map((t) =>
           t.id === id
-            ? { ...t, x: t.x + dx / scaleX, y: t.y + dy / scaleY }
+            ? {
+                ...t,
+                x: clamp(t.x + dx / scaleX, 0, imgW),
+                y: clamp(t.y + dy / scaleY, 0, imgH),
+              }
             : t,
         ),
       );

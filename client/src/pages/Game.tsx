@@ -344,6 +344,7 @@ function Game({
           game={game}
           results={results}
           selfId={selfId}
+          account={account}
           navigate={navigate}
           logs={logs}
           setChatOpen={setChatOpen}

@@ -1,5 +1,4 @@
 import type { MutableRefObject, ReactNode } from 'react';
-import { useEffect, useState } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
 import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
@@ -158,42 +157,6 @@ function PlayersPanel({
   const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
   const whitePlayIcon = useWhiteIcon('/icons/play.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
-  const whiteFullscreenIcon = useWhiteIcon('/icons/fullscreen.svg');
-  const whiteNotFullscreenIcon = useWhiteIcon('/icons/not_fullscreen.svg');
-
-  const [isFullscreen, setIsFullscreen] = useState(
-    !!document.fullscreenElement,
-  );
-
-  useEffect(() => {
-    function onFullscreenChange() {
-      setIsFullscreen(!!document.fullscreenElement);
-    }
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () =>
-      document.removeEventListener('fullscreenchange', onFullscreenChange);
-  }, []);
-
-  useEffect(() => {
-    document.body.classList.toggle('overflow-hidden', isFullscreen);
-    return () => document.body.classList.remove('overflow-hidden');
-  }, [isFullscreen]);
-
-  function toggleFullscreen() {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      document.documentElement
-        .requestFullscreen()
-        .then(() => {
-          const orientation = screen.orientation as
-            | (ScreenOrientation & { lock?: (o: string) => Promise<void> })
-            | undefined;
-          orientation?.lock?.('landscape').catch(() => {});
-        })
-        .catch(() => {});
-    }
-  }
 
   if (collapsed) {
     return (
@@ -242,10 +205,7 @@ function PlayersPanel({
         }}
         style={{ cursor: 'pointer' }}
       >
-        <div
-          className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold"
-          style={{ position: 'relative' }}
-        >
+        <div className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold">
           <span>{gameMode}</span>
           {mission && (
             <Tip text={<>Your mission: {formatMission(mission, players)}</>}>
@@ -258,37 +218,6 @@ function PlayersPanel({
               />
             </Tip>
           )}
-          <Tip text={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="d-flex align-items-center justify-content-center"
-              style={{
-                width: 24,
-                height: 24,
-                padding: 0,
-                position: 'absolute',
-                right: 0,
-                top: '50%',
-                transform: 'translateY(-50%)',
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFullscreen();
-              }}
-            >
-              <img
-                src={
-                  isFullscreen
-                    ? (whiteNotFullscreenIcon ?? '/icons/not_fullscreen.svg')
-                    : (whiteFullscreenIcon ?? '/icons/fullscreen.svg')
-                }
-                width={14}
-                height={14}
-                alt={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-              />
-            </Button>
-          </Tip>
         </div>
         <div className="text-center fw-bold mb-3">
           Round{' '}

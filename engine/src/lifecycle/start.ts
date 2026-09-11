@@ -15,7 +15,7 @@ import { snapshotTerritories } from '../game/replay';
 import { beginNextSpecialPhase } from '../game/turns';
 import { initializeContinent } from '../game/world/continent';
 import { initializePortals } from '../game/world/portals';
-import { getGameMap } from '../maps/maps';
+import { getGameMap, hasMap } from '../maps/maps';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
 import {
@@ -34,6 +34,7 @@ export function startGame(playerId: number): GameResponse {
   if (!game) return { ok: false, error: 'game not found' };
   if (game.hostId !== player.id) return { ok: false, error: 'not the host' };
   if (game.state !== 'lobby') return { ok: false, error: 'already started' };
+  if (!hasMap(game)) return { ok: false, error: 'no map selected' };
   if (game.playerIds.length < 2)
     return { ok: false, error: 'not enough players' };
   if (

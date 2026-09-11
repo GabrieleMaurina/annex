@@ -1,5 +1,4 @@
 import { assignRandomColor } from '../game/mechanics';
-import { defaultMapName } from '../maps/maps';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
 import { broadcastHomeGames, games, respondGameState } from '../session/store';
@@ -40,8 +39,9 @@ export function createGame(
 
   const game: Game = {
     name,
-    mapName: defaultMapName(),
+    mapName: '',
     generatedMap: null,
+    playerMap: null,
     slots: 2,
     hostId: player.id,
     originalHostId: player.id,

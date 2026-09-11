@@ -14,7 +14,6 @@ interface Props {
   game: GameState;
   results: Map<number, ResultRow> | null;
   selfId: number | null;
-  mapNames: string[];
   mapRenderName: string;
   replayData?: ReplayData | null;
   logs: LogEntry[];
@@ -39,7 +38,6 @@ function GameReplayView({
   game,
   results,
   selfId,
-  mapNames,
   mapRenderName,
   replayData,
   logs,
@@ -72,7 +70,6 @@ function GameReplayView({
         game={game}
         results={results}
         selfId={selfId}
-        mapNames={mapNames}
         navigate={navigate}
         onWatchReplay={() => setView('replay')}
         showYouLabel={showYouLabel}
@@ -125,7 +122,7 @@ function GameReplayView({
       </Button>
       {(shownChat.length > 0 || shownEmoji.length > 0) && (
         <div
-          className="position-fixed top-0 start-0 m-3 p-2 rounded small"
+          className="position-fixed bottom-0 start-0 m-3 p-2 rounded small"
           style={{
             zIndex: 5,
             maxWidth: 280,

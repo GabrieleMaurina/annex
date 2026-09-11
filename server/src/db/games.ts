@@ -1,6 +1,6 @@
 import { GameExport } from 'engine';
 import { ObjectId } from 'mongodb';
-import { findMapIdsByName, getMapNamesByIds } from './maps';
+import { findMapIdsByName, getMapNamesByIds } from './maps/replayMaps';
 import { ensureCollection, getCollection } from './mongo';
 import {
   FILL_VALUES,

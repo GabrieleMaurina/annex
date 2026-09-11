@@ -56,6 +56,14 @@ export const GRID_DIMENSIONS: Record<MapSize, GridDimensions> = {
 
 export const OUTPUT_SCALE = 5;
 
+export function mapImageSize(size: MapSize): GridDimensions {
+  const grid = GRID_DIMENSIONS[size];
+  return {
+    width: grid.width * OUTPUT_SCALE,
+    height: grid.height * OUTPUT_SCALE,
+  };
+}
+
 export const CONTINENT_SIZE_MEAN = 7;
 export const CONTINENT_SIZE_STD_DEV = 2.5;
 export const CONTINENT_SIZE_MIN = 2;

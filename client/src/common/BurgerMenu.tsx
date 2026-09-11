@@ -23,6 +23,7 @@ import { PANEL_BG_CLASS, PANEL_CLASS } from './panelStyle';
 const LINKS: { label: string; path: string }[] = [
   { label: 'Home', path: '/' },
   { label: 'Games', path: '/games/replay' },
+  { label: 'Maps', path: '/maps' },
   { label: 'Players', path: '/players' },
   { label: 'Friends', path: '/friends' },
   { label: 'Messages', path: '/messages' },

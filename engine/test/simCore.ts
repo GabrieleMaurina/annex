@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { dispatchBotAction } from '../src/bots/dispatch';
 import { TurnPlanCache, planBotTurn } from '../src/bots/planning/planBotTurn';
 import { EngineCallbacks, setCallbacks } from '../src/callbacks';
@@ -8,19 +6,46 @@ import { addBot } from '../src/lifecycle/bots';
 import { createGame } from '../src/lifecycle/create';
 import { updateSettings } from '../src/lifecycle/settings';
 import { startGame } from '../src/lifecycle/start';
-import { loadMaps } from '../src/maps/maps';
 import { createBotPlayer, playersById } from '../src/session/players';
 import { games } from '../src/session/store';
-import { BotDifficulty, BotPersonality, Game } from '../src/types';
+import {
+  BotDifficulty,
+  BotPersonality,
+  Game,
+  GameMap,
+  Territory,
+} from '../src/types';
 
-const MAPS_DIR = path.resolve(
-  __dirname,
-  '..',
-  '..',
-  'client',
-  'public',
-  'maps',
-);
+const SIM_MAPS: Record<string, GameMap> = {};
+
+function buildGridMap(name: string, cols: number, rows: number): GameMap {
+  const territories: Territory[] = [];
+  const bands = 6;
+  const rowsPerBand = Math.ceil(rows / bands);
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      const id = r * cols + c;
+      const neighbors: number[] = [];
+      if (c > 0) neighbors.push(id - 1);
+      if (c < cols - 1) neighbors.push(id + 1);
+      if (r > 0) neighbors.push(id - cols);
+      if (r < rows - 1) neighbors.push(id + cols);
+      territories.push({
+        id,
+        continentId: Math.min(bands - 1, Math.floor(r / rowsPerBand)),
+        x: c * 100,
+        y: r * 100,
+        neighbors,
+      });
+    }
+  const continents =
+    Math.min(bands - 1, Math.floor((rows - 1) / rowsPerBand)) + 1;
+  return {
+    name,
+    territories,
+    bonuses: Array.from({ length: continents }, () => 3),
+  };
+}
 
 export const DIFFICULTIES: BotDifficulty[] = ['easy', 'medium', 'hard'];
 const PERSONALITIES: BotPersonality[] = [
@@ -61,18 +86,8 @@ export function setupSim(): void {
   setCallbacks(
     new Proxy({}, { get: () => () => undefined }) as EngineCallbacks,
   );
-  loadMaps(
-    ['World', 'Europe'].map((name) => {
-      const data = JSON.parse(
-        fs.readFileSync(path.join(MAPS_DIR, `${name}.anx`), 'utf-8'),
-      );
-      return {
-        name: data.name,
-        territories: data.territories,
-        bonuses: data.bonuses,
-      };
-    }),
-  );
+  SIM_MAPS.World = buildGridMap('World', 7, 6);
+  SIM_MAPS.Europe = buildGridMap('Europe', 9, 9);
 }
 
 function difficultyOf(playerId: number): BotDifficulty {
@@ -100,7 +115,19 @@ export function runGame(
     personality: randomPersonality(),
   });
   createGame(host.id, { name }, true);
-  updateSettings(host.id, { slots: roster.length, mapName, ...settings });
+  const map = SIM_MAPS[mapName] ?? SIM_MAPS.World;
+  const created = games.get(name)!;
+  created.mapName = map.name;
+  created.generatedMap = {
+    territories: map.territories,
+    bonuses: map.bonuses,
+    imageSrc: '',
+    seed: mapName,
+    size: 'medium',
+    type: 'terrain',
+    fill: 'full',
+  };
+  updateSettings(host.id, { slots: roster.length, ...settings });
   for (let i = 1; i < roster.length; i++)
     addBot(host.id, roster[i], randomPersonality());
   startGame(host.id);

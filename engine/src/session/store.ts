@@ -381,12 +381,13 @@ export function broadcastGameResults(game: Game) {
 }
 
 export function sendGeneratedMapIfAny(game: Game, playerId: number) {
-  if (!game.generatedMap) return;
+  const map = game.generatedMap ?? game.playerMap;
+  if (!map) return;
   callbacks.onMapGenerated(playerId, {
     name: game.mapName,
-    territories: game.generatedMap.territories,
-    bonuses: game.generatedMap.bonuses,
-    imageSrc: game.generatedMap.imageSrc,
+    territories: map.territories,
+    bonuses: map.bonuses,
+    imageSrc: map.imageSrc,
   });
 }
 

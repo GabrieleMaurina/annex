@@ -16,7 +16,6 @@ import {
 } from '../common/filterControls';
 import { useWhiteIcon } from '../common/icon';
 import type { SearchSelectItem } from '../common/SearchMultiSelect';
-import SettingsMenu from '../common/SettingsMenu';
 import Tip from '../common/Tip';
 import { connector } from '../connector';
 import { GAME_STATE_COLORS, contrastTextColor } from '../lib/palette';
@@ -297,7 +296,6 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
 
   return (
     <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
-      <SettingsMenu shareUrl={window.location.origin} />
       <Tip text="View on GitHub">
         <Button
           variant="secondary"

@@ -9,11 +9,15 @@ import {
   useParams,
 } from 'react-router-dom';
 import BurgerMenu from './common/BurgerMenu';
+import SettingsMenu from './common/SettingsMenu';
 import { connector } from './connector';
 import { registerGeneratedMap, type Territory } from './game/mapData';
 import { applySavedGameSettings } from './lib/gameSetup';
 import { applyServerSettings, setPlayerName } from './lib/player';
 import type { Account, Ack, IdentifyResult } from './lib/types';
+import MapEditor from './maps/MapEditor';
+import Maps from './maps/Maps';
+import MyMaps from './maps/MyMaps';
 import AccountPage from './pages/Account';
 import EmailConfirmation from './pages/EmailConfirmation';
 import Friends from './pages/Friends';
@@ -69,7 +73,6 @@ function App() {
   const [passwordError, setPasswordError] = useState(false);
   const [kickedMessage, setKickedMessage] = useState('');
   const [sessionTakenOver, setSessionTakenOver] = useState(false);
-  const [mapNames, setMapNames] = useState<string[]>([]);
   const [selfId, setSelfId] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [replayMapOpen, setReplayMapOpen] = useState(false);
@@ -87,6 +90,7 @@ function App() {
   const inGame = room !== 'home';
   const onReplayMap =
     /^\/games\/replay\/[^/]+$/.test(pathname) && replayMapOpen;
+  const onMapEditor = pathname.startsWith('/maps/editor');
 
   const refreshSession = useCallback(function load() {
     connector.session((res) => {
@@ -183,7 +187,6 @@ function App() {
     if (!isOffline && !sessionReady) return;
 
     function afterConnect() {
-      connector.listMaps(setMapNames);
       setNeedsPassword(false);
       setPasswordError(false);
       if (isOffline) {
@@ -283,7 +286,7 @@ function App() {
       needsPassword={needsPassword}
       passwordError={passwordError}
       onSubmitPassword={attemptJoin}
-      mapNames={mapNames}
+      account={account}
       navigate={navigate}
       onRename={renameRoom}
     />
@@ -291,7 +294,8 @@ function App() {
 
   return (
     <>
-      {!inGame && !onReplayMap && (
+      {!inGame && <SettingsMenu shareUrl={window.location.href} />}
+      {!inGame && !onReplayMap && !onMapEditor && (
         <div
           className="position-fixed top-0 end-0 m-3"
           style={{ zIndex: 1030 }}
@@ -358,6 +362,37 @@ function App() {
           element={
             !sessionReady ? null : account ? (
               <Messages account={account} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route path="/maps" element={<Maps account={account} />} />
+        <Route
+          path="/maps/mine"
+          element={
+            !sessionReady ? null : account ? (
+              <MyMaps account={account} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/maps/editor"
+          element={
+            !sessionReady ? null : account ? (
+              <MapEditor account={account} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/maps/editor/:id"
+          element={
+            !sessionReady ? null : account ? (
+              <MapEditor account={account} />
             ) : (
               <Navigate to="/" replace />
             )

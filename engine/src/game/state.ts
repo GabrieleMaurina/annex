@@ -137,6 +137,7 @@ export function gameState(game: Game) {
           fill: game.generatedMap.fill,
         }
       : null,
+    playerMapId: game.playerMap?.id ?? null,
     slots: game.slots,
     hostId: game.hostId,
     originalHostId: game.originalHostId,

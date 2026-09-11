@@ -29,7 +29,6 @@ function GameSettingsPanel({ game, top, onClose }: Props) {
         <SettingsPanel
           game={game}
           isHost={false}
-          mapNames={[]}
           applySettings={() => {}}
           generateMap={() => {}}
           collapsible={false}

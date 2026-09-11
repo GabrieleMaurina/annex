@@ -17,7 +17,6 @@ interface Props {
   game: GameState;
   results: Map<number, ResultRow> | null;
   selfId: number | null;
-  mapNames: string[];
   navigate?: (path: string) => void;
   onWatchReplay: () => void;
   showYouLabel?: boolean;
@@ -34,7 +33,6 @@ function GameEndResults({
   game,
   results,
   selfId,
-  mapNames,
   navigate,
   onWatchReplay,
   showYouLabel,
@@ -106,7 +104,6 @@ function GameEndResults({
         <SettingsPanel
           game={game}
           isHost={false}
-          mapNames={mapNames}
           applySettings={() => {}}
           generateMap={() => {}}
         />

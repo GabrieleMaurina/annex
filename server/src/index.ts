@@ -34,7 +34,6 @@ import { persistFinishedGame } from './games';
 import { registerHomeHandlers } from './home';
 import { createHttpApp } from './http/app';
 import { LiveGameRow } from './http/liveGames';
-import { loadMaps, registerMapsHandlers } from './maps';
 import { gameRoomName } from './rooms';
 import {
   emitTo,
@@ -183,12 +182,9 @@ export const engine = createEngine(callbacks, {
   },
 });
 
-loadMaps(engine);
-
 io.on('connection', (socket) => {
   const game = socket.handshake.query.game;
   if (typeof game === 'string' && game) socket.join(gameRoomName(game));
-  registerMapsHandlers(socket, engine);
   registerHomeHandlers(io, socket, engine);
   registerGameHandlers(io, socket, engine);
   registerMapGenHandlers(socket, engine);

@@ -1,8 +1,9 @@
 {
   "private": true,
-  "workspaces": ["server", "client", "mapper", "engine"],
+  "workspaces": ["server", "client", "engine"],
   "scripts": {
-    "check": "npm run check --workspaces --if-present"
+    "check": "npm run check --workspaces --if-present",
+    "size": "node -e \"const fs=require('fs'),p=require('path');const dirs=['client/src','engine/src','engine/test','server/src'];let files=0,lines=0;const walk=d=>{for(const e of fs.readdirSync(d,{withFileTypes:true})){const f=p.join(d,e.name);if(e.isDirectory())walk(f);else if(/\\.tsx?$/.test(e.name)){files++;lines+=fs.readFileSync(f,'utf8').split('\\n').length}}};dirs.forEach(walk);console.log(files+' files, '+lines+' lines')\""
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

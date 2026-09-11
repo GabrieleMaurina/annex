@@ -29,6 +29,7 @@ import {
   isObject,
   MapGeneration,
   MapTerritory,
+  readImageDimensions,
   validateMapGeneration,
   validateMapGeometry,
 } from '../../validate';
@@ -86,9 +87,6 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
   if (!name || name.length > MAX_NAME_LENGTH)
     return { ok: false, error: 'invalid name' };
 
-  const geometry = validateMapGeometry(body.territories, body.bonuses);
-  if (!geometry.ok) return geometry;
-
   const generation = validateMapGeneration(body.generation);
   if (!generation.ok) return generation;
 
@@ -98,6 +96,16 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
   const data = Buffer.from(match[2], 'base64');
   if (data.length === 0 || data.length > MAX_IMAGE_BYTES)
     return { ok: false, error: 'invalid image' };
+  const dimensions = readImageDimensions(data, match[1]);
+  if (!dimensions) return { ok: false, error: 'invalid image' };
+
+  const geometry = validateMapGeometry(
+    body.territories,
+    body.bonuses,
+    dimensions.width,
+    dimensions.height,
+  );
+  if (!geometry.ok) return geometry;
 
   return {
     ok: true,

@@ -208,7 +208,7 @@ function GameMap({
     setTransform,
     imgDims,
     size,
-  } = useMapView(mapName);
+  } = useMapView(mapName, game.playerMapId);
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="viewport"]');

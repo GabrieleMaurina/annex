@@ -1,6 +1,5 @@
 import { scheduleBotTurnIfNeeded } from './bots/controller';
 import { EngineCallbacks, setCallbacks } from './callbacks';
-import { loadMaps } from './maps/maps';
 import { addPlayer as addEnginePlayer } from './session/players';
 import {
   disconnect,
@@ -23,7 +22,7 @@ import {
 } from './lifecycle/bots';
 import { createGame } from './lifecycle/create';
 import { joinGame } from './lifecycle/join';
-import { generateMap, listMaps } from './lifecycle/mapgen';
+import { generateMap, selectPlayerMap } from './lifecycle/mapgen';
 import {
   cycleColor,
   mapForGame,
@@ -72,8 +71,6 @@ import {
 import { sendChat } from './social/chat';
 import { sendEmoji } from './social/emoji';
 
-import { GameMap } from './types';
-
 export { runBotWorker } from './bots/planning/worker';
 export { EngineCallbacks } from './callbacks';
 export {
@@ -94,12 +91,26 @@ export {
   GENERATION_TYPE_VALUES,
   GenerationType,
   MAP_SIZE_VALUES,
+  mapImageSize,
   MapSize,
+  mapSizeLabel,
 } from './mapgen/core/params';
+export {
+  DUNGEON_SEAM_COLOR,
+  DUNGEON_TONES,
+  DUNGEON_VOID_COLOR,
+  DUNGEON_WALL_COLOR,
+  EARTH_TONES,
+  TEMPLE_SEAM_COLOR,
+  TEMPLE_TONES,
+  TEMPLE_VOID_COLOR,
+  TEMPLE_WALL_COLOR,
+  WATER_COLOR,
+} from './mapgen/render/palette';
 export { runMapgenWorker } from './mapgen/worker';
-export { ArchivedMap, BUILTIN_MAP_NAMES } from './maps/maps';
+export { ArchivedMap } from './maps/maps';
 export { randomPlayerName } from './session/players';
-export { GameMap } from './types';
+export { GameMap, PlayerGameMap } from './types';
 export { containsProfanity } from './util/profanity';
 export {
   EngineWorkerConfig,
@@ -118,10 +129,6 @@ export function createEngine(
   setBotTurnHook(scheduleBotTurnIfNeeded);
 
   return {
-    loadMaps(entries: GameMap[]) {
-      loadMaps(entries);
-    },
-
     addPlayer(name?: string): { id: number } {
       return { id: addEnginePlayer(name).id };
     },
@@ -145,8 +152,8 @@ export function createEngine(
     surrender,
     sendChat,
 
-    listMaps,
     generateMap,
+    selectPlayerMap,
 
     addBot,
     setBotProfile,

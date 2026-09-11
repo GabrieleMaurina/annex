@@ -11,6 +11,7 @@ import RotateDeviceOverlay from '../game/RotateDeviceOverlay';
 import { useGameLogs } from '../game/useGameLogs';
 import { playSound } from '../lib/sounds';
 import type {
+  Account,
   Ack,
   GameMeta,
   GameResults,
@@ -27,7 +28,7 @@ interface Props {
   needsPassword: boolean;
   passwordError: boolean;
   onSubmitPassword: (password: string) => void;
-  mapNames: string[];
+  account: Account | null;
   navigate: (path: string) => void;
   onRename: (name: string) => void;
 }
@@ -38,7 +39,7 @@ function Game({
   needsPassword,
   passwordError,
   onSubmitPassword,
-  mapNames,
+  account,
   navigate,
   onRename,
 }: Props) {
@@ -325,6 +326,7 @@ function Game({
         shareUrl={window.location.href}
         hidden={showMap && gamePanelOpen}
         onOpenChange={setSettingsMenuOpen}
+        lockScrollOnFullscreen
       />
       {game.state === 'lobby' ? (
         <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
@@ -333,7 +335,7 @@ function Game({
             gameMeta={gameMeta}
             setGame={applyGameState}
             selfId={selfId}
-            mapNames={mapNames}
+            account={account}
             navigate={navigate}
           />
         </Container>
@@ -342,7 +344,6 @@ function Game({
           game={game}
           results={results}
           selfId={selfId}
-          mapNames={mapNames}
           navigate={navigate}
           logs={logs}
           setChatOpen={setChatOpen}

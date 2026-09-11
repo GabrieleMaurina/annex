@@ -80,6 +80,7 @@ function baseGame(name: string): Game {
     name,
     mapName: name,
     generatedMap: null,
+    playerMap: null,
     slots: 6,
     hostId: 1,
     originalHostId: 1,

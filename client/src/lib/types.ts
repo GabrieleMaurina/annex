@@ -1,3 +1,5 @@
+import type { Fill, GenerationType, MapSize } from 'engine';
+
 export interface ClientSettings {
   muted: boolean;
   animationsDisabled: boolean;
@@ -204,6 +206,7 @@ export interface GameState {
   name: string;
   mapName: string;
   mapGeneration: GenerateMapInput | null;
+  playerMapId: string | null;
   slots: number;
   hostId: number;
   originalHostId: number;
@@ -367,13 +370,11 @@ export type GameRulesSettings = Pick<
   | 'turnDuration'
   | 'roundTroops'
   | 'visibility'
-> & { mapGeneration?: GenerateMapInput };
+> & { mapGeneration?: GenerateMapInput; playerMapId?: string | null };
 
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 
-export type MapSize = 'small' | 'medium' | 'large' | 'xlarge';
-export type GenerationType = 'terrain' | 'dungeon' | 'temple';
-export type Fill = 'full' | 'mixed' | 'sparse';
+export type { Fill, GenerationType, MapSize };
 
 export interface GenerateMapInput {
   seed: string;
@@ -743,16 +744,83 @@ export interface MessagesOverview {
   blocked: BlockedPlayer[];
 }
 
+export interface MapTerritory {
+  id: number;
+  continentId: number;
+  x: number;
+  y: number;
+  neighbors: number[];
+}
+
 export interface StoredMap {
   name: string;
-  territories: {
-    id: number;
-    continentId: number;
-    x: number;
-    y: number;
-    neighbors: number[];
-  }[];
+  territories: MapTerritory[];
   bonuses: number[];
   image: string;
   imageMime: string;
+}
+
+export type PlayerMapSort =
+  'mostLiked' | 'newest' | 'oldest' | 'nameAsc' | 'nameDesc';
+
+export interface PlayerMapsQuery {
+  page: number;
+  pageSize: number;
+  q?: string;
+  authorId?: string;
+  mine?: boolean;
+  liked?: boolean;
+  notMine?: boolean;
+  notLiked?: boolean;
+  territoryMin?: number;
+  territoryMax?: number;
+  generationType?: GenerationType;
+  generationFill?: Fill;
+  generationSize?: MapSize;
+  sort: PlayerMapSort;
+}
+
+export interface PlayerMapRow {
+  id: string;
+  name: string;
+  authorId: string;
+  authorName: string;
+  territoryCount: number;
+  continentCount: number;
+  likeCount: number;
+  liked: boolean;
+  mine: boolean;
+  dangerous: boolean;
+  generation: GenerateMapInput | null;
+  createdAt: number;
+}
+
+export interface PlayerMapsPage {
+  maps: PlayerMapRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface PlayerMapDetail {
+  id: string;
+  name: string;
+  authorId: string;
+  territories: MapTerritory[];
+  bonuses: number[];
+  image: string;
+  imageMime: string;
+  generation: GenerateMapInput | null;
+  dangerous: boolean;
+  likeCount: number;
+  mine: boolean;
+  createdAt: number;
+}
+
+export interface PlayerMapSaveBody {
+  name: string;
+  territories: MapTerritory[];
+  bonuses: number[];
+  image: string;
+  generation: GenerateMapInput | null;
 }

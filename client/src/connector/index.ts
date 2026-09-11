@@ -19,6 +19,10 @@ import type {
   HomeGamesQuery,
   IdentifyResult,
   MessagesOverview,
+  PlayerMapDetail,
+  PlayerMapSaveBody,
+  PlayerMapsPage,
+  PlayerMapsQuery,
   PlayerProfile,
   PlayerSearchResult,
   PlayersPage,
@@ -43,6 +47,7 @@ import {
 } from './offline/host';
 
 type AuthAck = { ok: true } | { ok: false; error: string };
+type SaveMapAck = { ok: true; id: string } | { ok: false; error: string };
 type LoginAck =
   | {
       ok: true;
@@ -236,9 +241,99 @@ export const connector = {
   },
 
   getStoredMap(id: string, cb: (map: StoredMap | null) => void): void {
-    httpGet<StoredMap>('/maps/' + encodeURIComponent(id))
+    httpGet<StoredMap>('/replay-maps/' + encodeURIComponent(id))
       .then((map) => cb('territories' in map ? map : null))
       .catch(() => cb(null));
+  },
+
+  listPlayerMaps(
+    query: PlayerMapsQuery,
+    cb: (page: PlayerMapsPage) => void,
+  ): void {
+    const params = new URLSearchParams();
+    params.set('page', String(query.page));
+    params.set('pageSize', String(query.pageSize));
+    if (query.q) params.set('q', query.q);
+    if (query.authorId) params.set('author', query.authorId);
+    if (query.mine) params.set('mine', '1');
+    if (query.notMine) params.set('notMine', '1');
+    if (query.liked) params.set('liked', '1');
+    if (query.notLiked) params.set('notLiked', '1');
+    if (query.territoryMin !== undefined)
+      params.set('territoryMin', String(query.territoryMin));
+    if (query.territoryMax !== undefined)
+      params.set('territoryMax', String(query.territoryMax));
+    if (query.generationType) params.set('genType', query.generationType);
+    if (query.generationFill) params.set('genFill', query.generationFill);
+    if (query.generationSize) params.set('genSize', query.generationSize);
+    params.set('sort', query.sort);
+    const empty: PlayerMapsPage = {
+      maps: [],
+      total: 0,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+    httpGet<PlayerMapsPage>('/player-maps?' + params.toString())
+      .then((r) => cb('maps' in r ? r : empty))
+      .catch(() => cb(empty));
+  },
+
+  getPlayerMap(id: string, cb: (map: PlayerMapDetail | null) => void): void {
+    httpGet<PlayerMapDetail>('/player-maps/' + encodeURIComponent(id))
+      .then((map) => cb('territories' in map ? map : null))
+      .catch(() => cb(null));
+  },
+
+  savePlayerMap(body: PlayerMapSaveBody, cb: (res: SaveMapAck) => void): void {
+    httpSend<SaveMapAck>('POST', '/player-maps', body)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  listMyMapNames(cb: (names: string[]) => void): void {
+    httpGet<{ ok: boolean; names?: string[] }>('/player-maps/mine/names')
+      .then((res) => cb(res.ok && res.names ? res.names : []))
+      .catch(() => cb([]));
+  },
+
+  updatePlayerMap(
+    id: string,
+    body: PlayerMapSaveBody,
+    cb: (res: AuthAck) => void,
+  ): void {
+    httpSend<AuthAck>('POST', '/player-maps/' + encodeURIComponent(id), body)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  deletePlayerMap(id: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>(
+      'POST',
+      '/player-maps/' + encodeURIComponent(id) + '/delete',
+      {},
+    )
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  likeMap(id: string, liked: boolean, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>(
+      'POST',
+      '/player-maps/' + encodeURIComponent(id) + (liked ? '/like' : '/unlike'),
+      {},
+    )
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  reportMap(id: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>(
+      'POST',
+      '/player-maps/' + encodeURIComponent(id) + '/report',
+      {},
+    )
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
   searchPlayers(
@@ -416,10 +511,6 @@ export const connector = {
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
-  listMaps(cb: (names: string[]) => void): void {
-    route('maps:list', undefined, cb);
-  },
-
   createGame(data: { name?: string }, cb: AckCallback): void {
     if (isReservedGameName(data.name)) {
       cb({ ok: false, error: 'invalid name' });
@@ -477,6 +568,10 @@ export const connector = {
 
   generateMap(data: GenerateMapInput, cb: AckCallback): void {
     route('game:generateMap', data, cb);
+  },
+
+  selectPlayerMap(data: { mapId: string }, cb: AckCallback): void {
+    route('game:selectPlayerMap', data, cb);
   },
 
   addBot(

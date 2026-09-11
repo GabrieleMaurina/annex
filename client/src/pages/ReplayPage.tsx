@@ -35,6 +35,7 @@ function buildGameState(
     name: doc.name,
     mapName: doc.mapName,
     mapGeneration: doc.mapGeneration,
+    playerMapId: null,
     slots: s.slots,
     hostId: doc.originalHostId ?? -1,
     originalHostId: doc.originalHostId ?? -1,
@@ -197,7 +198,6 @@ function ReplayPage({ navigate, onViewChange }: Props) {
       game={game}
       results={new Map(doc.results.map((r) => [r.playerId, r]))}
       selfId={null}
-      mapNames={[]}
       mapRenderName={resolved.mapRenderName}
       replayData={folded.data}
       logs={[]}

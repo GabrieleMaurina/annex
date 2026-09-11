@@ -46,6 +46,7 @@ Follow these rules unless explicitly instructed otherwise:
 - Single quote string.
 - No async/await.
 - No CSS or style, unless strictly necessary. Use Bootstrap classes instead.
+- No links in the UI. Use buttons, dropdowns, etc. instead.
 - No source files with more than 1000 lines. Split into smaller files if necessary.
 - No folders with more than 10 source files. Split into subfolders if necessary.
 - No sub-agents unless explicitly requested.
@@ -53,7 +54,7 @@ Follow these rules unless explicitly instructed otherwise:
 
 ## 5. Stack
 
-Whole repo is an npm workspace with 4 modules: `engine`, `server`, `client`, and `mapper`.
+Whole repo is an npm workspace with 3 modules: `engine`, `server`, and `client`.
 
 **Engine**
 - Pure TypeScript
@@ -67,7 +68,4 @@ Whole repo is an npm workspace with 4 modules: `engine`, `server`, `client`, and
 **Client**
 - Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
 - Follow PROTOCOL.md for socket.io events and data types.
-
-**Mapper**
-- Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
-- Independent and disconnected from client and server.
+- Includes the in-app map editor (`src/maps/editor`) where users draw and/or generate their own maps.

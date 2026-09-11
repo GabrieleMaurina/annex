@@ -29,7 +29,8 @@ function apply(res: Ack): void {
 export function applySavedGameSettings(): void {
   if (!isLoggedIn()) return;
   resetRestoredBotInputs();
-  const { mapGeneration, ...rules } = getGameSettings();
+  const { mapGeneration, playerMapId, mapName, ...rules } = getGameSettings();
+  void mapName;
   if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
   if (mapGeneration) {
     setRegeneratingMap(true);
@@ -37,6 +38,8 @@ export function applySavedGameSettings(): void {
       setRegeneratingMap(false);
       apply(res);
     });
+  } else if (playerMapId) {
+    connector.selectPlayerMap({ mapId: playerMapId }, apply);
   }
   connector.updateSettings({ slots: getGameSlots() }, apply);
   getGameBots().forEach((bot, index) => {

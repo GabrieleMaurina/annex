@@ -21,9 +21,15 @@ interface Props {
   shareUrl: string;
   hidden?: boolean;
   onOpenChange?: (open: boolean) => void;
+  lockScrollOnFullscreen?: boolean;
 }
 
-function SettingsMenu({ shareUrl, hidden, onOpenChange }: Props) {
+function SettingsMenu({
+  shareUrl,
+  hidden,
+  onOpenChange,
+  lockScrollOnFullscreen,
+}: Props) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -40,6 +46,43 @@ function SettingsMenu({ shareUrl, hidden, onOpenChange }: Props) {
   const whiteSoundOffIcon = useWhiteIcon('/icons/sound-off.svg');
   const whiteAnimationOnIcon = useWhiteIcon('/icons/animation-on.svg');
   const whiteAnimationOffIcon = useWhiteIcon('/icons/animation-off.svg');
+  const whiteFullscreenIcon = useWhiteIcon('/icons/fullscreen.svg');
+  const whiteNotFullscreenIcon = useWhiteIcon('/icons/not_fullscreen.svg');
+
+  const [isFullscreen, setIsFullscreen] = useState(
+    !!document.fullscreenElement,
+  );
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(!!document.fullscreenElement);
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () =>
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    if (!lockScrollOnFullscreen) return;
+    document.body.classList.toggle('overflow-hidden', isFullscreen);
+    return () => document.body.classList.remove('overflow-hidden');
+  }, [isFullscreen, lockScrollOnFullscreen]);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement
+        .requestFullscreen()
+        .then(() => {
+          const orientation = screen.orientation as
+            | (ScreenOrientation & { lock?: (o: string) => Promise<void> })
+            | undefined;
+          orientation?.lock?.('landscape').catch(() => {});
+        })
+        .catch(() => {});
+    }
+  }
 
   useLayoutEffect(() => {
     if (open) setButtonRowWidth(buttonRowRef.current?.offsetWidth);
@@ -146,6 +189,25 @@ function SettingsMenu({ shareUrl, hidden, onOpenChange }: Props) {
                   width={16}
                   height={16}
                   alt="Animations"
+                />
+              </Button>
+            </Tip>
+            <Tip text={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="d-flex align-items-center justify-content-center"
+                onClick={toggleFullscreen}
+              >
+                <img
+                  src={
+                    isFullscreen
+                      ? (whiteNotFullscreenIcon ?? '/icons/not_fullscreen.svg')
+                      : (whiteFullscreenIcon ?? '/icons/fullscreen.svg')
+                  }
+                  width={16}
+                  height={16}
+                  alt="Fullscreen"
                 />
               </Button>
             </Tip>

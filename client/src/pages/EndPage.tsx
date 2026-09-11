@@ -16,7 +16,6 @@ interface Props {
   game: GameState;
   results: Map<number, PlayerResultStats> | null;
   selfId: number | null;
-  mapNames: string[];
   navigate: (path: string) => void;
   logs: LogEntry[];
   setChatOpen: Dispatch<SetStateAction<boolean>>;
@@ -29,7 +28,6 @@ function EndPage({
   game,
   results,
   selfId,
-  mapNames,
   navigate,
   logs,
   setChatOpen,
@@ -69,7 +67,6 @@ function EndPage({
         game={game}
         results={results}
         selfId={selfId}
-        mapNames={mapNames}
         mapRenderName={game.mapName}
         logs={logs}
         navigate={navigate}

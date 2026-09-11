@@ -11,6 +11,7 @@ import {
   saveGameSettings,
 } from '../lib/player';
 import type {
+  Account,
   Ack,
   BotDifficulty,
   BotPersonality,
@@ -31,11 +32,11 @@ interface Props {
   gameMeta: GameMeta | null;
   setGame: (game: GameState) => void;
   selfId: number | null;
-  mapNames: string[];
+  account: Account | null;
   navigate: (path: string) => void;
 }
 
-function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
+function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
   const [settingsError, setSettingsError] = useState('');
   const bannedIdsRef = useRef<number[]>([]);
   const botInputsRef = useRef<Map<number, SavedBot>>(new Map());
@@ -81,11 +82,24 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
     });
   }
 
+  function selectPlayerMap(mapId: string) {
+    connector.selectPlayerMap({ mapId }, (res: Ack) => {
+      if (!res.ok) {
+        setSettingsError(res.error);
+        return;
+      }
+      setSettingsError('');
+      setGame(res.game);
+    });
+  }
+
   const isHost = game.hostId === selfId;
   const isTeamDeathmatch = game.gameMode === 'Team Deathmatch';
   const maxTeams = game.players.length;
   const teamCount = new Set(game.players.map((p) => p.team)).size;
+  const hasMap = !!game.mapGeneration || !!game.playerMapId;
   const canStart =
+    hasMap &&
     game.players.length >= 2 &&
     (!isTeamDeathmatch || teamCount >= 2) &&
     !(isTeamDeathmatch && game.alliances === 'on');
@@ -200,7 +214,9 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
       {
         ...(state.mapGeneration
           ? { mapGeneration: state.mapGeneration }
-          : { mapName: state.mapName }),
+          : state.playerMapId
+            ? { playerMapId: state.playerMapId, mapName: state.mapName }
+            : { mapName: state.mapName }),
         gameMode: state.gameMode,
         blitz: state.blitz,
         defenceDice: state.defenceDice,
@@ -283,9 +299,10 @@ function Lobby({ game, gameMeta, setGame, selfId, mapNames, navigate }: Props) {
           game={game}
           gameMeta={gameMeta}
           isHost={isHost}
-          mapNames={mapNames}
+          account={account}
           applySettings={applySettings}
           generateMap={generateMap}
+          selectPlayerMap={selectPlayerMap}
           headerActions={
             isHost && (
               <Button disabled={!canStart} onClick={startGame}>

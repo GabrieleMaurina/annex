@@ -231,10 +231,18 @@ export interface PlayerStats {
   setsPlayed: number;
 }
 
+export interface PlayerGameMap {
+  id: string;
+  territories: Territory[];
+  bonuses: number[];
+  imageSrc: string;
+}
+
 export interface Game {
   name: string;
   mapName: string;
   generatedMap: GeneratedGameMap | null;
+  playerMap: PlayerGameMap | null;
   slots: number;
   hostId: number;
   originalHostId: number;

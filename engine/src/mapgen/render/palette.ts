@@ -1,4 +1,4 @@
-const EARTH_TONES = [
+export const EARTH_TONES = [
   '#7a8450',
   '#a6813f',
   '#5f7a52',
@@ -23,7 +23,7 @@ export function continentEarthTone(continentId: number): string {
 export const WATER_COLOR = '#3d6b8a';
 export const TERRITORY_STROKE_COLOR = '#000000';
 
-const DUNGEON_TONES = [
+export const DUNGEON_TONES = [
   '#6b6e73',
   '#7d7f83',
   '#585a5e',
@@ -46,7 +46,7 @@ export const DUNGEON_VOID_COLOR = '#161719';
 export const DUNGEON_WALL_COLOR = '#2b2d30';
 export const DUNGEON_SEAM_COLOR = '#3c3f43';
 
-const TEMPLE_TONES = [
+export const TEMPLE_TONES = [
   '#3b4a7a',
   '#5a4b8c',
   '#4468a8',

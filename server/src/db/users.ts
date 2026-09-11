@@ -1,4 +1,3 @@
-import { BUILTIN_MAP_NAMES } from 'engine';
 import { Binary, ObjectId, WithId } from 'mongodb';
 import { ensureCollection, getCollection } from './mongo';
 
@@ -18,6 +17,7 @@ export interface GameSettings {
     type: string;
     fill: string;
   } | null;
+  playerMapId: string | null;
   slots: number;
   bots: { difficulty: string; personality: string }[];
   localPlayers: string[];
@@ -181,7 +181,7 @@ const MAX_PLAYER_NAME_LENGTH = 10;
 const GENERATED_MAP_VALUE = 'generated';
 
 const HOME_MODES = ['', ...(GAME_ENUMS.gameMode as string[])];
-const HOME_MAP_NAMES = ['', GENERATED_MAP_VALUE, ...BUILTIN_MAP_NAMES];
+const HOME_MAP_NAMES = ['', GENERATED_MAP_VALUE];
 const HOME_SIZES = ['', ...MAP_SIZES];
 const HOME_GENERATION_TYPES = ['', ...GENERATION_TYPES];
 const HOME_FILLS = ['', ...FILL_VALUES];
@@ -213,8 +213,9 @@ export const DEFAULT_CLIENT_SETTINGS: ClientSettings = {
 };
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
-  mapName: 'World',
+  mapName: '',
   mapGeneration: null,
+  playerMapId: null,
   slots: 2,
   bots: [],
   localPlayers: [],
@@ -327,6 +328,7 @@ const schema = {
           required: [
             'mapName',
             'mapGeneration',
+            'playerMapId',
             'slots',
             'bots',
             'localPlayers',
@@ -335,6 +337,7 @@ const schema = {
           additionalProperties: false,
           properties: {
             mapName: { bsonType: 'string' },
+            playerMapId: { bsonType: ['string', 'null'] },
             bots: {
               bsonType: 'array',
               maxItems: MAX_SAVED_BOTS,
@@ -540,6 +543,10 @@ function sanitizeGameSettings(raw: unknown): GameSettings {
   if (typeof r.mapName === 'string' && r.mapName.length <= 100)
     out.mapName = r.mapName;
   out.mapGeneration = sanitizeMapGeneration(r.mapGeneration);
+  out.playerMapId =
+    typeof r.playerMapId === 'string' && /^[a-f\d]{24}$/i.test(r.playerMapId)
+      ? r.playerMapId
+      : null;
   out.bots = sanitizeSavedBots(r.bots);
   out.localPlayers = sanitizeLocalPlayers(r.localPlayers);
   if (
@@ -810,12 +817,13 @@ export function saveSettings(
 }
 
 export function searchUsers(
-  regex: RegExp,
+  query: string,
   limit: number,
 ): Promise<{ id: string; username: string }[]> {
+  const prefix = new RegExp('^' + escapeRegex(normalizeUsername(query)));
   return collection()
-    .find({ username: regex }, { projection: { username: 1 } })
-    .sort({ username: 1 })
+    .find({ username_lower: prefix }, { projection: { username: 1 } })
+    .sort({ username_lower: 1 })
     .limit(limit)
     .toArray()
     .then((docs) =>

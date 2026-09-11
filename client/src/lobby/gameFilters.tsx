@@ -1,4 +1,3 @@
-import { BUILTIN_MAP_NAMES } from 'engine';
 import { Form } from 'react-bootstrap';
 import { Field } from '../common/filterControls';
 import SearchMultiSelect, {
@@ -103,11 +102,6 @@ export function MapFilterFields({
         >
           <option value="">Any</option>
           <option value={GENERATED_MAP_VALUE}>Generated</option>
-          {BUILTIN_MAP_NAMES.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
         </Form.Select>
       </Field>
       {mapName === GENERATED_MAP_VALUE && (

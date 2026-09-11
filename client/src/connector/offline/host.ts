@@ -10,7 +10,7 @@ import { getPlayerName, subscribePlayerName } from '../../lib/player';
 import type { GameState } from '../../lib/types';
 import { publish } from '../inbound';
 import { browserWorkerPort } from './browserWorkerPort';
-import { loadBuiltinMaps } from './maps';
+import { loadPlayerMap } from './maps';
 
 const URL_ROOM = 'offline';
 
@@ -35,8 +35,8 @@ function localHostName(): string {
 
 interface OfflineSeed {
   settings: Record<string, unknown>;
-  mapName: string;
   mapGeneration: GameState['mapGeneration'];
+  playerMapId: string | null;
   slots: number;
   teams: number[] | null;
   bots: { difficulty: string; personality: string }[];
@@ -70,8 +70,8 @@ export function seedOffline(state: GameState): void {
       turnDuration: state.turnDuration,
       roundTroops: state.roundTroops,
     },
-    mapName: state.mapName,
     mapGeneration: state.mapGeneration,
+    playerMapId: state.playerMapId,
     slots: state.slots,
     teams:
       state.gameMode === 'Team Deathmatch'
@@ -110,10 +110,19 @@ function applySeed(s: OfflineSeed): void {
     flushQueue();
   };
   if (s.mapGeneration) engine.generateMap(id, s.mapGeneration, finish);
-  else {
-    engine.updateSettings(id, { mapName: s.mapName });
-    finish();
-  }
+  else if (s.playerMapId)
+    loadPlayerMap(s.playerMapId)
+      .then((map) => {
+        if (!active || !engine) return;
+        engine.selectPlayerMap(id, map, () => {});
+        finish();
+      })
+      .catch(() => {
+        if (!active || !engine) return;
+        engine.requestState(id);
+        flushQueue();
+      });
+  else finish();
 }
 
 function beginHandoff(next: number, turnStarted: unknown): void {
@@ -262,36 +271,32 @@ export function startOffline(): void {
   bufferedTurnStarted = null;
   pausedForHandoff = false;
   lastState = null;
-  loadBuiltinMaps().then((maps) => {
-    if (!active) return;
-    if (!engine) engine = buildEngine();
-    engine.loadMaps(maps);
-    session += 1;
-    const hostName = localHostName();
-    hostId = engine.addPlayer(hostName).id;
-    currentActorId = hostId;
-    localPlayerIds = [hostId];
-    gameName = `Game with ${hostName}`;
-    const boundHostId = hostId;
-    unsubscribeName?.();
-    unsubscribeName = subscribePlayerName(() => {
-      if (!engine) return;
-      engine.setName(boundHostId, localHostName());
-      if (currentActorId !== null) engine.requestState(currentActorId);
-    });
-    if (!engine.createGame(hostId, { name: gameName }, true).ok) {
-      gameName = `${URL_ROOM}-${session}`;
-      engine.createGame(hostId, { name: gameName }, true);
-    }
-    ready = true;
-    const pendingSeed = seed;
-    seed = null;
-    if (pendingSeed) applySeed(pendingSeed);
-    else {
-      flushQueue();
-      engine.requestState(hostId);
-    }
+  if (!engine) engine = buildEngine();
+  session += 1;
+  const hostName = localHostName();
+  hostId = engine.addPlayer(hostName).id;
+  currentActorId = hostId;
+  localPlayerIds = [hostId];
+  gameName = `Game with ${hostName}`;
+  const boundHostId = hostId;
+  unsubscribeName?.();
+  unsubscribeName = subscribePlayerName(() => {
+    if (!engine) return;
+    engine.setName(boundHostId, localHostName());
+    if (currentActorId !== null) engine.requestState(currentActorId);
   });
+  if (!engine.createGame(hostId, { name: gameName }, true).ok) {
+    gameName = `${URL_ROOM}-${session}`;
+    engine.createGame(hostId, { name: gameName }, true);
+  }
+  ready = true;
+  const pendingSeed = seed;
+  seed = null;
+  if (pendingSeed) applySeed(pendingSeed);
+  else {
+    flushQueue();
+    engine.requestState(hostId);
+  }
 }
 
 export function stopOffline(): void {
@@ -366,9 +371,6 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
         account: null,
       });
       return;
-    case 'maps:list':
-      cb?.(engine.listMaps());
-      return;
     case 'game:requestState':
       engine.requestState(id);
       return;
@@ -407,6 +409,14 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
         },
         cb ?? (() => {}),
       );
+      return;
+    case 'game:selectPlayerMap':
+      loadPlayerMap(d.mapId as string)
+        .then((map) => {
+          if (!active || !engine) return;
+          engine.selectPlayerMap(id, map, cb ?? (() => {}));
+        })
+        .catch(() => cb?.({ ok: false, error: 'map unavailable' }));
       return;
     case 'game:addBot':
       cb?.(engine.addBot(id, d.difficulty, d.personality));

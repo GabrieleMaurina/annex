@@ -2,7 +2,6 @@ import { isDifficultyInput, isPersonalityInput } from '../bots/randomProfile';
 import { callbacks } from '../callbacks';
 import { addHostCandidate } from '../game/host';
 import { assignRandomColor, maxTeam } from '../game/mechanics';
-import { listMapNames } from '../maps/maps';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
 import {
@@ -203,16 +202,6 @@ export function updateSettings(
       return { ok: false, error: 'invalid game mode' };
     game.gameMode = settings.gameMode as GameMode;
     if (game.gameMode === 'Team Deathmatch') game.alliances = 'off';
-  }
-
-  if (settings.mapName !== undefined) {
-    if (
-      typeof settings.mapName !== 'string' ||
-      !listMapNames().includes(settings.mapName)
-    )
-      return { ok: false, error: 'invalid map' };
-    game.mapName = settings.mapName;
-    game.generatedMap = null;
   }
 
   if (settings.name !== undefined) {

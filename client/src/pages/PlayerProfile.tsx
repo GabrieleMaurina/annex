@@ -19,6 +19,7 @@ import type {
   GameSummary,
   PlayerProfile,
 } from '../lib/types';
+import MapBrowser from '../maps/MapBrowser';
 
 const PAGE_SIZE = 20;
 
@@ -82,6 +83,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   );
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<GamesPage | null>(null);
+  const [mapTotal, setMapTotal] = useState<number | null>(null);
   const [liveGame, setLiveGame] = useState<GameSummary | null>(null);
   const [reportMenu, setReportMenu] = useState<{ x: number; y: number } | null>(
     null,
@@ -112,6 +114,20 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
       window.removeEventListener('resize', close);
     };
   }, [reportMenu]);
+
+  useEffect(() => {
+    if (!profile) return;
+    let stale = false;
+    connector.listPlayerMaps(
+      { page: 1, pageSize: 1, sort: 'newest', authorId: profile.id },
+      (r) => {
+        if (!stale) setMapTotal(r.total);
+      },
+    );
+    return () => {
+      stale = true;
+    };
+  }, [profile]);
 
   useEffect(() => {
     if (!profile) return;
@@ -184,7 +200,6 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
     ? Math.max(1, Math.ceil(result.total / PAGE_SIZE))
     : 1;
   const rows = result?.games ?? [];
-  const nothing = result !== null && rows.length === 0;
 
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
@@ -319,63 +334,81 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
         </div>
       )}
 
-      {result === null ? (
+      {result === null || mapTotal === null ? (
         <div className="text-center">
           <Spinner size="sm" className="me-2" />
           Loading...
         </div>
-      ) : nothing ? (
-        <p className="text-center text-muted">No games yet.</p>
       ) : (
         <>
-          <div className="table-responsive">
-            <Table striped hover className="align-middle">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Game</th>
-                  <th>Map</th>
-                  <th>Mode</th>
-                  <th>Players</th>
-                  <th>Winner</th>
-                  <th>Rounds</th>
-                  <th>Position</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <GameRow
-                    key={row.id}
-                    row={row}
-                    onOpen={() => navigate(`/games/replay/${row.id}`)}
-                  />
-                ))}
-              </tbody>
-            </Table>
-          </div>
+          {rows.length > 0 && (
+            <>
+              <h4 className="mb-3">Games</h4>
+              <div className="table-responsive">
+                <Table striped hover className="align-middle">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Time</th>
+                      <th>Game</th>
+                      <th>Map</th>
+                      <th>Mode</th>
+                      <th>Players</th>
+                      <th>Winner</th>
+                      <th>Rounds</th>
+                      <th>Position</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <GameRow
+                        key={row.id}
+                        row={row}
+                        onOpen={() => navigate(`/games/replay/${row.id}`)}
+                      />
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
 
-          <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Prev
-            </Button>
-            <span className="small text-muted">
-              Page {page} of {totalPages} ({result.total} games)
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
+              <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Prev
+                </Button>
+                <span className="small text-muted">
+                  Page {page} of {totalPages} ({result.total} games)
+                </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </>
+          )}
+
+          {mapTotal > 0 && (
+            <div className={rows.length > 0 ? 'mt-5' : undefined}>
+              <h4 className="mb-3">Maps</h4>
+              <MapBrowser
+                account={account}
+                mode="browse"
+                authorId={profileId}
+              />
+            </div>
+          )}
+
+          {rows.length === 0 && mapTotal === 0 && (
+            <p className="text-center text-muted">Nothing here yet.</p>
+          )}
         </>
       )}
     </Container>

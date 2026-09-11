@@ -1,22 +1,12 @@
 import { Fill, GenerationType, MapSize } from '../mapgen/core/params';
 import { Game, GameMap, Territory } from '../types';
 
-export const BUILTIN_MAP_NAMES = ['World', 'Europe'];
-
 const maps = new Map<string, GameMap>();
 
 export function loadMaps(entries: GameMap[]): void {
   for (const entry of entries) {
     maps.set(entry.name, entry);
   }
-}
-
-export function listMapNames(): string[] {
-  return [...maps.keys()];
-}
-
-export function defaultMapName(): string {
-  return maps.has('World') ? 'World' : [...maps.keys()][0];
 }
 
 export function getGameMap(game: Game): GameMap {
@@ -27,7 +17,20 @@ export function getGameMap(game: Game): GameMap {
       bonuses: game.generatedMap.bonuses,
     };
   }
-  return maps.get(game.mapName)!;
+  if (game.playerMap) {
+    return {
+      name: game.mapName,
+      territories: game.playerMap.territories,
+      bonuses: game.playerMap.bonuses,
+    };
+  }
+  return (
+    maps.get(game.mapName) ?? {
+      name: game.mapName,
+      territories: [],
+      bonuses: [],
+    }
+  );
 }
 
 export interface ArchivedMap {
@@ -50,7 +53,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
     name,
     territories,
     bonuses,
-    imageSrc: generated?.imageSrc ?? null,
+    imageSrc: generated?.imageSrc ?? game.playerMap?.imageSrc ?? null,
     generation: generated
       ? {
           seed: generated.seed,
@@ -60,4 +63,8 @@ export function getArchivedMap(game: Game): ArchivedMap {
         }
       : null,
   };
+}
+
+export function hasMap(game: Game): boolean {
+  return game.generatedMap !== null || game.playerMap !== null;
 }

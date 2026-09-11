@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Dropdown, Form } from 'react-bootstrap';
+import { Button, Dropdown, Form, Modal } from 'react-bootstrap';
 import Help from '../common/Help';
 import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/Tip';
@@ -9,12 +9,14 @@ import { getGeneratedMapData, loadGameMap } from '../game/mapData';
 import { isRegeneratingMap } from '../lib/gameSetup';
 import { playSound } from '../lib/sounds';
 import type {
+  Account,
   GameMeta,
   GameMode,
   GameSettingsInput,
   GameState,
   GenerateMapInput,
 } from '../lib/types';
+import MapBrowser from '../maps/MapBrowser';
 import GameSettingsFields from './GameSettingsFields';
 import MapGenerationPanel, {
   type MapGenerationPanelHandle,
@@ -38,6 +40,7 @@ const MAP_TOOLTIP_POPPER = {
 };
 
 const GENERATE_MAP_OPTION = '__generateMap__';
+const LIBRARY_MAP_OPTION = '__libraryMap__';
 
 const COARSE_POINTER =
   typeof window.matchMedia === 'function' &&
@@ -47,12 +50,13 @@ interface Props {
   game: GameState;
   gameMeta?: GameMeta | null;
   isHost: boolean;
-  mapNames: string[];
+  account?: Account | null;
   applySettings: (settings: GameSettingsInput) => void;
   generateMap: (
     input: GenerateMapInput,
     onSettled?: (ok: boolean, mapName?: string) => void,
   ) => void;
+  selectPlayerMap?: (mapId: string) => void;
   headerActions?: ReactNode;
   collapsible?: boolean;
 }
@@ -86,12 +90,14 @@ function SettingsPanel({
   game,
   gameMeta = null,
   isHost,
-  mapNames,
+  account = null,
   applySettings,
   generateMap,
+  selectPlayerMap,
   headerActions,
   collapsible = true,
 }: Props) {
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
   const [mapThumbnails, setMapThumbnails] = useState<Record<string, string>>(
     {},
   );
@@ -100,7 +106,6 @@ function SettingsPanel({
   >({});
   const loadedMapNamesRef = useRef(new Set<string>());
   const [mapGenOpen, setMapGenOpen] = useState(false);
-  const [mapMenuOpen, setMapMenuOpen] = useState(false);
   const [mapRegenerating, setMapRegenerating] = useState(isRegeneratingMap);
   const [seedCopied, setSeedCopied] = useState(false);
   const mapGenRef = useRef<MapGenerationPanelHandle>(null);
@@ -117,25 +122,23 @@ function SettingsPanel({
   }, []);
 
   useEffect(() => {
-    const names = new Set(mapNames);
-    names.add(game.mapName);
-    for (const name of names) {
-      if (loadedMapNamesRef.current.has(name)) continue;
-      loadedMapNamesRef.current.add(name);
-      loadGameMap(name).then(({ imageSrc, territories }) => {
-        if (imageSrc) {
-          setMapThumbnails((prev) => ({ ...prev, [name]: imageSrc }));
-        }
-        setMapStats((prev) => ({
-          ...prev,
-          [name]: {
-            territories: territories.length,
-            continents: new Set(territories.map((t) => t.continentId)).size,
-          },
-        }));
-      });
-    }
-  }, [mapNames, game.mapName]);
+    const name = game.mapName;
+    const key = `${name}|${game.playerMapId ?? ''}`;
+    if (loadedMapNamesRef.current.has(key)) return;
+    loadedMapNamesRef.current.add(key);
+    loadGameMap(name, game.playerMapId).then(({ imageSrc, territories }) => {
+      if (imageSrc) {
+        setMapThumbnails((prev) => ({ ...prev, [name]: imageSrc }));
+      }
+      setMapStats((prev) => ({
+        ...prev,
+        [name]: {
+          territories: territories.length,
+          continents: new Set(territories.map((t) => t.continentId)).size,
+        },
+      }));
+    });
+  }, [game.mapName, game.playerMapId]);
 
   function imageSrcFor(name: string): string | undefined {
     return getGeneratedMapData(name)?.imageSrc ?? mapThumbnails[name];
@@ -186,7 +189,9 @@ function SettingsPanel({
   const currentImageSrc = mapRegenerating
     ? undefined
     : imageSrcFor(game.mapName);
-  const currentMapLabel = mapRegenerating ? 'Generating…' : game.mapName;
+  const currentMapLabel = mapRegenerating
+    ? 'Generating…'
+    : game.mapName || 'Pick a map';
   const currentSeed = mapRegenerating ? undefined : game.mapGeneration?.seed;
 
   function copySeed() {
@@ -234,12 +239,7 @@ function SettingsPanel({
         <div className="mt-3">
           <Button
             variant="secondary"
-            onClick={() =>
-              applySettings({
-                ...DEFAULT_SETTINGS,
-                mapName: mapNames.includes('World') ? 'World' : mapNames[0],
-              })
-            }
+            onClick={() => applySettings({ ...DEFAULT_SETTINGS })}
           >
             Reset
           </Button>
@@ -296,18 +296,19 @@ function SettingsPanel({
             </Form.Label>
             {isHost ? (
               <Dropdown
-                onToggle={(next) => setMapMenuOpen(next)}
-                onSelect={(name) => {
-                  if (!name) return;
-                  if (name === GENERATE_MAP_OPTION) {
+                onSelect={(key) => {
+                  if (!key) return;
+                  if (key === GENERATE_MAP_OPTION) {
                     setMapGenOpen(true);
                     if (!getGeneratedMapData(game.mapName)) {
                       mapGenRef.current?.generate();
                     }
                     return;
                   }
-                  setMapGenOpen(false);
-                  applySettings({ mapName: name });
+                  if (key === LIBRARY_MAP_OPTION) {
+                    setMapGenOpen(false);
+                    setMapPickerOpen(true);
+                  }
                 }}
               >
                 {mapGenOpen || COARSE_POINTER ? (
@@ -324,10 +325,9 @@ function SettingsPanel({
                   </Tip>
                 )}
                 <Dropdown.Menu
-                  className="rounded-0 p-0 w-100"
+                  className="rounded-0 p-0"
                   style={
                     {
-                      minWidth: 0,
                       '--bs-dropdown-link-color': MAP_TEXT_COLOR,
                       '--bs-dropdown-link-hover-bg': 'rgb(153, 200, 255)',
                       '--bs-dropdown-link-hover-color': MAP_TEXT_HOVER_COLOR,
@@ -335,8 +335,9 @@ function SettingsPanel({
                   }
                 >
                   <Dropdown.Item
+                    as="button"
                     eventKey={GENERATE_MAP_OPTION}
-                    className="d-flex align-items-center gap-2"
+                    className="d-flex align-items-center gap-2 text-nowrap"
                   >
                     <img
                       src={whiteMapIcon ?? '/icons/map.svg'}
@@ -346,40 +347,19 @@ function SettingsPanel({
                     />
                     Generate
                   </Dropdown.Item>
-                  {mapNames.map((name) => {
-                    const item = (
-                      <Dropdown.Item
-                        key={name}
-                        eventKey={name}
-                        className="d-flex align-items-center gap-2"
-                      >
-                        {mapThumbnails[name] && (
-                          <img
-                            src={mapThumbnails[name]}
-                            width={20}
-                            height={20}
-                            alt=""
-                            className="rounded"
-                            style={{ objectFit: 'cover' }}
-                          />
-                        )}
-                        {name}
-                      </Dropdown.Item>
-                    );
-                    return mapMenuOpen && !COARSE_POINTER ? (
-                      <Tip
-                        key={name}
-                        text={mapTooltip(name)}
-                        placement="right"
-                        style={MAP_TOOLTIP_STYLE}
-                        popperConfig={MAP_TOOLTIP_POPPER}
-                      >
-                        {item}
-                      </Tip>
-                    ) : (
-                      item
-                    );
-                  })}
+                  <Dropdown.Item
+                    as="button"
+                    eventKey={LIBRARY_MAP_OPTION}
+                    className="d-flex align-items-center gap-2 text-nowrap"
+                  >
+                    <img
+                      src={whiteMapIcon ?? '/icons/map.svg'}
+                      width={20}
+                      height={20}
+                      alt=""
+                    />
+                    Choose from library
+                  </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
             ) : (
@@ -423,6 +403,28 @@ function SettingsPanel({
           onHide={() => setMapGenOpen(false)}
           generateMap={generateMap}
         />
+      )}
+
+      {isHost && (
+        <Modal
+          show={mapPickerOpen}
+          onHide={() => setMapPickerOpen(false)}
+          size="xl"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>Choose a map</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <MapBrowser
+              account={account}
+              mode="pick"
+              onRowClick={(row) => {
+                selectPlayerMap?.(row.id);
+                setMapPickerOpen(false);
+              }}
+            />
+          </Modal.Body>
+        </Modal>
       )}
 
       {collapsible ? (

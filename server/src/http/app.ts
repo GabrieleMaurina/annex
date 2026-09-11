@@ -1,15 +1,19 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { accountRouter } from './accountRoutes';
-import { authRouter } from './authRoutes';
-import { friendsRouter } from './friendsRoutes';
-import { gameHistoryRouter, publicGamesRouter } from './gameHistoryRoutes';
-import { gamesRouter } from './gamesRoutes';
 import { LiveGameRow } from './liveGames';
-import { messagesRouter } from './messagesRoutes';
 import { corsMiddleware, identityMiddleware } from './middleware';
-import { playersRouter } from './playersRoutes';
+import { accountRouter } from './routes/accountRoutes';
+import { authRouter } from './routes/authRoutes';
+import { friendsRouter } from './routes/friendsRoutes';
+import {
+  gameHistoryRouter,
+  publicGamesRouter,
+} from './routes/gameHistoryRoutes';
+import { gamesRouter } from './routes/gamesRoutes';
+import { messagesRouter } from './routes/messagesRoutes';
+import { playerMapsRouter } from './routes/playerMapsRoutes';
+import { playersRouter } from './routes/playersRoutes';
+import { settingsRouter } from './routes/settingsRoutes';
 import { sessionRouter } from './session';
-import { settingsRouter } from './settingsRoutes';
 
 export interface HttpDeps {
   listGames: () => LiveGameRow[];
@@ -39,8 +43,10 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   api.use(publicGamesRouter);
   api.use(playersRouter);
   api.use('/account/picture', express.json({ limit: '4mb' }));
+  api.use('/player-maps', express.json({ limit: '12mb' }));
   api.use(express.json({ limit: '16kb' }));
   api.use(identityMiddleware);
+  api.use(playerMapsRouter);
   api.use(gameHistoryRouter);
   api.use(sessionRouter(deps.playerGame));
   api.use(authRouter(deps.inLiveGame));

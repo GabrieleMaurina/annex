@@ -150,6 +150,7 @@ export type TurnPhase =
   | 'troop'
   | 'capital'
   | 'deploy'
+  | 'sail'
   | 'attack'
   | 'fortify'
   | 'entrench'
@@ -261,6 +262,12 @@ export interface GameState {
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
   fortifyPathTerritoryIds: number[][];
+  attackPathTerritoryIds: number[][];
+  sailStartTerritoryId: number | null;
+  sailEndTerritoryId: number | null;
+  sailPathTerritoryIds: number[][];
+  attackSeaTerritoryId: number | null;
+  attackSeaDefenderId: number | null;
   winnerIds: number[];
   finalRanking: number[];
   nextSetBaseValues: Record<SetKind, number>;
@@ -294,6 +301,7 @@ export interface GameState {
     entrenchedTurns: number;
   }[];
   toxinTerritories: ReplayToxinTerritory[];
+  seas: { id: number; ships: { playerId: number; ships: number }[] }[];
   visibleTerritoryIds?: number[];
 }
 
@@ -381,6 +389,7 @@ export interface GenerateMapInput {
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  seas: boolean;
 }
 
 export interface ChatMessage {
@@ -400,6 +409,12 @@ export interface ReplayToxinTerritory {
   id: number;
   permanent: boolean;
   roundsRemaining: number;
+}
+
+export interface ReplaySeaShips {
+  seaTerritoryId: number;
+  playerId: number;
+  ships: number;
 }
 
 export type ReplayAnimation =
@@ -430,6 +445,29 @@ export type ReplayAnimation =
       intercepted: boolean;
       interceptFromTerritoryId: number | null;
       playerId: number;
+    }
+  | {
+      type: 'buyShips';
+      sourceTerritoryId: number;
+      seaTerritoryId: number;
+      ships: number;
+      fromPool: boolean;
+      playerId: number;
+    }
+  | {
+      type: 'sail';
+      fromSeaTerritoryId: number;
+      toSeaTerritoryId: number;
+      ships: number;
+      playerId: number;
+    }
+  | {
+      type: 'attackSea';
+      seaTerritoryId: number;
+      attackerId: number;
+      defenderId: number;
+      attackLosses: number;
+      defenceLosses: number;
     };
 
 export interface ReplayHand {
@@ -458,6 +496,7 @@ export interface ReplayFrame {
   toxinTerritories: ReplayToxinTerritory[];
   radiationTerritories: number[];
   radiationUpcoming: number[];
+  seaShips: ReplaySeaShips[];
   hands: ReplayHand[];
   playerStates: ReplayPlayerState[];
   turnPhase: TurnPhase;
@@ -486,6 +525,7 @@ export type ReplayEntry =
       toxinTerritories: ReplayToxinTerritory[];
       radiationTerritories: number[];
       radiationUpcoming: number[];
+      seaShipsDelta: ReplaySeaShips[];
       hands: ReplayHand[];
       playerStates: ReplayPlayerState[];
       animation: ReplayAnimation;
@@ -752,9 +792,17 @@ export interface MapTerritory {
   neighbors: number[];
 }
 
+export interface MapSeaTerritory {
+  id: number;
+  x: number;
+  y: number;
+  neighbors: number[];
+}
+
 export interface StoredMap {
   name: string;
   territories: MapTerritory[];
+  seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   image: string;
   imageMime: string;
@@ -807,6 +855,7 @@ export interface PlayerMapDetail {
   name: string;
   authorId: string;
   territories: MapTerritory[];
+  seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   image: string;
   imageMime: string;
@@ -820,6 +869,7 @@ export interface PlayerMapDetail {
 export interface PlayerMapSaveBody {
   name: string;
   territories: MapTerritory[];
+  seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   image: string;
   generation: GenerateMapInput | null;

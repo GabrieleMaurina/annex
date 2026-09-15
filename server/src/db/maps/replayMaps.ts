@@ -13,6 +13,7 @@ export interface MapDoc {
     y: number;
     neighbors: number[];
   }[];
+  seaTerritories: { id: number; x: number; y: number; neighbors: number[] }[];
   bonuses: number[];
   generation: {
     seed: string;
@@ -32,6 +33,7 @@ const schema = {
         '_id',
         'name',
         'territories',
+        'seaTerritories',
         'bonuses',
         'generation',
         'image',
@@ -50,6 +52,20 @@ const schema = {
             properties: {
               id: { bsonType: 'number' },
               continentId: { bsonType: 'number' },
+              x: { bsonType: 'number' },
+              y: { bsonType: 'number' },
+              neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
+            },
+          },
+        },
+        seaTerritories: {
+          bsonType: 'array',
+          items: {
+            bsonType: 'object',
+            required: ['id', 'x', 'y', 'neighbors'],
+            additionalProperties: false,
+            properties: {
+              id: { bsonType: 'number' },
               x: { bsonType: 'number' },
               y: { bsonType: 'number' },
               neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
@@ -97,6 +113,7 @@ export function storeMap(doc: MapDoc): Promise<void> {
 export interface StoredMap {
   name: string;
   territories: MapDoc['territories'];
+  seaTerritories: MapDoc['seaTerritories'];
   bonuses: number[];
   image: string;
   imageMime: string;
@@ -125,6 +142,7 @@ export function getMapById(id: string): Promise<StoredMap | null> {
         ? {
             name: doc.name,
             territories: doc.territories,
+            seaTerritories: doc.seaTerritories ?? [],
             bonuses: doc.bonuses,
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,

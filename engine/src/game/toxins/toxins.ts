@@ -1,3 +1,4 @@
+import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { nextSetBaseValues } from '../progression/cards';
 import { wouldSplitMap as wouldSplitMapShared } from '../world/connectivity';
@@ -13,7 +14,8 @@ export function isFreeConquestTarget(game: Game, territoryId: number): boolean {
   return (
     !game.territoryOwners.has(territoryId) &&
     !game.territoryToxins.has(territoryId) &&
-    !game.radiationTerritoryIds.has(territoryId)
+    !game.radiationTerritoryIds.has(territoryId) &&
+    !getGameMap(game).seaTerritories.some((t) => t.id === territoryId)
   );
 }
 

@@ -20,7 +20,7 @@ export function continentEarthTone(continentId: number): string {
   return EARTH_TONES[continentId % EARTH_TONES.length];
 }
 
-export const WATER_COLOR = '#3d6b8a';
+export const SEA_COLOR = '#3d6b8a';
 export const TERRITORY_STROKE_COLOR = '#000000';
 
 export const DUNGEON_TONES = [

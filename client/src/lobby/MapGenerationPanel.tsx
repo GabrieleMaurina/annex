@@ -67,6 +67,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
     );
     const [genFill, setGenFill] = useState<Fill>(saved?.fill ?? 'mixed');
     const [genSize, setGenSize] = useState<MapSize>(saved?.size ?? 'medium');
+    const [genSeas, setGenSeas] = useState(saved?.seas ?? false);
     const [generating, setGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState<GenerateMapInput | null>(
       saved ?? null,
@@ -86,7 +87,8 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         lastGenerated.seed === trimmedSeed &&
         lastGenerated.size === genSize &&
         lastGenerated.type === genType &&
-        lastGenerated.fill === genFill
+        lastGenerated.fill === genFill &&
+        lastGenerated.seas === genSeas
       ) {
         effectiveSeed = randomSeed();
         setSeed(effectiveSeed);
@@ -97,6 +99,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         size: genSize,
         type: genType,
         fill: genFill,
+        seas: genSeas,
       };
       setGenerating(true);
       generateMap(input, (ok) => {
@@ -140,6 +143,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                   style={{ maxWidth: 200 }}
                   value={seed}
                   onChange={(e) => setSeed(e.target.value)}
+                  onClick={(e) => e.currentTarget.select()}
                   maxLength={MAX_SEED_LENGTH}
                   isInvalid={!seedValid}
                 />
@@ -191,6 +195,12 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                 <option value="xlarge">Extra Large</option>
               </Form.Select>
             </div>
+            <Form.Check
+              type="checkbox"
+              label="Seas"
+              checked={genSeas}
+              onChange={(e) => setGenSeas(e.target.checked)}
+            />
             <div>
               <Button
                 disabled={generating || !seedValid}

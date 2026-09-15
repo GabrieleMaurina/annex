@@ -1,5 +1,5 @@
 import { Fill, GenerationType, MapSize } from '../mapgen/core/params';
-import { Game, GameMap, Territory } from '../types';
+import { Game, GameMap, SeaTerritory, Territory } from '../types';
 
 const maps = new Map<string, GameMap>();
 
@@ -14,6 +14,7 @@ export function getGameMap(game: Game): GameMap {
     return {
       name: game.mapName,
       territories: game.generatedMap.territories,
+      seaTerritories: game.generatedMap.seaTerritories,
       bonuses: game.generatedMap.bonuses,
     };
   }
@@ -21,6 +22,7 @@ export function getGameMap(game: Game): GameMap {
     return {
       name: game.mapName,
       territories: game.playerMap.territories,
+      seaTerritories: game.playerMap.seaTerritories,
       bonuses: game.playerMap.bonuses,
     };
   }
@@ -28,6 +30,7 @@ export function getGameMap(game: Game): GameMap {
     maps.get(game.mapName) ?? {
       name: game.mapName,
       territories: [],
+      seaTerritories: [],
       bonuses: [],
     }
   );
@@ -36,6 +39,7 @@ export function getGameMap(game: Game): GameMap {
 export interface ArchivedMap {
   name: string;
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
   bonuses: number[];
   imageSrc: string | null;
   generation: {
@@ -47,11 +51,12 @@ export interface ArchivedMap {
 }
 
 export function getArchivedMap(game: Game): ArchivedMap {
-  const { name, territories, bonuses } = getGameMap(game);
+  const { name, territories, seaTerritories, bonuses } = getGameMap(game);
   const generated = game.generatedMap;
   return {
     name,
     territories,
+    seaTerritories,
     bonuses,
     imageSrc: generated?.imageSrc ?? game.playerMap?.imageSrc ?? null,
     generation: generated

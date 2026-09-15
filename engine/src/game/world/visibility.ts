@@ -11,7 +11,7 @@ export function computeVisibleTerritoryIds(
 ): Set<number> {
   const map = getGameMap(game);
   const neighborsById = new Map(
-    map.territories.map((t) => [t.id, t.neighbors]),
+    [...map.territories, ...map.seaTerritories].map((t) => [t.id, t.neighbors]),
   );
   const visible = new Set<number>();
   const ownersToInclude = new Set([playerId, ...alliedIds(game, playerId)]);
@@ -26,6 +26,14 @@ export function computeVisibleTerritoryIds(
     )) {
       visible.add(n);
     }
+  }
+  for (const [seaTerritoryId, shipsByPlayer] of game.seaShips) {
+    const hasShipsThere = [...shipsByPlayer.keys()].some((id) =>
+      ownersToInclude.has(id),
+    );
+    if (!hasShipsThere) continue;
+    visible.add(seaTerritoryId);
+    for (const n of neighborsById.get(seaTerritoryId) ?? []) visible.add(n);
   }
   return visible;
 }
@@ -91,6 +99,20 @@ export function troopMoveFields(
   };
 }
 
+export function shipMoveFields(
+  visible: Set<number> | null,
+  fromSeaTerritoryId: number,
+  seaTerritoryId: number,
+  ships: number,
+): { shipsRemoved?: number; shipsAdded?: number } {
+  const fromVisible = visible === null || visible.has(fromSeaTerritoryId);
+  const toVisible = visible === null || visible.has(seaTerritoryId);
+  return {
+    ...(fromVisible ? { shipsRemoved: ships } : {}),
+    ...(toVisible ? { shipsAdded: ships } : {}),
+  };
+}
+
 export function filterGameStateForViewer(
   base: ReturnType<typeof gameState>,
   game: Game,
@@ -135,12 +157,20 @@ export function filterGameStateForViewer(
       base.attackStartTerritoryId,
       base.attackEndTerritoryId,
     );
+  const [sailStartTerritoryId, sailEndTerritoryId] = keepPairIfEitherVisible(
+    base.sailStartTerritoryId,
+    base.sailEndTerritoryId,
+  );
+  const attackSeaVisible =
+    base.attackSeaTerritoryId !== null &&
+    visible.has(base.attackSeaTerritoryId);
 
   const allies = alliedIds(game, viewerId);
 
   return {
     ...withAlliances,
     territories: base.territories.filter((t) => visible.has(t.id)),
+    seas: base.seas.filter((s) => visible.has(s.id)),
     toxinTerritories: base.toxinTerritories.filter((t) => visible.has(t.id)),
     portalTerritoryIds: base.portalTerritoryIds.filter((id) => visible.has(id)),
     radiationTerritoryIds: base.radiationTerritoryIds.filter((id) =>
@@ -165,6 +195,18 @@ export function filterGameStateForViewer(
       base.fortifyPathTerritoryIds[0] ?? [],
       visible,
     ),
+    attackPathTerritoryIds: pathRunsForViewer(
+      base.attackPathTerritoryIds[0] ?? [],
+      visible,
+    ),
+    sailStartTerritoryId,
+    sailEndTerritoryId,
+    sailPathTerritoryIds: pathRunsForViewer(
+      base.sailPathTerritoryIds[0] ?? [],
+      visible,
+    ),
+    attackSeaTerritoryId: attackSeaVisible ? base.attackSeaTerritoryId : null,
+    attackSeaDefenderId: attackSeaVisible ? base.attackSeaDefenderId : null,
     players: base.players.map((p) =>
       p.id === viewerId || allies.has(p.id)
         ? p

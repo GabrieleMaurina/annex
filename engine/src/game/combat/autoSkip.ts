@@ -6,6 +6,11 @@ import {
   toxinsCost,
   wouldSplitMap,
 } from '../toxins/toxins';
+import {
+  connectedSeaTerritories,
+  hasConnectedFortifyDestination,
+} from '../world/connectivity';
+import { hasAnySeaBridgeFrom } from './seaBridge';
 
 export function hasAnyAttack(game: Game, playerId: number): boolean {
   const map = getGameMap(game);
@@ -13,11 +18,13 @@ export function hasAnyAttack(game: Game, playerId: number): boolean {
   return ownedTerritoryIds(game, playerId).some((id) => {
     if ((game.territoryTroops.get(id) ?? 0) < 2) return false;
     return (
-      territoryById.get(id)?.neighbors.some((n) => {
+      (territoryById.get(id)?.neighbors.some((n) => {
         const ownerId = game.territoryOwners.get(n);
         if (ownerId !== undefined) return ownerId !== playerId;
         return isFreeConquestTarget(game, n);
-      }) ?? false
+      }) ??
+        false) ||
+      hasAnySeaBridgeFrom(game, playerId, id)
     );
   });
 }
@@ -39,6 +46,8 @@ export function hasAnyFortify(game: Game, playerId: number): boolean {
   const territoryById = new Map(map.territories.map((t) => [t.id, t]));
   return ownedTerritoryIds(game, playerId).some((id) => {
     if ((game.territoryTroops.get(id) ?? 0) < 2) return false;
+    if (game.fortification === 'Connected')
+      return hasConnectedFortifyDestination(game, playerId, id);
     return (
       territoryById
         .get(id)
@@ -54,4 +63,22 @@ export function hasAnyEntrench(game: Game, playerId: number): boolean {
       (game.territoryTroops.get(id) ?? 0) >= 2 &&
       !game.capitalTerritoryIds.has(id),
   );
+}
+
+export function hasAnySail(game: Game, playerId: number): boolean {
+  for (const [seaTerritoryId, shipsByPlayer] of game.seaShips) {
+    if ((shipsByPlayer.get(playerId) ?? 0) < 1) continue;
+    if (connectedSeaTerritories(game, [seaTerritoryId]).size > 1) return true;
+  }
+  return false;
+}
+
+export function hasAnyShipFight(game: Game, playerId: number): boolean {
+  for (const shipsByPlayer of game.seaShips.values()) {
+    if ((shipsByPlayer.get(playerId) ?? 0) < 1) continue;
+    for (const [otherId, ships] of shipsByPlayer) {
+      if (otherId !== playerId && ships > 0) return true;
+    }
+  }
+  return false;
 }

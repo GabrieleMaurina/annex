@@ -7,6 +7,7 @@ export interface GenerateMapParams {
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  seas: boolean;
 }
 
 export const MAP_SIZE_VALUES: MapSize[] = [
@@ -34,6 +35,13 @@ export const TERRITORY_MERGE_COUNTS: Record<MapSize, number> = {
   medium: 6,
   large: 9,
   xlarge: 12,
+};
+
+export const TERRAIN_MAX_LAND_NEIGHBORS_PER_SEA: Record<MapSize, number> = {
+  small: 9,
+  medium: 11,
+  large: 13,
+  xlarge: 15,
 };
 
 export const FILL_THRESHOLDS: Record<Fill, number> = {

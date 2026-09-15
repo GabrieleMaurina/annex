@@ -1,6 +1,7 @@
 import type {
   Fill,
   GenerationType,
+  MapSeaTerritory,
   MapSize,
   MapTerritory,
 } from '../../lib/types';
@@ -10,11 +11,13 @@ export interface GenerateInput {
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  seas: boolean;
 }
 
 export interface GeneratedEditorMap {
   name: string;
   territories: MapTerritory[];
+  seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   imageSrc: string;
 }

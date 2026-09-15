@@ -1,14 +1,29 @@
 import { useCallback, useEffect, useState } from 'react';
 import { connector } from '../connector';
 import type {
+  GameState,
   ReplayAck,
   ReplayAnimation,
   ReplayFrame,
   ReplayHand,
   ReplayLogEntry,
+  ReplaySeaShips,
   ReplayTerritory,
   StoredGame,
 } from '../lib/types';
+
+function groupSeaShips(flat: ReplaySeaShips[]): GameState['seas'] {
+  const byPlayerBySea = new Map<
+    number,
+    { playerId: number; ships: number }[]
+  >();
+  for (const entry of flat) {
+    const list = byPlayerBySea.get(entry.seaTerritoryId) ?? [];
+    list.push({ playerId: entry.playerId, ships: entry.ships });
+    byPlayerBySea.set(entry.seaTerritoryId, list);
+  }
+  return [...byPlayerBySea.entries()].map(([id, ships]) => ({ id, ships }));
+}
 
 export const REPLAY_SPEEDS = [0.5, 1, 2, 4];
 const BASE_FRAME_INTERVAL_MS = 800;
@@ -58,6 +73,7 @@ export function foldStoredReplay(
   const territoryById = new Map(
     replay.initialTerritories.map((t) => [t.id, { ...t }]),
   );
+  const seaShipsById = new Map<number, Map<number, number>>();
   const frames: ReplayFrame[] = [];
   const turnMarkers: ReplayTurnMarker[] = [];
   const chat: ReplayChatMessage[] = [];
@@ -69,6 +85,14 @@ export function foldStoredReplay(
         if (delta.ownerId === -1) territoryById.delete(delta.id);
         else territoryById.set(delta.id, { ...delta });
       }
+      for (const shipDelta of entry.seaShipsDelta ?? []) {
+        const byPlayer =
+          seaShipsById.get(shipDelta.seaTerritoryId) ?? new Map();
+        if (shipDelta.ships <= 0) byPlayer.delete(shipDelta.playerId);
+        else byPlayer.set(shipDelta.playerId, shipDelta.ships);
+        if (byPlayer.size === 0) seaShipsById.delete(shipDelta.seaTerritoryId);
+        else seaShipsById.set(shipDelta.seaTerritoryId, byPlayer);
+      }
       const animation =
         entry.animation.type === 'attack' && entry.animation.defenderId == null
           ? { ...entry.animation, defenderId: undefined }
@@ -78,6 +102,14 @@ export function foldStoredReplay(
         toxinTerritories: entry.toxinTerritories,
         radiationTerritories: entry.radiationTerritories,
         radiationUpcoming: entry.radiationUpcoming ?? [],
+        seaShips: [...seaShipsById.entries()].flatMap(
+          ([seaTerritoryId, byPlayer]) =>
+            [...byPlayer.entries()].map(([playerId, ships]) => ({
+              seaTerritoryId,
+              playerId,
+              ships,
+            })),
+        ),
         hands: entry.hands ?? [],
         playerStates: entry.playerStates ?? [],
         turnPhase: entry.turnPhase,
@@ -303,6 +335,9 @@ export function useReplay(
       ? []
       : replay.frames[index - 1].radiationUpcoming
     : null;
+  const seas = replay
+    ? groupSeaShips(index <= 0 ? [] : replay.frames[index - 1].seaShips)
+    : null;
   const hands = replay
     ? index <= 0
       ? []
@@ -322,6 +357,7 @@ export function useReplay(
     toxinTerritories,
     radiationTerritories,
     radiationUpcoming,
+    seas,
     hands,
     playerStates,
     log: replay ? replay.log : null,

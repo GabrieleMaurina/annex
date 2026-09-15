@@ -38,6 +38,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               id: map.id,
               name: map.name,
               territories: map.territories,
+              seaTerritories: map.seaTerritories,
               bonuses: map.bonuses,
               imageSrc: `data:${map.imageMime};base64,${map.image}`,
             },
@@ -66,6 +67,8 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
         return callback({ ok: false, error: 'invalid type' });
       if (!(FILL_VALUES as unknown[]).includes(input.fill))
         return callback({ ok: false, error: 'invalid fill' });
+      if (typeof input.seas !== 'boolean')
+        return callback({ ok: false, error: 'invalid seas' });
 
       engine.generateMap(
         playerId,
@@ -74,6 +77,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           size: input.size as MapSize,
           type: input.type as GenerationType,
           fill: input.fill as Fill,
+          seas: input.seas,
         },
         callback,
       );

@@ -39,6 +39,24 @@ export const CAPITAL_PHASE_DURATION = 60;
 export const UNCLAIMED_TERRITORY_COLOR = '#6c757d';
 export const ENTRENCHED_OCTAGON_FILL = '#495057';
 export const ENTRENCHED_OCTAGON_STROKE = '#212529';
+export const SEA_COLOR = '#0d6efd';
+export const SEA_SIZE_MULTIPLIER = 1.5;
+
+export function hexagonPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+) {
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
 
 export const STATE_STYLE = {
   normal: { stroke: '#000000', width: 2 },
@@ -88,6 +106,16 @@ function segmentIntersection(
   return { x: p1.x + t * d1x, y: p1.y + t * d1y };
 }
 
+function polygonArea(poly: Point[]): number {
+  let area = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    area += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(area) / 2;
+}
+
 function removeLoops(poly: Point[]): Point[] {
   let result = poly;
   for (let guard = 0; guard < poly.length * 2; guard++) {
@@ -109,10 +137,13 @@ function removeLoops(poly: Point[]): Point[] {
       }
     }
     if (!clip) break;
-    result =
-      (clip.j - clip.i) * 2 <= n
-        ? [...result.slice(0, clip.i + 1), clip.at, ...result.slice(clip.j + 1)]
-        : [clip.at, ...result.slice(clip.i + 1, clip.j + 1)];
+    const outer = [
+      ...result.slice(0, clip.i + 1),
+      clip.at,
+      ...result.slice(clip.j + 1),
+    ];
+    const inner = [clip.at, ...result.slice(clip.i + 1, clip.j + 1)];
+    result = polygonArea(outer) >= polygonArea(inner) ? outer : inner;
   }
   return result;
 }
@@ -152,16 +183,35 @@ function offsetOutline(poly: Point[], pad: number): Point[] {
     const prev = norm[(i - 1 + n) % n];
     const curr = norm[i];
     const v = poly[i];
-    const cross = prev.x * curr.y - prev.y * curr.x;
-    const sweep = Math.atan2(cross, prev.x * curr.x + prev.y * curr.y);
-    const convex = outSign < 0 ? sweep > 1e-6 : sweep < -1e-6;
+    const p = poly[(i - 1 + n) % n];
+    const q = poly[(i + 1) % n];
     const startA = Math.atan2(prev.y, prev.x);
+    const dot = prev.x * curr.x + prev.y * curr.y;
+    if (dot < -1 + 1e-6) {
+      const outward = { x: v.x - p.x, y: v.y - p.y };
+      const outLen = Math.hypot(outward.x, outward.y) || 1;
+      const midAngle = Math.atan2(outward.y / outLen, outward.x / outLen);
+      const angDiff = (a: number, b: number) =>
+        Math.abs(
+          ((((a - b + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) %
+            (2 * Math.PI)) -
+            Math.PI,
+        );
+      const sweep =
+        angDiff(startA + Math.PI / 2, midAngle) <
+        angDiff(startA - Math.PI / 2, midAngle)
+          ? Math.PI
+          : -Math.PI;
+      arc(v.x, v.y, startA, sweep, pad);
+      continue;
+    }
+    const cross = prev.x * curr.y - prev.y * curr.x;
+    const sweep = Math.atan2(cross, dot);
+    const convex = outSign < 0 ? sweep > 1e-6 : sweep < -1e-6;
     if (convex) {
       arc(v.x, v.y, startA, sweep, pad);
       continue;
     }
-    const p = poly[(i - 1 + n) % n];
-    const q = poly[(i + 1) % n];
     const e1 = { x: v.x + prev.x * pad, y: v.y + prev.y * pad };
     const e2 = { x: v.x + curr.x * pad, y: v.y + curr.y * pad };
     const hit = lineIntersection(

@@ -6,13 +6,15 @@ import {
   getFortifyEndCandidates,
   getFortifyStartCandidates,
 } from '../../logic/fortify';
-import type { Territory } from '../../mapData';
+import type { SeaTerritory, Territory } from '../../mapData';
 import { getToxinsCandidates, toxinsCost } from '../../toxins/toxins';
 
 export function useTurnActionFlows({
   fortifyStartTerritoryId,
   fortifyEndTerritoryId,
   territories,
+  seaTerritories,
+  seas,
   ownerById,
   selfId,
   fortification,
@@ -31,6 +33,8 @@ export function useTurnActionFlows({
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
+  seas: GameState['seas'];
   ownerById: Map<number, GameState['territories'][number]>;
   selfId: number | null;
   fortification: Fortification;
@@ -57,6 +61,8 @@ export function useTurnActionFlows({
     turnPhase === 'fortify' && isMyTurn
       ? getFortifyStartCandidates(
           territories,
+          seaTerritories,
+          seas,
           ownerById,
           selfId,
           fortification,
@@ -68,6 +74,8 @@ export function useTurnActionFlows({
     turnPhase === 'fortify' && isMyTurn && fortifyStartTerritoryId !== null
       ? getFortifyEndCandidates(
           territories,
+          seaTerritories,
+          seas,
           ownerById,
           selfId,
           fortifyStartTerritoryId,

@@ -37,9 +37,9 @@ export function generateMap(
 
   const gameName = game.name;
   const hostId = player.id;
-  const { size, type, fill } = input;
+  const { size, type, fill, seas } = input;
 
-  generateMapAsync({ seed: trimmedSeed, size, type, fill }, (res) => {
+  generateMapAsync({ seed: trimmedSeed, size, type, fill, seas }, (res) => {
     const current = games.get(gameName);
     if (!current || current.state !== 'lobby' || current.hostId !== hostId)
       return callback({ ok: false, error: 'game no longer available' });
@@ -50,18 +50,21 @@ export function generateMap(
     current.playerMap = null;
     current.generatedMap = {
       territories: generated.territories,
+      seaTerritories: generated.seaTerritories,
       bonuses: generated.bonuses,
       imageSrc: generated.imageSrc,
       seed: trimmedSeed,
       size,
       type,
       fill,
+      seas,
     };
 
     for (const viewerId of [...current.playerIds, ...current.spectatorIds]) {
       callbacks.onMapGenerated(viewerId, {
         name: generated.name,
         territories: generated.territories,
+        seaTerritories: generated.seaTerritories,
         bonuses: generated.bonuses,
         imageSrc: generated.imageSrc,
       });
@@ -92,6 +95,7 @@ export function selectPlayerMap(
   game.playerMap = {
     id: map.id,
     territories: map.territories,
+    seaTerritories: map.seaTerritories,
     bonuses: map.bonuses,
     imageSrc: map.imageSrc,
   };
@@ -100,6 +104,7 @@ export function selectPlayerMap(
     callbacks.onMapGenerated(viewerId, {
       name: map.name,
       territories: map.territories,
+      seaTerritories: map.seaTerritories,
       bonuses: map.bonuses,
       imageSrc: map.imageSrc,
     });

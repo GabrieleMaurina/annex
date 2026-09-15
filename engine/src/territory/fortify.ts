@@ -2,8 +2,9 @@ import { callbacks } from '../callbacks';
 import { recordReplayFrame } from '../game/replay';
 import { advanceTurnPhase } from '../game/turns';
 import {
-  connectedOwnedTerritories,
+  connectedFortifyTerritories,
   fortifyFullPath,
+  hasConnectedFortifyDestination,
 } from '../game/world/connectivity';
 import { fogFilterEmit } from '../game/world/fog';
 import { withPortalEdges } from '../game/world/portals';
@@ -37,6 +38,8 @@ function isFortifyStartCandidate(
   if ((game.territoryTroops.get(territoryId) ?? 0) < 2) return false;
   if (game.fortification === 'Unrestricted')
     return ownsOtherTerritory(game, playerId, territoryId);
+  if (game.fortification === 'Connected')
+    return hasConnectedFortifyDestination(game, playerId, territoryId);
   const map = getGameMap(game);
   const territory = map.territories.find((t) => t.id === territoryId);
   const neighbors = withPortalEdges(
@@ -66,7 +69,7 @@ function isValidFortifyEnd(
     );
     return neighbors.includes(endId);
   }
-  return connectedOwnedTerritories(game, playerId, [startId]).has(endId);
+  return connectedFortifyTerritories(game, playerId, [startId]).has(endId);
 }
 
 function requireFortifyTurn(playerId: number) {

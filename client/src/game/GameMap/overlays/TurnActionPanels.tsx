@@ -10,6 +10,7 @@ import AttackPanel, {
   type AttackType,
   type DiceRoll,
 } from '../../panels/AttackPanel';
+import AttackSeaPanel from '../../panels/AttackSeaPanel';
 import ConfirmPanel from '../../panels/ConfirmPanel';
 import TroopPanel from '../../panels/TroopPanel';
 import TurnPanel from '../../panels/TurnPanel';
@@ -35,6 +36,21 @@ export default function TurnActionPanels({
   deployInputRef,
   setDeployTroops,
   submitDeploy,
+  deploySeaPanelOpen,
+  deploySeaPanelStyle,
+  deploySeaComboActive,
+  deploySeaShips,
+  deploySeaMaxShips,
+  deploySeaInputRef,
+  setDeploySeaShips,
+  submitDeploySea,
+  sailPanelOpen,
+  sailPanelStyle,
+  sailShips,
+  sailMaxShips,
+  sailInputRef,
+  setSailShips,
+  submitSail,
   fortifyPanelOpen,
   fortifyPanelStyle,
   fortifyTroops,
@@ -72,6 +88,20 @@ export default function TurnActionPanels({
   setAttackMoveTroops,
   submitAttackMove,
   submitAttack,
+  attackSeaPanelOpen,
+  attackSeaPanelStyle,
+  attackSeaDefenders,
+  attackSeaDefenderId,
+  selectAttackSeaDefender,
+  attackSeaShips,
+  attackSeaMaxShips,
+  attackSeaInputRef,
+  setAttackSeaShips,
+  attackSeaDiceRoll,
+  attackSeaRevealing,
+  attackSeaDiceOnly,
+  submitAttackSea,
+  players,
 }: {
   currentTurnPlayer: GameState['players'][number] | undefined;
   gameEnded: boolean;
@@ -91,6 +121,21 @@ export default function TurnActionPanels({
   deployInputRef: RefObject<HTMLInputElement | null>;
   setDeployTroops: Dispatch<SetStateAction<number>>;
   submitDeploy: () => void;
+  deploySeaPanelOpen: boolean;
+  deploySeaPanelStyle: CSSProperties | undefined;
+  deploySeaComboActive: boolean;
+  deploySeaShips: number;
+  deploySeaMaxShips: number;
+  deploySeaInputRef: RefObject<HTMLInputElement | null>;
+  setDeploySeaShips: Dispatch<SetStateAction<number>>;
+  submitDeploySea: () => void;
+  sailPanelOpen: boolean;
+  sailPanelStyle: CSSProperties | undefined;
+  sailShips: number;
+  sailMaxShips: number;
+  sailInputRef: RefObject<HTMLInputElement | null>;
+  setSailShips: Dispatch<SetStateAction<number>>;
+  submitSail: () => void;
   fortifyPanelOpen: boolean;
   fortifyPanelStyle: CSSProperties | undefined;
   fortifyTroops: number;
@@ -135,6 +180,20 @@ export default function TurnActionPanels({
   setAttackMoveTroops: Dispatch<SetStateAction<number>>;
   submitAttackMove: () => void;
   submitAttack: () => void;
+  attackSeaPanelOpen: boolean;
+  attackSeaPanelStyle: CSSProperties | undefined;
+  attackSeaDefenders: { playerId: number; ships: number }[];
+  attackSeaDefenderId: number | null;
+  selectAttackSeaDefender: (defenderId: number) => void;
+  attackSeaShips: number;
+  attackSeaMaxShips: number;
+  attackSeaInputRef: RefObject<HTMLInputElement | null>;
+  setAttackSeaShips: Dispatch<SetStateAction<number>>;
+  attackSeaDiceRoll: DiceRoll | null;
+  attackSeaRevealing: boolean;
+  attackSeaDiceOnly: boolean;
+  submitAttackSea: () => void;
+  players: GameState['players'];
 }) {
   if (!currentTurnPlayer) return null;
   return (
@@ -178,6 +237,30 @@ export default function TurnActionPanels({
           onChange={setDeployTroops}
           onConfirm={submitDeploy}
           style={deployPanelStyle}
+        />
+      )}
+      {deploySeaPanelOpen && deploySeaPanelStyle && (
+        <TroopPanel
+          label={deploySeaComboActive ? 'Buy ships:' : 'Deploy ships:'}
+          buttonLabel={deploySeaComboActive ? 'Buy' : 'Deploy'}
+          troops={deploySeaShips}
+          maxTroops={deploySeaMaxShips}
+          inputRef={deploySeaInputRef}
+          onChange={setDeploySeaShips}
+          onConfirm={submitDeploySea}
+          style={deploySeaPanelStyle}
+        />
+      )}
+      {sailPanelOpen && sailPanelStyle && (
+        <TroopPanel
+          label="Sail ships:"
+          buttonLabel="Sail"
+          troops={sailShips}
+          maxTroops={sailMaxShips}
+          inputRef={sailInputRef}
+          onChange={setSailShips}
+          onConfirm={submitSail}
+          style={sailPanelStyle}
         />
       )}
       {fortifyPanelOpen && fortifyPanelStyle && (
@@ -259,6 +342,25 @@ export default function TurnActionPanels({
           onMoveTroopsChange={setAttackMoveTroops}
           onConfirmMove={submitAttackMove}
           style={attackPanelStyle}
+        />
+      )}
+      {attackSeaPanelOpen && attackSeaPanelStyle && (
+        <AttackSeaPanel
+          defenders={attackSeaDefenders.map((d) => ({
+            ...d,
+            color: players.find((p) => p.id === d.playerId)?.color ?? 0,
+          }))}
+          defenderId={attackSeaDefenderId}
+          onSelectDefender={selectAttackSeaDefender}
+          ships={attackSeaShips}
+          maxShips={attackSeaMaxShips}
+          inputRef={attackSeaInputRef}
+          onChangeShips={setAttackSeaShips}
+          onConfirm={submitAttackSea}
+          diceRoll={attackSeaDiceRoll}
+          revealing={attackSeaRevealing}
+          diceOnly={attackSeaDiceOnly}
+          style={attackSeaPanelStyle}
         />
       )}
     </>

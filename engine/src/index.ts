@@ -58,6 +58,13 @@ import {
   launchNukeAction,
 } from './territory/nukes';
 import { requestReplay } from './territory/replay';
+import {
+  attackSea,
+  attackSeaSelectDefender,
+  attackSeaSelectStart,
+} from './territory/sea/attackSea';
+import { buyShips } from './territory/sea/buyShips';
+import { sail, sailSelectEnd, sailSelectStart } from './territory/sea/sail';
 import { claimTerritory } from './territory/territory';
 import { toxin } from './territory/toxins';
 import { placeTroop } from './territory/troop';
@@ -101,11 +108,11 @@ export {
   DUNGEON_VOID_COLOR,
   DUNGEON_WALL_COLOR,
   EARTH_TONES,
+  SEA_COLOR,
   TEMPLE_SEAM_COLOR,
   TEMPLE_TONES,
   TEMPLE_VOID_COLOR,
   TEMPLE_WALL_COLOR,
-  WATER_COLOR,
 } from './mapgen/render/palette';
 export { runMapgenWorker } from './mapgen/worker';
 export { ArchivedMap } from './maps/maps';
@@ -165,13 +172,22 @@ export function createEngine(
     selectCapital,
     selectTerritory,
     deploy,
+    buyShips,
 
     requestCards,
     playCardSet,
 
+    sailSelectStart,
+    sailSelectEnd,
+    sail,
+
     fortifySelectStart,
     fortifySelectEnd,
     fortify,
+
+    attackSeaSelectStart,
+    attackSeaSelectDefender,
+    attackSea,
 
     entrench,
     toxin,

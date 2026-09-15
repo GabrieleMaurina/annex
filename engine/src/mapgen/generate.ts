@@ -1,4 +1,4 @@
-import { Territory } from '../types';
+import { SeaTerritory, Territory } from '../types';
 import {
   generatedMapName,
   GenerateMapParams,
@@ -13,13 +13,14 @@ import { generateTerrain } from './pipeline/terrain/terrainMap';
 export interface GeneratedMap {
   name: string;
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
   bonuses: number[];
   imageSrc: string;
 }
 
 export function generateMap(params: GenerateMapParams): GeneratedMap {
-  const { seed, size, type, fill } = params;
-  const rng = createRng(`${seed}::${size}::${type}::${fill}`);
+  const { seed, size, type, fill, seas } = params;
+  const rng = createRng(`${seed}::${size}::${type}::${fill}::${seas}`);
   const grid = GRID_DIMENSIONS[size];
   const dims = {
     width: grid.width * OUTPUT_SCALE,
@@ -28,10 +29,10 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
 
   const built =
     type === 'dungeon'
-      ? generateDungeon(rng, fill, size, dims)
+      ? generateDungeon(rng, fill, size, dims, seas)
       : type === 'temple'
-        ? generateTemple(rng, fill, size, dims)
-        : generateTerrain(rng, fill, size, dims);
+        ? generateTemple(rng, fill, size, dims, seas)
+        : generateTerrain(rng, fill, size, dims, seas);
 
   return { name: generatedMapName(params), ...built };
 }

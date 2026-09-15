@@ -51,6 +51,7 @@ Follow these rules unless explicitly instructed otherwise:
 - No folders with more than 10 source files. Split into subfolders if necessary.
 - No sub-agents unless explicitly requested.
 - No browser verification/running unless explicitly requested.
+- No tests in the codebase other than the bots AI tests.
 
 ## 5. Stack
 

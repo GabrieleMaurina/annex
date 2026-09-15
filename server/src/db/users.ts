@@ -16,6 +16,7 @@ export interface GameSettings {
     size: string;
     type: string;
     fill: string;
+    seas: boolean;
   } | null;
   playerMapId: string | null;
   slots: number;
@@ -358,13 +359,14 @@ const schema = {
             },
             mapGeneration: {
               bsonType: ['object', 'null'],
-              required: ['seed', 'size', 'type', 'fill'],
+              required: ['seed', 'size', 'type', 'fill', 'seas'],
               additionalProperties: false,
               properties: {
                 seed: { bsonType: 'string' },
                 size: { enum: MAP_SIZES },
                 type: { enum: GENERATION_TYPES },
                 fill: { enum: FILL_VALUES },
+                seas: { bsonType: 'bool' },
               },
             },
             slots: { bsonType: 'number', minimum: 2, maximum: 20 },
@@ -497,7 +499,8 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
     typeof r.seed !== 'string' ||
     !MAP_SIZES.includes(r.size as string) ||
     !GENERATION_TYPES.includes(r.type as string) ||
-    !FILL_VALUES.includes(r.fill as string)
+    !FILL_VALUES.includes(r.fill as string) ||
+    typeof r.seas !== 'boolean'
   )
     return null;
   return {
@@ -505,6 +508,7 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
     size: r.size as string,
     type: r.type as string,
     fill: r.fill as string,
+    seas: r.seas,
   };
 }
 

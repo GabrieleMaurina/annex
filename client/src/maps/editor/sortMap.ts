@@ -1,4 +1,5 @@
-import type { MapTerritory as Territory } from '../../lib/types';
+import type { MapSeaTerritory, MapTerritory } from '../../lib/types';
+import type { EditorTerritory as Territory } from './model/editorTypes';
 
 const ROW_TOLERANCE_FRACTION = 0.5;
 
@@ -25,12 +26,22 @@ function sortByPosition<T>(
   return rows.flatMap((row) => [...row].sort((a, b) => getX(a) - getX(b)));
 }
 
-export function sortMapData(
+export interface SortedTerritories {
+  territories: Territory[];
+  bonuses: number[];
+  continentIdMap: Map<number, number>;
+  idMap: Map<number, number>;
+}
+
+export function sortTerritories(
   territories: Territory[],
   bonuses: number[],
-): { territories: Territory[]; bonuses: number[] } {
+): SortedTerritories {
+  const land = territories.filter((t) => !t.isSea);
+  const sea = territories.filter((t) => t.isSea);
+
   const continents = bonuses.map((_, id) => {
-    const members = territories.filter((t) => t.continentId === id);
+    const members = land.filter((t) => t.continentId === id);
     const center = members.length
       ? {
           x: members.reduce((sum, t) => sum + t.x, 0) / members.length,
@@ -51,27 +62,69 @@ export function sortMapData(
     sortedContinents.map((c, newId) => [c.id, newId]),
   );
   const newBonuses = sortedContinents.map((c) => bonuses[c.id]);
-  const remapped = territories.map((t) => ({
+  const remapped = land.map((t) => ({
     ...t,
     continentId: continentIdMap.get(t.continentId)!,
   }));
 
-  const sortedTerritories = sortedContinents.flatMap((_, newContinentId) =>
+  const sortedLand = sortedContinents.flatMap((_, newContinentId) =>
     sortByPosition(
       remapped.filter((t) => t.continentId === newContinentId),
       (t) => t.x,
       (t) => t.y,
     ),
   );
-
-  const territoryIdMap = new Map(
-    sortedTerritories.map((t, newId) => [t.id, newId]),
+  const sortedSea = sortByPosition(
+    sea,
+    (t) => t.x,
+    (t) => t.y,
   );
-  const newTerritories = sortedTerritories.map((t, newId) => ({
-    ...t,
-    id: newId,
-    neighbors: t.neighbors.map((n) => territoryIdMap.get(n)!),
-  }));
 
-  return { territories: newTerritories, bonuses: newBonuses };
+  const idMap = new Map<number, number>();
+  sortedLand.forEach((t, i) => idMap.set(t.id, i));
+  sortedSea.forEach((t, i) => idMap.set(t.id, sortedLand.length + i));
+
+  const newTerritories: Territory[] = [...sortedLand, ...sortedSea].map(
+    (t) => ({
+      ...t,
+      id: idMap.get(t.id)!,
+      neighbors: t.neighbors.map((n) => idMap.get(n)!),
+    }),
+  );
+
+  return {
+    territories: newTerritories,
+    bonuses: newBonuses,
+    continentIdMap,
+    idMap,
+  };
+}
+
+export function sortMapData(
+  territories: Territory[],
+  bonuses: number[],
+): {
+  territories: MapTerritory[];
+  seaTerritories: MapSeaTerritory[];
+  bonuses: number[];
+} {
+  const sorted = sortTerritories(territories, bonuses);
+  const newTerritories: MapTerritory[] = sorted.territories
+    .filter((t) => !t.isSea)
+    .map((t) => ({
+      id: t.id,
+      continentId: t.continentId,
+      x: t.x,
+      y: t.y,
+      neighbors: t.neighbors,
+    }));
+  const newSeaTerritories: MapSeaTerritory[] = sorted.territories
+    .filter((t) => t.isSea)
+    .map((t) => ({ id: t.id, x: t.x, y: t.y, neighbors: t.neighbors }));
+
+  return {
+    territories: newTerritories,
+    seaTerritories: newSeaTerritories,
+    bonuses: sorted.bonuses,
+  };
 }

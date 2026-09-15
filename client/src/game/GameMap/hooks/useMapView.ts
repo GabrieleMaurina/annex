@@ -3,6 +3,7 @@ import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
   loadGameMap,
+  type SeaTerritory,
   type Territory,
 } from '../../mapData';
 import type { Transform } from '../helpers';
@@ -11,6 +12,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [territories, setTerritories] = useState<Territory[]>([]);
+  const [seaTerritories, setSeaTerritories] = useState<SeaTerritory[]>([]);
   const [bonuses, setBonuses] = useState<number[]>([]);
   const [transform, setTransform] = useState<Transform>({
     zoom: 1,
@@ -28,8 +30,9 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
 
   useEffect(() => {
     loadGameMap(mapName, playerMapId).then(
-      ({ territories, bonuses, imageSrc }) => {
+      ({ territories, seaTerritories, bonuses, imageSrc }) => {
         setTerritories(territories);
+        setSeaTerritories(seaTerritories);
         setBonuses(bonuses);
         setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
         if (!imageSrc) {
@@ -60,6 +63,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     canvasRef,
     imageRef,
     territories,
+    seaTerritories,
     bonuses,
     transform,
     setTransform,

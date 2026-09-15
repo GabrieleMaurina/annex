@@ -6,6 +6,7 @@ export interface LoadedPlayerMap {
   id: string;
   name: string;
   territories: GameMap['territories'];
+  seaTerritories: GameMap['seaTerritories'];
   bonuses: number[];
   imageSrc: string;
 }
@@ -19,6 +20,7 @@ export function loadPlayerMap(id: string): Promise<LoadedPlayerMap> {
           id: map.id,
           name: map.name,
           territories: map.territories,
+          seaTerritories: map.seaTerritories,
           bonuses: map.bonuses,
           imageSrc: map.image,
         }

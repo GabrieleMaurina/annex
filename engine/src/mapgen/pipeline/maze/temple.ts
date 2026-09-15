@@ -1,3 +1,4 @@
+import { timeStep } from '../../core/bench';
 import { Fill, GridDimensions, MapSize } from '../../core/params';
 import { randomInt, Rng } from '../../core/rng';
 import {
@@ -22,10 +23,13 @@ const RING_JITTER = 0.32;
 const DEAD_END_BRAID_CHANCE = 0.55;
 
 const VOID_FRACTION: Record<Fill, number> = {
-  full: 0.04,
-  mixed: 0.12,
-  sparse: 0.26,
+  full: 0.05,
+  mixed: 0.35,
+  sparse: 0.65,
 };
+
+const VOID_BLOB_RANGE: [number, number] = [2, 5];
+const SEA_BLOB_RANGE: [number, number] = [15, 40];
 
 interface PolarGrid {
   nRings: number;
@@ -191,13 +195,18 @@ function braid(rng: Rng, grid: PolarGrid): void {
   }
 }
 
-function carveVoid(rng: Rng, grid: PolarGrid, fraction: number): void {
+function carveVoid(
+  rng: Rng,
+  grid: PolarGrid,
+  fraction: number,
+  blobRange: [number, number],
+): void {
   let target = Math.floor(grid.cellCount * fraction);
   let guard = 0;
   while (target > 0 && guard++ < grid.cellCount) {
     const seed = randomInt(rng, 0, grid.cellCount - 1);
     if (!grid.navigable[seed]) continue;
-    const blob = randomInt(rng, 2, 5);
+    const blob = randomInt(rng, ...blobRange);
     const queue = [seed];
     let head = 0;
     let removed = 0;
@@ -218,51 +227,6 @@ function carveVoid(rng: Rng, grid: PolarGrid, fraction: number): void {
       grid.open.has(pairKey(cell, n)),
     );
     if (!hasLink) grid.navigable[cell] = 0;
-  }
-}
-
-function reconnect(grid: PolarGrid): void {
-  const componentOf = new Int32Array(grid.cellCount).fill(-1);
-  const components: number[][] = [];
-  for (let start = 0; start < grid.cellCount; start++) {
-    if (!grid.navigable[start] || componentOf[start] !== -1) continue;
-    const id = components.length;
-    const stack = [start];
-    componentOf[start] = id;
-    const members = [start];
-    while (stack.length > 0) {
-      const cell = stack.pop()!;
-      for (const n of grid.potential[cell]) {
-        if (
-          grid.navigable[n] &&
-          componentOf[n] === -1 &&
-          grid.open.has(pairKey(cell, n))
-        ) {
-          componentOf[n] = id;
-          stack.push(n);
-          members.push(n);
-        }
-      }
-    }
-    components.push(members);
-  }
-  if (components.length <= 1) return;
-
-  components.sort((a, b) => b.length - a.length);
-  const joined = new Set(components[0]);
-  for (let k = 1; k < components.length; k++) {
-    let bridged = false;
-    for (const cell of components[k]) {
-      for (const n of grid.potential[cell]) {
-        if (grid.navigable[n] && joined.has(n)) {
-          grid.open.add(pairKey(cell, n));
-          bridged = true;
-          break;
-        }
-      }
-      if (bridged) break;
-    }
-    if (bridged) for (const cell of components[k]) joined.add(cell);
   }
 }
 
@@ -294,20 +258,30 @@ function toCellLayer(
       ),
   );
 
+  const cellAt = (px: number, py: number): number => {
+    const dx = px + 0.5 - cx;
+    const dy = py + 0.5 - cy;
+    const radius = Math.hypot(dx, dy);
+    if (radius >= maxRadius) return -1;
+    const ring = ringOf(grid, radius / maxRadius);
+    const count = grid.sectors[ring];
+    let angle = Math.atan2(dy, dx) / (2 * Math.PI);
+    if (angle < 0) angle += 1;
+    const sector = Math.min(count - 1, Math.floor(angle * count));
+    return grid.ringOffset[ring] + sector;
+  };
+
   const pixelCell = new Int32Array(width * height).fill(-1);
+  const outsideMask = new Uint8Array(width * height);
   for (let py = 0; py < height; py++) {
     for (let px = 0; px < width; px++) {
-      const dx = px + 0.5 - cx;
-      const dy = py + 0.5 - cy;
-      const radius = Math.hypot(dx, dy);
-      if (radius >= maxRadius) continue;
-      const ring = ringOf(grid, radius / maxRadius);
-      const count = grid.sectors[ring];
-      let angle = Math.atan2(dy, dx) / (2 * Math.PI);
-      if (angle < 0) angle += 1;
-      const sector = Math.min(count - 1, Math.floor(angle * count));
-      const cell = grid.ringOffset[ring] + sector;
-      if (grid.navigable[cell]) pixelCell[py * width + px] = cell;
+      const cell = cellAt(px, py);
+      const i = py * width + px;
+      if (cell < 0) {
+        outsideMask[i] = 1;
+        continue;
+      }
+      if (grid.navigable[cell]) pixelCell[i] = cell;
     }
   }
 
@@ -322,6 +296,7 @@ function toCellLayer(
     cellNeighbors,
     pixelCell,
     chambers,
+    outsideMask,
   };
 }
 
@@ -330,16 +305,23 @@ export function generateTemple(
   fill: Fill,
   size: MapSize,
   dims: GridDimensions,
+  seas: boolean,
 ): MazeMap {
-  const grid = buildPolarGrid(rng, randomInt(rng, ...RING_RANGES[size]));
-  carveMaze(rng, grid);
-  const clusters = addChambers(rng, grid, Math.round(grid.nRings * 1.6));
-  carveVoid(rng, grid, VOID_FRACTION[fill]);
-  fillHoles(grid);
-  reconnect(grid);
-  braid(rng, grid);
+  const layer = timeStep('shape', () => {
+    const grid = buildPolarGrid(rng, randomInt(rng, ...RING_RANGES[size]));
+    carveMaze(rng, grid);
+    const clusters = addChambers(rng, grid, Math.round(grid.nRings * 1.6));
+    carveVoid(
+      rng,
+      grid,
+      VOID_FRACTION[fill],
+      seas ? SEA_BLOB_RANGE : VOID_BLOB_RANGE,
+    );
+    fillHoles(grid);
+    braid(rng, grid);
 
-  const layer = toCellLayer(grid, dims, clusters);
+    return toCellLayer(grid, dims, clusters);
+  });
   return buildMazeMap(
     rng,
     layer,
@@ -352,5 +334,6 @@ export function generateTemple(
       roundedWalls: true,
     },
     fill !== 'full',
+    seas,
   );
 }

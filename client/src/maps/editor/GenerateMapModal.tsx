@@ -42,20 +42,45 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
   const [type, setType] = useState<GenerationType>('terrain');
   const [fill, setFill] = useState<Fill>('mixed');
   const [size, setSize] = useState<MapSize>('medium');
+  const [seas, setSeas] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [lastGenerated, setLastGenerated] = useState<GenerateInput | null>(
+    null,
+  );
 
   const trimmed = seed.trim();
   const seedMessage = seedError(trimmed);
 
   function handleGenerate() {
     if (generating || seedMessage) return;
+
+    let effectiveSeed = trimmed;
+    if (
+      lastGenerated &&
+      lastGenerated.seed === trimmed &&
+      lastGenerated.size === size &&
+      lastGenerated.type === type &&
+      lastGenerated.fill === fill &&
+      lastGenerated.seas === seas
+    ) {
+      effectiveSeed = randomSeed();
+      setSeed(effectiveSeed);
+    }
+
     setGenerating(true);
     setError('');
-    const input: GenerateInput = { seed: trimmed, size, type, fill };
+    const input: GenerateInput = {
+      seed: effectiveSeed,
+      size,
+      type,
+      fill,
+      seas,
+    };
     generateMap(input)
       .then((map) => {
         setGenerating(false);
+        setLastGenerated(input);
         onGenerated(map, input);
         onHide();
       })
@@ -80,6 +105,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
             maxLength={MAX_SEED_LENGTH}
             isInvalid={!!seedMessage}
             onChange={(e) => setSeed(e.target.value)}
+            onClick={(e) => e.currentTarget.select()}
           />
           <Button
             variant="outline-secondary"
@@ -129,6 +155,12 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
             <option value="xlarge">Extra Large</option>
           </Form.Select>
         </Form.Group>
+        <Form.Check
+          type="checkbox"
+          label="Seas"
+          checked={seas}
+          onChange={(e) => setSeas(e.target.checked)}
+        />
         {error && <div className="text-danger small">{error}</div>}
         <p className="text-muted small mb-0">
           Generating replaces the current territories and background image. You

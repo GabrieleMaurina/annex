@@ -9,6 +9,7 @@ import {
   ReplayFrame,
   ReplayLogEntry,
   ReplayPlayerState,
+  ReplaySeaShips,
   ReplayTerritory,
   TurnPhase,
 } from '../types';
@@ -26,6 +27,12 @@ export interface ReplayTerritoryDelta {
   entrenchedTurns: number;
 }
 
+export interface ReplaySeaShipsDelta {
+  seaTerritoryId: number;
+  playerId: number;
+  ships: number;
+}
+
 export type ReplayEntry =
   | {
       kind: 'action';
@@ -40,6 +47,7 @@ export type ReplayEntry =
       }[];
       radiationTerritories: number[];
       radiationUpcoming: number[];
+      seaShipsDelta: ReplaySeaShipsDelta[];
       hands: ReplayHandExport[];
       playerStates: ReplayPlayerState[];
       animation: ReplayAnimation;
@@ -81,6 +89,7 @@ export interface GameExport {
     size: string;
     type: string;
     fill: string;
+    seas: boolean;
   } | null;
   originalHostId: number;
   startedAt: number;
@@ -163,9 +172,41 @@ function territoryDelta(
   return delta;
 }
 
+function seaShipsKey(entry: ReplaySeaShips): string {
+  return `${entry.seaTerritoryId},${entry.playerId}`;
+}
+
+function seaShipsDelta(
+  previous: ReplaySeaShips[],
+  current: ReplaySeaShips[],
+): ReplaySeaShipsDelta[] {
+  const before = new Map(previous.map((entry) => [seaShipsKey(entry), entry]));
+  const currentKeys = new Set(current.map(seaShipsKey));
+  const delta: ReplaySeaShipsDelta[] = [];
+  for (const entry of current) {
+    const prev = before.get(seaShipsKey(entry));
+    if (!prev || prev.ships !== entry.ships)
+      delta.push({
+        seaTerritoryId: entry.seaTerritoryId,
+        playerId: entry.playerId,
+        ships: entry.ships,
+      });
+  }
+  for (const entry of previous) {
+    if (!currentKeys.has(seaShipsKey(entry)))
+      delta.push({
+        seaTerritoryId: entry.seaTerritoryId,
+        playerId: entry.playerId,
+        ships: 0,
+      });
+  }
+  return delta;
+}
+
 function actionEntry(
   frame: ReplayFrame,
   previous: ReplayTerritory[],
+  previousSeaShips: ReplaySeaShips[],
 ): ReplayEntry {
   return {
     kind: 'action',
@@ -176,6 +217,7 @@ function actionEntry(
     toxinTerritories: frame.toxinTerritories,
     radiationTerritories: frame.radiationTerritories,
     radiationUpcoming: frame.radiationUpcoming,
+    seaShipsDelta: seaShipsDelta(previousSeaShips, frame.seaShips),
     hands: frame.hands,
     playerStates: frame.playerStates,
     animation: frame.animation,
@@ -226,7 +268,8 @@ function buildFrames(game: Game): ReplayEntry[] {
       const frame = game.replayFrames[k];
       const previous =
         k === 0 ? game.replayInitial : game.replayFrames[k - 1].territories;
-      entries.push(actionEntry(frame, previous));
+      const previousSeaShips = k === 0 ? [] : game.replayFrames[k - 1].seaShips;
+      entries.push(actionEntry(frame, previous, previousSeaShips));
     }
   }
   return entries;
@@ -276,6 +319,7 @@ export function exportGame(gameName: string): GameExport | null {
           size: game.generatedMap.size,
           type: game.generatedMap.type,
           fill: game.generatedMap.fill,
+          seas: game.generatedMap.seas,
         }
       : null,
     settings: {

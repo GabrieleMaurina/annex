@@ -13,7 +13,7 @@ import {
   traceOctagon,
 } from '../../animations';
 import type { EvaluatedCombo } from '../../logic/cards';
-import type { Territory } from '../../mapData';
+import type { SeaTerritory, Territory } from '../../mapData';
 import { buildWrappedPathSegments } from '../../mapMath';
 import { isPortalHop } from '../../portals';
 import type { ConquestArrow } from '../../replay';
@@ -24,6 +24,9 @@ import {
   ENTRENCHED_OCTAGON_STROKE,
   getScales,
   getScreenOffset,
+  hexagonPath,
+  SEA_COLOR,
+  SEA_SIZE_MULTIPLIER,
   STATE_STYLE,
   strokeContinentOutline,
   UNCLAIMED_TERRITORY_COLOR,
@@ -39,7 +42,11 @@ export interface DrawCanvasParams {
   imageRef: RefObject<HTMLImageElement | null>;
   supplyLineEdgesByPlayer: Map<number, RailEdge[]>;
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
+  seas: GameState['seas'];
   fortifyPathTerritoryIds: number[][];
+  attackPathTerritoryIds: number[][];
+  sailPathTerritoryIds: number[][];
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
   attackStartTerritoryId: number | null;
@@ -75,6 +82,7 @@ export interface DrawCanvasParams {
   fortifyTroops: number;
   fortifyStartTerritoryId: number | null;
   frozenTroopsRef: RefObject<Map<number, number>>;
+  frozenSeaShipsRef: RefObject<Map<number, GameState['seas'][number]['ships']>>;
   cardByTerritoryId: Map<number, Card>;
   ownedTerritoryIds: Set<number>;
   cardsOpen: boolean;
@@ -92,7 +100,11 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     imageRef,
     supplyLineEdgesByPlayer,
     territories,
+    seaTerritories,
+    seas,
     fortifyPathTerritoryIds,
+    attackPathTerritoryIds,
+    sailPathTerritoryIds,
     portalTerritoryIds,
     portalsEnabled,
     attackStartTerritoryId,
@@ -126,6 +138,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     fortifyTroops,
     fortifyStartTerritoryId,
     frozenTroopsRef,
+    frozenSeaShipsRef,
     cardByTerritoryId,
     ownedTerritoryIds,
     cardsOpen,
@@ -180,6 +193,9 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   });
 
   const territoryById = new Map(territories.map((t) => [t.id, t]));
+  const pathPointById: Map<number, Point> = new Map(
+    [...territories, ...seaTerritories].map((t) => [t.id, t]),
+  );
 
   if (supplyLineEdgesByPlayer.size > 0) {
     drawSupplyLines(
@@ -215,11 +231,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     if (fromVisible && toVisible) return undefined;
     return fromVisible ? 'end' : 'start';
   };
-  const drawArrowSegment = (
-    a: Territory,
-    b: Territory,
-    fade?: 'start' | 'end',
-  ) => {
+  const drawArrowSegment = (a: Point, b: Point, fade?: 'start' | 'end') => {
     drawFortifyPath(
       ctx,
       buildWrappedPathSegments([a, b], toScreen, imgW, imgH),
@@ -227,51 +239,28 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     );
   };
 
-  if (fortifyPathTerritoryIds.length > 0) {
-    for (const run of fortifyPathTerritoryIds) {
+  const drawPathRuns = (runs: number[][]) => {
+    for (const run of runs) {
       if (run.length < 2) continue;
       const worldPath = run
-        .map((id) => territoryById.get(id))
-        .filter((t): t is Territory => !!t);
+        .map((id) => pathPointById.get(id))
+        .filter((p): p is Point => !!p);
       if (worldPath.length !== run.length) continue;
       for (let i = 0; i < worldPath.length - 1; i++) {
-        if (
-          isPortalHop(
-            worldPath[i].id,
-            worldPath[i + 1].id,
-            portalTerritoryIds,
-            portalsEnabled,
-          )
-        )
+        if (isPortalHop(run[i], run[i + 1], portalTerritoryIds, portalsEnabled))
           continue;
         drawArrowSegment(
           worldPath[i],
           worldPath[i + 1],
-          fadeForPair(worldPath[i].id, worldPath[i + 1].id),
+          fadeForPair(run[i], run[i + 1]),
         );
       }
     }
-  }
+  };
 
-  if (
-    attackStartTerritoryId !== null &&
-    attackEndTerritoryId !== null &&
-    !isPortalHop(
-      attackStartTerritoryId,
-      attackEndTerritoryId,
-      portalTerritoryIds,
-      portalsEnabled,
-    )
-  ) {
-    const start = territoryById.get(attackStartTerritoryId);
-    const end = territoryById.get(attackEndTerritoryId);
-    if (start && end)
-      drawArrowSegment(
-        start,
-        end,
-        fadeForPair(attackStartTerritoryId, attackEndTerritoryId),
-      );
-  }
+  drawPathRuns(fortifyPathTerritoryIds);
+  drawPathRuns(attackPathTerritoryIds);
+  drawPathRuns(sailPathTerritoryIds);
 
   if (
     replayConquestArrow &&
@@ -337,6 +326,59 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     displayedToxinTerritories.map((t) => [t.id, t]),
   );
   const now = areAnimationsDisabled() ? 0 : performance.now();
+
+  const seaShipsById = new Map(seas.map((s) => [s.id, s.ships]));
+  for (const s of seaTerritories) {
+    const isVisible = visibleSet === null || visibleSet.has(s.id);
+    const p = toScreen(s);
+    const hexRadius = VERTEX_RADIUS * scaleX * SEA_SIZE_MULTIPLIER;
+
+    if (!isVisible) {
+      drawFogCloud(ctx, p.x, p.y, hexRadius, now, s.id);
+      continue;
+    }
+
+    ctx.beginPath();
+    hexagonPath(ctx, p.x, p.y, hexRadius);
+    ctx.fillStyle = SEA_COLOR;
+    ctx.fill();
+    ctx.strokeStyle = STATE_STYLE[nodeState(s.id)].stroke;
+    ctx.lineWidth = STATE_STYLE[nodeState(s.id)].width * zoom;
+    ctx.stroke();
+
+    const ships = (
+      frozenSeaShipsRef.current.get(s.id) ??
+      seaShipsById.get(s.id) ??
+      []
+    ).filter((b) => b.ships > 0);
+    const circleRadius = VERTEX_RADIUS * scaleX * 0.6;
+    const dist = hexRadius + circleRadius + 4 * zoom;
+    ships.forEach((ship, i) => {
+      const angle = (Math.PI * 2 * i) / ships.length - Math.PI / 2;
+      const cx = p.x + dist * Math.cos(angle);
+      const cy = p.y + dist * Math.sin(angle);
+      const fillColor = playerColor(colorByPlayerId.get(ship.playerId) ?? 0);
+      ctx.beginPath();
+      ctx.arc(cx, cy, circleRadius, 0, Math.PI * 2);
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2 * zoom;
+      ctx.stroke();
+
+      ctx.fillStyle = contrastTextColor(fillColor);
+      ctx.font = `bold ${circleRadius}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      const text = String(ship.ships);
+      const metrics = ctx.measureText(text);
+      const baselineY =
+        cy +
+        (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
+          2;
+      ctx.fillText(text, cx, baselineY);
+    });
+  }
 
   for (const t of territories) {
     const isVisible = visibleSet === null || visibleSet.has(t.id);

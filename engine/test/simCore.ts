@@ -43,6 +43,7 @@ function buildGridMap(name: string, cols: number, rows: number): GameMap {
   return {
     name,
     territories,
+    seaTerritories: [],
     bonuses: Array.from({ length: continents }, () => 3),
   };
 }
@@ -120,12 +121,14 @@ export function runGame(
   created.mapName = map.name;
   created.generatedMap = {
     territories: map.territories,
+    seaTerritories: [],
     bonuses: map.bonuses,
     imageSrc: '',
     seed: mapName,
     size: 'medium',
     type: 'terrain',
     fill: 'full',
+    seas: false,
   };
   updateSettings(host.id, { slots: roster.length, ...settings });
   for (let i = 1; i < roster.length; i++)

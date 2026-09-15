@@ -1,11 +1,12 @@
 import { GridDimensions } from '../core/params';
 import { GridPoint } from './placement';
 
-export function computeTerritoryCentroids(
+function bestInteriorPoints(
   labelGrid: Int16Array,
   territoryCount: number,
   dims: GridDimensions,
-): GridPoint[] {
+  forbidden: Uint8Array | undefined,
+): { points: GridPoint[]; found: Uint8Array } {
   const { width, height } = dims;
   const size = width * height;
 
@@ -20,16 +21,18 @@ export function computeTerritoryCentroids(
     count[id]++;
   }
 
-  const dist = distanceToOwnBorder(labelGrid, width, height, size);
+  const dist = distanceToOwnBorder(labelGrid, width, height, size, forbidden);
 
   const bestDist = new Int32Array(territoryCount);
   const bestOffset = new Float64Array(territoryCount).fill(Infinity);
-  const result: GridPoint[] = [];
-  for (let id = 0; id < territoryCount; id++) result.push({ gx: 0, gy: 0 });
+  const found = new Uint8Array(territoryCount);
+  const points: GridPoint[] = [];
+  for (let id = 0; id < territoryCount; id++) points.push({ gx: 0, gy: 0 });
 
   for (let i = 0; i < size; i++) {
     const id = labelGrid[i];
     if (id < 0) continue;
+    if (forbidden && forbidden[i]) continue;
     const d = dist[i];
     if (d < bestDist[id]) continue;
     const gx = i % width;
@@ -41,11 +44,32 @@ export function computeTerritoryCentroids(
     if (d > bestDist[id] || offset < bestOffset[id]) {
       bestDist[id] = d;
       bestOffset[id] = offset;
-      result[id] = { gx, gy };
+      found[id] = 1;
+      points[id] = { gx, gy };
     }
   }
 
-  return result;
+  return { points, found };
+}
+
+export function computeTerritoryCentroids(
+  labelGrid: Int16Array,
+  territoryCount: number,
+  dims: GridDimensions,
+  forbidden?: Uint8Array,
+): GridPoint[] {
+  const strict = bestInteriorPoints(labelGrid, territoryCount, dims, forbidden);
+  if (!forbidden) return strict.points;
+
+  const fallback = bestInteriorPoints(
+    labelGrid,
+    territoryCount,
+    dims,
+    undefined,
+  );
+  return strict.points.map((point, id) =>
+    strict.found[id] ? point : fallback.points[id],
+  );
 }
 
 function distanceToOwnBorder(
@@ -53,6 +77,7 @@ function distanceToOwnBorder(
   width: number,
   height: number,
   size: number,
+  forbidden: Uint8Array | undefined,
 ): Int32Array {
   const dist = new Int32Array(size).fill(-1);
   const queue = new Int32Array(size);
@@ -71,7 +96,14 @@ function distanceToOwnBorder(
       (gx < width - 1 && labelGrid[i + 1] !== id) ||
       (gy > 0 && labelGrid[i - width] !== id) ||
       (gy < height - 1 && labelGrid[i + width] !== id);
-    if (onEdge || touchesOther) {
+    const touchesForbidden =
+      forbidden !== undefined &&
+      (forbidden[i] === 1 ||
+        (gx > 0 && forbidden[i - 1] === 1) ||
+        (gx < width - 1 && forbidden[i + 1] === 1) ||
+        (gy > 0 && forbidden[i - width] === 1) ||
+        (gy < height - 1 && forbidden[i + width] === 1));
+    if (onEdge || touchesOther || touchesForbidden) {
       dist[i] = 1;
       queue[tail++] = i;
     }

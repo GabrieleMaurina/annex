@@ -11,20 +11,30 @@ export interface Territory {
   neighbors: number[];
 }
 
+export interface SeaTerritory {
+  id: number;
+  x: number;
+  y: number;
+  neighbors: number[];
+}
+
 export interface GameMap {
   name: string;
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
   bonuses: number[];
 }
 
 export interface GeneratedGameMap {
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
   bonuses: number[];
   imageSrc: string;
   seed: string;
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  seas: boolean;
 }
 
 export interface Player {
@@ -103,6 +113,7 @@ export type TurnPhase =
   | 'troop'
   | 'capital'
   | 'deploy'
+  | 'sail'
   | 'attack'
   | 'fortify'
   | 'entrench'
@@ -147,6 +158,29 @@ export type ReplayAnimation =
       intercepted: boolean;
       interceptFromTerritoryId: number | null;
       playerId: number;
+    }
+  | {
+      type: 'buyShips';
+      sourceTerritoryId: number;
+      seaTerritoryId: number;
+      ships: number;
+      fromPool: boolean;
+      playerId: number;
+    }
+  | {
+      type: 'sail';
+      fromSeaTerritoryId: number;
+      toSeaTerritoryId: number;
+      ships: number;
+      playerId: number;
+    }
+  | {
+      type: 'attackSea';
+      seaTerritoryId: number;
+      attackerId: number;
+      defenderId: number;
+      attackLosses: number;
+      defenceLosses: number;
     };
 
 export interface ReplayTerritory {
@@ -177,11 +211,18 @@ export interface ReplayPlayerState {
   nukeProjects: NukeProject[];
 }
 
+export interface ReplaySeaShips {
+  seaTerritoryId: number;
+  playerId: number;
+  ships: number;
+}
+
 export interface ReplayFrame {
   territories: ReplayTerritory[];
   toxinTerritories: ReplayToxinTerritory[];
   radiationTerritories: number[];
   radiationUpcoming: number[];
+  seaShips: ReplaySeaShips[];
   hands: ReplayHand[];
   playerStates: ReplayPlayerState[];
   turnPhase: TurnPhase;
@@ -234,6 +275,7 @@ export interface PlayerStats {
 export interface PlayerGameMap {
   id: string;
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
   bonuses: number[];
   imageSrc: string;
 }
@@ -299,6 +341,11 @@ export interface Game {
   attackStartTerritoryId: number | null;
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
+  sailStartTerritoryId: number | null;
+  sailEndTerritoryId: number | null;
+  attackSeaTerritoryId: number | null;
+  attackSeaDefenderId: number | null;
+  seaShips: Map<number, Map<number, number>>;
   playerIds: number[];
   spectatorIds: number[];
   playerTeams: Map<number, number>;

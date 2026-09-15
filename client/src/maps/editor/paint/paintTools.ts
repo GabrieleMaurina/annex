@@ -4,11 +4,11 @@ import {
   DUNGEON_VOID_COLOR,
   DUNGEON_WALL_COLOR,
   EARTH_TONES,
+  SEA_COLOR,
   TEMPLE_SEAM_COLOR,
   TEMPLE_TONES,
   TEMPLE_VOID_COLOR,
   TEMPLE_WALL_COLOR,
-  WATER_COLOR,
 } from 'engine';
 
 export type PaintTool =
@@ -32,7 +32,7 @@ export interface PaletteGroup {
 
 export const PALETTE_GROUPS: PaletteGroup[] = [
   { label: 'Basic', colors: ['#000000', '#ffffff'] },
-  { label: 'Terrain', colors: [...EARTH_TONES, WATER_COLOR] },
+  { label: 'Terrain', colors: [...EARTH_TONES, SEA_COLOR] },
   {
     label: 'Dungeon',
     colors: [

@@ -135,6 +135,10 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     });
   }
 
+  function cycleLocalPlayerColor(playerId: number) {
+    connector.cycleLocalPlayerColor(playerId);
+  }
+
   function addSlot() {
     applySettings({ slots: game.slots + 1 });
   }
@@ -332,6 +336,9 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
           connector.isOffline()
             ? (playerId, name) => connector.setLocalPlayerName(playerId, name)
             : undefined
+        }
+        cycleLocalPlayerColor={
+          connector.isOffline() ? cycleLocalPlayerColor : undefined
         }
         setBotProfile={setBotProfile}
         removeBot={removeBot}

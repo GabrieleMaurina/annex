@@ -17,7 +17,7 @@ const SEA_SHORTCUT_MIN_LAND_HOPS = 6;
 const SEA_SHORTCUT_MAX_SPAN_FRACTION = 0.14;
 const SEA_SHORTCUT_MAX_PER_LANDMASS = 2;
 
-function findComponents(
+export function findComponents(
   count: number,
   adjacency: Map<number, Set<number>>,
 ): number[] {
@@ -41,7 +41,11 @@ function findComponents(
   return componentOf;
 }
 
-function addEdge(adjacency: Map<number, Set<number>>, a: number, b: number) {
+export function addEdge(
+  adjacency: Map<number, Set<number>>,
+  a: number,
+  b: number,
+) {
   if (!adjacency.has(a)) adjacency.set(a, new Set());
   if (!adjacency.has(b)) adjacency.set(b, new Set());
   adjacency.get(a)!.add(b);
@@ -86,31 +90,31 @@ function landmassOfTerritories(
   return componentOf;
 }
 
-interface WaterLinkGeometry {
+interface SeaLinkGeometry {
   crossesLand: boolean;
-  waterSpan: number;
+  seaSpan: number;
 }
 
-const BLOCKED_LINK: WaterLinkGeometry = {
+const BLOCKED_LINK: SeaLinkGeometry = {
   crossesLand: true,
-  waterSpan: Infinity,
+  seaSpan: Infinity,
 };
 
-function waterLinkGeometry(
+function seaLinkGeometry(
   from: GridPoint,
   to: GridPoint,
   labelGrid: Int16Array,
   dims: GridDimensions,
   territoryA: number,
   territoryB: number,
-): WaterLinkGeometry {
+): SeaLinkGeometry {
   const dx = to.gx - from.gx;
   const dy = to.gy - from.gy;
   const length = Math.hypot(dx, dy);
   const steps = Math.max(2, Math.ceil(length * 3));
 
-  let firstWater = -1;
-  let lastWater = -1;
+  let firstSea = -1;
+  let lastSea = -1;
   for (let i = 1; i < steps; i++) {
     const t = i / steps;
     const gx = Math.round(from.gx + dx * t);
@@ -120,8 +124,8 @@ function waterLinkGeometry(
       territory = labelGrid[gy * dims.width + gx];
     }
     if (territory < 0) {
-      if (firstWater === -1) firstWater = i;
-      lastWater = i;
+      if (firstSea === -1) firstSea = i;
+      lastSea = i;
       continue;
     }
     if (territory !== territoryA && territory !== territoryB) {
@@ -129,11 +133,11 @@ function waterLinkGeometry(
     }
   }
 
-  if (firstWater === -1) return BLOCKED_LINK;
+  if (firstSea === -1) return BLOCKED_LINK;
 
   return {
     crossesLand: false,
-    waterSpan: ((lastWater - firstWater + 1) / steps) * length,
+    seaSpan: ((lastSea - firstSea + 1) / steps) * length,
   };
 }
 
@@ -185,13 +189,13 @@ function landmassSizes(landmassOf: number[]): Map<number, number> {
   return sizes;
 }
 
-function canAddWaterLink(
+function canAddSeaLink(
   territory: number,
-  waterLinked: Set<number>,
+  seaLinked: Set<number>,
   landmassOf: number[],
   sizes: Map<number, number>,
 ): boolean {
-  return !waterLinked.has(territory) || sizes.get(landmassOf[territory]) === 1;
+  return !seaLinked.has(territory) || sizes.get(landmassOf[territory]) === 1;
 }
 
 function weightedPick(rng: Rng, weights: number[]): number {
@@ -220,7 +224,7 @@ export function addRedundantBridges(
   const sizes = landmassSizes(landmassOf);
 
   const bridgeCountByLandmass = new Map<number, number>();
-  const waterLinked = new Set<number>();
+  const seaLinked = new Set<number>();
   const bridgePairs = new Set<string>();
   for (const { a, b } of specialEdges) {
     bridgeCountByLandmass.set(
@@ -231,8 +235,8 @@ export function addRedundantBridges(
       landmassOf[b],
       (bridgeCountByLandmass.get(landmassOf[b]) ?? 0) + 1,
     );
-    waterLinked.add(a);
-    waterLinked.add(b);
+    seaLinked.add(a);
+    seaLinked.add(b);
     bridgePairs.add(pairKey(a, b));
   }
 
@@ -270,17 +274,17 @@ export function addRedundantBridges(
         }
       }
 
-      const options: { u: number; v: number; waterSpan: number }[] = [];
+      const options: { u: number; v: number; seaSpan: number }[] = [];
       let minSpan = Infinity;
       for (let u = 0; u < count; u++) {
         if (landmassOf[u] !== landmass) continue;
-        if (!canAddWaterLink(u, waterLinked, landmassOf, sizes)) continue;
+        if (!canAddSeaLink(u, seaLinked, landmassOf, sizes)) continue;
         for (let v = 0; v < count; v++) {
           if (landmassOf[v] === landmass) continue;
           if (nearExistingBridgehead.has(v)) continue;
-          if (!canAddWaterLink(v, waterLinked, landmassOf, sizes)) continue;
+          if (!canAddSeaLink(v, seaLinked, landmassOf, sizes)) continue;
           if (bridgePairs.has(pairKey(u, v))) continue;
-          const geom = waterLinkGeometry(
+          const geom = seaLinkGeometry(
             centroids[u],
             centroids[v],
             labelGrid,
@@ -290,8 +294,8 @@ export function addRedundantBridges(
           );
           if (geom.crossesLand) continue;
           if (crossesExistingLink(centroids, u, v, specialEdges)) continue;
-          options.push({ u, v, waterSpan: geom.waterSpan });
-          if (geom.waterSpan < minSpan) minSpan = geom.waterSpan;
+          options.push({ u, v, seaSpan: geom.seaSpan });
+          if (geom.seaSpan < minSpan) minSpan = geom.seaSpan;
         }
       }
       if (options.length === 0) break;
@@ -301,12 +305,12 @@ export function addRedundantBridges(
         minSpan * MAX_BRIDGE_SPAN_RATIO,
         mapDiagonal * MAX_BRIDGE_SPAN_FRACTION,
       );
-      const viable = options.filter((o) => o.waterSpan <= spanCap);
+      const viable = options.filter((o) => o.seaSpan <= spanCap);
 
-      const weights = viable.map(({ u, v, waterSpan }) => {
-        let weight = (minSpan / waterSpan) ** BRIDGE_DISTANCE_EXPONENT;
-        if (!waterLinked.has(u)) weight *= FRESH_ENDPOINT_BONUS;
-        if (!waterLinked.has(v)) weight *= FRESH_ENDPOINT_BONUS;
+      const weights = viable.map(({ u, v, seaSpan }) => {
+        let weight = (minSpan / seaSpan) ** BRIDGE_DISTANCE_EXPONENT;
+        if (!seaLinked.has(u)) weight *= FRESH_ENDPOINT_BONUS;
+        if (!seaLinked.has(v)) weight *= FRESH_ENDPOINT_BONUS;
         const continentLink = pairKey(
           continentIdByTerritory[u],
           continentIdByTerritory[v],
@@ -331,8 +335,8 @@ export function addRedundantBridges(
       addEdge(adjacency, chosen.u, chosen.v);
       specialEdges.push({ a: chosen.u, b: chosen.v });
       bridgePairs.add(pairKey(chosen.u, chosen.v));
-      waterLinked.add(chosen.u);
-      waterLinked.add(chosen.v);
+      seaLinked.add(chosen.u);
+      seaLinked.add(chosen.v);
       bridgeCountByLandmass.set(landmass, existing + 1);
       bridgeCountByLandmass.set(
         landmassOf[chosen.v],
@@ -378,10 +382,10 @@ export function addSeaShortcuts(
     specialEdges.flatMap(({ a, b }) => [`${a},${b}`, `${b},${a}`]),
   );
   const landmassOf = landmassOfTerritories(count, adjacency, specialEdges);
-  const waterLinked = new Set<number>();
+  const seaLinked = new Set<number>();
   for (const { a, b } of specialEdges) {
-    waterLinked.add(a);
-    waterLinked.add(b);
+    seaLinked.add(a);
+    seaLinked.add(b);
   }
 
   const membersByLandmass = new Map<number, number[]>();
@@ -396,15 +400,15 @@ export function addSeaShortcuts(
 
     const candidates: { a: number; b: number; score: number }[] = [];
     for (const a of members) {
-      if (waterLinked.has(a)) continue;
+      if (seaLinked.has(a)) continue;
       const hops = landHopDistances(a, adjacency, special);
       for (const b of members) {
-        if (b <= a || waterLinked.has(b)) continue;
+        if (b <= a || seaLinked.has(b)) continue;
         const landHops = hops.get(b);
         if (landHops === undefined || landHops < SEA_SHORTCUT_MIN_LAND_HOPS) {
           continue;
         }
-        const geom = waterLinkGeometry(
+        const geom = seaLinkGeometry(
           centroids[a],
           centroids[b],
           labelGrid,
@@ -412,9 +416,9 @@ export function addSeaShortcuts(
           a,
           b,
         );
-        if (geom.crossesLand || geom.waterSpan > maxSpan) continue;
+        if (geom.crossesLand || geom.seaSpan > maxSpan) continue;
         if (crossesExistingLink(centroids, a, b, specialEdges)) continue;
-        candidates.push({ a, b, score: landHops / geom.waterSpan });
+        candidates.push({ a, b, score: landHops / geom.seaSpan });
       }
     }
     candidates.sort((x, y) => y.score - x.score);
@@ -422,12 +426,12 @@ export function addSeaShortcuts(
     let added = 0;
     for (const { a, b } of candidates) {
       if (added >= SEA_SHORTCUT_MAX_PER_LANDMASS) break;
-      if (waterLinked.has(a) || waterLinked.has(b)) continue;
+      if (seaLinked.has(a) || seaLinked.has(b)) continue;
       if (crossesExistingLink(centroids, a, b, specialEdges)) continue;
       addEdge(adjacency, a, b);
       specialEdges.push({ a, b });
-      waterLinked.add(a);
-      waterLinked.add(b);
+      seaLinked.add(a);
+      seaLinked.add(b);
       added++;
     }
   }
@@ -472,13 +476,13 @@ export function ensureConnected(
     let overLand: SpecialEdge | null = null;
     for (const { a, b } of crossPairs) {
       if (
-        !canAddWaterLink(a, linked, landmassOf, sizes) ||
-        !canAddWaterLink(b, linked, landmassOf, sizes)
+        !canAddSeaLink(a, linked, landmassOf, sizes) ||
+        !canAddSeaLink(b, linked, landmassOf, sizes)
       ) {
         continue;
       }
       if (
-        waterLinkGeometry(centroids[a], centroids[b], labelGrid, dims, a, b)
+        seaLinkGeometry(centroids[a], centroids[b], labelGrid, dims, a, b)
           .crossesLand
       ) {
         overLand ??= { a, b };

@@ -10,4 +10,14 @@ export function registerDeployHandlers(socket: Socket, engine: Engine) {
   registerGameAction(socket, 'game:deploy', (playerId, data) =>
     engine.deploy(playerId, data.territoryId, data.troops),
   );
+
+  registerGameAction(socket, 'game:buyShips', (playerId, data) =>
+    engine.buyShips(
+      playerId,
+      data.sourceTerritoryId,
+      data.seaTerritoryId,
+      data.ships,
+      data.fromPool,
+    ),
+  );
 }

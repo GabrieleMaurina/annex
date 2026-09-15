@@ -11,7 +11,11 @@ import {
 import BurgerMenu from './common/BurgerMenu';
 import SettingsMenu from './common/SettingsMenu';
 import { connector } from './connector';
-import { registerGeneratedMap, type Territory } from './game/mapData';
+import {
+  registerGeneratedMap,
+  type SeaTerritory,
+  type Territory,
+} from './game/mapData';
 import { applySavedGameSettings } from './lib/gameSetup';
 import { applyServerSettings, setPlayerName } from './lib/player';
 import type { Account, Ack, IdentifyResult } from './lib/types';
@@ -75,6 +79,7 @@ function App() {
   const [sessionTakenOver, setSessionTakenOver] = useState(false);
   const [selfId, setSelfId] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [serverUnreachable, setServerUnreachable] = useState(false);
   const [replayMapOpen, setReplayMapOpen] = useState(false);
   const offlineSetupApplied = useRef(false);
 
@@ -95,9 +100,11 @@ function App() {
   const refreshSession = useCallback(function load() {
     connector.session((res) => {
       if (!res.name) {
+        setServerUnreachable(true);
         setTimeout(load, 1000);
         return;
       }
+      setServerUnreachable(false);
       setAccount(res.account);
       setPlayerName(res.name);
       applyServerSettings(
@@ -221,11 +228,13 @@ function App() {
     function onMapGenerated(data: {
       name: string;
       territories: Territory[];
+      seaTerritories: SeaTerritory[];
       bonuses: number[];
       imageSrc: string;
     }) {
       registerGeneratedMap(data.name, {
         territories: data.territories,
+        seaTerritories: data.seaTerritories,
         bonuses: data.bonuses,
         imageSrc: data.imageSrc,
       });
@@ -367,7 +376,12 @@ function App() {
             )
           }
         />
-        <Route path="/maps" element={<Maps account={account} />} />
+        <Route
+          path="/maps"
+          element={
+            <Maps account={account} serverUnreachable={serverUnreachable} />
+          }
+        />
         <Route
           path="/maps/mine"
           element={
@@ -381,7 +395,8 @@ function App() {
         <Route
           path="/maps/editor"
           element={
-            !sessionReady ? null : account ? (
+            !sessionReady && !serverUnreachable ? null : account ||
+              serverUnreachable ? (
               <MapEditor account={account} />
             ) : (
               <Navigate to="/" replace />

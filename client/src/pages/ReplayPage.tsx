@@ -86,6 +86,12 @@ function buildGameState(
     attackEndTerritoryId: null,
     attackConquestMinTroops: null,
     fortifyPathTerritoryIds: [],
+    attackPathTerritoryIds: [],
+    sailStartTerritoryId: null,
+    sailEndTerritoryId: null,
+    sailPathTerritoryIds: [],
+    attackSeaTerritoryId: null,
+    attackSeaDefenderId: null,
     winnerIds: doc.winnerIds,
     finalRanking: [...doc.results]
       .sort((a, b) => a.rank - b.rank)
@@ -126,6 +132,7 @@ function buildGameState(
       entrenchedTurns: t.entrenchedTurns,
     })),
     toxinTerritories: [],
+    seas: [],
     visibleTerritoryIds: undefined,
   };
 }
@@ -151,6 +158,7 @@ function ReplayPage({ navigate, onViewChange }: Props) {
         if (map) {
           registerGeneratedMap(game.mapId, {
             territories: map.territories,
+            seaTerritories: map.seaTerritories,
             bonuses: map.bonuses,
             imageSrc: `data:${map.imageMime};base64,${map.image}`,
           });

@@ -14,6 +14,7 @@ import { handleGameEnded } from './elo';
 import {
   registerAllianceHandlers,
   registerAttackHandlers,
+  registerAttackSeaHandlers,
   registerBotLobbyHandlers,
   registerCapitalHandlers,
   registerCardHandlers,
@@ -25,6 +26,7 @@ import {
   registerMapGenHandlers,
   registerNukeHandlers,
   registerReplayHandlers,
+  registerSailHandlers,
   registerTerritoryHandlers,
   registerToxinsHandlers,
   registerTroopHandlers,
@@ -144,6 +146,11 @@ const callbacks: EngineCallbacks = {
     emitTo(io, playerId, 'game:deployedMany', payload),
   onFortified: (playerId, payload) =>
     emitTo(io, playerId, 'game:fortified', payload),
+  onShipsBought: (playerId, payload) =>
+    emitTo(io, playerId, 'game:shipsBought', payload),
+  onSailed: (playerId, payload) => emitTo(io, playerId, 'game:sailed', payload),
+  onSeaAttacked: (playerId, payload) =>
+    emitTo(io, playerId, 'game:seaAttacked', payload),
   onEntrenched: (playerId, payload) =>
     emitTo(io, playerId, 'game:entrenched', payload),
   onToxined: (playerId, payload) =>
@@ -194,11 +201,13 @@ io.on('connection', (socket) => {
   registerCapitalHandlers(socket, engine);
   registerDeployHandlers(socket, engine);
   registerEmojiHandlers(socket, engine);
+  registerSailHandlers(socket, engine);
   registerFortifyHandlers(socket, engine);
   registerEntrenchHandlers(socket, engine);
   registerToxinsHandlers(socket, engine);
   registerNukeHandlers(socket, engine);
   registerAttackHandlers(socket, engine);
+  registerAttackSeaHandlers(socket, engine);
   registerCardHandlers(socket, engine);
   registerAllianceHandlers(socket, engine);
   registerReplayHandlers(socket, engine);

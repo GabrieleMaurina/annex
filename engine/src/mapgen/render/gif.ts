@@ -3,13 +3,18 @@ import { GridPoint } from '../pipeline/placement';
 import { hexToRgb, paletteGif } from './encodeGif';
 import {
   continentEarthTone,
+  SEA_COLOR,
   TERRITORY_STROKE_COLOR,
-  WATER_COLOR,
 } from './palette';
 
 const BORDER_RADIUS = 2;
 const DASH_ON = 8;
 const DASH_PERIOD = 22;
+
+export interface SeaRenderLayer {
+  seaLabelGrid: Int16Array;
+  landCount: number;
+}
 
 export function renderTerrainImage(
   labelGrid: Int16Array,
@@ -18,6 +23,7 @@ export function renderTerrainImage(
   continentIdByTerritory: number[],
   centroids: GridPoint[],
   specialEdges: SpecialEdge[],
+  seaLayer?: SeaRenderLayer,
 ): string {
   const { indices, palette } = rasterize(
     labelGrid,
@@ -26,6 +32,7 @@ export function renderTerrainImage(
     continentIdByTerritory,
     centroids,
     specialEdges,
+    seaLayer,
   );
   return paletteGif(width, height, indices, palette);
 }
@@ -37,6 +44,7 @@ function rasterize(
   continentIdByTerritory: number[],
   centroids: GridPoint[],
   specialEdges: SpecialEdge[],
+  seaLayer: SeaRenderLayer | undefined,
 ): { indices: Uint8Array; palette: number[] } {
   const palette: number[] = [];
   const paletteOf = new Map<number, number>();
@@ -50,7 +58,7 @@ function rasterize(
     return i;
   };
 
-  const water = index(hexToRgb(WATER_COLOR));
+  const sea = index(hexToRgb(SEA_COLOR));
   const stroke = index(hexToRgb(TERRITORY_STROKE_COLOR));
   const territoryColor = continentIdByTerritory.map((c) =>
     index(hexToRgb(continentEarthTone(c))),
@@ -59,13 +67,23 @@ function rasterize(
   const size = width * height;
   const r = BORDER_RADIUS;
 
+  const combinedLabel = seaLayer
+    ? Int32Array.from(labelGrid, (label, i) =>
+        label >= 0
+          ? label
+          : seaLayer.seaLabelGrid[i] >= 0
+            ? seaLayer.landCount + seaLayer.seaLabelGrid[i]
+            : -1,
+      )
+    : labelGrid;
+
   const thin = new Uint8Array(size);
   for (let i = 0; i < size; i++) {
-    const label = labelGrid[i];
+    const label = combinedLabel[i];
     const x = i % width;
     if (
-      (x + 1 < width && labelGrid[i + 1] !== label) ||
-      (i + width < size && labelGrid[i + width] !== label)
+      (x + 1 < width && combinedLabel[i + 1] !== label) ||
+      (i + width < size && combinedLabel[i + width] !== label)
     )
       thin[i] = 1;
   }
@@ -88,7 +106,7 @@ function rasterize(
   const indices = new Uint8Array(size);
   for (let i = 0; i < size; i++) {
     const label = labelGrid[i];
-    indices[i] = seam[i] ? stroke : label < 0 ? water : territoryColor[label];
+    indices[i] = seam[i] ? stroke : label < 0 ? sea : territoryColor[label];
   }
 
   for (const { a, b } of specialEdges) {

@@ -34,6 +34,9 @@ import {
   getScales,
   getTerritoryScreenPos,
 } from './helpers';
+import { useAttackSeaFlow } from './hooks/sea/useAttackSeaFlow';
+import { useDeploySeaFlow } from './hooks/sea/useDeploySeaFlow';
+import { useSailFlow } from './hooks/sea/useSailFlow';
 import { useAllianceUI } from './hooks/useAllianceUI';
 import { useAttackFlow } from './hooks/useAttackFlow';
 import { useCanvasInteractions } from './hooks/useCanvasInteractions';
@@ -101,6 +104,13 @@ export interface GameMapProps {
   attackStartTerritoryId: number | null;
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
+  attackPathTerritoryIds: number[][];
+  sailStartTerritoryId: number | null;
+  sailEndTerritoryId: number | null;
+  sailPathTerritoryIds: number[][];
+  attackSeaTerritoryId: number | null;
+  attackSeaDefenderId: number | null;
+  seas: GameState['seas'];
   nextSetBaseValues: GameState['nextSetBaseValues'];
   upcomingSetValues: GameState['upcomingSetValues'];
   results: Map<number, ResultRow> | null;
@@ -172,6 +182,13 @@ function GameMap({
   attackStartTerritoryId,
   attackEndTerritoryId,
   attackConquestMinTroops,
+  attackPathTerritoryIds,
+  sailStartTerritoryId,
+  sailEndTerritoryId,
+  sailPathTerritoryIds,
+  attackSeaTerritoryId,
+  attackSeaDefenderId,
+  seas,
   nextSetBaseValues,
   upcomingSetValues,
   results,
@@ -203,6 +220,7 @@ function GameMap({
     canvasRef,
     imageRef,
     territories,
+    seaTerritories,
     bonuses,
     transform,
     setTransform,
@@ -229,6 +247,8 @@ function GameMap({
   const {
     ownerByIdRef,
     territoriesRef,
+    seaTerritoriesRef,
+    seasRef,
     visibleTerritoryIdsRef,
     colorByPlayerIdRef,
     playersRef,
@@ -251,6 +271,7 @@ function GameMap({
     frozenOwnerRef,
     frozenVisibleTerritoryIdsRef,
     frozenTerritoryDataRef,
+    frozenSeaShipsRef,
     toxinPlacedAtRef,
     radiationPlacedAtRef,
     tankFireId,
@@ -265,6 +286,8 @@ function GameMap({
     visibleTerritoryIds,
     radiationTerritoryIds,
     territoriesRef,
+    seaTerritoriesRef,
+    seasRef,
     ownerByIdRef,
     colorByPlayerIdRef,
     visibleTerritoryIdsRef,
@@ -282,6 +305,7 @@ function GameMap({
     toxinTerritories: replayToxinTerritories,
     radiationTerritories: replayRadiationTerritories,
     radiationUpcoming: replayRadiationUpcoming,
+    seas: replaySeas,
     hands: replayHands,
     playerStates: replayPlayerStates,
     log: replayLog,
@@ -311,6 +335,7 @@ function GameMap({
         isCapital: isCapitalById.get(t.id) ?? false,
       }))
     : ownership;
+  const displayedSeas = replaySeas ?? seas;
   const ownerById = useMemo(
     () => new Map(displayedOwnership.map((o) => [o.id, o])),
     [displayedOwnership],
@@ -402,6 +427,8 @@ function GameMap({
   useEffect(() => {
     ownerByIdRef.current = ownerById;
     territoriesRef.current = territories;
+    seaTerritoriesRef.current = seaTerritories;
+    seasRef.current = seas;
     visibleTerritoryIdsRef.current = visibleTerritoryIds;
     colorByPlayerIdRef.current = new Map(
       players.map((pl) => [pl.id, pl.color]),
@@ -419,6 +446,8 @@ function GameMap({
     attackEndTerritoryId,
     attackConquestMinTroops,
     territories,
+    seaTerritories,
+    seas,
     ownerById,
     selfId,
     portalTerritoryIds,
@@ -430,10 +459,36 @@ function GameMap({
     setGame,
   });
 
+  const sailFlow = useSailFlow({
+    sailStartTerritoryId,
+    sailEndTerritoryId,
+    seaTerritories,
+    seas,
+    selfId,
+    turnPhase,
+    isMyTurn,
+    paused,
+    setGame,
+  });
+
+  const attackSeaFlow = useAttackSeaFlow({
+    attackSeaTerritoryId,
+    attackSeaDefenderId,
+    seaTerritories,
+    seas,
+    selfId,
+    turnPhase,
+    isMyTurn,
+    paused,
+    setGame,
+  });
+
   const turnFlow = useTurnActionFlows({
     fortifyStartTerritoryId,
     fortifyEndTerritoryId,
     territories,
+    seaTerritories,
+    seas,
     ownerById,
     selfId,
     fortification,
@@ -529,6 +584,19 @@ function GameMap({
     [nukeTurnId],
   );
 
+  const deploySeaFlow = useDeploySeaFlow({
+    selectedTerritoryId,
+    territories,
+    seaTerritories,
+    ownerById,
+    troopsToDeploy,
+    turnPhase,
+    isMyTurn,
+    paused,
+    selfId,
+    setGame,
+  });
+
   const cardsFlow = useCardsAndDeploy({
     turnPhase,
     isMyTurn,
@@ -544,6 +612,9 @@ function GameMap({
     setToasts,
     setGame,
   });
+
+  const deployTroopsPanelOpen =
+    cardsFlow.deployPanelOpen && !deploySeaFlow.comboActive;
 
   const emojiUI = useEmojiUI({
     selfId,
@@ -655,6 +726,28 @@ function GameMap({
   const interactions = useCanvasInteractions({
     canvasRef,
     territories,
+    seaTerritories,
+    sailStartTerritoryId,
+    sailEndTerritoryId,
+    sailStartCandidates: sailFlow.sailStartCandidates,
+    sailEndCandidates: sailFlow.sailEndCandidates,
+    sailPanelOpen: sailFlow.sailPanelOpen,
+    sailInputRef: sailFlow.sailInputRef,
+    selectSailStart: sailFlow.selectSailStart,
+    selectSailEnd: sailFlow.selectSailEnd,
+    submitSail: sailFlow.submitSail,
+    cancelSail: sailFlow.cancelSail,
+    attackSeaTerritoryId,
+    attackSeaDefenderId,
+    attackSeaStartCandidates: attackSeaFlow.attackSeaStartCandidates,
+    attackSeaPanelOpen: attackSeaFlow.attackSeaPanelOpen,
+    attackSeaInputRef: attackSeaFlow.attackSeaInputRef,
+    attackSeaRevealing: attackSeaFlow.attackSeaRevealing,
+    attackSeaDiceOnly: attackSeaFlow.attackSeaDiceOnly,
+    setAttackSeaDiceRoll: attackSeaFlow.setAttackSeaDiceRoll,
+    selectAttackSeaStart: attackSeaFlow.selectAttackSeaStart,
+    submitAttackSea: attackSeaFlow.submitAttackSea,
+    cancelAttackSea: attackSeaFlow.cancelAttackSea,
     transform,
     setTransform,
     imgDims,
@@ -714,10 +807,21 @@ function GameMap({
     cardsOpen: cardsOpen,
     selectedCombo: cardsFlow.selectedCombo,
     playCardSet: cardsFlow.playCardSet,
-    deployPanelOpen: cardsFlow.deployPanelOpen,
+    deployPanelOpen: deployTroopsPanelOpen,
     deployInputRef: cardsFlow.deployInputRef,
     setDeployTroops: cardsFlow.setDeployTroops,
     submitDeploy: cardsFlow.submitDeploy,
+    deploySeaCandidates: deploySeaFlow.deploySeaCandidates,
+    deploySeaTerritoryId: deploySeaFlow.deploySeaTerritoryId,
+    selectDeploySea: deploySeaFlow.selectDeploySea,
+    cancelDeploySea: deploySeaFlow.cancelDeploySea,
+    submitDeploySea: deploySeaFlow.submitDeploySea,
+    deploySeaPanelOpen: deploySeaFlow.deploySeaPanelOpen,
+    deploySeaInputRef: deploySeaFlow.deploySeaInputRef,
+    setDeploySeaShips: deploySeaFlow.setDeploySeaShips,
+    deploySeaMaxShips: deploySeaFlow.deploySeaMaxShips,
+    comboActive: deploySeaFlow.comboActive,
+    isSeaAdjacentToTerritory: deploySeaFlow.isSeaAdjacentToTerritory,
     fortifyPanelOpen: turnFlow.fortifyPanelOpen,
     setFortifyTroops: turnFlow.setFortifyTroops,
     cancelFortify: turnFlow.cancelFortify,
@@ -816,6 +920,8 @@ function GameMap({
     fortifyEndTerritoryId,
     attackStartTerritoryId,
     attackEndTerritoryId,
+    sailStartTerritoryId,
+    sailEndTerritoryId,
     replayConquestArrow,
     portalsEnabled,
     portalTerritoryIds,
@@ -824,6 +930,7 @@ function GameMap({
     radiationUpcomingById,
     visibleTerritoryIds,
     territories,
+    seaTerritories,
     startAnimationLoop,
   });
 
@@ -833,8 +940,12 @@ function GameMap({
     deployPanelStyle,
     fortifyPanelStyle,
     attackPanelStyle,
+    sailPanelStyle,
+    attackSeaPanelStyle,
+    deploySeaPanelStyle,
   } = usePanelStyles({
     territories,
+    seaTerritories,
     size,
     transform,
     imgDims,
@@ -844,6 +955,10 @@ function GameMap({
     fortifyEndTerritoryId,
     attackEndTerritoryId,
     attackDiceRollTerritoryId: attackFlow.attackDiceRoll?.territoryId,
+    sailEndTerritoryId,
+    attackSeaTerritoryId,
+    attackSeaDiceRollTerritoryId: attackSeaFlow.attackSeaDiceRoll?.territoryId,
+    deploySeaTerritoryId: deploySeaFlow.deploySeaTerritoryId,
   });
 
   useEffect(() => {
@@ -855,7 +970,11 @@ function GameMap({
       imageRef,
       supplyLineEdgesByPlayer,
       territories,
+      seaTerritories,
+      seas: displayedSeas,
       fortifyPathTerritoryIds,
+      attackPathTerritoryIds,
+      sailPathTerritoryIds,
       portalTerritoryIds,
       portalsEnabled,
       attackStartTerritoryId,
@@ -881,7 +1000,7 @@ function GameMap({
       isMyTurn,
       attackPendingConquest: attackFlow.attackPendingConquest,
       attackMoveTroops: attackFlow.attackMoveTroops,
-      deployPanelOpen: cardsFlow.deployPanelOpen,
+      deployPanelOpen: deployTroopsPanelOpen,
       selectedTerritoryId,
       deployTroops: cardsFlow.deployTroops,
       fortifyPanelOpen: turnFlow.fortifyPanelOpen,
@@ -889,6 +1008,7 @@ function GameMap({
       fortifyTroops: turnFlow.fortifyTroops,
       fortifyStartTerritoryId,
       frozenTroopsRef,
+      frozenSeaShipsRef,
       cardByTerritoryId: cardsFlow.cardByTerritoryId,
       ownedTerritoryIds,
       cardsOpen: cardsOpen,
@@ -1119,12 +1239,29 @@ function GameMap({
         setGame={setGame}
         nextPhaseEndsTurn={nextPhaseEndsTurn}
         tankFireId={tankFireId}
-        deployPanelOpen={cardsFlow.deployPanelOpen}
+        deployPanelOpen={deployTroopsPanelOpen}
         deployPanelStyle={deployPanelStyle}
         deployTroops={cardsFlow.deployTroops}
         deployInputRef={cardsFlow.deployInputRef}
         setDeployTroops={cardsFlow.setDeployTroops}
         submitDeploy={cardsFlow.submitDeploy}
+        deploySeaPanelOpen={deploySeaFlow.deploySeaPanelOpen}
+        deploySeaPanelStyle={
+          deploySeaFlow.comboActive ? deployPanelStyle : deploySeaPanelStyle
+        }
+        deploySeaComboActive={deploySeaFlow.comboActive}
+        deploySeaShips={deploySeaFlow.deploySeaShips}
+        deploySeaMaxShips={deploySeaFlow.deploySeaMaxShips}
+        deploySeaInputRef={deploySeaFlow.deploySeaInputRef}
+        setDeploySeaShips={deploySeaFlow.setDeploySeaShips}
+        submitDeploySea={deploySeaFlow.submitDeploySea}
+        sailPanelOpen={sailFlow.sailPanelOpen}
+        sailPanelStyle={sailPanelStyle}
+        sailShips={sailFlow.sailShips}
+        sailMaxShips={sailFlow.sailMaxShips}
+        sailInputRef={sailFlow.sailInputRef}
+        setSailShips={sailFlow.setSailShips}
+        submitSail={sailFlow.submitSail}
         fortifyPanelOpen={turnFlow.fortifyPanelOpen}
         fortifyPanelStyle={fortifyPanelStyle}
         fortifyTroops={turnFlow.fortifyTroops}
@@ -1162,6 +1299,20 @@ function GameMap({
         setAttackMoveTroops={attackFlow.setAttackMoveTroops}
         submitAttackMove={attackFlow.submitAttackMove}
         submitAttack={attackFlow.submitAttack}
+        attackSeaPanelOpen={attackSeaFlow.attackSeaPanelOpen}
+        attackSeaPanelStyle={attackSeaPanelStyle}
+        attackSeaDefenders={attackSeaFlow.attackSeaDefenders}
+        attackSeaDefenderId={attackSeaDefenderId}
+        selectAttackSeaDefender={attackSeaFlow.selectAttackSeaDefender}
+        attackSeaShips={attackSeaFlow.attackSeaShips}
+        attackSeaMaxShips={attackSeaFlow.attackSeaMaxShips}
+        attackSeaInputRef={attackSeaFlow.attackSeaInputRef}
+        setAttackSeaShips={attackSeaFlow.setAttackSeaShips}
+        attackSeaDiceRoll={attackSeaFlow.attackSeaDiceRoll}
+        attackSeaRevealing={attackSeaFlow.attackSeaRevealing}
+        attackSeaDiceOnly={attackSeaFlow.attackSeaDiceOnly}
+        submitAttackSea={attackSeaFlow.submitAttackSea}
+        players={players}
       />
       <ToastContainer
         position="top-center"

@@ -40,6 +40,10 @@ export function recordElimination(
     game.deathOrder.push(defenderId);
     if (attackerId !== undefined)
       game.stats.get(attackerId)?.playersKilled.push(defenderId);
+    for (const [seaTerritoryId, shipsByPlayer] of game.seaShips) {
+      shipsByPlayer.delete(defenderId);
+      if (shipsByPlayer.size === 0) game.seaShips.delete(seaTerritoryId);
+    }
   }
 
   if (game.gameMode === 'Team Deathmatch') {

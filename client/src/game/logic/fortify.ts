@@ -1,11 +1,81 @@
 import type { Fortification, GameState } from '../../lib/types';
-import type { Territory } from '../mapData';
+import type { SeaTerritory, Territory } from '../mapData';
 import { withPortalEdges } from '../portals';
 
 type OwnerById = Map<number, GameState['territories'][number]>;
 
+function hasOwnShips(
+  seas: GameState['seas'],
+  seaTerritoryId: number,
+  playerId: number | null,
+): boolean {
+  if (playerId === null) return false;
+  const sea = seas.find((s) => s.id === seaTerritoryId);
+  return (sea?.ships.find((b) => b.playerId === playerId)?.ships ?? 0) > 0;
+}
+
+function fortifyGraphNeighbors(
+  neighborsById: Map<number, number[]>,
+  seaIds: Set<number>,
+  currentId: number,
+  portalTerritoryIds: number[],
+  portalsEnabled: boolean,
+): number[] {
+  if (seaIds.has(currentId)) return neighborsById.get(currentId) ?? [];
+  return withPortalEdges(
+    neighborsById.get(currentId) ?? [],
+    currentId,
+    portalTerritoryIds,
+    portalsEnabled,
+  );
+}
+
+function canEnterFortifyNode(
+  seaIds: Set<number>,
+  seas: GameState['seas'],
+  ownerById: OwnerById,
+  playerId: number | null,
+  nodeId: number,
+): boolean {
+  if (seaIds.has(nodeId)) return hasOwnShips(seas, nodeId, playerId);
+  return ownerById.get(nodeId)?.ownerId === playerId;
+}
+
+function connectedFortifyReachable(
+  neighborsById: Map<number, number[]>,
+  seaIds: Set<number>,
+  seas: GameState['seas'],
+  ownerById: OwnerById,
+  selfId: number | null,
+  startId: number,
+  portalTerritoryIds: number[],
+  portalsEnabled: boolean,
+): Set<number> {
+  const visited = new Set<number>([startId]);
+  const queue = [startId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const neighborId of fortifyGraphNeighbors(
+      neighborsById,
+      seaIds,
+      current,
+      portalTerritoryIds,
+      portalsEnabled,
+    )) {
+      if (visited.has(neighborId)) continue;
+      if (!canEnterFortifyNode(seaIds, seas, ownerById, selfId, neighborId))
+        continue;
+      visited.add(neighborId);
+      queue.push(neighborId);
+    }
+  }
+  return visited;
+}
+
 export function getFortifyStartCandidates(
   territories: Territory[],
+  seaTerritories: SeaTerritory[],
+  seas: GameState['seas'],
   ownerById: OwnerById,
   selfId: number | null,
   fortification: Fortification,
@@ -15,12 +85,31 @@ export function getFortifyStartCandidates(
   const ownedCount = territories.filter(
     (t) => ownerById.get(t.id)?.ownerId === selfId,
   ).length;
+  const seaIds = new Set(seaTerritories.map((t) => t.id));
+  const neighborsById = new Map(
+    [...territories, ...seaTerritories].map((t) => [t.id, t.neighbors]),
+  );
   const candidates = new Set<number>();
   for (const t of territories) {
     const owner = ownerById.get(t.id);
     if (!owner || owner.ownerId !== selfId || owner.troops < 2) continue;
     if (fortification === 'Unrestricted') {
       if (ownedCount > 1) candidates.add(t.id);
+    } else if (fortification === 'Connected') {
+      const reachable = connectedFortifyReachable(
+        neighborsById,
+        seaIds,
+        seas,
+        ownerById,
+        selfId,
+        t.id,
+        portalTerritoryIds,
+        portalsEnabled,
+      );
+      const hasDestination = [...reachable].some(
+        (id) => id !== t.id && !seaIds.has(id),
+      );
+      if (hasDestination) candidates.add(t.id);
     } else {
       const neighbors = withPortalEdges(
         t.neighbors,
@@ -38,6 +127,8 @@ export function getFortifyStartCandidates(
 
 export function getFortifyEndCandidates(
   territories: Territory[],
+  seaTerritories: SeaTerritory[],
+  seas: GameState['seas'],
   ownerById: OwnerById,
   selfId: number | null,
   startId: number,
@@ -66,29 +157,29 @@ export function getFortifyEndCandidates(
       neighbors.filter((n) => ownerById.get(n)?.ownerId === selfId),
     );
   }
-  const visited = new Set<number>([startId]);
-  const queue = [startId];
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const neighbors = withPortalEdges(
-      territoryById.get(current)?.neighbors ?? [],
-      current,
-      portalTerritoryIds,
-      portalsEnabled,
-    );
-    for (const neighborId of neighbors) {
-      if (visited.has(neighborId)) continue;
-      if (ownerById.get(neighborId)?.ownerId !== selfId) continue;
-      visited.add(neighborId);
-      queue.push(neighborId);
-    }
-  }
-  visited.delete(startId);
-  return visited;
+  const seaIds = new Set(seaTerritories.map((t) => t.id));
+  const neighborsById = new Map(
+    [...territories, ...seaTerritories].map((t) => [t.id, t.neighbors]),
+  );
+  const reachable = connectedFortifyReachable(
+    neighborsById,
+    seaIds,
+    seas,
+    ownerById,
+    selfId,
+    startId,
+    portalTerritoryIds,
+    portalsEnabled,
+  );
+  reachable.delete(startId);
+  for (const id of seaIds) reachable.delete(id);
+  return reachable;
 }
 
 export function getFortifyPath(
   territories: Territory[],
+  seaTerritories: SeaTerritory[],
+  seas: GameState['seas'],
   ownerById: OwnerById,
   ownerId: number | null,
   startId: number,
@@ -98,22 +189,26 @@ export function getFortifyPath(
   portalsEnabled: boolean,
 ): number[] {
   if (fortification === 'Unrestricted') return [startId, endId];
-  const territoryById = new Map(territories.map((t) => [t.id, t]));
+  const seaIds = new Set(seaTerritories.map((t) => t.id));
+  const neighborsById = new Map(
+    [...territories, ...seaTerritories].map((t) => [t.id, t.neighbors]),
+  );
   const visited = new Set<number>([startId]);
   const parentOf = new Map<number, number>();
   const queue = [startId];
   while (queue.length > 0) {
     const current = queue.shift()!;
     if (current === endId) break;
-    const neighbors = withPortalEdges(
-      territoryById.get(current)?.neighbors ?? [],
+    for (const neighborId of fortifyGraphNeighbors(
+      neighborsById,
+      seaIds,
       current,
       portalTerritoryIds,
       portalsEnabled,
-    );
-    for (const neighborId of neighbors) {
+    )) {
       if (visited.has(neighborId)) continue;
-      if (ownerById.get(neighborId)?.ownerId !== ownerId) continue;
+      if (!canEnterFortifyNode(seaIds, seas, ownerById, ownerId, neighborId))
+        continue;
       visited.add(neighborId);
       parentOf.set(neighborId, current);
       queue.push(neighborId);

@@ -9,7 +9,7 @@ import type {
 } from '../../../lib/types';
 import type { EvaluatedCombo } from '../../logic/cards';
 import { ATTACK_EMOJI } from '../../logic/emoji';
-import type { Territory } from '../../mapData';
+import type { SeaTerritory, Territory } from '../../mapData';
 import type { AttackType, DiceRoll } from '../../panels/AttackPanel';
 import {
   DRAG_THRESHOLD,
@@ -48,6 +48,28 @@ function touchMidpoint(touches: React.TouchList): {
 export function useCanvasInteractions({
   canvasRef,
   territories,
+  seaTerritories,
+  sailStartTerritoryId,
+  sailEndTerritoryId,
+  sailStartCandidates,
+  sailEndCandidates,
+  sailPanelOpen,
+  sailInputRef,
+  selectSailStart,
+  selectSailEnd,
+  submitSail,
+  cancelSail,
+  attackSeaTerritoryId,
+  attackSeaDefenderId,
+  attackSeaStartCandidates,
+  attackSeaPanelOpen,
+  attackSeaInputRef,
+  attackSeaRevealing,
+  attackSeaDiceOnly,
+  setAttackSeaDiceRoll,
+  selectAttackSeaStart,
+  submitAttackSea,
+  cancelAttackSea,
   transform,
   setTransform,
   imgDims,
@@ -111,6 +133,17 @@ export function useCanvasInteractions({
   deployInputRef,
   setDeployTroops,
   submitDeploy,
+  deploySeaCandidates,
+  deploySeaTerritoryId,
+  selectDeploySea,
+  cancelDeploySea,
+  submitDeploySea,
+  deploySeaPanelOpen,
+  deploySeaInputRef,
+  setDeploySeaShips,
+  deploySeaMaxShips,
+  comboActive,
+  isSeaAdjacentToTerritory,
   fortifyPanelOpen,
   setFortifyTroops,
   cancelFortify,
@@ -135,6 +168,28 @@ export function useCanvasInteractions({
 }: {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
+  sailStartTerritoryId: number | null;
+  sailEndTerritoryId: number | null;
+  sailStartCandidates: Set<number>;
+  sailEndCandidates: Set<number>;
+  sailPanelOpen: boolean;
+  sailInputRef: RefObject<HTMLInputElement | null>;
+  selectSailStart: (territoryId: number | null) => void;
+  selectSailEnd: (territoryId: number) => void;
+  submitSail: () => void;
+  cancelSail: () => void;
+  attackSeaTerritoryId: number | null;
+  attackSeaDefenderId: number | null;
+  attackSeaStartCandidates: Set<number>;
+  attackSeaPanelOpen: boolean;
+  attackSeaInputRef: RefObject<HTMLInputElement | null>;
+  attackSeaRevealing: boolean;
+  attackSeaDiceOnly: boolean;
+  setAttackSeaDiceRoll: Dispatch<SetStateAction<DiceRoll | null>>;
+  selectAttackSeaStart: (territoryId: number | null) => void;
+  submitAttackSea: () => void;
+  cancelAttackSea: () => void;
   transform: Transform;
   setTransform: Dispatch<SetStateAction<Transform>>;
   imgDims: { w: number; h: number };
@@ -206,6 +261,20 @@ export function useCanvasInteractions({
   deployInputRef: RefObject<HTMLInputElement | null>;
   setDeployTroops: Dispatch<SetStateAction<number>>;
   submitDeploy: () => void;
+  deploySeaCandidates: Set<number>;
+  deploySeaTerritoryId: number | null;
+  selectDeploySea: (seaTerritoryId: number) => void;
+  cancelDeploySea: () => void;
+  submitDeploySea: () => void;
+  deploySeaPanelOpen: boolean;
+  deploySeaInputRef: RefObject<HTMLInputElement | null>;
+  setDeploySeaShips: Dispatch<SetStateAction<number>>;
+  deploySeaMaxShips: number;
+  comboActive: boolean;
+  isSeaAdjacentToTerritory: (
+    seaTerritoryId: number,
+    territoryId: number,
+  ) => boolean;
   fortifyPanelOpen: boolean;
   setFortifyTroops: Dispatch<SetStateAction<number>>;
   cancelFortify: () => void;
@@ -288,19 +357,27 @@ export function useCanvasInteractions({
             .map((t) => t.id),
   );
 
-  function isInteractable(t: Territory): boolean {
+  function isInteractable(t: { id: number }): boolean {
     if (pendingAttackEmoji) return true;
     if (gameEnded || !isMyTurn || paused) return false;
     if (nukeTargeting) return nukeCandidates.has(t.id);
     if (turnPhase === 'territory') return territoryClaimCandidates.has(t.id);
     if (turnPhase === 'capital') return ownerById.get(t.id)?.ownerId === selfId;
-    if (turnPhase === 'deploy' || turnPhase === 'troop')
+    if (turnPhase === 'deploy' || turnPhase === 'troop') {
+      if (seaIdSet.has(t.id))
+        return turnPhase === 'deploy' && deploySeaCandidates.has(t.id);
       return (
         troopsToDeploy > 0 &&
         ownerById.get(t.id)?.ownerId === selfId &&
         (supplyConnectedTerritoryIds === null ||
           supplyConnectedTerritoryIds.has(t.id))
       );
+    }
+    if (turnPhase === 'sail') {
+      if (sailStartTerritoryId === null) return sailStartCandidates.has(t.id);
+      if (sailEndTerritoryId === null) return sailEndCandidates.has(t.id);
+      return false;
+    }
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId === null)
         return fortifyStartCandidates.has(t.id);
@@ -309,8 +386,16 @@ export function useCanvasInteractions({
     }
     if (turnPhase === 'attack') {
       if (attackPendingConquest) return false;
+      if (seaIdSet.has(t.id)) {
+        if (attackSeaTerritoryId === null)
+          return (
+            attackStartTerritoryId === null &&
+            attackSeaStartCandidates.has(t.id)
+          );
+        return t.id === attackSeaTerritoryId;
+      }
       if (attackStartTerritoryId === null)
-        return attackStartCandidates.has(t.id);
+        return attackSeaTerritoryId === null && attackStartCandidates.has(t.id);
       if (attackEndTerritoryId === null) return attackEndCandidates.has(t.id);
       return false;
     }
@@ -330,6 +415,18 @@ export function useCanvasInteractions({
       if (id === hoveredId) return 'hovered';
       return territoryClaimCandidates.has(id) ? 'selectable' : 'normal';
     }
+    if (turnPhase === 'sail') {
+      if (id === sailStartTerritoryId || id === sailEndTerritoryId)
+        return 'selected';
+      if (id === hoveredId) return 'hovered';
+      if (
+        sailStartTerritoryId !== null &&
+        sailEndTerritoryId === null &&
+        sailEndCandidates.has(id)
+      )
+        return 'selectable';
+      return 'normal';
+    }
     if (turnPhase === 'fortify') {
       if (id === fortifyStartTerritoryId || id === fortifyEndTerritoryId)
         return 'selected';
@@ -343,6 +440,11 @@ export function useCanvasInteractions({
       return 'normal';
     }
     if (turnPhase === 'attack') {
+      if (seaIdSet.has(id)) {
+        if (id === attackSeaTerritoryId) return 'selected';
+        if (id === hoveredId) return 'hovered';
+        return 'normal';
+      }
       if (id === attackStartTerritoryId || id === attackEndTerritoryId)
         return 'selected';
       if (id === hoveredId) return 'hovered';
@@ -354,7 +456,8 @@ export function useCanvasInteractions({
         return 'selectable';
       return 'normal';
     }
-    if (id === selectedTerritoryId) return 'selected';
+    if (id === selectedTerritoryId || id === deploySeaTerritoryId)
+      return 'selected';
     if (id === hoveredId) return 'hovered';
     if (
       turnPhase !== 'deploy' &&
@@ -374,7 +477,7 @@ export function useCanvasInteractions({
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
-  function hitVertex(pos: Point): Territory | null {
+  function hitVertex(pos: Point): { id: number } | null {
     const canvas = canvasRef.current!;
     const { scaleX, scaleY } = getScales(
       canvas.clientWidth,
@@ -392,9 +495,9 @@ export function useCanvasInteractions({
     );
     const hitRadius =
       VERTEX_RADIUS * HIT_RADIUS_MULTIPLIER * scaleX + HIT_TOLERANCE;
-    let nearest: Territory | null = null;
+    let nearest: { id: number } | null = null;
     let nearestDist = Infinity;
-    for (const t of territories) {
+    for (const t of [...territories, ...seaTerritories]) {
       const d = Math.hypot(
         pos.x - (t.x * scaleX + offsetX),
         pos.y - (t.y * scaleY + offsetY),
@@ -406,6 +509,8 @@ export function useCanvasInteractions({
     }
     return nearest;
   }
+
+  const seaIdSet = new Set(seaTerritories.map((s) => s.id));
 
   function beginDrag(pos: Point) {
     cancelSettle();
@@ -512,6 +617,35 @@ export function useCanvasInteractions({
       return;
     }
 
+    if (turnPhase === 'sail') {
+      if (sailEndTerritoryId !== null) {
+        if (
+          vertex &&
+          (vertex.id === sailStartTerritoryId ||
+            vertex.id === sailEndTerritoryId)
+        ) {
+          submitSail();
+        } else {
+          cancelSail();
+        }
+        return;
+      }
+      if (!vertex || !isInteractable(vertex)) {
+        if (
+          sailStartTerritoryId !== null &&
+          vertex?.id !== sailStartTerritoryId
+        )
+          cancelSail();
+        return;
+      }
+      if (sailStartTerritoryId === null) {
+        selectSailStart(vertex.id);
+      } else {
+        selectSailEnd(vertex.id);
+      }
+      return;
+    }
+
     if (turnPhase === 'fortify') {
       if (fortifyEndTerritoryId !== null) {
         if (
@@ -546,6 +680,23 @@ export function useCanvasInteractions({
         if (vertex && vertex.id === attackEndTerritoryId) submitAttackMove();
         return;
       }
+      if (vertex && seaIdSet.has(vertex.id)) {
+        if (attackSeaRevealing) return;
+        if (attackSeaTerritoryId !== null) {
+          if (vertex.id === attackSeaTerritoryId) {
+            if (attackSeaDefenderId !== null) submitAttackSea();
+          } else {
+            cancelAttackSea();
+          }
+        } else if (isInteractable(vertex)) {
+          selectAttackSeaStart(vertex.id);
+        }
+        return;
+      }
+      if (attackSeaTerritoryId !== null) {
+        if (!attackSeaRevealing) cancelAttackSea();
+        return;
+      }
       if (attackEndTerritoryId !== null) {
         if (
           !attackRevealing &&
@@ -562,6 +713,8 @@ export function useCanvasInteractions({
       if (!vertex || !isInteractable(vertex)) {
         if (attackStartTerritoryId !== null) {
           if (vertex?.id !== attackStartTerritoryId) cancelAttack();
+        } else if (attackSeaDiceOnly) {
+          setAttackSeaDiceRoll(null);
         } else if (attackDiceRoll !== null) {
           setAttackDiceRoll(null);
         }
@@ -606,13 +759,35 @@ export function useCanvasInteractions({
     if (!vertex || !isInteractable(vertex)) {
       if (selectedTerritoryId !== null && vertex?.id !== selectedTerritoryId)
         selectTerritory(null);
+      if (deploySeaTerritoryId !== null && vertex?.id !== deploySeaTerritoryId)
+        cancelDeploySea();
+      return;
+    }
+    if (turnPhase === 'deploy' && seaIdSet.has(vertex.id)) {
+      if (deploySeaTerritoryId === vertex.id) {
+        submitDeploySea();
+        return;
+      }
+      if (
+        selectedTerritoryId === null ||
+        !isSeaAdjacentToTerritory(vertex.id, selectedTerritoryId)
+      )
+        selectTerritory(null);
+      setToasts([]);
+      selectDeploySea(vertex.id);
       return;
     }
     if (selectedTerritoryId === vertex.id) {
-      submitDeploy();
+      if (comboActive) submitDeploySea();
+      else submitDeploy();
       return;
     }
     if (turnPhase === 'deploy') setToasts([]);
+    if (
+      deploySeaTerritoryId !== null &&
+      !isSeaAdjacentToTerritory(deploySeaTerritoryId, vertex.id)
+    )
+      cancelDeploySea();
     selectTerritory(vertex.id);
   }
 
@@ -704,17 +879,29 @@ export function useCanvasInteractions({
       setNukeTargeting(null);
       return;
     }
+    if (turnPhase === 'sail') {
+      if (sailStartTerritoryId !== null) cancelSail();
+      return;
+    }
     if (turnPhase === 'fortify') {
       if (fortifyStartTerritoryId !== null) cancelFortify();
       return;
     }
     if (turnPhase === 'attack') {
       if (attackPendingConquest) return;
-      if (attackStartTerritoryId !== null) {
+      if (attackSeaTerritoryId !== null) {
+        if (!attackSeaRevealing) cancelAttackSea();
+      } else if (attackStartTerritoryId !== null) {
         cancelAttack();
+      } else if (attackSeaDiceOnly) {
+        setAttackSeaDiceRoll(null);
       } else if (attackDiceRoll !== null) {
         setAttackDiceRoll(null);
       }
+      return;
+    }
+    if (deploySeaTerritoryId !== null) {
+      cancelDeploySea();
       return;
     }
     if (selectedTerritoryId !== null) selectTerritory(null);
@@ -743,6 +930,10 @@ export function useCanvasInteractions({
           setOpenPanel(null);
           return;
         }
+        if (isMyTurn && turnPhase === 'sail' && sailStartTerritoryId !== null) {
+          cancelSail();
+          return;
+        }
         if (
           isMyTurn &&
           turnPhase === 'fortify' &&
@@ -754,14 +945,35 @@ export function useCanvasInteractions({
         if (
           isMyTurn &&
           turnPhase === 'attack' &&
+          attackSeaTerritoryId !== null &&
+          !attackSeaRevealing
+        ) {
+          cancelAttackSea();
+          return;
+        }
+        if (
+          isMyTurn &&
+          turnPhase === 'attack' &&
           attackStartTerritoryId !== null &&
           !attackPendingConquest
         ) {
           cancelAttack();
           return;
         }
+        if (isMyTurn && turnPhase === 'attack' && attackSeaDiceOnly) {
+          setAttackSeaDiceRoll(null);
+          return;
+        }
         if (isMyTurn && turnPhase === 'attack' && attackDiceOnly) {
           setAttackDiceRoll(null);
+          return;
+        }
+        if (
+          isMyTurn &&
+          turnPhase === 'deploy' &&
+          deploySeaTerritoryId !== null
+        ) {
+          cancelDeploySea();
           return;
         }
         if (isMyTurn && selectedTerritoryId !== null) {
@@ -790,6 +1002,23 @@ export function useCanvasInteractions({
         if (!isTypingTarget(e.target) || e.target === deployInputRef.current) {
           e.preventDefault();
           submitDeploy();
+          return;
+        }
+      }
+      if (isConfirmKey && deploySeaPanelOpen) {
+        if (
+          !isTypingTarget(e.target) ||
+          e.target === deploySeaInputRef.current
+        ) {
+          e.preventDefault();
+          submitDeploySea();
+          return;
+        }
+      }
+      if (isConfirmKey && sailPanelOpen) {
+        if (!isTypingTarget(e.target) || e.target === sailInputRef.current) {
+          e.preventDefault();
+          submitSail();
           return;
         }
       }
@@ -824,6 +1053,22 @@ export function useCanvasInteractions({
         ) {
           e.preventDefault();
           submitAttackMove();
+          return;
+        }
+      }
+      if (
+        isConfirmKey &&
+        attackSeaPanelOpen &&
+        attackSeaDefenderId !== null &&
+        !attackSeaDiceOnly &&
+        !attackSeaRevealing
+      ) {
+        if (
+          !isTypingTarget(e.target) ||
+          e.target === attackSeaInputRef.current
+        ) {
+          e.preventDefault();
+          submitAttackSea();
           return;
         }
       }
@@ -903,6 +1148,14 @@ export function useCanvasInteractions({
     setChatOpen,
     deployPanelOpen,
     submitDeploy,
+    deploySeaTerritoryId,
+    cancelDeploySea,
+    deploySeaPanelOpen,
+    submitDeploySea,
+    sailStartTerritoryId,
+    cancelSail,
+    sailPanelOpen,
+    submitSail,
     fortifyStartTerritoryId,
     cancelFortify,
     fortifyPanelOpen,
@@ -911,6 +1164,13 @@ export function useCanvasInteractions({
     submitEntrench,
     toxinsPanelOpen,
     submitToxins,
+    attackSeaTerritoryId,
+    attackSeaDefenderId,
+    attackSeaRevealing,
+    attackSeaDiceOnly,
+    attackSeaPanelOpen,
+    cancelAttackSea,
+    submitAttackSea,
     attackStartTerritoryId,
     attackPendingConquest,
     attackShowPendingConquest,
@@ -931,13 +1191,17 @@ export function useCanvasInteractions({
     setAlliancePopupFor,
     setOpenPanel,
     setPanelCollapsed,
+    setAttackSeaDiceRoll,
     setAttackDiceRoll,
     setAttackSelectedType,
     setAttackBlitzTroops,
     deployInputRef,
+    deploySeaInputRef,
+    sailInputRef,
     fortifyInputRef,
     entrenchInputRef,
     attackMoveInputRef,
+    attackSeaInputRef,
     blitzInputRef,
   ]);
 
@@ -948,6 +1212,13 @@ export function useCanvasInteractions({
         const delta = e.deltaY < 0 ? 1 : -1;
         setDeployTroops((prev) =>
           Math.min(troopsToDeploy, Math.max(1, prev + delta)),
+        );
+        return;
+      }
+      if (deploySeaPanelOpen) {
+        const delta = e.deltaY < 0 ? 1 : -1;
+        setDeploySeaShips((prev) =>
+          Math.min(deploySeaMaxShips, Math.max(1, prev + delta)),
         );
         return;
       }
@@ -987,6 +1258,8 @@ export function useCanvasInteractions({
   }, [
     deployPanelOpen,
     troopsToDeploy,
+    deploySeaPanelOpen,
+    deploySeaMaxShips,
     fortifyPanelOpen,
     fortifyMaxTroops,
     entrenchPanelOpen,
@@ -999,6 +1272,7 @@ export function useCanvasInteractions({
     attackMoveMaxTroops,
     zoomAround,
     setDeployTroops,
+    setDeploySeaShips,
     setFortifyTroops,
     setEntrenchTroops,
     setAttackMoveTroops,

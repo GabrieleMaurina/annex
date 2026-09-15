@@ -22,6 +22,7 @@ export function persistGameMap(
     .update(
       JSON.stringify({
         territories: map.territories,
+        seaTerritories: map.seaTerritories,
         bonuses: map.bonuses,
         imageMime: image.mime,
       }),
@@ -33,6 +34,7 @@ export function persistGameMap(
     _id: hash,
     name: map.name,
     territories: map.territories,
+    seaTerritories: map.seaTerritories,
     bonuses: map.bonuses,
     generation: map.generation,
     image: new Binary(image.bytes),

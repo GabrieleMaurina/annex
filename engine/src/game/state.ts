@@ -1,9 +1,20 @@
+import { getGameMap } from '../maps/maps';
 import { playersById } from '../session/players';
 import { AllianceViewState, Game, Player } from '../types';
+import { attackFullPath } from './combat/seaBridge';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats } from './progression/stats';
-import { fortifyFullPath } from './world/connectivity';
+import { fortifyFullPath, sailFullPath } from './world/connectivity';
 import { TERRITORY_CAP, totalTroopsCap } from './world/starvation';
+
+function seaState(game: Game) {
+  return getGameMap(game).seaTerritories.map((sea) => ({
+    id: sea.id,
+    ships: [...(game.seaShips.get(sea.id) ?? new Map())].map(
+      ([playerId, ships]) => ({ playerId, ships }),
+    ),
+  }));
+}
 
 const EMPTY_STATS = emptyPlayerStats();
 
@@ -123,6 +134,33 @@ function fortifyPathAsRun(game: Game): number[][] {
   return path.length > 1 ? [path] : [];
 }
 
+function attackPathAsRun(game: Game): number[][] {
+  if (
+    game.attackStartTerritoryId === null ||
+    game.attackEndTerritoryId === null
+  )
+    return [];
+  const turnPlayerId = game.playerIds[game.turnPlayerIndex];
+  const path = attackFullPath(
+    game,
+    turnPlayerId,
+    game.attackStartTerritoryId,
+    game.attackEndTerritoryId,
+  );
+  return path.length > 1 ? [path] : [];
+}
+
+function sailPathAsRun(game: Game): number[][] {
+  if (game.sailStartTerritoryId === null || game.sailEndTerritoryId === null)
+    return [];
+  const path = sailFullPath(
+    game,
+    game.sailStartTerritoryId,
+    game.sailEndTerritoryId,
+  );
+  return path.length > 1 ? [path] : [];
+}
+
 export function gameState(game: Game) {
   const stats = territoryStats(game);
   const turnPlayerId = game.playerIds[game.turnPlayerIndex];
@@ -135,6 +173,7 @@ export function gameState(game: Game) {
           size: game.generatedMap.size,
           type: game.generatedMap.type,
           fill: game.generatedMap.fill,
+          seas: game.generatedMap.seas,
         }
       : null,
     playerMapId: game.playerMap?.id ?? null,
@@ -199,6 +238,12 @@ export function gameState(game: Game) {
     attackEndTerritoryId: game.attackEndTerritoryId,
     attackConquestMinTroops: game.attackConquestMinTroops,
     fortifyPathTerritoryIds: fortifyPathAsRun(game),
+    attackPathTerritoryIds: attackPathAsRun(game),
+    sailStartTerritoryId: game.sailStartTerritoryId,
+    sailEndTerritoryId: game.sailEndTerritoryId,
+    sailPathTerritoryIds: sailPathAsRun(game),
+    attackSeaTerritoryId: game.attackSeaTerritoryId,
+    attackSeaDefenderId: game.attackSeaDefenderId,
     winnerIds: game.winnerIds,
     nextSetBaseValues: nextSetBaseValues(game, turnPlayerId),
     upcomingSetValues: upcomingSetValues(game, turnPlayerId, 3),
@@ -244,6 +289,7 @@ export function gameState(game: Game) {
         roundsRemaining: toxin.roundsRemaining,
       }),
     ),
+    seas: seaState(game),
     visibleTerritoryIds: undefined as number[] | undefined,
   };
 }

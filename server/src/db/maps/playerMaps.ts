@@ -25,10 +25,18 @@ export interface PlayerMapTerritory {
   neighbors: number[];
 }
 
+export interface PlayerMapSeaTerritory {
+  id: number;
+  x: number;
+  y: number;
+  neighbors: number[];
+}
+
 interface PlayerMapDoc {
   authorId: ObjectId;
   name: string;
   territories: PlayerMapTerritory[];
+  seaTerritories: PlayerMapSeaTerritory[];
   bonuses: number[];
   image: Binary;
   imageMime: string;
@@ -47,6 +55,7 @@ const schema = {
         'authorId',
         'name',
         'territories',
+        'seaTerritories',
         'bonuses',
         'image',
         'imageMime',
@@ -75,18 +84,33 @@ const schema = {
             },
           },
         },
+        seaTerritories: {
+          bsonType: 'array',
+          items: {
+            bsonType: 'object',
+            required: ['id', 'x', 'y', 'neighbors'],
+            additionalProperties: false,
+            properties: {
+              id: { bsonType: 'number' },
+              x: { bsonType: 'number' },
+              y: { bsonType: 'number' },
+              neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
+            },
+          },
+        },
         bonuses: { bsonType: 'array', items: { bsonType: 'number' } },
         image: { bsonType: 'binData' },
         imageMime: { enum: PICTURE_MIMES },
         generation: {
           bsonType: ['object', 'null'],
-          required: ['seed', 'size', 'type', 'fill'],
+          required: ['seed', 'size', 'type', 'fill', 'seas'],
           additionalProperties: false,
           properties: {
             seed: { bsonType: 'string', minLength: 1, maxLength: 20 },
             size: { enum: MAP_SIZE_VALUES },
             type: { enum: GENERATION_TYPE_VALUES },
             fill: { enum: FILL_VALUES },
+            seas: { bsonType: 'bool' },
           },
         },
         territoryCount: { bsonType: 'number' },
@@ -146,6 +170,7 @@ function escapeRegex(text: string): string {
 export interface PlayerMapInput {
   name: string;
   territories: PlayerMapTerritory[];
+  seaTerritories: PlayerMapSeaTerritory[];
   bonuses: number[];
   image: Buffer;
   imageMime: string;
@@ -161,6 +186,7 @@ export function createPlayerMap(
       authorId: new ObjectId(authorId),
       name: input.name,
       territories: input.territories,
+      seaTerritories: input.seaTerritories,
       bonuses: input.bonuses,
       image: new Binary(input.image),
       imageMime: input.imageMime,
@@ -201,6 +227,7 @@ export function updatePlayerMap(
             $set: {
               name: input.name,
               territories: input.territories,
+              seaTerritories: input.seaTerritories,
               bonuses: input.bonuses,
               image: new Binary(input.image),
               imageMime: input.imageMime,
@@ -235,6 +262,7 @@ export interface PlayerMapDetail {
   authorId: string;
   name: string;
   territories: PlayerMapTerritory[];
+  seaTerritories: PlayerMapSeaTerritory[];
   bonuses: number[];
   image: string;
   imageMime: string;
@@ -255,6 +283,7 @@ export function getPlayerMapById(id: string): Promise<PlayerMapDetail | null> {
             authorId: doc.authorId.toString(),
             name: doc.name,
             territories: doc.territories,
+            seaTerritories: doc.seaTerritories ?? [],
             bonuses: doc.bonuses,
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
@@ -433,7 +462,14 @@ export function listPlayerMaps(
     }
 
     const cursor = collection()
-      .find(filter, { projection: { image: 0, territories: 0, bonuses: 0 } })
+      .find(filter, {
+        projection: {
+          image: 0,
+          territories: 0,
+          seaTerritories: 0,
+          bonuses: 0,
+        },
+      })
       .sort(sortSpec(query.sort))
       .collation(NAME_COLLATION)
       .skip((query.page - 1) * query.pageSize)

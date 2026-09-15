@@ -38,9 +38,11 @@ export function pointToSegmentDistance(p: Point, a: Point, b: Point): number {
   return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
 }
 
+const WRAP_THRESHOLD_FRACTION = 0.8;
+
 export function wrapSplitX(a: Point, b: Point, mapW: number): [Point, Point][] {
   const d = b.x - a.x;
-  if (Math.abs(d) <= mapW / 2) return [[a, b]];
+  if (Math.abs(d) <= mapW * WRAP_THRESHOLD_FRACTION) return [[a, b]];
   const sign = Math.sign(d);
   const bx = b.x - sign * mapW;
   const boundary = sign < 0 ? mapW : 0;
@@ -54,7 +56,7 @@ export function wrapSplitX(a: Point, b: Point, mapW: number): [Point, Point][] {
 
 export function wrapSplitY(a: Point, b: Point, mapH: number): [Point, Point][] {
   const d = b.y - a.y;
-  if (Math.abs(d) <= mapH / 2) return [[a, b]];
+  if (Math.abs(d) <= mapH * WRAP_THRESHOLD_FRACTION) return [[a, b]];
   const sign = Math.sign(d);
   const by = b.y - sign * mapH;
   const boundary = sign < 0 ? mapH : 0;

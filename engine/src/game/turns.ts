@@ -6,8 +6,11 @@ import {
   hasAnyAttack,
   hasAnyEntrench,
   hasAnyFortify,
+  hasAnySail,
+  hasAnyShipFight,
   hasAnyToxin,
 } from './combat/autoSkip';
+import { attackFullPath } from './combat/seaBridge';
 import { checkGameEnd } from './end';
 import {
   calculateDeployTroopsBreakdown,
@@ -26,18 +29,21 @@ import { bumpStat } from './progression/stats';
 import { updateRadiationForNewRound } from './radiation/radiation';
 import { recordReplayFrame } from './replay';
 import { decrementToxinsGlobally } from './toxins/toxins';
-import { fortifyFullPath } from './world/connectivity';
+import { fortifyFullPath, sailFullPath } from './world/connectivity';
 import { fogFilterEmit, recordLogForAll } from './world/fog';
 import { portalCount, selectPortalTerritories } from './world/portals';
+import { addSeaShips, setSeaShips } from './world/seaShips';
 import { applyStarvation } from './world/starvation';
 import {
   pathRunsForViewer,
+  shipMoveFields,
   troopMoveFields,
   visibleTerritoryIdsOrAll,
 } from './world/visibility';
 
 const PHASE_ORDER: TurnPhase[] = [
   'deploy',
+  'sail',
   'attack',
   'fortify',
   'entrench',
@@ -494,6 +500,34 @@ function completePendingFortify(
   return { territoryId: endId, fromTerritoryId: startId, troops: 1 };
 }
 
+function completePendingSail(
+  game: Game,
+  playerId: number,
+): {
+  seaTerritoryId: number;
+  fromSeaTerritoryId: number;
+  ships: number;
+} | null {
+  if (game.sailStartTerritoryId === null || game.sailEndTerritoryId === null)
+    return null;
+
+  const startId = game.sailStartTerritoryId;
+  const endId = game.sailEndTerritoryId;
+  const startShips = game.seaShips.get(startId)?.get(playerId) ?? 0;
+  if (startShips < 1) return null;
+
+  setSeaShips(game, startId, playerId, startShips - 1);
+  addSeaShips(game, endId, playerId, 1);
+  recordReplayFrame(game, {
+    type: 'sail',
+    fromSeaTerritoryId: startId,
+    toSeaTerritoryId: endId,
+    ships: 1,
+    playerId,
+  });
+  return { seaTerritoryId: endId, fromSeaTerritoryId: startId, ships: 1 };
+}
+
 export function forceEndTurn(game: Game) {
   forceEndTurnImpl(game);
   broadcastGameState(game);
@@ -535,9 +569,46 @@ export function forceEndTurnImpl(game: Game, skipDeploy = false) {
   if (game.turnPhase === 'deploy' && !skipDeploy) {
     emitDeployedMany(game, playerId, forceCompleteDeployPhase(game));
   }
+  if (game.turnPhase === 'sail') {
+    const move = completePendingSail(game, playerId);
+    if (move) {
+      const fullPath = sailFullPath(
+        game,
+        move.fromSeaTerritoryId,
+        move.seaTerritoryId,
+      );
+      fogFilterEmit(game, 'game:sailed', callbacks.onSailed, (viewerId) => {
+        const visible = visibleTerritoryIdsOrAll(game, viewerId);
+        if (
+          visible !== null &&
+          !visible.has(move.fromSeaTerritoryId) &&
+          !visible.has(move.seaTerritoryId)
+        )
+          return null;
+        return {
+          seaTerritoryId: move.seaTerritoryId,
+          fromSeaTerritoryId: move.fromSeaTerritoryId,
+          playerId,
+          path: pathRunsForViewer(fullPath, visible),
+          ...shipMoveFields(
+            visible,
+            move.fromSeaTerritoryId,
+            move.seaTerritoryId,
+            move.ships,
+          ),
+        };
+      });
+    }
+  }
   if (game.turnPhase === 'attack') {
     const move = completePendingAttackMove(game, playerId);
-    if (move)
+    if (move) {
+      const fullPath = attackFullPath(
+        game,
+        playerId,
+        move.fromTerritoryId,
+        move.territoryId,
+      );
       fogFilterEmit(
         game,
         'game:attackMoved',
@@ -553,6 +624,7 @@ export function forceEndTurnImpl(game: Game, skipDeploy = false) {
           return {
             territoryId: move.territoryId,
             fromTerritoryId: move.fromTerritoryId,
+            path: pathRunsForViewer(fullPath, visible),
             ...troopMoveFields(
               visible,
               move.fromTerritoryId,
@@ -562,6 +634,7 @@ export function forceEndTurnImpl(game: Game, skipDeploy = false) {
           };
         },
       );
+    }
   }
   if (game.turnPhase === 'fortify') {
     const move = completePendingFortify(game, playerId);
@@ -683,6 +756,10 @@ export function advanceToNextPlayer(game: Game) {
   game.attackStartTerritoryId = null;
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
+  game.sailStartTerritoryId = null;
+  game.sailEndTerritoryId = null;
+  game.attackSeaTerritoryId = null;
+  game.attackSeaDefenderId = null;
   if (game.roundNumber !== previousRoundNumber) {
     const expiredToxinIds = decrementToxinsGlobally(game);
     if (expiredToxinIds.length > 0) {
@@ -716,12 +793,19 @@ export function advanceTurnPhase(game: Game) {
     game.attackStartTerritoryId = null;
     game.attackEndTerritoryId = null;
     game.attackConquestMinTroops = null;
+    game.sailStartTerritoryId = null;
+    game.sailEndTerritoryId = null;
+    game.attackSeaTerritoryId = null;
+    game.attackSeaDefenderId = null;
 
     const playerId = game.playerIds[game.turnPlayerIndex];
-    if (
+    if (game.turnPhase === 'sail' && !hasAnySail(game, playerId)) {
+      advanceTurnPhase(game);
+    } else if (
       game.turnPhase === 'attack' &&
       !hasAnyAttack(game, playerId) &&
-      !hasReadyNuke(game, playerId)
+      !hasReadyNuke(game, playerId) &&
+      !hasAnyShipFight(game, playerId)
     ) {
       advanceTurnPhase(game);
     } else if (game.turnPhase === 'fortify' && !hasAnyFortify(game, playerId)) {
@@ -772,6 +856,10 @@ export function startTurns(game: Game) {
   game.attackStartTerritoryId = null;
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
+  game.sailStartTerritoryId = null;
+  game.sailEndTerritoryId = null;
+  game.attackSeaTerritoryId = null;
+  game.attackSeaDefenderId = null;
   game.conqueredThisTurn = false;
   startDeployPhase(game, game.playerIds[0]);
   scheduleTurnTimer(game);

@@ -4,12 +4,7 @@ import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { formatError } from '../common/formatError';
 import { connector } from '../connector';
-import type {
-  Account,
-  GenerateMapInput,
-  MapSize,
-  MapTerritory as Territory,
-} from '../lib/types';
+import type { Account, GenerateMapInput, MapSize } from '../lib/types';
 import {
   createBlankImage,
   createDefaultImage,
@@ -21,6 +16,8 @@ import type { GeneratedEditorMap, GenerateInput } from './editor/generateMap';
 import GenerateMapModal from './editor/GenerateMapModal';
 import { isConnected } from './editor/graph';
 import MapCanvas, { type MapCanvasHandle } from './editor/MapCanvas';
+import type { EditorTerritory as Territory } from './editor/model/editorTypes';
+import { SEA_BRUSH, toEditorTerritories } from './editor/model/editorTypes';
 import PaintLayer, {
   type PaintLayerHandle,
   type Shape,
@@ -33,7 +30,7 @@ import {
   type PaintTool,
 } from './editor/paint/paintTools';
 import Panel from './editor/Panel';
-import { sortMapData } from './editor/sortMap';
+import { sortMapData, sortTerritories } from './editor/sortMap';
 import MapBrowser from './MapBrowser';
 
 const MIN_CONTINENT_SIZE = 2;
@@ -121,7 +118,7 @@ function invalidContinentSizes(
 ): boolean {
   const size = new Map<number, number>();
   for (const t of territories)
-    size.set(t.continentId, (size.get(t.continentId) ?? 0) + 1);
+    if (!t.isSea) size.set(t.continentId, (size.get(t.continentId) ?? 0) + 1);
   for (let i = 0; i < continentCount; i++) {
     const n = size.get(i) ?? 0;
     if (n < MIN_CONTINENT_SIZE || n > MAX_CONTINENT_SIZE) return true;
@@ -129,7 +126,7 @@ function invalidContinentSizes(
   return false;
 }
 
-function MapEditor({ account }: { account: Account }) {
+function MapEditor({ account }: { account: Account | null }) {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
@@ -148,6 +145,14 @@ function MapEditor({ account }: { account: Account }) {
   const [collapsed, setCollapsed] = useState(false);
 
   const [mode, setMode] = useState<'graph' | 'paint'>('graph');
+  const [exclusive, setExclusive] = useState(false);
+  function handleModeClick(target: 'graph' | 'paint') {
+    if (mode === target) setExclusive((e) => !e);
+    else {
+      setMode(target);
+      setExclusive(false);
+    }
+  }
   const [tool, setTool] = useState<PaintTool | null>(null);
   const [color, setColor] = useState('#000000');
   const [customColors, setCustomColors] = useState<string[]>([]);
@@ -224,6 +229,7 @@ function MapEditor({ account }: { account: Account }) {
   const bumpEpoch = useCallback(() => setPaintEpoch((e) => e + 1), []);
   const handleViewport = useCallback((v: Viewport) => {
     viewportRef.current = v;
+    paintLayerRef.current?.refreshCursor();
   }, []);
   const handleWheelZoom = useCallback(
     (clientX: number, clientY: number, deltaY: number) =>
@@ -239,6 +245,21 @@ function MapEditor({ account }: { account: Account }) {
       if (!inPalette) addCustomColor(hex);
     },
     [addCustomColor],
+  );
+
+  const resort = useCallback(
+    (next: Territory[]): Map<number, number> => {
+      const sorted = sortTerritories(next, bonuses);
+      setTerritories(sorted.territories);
+      setBonuses(sorted.bonuses);
+      setCurrentContinentId((current) =>
+        current === SEA_BRUSH
+          ? current
+          : (sorted.continentIdMap.get(current) ?? current),
+      );
+      return sorted.idMap;
+    },
+    [bonuses],
   );
 
   const effectiveId = id ?? savedId;
@@ -376,7 +397,7 @@ function MapEditor({ account }: { account: Account }) {
         navigate('/maps/mine', { replace: true });
         return;
       }
-      setTerritories(map.territories);
+      setTerritories(toEditorTerritories(map.territories, map.seaTerritories));
       setBonuses(map.bonuses.length ? map.bonuses : [2]);
       setContinentCount(Math.max(1, map.bonuses.length));
       setMapName(map.name);
@@ -527,9 +548,14 @@ function MapEditor({ account }: { account: Account }) {
 
   function handleGenerated(map: GeneratedEditorMap, input: GenerateInput) {
     pendingDirtyRef.current = true;
-    setTerritories(map.territories);
-    setBonuses(map.bonuses.length ? map.bonuses : [2]);
-    setContinentCount(Math.max(1, map.bonuses.length));
+    const bonusesIn = map.bonuses.length ? map.bonuses : [2];
+    const sorted = sortTerritories(
+      toEditorTerritories(map.territories, map.seaTerritories),
+      bonusesIn,
+    );
+    setTerritories(sorted.territories);
+    setBonuses(sorted.bonuses);
+    setContinentCount(Math.max(1, sorted.bonuses.length));
     setCurrentContinentId(0);
     setGeneration(input);
     if (isDefaultName(mapName)) setMapName(map.name);
@@ -544,7 +570,7 @@ function MapEditor({ account }: { account: Account }) {
         return;
       }
       pendingDirtyRef.current = true;
-      setTerritories(map.territories);
+      setTerritories(toEditorTerritories(map.territories, map.seaTerritories));
       setBonuses(map.bonuses.length ? map.bonuses : [2]);
       setContinentCount(Math.max(1, map.bonuses.length));
       setGeneration(map.generation ?? null);
@@ -591,6 +617,7 @@ function MapEditor({ account }: { account: Account }) {
     const body = {
       name,
       territories: sorted.territories,
+      seaTerritories: sorted.seaTerritories,
       bonuses: sorted.bonuses,
       image,
       generation,
@@ -687,6 +714,9 @@ function MapEditor({ account }: { account: Account }) {
         onPaintStrokeEnd={commitPaint}
         disabled={mode === 'paint'}
         panOnly={mode === 'paint' && tool === null}
+        hideImage={exclusive && mode === 'graph'}
+        hideGraph={exclusive && mode === 'paint'}
+        resort={resort}
         onViewport={handleViewport}
       />
 
@@ -724,7 +754,8 @@ function MapEditor({ account }: { account: Account }) {
           mapSizeText={sizeLabel}
           nameError={nameError}
           mode={mode}
-          setMode={setMode}
+          exclusive={exclusive}
+          onModeClick={handleModeClick}
           tool={tool}
           setTool={setTool}
           color={color}

@@ -9,7 +9,7 @@ import {
   setRadiationActive,
   setToxinsActive,
 } from '../../animations';
-import type { Territory } from '../../mapData';
+import type { SeaTerritory, Territory } from '../../mapData';
 import { getAnchoredPanelPosition } from '../../mapMath';
 import type { ConquestArrow } from '../../replay';
 import {
@@ -35,6 +35,8 @@ export function useLiveGameRefs() {
     new Map<number, GameState['territories'][number]>(),
   );
   const territoriesRef = useRef<Territory[]>([]);
+  const seaTerritoriesRef = useRef<SeaTerritory[]>([]);
+  const seasRef = useRef<GameState['seas']>([]);
   const visibleTerritoryIdsRef =
     useRef<GameState['visibleTerritoryIds']>(undefined);
   const colorByPlayerIdRef = useRef(new Map<number, number>());
@@ -60,6 +62,8 @@ export function useLiveGameRefs() {
   return {
     ownerByIdRef,
     territoriesRef,
+    seaTerritoriesRef,
+    seasRef,
     visibleTerritoryIdsRef,
     colorByPlayerIdRef,
     playersRef,
@@ -97,6 +101,7 @@ function anchoredStyle(
 
 export function usePanelStyles({
   territories,
+  seaTerritories,
   size,
   transform,
   imgDims,
@@ -106,8 +111,13 @@ export function usePanelStyles({
   fortifyEndTerritoryId,
   attackEndTerritoryId,
   attackDiceRollTerritoryId,
+  sailEndTerritoryId,
+  attackSeaTerritoryId,
+  attackSeaDiceRollTerritoryId,
+  deploySeaTerritoryId,
 }: {
   territories: Territory[];
+  seaTerritories: { id: number; x: number; y: number }[];
   size: { w: number; h: number };
   transform: Transform;
   imgDims: { w: number; h: number };
@@ -117,6 +127,10 @@ export function usePanelStyles({
   fortifyEndTerritoryId: number | null;
   attackEndTerritoryId: number | null;
   attackDiceRollTerritoryId: number | undefined;
+  sailEndTerritoryId: number | null;
+  attackSeaTerritoryId: number | null;
+  attackSeaDiceRollTerritoryId: number | undefined;
+  deploySeaTerritoryId: number | null;
 }) {
   const zoomedRadius =
     VERTEX_RADIUS * getScales(size.w, size.h, transform.zoom, imgDims).scaleX;
@@ -176,12 +190,62 @@ export function usePanelStyles({
     size,
   );
 
+  const sailEndSea =
+    sailEndTerritoryId !== null
+      ? seaTerritories.find((s) => s.id === sailEndTerritoryId)
+      : undefined;
+  const sailScreenPos = sailEndSea
+    ? getTerritoryScreenPos(sailEndSea, size, transform, imgDims)
+    : null;
+  const sailPanelStyle = anchoredStyle(
+    sailScreenPos,
+    zoomedRadius,
+    TROOP_PANEL_WIDTH,
+    TROOP_PANEL_HEIGHT,
+    size,
+  );
+
+  const attackSeaAnchorTerritoryId =
+    attackSeaTerritoryId ?? attackSeaDiceRollTerritoryId ?? null;
+  const attackSeaSea =
+    attackSeaAnchorTerritoryId !== null
+      ? seaTerritories.find((s) => s.id === attackSeaAnchorTerritoryId)
+      : undefined;
+  const attackSeaScreenPos = attackSeaSea
+    ? getTerritoryScreenPos(attackSeaSea, size, transform, imgDims)
+    : null;
+  const attackSeaPanelStyle = anchoredStyle(
+    attackSeaScreenPos,
+    zoomedRadius,
+    ATTACK_PANEL_WIDTH,
+    ATTACK_PANEL_HEIGHT,
+    size,
+  );
+
+  const deploySea =
+    deploySeaTerritoryId !== null
+      ? seaTerritories.find((s) => s.id === deploySeaTerritoryId)
+      : undefined;
+  const deploySeaScreenPos = deploySea
+    ? getTerritoryScreenPos(deploySea, size, transform, imgDims)
+    : null;
+  const deploySeaPanelStyle = anchoredStyle(
+    deploySeaScreenPos,
+    zoomedRadius,
+    TROOP_PANEL_WIDTH,
+    TROOP_PANEL_HEIGHT,
+    size,
+  );
+
   return {
     zoomedRadius,
     tooltipScreenPos,
     deployPanelStyle,
     fortifyPanelStyle,
     attackPanelStyle,
+    sailPanelStyle,
+    attackSeaPanelStyle,
+    deploySeaPanelStyle,
   };
 }
 
@@ -191,6 +255,8 @@ export function useAnimationActiveFlags({
   fortifyEndTerritoryId,
   attackStartTerritoryId,
   attackEndTerritoryId,
+  sailStartTerritoryId,
+  sailEndTerritoryId,
   replayConquestArrow,
   portalsEnabled,
   portalTerritoryIds,
@@ -199,6 +265,7 @@ export function useAnimationActiveFlags({
   radiationUpcomingById,
   visibleTerritoryIds,
   territories,
+  seaTerritories,
   startAnimationLoop,
 }: {
   turnPhase: TurnPhase;
@@ -206,6 +273,8 @@ export function useAnimationActiveFlags({
   fortifyEndTerritoryId: number | null;
   attackStartTerritoryId: number | null;
   attackEndTerritoryId: number | null;
+  sailStartTerritoryId: number | null;
+  sailEndTerritoryId: number | null;
   replayConquestArrow: ConquestArrow | null;
   portalsEnabled: boolean;
   portalTerritoryIds: number[];
@@ -214,6 +283,7 @@ export function useAnimationActiveFlags({
   radiationUpcomingById: Set<number>;
   visibleTerritoryIds: GameState['visibleTerritoryIds'];
   territories: Territory[];
+  seaTerritories: { id: number }[];
   startAnimationLoop: () => void;
 }) {
   useEffect(() => {
@@ -223,7 +293,10 @@ export function useAnimationActiveFlags({
         fortifyEndTerritoryId !== null) ||
       (turnPhase === 'attack' &&
         attackStartTerritoryId !== null &&
-        attackEndTerritoryId !== null);
+        attackEndTerritoryId !== null) ||
+      (turnPhase === 'sail' &&
+        sailStartTerritoryId !== null &&
+        sailEndTerritoryId !== null);
     setContinuousAnimation(arrowActive);
     if (arrowActive) startAnimationLoop();
     return () => setContinuousAnimation(false);
@@ -233,6 +306,8 @@ export function useAnimationActiveFlags({
     fortifyEndTerritoryId,
     attackStartTerritoryId,
     attackEndTerritoryId,
+    sailStartTerritoryId,
+    sailEndTerritoryId,
     startAnimationLoop,
   ]);
 
@@ -267,8 +342,11 @@ export function useAnimationActiveFlags({
   const hasFogTerritories = useMemo(() => {
     if (!visibleTerritoryIds) return false;
     const visible = new Set(visibleTerritoryIds);
-    return territories.some((t) => !visible.has(t.id));
-  }, [visibleTerritoryIds, territories]);
+    return (
+      territories.some((t) => !visible.has(t.id)) ||
+      seaTerritories.some((s) => !visible.has(s.id))
+    );
+  }, [visibleTerritoryIds, territories, seaTerritories]);
   useEffect(() => {
     setFogActive(hasFogTerritories);
     if (hasFogTerritories) startAnimationLoop();

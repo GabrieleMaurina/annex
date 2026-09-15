@@ -75,6 +75,32 @@ export function ownedTerritoryClusters(
   return clusters;
 }
 
+function canEnterFortifyNode(
+  game: Game,
+  playerId: number,
+  seaIds: Set<number>,
+  nodeId: number,
+): boolean {
+  if (seaIds.has(nodeId))
+    return (game.seaShips.get(nodeId)?.get(playerId) ?? 0) > 0;
+  return game.territoryOwners.get(nodeId) === playerId;
+}
+
+function fortifyGraphNeighbors(
+  game: Game,
+  seaIds: Set<number>,
+  neighborsById: Map<number, number[]>,
+  currentId: number,
+): number[] {
+  if (seaIds.has(currentId)) return neighborsById.get(currentId) ?? [];
+  return withPortalEdges(
+    neighborsById.get(currentId) ?? [],
+    currentId,
+    game.portalTerritoryIds,
+    game.portalsEnabled,
+  );
+}
+
 export function fortifyFullPath(
   game: Game,
   playerId: number,
@@ -83,22 +109,24 @@ export function fortifyFullPath(
 ): number[] {
   if (game.fortification === 'Unrestricted') return [startId, endId];
   const map = getGameMap(game);
-  const territoryById = new Map(map.territories.map((t) => [t.id, t]));
+  const seaIds = new Set(map.seaTerritories.map((t) => t.id));
+  const neighborsById = new Map(
+    [...map.territories, ...map.seaTerritories].map((t) => [t.id, t.neighbors]),
+  );
   const visited = new Set<number>([startId]);
   const parentOf = new Map<number, number>();
   const queue = [startId];
   while (queue.length > 0) {
     const current = queue.shift()!;
     if (current === endId) break;
-    const neighbors = withPortalEdges(
-      territoryById.get(current)?.neighbors ?? [],
+    for (const neighborId of fortifyGraphNeighbors(
+      game,
+      seaIds,
+      neighborsById,
       current,
-      game.portalTerritoryIds,
-      game.portalsEnabled,
-    );
-    for (const neighborId of neighbors) {
+    )) {
       if (visited.has(neighborId)) continue;
-      if (game.territoryOwners.get(neighborId) !== playerId) continue;
+      if (!canEnterFortifyNode(game, playerId, seaIds, neighborId)) continue;
       visited.add(neighborId);
       parentOf.set(neighborId, current);
       queue.push(neighborId);
@@ -115,6 +143,48 @@ export function fortifyFullPath(
     node = parent;
   }
   return path.reverse();
+}
+
+export function connectedFortifyTerritories(
+  game: Game,
+  playerId: number,
+  startIds: number[],
+): Set<number> {
+  const map = getGameMap(game);
+  const seaIds = new Set(map.seaTerritories.map((t) => t.id));
+  const neighborsById = new Map(
+    [...map.territories, ...map.seaTerritories].map((t) => [t.id, t.neighbors]),
+  );
+  const visited = new Set<number>(startIds);
+  const queue = [...startIds];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const neighborId of fortifyGraphNeighbors(
+      game,
+      seaIds,
+      neighborsById,
+      current,
+    )) {
+      if (visited.has(neighborId)) continue;
+      if (!canEnterFortifyNode(game, playerId, seaIds, neighborId)) continue;
+      visited.add(neighborId);
+      queue.push(neighborId);
+    }
+  }
+  return visited;
+}
+
+export function hasConnectedFortifyDestination(
+  game: Game,
+  playerId: number,
+  territoryId: number,
+): boolean {
+  const seaIds = new Set(getGameMap(game).seaTerritories.map((t) => t.id));
+  const reachable = connectedFortifyTerritories(game, playerId, [territoryId]);
+  for (const id of reachable) {
+    if (id !== territoryId && !seaIds.has(id)) return true;
+  }
+  return false;
 }
 
 export function connectedOwnedTerritories(
@@ -144,4 +214,62 @@ export function connectedOwnedTerritories(
     }
   }
   return visited;
+}
+
+export function connectedSeaTerritories(
+  game: Game,
+  startIds: number[],
+): Set<number> {
+  const map = getGameMap(game);
+  const seaIds = new Set(map.seaTerritories.map((t) => t.id));
+  const neighborsById = new Map(
+    map.seaTerritories.map((t) => [t.id, t.neighbors]),
+  );
+  const visited = new Set<number>(startIds);
+  const queue = [...startIds];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const neighborId of neighborsById.get(current) ?? []) {
+      if (!seaIds.has(neighborId) || visited.has(neighborId)) continue;
+      visited.add(neighborId);
+      queue.push(neighborId);
+    }
+  }
+  return visited;
+}
+
+export function sailFullPath(
+  game: Game,
+  startId: number,
+  endId: number,
+): number[] {
+  const map = getGameMap(game);
+  const seaIds = new Set(map.seaTerritories.map((t) => t.id));
+  const neighborsById = new Map(
+    map.seaTerritories.map((t) => [t.id, t.neighbors]),
+  );
+  const visited = new Set<number>([startId]);
+  const parentOf = new Map<number, number>();
+  const queue = [startId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current === endId) break;
+    for (const neighborId of neighborsById.get(current) ?? []) {
+      if (!seaIds.has(neighborId) || visited.has(neighborId)) continue;
+      visited.add(neighborId);
+      parentOf.set(neighborId, current);
+      queue.push(neighborId);
+    }
+  }
+  if (!visited.has(endId)) return [];
+
+  const path = [endId];
+  let node = endId;
+  while (node !== startId) {
+    const parent = parentOf.get(node);
+    if (parent === undefined) return [];
+    path.push(parent);
+    node = parent;
+  }
+  return path.reverse();
 }

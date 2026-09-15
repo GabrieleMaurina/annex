@@ -6,7 +6,13 @@ import type { Account, PlayerMapRow } from '../lib/types';
 import MapBrowser from './MapBrowser';
 import { mapImageUrl } from './mapUrl';
 
-function Maps({ account }: { account: Account | null }) {
+function Maps({
+  account,
+  serverUnreachable,
+}: {
+  account: Account | null;
+  serverUnreachable: boolean;
+}) {
   const navigate = useNavigate();
   const [preview, setPreview] = useState<PlayerMapRow | null>(null);
   const [reported, setReported] = useState(false);
@@ -21,10 +27,12 @@ function Maps({ account }: { account: Account | null }) {
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
       <h1 className="text-center mb-3">Maps</h1>
-      {account && (
+      {(account || serverUnreachable) && (
         <div className="d-flex justify-content-center gap-2 mb-4">
           <Button onClick={() => navigate('/maps/editor')}>Create a map</Button>
-          <Button onClick={() => navigate('/maps/mine')}>My maps</Button>
+          {account && (
+            <Button onClick={() => navigate('/maps/mine')}>My maps</Button>
+          )}
         </div>
       )}
 

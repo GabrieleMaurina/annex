@@ -1,3 +1,4 @@
+import { timeStep } from '../../core/bench';
 import { Fill, GridDimensions, MapSize } from '../../core/params';
 import { randomInt, Rng } from '../../core/rng';
 import {
@@ -21,9 +22,12 @@ const TRACK_JITTER = 0.4;
 
 const VOID_FRACTION: Record<Fill, number> = {
   full: 0.05,
-  mixed: 0.14,
-  sparse: 0.28,
+  mixed: 0.35,
+  sparse: 0.65,
 };
+
+const VOID_BLOB_RANGE: [number, number] = [2, 5];
+const SEA_BLOB_RANGE: [number, number] = [15, 40];
 
 interface CoarseGrid {
   cols: number;
@@ -196,7 +200,12 @@ function braid(rng: Rng, grid: CoarseGrid): void {
   }
 }
 
-function carveVoid(rng: Rng, grid: CoarseGrid, fraction: number): void {
+function carveVoid(
+  rng: Rng,
+  grid: CoarseGrid,
+  fraction: number,
+  blobRange: [number, number],
+): void {
   const { cols, rows, navigable, passages } = grid;
   const total = cols * rows;
   let navCount = 0;
@@ -216,8 +225,8 @@ function carveVoid(rng: Rng, grid: CoarseGrid, fraction: number): void {
   let guard = 0;
   while (target > 0 && guard++ < total) {
     const seed = randomInt(rng, 0, total - 1);
-    if (!navigable[seed]) continue;
-    const blob = randomInt(rng, 2, 5);
+    if (!navigable[seed] || grid.roomId[seed] !== -1) continue;
+    const blob = randomInt(rng, ...blobRange);
     const queue = [seed];
     let head = 0;
     let removed = 0;
@@ -228,7 +237,9 @@ function carveVoid(rng: Rng, grid: CoarseGrid, fraction: number): void {
       target--;
       removed++;
       for (const { nc } of neighborsOfCoarse(grid, c)) {
-        if (navigable[nc] && rng() < 0.5) queue.push(nc);
+        if (navigable[nc] && grid.roomId[nc] === -1 && rng() < 0.5) {
+          queue.push(nc);
+        }
       }
     }
   }
@@ -250,51 +261,6 @@ function fillHoles(grid: CoarseGrid): void {
     if (around.length < 3 || around.some(({ nc }) => !navigable[nc])) continue;
     navigable[c] = 1;
     for (const { dir, ex, ey } of around) passages.add(edgeKey(dir, ex, ey));
-  }
-}
-
-function reconnect(rng: Rng, grid: CoarseGrid): void {
-  const { cols, rows, navigable, passages } = grid;
-  const total = cols * rows;
-  const componentOf = new Int32Array(total).fill(-1);
-  const components: number[][] = [];
-  for (let start = 0; start < total; start++) {
-    if (!navigable[start] || componentOf[start] !== -1) continue;
-    const id = components.length;
-    const stack = [start];
-    componentOf[start] = id;
-    const members = [start];
-    while (stack.length > 0) {
-      const c = stack.pop()!;
-      for (const { nc, dir, ex, ey } of neighborsOfCoarse(grid, c)) {
-        if (
-          navigable[nc] &&
-          componentOf[nc] === -1 &&
-          passages.has(edgeKey(dir, ex, ey))
-        ) {
-          componentOf[nc] = id;
-          stack.push(nc);
-          members.push(nc);
-        }
-      }
-    }
-    components.push(members);
-  }
-  if (components.length <= 1) return;
-
-  components.sort((a, b) => b.length - a.length);
-  const joined = new Set(components[0]);
-  for (let k = 1; k < components.length; k++) {
-    const bridges: { dir: 'h' | 'v'; ex: number; ey: number }[] = [];
-    for (const c of components[k]) {
-      for (const { nc, dir, ex, ey } of neighborsOfCoarse(grid, c)) {
-        if (navigable[nc] && joined.has(nc)) bridges.push({ dir, ex, ey });
-      }
-    }
-    if (bridges.length === 0) continue;
-    const pick = bridges[randomInt(rng, 0, bridges.length - 1)];
-    passages.add(edgeKey(pick.dir, pick.ex, pick.ey));
-    for (const c of components[k]) joined.add(c);
   }
 }
 
@@ -334,11 +300,15 @@ function toCellLayer(grid: CoarseGrid, dims: GridDimensions): CellLayer {
   for (let py = 0; py < dims.height; py++) {
     rowForY.push(Math.min(rows - 1, trackIndex(grid.rowEdges, py)));
   }
+  const colForX: number[] = [];
+  for (let px = 0; px < dims.width; px++) {
+    colForX.push(Math.min(cols - 1, trackIndex(grid.colEdges, px)));
+  }
   const pixelCell = new Int32Array(dims.width * dims.height);
   for (let px = 0; px < dims.width; px++) {
-    const cx = Math.min(cols - 1, trackIndex(grid.colEdges, px));
     for (let py = 0; py < dims.height; py++) {
-      pixelCell[py * dims.width + px] = cellId[rowForY[py] * cols + cx];
+      pixelCell[py * dims.width + px] =
+        cellId[rowForY[py] * cols + colForX[px]];
     }
   }
 
@@ -357,6 +327,7 @@ export function generateDungeon(
   fill: Fill,
   size: MapSize,
   dims: GridDimensions,
+  seas: boolean,
 ): MazeMap {
   const rows = randomInt(rng, ...ROW_RANGES[size]);
   const cols = Math.round((rows * dims.width) / dims.height);
@@ -370,15 +341,21 @@ export function generateDungeon(
     passages: new Set(),
   };
 
-  placeRooms(rng, grid, Math.round((cols * rows) / 13));
-  carveMaze(rng, grid);
-  addDoors(rng, grid);
-  carveVoid(rng, grid, VOID_FRACTION[fill]);
-  fillHoles(grid);
-  reconnect(rng, grid);
-  braid(rng, grid);
+  const layer = timeStep('shape', () => {
+    placeRooms(rng, grid, Math.round((cols * rows) / 13));
+    carveMaze(rng, grid);
+    addDoors(rng, grid);
+    carveVoid(
+      rng,
+      grid,
+      VOID_FRACTION[fill],
+      seas ? SEA_BLOB_RANGE : VOID_BLOB_RANGE,
+    );
+    fillHoles(grid);
+    braid(rng, grid);
 
-  const layer = toCellLayer(grid, dims);
+    return toCellLayer(grid, dims);
+  });
   return buildMazeMap(
     rng,
     layer,
@@ -390,5 +367,6 @@ export function generateDungeon(
       tone: continentDungeonTone,
     },
     fill !== 'full',
+    seas,
   );
 }

@@ -20,12 +20,14 @@ import {
   startNukeAnimation,
 } from '../../animations';
 import { NUKE_FLIGHT_MS } from '../../animations/state';
+import { getAttackPath } from '../../logic/attack';
 import { getFortifyPath } from '../../logic/fortify';
-import type { Territory } from '../../mapData';
-import { isPortalHop } from '../../portals';
+import type { SeaTerritory, Territory } from '../../mapData';
 import type { ReplayData } from '../../replay';
 import { useReplay } from '../../replay';
 import type { Point } from '../helpers';
+import { useSeaSocketEvents } from './sea/useSeaSocketEvents';
+import { useAnimationPathHelpers } from './useAnimationPathHelpers';
 
 export function useGameSocketEvents({
   showReplay,
@@ -36,6 +38,8 @@ export function useGameSocketEvents({
   visibleTerritoryIds,
   radiationTerritoryIds,
   territoriesRef,
+  seaTerritoriesRef,
+  seasRef,
   ownerByIdRef,
   colorByPlayerIdRef,
   visibleTerritoryIdsRef,
@@ -52,6 +56,8 @@ export function useGameSocketEvents({
   visibleTerritoryIds: GameState['visibleTerritoryIds'];
   radiationTerritoryIds: number[];
   territoriesRef: RefObject<Territory[]>;
+  seaTerritoriesRef: RefObject<SeaTerritory[]>;
+  seasRef: RefObject<GameState['seas']>;
   ownerByIdRef: RefObject<Map<number, GameState['territories'][number]>>;
   colorByPlayerIdRef: RefObject<Map<number, number>>;
   visibleTerritoryIdsRef: RefObject<GameState['visibleTerritoryIds']>;
@@ -73,6 +79,8 @@ export function useGameSocketEvents({
   const frozenOwnerRef = useRef<Map<number, number>>(new Map());
   const attackRevealDeadlineRef = useRef<Map<number, number>>(new Map());
   const frozenVisibleTerritoryIdsRef = useRef<Set<number> | null>(null);
+  const frozenVisibleOwnersRef = useRef<Set<number>>(new Set());
+  const nextFreezeIdRef = useRef(0);
   const frozenTerritoryDataRef = useRef(
     new Map<number, GameState['territories'][number]>(),
   );
@@ -105,6 +113,14 @@ export function useGameSocketEvents({
     });
   }, [startAnimationLoop]);
 
+  const { findPosition, territoryPoints, idRunsForPath, arrowRunsForPath } =
+    useAnimationPathHelpers({
+      territoriesRef,
+      seaTerritoriesRef,
+      portalTerritoryIds,
+      portalsEnabled,
+    });
+
   const colorForPlayer = useCallback(
     (playerId: number | undefined): string => {
       if (playerId === undefined) return '#ffffff';
@@ -130,9 +146,7 @@ export function useGameSocketEvents({
       arrowFades?: ('start' | 'end' | undefined)[][],
     ) => {
       if (areAnimationsDisabled()) return;
-      const territory = territoriesRef.current.find(
-        (t) => t.id === territoryId,
-      );
+      const territory = findPosition(territoryId);
       const ownerId =
         playerId ?? ownerByIdRef.current.get(territoryId)?.ownerId;
       if (territory)
@@ -146,7 +160,7 @@ export function useGameSocketEvents({
           arrowFades,
         );
     },
-    [colorForPlayer, territoriesRef, ownerByIdRef],
+    [colorForPlayer, findPosition, ownerByIdRef],
   );
 
   const animateAdd = useCallback(
@@ -169,13 +183,11 @@ export function useGameSocketEvents({
 
   const explode = useCallback(
     (territoryId: number) => {
-      const territory = territoriesRef.current.find(
-        (t) => t.id === territoryId,
-      );
+      const territory = findPosition(territoryId);
       if (!territory) return;
       startAnimation('explosion', territory.x, territory.y);
     },
-    [territoriesRef],
+    [findPosition],
   );
 
   const entrenchEffect = useCallback(
@@ -263,48 +275,6 @@ export function useGameSocketEvents({
     [colorForPlayer, territoriesRef, ownerByIdRef],
   );
 
-  const territoryPoints = useCallback(
-    (territoryIds: number[]): Point[] =>
-      territoryIds
-        .map((id) => territoriesRef.current.find((t) => t.id === id))
-        .filter((t): t is Territory => !!t)
-        .map((t) => ({ x: t.x, y: t.y })),
-    [territoriesRef],
-  );
-
-  const idRunsForPath = useCallback(
-    (territoryIds: number[]): number[][] => {
-      const runs: number[][] = [];
-      let current: number[] = [];
-      for (let i = 0; i < territoryIds.length; i++) {
-        if (
-          i > 0 &&
-          isPortalHop(
-            territoryIds[i - 1],
-            territoryIds[i],
-            portalTerritoryIds,
-            portalsEnabled,
-          )
-        ) {
-          if (current.length > 1) runs.push(current);
-          current = [];
-        }
-        current.push(territoryIds[i]);
-      }
-      if (current.length > 1) runs.push(current);
-      return runs;
-    },
-    [portalTerritoryIds, portalsEnabled],
-  );
-
-  const arrowRunsForPath = useCallback(
-    (territoryIds: number[]): Point[][] =>
-      idRunsForPath(territoryIds)
-        .map((run) => territoryPoints(run))
-        .filter((points) => points.length > 1),
-    [idRunsForPath, territoryPoints],
-  );
-
   const arrowForPath = useCallback(
     (
       pathRuns: number[][],
@@ -374,11 +344,6 @@ export function useGameSocketEvents({
     [arrowForPath],
   );
 
-  const flashArrow = useCallback(
-    (territoryIds: number[]) => flashArrowRuns([territoryIds]),
-    [flashArrowRuns],
-  );
-
   const playAttackLossEffects = useCallback(
     (
       attackingTerritoryId: number,
@@ -422,6 +387,24 @@ export function useGameSocketEvents({
     [explode, animateRemove],
   );
 
+  const { frozenSeaShipsRef, playSeaFrameAnimation } = useSeaSocketEvents({
+    territoriesRef,
+    seaTerritoriesRef,
+    seasRef,
+    portalTerritoryIds,
+    portalsEnabled,
+    visibleTerritoryIdsRef,
+    frozenVisibleTerritoryIdsRef,
+    frozenVisibleOwnersRef,
+    nextFreezeIdRef,
+    adjustTerritoryTroops,
+    animateAdd,
+    animateRemove,
+    explode,
+    flashArrowRuns,
+    startAnimationLoop,
+  });
+
   const playFrameAnimation = useCallback(
     (animation: ReplayAnimation, partOfConquestPair: boolean) => {
       if (animation.type === 'deploy') {
@@ -437,6 +420,8 @@ export function useGameSocketEvents({
         if (!partOfConquestPair) {
           const pathIds = getFortifyPath(
             territoriesRef.current,
+            seaTerritoriesRef.current,
+            seasRef.current,
             ownerByIdRef.current,
             animation.playerId,
             animation.fromTerritoryId,
@@ -482,14 +467,26 @@ export function useGameSocketEvents({
         toxinPlaceEffect(animation.territoryId);
       } else if (animation.type === 'nuke') {
         nukeEffect(animation);
+      } else if (
+        animation.type === 'buyShips' ||
+        animation.type === 'sail' ||
+        animation.type === 'attackSea'
+      ) {
+        playSeaFrameAnimation(animation);
       } else {
         if (animation.defenderId !== undefined) playSound('explode');
         const arrowPath = partOfConquestPair
           ? undefined
-          : arrowRunsForPath([
-              animation.attackingTerritoryId,
-              animation.defendingTerritoryId,
-            ]);
+          : arrowRunsForPath(
+              getAttackPath(
+                territoriesRef.current,
+                seaTerritoriesRef.current,
+                animation.attackingTerritoryId,
+                animation.defendingTerritoryId,
+                portalTerritoryIds,
+                portalsEnabled,
+              ),
+            );
         playAttackLossEffects(
           animation.attackingTerritoryId,
           animation.defendingTerritoryId,
@@ -511,10 +508,13 @@ export function useGameSocketEvents({
       nukeEffect,
       playAttackLossEffects,
       arrowRunsForPath,
+      playSeaFrameAnimation,
       fortification,
       portalTerritoryIds,
       portalsEnabled,
       territoriesRef,
+      seaTerritoriesRef,
+      seasRef,
       ownerByIdRef,
       startAnimationLoop,
     ],
@@ -578,6 +578,7 @@ export function useGameSocketEvents({
     function onAttackMoved(payload: {
       territoryId: number;
       fromTerritoryId: number;
+      path: number[][];
       troopsAdded?: number;
     }) {
       if (payload.troopsAdded !== undefined)
@@ -590,7 +591,7 @@ export function useGameSocketEvents({
         : 0;
       const fireAnimation = () => {
         playSound('fortify');
-        flashArrow([payload.fromTerritoryId, payload.territoryId]);
+        flashArrowRuns(payload.path);
         if (payload.troopsAdded !== undefined)
           animateAdd({
             territoryId: payload.territoryId,
@@ -725,7 +726,6 @@ export function useGameSocketEvents({
     setRadiationTerritoryIds,
     setRadiationUpcomingTerritoryIds,
     nukeEffect,
-    flashArrow,
     flashArrowRuns,
     startAnimationLoop,
   ]);
@@ -742,6 +742,7 @@ export function useGameSocketEvents({
       defenceLosses?: number;
       conquered?: boolean;
       type: 'regular' | 'blitz';
+      path: number[][];
     }) {
       const attackLosses = payload.attackLosses ?? 0;
       const defenceLosses = payload.defenceLosses ?? 0;
@@ -753,9 +754,13 @@ export function useGameSocketEvents({
           : 0;
 
       if (conquered && visibleTerritoryIdsRef.current) {
-        frozenVisibleTerritoryIdsRef.current = new Set(
-          visibleTerritoryIdsRef.current,
-        );
+        const freezeId = ++nextFreezeIdRef.current;
+        frozenVisibleOwnersRef.current.add(freezeId);
+        if (frozenVisibleTerritoryIdsRef.current === null) {
+          frozenVisibleTerritoryIdsRef.current = new Set(
+            visibleTerritoryIdsRef.current,
+          );
+        }
         const snapshot = new Map(ownerByIdRef.current);
         const priorDefender = snapshot.get(payload.defendingTerritoryId);
         snapshot.set(payload.defendingTerritoryId, {
@@ -769,7 +774,10 @@ export function useGameSocketEvents({
         startAnimationLoop();
         setTimeout(
           () => {
-            frozenVisibleTerritoryIdsRef.current = null;
+            frozenVisibleOwnersRef.current.delete(freezeId);
+            if (frozenVisibleOwnersRef.current.size === 0) {
+              frozenVisibleTerritoryIdsRef.current = null;
+            }
             frozenTerritoryDataRef.current = new Map();
             startAnimationLoop();
           },
@@ -831,10 +839,7 @@ export function useGameSocketEvents({
       }
       setTimeout(() => {
         if (!freeConquest) playSound('explode');
-        flashArrow([
-          payload.attackingTerritoryId,
-          payload.defendingTerritoryId,
-        ]);
+        flashArrowRuns(payload.path);
         frozenTroopsRef.current.delete(payload.attackingTerritoryId);
         frozenTroopsRef.current.delete(payload.defendingTerritoryId);
         if (attackLosses > 0) {
@@ -866,9 +871,12 @@ export function useGameSocketEvents({
     explode,
     animateRemove,
     adjustTerritoryTroops,
-    flashArrow,
+    flashArrowRuns,
     ownerByIdRef,
     visibleTerritoryIdsRef,
+    frozenVisibleTerritoryIdsRef,
+    frozenVisibleOwnersRef,
+    nextFreezeIdRef,
     startAnimationLoop,
   ]);
 
@@ -924,6 +932,7 @@ export function useGameSocketEvents({
     frozenOwnerRef,
     frozenVisibleTerritoryIdsRef,
     frozenTerritoryDataRef,
+    frozenSeaShipsRef,
     toxinPlacedAtRef,
     radiationPlacedAtRef,
     tankFireId,

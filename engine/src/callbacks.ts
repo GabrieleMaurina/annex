@@ -138,6 +138,7 @@ export interface EngineCallbacks {
       defendingTerritoryId: number;
       attackerId: number;
       type: 'regular' | 'blitz';
+      path: number[][];
       attackingTroops?: number;
       attackLosses?: number;
       defenderId?: number;
@@ -155,8 +156,42 @@ export interface EngineCallbacks {
     payload: {
       territoryId: number;
       fromTerritoryId: number;
+      path: number[][];
       troopsRemoved?: number;
       troopsAdded?: number;
+    },
+  ): void;
+  onShipsBought(
+    playerId: number,
+    payload: {
+      sourceTerritoryId: number;
+      seaTerritoryId: number;
+      ships: number;
+      fromPool: boolean;
+      playerId: number;
+    },
+  ): void;
+  onSailed(
+    playerId: number,
+    payload: {
+      seaTerritoryId: number;
+      fromSeaTerritoryId: number;
+      playerId: number;
+      path: number[][];
+      shipsRemoved?: number;
+      shipsAdded?: number;
+    },
+  ): void;
+  onSeaAttacked(
+    playerId: number,
+    payload: {
+      seaTerritoryId: number;
+      attackerId: number;
+      defenderId: number;
+      attackingShips: number;
+      attackLosses: number;
+      defendingShips: number;
+      defenceLosses: number;
     },
   ): void;
   onSelected(playerId: number, payload: { territoryId: number }): void;
@@ -165,6 +200,7 @@ export interface EngineCallbacks {
     payload: {
       name: string;
       territories: unknown[];
+      seaTerritories: unknown[];
       bonuses: number[];
       imageSrc: string;
     },

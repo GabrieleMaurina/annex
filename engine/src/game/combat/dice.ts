@@ -29,6 +29,33 @@ export function attack(
   return { attackDice, defenceDice, attackLosses, defenceLosses };
 }
 
+export function attackSea(
+  attackingShips: number,
+  defendingShips: number,
+): {
+  attackDice: number[];
+  defenceDice: number[];
+  attackLosses: number;
+  defenceLosses: number;
+} {
+  const attackDice = Array.from({ length: attackingShips }, roll).sort(
+    (a, b) => b - a,
+  );
+  const defenceDice = Array.from({ length: defendingShips }, roll).sort(
+    (a, b) => b - a,
+  );
+
+  let attackLosses = 0;
+  let defenceLosses = 0;
+  const pairs = Math.min(attackDice.length, defenceDice.length);
+  for (let i = 0; i < pairs; i++) {
+    if (attackDice[i] > defenceDice[i]) defenceLosses++;
+    else if (attackDice[i] < defenceDice[i]) attackLosses++;
+  }
+
+  return { attackDice, defenceDice, attackLosses, defenceLosses };
+}
+
 function allDiceRolls(diceCount: number): number[][] {
   let rolls: number[][] = [[]];
   for (let i = 0; i < diceCount; i++) {

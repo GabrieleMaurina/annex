@@ -28,6 +28,7 @@ import { isImageAllowed } from '../../moderation';
 import {
   isObject,
   MapGeneration,
+  MapSeaTerritory,
   MapTerritory,
   readImageDimensions,
   validateMapGeneration,
@@ -62,6 +63,7 @@ function viewerId(res: Response): string | undefined {
 interface ParsedInput {
   name: string;
   territories: MapTerritory[];
+  seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   image: Buffer;
   imageMime: string;
@@ -101,6 +103,7 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
 
   const geometry = validateMapGeometry(
     body.territories,
+    body.seaTerritories,
     body.bonuses,
     dimensions.width,
     dimensions.height,
@@ -112,6 +115,7 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
     input: {
       name,
       territories: geometry.territories,
+      seaTerritories: geometry.seaTerritories,
       bonuses: geometry.bonuses,
       image: data,
       imageMime: match[1],
@@ -190,6 +194,7 @@ playerMapsRouter.get('/player-maps/:id', (req, res) => {
         name: map.name,
         authorId: map.authorId,
         territories: map.territories,
+        seaTerritories: map.seaTerritories,
         bonuses: map.bonuses,
         image: `data:${map.imageMime};base64,${map.image}`,
         imageMime: map.imageMime,

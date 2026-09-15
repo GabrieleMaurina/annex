@@ -27,6 +27,13 @@ export interface MapTerritory {
   neighbors: number[];
 }
 
+export interface MapSeaTerritory {
+  id: number;
+  x: number;
+  y: number;
+  neighbors: number[];
+}
+
 const MAX_CONTINENTS = 30;
 const MIN_BONUS = 2;
 const MAX_BONUS = 25;
@@ -40,6 +47,20 @@ function isTerritory(value: unknown): value is MapTerritory {
     Object.keys(value).length === 5 &&
     Number.isInteger(value.id) &&
     Number.isInteger(value.continentId) &&
+    typeof value.x === 'number' &&
+    Number.isFinite(value.x) &&
+    typeof value.y === 'number' &&
+    Number.isFinite(value.y) &&
+    Array.isArray(value.neighbors) &&
+    value.neighbors.every((n) => Number.isInteger(n))
+  );
+}
+
+function isSeaTerritory(value: unknown): value is MapSeaTerritory {
+  if (!isObject(value)) return false;
+  return (
+    Object.keys(value).length === 4 &&
+    Number.isInteger(value.id) &&
     typeof value.x === 'number' &&
     Number.isFinite(value.x) &&
     typeof value.y === 'number' &&
@@ -147,11 +168,11 @@ export function readImageDimensions(
 }
 
 function allConnected(
-  territories: MapTerritory[],
-  byId: Map<number, MapTerritory>,
+  nodes: { id: number; neighbors: number[] }[],
+  byId: Map<number, { neighbors: number[] }>,
 ): boolean {
   const visited = new Set<number>();
-  const stack = [territories[0].id];
+  const stack = [nodes[0].id];
   while (stack.length > 0) {
     const id = stack.pop()!;
     if (visited.has(id)) continue;
@@ -159,7 +180,7 @@ function allConnected(
     for (const n of byId.get(id)!.neighbors)
       if (byId.has(n) && !visited.has(n)) stack.push(n);
   }
-  return visited.size === territories.length;
+  return visited.size === nodes.length;
 }
 
 export interface MapGeneration {
@@ -167,6 +188,7 @@ export interface MapGeneration {
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  seas: boolean;
 }
 
 const MAX_SEED_LENGTH = 20;
@@ -178,14 +200,15 @@ export function validateMapGeneration(
   | { ok: false; error: string } {
   if (raw === undefined || raw === null) return { ok: true, generation: null };
   if (!isObject(raw)) return { ok: false, error: 'invalid generation' };
-  const { seed, size, type, fill } = raw;
+  const { seed, size, type, fill, seas } = raw;
   if (
     typeof seed !== 'string' ||
     seed.length < 1 ||
     seed.length > MAX_SEED_LENGTH ||
     !(MAP_SIZE_VALUES as string[]).includes(size as string) ||
     !(GENERATION_TYPE_VALUES as string[]).includes(type as string) ||
-    !(FILL_VALUES as string[]).includes(fill as string)
+    !(FILL_VALUES as string[]).includes(fill as string) ||
+    typeof seas !== 'boolean'
   )
     return { ok: false, error: 'invalid generation' };
   return {
@@ -195,24 +218,35 @@ export function validateMapGeneration(
       size: size as MapSize,
       type: type as GenerationType,
       fill: fill as Fill,
+      seas,
     },
   };
 }
 
 export function validateMapGeometry(
   territoriesRaw: unknown,
+  seaTerritoriesRaw: unknown,
   bonusesRaw: unknown,
   imageWidth: number,
   imageHeight: number,
 ):
-  | { ok: true; territories: MapTerritory[]; bonuses: number[] }
+  | {
+      ok: true;
+      territories: MapTerritory[];
+      seaTerritories: MapSeaTerritory[];
+      bonuses: number[];
+    }
   | { ok: false; error: string } {
   if (!Array.isArray(territoriesRaw))
     return { ok: false, error: 'invalid territories' };
-  if (territoriesRaw.length > MAX_TERRITORIES)
+  if (!Array.isArray(seaTerritoriesRaw))
+    return { ok: false, error: 'invalid seas' };
+  if (territoriesRaw.length + seaTerritoriesRaw.length > MAX_TERRITORIES)
     return { ok: false, error: 'too many territories' };
   if (!territoriesRaw.every(isTerritory))
     return { ok: false, error: 'invalid territories' };
+  if (!seaTerritoriesRaw.every(isSeaTerritory))
+    return { ok: false, error: 'invalid seas' };
   if (
     !Array.isArray(bonusesRaw) ||
     bonusesRaw.length < 1 ||
@@ -224,28 +258,34 @@ export function validateMapGeometry(
     return { ok: false, error: 'invalid bonuses' };
 
   const territories = territoriesRaw as MapTerritory[];
+  const seaTerritories = seaTerritoriesRaw as MapSeaTerritory[];
   const bonuses = bonusesRaw as number[];
 
   if (territories.length < MIN_CONTINENT_SIZE)
     return { ok: false, error: 'not enough territories' };
 
-  const ids = new Set(territories.map((t) => t.id));
-  if (ids.size !== territories.length)
+  const allNodes = [...territories, ...seaTerritories];
+  const ids = new Set(allNodes.map((t) => t.id));
+  if (ids.size !== allNodes.length)
     return { ok: false, error: 'duplicate territory id' };
 
-  const byId = new Map(territories.map((t) => [t.id, t]));
-  for (const t of territories) {
+  const byId = new Map(allNodes.map((t) => [t.id, t]));
+  for (const t of allNodes) {
     if (t.x < 0 || t.x > imageWidth || t.y < 0 || t.y > imageHeight)
       return { ok: false, error: 'territory out of bounds' };
+  }
+  for (const t of territories) {
     if (t.continentId < 0 || t.continentId >= bonuses.length)
       return { ok: false, error: 'invalid continent' };
+  }
+  for (const t of allNodes) {
     if (t.neighbors.some((n) => n === t.id || !ids.has(n)))
       return { ok: false, error: 'invalid neighbor' };
     if (t.neighbors.some((n) => !byId.get(n)!.neighbors.includes(t.id)))
       return { ok: false, error: 'asymmetric neighbor' };
   }
 
-  if (!allConnected(territories, byId))
+  if (!allConnected(allNodes, byId))
     return { ok: false, error: 'territories not all connected' };
 
   const sizeByContinent = new Map<number, number>();
@@ -260,5 +300,5 @@ export function validateMapGeometry(
       return { ok: false, error: 'invalid continent size' };
   }
 
-  return { ok: true, territories, bonuses };
+  return { ok: true, territories, seaTerritories, bonuses };
 }

@@ -2,7 +2,7 @@ import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { useRef, useState } from 'react';
 import { Alert, Button, ButtonGroup, Form, Table } from 'react-bootstrap';
 import { useDragNumber } from '../../common/useDragNumber';
-import type { MapTerritory as Territory } from '../../lib/types';
+import type { EditorTerritory as Territory } from './model/editorTypes';
 import type { PaintTool } from './paint/paintTools';
 import { PALETTE_GROUPS } from './paint/paintTools';
 import { continentColor } from './palette';
@@ -28,7 +28,8 @@ interface Props {
   mapSizeText: string;
   nameError: string;
   mode: 'graph' | 'paint';
-  setMode: (mode: 'graph' | 'paint') => void;
+  exclusive: boolean;
+  onModeClick: (mode: 'graph' | 'paint') => void;
   tool: PaintTool | null;
   setTool: (tool: PaintTool | null) => void;
   color: string;
@@ -144,7 +145,8 @@ function Panel(props: Props) {
     mapSizeText,
     nameError,
     mode,
-    setMode,
+    exclusive,
+    onModeClick,
     tool,
     setTool,
     color,
@@ -219,6 +221,7 @@ function Panel(props: Props) {
     const target = index > 0 ? index - 1 : index + 1;
     setTerritories((prev) =>
       prev.map((t) => {
+        if (t.isSea) return t;
         const continentId = t.continentId === index ? target : t.continentId;
         return continentId > index
           ? { ...t, continentId: continentId - 1 }
@@ -345,14 +348,26 @@ function Panel(props: Props) {
 
       <ButtonGroup size="sm" className="w-100 mb-2">
         <Button
-          variant={mode === 'graph' ? 'primary' : 'outline-primary'}
-          onClick={() => setMode('graph')}
+          variant={
+            mode === 'graph'
+              ? exclusive
+                ? 'success'
+                : 'primary'
+              : 'outline-primary'
+          }
+          onClick={() => onModeClick('graph')}
         >
           Graph
         </Button>
         <Button
-          variant={mode === 'paint' ? 'primary' : 'outline-primary'}
-          onClick={() => setMode('paint')}
+          variant={
+            mode === 'paint'
+              ? exclusive
+                ? 'success'
+                : 'primary'
+              : 'outline-primary'
+          }
+          onClick={() => onModeClick('paint')}
         >
           Draw
         </Button>
@@ -500,7 +515,10 @@ function Panel(props: Props) {
         ) : (
           <>
             <div className="mb-2 fw-bold">
-              Total territories: {territories.length}
+              Total territories: {territories.filter((t) => !t.isSea).length}
+            </div>
+            <div className="mb-2">
+              Seas: {territories.filter((t) => t.isSea).length}
             </div>
             <Table size="sm" borderless className="mb-2 text-center">
               <thead>
@@ -521,7 +539,11 @@ function Panel(props: Props) {
                   >
                     <td>{i + 1}</td>
                     <td>
-                      {territories.filter((t) => t.continentId === i).length}
+                      {
+                        territories.filter(
+                          (t) => !t.isSea && t.continentId === i,
+                        ).length
+                      }
                     </td>
                     <td>
                       <BonusInput

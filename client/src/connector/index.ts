@@ -34,10 +34,11 @@ import type {
 } from '../lib/types';
 import { subscribe, unsubscribe } from './inbound';
 import {
-  hasPendingSeed,
+  consumeConvertedFromOnline,
   isOffline,
   addLocalPlayer as offlineAddLocalPlayer,
   continueHandoff as offlineContinueHandoff,
+  cycleLocalPlayerColor as offlineCycleLocalPlayerColor,
   dispatch as offlineDispatch,
   removeLocalPlayer as offlineRemoveLocalPlayer,
   setLocalPlayerName as offlineSetLocalPlayerName,
@@ -145,7 +146,7 @@ export const connector = {
   },
 
   isConvertingOffline(): boolean {
-    return hasPendingSeed();
+    return consumeConvertedFromOnline();
   },
 
   addLocalPlayer(name: string): void {
@@ -158,6 +159,10 @@ export const connector = {
 
   setLocalPlayerName(playerId: number, name: string): void {
     if (isOffline()) offlineSetLocalPlayerName(playerId, name);
+  },
+
+  cycleLocalPlayerColor(playerId: number): void {
+    if (isOffline()) offlineCycleLocalPlayerColor(playerId);
   },
 
   continueHandoff(): void {
@@ -619,6 +624,18 @@ export const connector = {
     route('game:deploy', data, cb);
   },
 
+  buyShips(
+    data: {
+      sourceTerritoryId: number;
+      seaTerritoryId: number;
+      ships: number;
+      fromPool: boolean;
+    },
+    cb: AckCallback,
+  ): void {
+    route('game:buyShips', data, cb);
+  },
+
   requestCards(): void {
     route('game:requestCards');
   },
@@ -640,6 +657,18 @@ export const connector = {
 
   fortify(data: { troops: number }, cb: AckCallback): void {
     route('game:fortify', data, cb);
+  },
+
+  sailSelectStart(data: { territoryId: number | null }, cb: AckCallback): void {
+    route('game:sailSelectStart', data, cb);
+  },
+
+  sailSelectEnd(data: { territoryId: number }, cb: AckCallback): void {
+    route('game:sailSelectEnd', data, cb);
+  },
+
+  sail(data: { ships: number }, cb: AckCallback): void {
+    route('game:sail', data, cb);
   },
 
   entrench(
@@ -696,6 +725,24 @@ export const connector = {
 
   attackMove(data: { troops: number }, cb: AckCallback): void {
     route('game:attackMove', data, cb);
+  },
+
+  attackSeaSelectStart(
+    data: { territoryId: number | null },
+    cb: AckCallback,
+  ): void {
+    route('game:attackSeaSelectStart', data, cb);
+  },
+
+  attackSeaSelectDefender(data: { defenderId: number }, cb: AckCallback): void {
+    route('game:attackSeaSelectDefender', data, cb);
+  },
+
+  attackSea<R extends Ack>(
+    data: { ships: number },
+    cb: RichAckCallback<R>,
+  ): void {
+    route('game:attackSea', data, cb);
   },
 
   replay(cb: (res: ReplayAck) => void): void {

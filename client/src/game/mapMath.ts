@@ -165,6 +165,8 @@ export interface WrappedSegment {
   t1: number;
 }
 
+const WRAP_THRESHOLD_FRACTION = 0.8;
+
 function wrapSplitX(
   a: Point,
   b: Point,
@@ -173,7 +175,7 @@ function wrapSplitX(
   t1: number,
 ): WrappedSegment[] {
   const d = b.x - a.x;
-  if (Math.abs(d) <= mapW / 2) return [{ a, b, t0, t1 }];
+  if (Math.abs(d) <= mapW * WRAP_THRESHOLD_FRACTION) return [{ a, b, t0, t1 }];
   const sign = Math.sign(d);
   const bx = b.x - sign * mapW;
   const boundary = sign < 0 ? mapW : 0;
@@ -194,7 +196,7 @@ function wrapSplitY(
   t1: number,
 ): WrappedSegment[] {
   const d = b.y - a.y;
-  if (Math.abs(d) <= mapH / 2) return [{ a, b, t0, t1 }];
+  if (Math.abs(d) <= mapH * WRAP_THRESHOLD_FRACTION) return [{ a, b, t0, t1 }];
   const sign = Math.sign(d);
   const by = b.y - sign * mapH;
   const boundary = sign < 0 ? mapH : 0;
@@ -434,9 +436,11 @@ export function concaveHull(
     }
     if (next < 0) break;
     used.add(cur * n + next);
+    used.add(next * n + cur);
     prev = points[cur];
     cur = next;
-    if (cur === start) break;
+    if (cur === start && !adj.get(cur)!.some((w) => !used.has(cur * n + w)))
+      break;
     order.push(cur);
   }
   if (order.length < 3) return fallback;
@@ -460,11 +464,61 @@ export function concaveHull(
     return seq;
   };
 
+  const reachesBlob = new Set<number>(order);
+  const reachStack = [...order];
+  while (reachStack.length) {
+    const cur = reachStack.pop()!;
+    for (const w of neighbors(cur)) {
+      if (!inBlob.has(w) && !reachesBlob.has(w)) {
+        reachesBlob.add(w);
+        reachStack.push(w);
+      }
+    }
+  }
+
+  const nearestAttachment = new Map<number, number[]>();
+  const islandVisited = new Set<number>();
+  for (let v = 0; v < n; v++) {
+    if (inBlob.has(v) || reachesBlob.has(v) || islandVisited.has(v)) continue;
+    const island = [v];
+    islandVisited.add(v);
+    const stack = [v];
+    while (stack.length) {
+      const cur = stack.pop()!;
+      for (const w of neighbors(cur)) {
+        if (!inBlob.has(w) && !reachesBlob.has(w) && !islandVisited.has(w)) {
+          islandVisited.add(w);
+          island.push(w);
+          stack.push(w);
+        }
+      }
+    }
+    let anchor = order[0];
+    let anchorNode = island[0];
+    let best = Infinity;
+    for (const b of order) {
+      for (const p of island) {
+        const d = dist(points[b], points[p]);
+        if (d < best) {
+          best = d;
+          anchor = b;
+          anchorNode = p;
+        }
+      }
+    }
+    const list = nearestAttachment.get(anchor);
+    if (list) list.push(anchorNode);
+    else nearestAttachment.set(anchor, [anchorNode]);
+  }
+
   const outline: number[] = [];
   for (const b of order) {
     outline.push(b);
     for (const c of neighbors(b)) {
       if (!inBlob.has(c) && !attached.has(c)) outline.push(...spikeTour(c), b);
+    }
+    for (const root of nearestAttachment.get(b) ?? []) {
+      if (!attached.has(root)) outline.push(...spikeTour(root), b);
     }
   }
   for (let v = 0; v < n; v++) {

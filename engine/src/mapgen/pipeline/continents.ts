@@ -6,6 +6,7 @@ import {
 } from '../core/params';
 import { gaussianRandom, randomInt, Rng } from '../core/rng';
 import { SpecialEdge } from './connectivity';
+import { GridPoint } from './placement';
 
 const MIN_MAINLAND_CONTINENT_SIZE = 5;
 
@@ -129,20 +130,115 @@ function assignByNearestSeed(
   return continentIdByTerritory;
 }
 
-function absorbSmallLandmasses(
-  continentIdByTerritory: number[],
-  smallComponents: number[][],
-  specialEdges: SpecialEdge[],
-): void {
-  if (smallComponents.length === 0) return;
-
+function buildPartnerMap(edges: SpecialEdge[]): Map<number, number[]> {
   const partners = new Map<number, number[]>();
-  for (const { a, b } of specialEdges) {
+  for (const { a, b } of edges) {
     if (!partners.has(a)) partners.set(a, []);
     if (!partners.has(b)) partners.set(b, []);
     partners.get(a)!.push(b);
     partners.get(b)!.push(a);
   }
+  return partners;
+}
+
+function nearestPartner(
+  component: number[],
+  partners: Map<number, number[]>,
+  centroids: GridPoint[],
+  isValidTarget: (territory: number) => boolean,
+): { targetTerritory: number; distance: number } | null {
+  let best: { targetTerritory: number; distance: number } | null = null;
+  for (const id of component) {
+    for (const partner of partners.get(id) ?? []) {
+      if (!isValidTarget(partner)) continue;
+      const distance = Math.hypot(
+        centroids[id].gx - centroids[partner].gx,
+        centroids[id].gy - centroids[partner].gy,
+      );
+      if (!best || distance < best.distance) {
+        best = { targetTerritory: partner, distance };
+      }
+    }
+  }
+  return best;
+}
+
+function groupTinyIslands(
+  continentIdByTerritory: number[],
+  smallComponents: number[][],
+  absorptionPartners: SpecialEdge[],
+  bridgeEdges: SpecialEdge[],
+  centroids: GridPoint[],
+): void {
+  if (smallComponents.length < 2) return;
+
+  const partners = buildPartnerMap([...absorptionPartners, ...bridgeEdges]);
+  const componentIndexOfTerritory = new Map<number, number>();
+  smallComponents.forEach((component, index) => {
+    for (const id of component) componentIndexOfTerritory.set(id, index);
+  });
+
+  const parent = smallComponents.map((_, index) => index);
+  const find = (i: number): number => {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]];
+      i = parent[i];
+    }
+    return i;
+  };
+
+  smallComponents.forEach((component, index) => {
+    const islandBest = nearestPartner(
+      component,
+      partners,
+      centroids,
+      (territory) => {
+        const partnerIndex = componentIndexOfTerritory.get(territory);
+        return partnerIndex !== undefined && partnerIndex !== index;
+      },
+    );
+    if (!islandBest) return;
+
+    const partnerIndex = componentIndexOfTerritory.get(
+      islandBest.targetTerritory,
+    )!;
+    const rootA = find(index);
+    const rootB = find(partnerIndex);
+    if (rootA !== rootB) parent[rootA] = rootB;
+  });
+
+  const groupsByRoot = new Map<number, number[]>();
+  smallComponents.forEach((_, index) => {
+    const root = find(index);
+    if (!groupsByRoot.has(root)) groupsByRoot.set(root, []);
+    groupsByRoot.get(root)!.push(index);
+  });
+
+  let nextIslandContinentId = Math.max(0, ...continentIdByTerritory) + 1;
+  for (const members of groupsByRoot.values()) {
+    if (members.length < 2) continue;
+    const islandContinentId = nextIslandContinentId++;
+    for (const memberIndex of members) {
+      for (const id of smallComponents[memberIndex]) {
+        continentIdByTerritory[id] = islandContinentId;
+      }
+    }
+  }
+}
+
+function absorbVia(
+  continentIdByTerritory: number[],
+  smallComponents: number[][],
+  edges: SpecialEdge[],
+  centroids: GridPoint[],
+): void {
+  const partners = buildPartnerMap(edges);
+
+  const distance = (a: number, b: number): number =>
+    Math.hypot(
+      centroids[a].gx - centroids[b].gx,
+      centroids[a].gy - centroids[b].gy,
+    );
 
   let progressed = true;
   while (progressed) {
@@ -150,20 +246,47 @@ function absorbSmallLandmasses(
     for (const component of smallComponents) {
       if (continentIdByTerritory[component[0]] !== -1) continue;
       let target = -1;
+      let targetDistance = Infinity;
       for (const id of component) {
         for (const partner of partners.get(id) ?? []) {
-          if (continentIdByTerritory[partner] !== -1) {
+          if (continentIdByTerritory[partner] === -1) continue;
+          const d = distance(id, partner);
+          if (d < targetDistance) {
+            targetDistance = d;
             target = continentIdByTerritory[partner];
-            break;
           }
         }
-        if (target !== -1) break;
       }
       if (target === -1) continue;
       for (const id of component) continentIdByTerritory[id] = target;
       progressed = true;
     }
   }
+}
+
+function absorbSmallLandmasses(
+  continentIdByTerritory: number[],
+  smallComponents: number[][],
+  absorptionPartners: SpecialEdge[],
+  bridgeEdges: SpecialEdge[],
+  centroids: GridPoint[],
+): void {
+  if (smallComponents.length === 0) return;
+
+  groupTinyIslands(
+    continentIdByTerritory,
+    smallComponents,
+    absorptionPartners,
+    bridgeEdges,
+    centroids,
+  );
+
+  const remaining = smallComponents.filter(
+    (component) => continentIdByTerritory[component[0]] === -1,
+  );
+
+  absorbVia(continentIdByTerritory, remaining, absorptionPartners, centroids);
+  absorbVia(continentIdByTerritory, remaining, bridgeEdges, centroids);
 }
 
 function enforceMainlandMinContinent(
@@ -239,6 +362,8 @@ export function clusterContinents(
   territoryCount: number,
   adjacency: Map<number, Set<number>>,
   specialEdges: SpecialEdge[],
+  centroids: GridPoint[],
+  absorptionPartners: SpecialEdge[] = specialEdges,
 ): number[] {
   if (territoryCount === 0) return [];
 
@@ -287,13 +412,18 @@ export function clusterContinents(
   absorbSmallLandmasses(
     continentIdByTerritory,
     components.filter((component) => !bigComponentSet.has(component)),
+    absorptionPartners,
     specialEdges,
+    centroids,
   );
 
   enforceMainlandMinContinent(continentIdByTerritory, bigComponents, land);
 
+  let nextStandaloneId = Math.max(0, ...continentIdByTerritory) + 1;
   for (let i = 0; i < continentIdByTerritory.length; i++) {
-    if (continentIdByTerritory[i] === -1) continentIdByTerritory[i] = 0;
+    if (continentIdByTerritory[i] === -1) {
+      continentIdByTerritory[i] = nextStandaloneId++;
+    }
   }
 
   return renumberDense(continentIdByTerritory);

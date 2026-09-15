@@ -45,6 +45,7 @@ export interface PaintLayerHandle {
   serializeShape: () => Shape | null;
   getBasePixels: () => Uint8ClampedArray | null;
   adopt: (shape: Shape) => void;
+  refreshCursor: () => void;
 }
 
 interface Props {
@@ -138,10 +139,12 @@ function drawChrome(
 }
 
 const BRUSH_TOOLS: PaintTool[] = ['pencil', 'line', 'curve', 'eraser'];
+const MAX_CURSOR_DIAMETER = 128;
 
 function brushCursor(color: string, diameter: number): string {
   const d = Math.round(diameter);
-  if (d < 10 || d > 128) return 'crosshair';
+  if (d < 7) return 'crosshair';
+  if (diameter > MAX_CURSOR_DIAMETER) return 'none';
   const c = d / 2;
   const r = (d - 2) / 2;
   const svg =
@@ -171,6 +174,8 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
 ) {
   const surface = surfaceRef.current;
   const divRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const lastPointerRef = useRef<Point | null>(null);
   const samplingRef = useRef(false);
   const snapshotRef = useRef<Uint8ClampedArray | null>(null);
   const freehandRef = useRef<{ active: boolean; points: Point[] }>({
@@ -224,11 +229,13 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     snapshotRef.current = null;
     flushDisplay();
     applyCursor(resolveCursor());
+    updateOverlay();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool]);
 
   useEffect(() => {
     applyCursor(resolveCursor());
+    updateOverlay();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [color, size]);
 
@@ -267,6 +274,10 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       shapeRef.current = shape;
       shapeDragRef.current = null;
       renderShape();
+    },
+    refreshCursor() {
+      applyCursor(resolveCursor());
+      updateOverlay();
     },
   }));
 
@@ -349,6 +360,24 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     if (!BRUSH_TOOLS.includes(tool)) return 'crosshair';
     const scale = viewportRef.current.scaleX || 1;
     return brushCursor(tool === 'eraser' ? ERASER_COLOR : color, size * scale);
+  }
+
+  function updateOverlay(): void {
+    const el = overlayRef.current;
+    if (!el) return;
+    const p = lastPointerRef.current;
+    const scale = viewportRef.current.scaleX || 1;
+    const diameter = size * scale;
+    if (!p || !BRUSH_TOOLS.includes(tool) || diameter <= MAX_CURSOR_DIAMETER) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = 'block';
+    el.style.width = `${diameter}px`;
+    el.style.height = `${diameter}px`;
+    el.style.left = `${p.x}px`;
+    el.style.top = `${p.y}px`;
+    el.style.backgroundColor = tool === 'eraser' ? ERASER_COLOR : color;
   }
 
   function toImage(e: { clientX: number; clientY: number }): Point {
@@ -706,7 +735,13 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   function onPointerMove(e: React.PointerEvent) {
     const p = toImage(e);
 
-    if (tool !== 'rect' && tool !== 'ellipse') applyCursor(resolveCursor());
+    lastPointerRef.current = { x: e.clientX, y: e.clientY };
+    if (tool !== 'rect' && tool !== 'ellipse') {
+      applyCursor(resolveCursor());
+      updateOverlay();
+    } else {
+      overlayRef.current!.style.display = 'none';
+    }
 
     if (tool === 'sampler') {
       if (samplingRef.current) {
@@ -783,6 +818,13 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     shapeDragRef.current = null;
     snapshotRef.current = null;
     flushDisplay();
+    lastPointerRef.current = null;
+    if (overlayRef.current) overlayRef.current.style.display = 'none';
+  }
+
+  function onPointerLeave(): void {
+    lastPointerRef.current = null;
+    if (overlayRef.current) overlayRef.current.style.display = 'none';
   }
 
   function onPointerUp(e: React.PointerEvent) {
@@ -854,8 +896,15 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onPointerLeave={onPointerLeave}
       onContextMenu={(e) => e.preventDefault()}
-    />
+    >
+      <div
+        ref={overlayRef}
+        className="position-fixed rounded-circle translate-middle pe-none"
+        style={{ display: 'none', boxShadow: '0 0 0 1px #000, 0 0 0 2px #fff' }}
+      />
+    </div>
   );
 });
 

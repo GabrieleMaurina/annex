@@ -80,7 +80,7 @@ function Die({
   );
 }
 
-function DiceRollDisplay({
+export function DiceRollDisplay({
   diceRoll,
   withDivider,
 }: {

@@ -72,7 +72,12 @@ export function buildMap(spec: MapSpec): GameMap {
       y: (continentById.get(id) ?? 0) * 10,
       neighbors: [...(neighbors.get(id) ?? [])].sort((a, b) => a - b),
     }));
-  return { name: spec.name ?? 'scenario', territories, bonuses: spec.bonuses };
+  return {
+    name: spec.name ?? 'scenario',
+    territories,
+    seaTerritories: [],
+    bonuses: spec.bonuses,
+  };
 }
 
 function baseGame(name: string): Game {
@@ -137,6 +142,11 @@ function baseGame(name: string): Game {
     attackStartTerritoryId: null,
     attackEndTerritoryId: null,
     attackConquestMinTroops: null,
+    sailStartTerritoryId: null,
+    sailEndTerritoryId: null,
+    attackSeaTerritoryId: null,
+    attackSeaDefenderId: null,
+    seaShips: new Map(),
     playerIds: [],
     spectatorIds: [],
     playerTeams: new Map(),

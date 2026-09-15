@@ -3,6 +3,7 @@ import {
   ReplayAnimation,
   ReplayHand,
   ReplayPlayerState,
+  ReplaySeaShips,
   ReplayTerritory,
   ReplayToxinTerritory,
 } from '../types';
@@ -28,8 +29,18 @@ function snapshotRadiationTerritories(game: Game): number[] {
   return [...game.radiationTerritoryIds];
 }
 
+function snapshotSeaShips(game: Game): ReplaySeaShips[] {
+  const result: ReplaySeaShips[] = [];
+  for (const [seaTerritoryId, shipsByPlayer] of game.seaShips) {
+    for (const [playerId, ships] of shipsByPlayer) {
+      result.push({ seaTerritoryId, playerId, ships });
+    }
+  }
+  return result;
+}
+
 function actingPlayerId(animation: ReplayAnimation): number {
-  return animation.type === 'attack'
+  return animation.type === 'attack' || animation.type === 'attackSea'
     ? animation.attackerId
     : animation.playerId;
 }
@@ -64,6 +75,7 @@ export function recordReplayFrame(game: Game, animation: ReplayAnimation) {
     toxinTerritories: snapshotToxinTerritories(game),
     radiationTerritories: snapshotRadiationTerritories(game),
     radiationUpcoming: [...game.radiationUpcomingTerritoryIds],
+    seaShips: snapshotSeaShips(game),
     hands: snapshotHands(game),
     playerStates: snapshotPlayerStates(game),
     turnPhase: game.turnPhase,

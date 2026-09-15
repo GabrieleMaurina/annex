@@ -1,5 +1,5 @@
 import { callbacks } from '../callbacks';
-import { hasAnyAttack } from '../game/combat/autoSkip';
+import { hasAnyAttack, hasAnyShipFight } from '../game/combat/autoSkip';
 import {
   balancedBlitz,
   balancedWinProbs,
@@ -9,6 +9,11 @@ import {
   trueBlitz,
   trueWinProbs,
 } from '../game/combat/dice';
+import {
+  attackFullPath,
+  hasAnySeaBridgeFrom,
+  hasSeaBridgeTo,
+} from '../game/combat/seaBridge';
 import { checkGameEnd } from '../game/end';
 import { hasReadyNuke } from '../game/nukes/nukes';
 import { recordElimination } from '../game/progression/stats';
@@ -19,6 +24,7 @@ import { advanceTurnPhase, rewindTurnTimerIfBelowHalf } from '../game/turns';
 import { fogFilterEmit } from '../game/world/fog';
 import { withPortalEdges } from '../game/world/portals';
 import {
+  pathRunsForViewer,
   troopMoveFields,
   visibleTerritoryIdsOrAll,
 } from '../game/world/visibility';
@@ -99,11 +105,13 @@ function isAttackStartCandidate(
     game.portalTerritoryIds,
     game.portalsEnabled,
   );
-  return neighbors.some((n) => {
-    const ownerId = game.territoryOwners.get(n);
-    if (ownerId !== undefined) return ownerId !== playerId;
-    return isFreeConquestTarget(game, n);
-  });
+  return (
+    neighbors.some((n) => {
+      const ownerId = game.territoryOwners.get(n);
+      if (ownerId !== undefined) return ownerId !== playerId;
+      return isFreeConquestTarget(game, n);
+    }) || hasAnySeaBridgeFrom(game, playerId, territoryId)
+  );
 }
 
 function isAttackEndCandidate(
@@ -124,7 +132,10 @@ function isAttackEndCandidate(
     game.portalTerritoryIds,
     game.portalsEnabled,
   );
-  return neighbors.includes(territoryId);
+  return (
+    neighbors.includes(territoryId) ||
+    hasSeaBridgeTo(game, playerId, startId, territoryId, ownerId)
+  );
 }
 
 function hasPendingConquest(game: Game, playerId: number): boolean {
@@ -165,6 +176,8 @@ export function attackSelectStart(
   const territoryId = rawTerritoryId;
 
   if (territoryId !== null) {
+    if (game.attackSeaTerritoryId !== null)
+      return { ok: false, error: 'sea attack in progress' };
     if (!game.territoryOwners.has(territoryId))
       return { ok: false, error: 'invalid territory' };
     if (game.territoryOwners.get(territoryId) !== playerId)
@@ -390,6 +403,7 @@ export function attack(
     }
   }
 
+  const fullPath = attackFullPath(game, playerId, startId, endId);
   fogFilterEmit(game, 'game:attacked', callbacks.onAttacked, (viewerId) => {
     const visible = visibleTerritoryIdsOrAll(game, viewerId);
     const sourceVisible = visible === null || visible.has(startId);
@@ -401,6 +415,7 @@ export function attack(
       defendingTerritoryId: endId,
       attackerId: playerId,
       type,
+      path: pathRunsForViewer(fullPath, visible),
       ...(sourceVisible ? { attackingTroops: troops, attackLosses } : {}),
       ...(targetVisible
         ? { defenderId, defendingTroops, defenceLosses, conquered }
@@ -430,6 +445,7 @@ export function attack(
         return {
           territoryId: move.territoryId,
           fromTerritoryId: move.fromTerritoryId,
+          path: pathRunsForViewer(fullPath, visible),
           ...troopMoveFields(
             visible,
             move.fromTerritoryId,
@@ -446,7 +462,8 @@ export function attack(
     game.turnPhase === 'attack' &&
     game.attackConquestMinTroops === null &&
     !hasAnyAttack(game, playerId) &&
-    !hasReadyNuke(game, playerId)
+    !hasReadyNuke(game, playerId) &&
+    !hasAnyShipFight(game, playerId)
   ) {
     advanceTurnPhase(game);
   }
@@ -492,6 +509,7 @@ export function attackMove(playerId: number, rawTroops: unknown): GameResponse {
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
 
+  const fullPath = attackFullPath(game, playerId, startId, endId);
   fogFilterEmit(
     game,
     'game:attackMoved',
@@ -503,6 +521,7 @@ export function attackMove(playerId: number, rawTroops: unknown): GameResponse {
       return {
         territoryId: endId,
         fromTerritoryId: startId,
+        path: pathRunsForViewer(fullPath, visible),
         ...troopMoveFields(visible, startId, endId, troops),
       };
     },
@@ -511,7 +530,11 @@ export function attackMove(playerId: number, rawTroops: unknown): GameResponse {
     game.turnPhase = 'deploy';
     game.deployCardMandate = true;
     rewindTurnTimerIfBelowHalf(game);
-  } else if (!hasAnyAttack(game, playerId) && !hasReadyNuke(game, playerId)) {
+  } else if (
+    !hasAnyAttack(game, playerId) &&
+    !hasReadyNuke(game, playerId) &&
+    !hasAnyShipFight(game, playerId)
+  ) {
     advanceTurnPhase(game);
   }
 

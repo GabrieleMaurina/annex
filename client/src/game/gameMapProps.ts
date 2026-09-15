@@ -43,6 +43,13 @@ type DerivedKeys =
   | 'attackStartTerritoryId'
   | 'attackEndTerritoryId'
   | 'attackConquestMinTroops'
+  | 'attackPathTerritoryIds'
+  | 'sailStartTerritoryId'
+  | 'sailEndTerritoryId'
+  | 'sailPathTerritoryIds'
+  | 'attackSeaTerritoryId'
+  | 'attackSeaDefenderId'
+  | 'seas'
   | 'nextSetBaseValues'
   | 'upcomingSetValues';
 
@@ -92,6 +99,13 @@ export function gameMapDataProps(
     attackStartTerritoryId: game.attackStartTerritoryId,
     attackEndTerritoryId: game.attackEndTerritoryId,
     attackConquestMinTroops: game.attackConquestMinTroops,
+    attackPathTerritoryIds: game.attackPathTerritoryIds,
+    sailStartTerritoryId: game.sailStartTerritoryId,
+    sailEndTerritoryId: game.sailEndTerritoryId,
+    sailPathTerritoryIds: game.sailPathTerritoryIds,
+    attackSeaTerritoryId: game.attackSeaTerritoryId,
+    attackSeaDefenderId: game.attackSeaDefenderId,
+    seas: game.seas,
     nextSetBaseValues: game.nextSetBaseValues,
     upcomingSetValues: game.upcomingSetValues,
   };

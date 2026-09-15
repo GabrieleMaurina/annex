@@ -31,6 +31,7 @@ interface Props {
   addBot: () => void;
   addLocalPlayer?: () => void;
   setLocalPlayerName?: (playerId: number, name: string) => void;
+  cycleLocalPlayerColor?: (playerId: number) => void;
   setBotProfile: (
     botPlayerId: number,
     difficulty: BotDifficulty | 'random',
@@ -56,6 +57,7 @@ function PlayerRoster({
   addBot,
   addLocalPlayer,
   setLocalPlayerName,
+  cycleLocalPlayerColor,
   setBotProfile,
   removeBot,
   rowRefs,
@@ -75,7 +77,11 @@ function PlayerRoster({
     if (!p) return undefined;
     if (p.id === selfId) return cycleColor;
     if (p.isBot) return isHost ? () => cycleBotColor(p.id) : undefined;
-    return connector.isOffline() ? undefined : () => onEmojiRowClick(p.id);
+    if (connector.isOffline())
+      return cycleLocalPlayerColor
+        ? () => cycleLocalPlayerColor(p.id)
+        : undefined;
+    return () => onEmojiRowClick(p.id);
   }
 
   return (

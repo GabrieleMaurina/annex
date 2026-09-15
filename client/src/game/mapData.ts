@@ -8,11 +8,19 @@ export interface Territory {
   neighbors: number[];
 }
 
+export interface SeaTerritory {
+  id: number;
+  x: number;
+  y: number;
+  neighbors: number[];
+}
+
 export const DEFAULT_IMAGE_WIDTH = 2560;
 export const DEFAULT_IMAGE_HEIGHT = 1440;
 
 export interface GeneratedMapData {
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
   bonuses: number[];
   imageSrc: string;
 }
@@ -46,6 +54,7 @@ function ensurePlayerMap(
     return Promise.resolve();
   return httpGet<{
     territories?: Territory[];
+    seaTerritories?: SeaTerritory[];
     bonuses?: number[];
     image?: string;
   }>('/player-maps/' + encodeURIComponent(playerMapId))
@@ -53,6 +62,7 @@ function ensurePlayerMap(
       if (map.territories && map.bonuses && map.image) {
         registerGeneratedMap(mapName, {
           territories: map.territories,
+          seaTerritories: map.seaTerritories ?? [],
           bonuses: map.bonuses,
           imageSrc: map.image,
         });
@@ -64,6 +74,7 @@ function ensurePlayerMap(
 
 const EMPTY_MAP = {
   territories: [] as Territory[],
+  seaTerritories: [] as SeaTerritory[],
   bonuses: [],
   imageSrc: null,
 };
@@ -73,6 +84,7 @@ export function loadGameMap(
   playerMapId?: string | null,
 ): Promise<{
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
   bonuses: number[];
   imageSrc: string | null;
 }> {

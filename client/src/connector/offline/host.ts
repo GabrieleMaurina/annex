@@ -26,11 +26,12 @@ let lastState: GameState | null = null;
 let pendingActor: number | null = null;
 let bufferedTurnStarted: unknown = null;
 let pausedForHandoff = false;
+let gameEntered = false;
 let unsubscribeName: (() => void) | null = null;
 const queue: (() => void)[] = [];
 
 function localHostName(): string {
-  return getPlayerName() || 'You';
+  return getPlayerName() || 'Player 1';
 }
 
 interface OfflineSeed {
@@ -43,6 +44,7 @@ interface OfflineSeed {
 }
 
 let seed: OfflineSeed | null = null;
+let convertedFromOnline = false;
 
 export function seedOffline(state: GameState): void {
   const host = state.players.find((p) => !p.isBot);
@@ -84,8 +86,10 @@ export function seedOffline(state: GameState): void {
   };
 }
 
-export function hasPendingSeed(): boolean {
-  return seed !== null;
+export function consumeConvertedFromOnline(): boolean {
+  const result = convertedFromOnline;
+  convertedFromOnline = false;
+  return result;
 }
 
 function flushQueue(): void {
@@ -193,7 +197,13 @@ function forward(event: string) {
 
     if (event === 'game:turnStarted') {
       const next = (payload as { playerId: number }).playerId;
-      if (next !== currentActorId && localPlayerIds.includes(next)) {
+      const isFirstTurn = !gameEntered;
+      gameEntered = true;
+      if (
+        (next !== currentActorId ||
+          (isFirstTurn && localPlayerIds.length > 1)) &&
+        localPlayerIds.includes(next)
+      ) {
         beginHandoff(next, payload);
         return;
       }
@@ -223,6 +233,9 @@ const callbacks: EngineCallbacks = {
   onDeployed: forward('game:deployed'),
   onDeployedMany: forward('game:deployedMany'),
   onFortified: forward('game:fortified'),
+  onShipsBought: forward('game:shipsBought'),
+  onSailed: forward('game:sailed'),
+  onSeaAttacked: forward('game:seaAttacked'),
   onEntrenched: forward('game:entrenched'),
   onToxined: forward('game:toxined'),
   onToxinExpired: forward('game:toxinExpired'),
@@ -270,6 +283,7 @@ export function startOffline(): void {
   pendingActor = null;
   bufferedTurnStarted = null;
   pausedForHandoff = false;
+  gameEntered = false;
   lastState = null;
   if (!engine) engine = buildEngine();
   session += 1;
@@ -292,8 +306,10 @@ export function startOffline(): void {
   ready = true;
   const pendingSeed = seed;
   seed = null;
-  if (pendingSeed) applySeed(pendingSeed);
-  else {
+  if (pendingSeed) {
+    convertedFromOnline = true;
+    applySeed(pendingSeed);
+  } else {
     flushQueue();
     engine.requestState(hostId);
   }
@@ -320,6 +336,13 @@ export function setLocalPlayerName(playerId: number, name: string): void {
   const trimmed = name.trim();
   if (!trimmed) return;
   engine.setName(playerId, trimmed);
+  if (currentActorId !== null) engine.requestState(currentActorId);
+}
+
+export function cycleLocalPlayerColor(playerId: number): void {
+  if (!active || !engine || hostId === null) return;
+  if (playerId === hostId || !localPlayerIds.includes(playerId)) return;
+  engine.cycleColor(playerId);
   if (currentActorId !== null) engine.requestState(currentActorId);
 }
 
@@ -406,6 +429,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
           size: d.size as MapSize,
           type: d.type as GenerationType,
           fill: d.fill as Fill,
+          seas: d.seas as boolean,
         },
         cb ?? (() => {}),
       );
@@ -451,6 +475,26 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     case 'game:deploy':
       cb?.(engine.deploy(id, d.territoryId, d.troops));
+      return;
+    case 'game:buyShips':
+      cb?.(
+        engine.buyShips(
+          id,
+          d.sourceTerritoryId,
+          d.seaTerritoryId,
+          d.ships,
+          d.fromPool,
+        ),
+      );
+      return;
+    case 'game:sailSelectStart':
+      cb?.(engine.sailSelectStart(id, d.territoryId));
+      return;
+    case 'game:sailSelectEnd':
+      cb?.(engine.sailSelectEnd(id, d.territoryId));
+      return;
+    case 'game:sail':
+      cb?.(engine.sail(id, d.ships));
       return;
     case 'game:requestCards':
       engine.requestCards(id);
@@ -499,6 +543,15 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     case 'game:attackMove':
       cb?.(engine.attackMove(id, d.troops));
+      return;
+    case 'game:attackSeaSelectStart':
+      cb?.(engine.attackSeaSelectStart(id, d.territoryId));
+      return;
+    case 'game:attackSeaSelectDefender':
+      cb?.(engine.attackSeaSelectDefender(id, d.defenderId));
+      return;
+    case 'game:attackSea':
+      cb?.(engine.attackSea(id, d.ships));
       return;
     case 'game:replay':
       cb?.(engine.requestReplay(id));

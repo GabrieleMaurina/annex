@@ -11,6 +11,8 @@ export { registerDeployHandlers } from './turn/deploy';
 export { registerEntrenchHandlers } from './turn/entrench';
 export { registerFortifyHandlers } from './turn/fortify';
 export { registerNukeHandlers } from './turn/nukes';
+export { registerAttackSeaHandlers } from './turn/sea/attackSea';
+export { registerSailHandlers } from './turn/sea/sail';
 export { registerTerritoryHandlers } from './turn/territory';
 export { registerToxinsHandlers } from './turn/toxins';
 export { registerTroopHandlers } from './turn/troop';

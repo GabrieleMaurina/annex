@@ -24,3 +24,5 @@ const CONTINENT_COLORS = [
 export function continentColor(continentId: number): string {
   return CONTINENT_COLORS[continentId % CONTINENT_COLORS.length];
 }
+
+export const SEA_MARKER_COLOR = '#0d6efd';

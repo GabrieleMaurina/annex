@@ -7,7 +7,7 @@ import {
   getAttackEndCandidates,
   getAttackStartCandidates,
 } from '../../logic/attack';
-import type { Territory } from '../../mapData';
+import type { SeaTerritory, Territory } from '../../mapData';
 import type { AttackType, DiceRoll } from '../../panels/AttackPanel';
 
 type AttackSelectEndAck =
@@ -35,6 +35,8 @@ export function useAttackFlow({
   attackEndTerritoryId,
   attackConquestMinTroops,
   territories,
+  seaTerritories,
+  seas,
   ownerById,
   selfId,
   portalTerritoryIds,
@@ -49,6 +51,8 @@ export function useAttackFlow({
   attackEndTerritoryId: number | null;
   attackConquestMinTroops: number | null;
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
+  seas: GameState['seas'];
   ownerById: Map<number, GameState['territories'][number]>;
   selfId: number | null;
   portalTerritoryIds: number[];
@@ -156,6 +160,8 @@ export function useAttackFlow({
           );
           const candidates = getAttackStartCandidates(
             territories,
+            seaTerritories,
+            seas,
             freshOwnerById,
             selfId,
             portalTerritoryIds,
@@ -170,6 +176,8 @@ export function useAttackFlow({
     },
     [
       territories,
+      seaTerritories,
+      seas,
       selfId,
       portalTerritoryIds,
       portalsEnabled,
@@ -282,6 +290,8 @@ export function useAttackFlow({
     turnPhase === 'attack' && isMyTurn && !attackPendingConquest
       ? getAttackStartCandidates(
           territories,
+          seaTerritories,
+          seas,
           ownerById,
           selfId,
           portalTerritoryIds,
@@ -296,6 +306,8 @@ export function useAttackFlow({
     attackEndTerritoryId === null
       ? getAttackEndCandidates(
           territories,
+          seaTerritories,
+          seas,
           ownerById,
           selfId,
           attackStartTerritoryId,

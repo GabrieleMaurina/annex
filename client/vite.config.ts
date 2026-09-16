@@ -1,5 +1,6 @@
 import { defineConfig, normalizePath } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
 
 const engineDist = normalizePath(
@@ -18,6 +19,24 @@ export default defineConfig({
         })
       },
     },
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'Annex',
+        short_name: 'Annex',
+        start_url: '/',
+        display: 'standalone',
+        background_color: '#212529',
+        theme_color: '#212529',
+        icons: [
+          {
+            src: '/favicon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+          },
+        ],
+      },
+    }),
   ],
   optimizeDeps: {
     include: ['engine'],

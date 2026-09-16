@@ -78,12 +78,12 @@ export function computeDistanceToLand(
   return dist;
 }
 
-export function countTouchingLands(
+export function touchingLands(
   pixels: number[],
   landLabelGrid: Int16Array,
   width: number,
   height: number,
-): number {
+): Set<number> {
   const lands = new Set<number>();
   for (const i of pixels) {
     for (const n of neighborsOfPixel(i, width, height)) {
@@ -91,5 +91,5 @@ export function countTouchingLands(
       if (landId >= 0) lands.add(landId);
     }
   }
-  return lands.size;
+  return lands;
 }

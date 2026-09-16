@@ -5,6 +5,7 @@ import {
   continentCompletionCandidates,
 } from '../features/continents';
 import { grudgeAgainst } from '../features/grudge';
+import { seaBridgeTargets } from '../features/navy';
 import { frontierTerritories, hostileNeighbors } from '../features/territory';
 import { Weights } from '../types';
 import { BotView, ownerOf } from '../view';
@@ -63,36 +64,48 @@ export function chooseAttack(
   const frontier = frontierTerritories(game, view, botId);
   let best: AttackChoice | null = null;
   let bestScore = -Infinity;
-  for (const startId of frontier) {
+
+  const consider = (
+    startId: number,
+    endId: number,
+    defenderId: number | undefined,
+  ) => {
     const attackingTroops = game.territoryTroops.get(startId) ?? 0;
-    if (attackingTroops < 2) continue;
+    if (attackingTroops < 2) return;
+    const defendingTroops = game.territoryTroops.get(endId) ?? 0;
+    const winProb = attackWinProbability(
+      game,
+      attackingTroops - 1,
+      defendingTroops,
+      defenceDiceFor(game, endId),
+    );
+    if (winProb < MIN_WIN_PROBABILITY - noise * 0.3) return;
+
+    let score = winProb;
+    if (defenderId !== undefined)
+      score +=
+        weights.grudge *
+        0.1 *
+        Math.min(grudgeAgainst(game, botId, defenderId) / 10, 1);
+    if (completeTargets.has(endId)) score += weights.completeContinent * 0.1;
+    if (breakTargets.has(endId)) score += weights.breakContinent * 0.1;
+    score += (Math.random() - 0.5) * noise;
+
+    if (score > bestScore) {
+      bestScore = score;
+      const { type, troops } = blitzAllTroops(attackingTroops);
+      best = { startId, endId, troops, type };
+    }
+  };
+
+  for (const startId of frontier) {
     for (const endId of hostileNeighbors(game, view, botId, startId)) {
-      const defendingTroops = game.territoryTroops.get(endId) ?? 0;
-      const winProb = attackWinProbability(
-        game,
-        attackingTroops - 1,
-        defendingTroops,
-        defenceDiceFor(game, endId),
-      );
-      if (winProb < MIN_WIN_PROBABILITY - noise * 0.3) continue;
-
-      const defenderId = ownerOf(game, view, endId);
-      let score = winProb;
-      if (defenderId !== undefined)
-        score +=
-          weights.grudge *
-          0.1 *
-          Math.min(grudgeAgainst(game, botId, defenderId) / 10, 1);
-      if (completeTargets.has(endId)) score += weights.completeContinent * 0.1;
-      if (breakTargets.has(endId)) score += weights.breakContinent * 0.1;
-      score += (Math.random() - 0.5) * noise;
-
-      if (score > bestScore) {
-        bestScore = score;
-        const { type, troops } = blitzAllTroops(attackingTroops);
-        best = { startId, endId, troops, type };
-      }
+      consider(startId, endId, ownerOf(game, view, endId));
     }
   }
+  for (const bridge of seaBridgeTargets(game, view, botId)) {
+    consider(bridge.sourceTerritoryId, bridge.targetId, bridge.ownerId);
+  }
+
   return best;
 }

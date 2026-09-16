@@ -25,6 +25,7 @@ export interface MapSpec {
   continents: number[][];
   edges: [number, number][];
   bonuses: number[];
+  seaIds?: number[];
 }
 
 export interface ScenarioSpec {
@@ -43,6 +44,7 @@ export interface ScenarioSpec {
   teams?: Record<number, number>;
   allies?: [number, number][];
   portals?: number[];
+  seaShips?: Record<number, Record<number, number>>;
   grudges?: {
     attacker: number;
     defenceLosses?: number;
@@ -57,8 +59,10 @@ export function buildMap(spec: MapSpec): GameMap {
   spec.continents.forEach((ids, continentId) => {
     for (const id of ids) continentById.set(id, continentId);
   });
+  const seaIds = new Set(spec.seaIds ?? []);
   const neighbors = new Map<number, Set<number>>();
   for (const id of continentById.keys()) neighbors.set(id, new Set());
+  for (const id of seaIds) neighbors.set(id, new Set());
   for (const [a, b] of spec.edges) {
     neighbors.get(a)!.add(b);
     neighbors.get(b)!.add(a);
@@ -72,10 +76,18 @@ export function buildMap(spec: MapSpec): GameMap {
       y: (continentById.get(id) ?? 0) * 10,
       neighbors: [...(neighbors.get(id) ?? [])].sort((a, b) => a - b),
     }));
+  const seaTerritories = [...seaIds]
+    .sort((a, b) => a - b)
+    .map((id) => ({
+      id,
+      x: id * 10,
+      y: -10,
+      neighbors: [...(neighbors.get(id) ?? [])].sort((a, b) => a - b),
+    }));
   return {
     name: spec.name ?? 'scenario',
     territories,
-    seaTerritories: [],
+    seaTerritories,
     bonuses: spec.bonuses,
   };
 }
@@ -227,6 +239,16 @@ export function buildGame(spec: ScenarioSpec): {
   for (const t of map.territories)
     game.territoryTroops.set(t.id, spec.troops[t.id] ?? 1);
   game.troopsToDeploy = spec.troopsToDeploy ?? 10;
+  for (const [seaId, byPlayer] of Object.entries(spec.seaShips ?? {}))
+    game.seaShips.set(
+      Number(seaId),
+      new Map(
+        Object.entries(byPlayer).map(([playerId, ships]) => [
+          Number(playerId),
+          ships,
+        ]),
+      ),
+    );
   for (const id of spec.capitals ?? []) game.capitalTerritoryIds.add(id);
   for (const id of spec.entrenched ?? []) game.territoryEntrenchment.set(id, 3);
 
@@ -298,6 +320,7 @@ export interface TurnReplay {
   steps: number;
   dispatchFailures: number;
   terminated: boolean;
+  game: Game;
 }
 
 export function replayBotTurn(spec: ScenarioSpec): TurnReplay {
@@ -340,5 +363,6 @@ export function replayBotTurn(spec: ScenarioSpec): TurnReplay {
     terminated:
       game.state !== 'playing' ||
       game.playerIds[game.turnPlayerIndex] !== botId,
+    game,
   };
 }

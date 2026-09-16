@@ -30,3 +30,13 @@ export function troopsAt(
   if (!isVisible(view, territoryId)) return 0;
   return game.territoryTroops.get(territoryId) ?? 0;
 }
+
+export function shipsAt(
+  game: Game,
+  view: BotView,
+  seaTerritoryId: number,
+  playerId: number,
+): number {
+  if (!isVisible(view, seaTerritoryId)) return 0;
+  return game.seaShips.get(seaTerritoryId)?.get(playerId) ?? 0;
+}

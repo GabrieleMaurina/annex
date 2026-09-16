@@ -21,6 +21,13 @@ import {
   deployAntiNukeAction,
   launchNukeAction,
 } from '../territory/nukes';
+import {
+  attackSea,
+  attackSeaSelectDefender,
+  attackSeaSelectStart,
+} from '../territory/sea/attackSea';
+import { buyShips } from '../territory/sea/buyShips';
+import { sail, sailSelectEnd, sailSelectStart } from '../territory/sea/sail';
 import { claimTerritory } from '../territory/territory';
 import { placeTroop } from '../territory/troop';
 
@@ -50,6 +57,26 @@ export function dispatchBotAction(
       return nextPhase(playerId);
     case 'game:deploy':
       return deploy(playerId, p.territoryId as number, p.troops as number);
+    case 'game:buyShips':
+      return buyShips(
+        playerId,
+        p.sourceTerritoryId as number,
+        p.seaTerritoryId as number,
+        p.ships as number,
+        p.fromPool as boolean,
+      );
+    case 'game:sailSelectStart':
+      return sailSelectStart(playerId, p.territoryId as number);
+    case 'game:sailSelectEnd':
+      return sailSelectEnd(playerId, p.territoryId as number);
+    case 'game:sail':
+      return sail(playerId, p.ships as number);
+    case 'game:attackSeaSelectStart':
+      return attackSeaSelectStart(playerId, p.territoryId as number);
+    case 'game:attackSeaSelectDefender':
+      return attackSeaSelectDefender(playerId, p.defenderId as number);
+    case 'game:attackSea':
+      return attackSea(playerId, p.ships as number);
     case 'game:attackMove':
       return attackMove(playerId, p.troops as number);
     case 'game:attackSelectStart':

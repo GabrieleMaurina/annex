@@ -29,6 +29,7 @@ export function buildContext(
   botProfile: BotProfile,
 ): PlanContext {
   const map = getGameMap(game);
+  const seaIds = new Set(map.seaTerritories.map((t) => t.id));
   const neighbors = new Map<number, number[]>();
   const continentTerritories = new Map<number, number[]>();
   const territoryContinent = new Map<number, number>();
@@ -37,7 +38,7 @@ export function buildContext(
     neighbors.set(
       territory.id,
       withPortalEdges(
-        territory.neighbors,
+        territory.neighbors.filter((n) => !seaIds.has(n)),
         territory.id,
         game.portalTerritoryIds,
         game.portalsEnabled,

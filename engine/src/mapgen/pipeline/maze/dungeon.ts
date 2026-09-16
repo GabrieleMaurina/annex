@@ -329,7 +329,10 @@ export function generateDungeon(
   dims: GridDimensions,
   seas: boolean,
 ): MazeMap {
-  const rows = randomInt(rng, ...ROW_RANGES[size]);
+  const densityScale = Math.sqrt(
+    (1 - VOID_FRACTION.full) / (1 - VOID_FRACTION[fill]),
+  );
+  const rows = Math.round(randomInt(rng, ...ROW_RANGES[size]) * densityScale);
   const cols = Math.round((rows * dims.width) / dims.height);
   const grid: CoarseGrid = {
     cols,

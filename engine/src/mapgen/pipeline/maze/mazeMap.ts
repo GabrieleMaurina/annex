@@ -90,6 +90,7 @@ function partitionCellsMultiComponent(
   cellNeighbors: number[][],
   targetCount: number,
   chambers: number[][],
+  cellPixelCount: Int32Array,
 ): { territoryOfCell: Int32Array; territoryCount: number } {
   const components = findCellComponents(cellCount, cellNeighbors);
   const territoryOfCell = new Int32Array(cellCount).fill(-1);
@@ -101,8 +102,12 @@ function partitionCellsMultiComponent(
     Math.max(2, Math.round((cellCount / targetCount) * MIN_COMPONENT_FRACTION)),
   );
 
+  const skipped: number[][] = [];
   for (const component of components) {
-    if (component.length < minComponentCells) continue;
+    if (component.length < minComponentCells) {
+      skipped.push(component);
+      continue;
+    }
     const localIndex = new Map<number, number>();
     component.forEach((cell, i) => localIndex.set(cell, i));
     const localNeighbors = (i: number): number[] =>
@@ -134,6 +139,16 @@ function partitionCellsMultiComponent(
       territoryOfCell[cell] = territoryCount + localTerritoryOfCell[i];
     });
     territoryCount += localCount;
+  }
+
+  if (territoryCount < targetCount) {
+    skipped.sort((a, b) => b.length - a.length);
+    for (const component of skipped) {
+      if (territoryCount >= targetCount) break;
+      if (!component.some((cell) => cellPixelCount[cell] > 0)) continue;
+      for (const cell of component) territoryOfCell[cell] = territoryCount;
+      territoryCount++;
+    }
   }
 
   return { territoryOfCell, territoryCount };
@@ -235,12 +250,17 @@ export function buildMazeMap(
     dims,
     adjacency,
   } = timeStep('partition', () => {
+    const cellPixelCount = new Int32Array(cellCount);
+    for (const cell of source.pixelCell) {
+      if (cell >= 0) cellPixelCount[cell]++;
+    }
     const { territoryOfCell, territoryCount } = partitionCellsMultiComponent(
       rng,
       cellCount,
       cellNeighbors,
       targetCount,
       source.chambers,
+      cellPixelCount,
     );
 
     const fullLabelGrid = new Int16Array(source.width * source.height).fill(-1);

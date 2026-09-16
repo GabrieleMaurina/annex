@@ -17,6 +17,11 @@ import {
   chooseNukeConstruction,
   chooseNukeLaunch,
 } from '../heuristics/nukes';
+import {
+  chooseSail,
+  chooseShipAttack,
+  chooseShipPurchase,
+} from '../heuristics/ships';
 import { PlanContext, buildContext } from './context';
 import { buildTurnPlan, repairPlan } from './enumerate';
 import {
@@ -110,6 +115,7 @@ export function planBotTurn(
   const plan = resolvePlan(ctx, game, botId, cachedPlan);
 
   if (phase === 'deploy') return planDeploy(ctx, game, plan);
+  if (phase === 'sail') return planSail(ctx, game, plan);
   if (phase === 'attack') return planAttack(ctx, game, plan);
   if (phase === 'fortify') return planFortify(ctx, game, plan);
   if (phase === 'entrench') return planEntrench(ctx, game, plan);
@@ -131,6 +137,28 @@ function planDeploy(
 
   const construction = chooseNukeConstruction(ctx);
   if (construction) return result([construction], plan);
+
+  const shipPurchase = chooseShipPurchase(
+    game,
+    ctx.view,
+    ctx.botId,
+    game.troopsToDeploy,
+  );
+  if (shipPurchase)
+    return result(
+      [
+        {
+          event: 'game:buyShips',
+          payload: {
+            sourceTerritoryId: shipPurchase.sourceTerritoryId,
+            seaTerritoryId: shipPurchase.seaTerritoryId,
+            ships: shipPurchase.ships,
+            fromPool: true,
+          },
+        },
+      ],
+      plan,
+    );
 
   if (game.troopsToDeploy > 0) {
     const deployment = nextDeployment(ctx, game, plan);
@@ -211,6 +239,28 @@ function planAttack(
     if (launch)
       return result([{ event: 'game:launchNuke', payload: launch }], plan);
   }
+
+  const shipAttack = chooseShipAttack(game, ctx.botId);
+  if (shipAttack)
+    return result(
+      [
+        {
+          event: 'game:attackSeaSelectStart',
+          payload: { territoryId: shipAttack.seaTerritoryId },
+        },
+        {
+          event: 'game:attackSeaSelectDefender',
+          payload: { defenderId: shipAttack.defenderId },
+        },
+        { event: 'game:attackSea', payload: { ships: shipAttack.ships } },
+      ],
+      plan,
+    );
+  if (game.attackSeaTerritoryId !== null)
+    return result(
+      [{ event: 'game:attackSeaSelectStart', payload: { territoryId: null } }],
+      plan,
+    );
 
   let repaired = false;
   while (plan.step < plan.attackSteps.length) {
@@ -297,6 +347,29 @@ function stepStatus(
     defenceDiceFor(game, step.endId),
   );
   return winProb >= step.minWinProb ? 'ok' : 'invalid';
+}
+
+function planSail(
+  ctx: PlanContext,
+  game: Game,
+  plan: TurnPlan,
+): PlanBotTurnResult {
+  const choice = chooseSail(game, ctx.view, ctx.botId);
+  if (!choice) return result([NEXT_PHASE], plan);
+  return result(
+    [
+      {
+        event: 'game:sailSelectStart',
+        payload: { territoryId: choice.fromSeaTerritoryId },
+      },
+      {
+        event: 'game:sailSelectEnd',
+        payload: { territoryId: choice.toSeaTerritoryId },
+      },
+      { event: 'game:sail', payload: { ships: choice.ships } },
+    ],
+    plan,
+  );
 }
 
 function planFortify(

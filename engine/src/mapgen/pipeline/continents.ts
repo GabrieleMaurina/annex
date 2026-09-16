@@ -9,6 +9,7 @@ import { SpecialEdge } from './connectivity';
 import { GridPoint } from './placement';
 
 const MIN_MAINLAND_CONTINENT_SIZE = 5;
+const MAX_GROUPABLE_ISLAND_SIZE = 3;
 
 function landAdjacency(
   adjacency: Map<number, Set<number>>,
@@ -281,9 +282,17 @@ function absorbSmallLandmasses(
     centroids,
   );
 
-  const remaining = smallComponents.filter(
-    (component) => continentIdByTerritory[component[0]] === -1,
-  );
+  let nextStandaloneIslandId = Math.max(0, ...continentIdByTerritory) + 1;
+  const remaining: number[][] = [];
+  for (const component of smallComponents) {
+    if (continentIdByTerritory[component[0]] !== -1) continue;
+    if (component.length > 1) {
+      const islandId = nextStandaloneIslandId++;
+      for (const id of component) continentIdByTerritory[id] = islandId;
+    } else {
+      remaining.push(component);
+    }
+  }
 
   absorbVia(continentIdByTerritory, remaining, absorptionPartners, centroids);
   absorbVia(continentIdByTerritory, remaining, bridgeEdges, centroids);
@@ -371,7 +380,7 @@ export function clusterContinents(
   const components = landComponents(territoryCount, land);
 
   let bigComponents = components.filter(
-    (component) => component.length >= CONTINENT_SIZE_MIN,
+    (component) => component.length > MAX_GROUPABLE_ISLAND_SIZE,
   );
   if (bigComponents.length === 0) {
     bigComponents = [

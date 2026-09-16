@@ -11,7 +11,7 @@ import { respondGameState } from '../../session/store';
 import { Game } from '../../types';
 import { isInteger } from '../../util/validate';
 
-const SHIP_COST = 3;
+export const SHIP_COST = 3;
 
 function requireDeployTurn(playerId: number) {
   const ctx = requireGame(playerId);

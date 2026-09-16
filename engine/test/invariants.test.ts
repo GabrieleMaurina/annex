@@ -84,6 +84,27 @@ function randomBoard(seed: number): ScenarioSpec {
     personality: pick(PERSONALITIES),
     settings: { fortification: pick([...FORTIFICATIONS]) },
   };
+  if (rng() < 0.35) {
+    const seaCount = range(1, 3);
+    const seaIds = Array.from(
+      { length: seaCount },
+      (_, i) => territoryCount + i,
+    );
+    map.seaIds = seaIds;
+    for (const seaId of seaIds) {
+      const linkCount = range(2, 4);
+      for (let i = 0; i < linkCount; i++)
+        edges.push([seaId, range(0, territoryCount - 1)]);
+    }
+    for (let i = 1; i < seaIds.length; i++)
+      edges.push([seaIds[i - 1], seaIds[i]]);
+    if (rng() < 0.5) {
+      const shipsByPlayer: Record<number, number> = {};
+      for (const p of players) if (rng() < 0.5) shipsByPlayer[p] = range(1, 5);
+      if (Object.keys(shipsByPlayer).length > 0)
+        spec.seaShips = { [pick(seaIds)]: shipsByPlayer };
+    }
+  }
   if (rng() < 0.25) spec.settings!.fogOfWar = 'on';
   if (rng() < 0.15) {
     spec.settings!.gameMode = 'Capitals';

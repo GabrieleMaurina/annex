@@ -20,7 +20,7 @@ export interface GeneratedMap {
 
 export function generateMap(params: GenerateMapParams): GeneratedMap {
   const { seed, size, type, fill, seas } = params;
-  const rng = createRng(`${seed}::${size}::${type}::${fill}::${seas}`);
+  const rng = createRng(`${seed}::${size}::${type}::${fill}`);
   const grid = GRID_DIMENSIONS[size];
   const dims = {
     width: grid.width * OUTPUT_SCALE,

@@ -563,6 +563,10 @@ export const connector = {
     route('game:pause', undefined, cb);
   },
 
+  cycleBotSpeed(cb: AckCallback): void {
+    route('game:cycleBotSpeed', undefined, cb);
+  },
+
   surrender(cb: AckCallback): void {
     route('game:surrender', undefined, cb);
   },

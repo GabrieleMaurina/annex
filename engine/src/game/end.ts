@@ -45,7 +45,8 @@ function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
   if (game.gameMode === 'Team Deathmatch') {
     return game.playerIds.filter(
       (id) =>
-        (game.playerTeams.get(id) ?? 0) === (game.playerTeams.get(winner) ?? 0),
+        (game.playerTeams.get(id) ?? 0) ===
+          (game.playerTeams.get(winner) ?? 0) && !game.surrenderedIds.has(id),
     );
   }
   if (game.gameMode === 'Player Kills' || game.gameMode === 'Troop Kills') {
@@ -66,10 +67,11 @@ export function computeGameEndWinnerIds(game: Game): number[] | null {
 }
 
 function isPlayerEliminated(game: Game, id: number): boolean {
-  return game.surrenderedIds.has(id) || game.deathOrder.includes(id);
+  return game.deathOrder.includes(id);
 }
 
 function noHumanPlayersLeft(game: Game) {
+  if (game.offline) return false;
   return game.playerIds.every(
     (id) =>
       isPlayerEliminated(game, id) || (playersById.get(id)?.isBot ?? true),
@@ -112,10 +114,7 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   game.winnerIds = winnerIds;
   if (!turnAlreadyEnded) {
     const currentPlayerId = game.playerIds[game.turnPlayerIndex];
-    if (
-      !game.surrenderedIds.has(currentPlayerId) &&
-      ownsAnyTerritory(game, currentPlayerId)
-    )
+    if (ownsAnyTerritory(game, currentPlayerId))
       bumpStat(game, currentPlayerId, 'turnsPlayed');
   }
   game.turnPhase = 'deploy';
@@ -134,7 +133,7 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
 
 function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
   const activePlayers = game.playerIds.filter(
-    (id) => !game.surrenderedIds.has(id) && ownsAnyTerritory(game, id),
+    (id) => !isPlayerEliminated(game, id) && ownsAnyTerritory(game, id),
   );
   const owners = [...new Set(game.territoryOwners.values())];
 
@@ -208,5 +207,5 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
     winnerIds = owners;
   }
 
-  return winnerIds;
+  return winnerIds.filter((id) => !game.surrenderedIds.has(id));
 }

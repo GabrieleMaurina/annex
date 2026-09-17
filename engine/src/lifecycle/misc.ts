@@ -1,4 +1,6 @@
-import { checkGameEnd, computeGameEndWinnerIds } from '../game/end';
+import { startTakeover } from '../bots/takeover';
+import { nextBotSpeed } from '../bots/thinkTime';
+import { checkGameEnd } from '../game/end';
 import { recomputeHost } from '../game/host';
 import {
   cycleColor as cycleColorImpl,
@@ -6,7 +8,6 @@ import {
 } from '../game/mechanics';
 import {
   advanceTurnPhase,
-  forceEndTurnImpl,
   pauseTurnTimer,
   resumeTurnTimer,
 } from '../game/turns';
@@ -102,6 +103,20 @@ export function pauseGame(playerId: number): GameResponse {
   return respondGameState(game, player.id);
 }
 
+export function cycleBotSpeed(playerId: number): GameResponse {
+  const player = playersById.get(playerId);
+  if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
+
+  const game = games.get(player.gameName);
+  if (!game) return { ok: false, error: 'game not found' };
+  if (game.hostId !== player.id) return { ok: false, error: 'not the host' };
+  if (game.state !== 'playing') return { ok: false, error: 'game not started' };
+
+  game.botSpeed = nextBotSpeed(game.botSpeed);
+
+  return respondGameState(game, player.id);
+}
+
 export function surrender(playerId: number): GameResponse {
   const player = playersById.get(playerId);
   if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
@@ -113,15 +128,18 @@ export function surrender(playerId: number): GameResponse {
     return { ok: false, error: 'not a player' };
   if (game.turnPhase !== 'territory' && !ownsAnyTerritory(game, player.id))
     return { ok: false, error: 'already eliminated' };
+  if (game.surrenderedIds.has(player.id))
+    return { ok: false, error: 'already eliminated' };
 
   game.surrenderedIds.add(player.id);
   if (!game.deathOrder.includes(player.id)) game.deathOrder.push(player.id);
-  const wasTheirTurn = game.playerIds[game.turnPlayerIndex] === player.id;
-  if (wasTheirTurn) {
-    const endsGame = computeGameEndWinnerIds(game) !== null;
-    forceEndTurnImpl(game, endsGame);
-  }
-  checkGameEnd(game, wasTheirTurn);
+  const stats = game.stats.get(player.id)!;
+  if (game.gameMode === 'Player Kills')
+    game.frozenKillCount.set(player.id, stats.playersKilled.length);
+  else if (game.gameMode === 'Troop Kills')
+    game.frozenKillCount.set(player.id, stats.troopsKilled);
+  startTakeover(game, player);
+  checkGameEnd(game);
   recomputeHost(game);
   destroyIfInactive(game);
   broadcastHomeGames();

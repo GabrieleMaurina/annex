@@ -13,6 +13,7 @@ import { playSound } from '../lib/sounds';
 import type {
   Account,
   Ack,
+  BotSpeed,
   GameMeta,
   GameResults,
   GameState,
@@ -233,6 +234,24 @@ function Game({
     });
   }
 
+  function cycleBotSpeed() {
+    const order: BotSpeed[] = ['slow', 'medium', 'fast'];
+    const next = (speed: BotSpeed) => order[(order.indexOf(speed) + 1) % 3];
+    let previousSpeed: BotSpeed | null = null;
+    setGame((prev) => {
+      if (!prev) return prev;
+      previousSpeed = prev.botSpeed;
+      return { ...prev, botSpeed: next(prev.botSpeed) };
+    });
+    connector.cycleBotSpeed((res: Ack) => {
+      if (res.ok) setGame(res.game);
+      else if (previousSpeed !== null) {
+        const reverted = previousSpeed;
+        setGame((prev) => (prev ? { ...prev, botSpeed: reverted } : prev));
+      }
+    });
+  }
+
   function adjustTerritoryTroops(
     deltas: { territoryId: number; delta: number; ownerId?: number }[],
   ) {
@@ -358,6 +377,7 @@ function Game({
           mission={mission}
           selfId={selfId}
           onTogglePause={togglePause}
+          onCycleBotSpeed={cycleBotSpeed}
           results={results}
           gameEnded={false}
           showReplay={false}

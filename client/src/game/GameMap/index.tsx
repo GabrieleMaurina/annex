@@ -8,6 +8,7 @@ import { playerColor } from '../../lib/palette';
 import type {
   Ack,
   Alliances,
+  BotSpeed,
   Bounties,
   CardsMode,
   Entrenchments,
@@ -95,8 +96,10 @@ export interface GameMapProps {
   troopsToDeploy: number;
   turnStartedAt: number;
   paused: boolean;
+  botSpeed: BotSpeed;
   hostId: number;
   onTogglePause: () => void;
+  onCycleBotSpeed: () => void;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
@@ -173,8 +176,10 @@ function GameMap({
   troopsToDeploy,
   turnStartedAt,
   paused,
+  botSpeed,
   hostId,
   onTogglePause,
+  onCycleBotSpeed,
   selectedTerritoryId,
   fortifyStartTerritoryId,
   fortifyEndTerritoryId,
@@ -1169,7 +1174,9 @@ function GameMap({
         }
         hostId={hostId}
         paused={paused}
+        botSpeed={botSpeed}
         onTogglePause={onTogglePause}
+        onCycleBotSpeed={onCycleBotSpeed}
         onSurrender={surrender}
         gameEnded={gameEnded}
         collapsed={panelCollapsed}

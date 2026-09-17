@@ -197,6 +197,7 @@ export type Mission =
 export type BotDifficulty = 'idle' | 'easy' | 'medium' | 'hard';
 export type BotPersonality =
   'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic';
+export type BotSpeed = 'slow' | 'medium' | 'fast';
 
 export interface SavedBot {
   difficulty: BotDifficulty | 'random';
@@ -255,6 +256,7 @@ export interface GameState {
   startedAt: number | null;
   endedAt: number | null;
   paused: boolean;
+  botSpeed: BotSpeed;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;

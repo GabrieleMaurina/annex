@@ -79,6 +79,7 @@ function buildGameState(
     startedAt: doc.startedAt,
     endedAt: doc.endedAt,
     paused: false,
+    botSpeed: 'slow',
     selectedTerritoryId: null,
     fortifyStartTerritoryId: null,
     fortifyEndTerritoryId: null,

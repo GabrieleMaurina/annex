@@ -139,7 +139,7 @@ function PlayersPanel({
     !self.eliminated &&
     !self.surrendered;
   const canLeave = isSpectator || (!!self && (gameEnded || self.surrendered));
-  const isHost = !gameEnded && selfId === hostId;
+  const canPause = !gameEnded && (selfId === hostId || connector.isOffline());
   const showAllianceColumn = alliances === 'on' && !isSpectator && !gameEnded;
 
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
@@ -550,11 +550,11 @@ function PlayersPanel({
           </>
         )}
       </div>
-      {(isHost || canSurrender) && (
+      {(canPause || canSurrender) && (
         <div
-          className={`d-flex mt-2 ${isHost && canSurrender ? 'justify-content-between' : 'justify-content-end'}`}
+          className={`d-flex mt-2 ${canPause && canSurrender ? 'justify-content-between' : 'justify-content-end'}`}
         >
-          {isHost && (
+          {canPause && (
             <Button
               variant="secondary"
               size="sm"

@@ -733,6 +733,8 @@ function GameMap({
     sailEndCandidates: sailFlow.sailEndCandidates,
     sailPanelOpen: sailFlow.sailPanelOpen,
     sailInputRef: sailFlow.sailInputRef,
+    sailMaxShips: sailFlow.sailMaxShips,
+    setSailShips: sailFlow.setSailShips,
     selectSailStart: sailFlow.selectSailStart,
     selectSailEnd: sailFlow.selectSailEnd,
     submitSail: sailFlow.submitSail,

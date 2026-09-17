@@ -55,6 +55,8 @@ export function useCanvasInteractions({
   sailEndCandidates,
   sailPanelOpen,
   sailInputRef,
+  sailMaxShips,
+  setSailShips,
   selectSailStart,
   selectSailEnd,
   submitSail,
@@ -175,6 +177,8 @@ export function useCanvasInteractions({
   sailEndCandidates: Set<number>;
   sailPanelOpen: boolean;
   sailInputRef: RefObject<HTMLInputElement | null>;
+  sailMaxShips: number;
+  setSailShips: Dispatch<SetStateAction<number>>;
   selectSailStart: (territoryId: number | null) => void;
   selectSailEnd: (territoryId: number) => void;
   submitSail: () => void;
@@ -1222,6 +1226,13 @@ export function useCanvasInteractions({
         );
         return;
       }
+      if (sailPanelOpen) {
+        const delta = e.deltaY < 0 ? 1 : -1;
+        setSailShips((prev) =>
+          Math.min(sailMaxShips, Math.max(1, prev + delta)),
+        );
+        return;
+      }
       if (fortifyPanelOpen) {
         const delta = e.deltaY < 0 ? 1 : -1;
         setFortifyTroops((prev) =>
@@ -1260,6 +1271,8 @@ export function useCanvasInteractions({
     troopsToDeploy,
     deploySeaPanelOpen,
     deploySeaMaxShips,
+    sailPanelOpen,
+    sailMaxShips,
     fortifyPanelOpen,
     fortifyMaxTroops,
     entrenchPanelOpen,
@@ -1273,6 +1286,7 @@ export function useCanvasInteractions({
     zoomAround,
     setDeployTroops,
     setDeploySeaShips,
+    setSailShips,
     setFortifyTroops,
     setEntrenchTroops,
     setAttackMoveTroops,

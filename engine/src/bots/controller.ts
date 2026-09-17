@@ -23,7 +23,7 @@ export function scheduleBotTurnIfNeeded(game: Game): void {
   if (!player) return;
   if (pendingActs.has(game.name) || inFlight.has(game.name)) return;
 
-  const delay = thinkDelayMs(player.botProfile.difficulty, game.turnPhase);
+  const delay = thinkDelayMs(game.botSpeed);
   const timer = setTimeout(() => {
     pendingActs.delete(game.name);
     const currentGame = games.get(game.name);

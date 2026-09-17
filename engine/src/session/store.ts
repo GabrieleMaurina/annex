@@ -42,6 +42,7 @@ function scheduleDestroy(
 }
 
 function hasActivePlayer(game: Game) {
+  if (game.offline) return true;
   return game.playerIds.some((id) => {
     if (game.surrenderedIds.has(id)) return false;
     const member = playersById.get(id);
@@ -462,7 +463,10 @@ export function resyncPlayer(
   const player = playersById.get(playerId);
   if (!player) return { id: playerId, gameName: null, name: '' };
   player.connected = true;
-  endTakeover(player);
+  const gameBeforeResync = player.gameName
+    ? games.get(player.gameName)
+    : undefined;
+  if (!gameBeforeResync?.surrenderedIds.has(player.id)) endTakeover(player);
 
   if (room !== (player.gameName ?? HOME_ROOM)) leaveGame(player, true);
 

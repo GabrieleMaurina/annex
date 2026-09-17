@@ -24,6 +24,7 @@ import { createGame } from './lifecycle/create';
 import { joinGame } from './lifecycle/join';
 import { generateMap, selectPlayerMap } from './lifecycle/mapgen';
 import {
+  cycleBotSpeed,
   cycleColor,
   mapForGame,
   nextPhase,
@@ -156,6 +157,7 @@ export function createEngine(
     cycleColor,
     nextPhase,
     pauseGame,
+    cycleBotSpeed,
     surrender,
     sendChat,
 

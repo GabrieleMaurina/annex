@@ -231,6 +231,7 @@ export function gameState(game: Game) {
     startedAt: game.startedAt,
     endedAt: game.endedAt,
     paused: game.paused,
+    botSpeed: game.botSpeed,
     selectedTerritoryId: game.selectedTerritoryId,
     fortifyStartTerritoryId: game.fortifyStartTerritoryId,
     fortifyEndTerritoryId: game.fortifyEndTerritoryId,

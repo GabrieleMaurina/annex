@@ -173,6 +173,7 @@ A private game (visibility, a server-only attribute; see "Password and visibilit
   startedAt: number | null; // ms since epoch when `game:start` ran, null while still in `lobby`
   endedAt: number | null; // ms since epoch when the game reached `state: 'ended'`, null before that
   paused: boolean;
+  botSpeed: 'slow' | 'medium' | 'fast'; // how long bots pause before acting; see `game:cycleBotSpeed` below
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
@@ -694,6 +695,12 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
 ### `game:pause`
 - **When sent:** the host of a `playing` game toggles pause, from the players panel.
 - **Purpose:** toggle `paused` (see above). The caller must be host, and the game must be `playing`.
+- **Content:** none
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game not started`.
+
+### `game:cycleBotSpeed`
+- **When sent:** the host of a `playing` game clicks the bot speed button next to Pause, in the players panel.
+- **Purpose:** advance `botSpeed` to the next value in the cycle `'slow'` -> `'medium'` -> `'fast'` -> `'slow'`. The caller must be host, and the game must be `playing`.
 - **Content:** none
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game not started`.
 

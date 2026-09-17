@@ -139,6 +139,17 @@ export function registerGameHandlers(
     callback(engine.pauseGame(playerId));
   });
 
+  socket.on(
+    'game:cycleBotSpeed',
+    (callback: (response: GameResponse) => void) => {
+      if (typeof callback !== 'function') return;
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
+        return callback({ ok: false, error: 'not in a game' });
+      callback(engine.cycleBotSpeed(playerId));
+    },
+  );
+
   socket.on('game:surrender', (callback: (response: GameResponse) => void) => {
     if (typeof callback !== 'function') return;
     const playerId = playerIdBySocketId.get(socket.id);

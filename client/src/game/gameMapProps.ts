@@ -35,6 +35,7 @@ type DerivedKeys =
   | 'troopsToDeploy'
   | 'turnStartedAt'
   | 'paused'
+  | 'botSpeed'
   | 'hostId'
   | 'selectedTerritoryId'
   | 'fortifyStartTerritoryId'
@@ -91,6 +92,7 @@ export function gameMapDataProps(
     troopsToDeploy: game.troopsToDeploy,
     turnStartedAt: game.turnStartedAt,
     paused: game.paused,
+    botSpeed: game.botSpeed,
     hostId: game.hostId,
     selectedTerritoryId: game.selectedTerritoryId,
     fortifyStartTerritoryId: game.fortifyStartTerritoryId,
@@ -113,6 +115,7 @@ export function gameMapDataProps(
 
 export const noopGameMapHandlers = {
   onTogglePause: () => {},
+  onCycleBotSpeed: () => {},
   setGame: () => {},
   adjustTerritoryTroops: () => {},
   adjustToxinTerritories: () => {},

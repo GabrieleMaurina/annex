@@ -677,11 +677,7 @@ export function forceEndTurnImpl(game: Game, skipDeploy = false) {
 }
 
 function findNextAliveIndexFrom(game: Game, fromIndex: number): number | null {
-  return nextIndexMatching(
-    game,
-    fromIndex,
-    (id) => ownsAnyTerritory(game, id) && !game.surrenderedIds.has(id),
-  );
+  return nextIndexMatching(game, fromIndex, (id) => ownsAnyTerritory(game, id));
 }
 
 function nextAlivePlayerIndex(game: Game): number {

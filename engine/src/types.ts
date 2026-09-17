@@ -49,6 +49,7 @@ export interface Player {
 export type BotDifficulty = 'idle' | 'easy' | 'medium' | 'hard';
 export type BotPersonality =
   'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic';
+export type BotSpeed = 'slow' | 'medium' | 'fast';
 
 export interface BotProfile {
   difficulty: BotDifficulty;
@@ -334,6 +335,7 @@ export interface Game {
   turnStartedAt: number;
   paused: boolean;
   pausedAt: number | null;
+  botSpeed: BotSpeed;
   humansAbandonedAt: number | null;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
@@ -369,6 +371,7 @@ export interface Game {
   cardSetsPlayed: Map<number, number>;
   cardsLastSetValue: Map<number, number>;
   stats: Map<number, PlayerStats>;
+  frozenKillCount: Map<number, number>;
   deathOrder: number[];
   teamDeathOrder: number[];
   finalRanking: number[];

@@ -9,6 +9,7 @@ import { contrastTextColor, playerColor } from '../../lib/palette';
 import { playSound } from '../../lib/sounds';
 import type {
   Alliances,
+  BotSpeed,
   Bounties,
   GameMode,
   GameState,
@@ -72,7 +73,9 @@ interface Props {
   selfId: number | null;
   hostId: number;
   paused: boolean;
+  botSpeed: BotSpeed;
   onTogglePause: () => void;
+  onCycleBotSpeed: () => void;
   onSurrender: () => void;
   roundNumber: number;
   turnPhase: TurnPhase;
@@ -109,7 +112,9 @@ function PlayersPanel({
   selfId,
   hostId,
   paused,
+  botSpeed,
   onTogglePause,
+  onCycleBotSpeed,
   onSurrender,
   roundNumber,
   turnPhase,
@@ -140,6 +145,12 @@ function PlayersPanel({
     !self.surrendered;
   const canLeave = isSpectator || (!!self && (gameEnded || self.surrendered));
   const canPause = !gameEnded && (selfId === hostId || connector.isOffline());
+  const hasLivingBot = players.some((p) => p.isBot && !p.eliminated);
+  const botSpeedLabel: Record<BotSpeed, string> = {
+    slow: 'Slow',
+    medium: 'Medium',
+    fast: 'Fast',
+  };
   const showAllianceColumn = alliances === 'on' && !isSpectator && !gameEnded;
 
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
@@ -156,6 +167,8 @@ function PlayersPanel({
   const whiteTargetIcon = useWhiteIcon('/icons/target.svg');
   const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
   const whitePlayIcon = useWhiteIcon('/icons/play.svg');
+  const whiteStepForwardIcon = useWhiteIcon('/icons/step-forward.svg');
+  const whiteSkipForwardIcon = useWhiteIcon('/icons/skip-forward.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
 
   if (collapsed) {
@@ -550,11 +563,14 @@ function PlayersPanel({
           </>
         )}
       </div>
-      {(canPause || canSurrender) && (
-        <div
-          className={`d-flex mt-2 ${canPause && canSurrender ? 'justify-content-between' : 'justify-content-end'}`}
-        >
-          {canPause && (
+      {canPause && (
+        <div className="d-flex mt-2 gap-2 justify-content-end">
+          <Tip
+            text={
+              paused ? 'Resume game for everyone' : 'Pause game for everyone'
+            }
+            placement="bottom"
+          >
             <Button
               variant="secondary"
               size="sm"
@@ -573,30 +589,66 @@ function PlayersPanel({
               />
               {paused ? 'Resume' : 'Pause'}
             </Button>
-          )}
-          {canSurrender && (
-            <Button
-              variant="danger"
-              size="sm"
-              className="d-flex align-items-center gap-1"
-              onClick={onSurrender}
-            >
-              <img
-                src={whiteFlagIcon ?? '/icons/flag.svg'}
-                width={14}
-                height={14}
-                alt=""
-              />
-              Surrender
-            </Button>
+          </Tip>
+          {hasLivingBot && (
+            <Tip text="Change bots speed" placement="bottom">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="d-flex align-items-center gap-1"
+                onClick={onCycleBotSpeed}
+              >
+                <img
+                  src={
+                    botSpeed === 'slow'
+                      ? (whitePlayIcon ?? '/icons/play.svg')
+                      : botSpeed === 'medium'
+                        ? (whiteStepForwardIcon ?? '/icons/step-forward.svg')
+                        : (whiteSkipForwardIcon ?? '/icons/skip-forward.svg')
+                  }
+                  width={14}
+                  height={14}
+                  alt=""
+                />
+                {botSpeedLabel[botSpeed]}
+              </Button>
+            </Tip>
           )}
         </div>
       )}
-      {canLeave && (
-        <div className="d-flex justify-content-end mt-2">
-          <Button variant="secondary" size="sm" onClick={() => navigate('/')}>
-            Leave
-          </Button>
+      {(canSurrender || canLeave) && (
+        <div
+          className={`d-flex mt-2 ${canSurrender && canLeave ? 'justify-content-between' : 'justify-content-end'}`}
+        >
+          {canSurrender && (
+            <Tip text="Surrender the game" placement="bottom">
+              <Button
+                variant="danger"
+                size="sm"
+                className="d-flex align-items-center gap-1"
+                onClick={onSurrender}
+              >
+                <img
+                  src={whiteFlagIcon ?? '/icons/flag.svg'}
+                  width={14}
+                  height={14}
+                  alt=""
+                />
+                Surrender
+              </Button>
+            </Tip>
+          )}
+          {canLeave && (
+            <Tip text="Go back to home" placement="bottom">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => navigate('/')}
+              >
+                Leave
+              </Button>
+            </Tip>
+          )}
         </div>
       )}
     </div>

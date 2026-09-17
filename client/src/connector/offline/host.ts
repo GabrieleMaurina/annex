@@ -415,6 +415,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
     case 'game:pause':
       cb?.(engine.pauseGame(hostId ?? id));
       return;
+    case 'game:cycleBotSpeed':
+      cb?.(engine.cycleBotSpeed(hostId ?? id));
+      return;
     case 'game:surrender':
       cb?.(engine.surrender(id));
       return;

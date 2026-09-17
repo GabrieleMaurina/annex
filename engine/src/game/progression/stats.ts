@@ -73,6 +73,10 @@ export function countTerritories(game: Game, playerId: number): number {
   return count;
 }
 
+function frozenOrLive(game: Game, playerId: number, liveValue: number): number {
+  return game.frozenKillCount.get(playerId) ?? liveValue;
+}
+
 function compareBySurvivorTiebreak(game: Game, a: number, b: number): number {
   const sa = game.stats.get(a)!;
   const sb = game.stats.get(b)!;
@@ -112,20 +116,18 @@ function compareByDeathOrder(game: Game, a: number, b: number): number {
 }
 
 function compareByPlayerKillsFirst(game: Game, a: number, b: number): number {
-  const sa = game.stats.get(a)!;
-  const sb = game.stats.get(b)!;
-  if (sa.playersKilled.length !== sb.playersKilled.length)
-    return sb.playersKilled.length - sa.playersKilled.length;
+  const sa = frozenOrLive(game, a, game.stats.get(a)!.playersKilled.length);
+  const sb = frozenOrLive(game, b, game.stats.get(b)!.playersKilled.length);
+  if (sa !== sb) return sb - sa;
   const deathCmp = compareByDeathOrder(game, a, b);
   if (deathCmp !== 0) return deathCmp;
   return compareBySurvivorTiebreak(game, a, b);
 }
 
 function compareByTroopKillsFirst(game: Game, a: number, b: number): number {
-  const sa = game.stats.get(a)!;
-  const sb = game.stats.get(b)!;
-  if (sa.troopsKilled !== sb.troopsKilled)
-    return sb.troopsKilled - sa.troopsKilled;
+  const sa = frozenOrLive(game, a, game.stats.get(a)!.troopsKilled);
+  const sb = frozenOrLive(game, b, game.stats.get(b)!.troopsKilled);
+  if (sa !== sb) return sb - sa;
   const deathCmp = compareByDeathOrder(game, a, b);
   if (deathCmp !== 0) return deathCmp;
   return compareBySurvivorTiebreak(game, a, b);
@@ -140,12 +142,27 @@ function killsComparator(game: Game): (a: number, b: number) => number {
 }
 
 export function computeKillsWinner(game: Game): number {
-  return [...game.playerIds].sort(killsComparator(game))[0];
+  const candidates = game.playerIds.filter(
+    (id) => !game.surrenderedIds.has(id),
+  );
+  return candidates.sort(killsComparator(game))[0];
 }
 
 function computeTeamRanking(game: Game): number[] {
-  const winningTeam = game.playerTeams.get(game.winnerIds[0]) ?? 0;
-  const teamOrder = [winningTeam, ...[...game.teamDeathOrder].reverse()];
+  const winningTeam =
+    game.winnerIds.length > 0
+      ? (game.playerTeams.get(game.winnerIds[0]) ?? 0)
+      : null;
+  const deadTeamsDesc = [...game.teamDeathOrder].reverse();
+  const knownTeams =
+    winningTeam !== null ? [winningTeam, ...deadTeamsDesc] : deadTeamsDesc;
+  const allTeams = new Set(
+    game.playerIds.map((id) => game.playerTeams.get(id) ?? 0),
+  );
+  const teamOrder = [
+    ...knownTeams,
+    ...[...allTeams].filter((team) => !knownTeams.includes(team)),
+  ];
   const ranking: number[] = [];
   for (const team of teamOrder) {
     const members = game.playerIds.filter(
@@ -156,7 +173,9 @@ function computeTeamRanking(game: Game): number[] {
         const aliveA = game.deathOrder.includes(a) ? 0 : 1;
         const aliveB = game.deathOrder.includes(b) ? 0 : 1;
         if (aliveA !== aliveB) return aliveB - aliveA;
-        return compareBySurvivorTiebreak(game, a, b);
+        return aliveA === 1
+          ? compareBySurvivorTiebreak(game, a, b)
+          : compareByDeathOrder(game, a, b);
       }),
     );
   }
@@ -165,8 +184,16 @@ function computeTeamRanking(game: Game): number[] {
 
 export function computeFinalRanking(game: Game): number[] {
   if (game.gameMode === 'Team Deathmatch') return computeTeamRanking(game);
-  if (game.gameMode === 'Player Kills' || game.gameMode === 'Troop Kills')
-    return [...game.playerIds].sort(killsComparator(game));
+  if (game.gameMode === 'Player Kills' || game.gameMode === 'Troop Kills') {
+    const comparator = killsComparator(game);
+    const contenders = game.playerIds
+      .filter((id) => !game.surrenderedIds.has(id))
+      .sort(comparator);
+    const surrendered = game.playerIds
+      .filter((id) => game.surrenderedIds.has(id))
+      .sort(comparator);
+    return [...contenders, ...surrendered];
+  }
 
   const tiebreak =
     game.gameMode === '5-Round' || game.gameMode === '10-Round'

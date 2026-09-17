@@ -351,20 +351,28 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       seaShipsById.get(s.id) ??
       []
     ).filter((b) => b.ships > 0);
-    const circleRadius = VERTEX_RADIUS * scaleX * 0.6;
-    const dist = hexRadius + circleRadius + 4 * zoom;
+    const circleRadius = VERTEX_RADIUS * scaleX * 0.7;
+    const triangleRadius = VERTEX_RADIUS * scaleX * 1.3;
+    const dist = hexRadius + triangleRadius + 4 * zoom;
     ships.forEach((ship, i) => {
       const angle = (Math.PI * 2 * i) / ships.length - Math.PI / 2;
       const cx = p.x + dist * Math.cos(angle);
       const cy = p.y + dist * Math.sin(angle);
       const fillColor = playerColor(colorByPlayerId.get(ship.playerId) ?? 0);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle + Math.PI / 2);
       ctx.beginPath();
-      ctx.arc(cx, cy, circleRadius, 0, Math.PI * 2);
+      ctx.moveTo(triangleRadius, 0);
+      ctx.lineTo(-triangleRadius * 0.6, triangleRadius * 0.7);
+      ctx.lineTo(-triangleRadius * 0.6, -triangleRadius * 0.7);
+      ctx.closePath();
       ctx.fillStyle = fillColor;
       ctx.fill();
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 2 * zoom;
       ctx.stroke();
+      ctx.restore();
 
       ctx.fillStyle = contrastTextColor(fillColor);
       ctx.font = `bold ${circleRadius}px sans-serif`;

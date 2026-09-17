@@ -106,6 +106,7 @@ export function useDeploySeaFlow({
             ownerById.get(t.id)?.ownerId === selfId,
         )?.id ?? null);
     if (sourceTerritoryId === null) return;
+    const wasCombo = comboActive;
     connector.buyShips(
       {
         sourceTerritoryId,
@@ -114,7 +115,18 @@ export function useDeploySeaFlow({
         fromPool: !comboActive,
       },
       (res: Ack) => {
-        if (res.ok) setGame(res.game);
+        if (res.ok) {
+          setGame(res.game);
+          setDeploySeaTerritoryId(null);
+          if (wasCombo) {
+            connector.selectTerritory(
+              { territoryId: null },
+              (selectRes: Ack) => {
+                if (selectRes.ok) setGame(selectRes.game);
+              },
+            );
+          }
+        }
       },
     );
   }, [

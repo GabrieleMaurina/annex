@@ -1,4 +1,5 @@
 import { callbacks } from '../callbacks';
+import { addTroopsCapped } from '../game/mechanics';
 import {
   counterKey,
   evaluateCardSelection,
@@ -53,17 +54,12 @@ export function playCardSet(playerId: number, rawCards: unknown): GameResponse {
   sendPlayerCards(game, playerId);
 
   game.troopsToDeploy += evaluated.baseValue;
-  for (const territoryId of evaluated.territoryBonusIds) {
-    game.territoryTroops.set(
-      territoryId,
-      (game.territoryTroops.get(territoryId) ?? 0) + 2,
-    );
-    recordReplayFrame(game, {
-      type: 'deploy',
-      territoryId,
-      troops: 2,
-      playerId,
-    });
+  const bonusDeposits = evaluated.territoryBonusIds.map((territoryId) => ({
+    territoryId,
+    troops: addTroopsCapped(game, territoryId, 2),
+  }));
+  for (const { territoryId, troops } of bonusDeposits) {
+    recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
   }
   const key = counterKey(game, playerId);
   game.cardSetsPlayed.set(key, (game.cardSetsPlayed.get(key) ?? 0) + 1);
@@ -72,7 +68,7 @@ export function playCardSet(playerId: number, rawCards: unknown): GameResponse {
     game,
     playerId,
     'troopsGained',
-    evaluated.territoryBonusIds.length * 2,
+    bonusDeposits.reduce((sum, deposit) => sum + deposit.troops, 0),
   );
   if (game.cards === 'Exponential' || game.cards === 'Exponential Per Player')
     game.cardsLastSetValue.set(key, evaluated.baseValue);
@@ -87,11 +83,11 @@ export function playCardSet(playerId: number, rawCards: unknown): GameResponse {
     callbacks.onCardSetPlayed(viewerId, cardSetPlayedPayload);
   }
   recordLogForAll(game, 'game:cardSetPlayed', cardSetPlayedPayload);
-  for (const territoryId of evaluated.territoryBonusIds) {
+  for (const { territoryId, troops } of bonusDeposits) {
     fogFilterEmit(game, 'game:deployed', callbacks.onDeployed, (viewerId) => {
       const visible = visibleTerritoryIdsOrAll(game, viewerId);
       if (visible !== null && !visible.has(territoryId)) return null;
-      return { territoryId, troops: 2, playerId };
+      return { territoryId, troops, playerId };
     });
   }
 

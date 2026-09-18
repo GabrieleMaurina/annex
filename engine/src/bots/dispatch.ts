@@ -76,7 +76,11 @@ export function dispatchBotAction(
     case 'game:attackSeaSelectDefender':
       return attackSeaSelectDefender(playerId, p.defenderId as number);
     case 'game:attackSea':
-      return attackSea(playerId, p.ships as number);
+      return attackSea(
+        playerId,
+        p.type as 'regular' | 'blitz',
+        p.ships as number,
+      );
     case 'game:attackMove':
       return attackMove(playerId, p.troops as number);
     case 'game:attackSelectStart':

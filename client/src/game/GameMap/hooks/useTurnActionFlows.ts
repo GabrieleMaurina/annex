@@ -1,3 +1,4 @@
+import { MAX_TERRITORY_TROOPS } from 'engine';
 import { useCallback, useRef, useState } from 'react';
 import { connector } from '../../../connector';
 import type { Ack, Fortification, GameState } from '../../../lib/types';
@@ -84,9 +85,17 @@ export function useTurnActionFlows({
           portalsEnabled,
         )
       : new Set<number>();
+  const fortifyEndRoom =
+    fortifyEndTerritoryId !== null
+      ? MAX_TERRITORY_TROOPS -
+        (ownerById.get(fortifyEndTerritoryId)?.troops ?? 0)
+      : MAX_TERRITORY_TROOPS;
   const fortifyMaxTroops =
     fortifyStartTerritoryId !== null
-      ? (ownerById.get(fortifyStartTerritoryId)?.troops ?? 1) - 1
+      ? Math.min(
+          (ownerById.get(fortifyStartTerritoryId)?.troops ?? 1) - 1,
+          fortifyEndRoom,
+        )
       : 1;
 
   if (trackedFortifyEndTerritoryId !== fortifyEndTerritoryId) {
@@ -179,7 +188,8 @@ export function useTurnActionFlows({
     turnPhase === 'fortify' &&
     isMyTurn &&
     !paused &&
-    fortifyEndTerritoryId !== null;
+    fortifyEndTerritoryId !== null &&
+    fortifyMaxTroops > 0;
   const entrenchPanelOpen =
     turnPhase === 'entrench' &&
     isMyTurn &&

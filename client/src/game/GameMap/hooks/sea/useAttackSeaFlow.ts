@@ -1,18 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../../../../connector';
-import type { Ack, GameState } from '../../../../lib/types';
+import type { Ack, BlitzOutcome, GameState } from '../../../../lib/types';
 import { DICE_ROLL_STEP_DURATION, DICE_ROLL_STEPS } from '../../../animations';
 import {
   getAttackSeaStartCandidates,
   getSeaDefenders,
 } from '../../../logic/attackSea';
 import type { SeaTerritory } from '../../../mapData';
-import type { DiceRoll } from '../../../panels/AttackPanel';
+import type { AttackType, DiceRoll } from '../../../panels/attack/AttackPanel';
+
+type AttackSeaProbabilitiesAck =
+  | {
+      ok: true;
+      game: GameState;
+      blitzWinProbabilities: number[];
+      blitzOutcomes?: BlitzOutcome[];
+    }
+  | { ok: false; error: string };
 
 type AttackSeaResultAck =
   | {
       ok: true;
       game: GameState;
+      blitzWinProbabilities: number[];
+      blitzOutcomes?: BlitzOutcome[];
       attackerDice: number[];
       defenderDice: number[];
     }
@@ -49,7 +60,16 @@ export function useAttackSeaFlow({
   paused: boolean;
   setGame: (game: GameState) => void;
 }) {
-  const [attackSeaShips, setAttackSeaShips] = useState(1);
+  const [attackSeaRegularShips, setAttackSeaRegularShips] = useState(1);
+  const [attackSeaBlitzShips, setAttackSeaBlitzShips] = useState(1);
+  const [attackSeaSelectedType, setAttackSeaSelectedType] =
+    useState<AttackType>('regular');
+  const [attackSeaWinProbabilities, setAttackSeaWinProbabilities] = useState<
+    number[] | null
+  >(null);
+  const [attackSeaBlitzOutcomes, setAttackSeaBlitzOutcomes] = useState<
+    BlitzOutcome[] | null
+  >(null);
   const [trackedAttackSeaKey, setTrackedAttackSeaKey] = useState('');
   const [attackSeaDiceRoll, setAttackSeaDiceRoll] = useState<DiceRoll | null>(
     null,
@@ -57,6 +77,7 @@ export function useAttackSeaFlow({
   const [attackSeaDiceSettled, setAttackSeaDiceSettled] = useState(true);
   const attackSeaDiceRollIdRef = useRef(0);
   const attackSeaInputRef = useRef<HTMLInputElement>(null);
+  const attackSeaBlitzInputRef = useRef<HTMLInputElement>(null);
 
   const attackSeaStartCandidates =
     turnPhase === 'attack' && isMyTurn
@@ -66,10 +87,9 @@ export function useAttackSeaFlow({
     attackSeaTerritoryId !== null
       ? getSeaDefenders(seas, attackSeaTerritoryId, selfId)
       : [];
-  const attackSeaMaxShips = Math.min(
-    3,
-    shipsAt(seas, attackSeaTerritoryId, selfId),
-  );
+  const attackSeaOwnShips = shipsAt(seas, attackSeaTerritoryId, selfId);
+  const attackSeaMaxRegularShips = Math.min(3, attackSeaOwnShips);
+  const attackSeaMaxBlitzShips = attackSeaOwnShips;
   const attackSeaDefenderValid =
     attackSeaDefenderId === null ||
     attackSeaDefenders.some((d) => d.playerId === attackSeaDefenderId);
@@ -77,9 +97,22 @@ export function useAttackSeaFlow({
   const attackSeaKey = `${attackSeaTerritoryId}-${attackSeaDefenderId}`;
   if (trackedAttackSeaKey !== attackSeaKey) {
     setTrackedAttackSeaKey(attackSeaKey);
-    if (attackSeaMaxShips >= 1) setAttackSeaShips(attackSeaMaxShips);
-  } else if (attackSeaMaxShips >= 1 && attackSeaShips > attackSeaMaxShips) {
-    setAttackSeaShips(attackSeaMaxShips);
+    setAttackSeaSelectedType('regular');
+    if (attackSeaMaxRegularShips >= 1)
+      setAttackSeaRegularShips(attackSeaMaxRegularShips);
+    if (attackSeaMaxBlitzShips >= 1)
+      setAttackSeaBlitzShips(attackSeaMaxBlitzShips);
+  } else {
+    if (
+      attackSeaMaxRegularShips >= 1 &&
+      attackSeaRegularShips > attackSeaMaxRegularShips
+    )
+      setAttackSeaRegularShips(attackSeaMaxRegularShips);
+    if (
+      attackSeaMaxBlitzShips >= 1 &&
+      attackSeaBlitzShips > attackSeaMaxBlitzShips
+    )
+      setAttackSeaBlitzShips(attackSeaMaxBlitzShips);
   }
 
   const selectAttackSeaStart = useCallback(
@@ -98,41 +131,72 @@ export function useAttackSeaFlow({
     [selectAttackSeaStart],
   );
 
+  const requestAttackSeaDefender = useCallback(
+    (defenderId: number) => {
+      connector.attackSeaSelectDefender(
+        { defenderId },
+        (res: AttackSeaProbabilitiesAck) => {
+          if (!res.ok) return;
+          setGame(res.game);
+          setAttackSeaWinProbabilities(res.blitzWinProbabilities);
+          setAttackSeaBlitzOutcomes(res.blitzOutcomes ?? null);
+        },
+      );
+    },
+    [setGame],
+  );
+
   const selectAttackSeaDefender = useCallback(
     (defenderId: number) => {
       setAttackSeaDiceRoll(null);
       setAttackSeaDiceSettled(true);
-      connector.attackSeaSelectDefender({ defenderId }, (res: Ack) => {
-        if (res.ok) setGame(res.game);
-      });
+      requestAttackSeaDefender(defenderId);
     },
-    [setGame],
+    [requestAttackSeaDefender],
   );
 
   const submitAttackSea = useCallback(() => {
     const seaTerritoryId = attackSeaTerritoryId;
     if (seaTerritoryId === null) return;
+    const ships =
+      attackSeaSelectedType === 'regular'
+        ? attackSeaRegularShips
+        : attackSeaBlitzShips;
     connector.attackSea(
-      { ships: attackSeaShips },
+      { type: attackSeaSelectedType, ships },
       (res: AttackSeaResultAck) => {
         if (!res.ok) return;
         setGame(res.game);
-        attackSeaDiceRollIdRef.current += 1;
-        const rollId = attackSeaDiceRollIdRef.current;
-        setAttackSeaDiceRoll({
-          attackerDice: res.attackerDice,
-          defenderDice: res.defenderDice,
-          territoryId: seaTerritoryId,
-          id: rollId,
-        });
-        setAttackSeaDiceSettled(false);
-        setTimeout(() => {
-          if (attackSeaDiceRollIdRef.current !== rollId) return;
-          setAttackSeaDiceSettled(true);
-        }, DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION);
+        const hasDiceRoll = res.attackerDice.length > 0;
+        if (hasDiceRoll) {
+          attackSeaDiceRollIdRef.current += 1;
+          const rollId = attackSeaDiceRollIdRef.current;
+          setAttackSeaDiceRoll({
+            attackerDice: res.attackerDice,
+            defenderDice: res.defenderDice,
+            territoryId: seaTerritoryId,
+            id: rollId,
+          });
+          setAttackSeaDiceSettled(false);
+          setTimeout(() => {
+            if (attackSeaDiceRollIdRef.current !== rollId) return;
+            setAttackSeaDiceSettled(true);
+            setAttackSeaWinProbabilities(res.blitzWinProbabilities);
+            setAttackSeaBlitzOutcomes(res.blitzOutcomes ?? null);
+          }, DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION);
+        } else {
+          setAttackSeaWinProbabilities(res.blitzWinProbabilities);
+          setAttackSeaBlitzOutcomes(res.blitzOutcomes ?? null);
+        }
       },
     );
-  }, [attackSeaShips, attackSeaTerritoryId, setGame]);
+  }, [
+    attackSeaTerritoryId,
+    attackSeaSelectedType,
+    attackSeaRegularShips,
+    attackSeaBlitzShips,
+    setGame,
+  ]);
 
   const attackSeaRevealing =
     attackSeaDiceRoll !== null && !attackSeaDiceSettled;
@@ -149,6 +213,13 @@ export function useAttackSeaFlow({
   if (!attackSeaPanelOpen && attackSeaDiceRoll !== null) {
     setAttackSeaDiceRoll(null);
     setAttackSeaDiceSettled(true);
+  }
+
+  if (attackSeaDefenderId === null && attackSeaWinProbabilities !== null) {
+    setAttackSeaWinProbabilities(null);
+  }
+  if (attackSeaDefenderId === null && attackSeaBlitzOutcomes !== null) {
+    setAttackSeaBlitzOutcomes(null);
   }
 
   useEffect(() => {
@@ -170,11 +241,36 @@ export function useAttackSeaFlow({
     );
   }, [attackSeaTerritoryId, attackSeaDefenderValid, setGame]);
 
+  useEffect(() => {
+    if (
+      !attackSeaPanelOpen ||
+      attackSeaDefenderId === null ||
+      !attackSeaDefenderValid ||
+      attackSeaWinProbabilities !== null
+    )
+      return;
+    requestAttackSeaDefender(attackSeaDefenderId);
+  }, [
+    attackSeaPanelOpen,
+    attackSeaDefenderId,
+    attackSeaDefenderValid,
+    attackSeaWinProbabilities,
+    requestAttackSeaDefender,
+  ]);
+
   return {
-    attackSeaShips,
-    setAttackSeaShips,
-    attackSeaMaxShips,
+    attackSeaSelectedType,
+    setAttackSeaSelectedType,
+    attackSeaRegularShips,
+    setAttackSeaRegularShips,
+    attackSeaBlitzShips,
+    setAttackSeaBlitzShips,
+    attackSeaMaxRegularShips,
+    attackSeaMaxBlitzShips,
+    attackSeaWinProbabilities,
+    attackSeaBlitzOutcomes,
     attackSeaInputRef,
+    attackSeaBlitzInputRef,
     attackSeaDiceRoll,
     setAttackSeaDiceRoll,
     attackSeaRevealing,

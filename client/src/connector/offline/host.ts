@@ -554,7 +554,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       cb?.(engine.attackSeaSelectDefender(id, d.defenderId));
       return;
     case 'game:attackSea':
-      cb?.(engine.attackSea(id, d.ships));
+      cb?.(engine.attackSea(id, d.type, d.ships));
       return;
     case 'game:replay':
       cb?.(engine.requestReplay(id));

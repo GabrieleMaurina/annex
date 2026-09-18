@@ -1,4 +1,8 @@
-import { supplyHubTerritoryIds } from '../../game/mechanics';
+import {
+  MAX_TERRITORY_TROOPS,
+  supplyHubTerritoryIds,
+} from '../../game/mechanics';
+import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedOwnedTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
 import { attackWinProbability, defenceDiceFor } from '../features/combat';
@@ -111,7 +115,7 @@ export function planBotTurn(
   }
   if (phase === 'toxins') return result([NEXT_PHASE], stale);
 
-  const ctx = buildContext(game, botId, botProfile);
+  const ctx = buildContext(game, botId, botProfile, cachedPlan);
   const plan = resolvePlan(ctx, game, botId, cachedPlan);
 
   if (phase === 'deploy') return planDeploy(ctx, game, plan);
@@ -153,7 +157,7 @@ function planDeploy(
             sourceTerritoryId: shipPurchase.sourceTerritoryId,
             seaTerritoryId: shipPurchase.seaTerritoryId,
             ships: shipPurchase.ships,
-            fromPool: true,
+            fromPool: shipPurchase.fromPool,
           },
         },
       ],
@@ -175,12 +179,17 @@ function planDeploy(
   return result([NEXT_PHASE], plan);
 }
 
+function troopRoom(game: Game, territoryId: number): number {
+  return MAX_TERRITORY_TROOPS - (game.territoryTroops.get(territoryId) ?? 0);
+}
+
 function canDeployTo(
   ctx: PlanContext,
   game: Game,
   territoryId: number,
 ): boolean {
   if (game.territoryOwners.get(territoryId) !== ctx.botId) return false;
+  if (troopRoom(game, territoryId) < 1) return false;
   if (game.supplyLines !== 'on') return true;
   return connectedOwnedTerritories(
     game,
@@ -198,11 +207,19 @@ function nextDeployment(
     const entry = plan.deployments[plan.deployCursor];
     plan.deployCursor++;
     if (!canDeployTo(ctx, game, entry.territoryId)) continue;
-    const troops = Math.min(entry.troops, game.troopsToDeploy);
+    const troops = Math.min(
+      entry.troops,
+      game.troopsToDeploy,
+      troopRoom(game, entry.territoryId),
+    );
     if (troops >= 1) return { territoryId: entry.territoryId, troops };
   }
   const fallback = chooseDeploy(game, ctx.view, ctx.botId, ctx.weights);
-  if (fallback && canDeployTo(ctx, game, fallback.territoryId)) return fallback;
+  if (fallback && canDeployTo(ctx, game, fallback.territoryId))
+    return {
+      territoryId: fallback.territoryId,
+      troops: Math.min(fallback.troops, troopRoom(game, fallback.territoryId)),
+    };
   const connected = [...game.territoryOwners.keys()]
     .filter((id) => canDeployTo(ctx, game, id))
     .sort(
@@ -210,7 +227,10 @@ function nextDeployment(
         (game.territoryTroops.get(b) ?? 0) - (game.territoryTroops.get(a) ?? 0),
     )[0];
   if (connected === undefined) return null;
-  return { territoryId: connected, troops: game.troopsToDeploy };
+  return {
+    territoryId: connected,
+    troops: Math.min(game.troopsToDeploy, troopRoom(game, connected)),
+  };
 }
 
 function planAttack(
@@ -240,8 +260,12 @@ function planAttack(
       return result([{ event: 'game:launchNuke', payload: launch }], plan);
   }
 
-  const shipAttack = chooseShipAttack(game, ctx.botId);
-  if (shipAttack)
+  const shipAttack =
+    plan.shipAttacksIssued < ctx.params.maxPlanDepth
+      ? chooseShipAttack(game, ctx.botId)
+      : null;
+  if (shipAttack) {
+    plan.shipAttacksIssued++;
     return result(
       [
         {
@@ -252,10 +276,14 @@ function planAttack(
           event: 'game:attackSeaSelectDefender',
           payload: { defenderId: shipAttack.defenderId },
         },
-        { event: 'game:attackSea', payload: { ships: shipAttack.ships } },
+        {
+          event: 'game:attackSea',
+          payload: { type: shipAttack.type, ships: shipAttack.ships },
+        },
       ],
       plan,
     );
+  }
   if (game.attackSeaTerritoryId !== null)
     return result(
       [{ event: 'game:attackSeaSelectStart', payload: { territoryId: null } }],
@@ -339,6 +367,11 @@ function stepStatus(
   if (startTroops < 2) return 'invalid';
   if (!(ctx.neighbors.get(step.startId) ?? []).includes(step.endId))
     return 'invalid';
+  if (
+    !game.territoryOwners.has(step.endId) &&
+    !isFreeConquestTarget(game, step.endId)
+  )
+    return 'invalid';
   const endTroops = game.territoryTroops.get(step.endId) ?? 0;
   const winProb = attackWinProbability(
     game,
@@ -372,6 +405,14 @@ function planSail(
   );
 }
 
+function cappedFortifyTroops(game: Game, move: FortifyMove): number {
+  return Math.min(
+    move.troops,
+    (game.territoryTroops.get(move.startId) ?? 0) - 1,
+    troopRoom(game, move.endId),
+  );
+}
+
 function planFortify(
   ctx: PlanContext,
   game: Game,
@@ -379,10 +420,7 @@ function planFortify(
 ): PlanBotTurnResult {
   if (plan.fortify && fortifyValid(ctx, game, plan.fortify)) {
     const move = plan.fortify;
-    const troops = Math.min(
-      move.troops,
-      (game.territoryTroops.get(move.startId) ?? 0) - 1,
-    );
+    const troops = cappedFortifyTroops(game, move);
     if (troops >= 1)
       return result(
         [
@@ -402,6 +440,8 @@ function planFortify(
 
   const choice = chooseFortify(game, ctx.view, ctx.botId, ctx.weights);
   if (!choice) return result([NEXT_PHASE], plan);
+  const choiceTroops = cappedFortifyTroops(game, choice);
+  if (choiceTroops < 1) return result([NEXT_PHASE], plan);
   return result(
     [
       {
@@ -412,7 +452,7 @@ function planFortify(
         event: 'game:fortifySelectEnd',
         payload: { territoryId: choice.endId },
       },
-      { event: 'game:fortify', payload: { troops: choice.troops } },
+      { event: 'game:fortify', payload: { troops: choiceTroops } },
     ],
     plan,
   );
@@ -439,8 +479,13 @@ function planEntrench(
   game: Game,
   plan: TurnPlan,
 ): PlanBotTurnResult {
-  const choice = chooseEntrench(game, ctx.view, ctx.botId, ctx.weights);
-  if (choice)
+  const choice =
+    plan.entrenchesIssued < ctx.params.maxPlanDepth
+      ? chooseEntrench(game, ctx.view, ctx.botId, ctx.weights)
+      : null;
+  if (choice) {
+    plan.entrenchesIssued++;
     return result([{ event: 'game:entrench', payload: choice }], plan);
+  }
   return result([NEXT_PHASE], plan);
 }

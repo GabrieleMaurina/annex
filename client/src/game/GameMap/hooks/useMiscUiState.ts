@@ -493,13 +493,13 @@ export function useSupplyLineOverlay({
 export function useResetTroopInputOnSelection({
   selectedTerritoryId,
   turnPhase,
-  troopsToDeploy,
+  deployMaxTroops,
   setEntrenchTroops,
   setDeployTroops,
 }: {
   selectedTerritoryId: number | null;
   turnPhase: TurnPhase;
-  troopsToDeploy: number;
+  deployMaxTroops: number;
   setEntrenchTroops: (troops: number) => void;
   setDeployTroops: (troops: number) => void;
 }) {
@@ -510,7 +510,7 @@ export function useResetTroopInputOnSelection({
     setTrackedSelectedTerritoryId(selectedTerritoryId);
     if (selectedTerritoryId !== null) {
       if (turnPhase === 'entrench') setEntrenchTroops(1);
-      else setDeployTroops(troopsToDeploy);
+      else setDeployTroops(deployMaxTroops);
     }
   }
 }

@@ -201,14 +201,16 @@ export function useSeaSocketEvents({
       seaTerritoryId: number;
       attackerId: number;
       defenderId: number;
+      type: 'regular' | 'blitz';
       attackingShips: number;
       attackLosses: number;
       defendingShips: number;
       defenceLosses: number;
     }) {
-      const delay = areAnimationsDisabled()
-        ? 0
-        : DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION;
+      const delay =
+        payload.type === 'regular' && !areAnimationsDisabled()
+          ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
+          : 0;
       const wipedOut =
         payload.attackingShips - payload.attackLosses <= 0 ||
         payload.defendingShips - payload.defenceLosses <= 0;

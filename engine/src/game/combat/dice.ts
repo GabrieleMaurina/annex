@@ -71,28 +71,43 @@ function allDiceRolls(diceCount: number): number[][] {
 function computeLossDistribution(
   attackerDiceCount: number,
   defenderDiceCount: number,
+  tieFavorsDefender: boolean,
 ): { attackLosses: number; defenceLosses: number; probability: number }[] {
   const attackerRolls = allDiceRolls(attackerDiceCount);
   const defenderRolls = allDiceRolls(defenderDiceCount);
   const pairs = Math.min(attackerDiceCount, defenderDiceCount);
-  const counts = new Map<number, number>();
+  const counts = new Map<
+    string,
+    { attackLosses: number; defenceLosses: number; count: number }
+  >();
+  let decisiveRolls = 0;
 
   for (const attackDice of attackerRolls) {
     for (const defenceDice of defenderRolls) {
       let attackLosses = 0;
+      let defenceLosses = 0;
       for (let i = 0; i < pairs; i++) {
-        if (attackDice[i] <= defenceDice[i]) attackLosses++;
+        if (attackDice[i] > defenceDice[i]) defenceLosses++;
+        else if (attackDice[i] < defenceDice[i]) attackLosses++;
+        else if (tieFavorsDefender) attackLosses++;
       }
-      counts.set(attackLosses, (counts.get(attackLosses) ?? 0) + 1);
+      if (attackLosses === 0 && defenceLosses === 0) continue;
+      decisiveRolls++;
+      const key = `${attackLosses},${defenceLosses}`;
+      const existing = counts.get(key);
+      if (existing) existing.count++;
+      else counts.set(key, { attackLosses, defenceLosses, count: 1 });
     }
   }
 
-  const total = attackerRolls.length * defenderRolls.length;
-  return Array.from(counts, ([attackLosses, count]) => ({
-    attackLosses,
-    defenceLosses: pairs - attackLosses,
-    probability: count / total,
-  }));
+  return Array.from(
+    counts.values(),
+    ({ attackLosses, defenceLosses, count }) => ({
+      attackLosses,
+      defenceLosses,
+      probability: count / decisiveRolls,
+    }),
+  );
 }
 
 const lossDistributionCache = new Map<
@@ -103,20 +118,43 @@ const lossDistributionCache = new Map<
 function lossDistribution(
   attackerDiceCount: number,
   defenderDiceCount: number,
+  tieFavorsDefender: boolean,
 ): ReturnType<typeof computeLossDistribution> {
-  const key = `${attackerDiceCount},${defenderDiceCount}`;
+  const key = `${attackerDiceCount},${defenderDiceCount},${tieFavorsDefender}`;
   let cached = lossDistributionCache.get(key);
   if (!cached) {
-    cached = computeLossDistribution(attackerDiceCount, defenderDiceCount);
+    cached = computeLossDistribution(
+      attackerDiceCount,
+      defenderDiceCount,
+      tieFavorsDefender,
+    );
     lossDistributionCache.set(key, cached);
   }
   return cached;
+}
+
+const EXACT_COMBAT_CAP = 200;
+
+function scaledTroops(
+  attackingTroops: number,
+  defendingTroops: number,
+  cap: number,
+): { scale: number; attackingTroops: number; defendingTroops: number } {
+  if (attackingTroops <= cap && defendingTroops <= cap)
+    return { scale: 1, attackingTroops, defendingTroops };
+  const scale = cap / Math.max(attackingTroops, defendingTroops);
+  return {
+    scale,
+    attackingTroops: Math.max(1, Math.round(attackingTroops * scale)),
+    defendingTroops: Math.max(1, Math.round(defendingTroops * scale)),
+  };
 }
 
 function winProbTable(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  tieFavorsDefender: boolean,
 ): number[][] {
   const table: number[][] = Array.from({ length: attackingTroops + 1 }, () =>
     new Array(defendingTroops + 1).fill(0),
@@ -131,6 +169,7 @@ function winProbTable(
       for (const outcome of lossDistribution(
         attackerDiceCount,
         defenderDiceCount,
+        tieFavorsDefender,
       )) {
         probability +=
           outcome.probability *
@@ -147,29 +186,62 @@ export function trueWinProb(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  tieFavorsDefender = true,
 ): number {
-  return winProbTable(attackingTroops, defendingTroops, defendingDice)[
-    attackingTroops
-  ][defendingTroops];
+  const scaled = scaledTroops(
+    attackingTroops,
+    defendingTroops,
+    EXACT_COMBAT_CAP,
+  );
+  return winProbTable(
+    scaled.attackingTroops,
+    scaled.defendingTroops,
+    defendingDice,
+    tieFavorsDefender,
+  )[scaled.attackingTroops][scaled.defendingTroops];
 }
 
 export function trueWinProbs(
   maxAttackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  tieFavorsDefender = true,
 ): number[] {
-  return winProbTable(maxAttackingTroops, defendingTroops, defendingDice)
-    .slice(1)
-    .map((row) => row[defendingTroops]);
+  const scaled = scaledTroops(
+    maxAttackingTroops,
+    defendingTroops,
+    EXACT_COMBAT_CAP,
+  );
+  const table = winProbTable(
+    scaled.attackingTroops,
+    scaled.defendingTroops,
+    defendingDice,
+    tieFavorsDefender,
+  );
+  if (scaled.scale === 1)
+    return table.slice(1).map((row) => row[defendingTroops]);
+  return Array.from({ length: maxAttackingTroops }, (_, i) => {
+    const a = Math.max(
+      1,
+      Math.min(scaled.attackingTroops, Math.round((i + 1) * scaled.scale)),
+    );
+    return table[a][scaled.defendingTroops];
+  });
 }
 
 export function balancedWinProb(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  tieFavorsDefender = true,
 ): number {
   return distortProbability(
-    trueWinProb(attackingTroops, defendingTroops, defendingDice),
+    trueWinProb(
+      attackingTroops,
+      defendingTroops,
+      defendingDice,
+      tieFavorsDefender,
+    ),
   );
 }
 
@@ -177,19 +249,27 @@ export function balancedWinProbs(
   maxAttackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  tieFavorsDefender = true,
 ): number[] {
-  return trueWinProbs(maxAttackingTroops, defendingTroops, defendingDice).map(
-    distortProbability,
-  );
+  return trueWinProbs(
+    maxAttackingTroops,
+    defendingTroops,
+    defendingDice,
+    tieFavorsDefender,
+  ).map(distortProbability);
 }
 
 const winGuaranteedProbability = 0.85;
 
-export function battleStatistics(
-  attackingTroops: number,
-  defendingTroops: number,
-  defendingDice: number,
-): {
+interface BattleTables {
+  winProbabilityTable: number[][];
+  attackerWinSum: number[][];
+  attackerWinSumSquares: number[][];
+  defenderWinSum: number[][];
+  defenderWinSumSquares: number[][];
+}
+
+interface BattleStatistics {
   winProbability: number;
   attackerTroopsNeeded: number;
   attackerMean: number;
@@ -198,7 +278,14 @@ export function battleStatistics(
   defenderVariance: number;
   attackerMeanAtInput: number;
   attackerVarianceAtInput: number;
-} {
+}
+
+function buildBattleTables(
+  attackingTroops: number,
+  defendingTroops: number,
+  defendingDice: number,
+  tieFavorsDefender: boolean,
+): BattleTables {
   const makeTable = () =>
     Array.from({ length: attackingTroops + 1 }, () =>
       new Array(defendingTroops + 1).fill(0),
@@ -231,6 +318,7 @@ export function battleStatistics(
       for (const outcome of lossDistribution(
         attackerDiceCount,
         defenderDiceCount,
+        tieFavorsDefender,
       )) {
         const na = a - outcome.attackLosses;
         const nd = d - outcome.defenceLosses;
@@ -250,6 +338,27 @@ export function battleStatistics(
     }
   }
 
+  return {
+    winProbabilityTable,
+    attackerWinSum,
+    attackerWinSumSquares,
+    defenderWinSum,
+    defenderWinSumSquares,
+  };
+}
+
+function extractBattleStatistics(
+  tables: BattleTables,
+  attackingTroops: number,
+  defendingTroops: number,
+): BattleStatistics {
+  const {
+    winProbabilityTable,
+    attackerWinSum,
+    attackerWinSumSquares,
+    defenderWinSum,
+    defenderWinSumSquares,
+  } = tables;
   const winProbability = winProbabilityTable[attackingTroops][defendingTroops];
 
   let attackerTroopsNeeded = attackingTroops;
@@ -294,6 +403,52 @@ export function battleStatistics(
   };
 }
 
+function rescaleStatistics(
+  stats: BattleStatistics,
+  scale: number,
+  attackingTroops: number,
+): BattleStatistics {
+  if (scale === 1) return stats;
+  return {
+    winProbability: stats.winProbability,
+    attackerTroopsNeeded: Math.min(
+      attackingTroops,
+      Math.max(1, Math.round(stats.attackerTroopsNeeded / scale)),
+    ),
+    attackerMean: stats.attackerMean / scale,
+    attackerVariance: stats.attackerVariance / (scale * scale),
+    defenderMean: stats.defenderMean / scale,
+    defenderVariance: stats.defenderVariance / (scale * scale),
+    attackerMeanAtInput: stats.attackerMeanAtInput / scale,
+    attackerVarianceAtInput: stats.attackerVarianceAtInput / (scale * scale),
+  };
+}
+
+export function battleStatistics(
+  attackingTroops: number,
+  defendingTroops: number,
+  defendingDice: number,
+  tieFavorsDefender = true,
+): BattleStatistics {
+  const scaled = scaledTroops(
+    attackingTroops,
+    defendingTroops,
+    EXACT_COMBAT_CAP,
+  );
+  const tables = buildBattleTables(
+    scaled.attackingTroops,
+    scaled.defendingTroops,
+    defendingDice,
+    tieFavorsDefender,
+  );
+  const stats = extractBattleStatistics(
+    tables,
+    scaled.attackingTroops,
+    scaled.defendingTroops,
+  );
+  return rescaleStatistics(stats, scaled.scale, attackingTroops);
+}
+
 export function distortProbability(probability: number): number {
   const lowSaturation = 0.1;
   const lowMid = 0.25;
@@ -331,11 +486,13 @@ export function balancedBlitz(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  tieFavorsDefender = true,
 ): { attackLosses: number; defenceLosses: number } {
   const stats = battleStatistics(
     attackingTroops,
     defendingTroops,
     defendingDice,
+    tieFavorsDefender,
   );
   const balancedProbability = distortProbability(stats.winProbability);
 
@@ -366,12 +523,14 @@ export function trueBlitz(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  tieFavorsDefender = true,
 ): { attackLosses: number; defenceLosses: number } {
+  const roll = tieFavorsDefender ? attack : attackSea;
   let remainingAttackers = attackingTroops;
   let remainingDefenders = defendingTroops;
 
   while (remainingAttackers > 0 && remainingDefenders > 0) {
-    const result = attack(
+    const result = roll(
       Math.min(remainingAttackers, 3),
       Math.min(remainingDefenders, defendingDice),
     );
@@ -385,16 +544,11 @@ export function trueBlitz(
   };
 }
 
-export function fairBlitz(
+function fairBlitzFromStats(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
+  stats: BattleStatistics,
 ): { attackLosses: number; defenceLosses: number } {
-  const stats = battleStatistics(
-    attackingTroops,
-    defendingTroops,
-    defendingDice,
-  );
   const winProbability = stats.winProbability;
   if (winProbability >= 0.5) {
     const expectedAttackLosses =
@@ -420,12 +574,54 @@ export function fairBlitz(
   };
 }
 
+export function fairBlitz(
+  attackingTroops: number,
+  defendingTroops: number,
+  defendingDice: number,
+  tieFavorsDefender = true,
+): { attackLosses: number; defenceLosses: number } {
+  const stats = battleStatistics(
+    attackingTroops,
+    defendingTroops,
+    defendingDice,
+    tieFavorsDefender,
+  );
+  return fairBlitzFromStats(attackingTroops, defendingTroops, stats);
+}
+
 export function fairBlitzOutcomes(
   maxAttackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  tieFavorsDefender = true,
 ): { attackLosses: number; defenceLosses: number }[] {
-  return Array.from({ length: maxAttackingTroops }, (_, i) =>
-    fairBlitz(i + 1, defendingTroops, defendingDice),
+  if (maxAttackingTroops <= 0) return [];
+  const scaled = scaledTroops(
+    maxAttackingTroops,
+    defendingTroops,
+    EXACT_COMBAT_CAP,
   );
+  const tables = buildBattleTables(
+    scaled.attackingTroops,
+    scaled.defendingTroops,
+    defendingDice,
+    tieFavorsDefender,
+  );
+  return Array.from({ length: maxAttackingTroops }, (_, i) => {
+    const attackingTroops = i + 1;
+    const scaledAttackingTroops = Math.max(
+      1,
+      Math.min(
+        scaled.attackingTroops,
+        Math.round(attackingTroops * scaled.scale),
+      ),
+    );
+    const stats = extractBattleStatistics(
+      tables,
+      scaledAttackingTroops,
+      scaled.defendingTroops,
+    );
+    const rescaled = rescaleStatistics(stats, scaled.scale, attackingTroops);
+    return fairBlitzFromStats(attackingTroops, defendingTroops, rescaled);
+  });
 }

@@ -3,16 +3,19 @@ import { SHIP_COST } from '../../territory/sea/buyShips';
 import { Game } from '../../types';
 import { attackWinProbability, defenceDiceFor } from '../features/combat';
 import { isTeammate } from '../features/mode';
-import { navalOpportunities, seaThreats } from '../features/navy';
+import {
+  landingViable,
+  navalOpportunities,
+  seaThreats,
+} from '../features/navy';
+import { minWinProbability } from '../features/pressure';
 import { BotView } from '../view';
-
-const MIN_WIN_PROBABILITY = 0.55;
-const MAX_SHIP_ATTACK = 3;
 
 export interface ShipPurchase {
   sourceTerritoryId: number;
   seaTerritoryId: number;
   ships: number;
+  fromPool: boolean;
 }
 
 export function chooseShipPurchase(
@@ -21,12 +24,10 @@ export function chooseShipPurchase(
   botId: number,
   troopsToDeploy: number,
 ): ShipPurchase | null {
-  if (troopsToDeploy < SHIP_COST + 1) return null;
-
   const worstThreat = seaThreats(game, view, botId).sort(
     (a, b) => b.enemyShips - b.ownShips - (a.enemyShips - a.ownShips),
   )[0];
-  if (worstThreat) {
+  if (worstThreat && troopsToDeploy >= SHIP_COST + 1) {
     const needed = worstThreat.enemyShips - worstThreat.ownShips + 1;
     const affordable = Math.min(needed, Math.floor(troopsToDeploy / SHIP_COST));
     if (affordable >= 1)
@@ -34,26 +35,36 @@ export function chooseShipPurchase(
         sourceTerritoryId: worstThreat.sourceTerritoryId,
         seaTerritoryId: worstThreat.seaTerritoryId,
         ships: affordable,
+        fromPool: true,
       };
   }
 
   const best = navalOpportunities(game, view, botId)
-    .filter(
-      (o) =>
-        (o.shipsNeeded + 1) * SHIP_COST <= troopsToDeploy &&
+    .map((o) => ({
+      ...o,
+      fromPool: (o.shipsNeeded + 1) * SHIP_COST <= troopsToDeploy,
+    }))
+    .filter((o) => {
+      const sourceTroops = game.territoryTroops.get(o.sourceTerritoryId) ?? 0;
+      const attackers =
+        (o.fromPool ? sourceTroops : sourceTroops - o.shipsNeeded * SHIP_COST) -
+        1;
+      return (
         attackWinProbability(
           game,
-          (game.territoryTroops.get(o.sourceTerritoryId) ?? 0) - 1,
+          attackers,
           o.targetTroops,
           defenceDiceFor(game, o.targetId),
-        ) >= MIN_WIN_PROBABILITY,
-    )
+        ) >= minWinProbability(game)
+      );
+    })
     .sort((a, b) => a.shipsNeeded - b.shipsNeeded)[0];
   if (!best) return null;
   return {
     sourceTerritoryId: best.sourceTerritoryId,
     seaTerritoryId: best.seaTerritoryId,
     ships: best.shipsNeeded,
+    fromPool: best.fromPool,
   };
 }
 
@@ -125,6 +136,7 @@ export interface ShipAttack {
   seaTerritoryId: number;
   defenderId: number;
   ships: number;
+  type: 'regular' | 'blitz';
 }
 
 export function chooseShipAttack(game: Game, botId: number): ShipAttack | null {
@@ -136,13 +148,15 @@ export function chooseShipAttack(game: Game, botId: number): ShipAttack | null {
     for (const [otherId, ships] of shipsByPlayer) {
       if (otherId === botId || isTeammate(game, botId, otherId)) continue;
       if (ships <= 0 || ownShips <= ships) continue;
+      if (!landingViable(game, botId, otherId, seaTerritoryId)) continue;
       const margin = ownShips - ships;
       if (margin > bestMargin) {
         bestMargin = margin;
         best = {
           seaTerritoryId,
           defenderId: otherId,
-          ships: Math.min(ownShips, MAX_SHIP_ATTACK),
+          ships: ownShips,
+          type: 'blitz',
         };
       }
     }

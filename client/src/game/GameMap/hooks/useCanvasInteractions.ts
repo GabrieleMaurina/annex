@@ -10,7 +10,7 @@ import type {
 import type { EvaluatedCombo } from '../../logic/cards';
 import { ATTACK_EMOJI } from '../../logic/emoji';
 import type { SeaTerritory, Territory } from '../../mapData';
-import type { AttackType, DiceRoll } from '../../panels/AttackPanel';
+import type { AttackType, DiceRoll } from '../../panels/attack/AttackPanel';
 import {
   DRAG_THRESHOLD,
   getScales,
@@ -66,6 +66,7 @@ export function useCanvasInteractions({
   attackSeaStartCandidates,
   attackSeaPanelOpen,
   attackSeaInputRef,
+  attackSeaBlitzInputRef,
   attackSeaRevealing,
   attackSeaDiceOnly,
   setAttackSeaDiceRoll,
@@ -84,6 +85,7 @@ export function useCanvasInteractions({
   selectedTerritoryId,
   territoryClaimCandidates,
   troopsToDeploy,
+  deployMaxTroops,
   supplyConnectedTerritoryIds,
   ownerById,
   fortifyStartTerritoryId,
@@ -188,6 +190,7 @@ export function useCanvasInteractions({
   attackSeaStartCandidates: Set<number>;
   attackSeaPanelOpen: boolean;
   attackSeaInputRef: RefObject<HTMLInputElement | null>;
+  attackSeaBlitzInputRef: RefObject<HTMLInputElement | null>;
   attackSeaRevealing: boolean;
   attackSeaDiceOnly: boolean;
   setAttackSeaDiceRoll: Dispatch<SetStateAction<DiceRoll | null>>;
@@ -206,6 +209,7 @@ export function useCanvasInteractions({
   selectedTerritoryId: number | null;
   territoryClaimCandidates: Set<number>;
   troopsToDeploy: number;
+  deployMaxTroops: number;
   supplyConnectedTerritoryIds: Set<number> | null;
   ownerById: Map<number, GameState['territories'][number]>;
   fortifyStartTerritoryId: number | null;
@@ -1069,7 +1073,8 @@ export function useCanvasInteractions({
       ) {
         if (
           !isTypingTarget(e.target) ||
-          e.target === attackSeaInputRef.current
+          e.target === attackSeaInputRef.current ||
+          e.target === attackSeaBlitzInputRef.current
         ) {
           e.preventDefault();
           submitAttackSea();
@@ -1206,6 +1211,7 @@ export function useCanvasInteractions({
     entrenchInputRef,
     attackMoveInputRef,
     attackSeaInputRef,
+    attackSeaBlitzInputRef,
     blitzInputRef,
   ]);
 
@@ -1215,7 +1221,7 @@ export function useCanvasInteractions({
       if (deployPanelOpen) {
         const delta = e.deltaY < 0 ? 1 : -1;
         setDeployTroops((prev) =>
-          Math.min(troopsToDeploy, Math.max(1, prev + delta)),
+          Math.min(deployMaxTroops, Math.max(1, prev + delta)),
         );
         return;
       }
@@ -1268,7 +1274,7 @@ export function useCanvasInteractions({
     return () => window.removeEventListener('wheel', onWheel);
   }, [
     deployPanelOpen,
-    troopsToDeploy,
+    deployMaxTroops,
     deploySeaPanelOpen,
     deploySeaMaxShips,
     sailPanelOpen,

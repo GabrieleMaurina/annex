@@ -9,8 +9,8 @@ import type {
 import AttackPanel, {
   type AttackType,
   type DiceRoll,
-} from '../../panels/AttackPanel';
-import AttackSeaPanel from '../../panels/AttackSeaPanel';
+} from '../../panels/attack/AttackPanel';
+import AttackSeaPanel from '../../panels/attack/AttackSeaPanel';
 import ConfirmPanel from '../../panels/ConfirmPanel';
 import TroopPanel from '../../panels/TroopPanel';
 import TurnPanel from '../../panels/TurnPanel';
@@ -26,6 +26,7 @@ export default function TurnActionPanels({
   turnStartedAt,
   isMyTurn,
   troopsToDeploy,
+  deployMaxTroops,
   mustPlaySet,
   setGame,
   nextPhaseEndsTurn,
@@ -93,10 +94,18 @@ export default function TurnActionPanels({
   attackSeaDefenders,
   attackSeaDefenderId,
   selectAttackSeaDefender,
-  attackSeaShips,
-  attackSeaMaxShips,
+  attackSeaSelectedType,
+  setAttackSeaSelectedType,
+  attackSeaRegularShips,
+  setAttackSeaRegularShips,
+  attackSeaBlitzShips,
+  setAttackSeaBlitzShips,
+  attackSeaMaxRegularShips,
+  attackSeaMaxBlitzShips,
+  attackSeaWinProbabilities,
+  attackSeaBlitzOutcomes,
   attackSeaInputRef,
-  setAttackSeaShips,
+  attackSeaBlitzInputRef,
   attackSeaDiceRoll,
   attackSeaRevealing,
   attackSeaDiceOnly,
@@ -111,6 +120,7 @@ export default function TurnActionPanels({
   turnStartedAt: number;
   isMyTurn: boolean;
   troopsToDeploy: number;
+  deployMaxTroops: number;
   mustPlaySet: boolean;
   setGame: (game: GameState) => void;
   nextPhaseEndsTurn: boolean;
@@ -185,10 +195,18 @@ export default function TurnActionPanels({
   attackSeaDefenders: { playerId: number; ships: number }[];
   attackSeaDefenderId: number | null;
   selectAttackSeaDefender: (defenderId: number) => void;
-  attackSeaShips: number;
-  attackSeaMaxShips: number;
+  attackSeaSelectedType: AttackType;
+  setAttackSeaSelectedType: Dispatch<SetStateAction<AttackType>>;
+  attackSeaRegularShips: number;
+  setAttackSeaRegularShips: Dispatch<SetStateAction<number>>;
+  attackSeaBlitzShips: number;
+  setAttackSeaBlitzShips: Dispatch<SetStateAction<number>>;
+  attackSeaMaxRegularShips: number;
+  attackSeaMaxBlitzShips: number;
+  attackSeaWinProbabilities: number[] | null;
+  attackSeaBlitzOutcomes: BlitzOutcome[] | null;
   attackSeaInputRef: RefObject<HTMLInputElement | null>;
-  setAttackSeaShips: Dispatch<SetStateAction<number>>;
+  attackSeaBlitzInputRef: RefObject<HTMLInputElement | null>;
   attackSeaDiceRoll: DiceRoll | null;
   attackSeaRevealing: boolean;
   attackSeaDiceOnly: boolean;
@@ -232,7 +250,7 @@ export default function TurnActionPanels({
           label={turnPhase === 'troop' ? 'Place troops:' : 'Deploy troops:'}
           buttonLabel={turnPhase === 'troop' ? 'Place' : 'Deploy'}
           troops={deployTroops}
-          maxTroops={troopsToDeploy}
+          maxTroops={deployMaxTroops}
           inputRef={deployInputRef}
           onChange={setDeployTroops}
           onConfirm={submitDeploy}
@@ -352,10 +370,19 @@ export default function TurnActionPanels({
           }))}
           defenderId={attackSeaDefenderId}
           onSelectDefender={selectAttackSeaDefender}
-          ships={attackSeaShips}
-          maxShips={attackSeaMaxShips}
+          blitzWinProbabilities={attackSeaWinProbabilities ?? []}
+          blitzOutcomes={attackSeaBlitzOutcomes ?? []}
+          maxRegularShips={attackSeaMaxRegularShips}
+          maxBlitzShips={attackSeaMaxBlitzShips}
+          selectedType={attackSeaSelectedType}
+          regularShips={attackSeaRegularShips}
+          blitzShips={attackSeaBlitzShips}
           inputRef={attackSeaInputRef}
-          onChangeShips={setAttackSeaShips}
+          blitzInputRef={attackSeaBlitzInputRef}
+          onSelectRegular={() => setAttackSeaSelectedType('regular')}
+          onRegularShipsChange={setAttackSeaRegularShips}
+          onSelectBlitz={() => setAttackSeaSelectedType('blitz')}
+          onBlitzShipsChange={setAttackSeaBlitzShips}
           onConfirm={submitAttackSea}
           diceRoll={attackSeaDiceRoll}
           revealing={attackSeaRevealing}

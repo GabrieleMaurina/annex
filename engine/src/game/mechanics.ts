@@ -227,6 +227,19 @@ export interface TroopDeposit {
   troops: number;
 }
 
+export const MAX_TERRITORY_TROOPS = 1_000_000;
+
+export function addTroopsCapped(
+  game: Game,
+  territoryId: number,
+  troops: number,
+): number {
+  const current = game.territoryTroops.get(territoryId) ?? 0;
+  const added = Math.max(0, Math.min(troops, MAX_TERRITORY_TROOPS - current));
+  game.territoryTroops.set(territoryId, current + added);
+  return added;
+}
+
 export function depositTroopsOnOwnedTerritory(
   game: Game,
   playerId: number,
@@ -239,6 +252,11 @@ export function depositTroopsOnOwnedTerritory(
   if (!isInteger(troops)) return { error: 'invalid troops' };
   if (troops < 1 || troops > game.troopsToDeploy)
     return { error: 'invalid troops' };
+  if (
+    (game.territoryTroops.get(territoryId) ?? 0) + troops >
+    MAX_TERRITORY_TROOPS
+  )
+    return { error: 'territory troop cap exceeded' };
   if (
     game.supplyLines === 'on' &&
     !connectedOwnedTerritories(

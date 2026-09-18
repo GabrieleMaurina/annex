@@ -281,10 +281,15 @@ export function planScenario(
   if (deterministic) Math.random = () => 0.5;
   try {
     const { game, botId } = buildGame(spec);
-    const ctx = buildContext(game, botId, {
-      difficulty: spec.difficulty ?? 'hard',
-      personality: spec.personality ?? 'balanced',
-    });
+    const ctx = buildContext(
+      game,
+      botId,
+      {
+        difficulty: spec.difficulty ?? 'hard',
+        personality: spec.personality ?? 'balanced',
+      },
+      null,
+    );
     return buildTurnPlan(ctx, game.troopsToDeploy);
   } finally {
     Math.random = originalRandom;

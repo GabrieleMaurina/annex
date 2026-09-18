@@ -1,11 +1,13 @@
-import { supplyHubTerritoryIds } from '../../game/mechanics';
+import {
+  MAX_TERRITORY_TROOPS,
+  supplyHubTerritoryIds,
+} from '../../game/mechanics';
 import { connectedOwnedTerritories } from '../../game/world/connectivity';
 import { expectedOutcome } from '../features/combat';
 import { evaluateBoard } from './board';
 import {
   PlanContext,
   SimState,
-  cloneState,
   defenceDiceAt,
   hostileNeighborsOf,
   isBotBorder,
@@ -31,6 +33,7 @@ export interface Candidate {
   deployments: Deployment[];
   stacks: StackPlan[];
   fortifyHint?: number;
+  siege?: boolean;
   stagingCosts?: { id: number; cost: number }[];
 }
 
@@ -57,10 +60,18 @@ function stepOutcome(
 ): { winProbability: number; attackerSurvivorsMean: number } {
   if (attackers <= EXACT_COMBAT_CAP && defenders <= EXACT_COMBAT_CAP)
     return expectedOutcome(ctx.game, attackers, defenders, dice);
-  const lossPerDefender = dice === 3 ? 1.4 : 0.9;
+  const scale = EXACT_COMBAT_CAP / Math.max(attackers, defenders);
+  const scaledAttackers = Math.max(1, Math.round(attackers * scale));
+  const scaledDefenders = Math.max(1, Math.round(defenders * scale));
+  const outcome = expectedOutcome(
+    ctx.game,
+    scaledAttackers,
+    scaledDefenders,
+    dice,
+  );
   return {
-    winProbability: attackers > defenders * 2 ? 0.98 : 0.6,
-    attackerSurvivorsMean: Math.max(1, attackers - defenders * lossPerDefender),
+    winProbability: outcome.winProbability,
+    attackerSurvivorsMean: Math.max(1, outcome.attackerSurvivorsMean / scale),
   };
 }
 
@@ -145,10 +156,55 @@ function reachableOwned(
   return new Set([fromId]);
 }
 
+function stepToward(
+  ctx: PlanContext,
+  state: SimState,
+  from: number,
+  to: number,
+): number | null {
+  const visited = new Set<number>([to]);
+  const queue = [to];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const n of neighborsOf(ctx, current)) {
+      if (visited.has(n) || state.owners.get(n) !== ctx.botId) continue;
+      if (n === from) return current;
+      visited.add(n);
+      queue.push(n);
+    }
+  }
+  return null;
+}
+
+function siegeMove(
+  ctx: PlanContext,
+  state: SimState,
+  sources: number[],
+  bridgehead: number,
+): FortifyMove | null {
+  const bridgeheadTroops = troopsIn(state, bridgehead);
+  for (const source of sources) {
+    if (troopsIn(state, source) <= bridgeheadTroops) break;
+    const target =
+      ctx.game.fortification === 'Neighboring'
+        ? stepToward(ctx, state, source, bridgehead)
+        : bridgehead;
+    if (target === null || !reachableOwned(ctx, state, source).has(target))
+      continue;
+    const troops = Math.min(
+      troopsIn(state, source) - 1,
+      MAX_TERRITORY_TROOPS - troopsIn(state, target),
+    );
+    if (troops >= 1) return { startId: source, endId: target, troops };
+  }
+  return null;
+}
+
 function bestFortify(
   ctx: PlanContext,
   state: SimState,
   hint: number | undefined,
+  siege: boolean | undefined,
 ): { move: FortifyMove | null; score: number } {
   const baseScore = evaluateBoard(ctx, state);
   const owned = ownedIds(state, ctx.botId);
@@ -171,6 +227,11 @@ function bestFortify(
     .sort((a, b) => troopsIn(state, b) - troopsIn(state, a))
     .slice(0, 10);
 
+  if (siege && hint !== undefined && state.owners.get(hint) === ctx.botId) {
+    const move = siegeMove(ctx, state, sources, hint);
+    if (move) return { move, score: baseScore };
+  }
+
   if (!ctx.params.optimizeFortify) {
     const source = sources.find(
       (id) => !isBotBorder(ctx, state, id) && troopsIn(state, id) >= 3,
@@ -178,13 +239,13 @@ function bestFortify(
     const target = targets[0];
     if (source !== undefined && target !== undefined && target !== source) {
       const reach = reachableOwned(ctx, state, source);
-      if (reach.has(target))
+      const troops = Math.min(
+        troopsIn(state, source) - 1,
+        MAX_TERRITORY_TROOPS - troopsIn(state, target),
+      );
+      if (reach.has(target) && troops >= 1)
         return {
-          move: {
-            startId: source,
-            endId: target,
-            troops: troopsIn(state, source) - 1,
-          },
+          move: { startId: source, endId: target, troops },
           score: baseScore,
         };
     }
@@ -195,13 +256,20 @@ function bestFortify(
   let bestScore = baseScore;
   for (const source of sources) {
     const reach = reachableOwned(ctx, state, source);
+    const sourceTroops = troopsIn(state, source);
     for (const target of targets) {
       if (target === source || !reach.has(target)) continue;
-      const troops = troopsIn(state, source) - 1;
-      const trial = cloneState(state);
-      trial.troops.set(source, 1);
-      trial.troops.set(target, troopsIn(trial, target) + troops);
-      let score = evaluateBoard(ctx, trial);
+      const targetTroops = troopsIn(state, target);
+      const troops = Math.min(
+        sourceTroops - 1,
+        MAX_TERRITORY_TROOPS - targetTroops,
+      );
+      if (troops < 1) continue;
+      state.troops.set(source, 1);
+      state.troops.set(target, targetTroops + troops);
+      let score = evaluateBoard(ctx, state);
+      state.troops.set(source, sourceTroops);
+      state.troops.set(target, targetTroops);
       if (target === hint) score += 3;
       if (score > bestScore) {
         bestScore = score;
@@ -238,7 +306,7 @@ export function simulateTurn(
   }
 
   const hint = candidate.fortifyHint ?? candidate.objectives[0]?.fortifyHint;
-  const fortify = bestFortify(ctx, state, hint);
+  const fortify = bestFortify(ctx, state, hint, candidate.siege);
   if (fortify.move) {
     state.troops.set(fortify.move.startId, 1);
     state.troops.set(

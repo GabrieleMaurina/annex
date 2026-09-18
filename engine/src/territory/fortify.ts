@@ -1,4 +1,5 @@
 import { callbacks } from '../callbacks';
+import { MAX_TERRITORY_TROOPS } from '../game/mechanics';
 import { recordReplayFrame } from '../game/replay';
 import { advanceTurnPhase } from '../game/turns';
 import {
@@ -164,11 +165,12 @@ export function fortify(playerId: number, rawTroops: unknown): GameResponse {
   if (troops < 1 || troops > startTroops - 1)
     return { ok: false, error: 'invalid troops' };
 
+  const endTroops = game.territoryTroops.get(endId) ?? 0;
+  if (endTroops + troops > MAX_TERRITORY_TROOPS)
+    return { ok: false, error: 'territory troop cap exceeded' };
+
   game.territoryTroops.set(startId, startTroops - troops);
-  game.territoryTroops.set(
-    endId,
-    (game.territoryTroops.get(endId) ?? 0) + troops,
-  );
+  game.territoryTroops.set(endId, endTroops + troops);
   recordReplayFrame(game, {
     type: 'fortify',
     fromTerritoryId: startId,

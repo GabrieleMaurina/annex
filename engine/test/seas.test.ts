@@ -47,7 +47,7 @@ test('the bot sails its fleet toward a sea threatened by an enemy fleet', () => 
     players: [1, 2],
     botId: 1,
     owners: { 0: 1, 1: 2 },
-    troops: { 0: 10, 1: 10 },
+    troops: { 0: 10, 1: 30 },
     troopsToDeploy: 0,
     seaShips: { 100: { 2: 20 }, 101: { 1: 5 } },
   };
@@ -82,7 +82,7 @@ test('the bot fights and clears an outnumbered enemy fleet', () => {
     players: [1, 2],
     botId: 1,
     owners: { 0: 1, 1: 2 },
-    troops: { 0: 10, 1: 10 },
+    troops: { 0: 10, 1: 3 },
     troopsToDeploy: 0,
     seaShips: { 100: { 1: 5, 2: 1 } },
   };

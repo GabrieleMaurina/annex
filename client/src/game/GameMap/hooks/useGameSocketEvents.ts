@@ -21,6 +21,7 @@ import {
 } from '../../animations';
 import { NUKE_FLIGHT_MS } from '../../animations/state';
 import { getAttackPath } from '../../logic/attack';
+import { formatTroops } from '../../logic/formatTroops';
 import { getFortifyPath } from '../../logic/fortify';
 import type { SeaTerritory, Territory } from '../../mapData';
 import type { ReplayData } from '../../replay';
@@ -154,7 +155,7 @@ export function useGameSocketEvents({
           kind,
           territory.x,
           territory.y,
-          `${kind === 'add' ? '+' : '-'}${troops}`,
+          `${kind === 'add' ? '+' : '-'}${formatTroops(troops)}`,
           colorForPlayer(ownerId),
           arrowPath,
           arrowFades,
@@ -268,7 +269,7 @@ export function useGameSocketEvents({
           'starve',
           territory.x,
           territory.y,
-          `-${troops}`,
+          `-${formatTroops(troops)}`,
           colorForPlayer(ownerId),
         );
     },

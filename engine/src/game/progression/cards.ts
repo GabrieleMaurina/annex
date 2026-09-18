@@ -14,9 +14,15 @@ const CONSTANT_VALUES: Record<SetKind, number> = {
 
 const LINEAR_TABLE = [4, 6, 8, 10, 12, 15, 20, 25, 30];
 
+const MAX_SET_VALUE = 100_000;
+
 function linearValue(setNumber: number): number {
   if (setNumber <= LINEAR_TABLE.length) return LINEAR_TABLE[setNumber - 1];
-  return 30 + (setNumber - LINEAR_TABLE.length) * 5;
+  return Math.min(MAX_SET_VALUE, 30 + (setNumber - LINEAR_TABLE.length) * 5);
+}
+
+function exponentialValue(last: number): number {
+  return last === 0 ? 5 : Math.min(MAX_SET_VALUE, Math.ceil(last * 1.3));
 }
 
 const GLOBAL_COUNTER_KEY = 0;
@@ -71,9 +77,7 @@ export function nextSetBaseValues(
   const value =
     game.cards === 'Linear' || game.cards === 'Linear Per Player'
       ? linearValue((game.cardSetsPlayed.get(key) ?? 0) + 1)
-      : (game.cardsLastSetValue.get(key) ?? 0) === 0
-        ? 5
-        : Math.ceil((game.cardsLastSetValue.get(key) ?? 0) * 1.3);
+      : exponentialValue(game.cardsLastSetValue.get(key) ?? 0);
   return { soldier: value, humvee: value, tank: value, mixed: value };
 }
 
@@ -92,7 +96,7 @@ export function upcomingSetValues(
   const values: number[] = [];
   let last = game.cardsLastSetValue.get(key) ?? 0;
   for (let i = 0; i < count; i++) {
-    last = last === 0 ? 5 : Math.ceil(last * 1.3);
+    last = exponentialValue(last);
     values.push(last);
   }
   return values;

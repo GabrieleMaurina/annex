@@ -87,6 +87,7 @@ export {
   ReplayEntry,
   ReplayTerritoryDelta,
 } from './game/export';
+export { MAX_TERRITORY_TROOPS } from './game/mechanics';
 export {
   ANTI_NUKE_INSTALLMENT,
   NUKE_INSTALLMENT,

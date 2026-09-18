@@ -13,6 +13,7 @@ import {
   traceOctagon,
 } from '../../animations';
 import type { EvaluatedCombo } from '../../logic/cards';
+import { formatTroops } from '../../logic/formatTroops';
 import type { SeaTerritory, Territory } from '../../mapData';
 import { buildWrappedPathSegments } from '../../mapMath';
 import { isPortalHop } from '../../portals';
@@ -533,7 +534,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         ctx.font = `bold ${VERTEX_RADIUS * scaleX}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-        const text = String(troops);
+        const text = formatTroops(troops);
         const metrics = ctx.measureText(text);
         const baselineY =
           p.y +

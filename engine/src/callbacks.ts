@@ -188,6 +188,7 @@ export interface EngineCallbacks {
       seaTerritoryId: number;
       attackerId: number;
       defenderId: number;
+      type: 'regular' | 'blitz';
       attackingShips: number;
       attackLosses: number;
       defendingShips: number;

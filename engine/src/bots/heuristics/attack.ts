@@ -6,6 +6,7 @@ import {
 } from '../features/continents';
 import { grudgeAgainst } from '../features/grudge';
 import { seaBridgeTargets } from '../features/navy';
+import { minWinProbability } from '../features/pressure';
 import { frontierTerritories, hostileNeighbors } from '../features/territory';
 import { Weights } from '../types';
 import { BotView, ownerOf } from '../view';
@@ -16,8 +17,6 @@ export interface AttackChoice {
   troops: number;
   type: 'regular' | 'blitz';
 }
-
-const MIN_WIN_PROBABILITY = 0.55;
 
 function blitzAllTroops(attackingTroops: number): {
   type: 'regular' | 'blitz';
@@ -61,6 +60,7 @@ export function chooseAttack(
     ),
   );
 
+  const minWin = minWinProbability(game);
   const frontier = frontierTerritories(game, view, botId);
   let best: AttackChoice | null = null;
   let bestScore = -Infinity;
@@ -79,7 +79,7 @@ export function chooseAttack(
       defendingTroops,
       defenceDiceFor(game, endId),
     );
-    if (winProb < MIN_WIN_PROBABILITY - noise * 0.3) return;
+    if (winProb < minWin - noise * 0.3) return;
 
     let score = winProb;
     if (defenderId !== undefined)

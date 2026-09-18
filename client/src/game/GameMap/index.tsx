@@ -1,3 +1,4 @@
+import { MAX_TERRITORY_TROOPS } from 'engine';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { Toast, ToastContainer } from 'react-bootstrap';
@@ -618,8 +619,18 @@ function GameMap({
     setGame,
   });
 
+  const deployMaxTroops = Math.max(
+    0,
+    Math.min(
+      troopsToDeploy,
+      MAX_TERRITORY_TROOPS -
+        (ownerById.get(selectedTerritoryId ?? -1)?.troops ?? 0),
+    ),
+  );
   const deployTroopsPanelOpen =
-    cardsFlow.deployPanelOpen && !deploySeaFlow.comboActive;
+    cardsFlow.deployPanelOpen &&
+    !deploySeaFlow.comboActive &&
+    deployMaxTroops > 0;
 
   const emojiUI = useEmojiUI({
     selfId,
@@ -749,6 +760,7 @@ function GameMap({
     attackSeaStartCandidates: attackSeaFlow.attackSeaStartCandidates,
     attackSeaPanelOpen: attackSeaFlow.attackSeaPanelOpen,
     attackSeaInputRef: attackSeaFlow.attackSeaInputRef,
+    attackSeaBlitzInputRef: attackSeaFlow.attackSeaBlitzInputRef,
     attackSeaRevealing: attackSeaFlow.attackSeaRevealing,
     attackSeaDiceOnly: attackSeaFlow.attackSeaDiceOnly,
     setAttackSeaDiceRoll: attackSeaFlow.setAttackSeaDiceRoll,
@@ -767,6 +779,7 @@ function GameMap({
     selectedTerritoryId,
     territoryClaimCandidates,
     troopsToDeploy,
+    deployMaxTroops,
     supplyConnectedTerritoryIds,
     ownerById,
     fortifyStartTerritoryId,
@@ -915,7 +928,7 @@ function GameMap({
   useResetTroopInputOnSelection({
     selectedTerritoryId,
     turnPhase,
-    troopsToDeploy,
+    deployMaxTroops,
     setEntrenchTroops: turnFlow.setEntrenchTroops,
     setDeployTroops: cardsFlow.setDeployTroops,
   });
@@ -1244,6 +1257,7 @@ function GameMap({
         turnStartedAt={turnStartedAt}
         isMyTurn={isMyTurn}
         troopsToDeploy={troopsToDeploy}
+        deployMaxTroops={deployMaxTroops}
         mustPlaySet={cardsFlow.mustPlaySet}
         setGame={setGame}
         nextPhaseEndsTurn={nextPhaseEndsTurn}
@@ -1313,10 +1327,18 @@ function GameMap({
         attackSeaDefenders={attackSeaFlow.attackSeaDefenders}
         attackSeaDefenderId={attackSeaDefenderId}
         selectAttackSeaDefender={attackSeaFlow.selectAttackSeaDefender}
-        attackSeaShips={attackSeaFlow.attackSeaShips}
-        attackSeaMaxShips={attackSeaFlow.attackSeaMaxShips}
+        attackSeaSelectedType={attackSeaFlow.attackSeaSelectedType}
+        setAttackSeaSelectedType={attackSeaFlow.setAttackSeaSelectedType}
+        attackSeaRegularShips={attackSeaFlow.attackSeaRegularShips}
+        setAttackSeaRegularShips={attackSeaFlow.setAttackSeaRegularShips}
+        attackSeaBlitzShips={attackSeaFlow.attackSeaBlitzShips}
+        setAttackSeaBlitzShips={attackSeaFlow.setAttackSeaBlitzShips}
+        attackSeaMaxRegularShips={attackSeaFlow.attackSeaMaxRegularShips}
+        attackSeaMaxBlitzShips={attackSeaFlow.attackSeaMaxBlitzShips}
+        attackSeaWinProbabilities={attackSeaFlow.attackSeaWinProbabilities}
+        attackSeaBlitzOutcomes={attackSeaFlow.attackSeaBlitzOutcomes}
         attackSeaInputRef={attackSeaFlow.attackSeaInputRef}
-        setAttackSeaShips={attackSeaFlow.setAttackSeaShips}
+        attackSeaBlitzInputRef={attackSeaFlow.attackSeaBlitzInputRef}
         attackSeaDiceRoll={attackSeaFlow.attackSeaDiceRoll}
         attackSeaRevealing={attackSeaFlow.attackSeaRevealing}
         attackSeaDiceOnly={attackSeaFlow.attackSeaDiceOnly}

@@ -13,6 +13,7 @@ import {
 import { attackFullPath } from './combat/seaBridge';
 import { checkGameEnd } from './end';
 import {
+  addTroopsCapped,
   calculateDeployTroopsBreakdown,
   ownedTerritoryIds,
   ownsAnyTerritory,
@@ -137,11 +138,8 @@ function dropTroopsRandomly(
     tally.set(territoryId, (tally.get(territoryId) ?? 0) + 1);
     amount--;
   }
-  for (const [territoryId, troops] of tally) {
-    game.territoryTroops.set(
-      territoryId,
-      (game.territoryTroops.get(territoryId) ?? 0) + troops,
-    );
+  for (const [territoryId, requested] of tally) {
+    const troops = addTroopsCapped(game, territoryId, requested);
     deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + troops);
     recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
   }
@@ -197,20 +195,19 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
     if (game.cards === 'Exponential' || game.cards === 'Exponential Per Player')
       game.cardsLastSetValue.set(key, best.baseValue);
 
+    let bonusGained = 0;
     for (const territoryId of best.territoryBonusIds) {
-      game.territoryTroops.set(
-        territoryId,
-        (game.territoryTroops.get(territoryId) ?? 0) + 2,
-      );
-      deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + 2);
+      const troops = addTroopsCapped(game, territoryId, 2);
+      bonusGained += troops;
+      deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + troops);
       recordReplayFrame(game, {
         type: 'deploy',
         territoryId,
-        troops: 2,
+        troops,
         playerId,
       });
     }
-    bumpStat(game, playerId, 'troopsGained', best.territoryBonusIds.length * 2);
+    bumpStat(game, playerId, 'troopsGained', bonusGained);
     dropTroopsRandomly(game, playerId, best.baseValue, deposits, true);
   }
 
@@ -488,8 +485,8 @@ function completePendingFortify(
   const endId = game.fortifyEndTerritoryId;
   const startTroops = game.territoryTroops.get(startId) ?? 0;
 
+  if (addTroopsCapped(game, endId, 1) < 1) return null;
   game.territoryTroops.set(startId, startTroops - 1);
-  game.territoryTroops.set(endId, (game.territoryTroops.get(endId) ?? 0) + 1);
   recordReplayFrame(game, {
     type: 'fortify',
     fromTerritoryId: startId,

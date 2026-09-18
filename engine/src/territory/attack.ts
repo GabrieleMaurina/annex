@@ -158,7 +158,7 @@ function requirePlayingTurn(ctx: GameContext, phase: Game['turnPhase']) {
   return ctx;
 }
 
-function isAttackType(value: unknown): value is 'regular' | 'blitz' {
+export function isAttackType(value: unknown): value is 'regular' | 'blitz' {
   return value === 'regular' || value === 'blitz';
 }
 

@@ -69,6 +69,7 @@ const GRUDGE = 0.1;
 const CARD = 0.5;
 const TROOP_LOSS = 0.25;
 const ELIMINATION = 9;
+const DAMAGE = 0.15;
 
 function eliminationBonus(ctx: PlanContext, state: SimState): number {
   let bonus = 0;
@@ -179,6 +180,12 @@ function cardValue(ctx: PlanContext): number {
   return upcoming ?? 6;
 }
 
+function damageDealt(state: SimState): number {
+  let total = 0;
+  for (const damage of state.damageByPlayer.values()) total += damage;
+  return total;
+}
+
 function scoreState(ctx: PlanContext, state: SimState): number {
   const { risk, waste, concentration } = riskAndWaste(ctx, state);
   const leader = strongestOpponent(ctx, state);
@@ -198,6 +205,7 @@ function scoreState(ctx: PlanContext, state: SimState): number {
   if (state.conquered) score += CARD * cardValue(ctx);
   score -= TROOP_LOSS * state.troopsLost;
   score += eliminationBonus(ctx, state);
+  score += DAMAGE * damageDealt(state);
   return score;
 }
 

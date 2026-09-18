@@ -1,13 +1,14 @@
 import type { RefObject } from 'react';
 import { useEffect, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { useDragNumber } from '../../common/useDragNumber';
-import type { BlitzOutcome } from '../../lib/types';
+import { useDragNumber } from '../../../common/useDragNumber';
+import type { BlitzOutcome } from '../../../lib/types';
 import {
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
   generateDiceRollSequence,
-} from '../animations';
+} from '../../animations';
+import { attackOptionStyle, formatProbability } from './attackOptionStyle';
 
 export type AttackType = 'regular' | 'blitz';
 
@@ -42,10 +43,6 @@ interface Props {
   onMoveTroopsChange: (troops: number) => void;
   onConfirmMove: () => void;
   style: React.CSSProperties;
-}
-
-function formatProbability(probability: number): string {
-  return `${Math.round(probability * 100)}%`;
 }
 
 const WIN_COLOR = '#d0d0d0';
@@ -212,16 +209,6 @@ function AttackPanel({
     },
   });
 
-  function optionStyle(selected: boolean): React.CSSProperties {
-    return {
-      cursor: 'pointer',
-      borderRadius: 4,
-      padding: '2px 8px',
-      border: selected ? '2px solid currentColor' : '2px solid transparent',
-      textAlign: 'center',
-    };
-  }
-
   return (
     <div
       className="p-2 px-3 border rounded bg-body bg-opacity-75 d-flex flex-column gap-2"
@@ -272,7 +259,7 @@ function AttackPanel({
             return (
               <div
                 key={troops}
-                style={optionStyle(
+                style={attackOptionStyle(
                   selectedType === 'regular' && regularTroops === troops,
                 )}
                 onClick={() => onSelectRegular(troops)}
@@ -282,7 +269,7 @@ function AttackPanel({
             );
           })}
           <div
-            style={optionStyle(selectedType === 'blitz')}
+            style={attackOptionStyle(selectedType === 'blitz')}
             onClick={onSelectBlitz}
             onWheel={(e) => {
               e.preventDefault();

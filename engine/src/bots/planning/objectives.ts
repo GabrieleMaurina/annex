@@ -2,12 +2,15 @@ import {
   continentBreakCandidates,
   continentCompletionCandidates,
 } from '../features/continents';
+import { navalOpportunities, seaBridgeTargets } from '../features/navy';
+import { stalematePressure } from '../features/pressure';
 import { killerWeaknessThreshold } from '../personality/killer';
 import {
   PlanContext,
   SimState,
   botBorderIds,
   conquerablePath,
+  defenceDiceAt,
   frontierStacks,
   hostileNeighborsOf,
   isFriendly,
@@ -22,6 +25,7 @@ import { routeStack } from './route';
 import {
   Candidate,
   defensiveDeployments,
+  offensiveDeployments,
   pickStaging,
   stackCandidates,
   supplyConnected,
@@ -144,6 +148,8 @@ function cardCandidates(
     }
   }
   if (bestTarget === null || bestFrom === null) return [];
+  const perDefender = defenceDiceAt(ctx, bestTarget) === 3 ? 1.4 : 0.95;
+  const cost = 1 + bestDefenders * perDefender;
   return [
     {
       objectives: [
@@ -153,10 +159,28 @@ function cardCandidates(
           mustVisit: [bestTarget],
         }),
       ],
-      deployments: defensiveDeployments(ctx, state, budget),
+      deployments: offensiveDeployments(ctx, state, bestFrom, budget, cost),
       stacks: [{ startId: bestFrom, route: [bestTarget], objectiveIndex: 0 }],
     },
   ];
+}
+
+function siegeStaging(ctx: PlanContext, state: SimState): number | null {
+  const border = botBorderIds(ctx, state)
+    .filter(
+      (id) =>
+        hostileNeighborsOf(ctx, state, id).length > 0 &&
+        supplyConnected(ctx, id),
+    )
+    .sort((a, b) => troopsIn(state, b) - troopsIn(state, a))[0];
+  if (border !== undefined) return border;
+  const bridgehead = [
+    ...seaBridgeTargets(ctx.game, ctx.view, ctx.botId),
+    ...navalOpportunities(ctx.game, ctx.view, ctx.botId),
+  ].sort(
+    (a, b) => troopsIn(state, a.targetId) - troopsIn(state, b.targetId),
+  )[0];
+  return bridgehead?.sourceTerritoryId ?? null;
 }
 
 function defensiveCandidates(
@@ -164,11 +188,24 @@ function defensiveCandidates(
   state: SimState,
   budget: number,
 ): Candidate[] {
+  const objectives = [objective({ kind: 'defensive' })];
+  const staging =
+    stalematePressure(ctx.game) > 0 ? siegeStaging(ctx, state) : null;
+  if (staging === null)
+    return [
+      {
+        objectives,
+        deployments: defensiveDeployments(ctx, state, budget),
+        stacks: [],
+      },
+    ];
   return [
     {
-      objectives: [objective({ kind: 'defensive' })],
-      deployments: defensiveDeployments(ctx, state, budget),
+      objectives,
+      deployments: budget > 0 ? [{ territoryId: staging, troops: budget }] : [],
       stacks: [],
+      fortifyHint: staging,
+      siege: true,
     },
   ];
 }

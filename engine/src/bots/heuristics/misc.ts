@@ -1,6 +1,12 @@
+import { supplyHubTerritoryIds } from '../../game/mechanics';
+import { connectedOwnedTerritories } from '../../game/world/connectivity';
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
-import { neighborsOf, ownedTerritoryIds } from '../features/territory';
+import {
+  isFrontier,
+  neighborsOf,
+  ownedTerritoryIds,
+} from '../features/territory';
 import { Weights } from '../types';
 import { BotView } from '../view';
 
@@ -19,7 +25,16 @@ export function chooseTerritoryClaim(game: Game): number | null {
 export function chooseTroopPlacement(game: Game, botId: number): number | null {
   const owned = ownedTerritoryIds(game, botId);
   if (owned.length === 0) return null;
-  return owned[Math.floor(Math.random() * owned.length)];
+  if (game.supplyLines !== 'on')
+    return owned[Math.floor(Math.random() * owned.length)];
+  const reachable = connectedOwnedTerritories(
+    game,
+    botId,
+    supplyHubTerritoryIds(game, botId),
+  );
+  const connected = owned.filter((id) => reachable.has(id));
+  if (connected.length === 0) return null;
+  return connected[Math.floor(Math.random() * connected.length)];
 }
 
 export function chooseCapital(game: Game, botId: number): number | null {
@@ -46,7 +61,8 @@ export function chooseEntrench(
   const owned = ownedTerritoryIds(game, botId).filter(
     (id) =>
       !game.capitalTerritoryIds.has(id) &&
-      (game.territoryTroops.get(id) ?? 0) >= 3,
+      (game.territoryTroops.get(id) ?? 0) >= 3 &&
+      isFrontier(game, view, botId, id),
   );
   if (owned.length === 0) return null;
   const territoryId = owned[0];

@@ -8,7 +8,7 @@ import {
   getAttackStartCandidates,
 } from '../../logic/attack';
 import type { SeaTerritory, Territory } from '../../mapData';
-import type { AttackType, DiceRoll } from '../../panels/AttackPanel';
+import type { AttackType, DiceRoll } from '../../panels/attack/AttackPanel';
 
 type AttackSelectEndAck =
   | {

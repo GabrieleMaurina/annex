@@ -68,8 +68,15 @@ function materialize(
     deployCursor: 0,
     step: 0,
     attacksIssued: 0,
+    shipAttacksIssued: 0,
+    entrenchesIssued: 0,
     roundNumber: ctx.game.roundNumber,
     playerId: ctx.botId,
+    topology: {
+      neighbors: ctx.neighbors,
+      continentTerritories: ctx.continentTerritories,
+      territoryContinent: ctx.territoryContinent,
+    },
   };
 }
 
@@ -267,6 +274,22 @@ export function buildTurnPlan(
         }
       }
     }
+  }
+
+  if (bestPlan.objectives[0]?.kind === 'defensive') {
+    const cardEntry = scored.find(
+      (e) =>
+        e.feasible &&
+        e.candidate.objectives[0]?.kind === 'card' &&
+        confidentEnough(ctx, e.candidate, e.result),
+    );
+    if (cardEntry)
+      bestPlan = materialize(
+        ctx,
+        cardEntry.candidate,
+        cardEntry.result,
+        cardSet,
+      );
   }
 
   return bestPlan;

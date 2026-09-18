@@ -9,8 +9,16 @@ export function registerAttackSeaHandlers(socket: Socket, engine: Engine) {
     engine.attackSeaSelectStart(playerId, data.territoryId),
   );
 
-  registerGameAction(socket, 'game:attackSeaSelectDefender', (playerId, data) =>
-    engine.attackSeaSelectDefender(playerId, data.defenderId),
+  socket.on(
+    'game:attackSeaSelectDefender',
+    (data: unknown, callback: (response: unknown) => void) => {
+      if (typeof callback !== 'function') return;
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
+        return callback({ ok: false, error: 'not in a game' });
+      const defenderId = isObject(data) ? data.defenderId : undefined;
+      callback(engine.attackSeaSelectDefender(playerId, defenderId));
+    },
   );
 
   socket.on(
@@ -20,8 +28,10 @@ export function registerAttackSeaHandlers(socket: Socket, engine: Engine) {
       const playerId = playerIdBySocketId.get(socket.id);
       if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
-      const ships = isObject(data) ? data.ships : undefined;
-      callback(engine.attackSea(playerId, ships));
+      const { type, ships } = isObject(data)
+        ? data
+        : ({} as Record<string, unknown>);
+      callback(engine.attackSea(playerId, type, ships));
     },
   );
 }

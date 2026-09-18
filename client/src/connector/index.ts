@@ -738,12 +738,15 @@ export const connector = {
     route('game:attackSeaSelectStart', data, cb);
   },
 
-  attackSeaSelectDefender(data: { defenderId: number }, cb: AckCallback): void {
+  attackSeaSelectDefender<R extends Ack>(
+    data: { defenderId: number },
+    cb: RichAckCallback<R>,
+  ): void {
     route('game:attackSeaSelectDefender', data, cb);
   },
 
   attackSea<R extends Ack>(
-    data: { ships: number },
+    data: { type: 'regular' | 'blitz'; ships: number },
     cb: RichAckCallback<R>,
   ): void {
     route('game:attackSea', data, cb);

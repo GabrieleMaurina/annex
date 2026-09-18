@@ -39,6 +39,12 @@ export interface FortifyMove {
   troops: number;
 }
 
+export interface MapTopology {
+  neighbors: Map<number, number[]>;
+  continentTerritories: Map<number, number[]>;
+  territoryContinent: Map<number, number>;
+}
+
 export interface TurnPlan {
   objectives: Objective[];
   cardSet: (number | null)[] | null;
@@ -50,10 +56,13 @@ export interface TurnPlan {
   deployCursor: number;
   step: number;
   attacksIssued: number;
+  shipAttacksIssued: number;
+  entrenchesIssued: number;
   roundNumber: number;
   playerId: number;
   nukeLaunched?: boolean;
   antiNukeDeployed?: boolean;
+  topology?: MapTopology;
 }
 
 export function emptyPlan(roundNumber: number, playerId: number): TurnPlan {
@@ -68,6 +77,8 @@ export function emptyPlan(roundNumber: number, playerId: number): TurnPlan {
     deployCursor: 0,
     step: 0,
     attacksIssued: 0,
+    shipAttacksIssued: 0,
+    entrenchesIssued: 0,
     roundNumber,
     playerId,
   };

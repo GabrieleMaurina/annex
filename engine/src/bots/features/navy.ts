@@ -1,7 +1,9 @@
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { BotView, isVisible, ownerOf, shipsAt } from '../view';
+import { attackWinProbability, defenceDiceFor } from './combat';
 import { isTeammate } from './mode';
+import { minWinProbability } from './pressure';
 
 export interface CoastalTerritory {
   territoryId: number;
@@ -137,6 +139,34 @@ export function navalOpportunities(
   return results;
 }
 
+export function landingViable(
+  game: Game,
+  attackerId: number,
+  defenderId: number,
+  seaId: number,
+): boolean {
+  const coastal = getGameMap(game).territories.filter((t) =>
+    t.neighbors.includes(seaId),
+  );
+  const targets = coastal.filter(
+    (t) => game.territoryOwners.get(t.id) === defenderId,
+  );
+  const threshold = minWinProbability(game);
+  return coastal
+    .filter((t) => game.territoryOwners.get(t.id) === attackerId)
+    .some((source) =>
+      targets.some(
+        (target) =>
+          attackWinProbability(
+            game,
+            (game.territoryTroops.get(source.id) ?? 0) - 1,
+            game.territoryTroops.get(target.id) ?? 0,
+            defenceDiceFor(game, target.id),
+          ) >= threshold,
+      ),
+    );
+}
+
 export interface SeaThreat {
   seaTerritoryId: number;
   sourceTerritoryId: number;
@@ -159,7 +189,7 @@ export function seaThreats(
       const ownShips = shipsByPlayer.get(botId) ?? 0;
       for (const [otherId, ships] of shipsByPlayer) {
         if (otherId === botId || isTeammate(game, botId, otherId)) continue;
-        if (ships > ownShips)
+        if (ships > ownShips && landingViable(game, otherId, botId, seaId))
           results.push({
             seaTerritoryId: seaId,
             sourceTerritoryId: territoryId,

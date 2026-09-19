@@ -4,6 +4,7 @@ import { findMapIdsByName, getMapNamesByIds } from './maps/replayMaps';
 import { ensureCollection, getCollection } from './mongo';
 import {
   FILL_VALUES,
+  findUserByUsername,
   GAME_ENUMS,
   GENERATION_TYPES,
   getUsernamesByIds,
@@ -24,6 +25,15 @@ export interface GamePlayerDoc {
   turnOrder: number;
   rank: number;
   won: boolean;
+  elo: number;
+  eloDelta: number;
+}
+
+export interface EloHistoryPoint {
+  startedAt: number;
+  endedAt: number;
+  elo: number;
+  eloDelta: number;
 }
 
 export type GameDoc = Omit<GameExport, 'players' | 'mapName'> & {
@@ -290,6 +300,10 @@ const player = object(
     'team',
     'color',
     'turnOrder',
+    'rank',
+    'won',
+    'elo',
+    'eloDelta',
   ],
   {
     playerId: int,
@@ -303,6 +317,8 @@ const player = object(
     turnOrder: int,
     rank: int,
     won: bool,
+    elo: { ...int, minimum: 0 },
+    eloDelta: int,
   },
 );
 
@@ -466,6 +482,29 @@ export function getGameById(id: string): Promise<ResolvedGameDoc | null> {
     });
 }
 
+export function getEloHistory(username: string): Promise<EloHistoryPoint[]> {
+  return findUserByUsername(username).then((user) => {
+    if (!user) return [];
+    return collection()
+      .find(
+        { 'players.userId': user.id },
+        {
+          projection: { startedAt: 1, endedAt: 1, 'players.$': 1 },
+          sort: { endedAt: 1 },
+        },
+      )
+      .toArray()
+      .then((docs) =>
+        docs.map((doc) => ({
+          startedAt: doc.startedAt,
+          endedAt: doc.endedAt,
+          elo: doc.players[0].elo,
+          eloDelta: doc.players[0].eloDelta,
+        })),
+      );
+  });
+}
+
 function toRow(
   doc: GameDoc & { _id: ObjectId },
   mapNameById: Map<string, string>,
@@ -581,8 +620,8 @@ function queryGames(
         ? exprConditions[0]
         : { $and: exprConditions };
 
-  // Viewer-relative fields are derived from `results` / `winnerIds`, which every
-  // stored game has (unlike the newer denormalised `players[].rank`/`won`).
+  // Viewer-relative fields are derived from `results` / `winnerIds`, the source
+  // of truth that the denormalised `players[].rank`/`won` are copied from.
   const wantsViewerFilter =
     viewer !== undefined &&
     (query.outcome !== undefined ||

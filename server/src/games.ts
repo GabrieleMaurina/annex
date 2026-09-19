@@ -1,6 +1,6 @@
 import { Engine } from 'engine';
 import { storeGame } from './db';
-import { gameParticipants } from './elo';
+import { GameElo } from './elo';
 import { persistGameMap } from './maps';
 
 interface GameEndedPayload {
@@ -11,15 +11,16 @@ interface GameEndedPayload {
 export function persistFinishedGame(
   engine: Engine,
   payload: GameEndedPayload,
+  participants: Map<number, string>,
+  elos: Promise<Map<number, GameElo>>,
 ): void {
   if (payload.roundNumber < 1) return;
 
   const bundle = engine.exportGame(payload.gameName);
   if (!bundle) return;
 
-  const participants = gameParticipants(payload.gameName);
-  persistGameMap(engine, payload.gameName)
-    .then((mapId) => {
+  Promise.all([persistGameMap(engine, payload.gameName), elos])
+    .then(([mapId, gameElos]) => {
       if (!mapId) return;
       return storeGame({
         name: bundle.name,
@@ -38,7 +39,14 @@ export function persistFinishedGame(
         mapId,
         players: bundle.players.map((player) => {
           const userId = participants.get(player.playerId) ?? null;
-          return { ...player, userId, name: userId ? null : player.name };
+          const elo = gameElos.get(player.playerId);
+          return {
+            ...player,
+            userId,
+            name: userId ? null : player.name,
+            elo: elo?.elo ?? 0,
+            eloDelta: elo?.eloDelta ?? 0,
+          };
         }),
       });
     })

@@ -10,7 +10,12 @@ import {
   serializeSessionCookie,
 } from './cookies';
 import { connectDb } from './db';
-import { handleGameEnded } from './elo';
+import {
+  gameElos,
+  gameParticipants,
+  handleGameEnded,
+  reconcileGameElos,
+} from './elo';
 import {
   registerAllianceHandlers,
   registerAttackHandlers,
@@ -39,6 +44,7 @@ import { LiveGameRow } from './http/liveGames';
 import { gameRoomName } from './rooms';
 import {
   emitTo,
+  gameNameByPlayerId,
   playerIdForIdentity,
   setSocketRoom,
   socketIdByPlayerId,
@@ -48,7 +54,9 @@ import { nodeWorkerPort } from './workers/nodeWorkerPort';
 
 function listVisibleGames(): LiveGameRow[] {
   const summaries = engine.listGameSummaries();
-  reconcileGameMeta(new Set(summaries.map((game) => game.name)));
+  const names = new Set(summaries.map((game) => game.name));
+  reconcileGameMeta(names);
+  reconcileGameElos(names);
   return summaries
     .filter((game) => isGamePublic(game.name))
     .map((game) => ({
@@ -58,6 +66,12 @@ function listVisibleGames(): LiveGameRow[] {
         .map((id) => userIdByPlayerId(id))
         .filter((id): id is string => id !== undefined),
     }));
+}
+
+function resendResults(gameName: string): void {
+  for (const [playerId, name] of gameNameByPlayerId) {
+    if (name === gameName) engine.requestResults(playerId);
+  }
 }
 
 function playerGame(token: string, userId: string | null): string | null {
@@ -109,15 +123,19 @@ const callbacks: EngineCallbacks = {
     emitTo(io, playerId, 'game:mission', payload),
   onLogs: (playerId, payload) => emitTo(io, playerId, 'game:logs', payload),
   onResults: (playerId, payload) => {
+    const elos = gameElos(gameNameByPlayerId.get(playerId) ?? '');
     const stats = (payload.stats as { id: number }[]).map((s) => ({
       ...s,
       userId: userIdByPlayerId(s.id) ?? null,
+      ...elos.get(s.id),
     }));
     emitTo(io, playerId, 'game:results', { stats });
   },
   onGameEnded: (payload) => {
-    persistFinishedGame(engine, payload);
-    handleGameEnded(payload);
+    const participants = gameParticipants(payload.gameName);
+    const elos = handleGameEnded(payload);
+    persistFinishedGame(engine, payload, participants, elos);
+    elos.then(() => resendResults(payload.gameName));
   },
   onCardSetPlayed: (playerId, payload) =>
     emitTo(io, playerId, 'game:cardSetPlayed', payload),

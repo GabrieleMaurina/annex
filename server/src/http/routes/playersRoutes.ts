@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { getPlayerProfile, listPlayers, PlayersQuery } from '../../db';
+import {
+  getEloHistory,
+  getPlayerProfile,
+  listPlayers,
+  PlayersQuery,
+} from '../../db';
 
 export const playersRouter = Router();
 
@@ -52,6 +57,12 @@ playersRouter.get('/players', (req, res) => {
   listPlayers(query)
     .then((r) => res.json(r))
     .catch(() => res.json({ players: [], total: 0, page, pageSize }));
+});
+
+playersRouter.get('/players/:username/elo-history', (req, res) => {
+  getEloHistory(req.params.username)
+    .then((history) => res.json(history))
+    .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
 });
 
 playersRouter.get('/players/:username', (req, res) => {

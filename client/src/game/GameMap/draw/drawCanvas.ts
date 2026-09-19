@@ -15,7 +15,7 @@ import {
 import type { EvaluatedCombo } from '../../logic/cards';
 import { formatTroops } from '../../logic/formatTroops';
 import type { SeaTerritory, Territory } from '../../mapData';
-import { buildWrappedPathSegments } from '../../mapMath';
+import { borderScale, buildWrappedPathSegments } from '../../mapMath';
 import { isPortalHop } from '../../portals';
 import type { ConquestArrow } from '../../replay';
 import type { RailEdge } from '../../supplyLines';
@@ -193,6 +193,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     y: p.y * scaleY + offsetY,
   });
 
+  const stateBorderScale = borderScale((VERTEX_RADIUS * scaleX) / zoom);
+
   const territoryById = new Map(territories.map((t) => [t.id, t]));
   const pathPointById: Map<number, Point> = new Map(
     [...territories, ...seaTerritories].map((t) => [t.id, t]),
@@ -345,7 +347,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.fillStyle = SEA_COLOR;
     ctx.fill();
     ctx.strokeStyle = STATE_STYLE[nodeState(s.id)].stroke;
-    ctx.lineWidth = STATE_STYLE[nodeState(s.id)].width * zoom;
+    ctx.lineWidth =
+      STATE_STYLE[nodeState(s.id)].width * zoom * stateBorderScale;
     ctx.stroke();
 
     const ships = (
@@ -489,7 +492,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         ctx.fillStyle = fillColor;
         ctx.fill();
         ctx.strokeStyle = style.stroke;
-        ctx.lineWidth = style.width * zoom;
+        ctx.lineWidth = style.width * zoom * stateBorderScale;
         ctx.stroke();
 
         if (radiationUpcomingById.has(t.id)) {

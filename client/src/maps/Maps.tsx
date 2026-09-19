@@ -30,9 +30,7 @@ function Maps({
       {(account || serverUnreachable) && (
         <div className="d-flex justify-content-center gap-2 mb-4">
           <Button onClick={() => navigate('/maps/editor')}>Create a map</Button>
-          {account && (
-            <Button onClick={() => navigate('/maps/mine')}>My maps</Button>
-          )}
+          <Button onClick={() => navigate('/maps/mine')}>My maps</Button>
         </div>
       )}
 

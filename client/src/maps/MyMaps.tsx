@@ -7,7 +7,7 @@ import type { Account, PlayerMapRow } from '../lib/types';
 import MapBrowser from './MapBrowser';
 import { mapImageUrl } from './mapUrl';
 
-function MyMaps({ account }: { account: Account }) {
+function MyMaps({ account }: { account: Account | null }) {
   const navigate = useNavigate();
   const [confirmRow, setConfirmRow] = useState<PlayerMapRow | null>(null);
   const [deleting, setDeleting] = useState(false);

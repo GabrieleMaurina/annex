@@ -325,6 +325,7 @@ function App() {
               navigate={navigate}
               kickedMessage={kickedMessage}
               clearKickedMessage={() => setKickedMessage('')}
+              serverUnreachable={serverUnreachable}
             />
           }
         />
@@ -385,7 +386,8 @@ function App() {
         <Route
           path="/maps/mine"
           element={
-            !sessionReady ? null : account ? (
+            !sessionReady && !serverUnreachable ? null : account ||
+              serverUnreachable ? (
               <MyMaps account={account} />
             ) : (
               <Navigate to="/" replace />

@@ -20,6 +20,7 @@ import {
   type Point,
 } from './mapCanvasGeometry';
 import {
+  borderScale,
   clamp,
   clampPan,
   createSettleSampler,
@@ -545,6 +546,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       }
 
       const vertexRadius = getVertexRadius(imgW, imgH);
+      const vertexBorderScale = borderScale((vertexRadius * scaleX) / zoom);
       for (const t of territories) {
         const p = toScreen(t);
         const isSelected = selectedVertexId === t.id;
@@ -568,7 +570,8 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
           : isHovered
             ? '#555555'
             : '#000000';
-        ctx.lineWidth = (isSelected || isHovered ? 7 : 2) * zoom;
+        ctx.lineWidth =
+          (isSelected || isHovered ? 7 : 2) * zoom * vertexBorderScale;
         ctx.stroke();
 
         const labelRadius = t.isSea

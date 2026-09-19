@@ -98,6 +98,7 @@ interface Props {
   navigate: (path: string) => void;
   kickedMessage: string;
   clearKickedMessage: () => void;
+  serverUnreachable: boolean;
 }
 
 function suggestedGameName(base: string, attempt: number): string {
@@ -112,7 +113,12 @@ function gamePath(name: string): string {
   return `/games/live/${encodeURIComponent(name)}`;
 }
 
-function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
+function Home({
+  navigate,
+  kickedMessage,
+  clearKickedMessage,
+  serverUnreachable,
+}: Props) {
   const [result, setResult] = useState<HomeGamesPage | null>(null);
   const [resumeGame, setResumeGame] = useState<string | null>(null);
   const whiteGithubIcon = useWhiteIcon('/icons/github.svg');
@@ -352,154 +358,162 @@ function Home({ navigate, kickedMessage, clearKickedMessage }: Props) {
       )}
 
       <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-2 mb-4">
-        <Button onClick={createGame}>Create Online</Button>
+        {!serverUnreachable && (
+          <Button onClick={createGame}>Create Online</Button>
+        )}
         <Button variant="secondary" onClick={() => navigate('/games/offline')}>
           Create Offline
         </Button>
       </div>
 
-      <SortSelect
-        value={sortOption}
-        onChange={(v) => resetPage(setSortOption)(v as SortOption)}
-      >
-        <option value="newest">Newest</option>
-        <option value="oldest">Oldest</option>
-        <option value="mostPlayers">Most players</option>
-        <option value="fewestPlayers">Fewest players</option>
-        <option value="mostRounds">Most rounds</option>
-        <option value="fewestRounds">Fewest rounds</option>
-        <option value="nameAsc">Name A-Z</option>
-        <option value="nameDesc">Name Z-A</option>
-      </SortSelect>
+      {!serverUnreachable && (
+        <>
+          <SortSelect
+            value={sortOption}
+            onChange={(v) => resetPage(setSortOption)(v as SortOption)}
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="mostPlayers">Most players</option>
+            <option value="fewestPlayers">Fewest players</option>
+            <option value="mostRounds">Most rounds</option>
+            <option value="fewestRounds">Fewest rounds</option>
+            <option value="nameAsc">Name A-Z</option>
+            <option value="nameDesc">Name Z-A</option>
+          </SortSelect>
 
-      <FilterDetails onClear={clearFilters}>
-        <div className="border rounded p-2 mb-2">
-          <div className="fw-bold text-muted small mb-2">Match</div>
-          <div className="row g-3">
-            <PlayerFilter
-              selected={selectedPlayers}
-              onChange={resetPage(setSelectedPlayers)}
-            />
-            <Field label="Name">
-              <Form.Control
-                size="sm"
-                className="w-auto"
-                placeholder="Game name"
-                maxLength={MAX_GAME_NAME_LENGTH}
-                value={name}
-                onChange={(e) => resetPage(setName)(e.target.value)}
-              />
-            </Field>
-            <Field label="Mode">
-              <Form.Select
-                size="sm"
-                className="w-auto"
-                value={mode}
-                onChange={(e) => resetPage(setMode)(e.target.value)}
-              >
-                <option value="">Any</option>
-                {GAME_MODES.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </Form.Select>
-            </Field>
-            <Field label="State">
-              <Form.Select
-                size="sm"
-                className="w-auto"
-                value={phase}
-                onChange={(e) =>
-                  resetPage(setPhase)(
-                    e.target.value as '' | GameSummary['state'],
-                  )
-                }
-              >
-                <option value="">Any</option>
-                <option value="lobby">Lobby</option>
-                <option value="playing">Playing</option>
-                <option value="ended">Ended</option>
-              </Form.Select>
-            </Field>
-            <Field label="Password">
-              <Form.Select
-                size="sm"
-                className="w-auto"
-                value={password}
-                onChange={(e) =>
-                  resetPage(setPassword)(e.target.value as '' | 'yes' | 'no')
-                }
-              >
-                <option value="">Any</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </Form.Select>
-            </Field>
-            <Field label="Bots">
-              <Form.Select
-                size="sm"
-                className="w-auto"
-                value={hasBots}
-                onChange={(e) =>
-                  resetPage(setHasBots)(e.target.value as '' | 'yes' | 'no')
-                }
-              >
-                <option value="">Any</option>
-                <option value="yes">Has bots</option>
-                <option value="no">No bots</option>
-              </Form.Select>
-            </Field>
-            <RangeField
-              label="Players"
-              min={PLAYERS_MIN}
-              max={PLAYERS_MAX}
-              lo={playersMin}
-              hi={playersMax}
-              fallbackLo={PLAYERS_MIN}
-              fallbackHi={PLAYERS_MAX}
-              setLo={resetPage(setPlayersMin)}
-              setHi={resetPage(setPlayersMax)}
-            />
-            <RangeField
-              label="Rounds"
-              min={ROUNDS_MIN}
-              max={ROUNDS_MAX}
-              lo={roundsMin}
-              hi={roundsMax}
-              fallbackLo={ROUNDS_MIN}
-              fallbackHi={ROUNDS_MAX}
-              setLo={resetPage(setRoundsMin)}
-              setHi={resetPage(setRoundsMax)}
-            />
-          </div>
-        </div>
+          <FilterDetails onClear={clearFilters}>
+            <div className="border rounded p-2 mb-2">
+              <div className="fw-bold text-muted small mb-2">Match</div>
+              <div className="row g-3">
+                <PlayerFilter
+                  selected={selectedPlayers}
+                  onChange={resetPage(setSelectedPlayers)}
+                />
+                <Field label="Name">
+                  <Form.Control
+                    size="sm"
+                    className="w-auto"
+                    placeholder="Game name"
+                    maxLength={MAX_GAME_NAME_LENGTH}
+                    value={name}
+                    onChange={(e) => resetPage(setName)(e.target.value)}
+                  />
+                </Field>
+                <Field label="Mode">
+                  <Form.Select
+                    size="sm"
+                    className="w-auto"
+                    value={mode}
+                    onChange={(e) => resetPage(setMode)(e.target.value)}
+                  >
+                    <option value="">Any</option>
+                    {GAME_MODES.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Field>
+                <Field label="State">
+                  <Form.Select
+                    size="sm"
+                    className="w-auto"
+                    value={phase}
+                    onChange={(e) =>
+                      resetPage(setPhase)(
+                        e.target.value as '' | GameSummary['state'],
+                      )
+                    }
+                  >
+                    <option value="">Any</option>
+                    <option value="lobby">Lobby</option>
+                    <option value="playing">Playing</option>
+                    <option value="ended">Ended</option>
+                  </Form.Select>
+                </Field>
+                <Field label="Password">
+                  <Form.Select
+                    size="sm"
+                    className="w-auto"
+                    value={password}
+                    onChange={(e) =>
+                      resetPage(setPassword)(
+                        e.target.value as '' | 'yes' | 'no',
+                      )
+                    }
+                  >
+                    <option value="">Any</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </Form.Select>
+                </Field>
+                <Field label="Bots">
+                  <Form.Select
+                    size="sm"
+                    className="w-auto"
+                    value={hasBots}
+                    onChange={(e) =>
+                      resetPage(setHasBots)(e.target.value as '' | 'yes' | 'no')
+                    }
+                  >
+                    <option value="">Any</option>
+                    <option value="yes">Has bots</option>
+                    <option value="no">No bots</option>
+                  </Form.Select>
+                </Field>
+                <RangeField
+                  label="Players"
+                  min={PLAYERS_MIN}
+                  max={PLAYERS_MAX}
+                  lo={playersMin}
+                  hi={playersMax}
+                  fallbackLo={PLAYERS_MIN}
+                  fallbackHi={PLAYERS_MAX}
+                  setLo={resetPage(setPlayersMin)}
+                  setHi={resetPage(setPlayersMax)}
+                />
+                <RangeField
+                  label="Rounds"
+                  min={ROUNDS_MIN}
+                  max={ROUNDS_MAX}
+                  lo={roundsMin}
+                  hi={roundsMax}
+                  fallbackLo={ROUNDS_MIN}
+                  fallbackHi={ROUNDS_MAX}
+                  setLo={resetPage(setRoundsMin)}
+                  setHi={resetPage(setRoundsMax)}
+                />
+              </div>
+            </div>
 
-        <div className="border rounded p-2 mb-2">
-          <div className="fw-bold text-muted small mb-2">Map</div>
-          <div className="row g-3">
-            <MapFilterFields
-              mapName={mapName}
-              size={mapGenerationSize}
-              type={mapGenerationType}
-              fill={mapGenerationFill}
-              onMapName={resetPage(setMapName)}
-              onSize={resetPage(setMapGenerationSize)}
-              onType={resetPage(setMapGenerationType)}
-              onFill={resetPage(setMapGenerationFill)}
+            <div className="border rounded p-2 mb-2">
+              <div className="fw-bold text-muted small mb-2">Map</div>
+              <div className="row g-3">
+                <MapFilterFields
+                  mapName={mapName}
+                  size={mapGenerationSize}
+                  type={mapGenerationType}
+                  fill={mapGenerationFill}
+                  onMapName={resetPage(setMapName)}
+                  onSize={resetPage(setMapGenerationSize)}
+                  onType={resetPage(setMapGenerationType)}
+                  onFill={resetPage(setMapGenerationFill)}
+                />
+              </div>
+            </div>
+
+            <SettingFilterSections
+              settings={settings}
+              onChange={(key, value) =>
+                resetPage(setSettings)((s) => ({ ...s, [key]: value }))
+              }
             />
-          </div>
-        </div>
+          </FilterDetails>
+        </>
+      )}
 
-        <SettingFilterSections
-          settings={settings}
-          onChange={(key, value) =>
-            resetPage(setSettings)((s) => ({ ...s, [key]: value }))
-          }
-        />
-      </FilterDetails>
-
-      {result === null ? (
+      {serverUnreachable ? null : result === null ? (
         <div className="text-center">
           <Spinner size="sm" className="me-2" />
           Loading...

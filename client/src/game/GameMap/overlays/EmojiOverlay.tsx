@@ -68,6 +68,7 @@ export default function EmojiOverlay({
       {emojiPickerFor !== null && pickerRect && (
         <div
           ref={emojiPickerRef}
+          data-keep-panel-open
           className={`position-fixed ${PANEL_BG_CLASS} border rounded-start d-flex align-items-center`}
           style={{
             top: pickerRect.top + pickerRect.height / 2,

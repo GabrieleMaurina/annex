@@ -127,3 +127,99 @@ test('a route to an island reachable only by sea never targets the sea tile', ()
     assert.notEqual(step.endId, 100, 'attack step must not target a sea tile');
   }
 });
+
+test('with supply lines the bot buys a ship to reconnect a cut-off island', () => {
+  const map: MapSpec = {
+    continents: [[0], [1, 3], [2]],
+    edges: [
+      [0, 100],
+      [1, 100],
+      [1, 3],
+      [0, 2],
+    ],
+    bonuses: [0, 0, 0],
+    seaIds: [100],
+  };
+  const spec: ScenarioSpec = {
+    map,
+    players: [1, 2],
+    botId: 1,
+    owners: { 0: 1, 1: 1, 3: 1, 2: 2 },
+    troops: { 0: 10, 1: 2, 3: 2, 2: 1 },
+    troopsToDeploy: 6,
+    settings: { supplyLines: 'on' },
+  };
+
+  const replay = replayBotTurn(spec);
+
+  assert.equal(replay.dispatchFailures, 0, 'no invalid actions along the way');
+  assert.ok(
+    (replay.game.seaShips.get(100)?.get(1) ?? 0) >= 1,
+    'bot put a ship in the sea that links the island to its supply hub',
+  );
+});
+
+test('with supply lines the bot keeps the ships that carry its supply line', () => {
+  const map: MapSpec = {
+    continents: [[0], [1, 3], [2]],
+    edges: [
+      [0, 100],
+      [1, 100],
+      [1, 3],
+      [0, 101],
+      [2, 101],
+      [100, 101],
+    ],
+    bonuses: [0, 0, 0],
+    seaIds: [100, 101],
+  };
+  const spec: ScenarioSpec = {
+    map,
+    players: [1, 2],
+    botId: 1,
+    owners: { 0: 1, 1: 1, 3: 1, 2: 2 },
+    troops: { 0: 10, 1: 2, 3: 2, 2: 30 },
+    troopsToDeploy: 0,
+    seaShips: { 100: { 1: 5 }, 101: { 2: 20 } },
+    settings: { supplyLines: 'on' },
+  };
+
+  const replay = replayBotTurn(spec);
+
+  assert.equal(replay.dispatchFailures, 0, 'no invalid actions along the way');
+  assert.equal(
+    replay.game.seaShips.get(100)?.get(1) ?? 0,
+    5,
+    'the fleet stayed in the sea that connects the island',
+  );
+});
+
+test('the bot fortifies troops across a sea it has ships in', () => {
+  const map: MapSpec = {
+    continents: [[0, 2], [1]],
+    edges: [
+      [0, 100],
+      [1, 100],
+      [0, 2],
+    ],
+    bonuses: [0, 0],
+    seaIds: [100],
+  };
+  const spec: ScenarioSpec = {
+    map,
+    players: [1, 2],
+    botId: 1,
+    owners: { 0: 1, 1: 1, 2: 2 },
+    troops: { 0: 3, 1: 20, 2: 10 },
+    troopsToDeploy: 0,
+    seaShips: { 100: { 1: 1 } },
+  };
+
+  const replay = replayBotTurn(spec);
+
+  assert.equal(replay.dispatchFailures, 0, 'no invalid actions along the way');
+  assert.ok(
+    (replay.game.territoryTroops.get(1) ?? 0) < 20,
+    'troops crossed the sea to reinforce the frontier',
+  );
+});

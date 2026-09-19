@@ -10,6 +10,8 @@ import { thinkDelayMs } from './thinkTime';
 const pendingActs = new Map<string, NodeJS.Timeout>();
 const inFlight = new Set<string>();
 const turnPlanByGame = new Map<string, TurnPlanCache>();
+const stalledSteps = new Map<string, { turnKey: string; count: number }>();
+const MAX_STALLED_STEPS = 3;
 
 function currentBot(game: Game): (Player & { botProfile: BotProfile }) | null {
   if (game.state !== 'playing' || game.paused) return null;
@@ -46,20 +48,39 @@ function act(game: Game): void {
   performPhaseStep(game, player, player.botProfile);
 }
 
-function recover(player: Player): void {
-  dispatchBotAction(player.id, 'game:nextPhase', undefined);
+function recover(player: Player): boolean {
+  return dispatchBotAction(player.id, 'game:nextPhase', undefined).ok;
 }
 
 function dispatchActions(
   player: Player,
   actions: BotAction[],
   index = 0,
-): void {
-  if (index >= actions.length) return;
+): boolean {
+  if (index >= actions.length) return true;
   const { event, payload } = actions[index];
   const res = dispatchBotAction(player.id, event, payload);
   if (!res.ok) return recover(player);
-  dispatchActions(player, actions, index + 1);
+  return dispatchActions(player, actions, index + 1);
+}
+
+function handleStall(gameName: string): void {
+  const game = games.get(gameName);
+  if (!game || !currentBot(game)) {
+    stalledSteps.delete(gameName);
+    return;
+  }
+  const turnKey = `${game.roundNumber}:${game.turnPlayerIndex}:${game.turnPhase}`;
+  const previous = stalledSteps.get(gameName);
+  const count = previous?.turnKey === turnKey ? previous.count + 1 : 1;
+  if (count < MAX_STALLED_STEPS) {
+    stalledSteps.set(gameName, { turnKey, count });
+    scheduleBotTurnIfNeeded(game);
+    return;
+  }
+  stalledSteps.delete(gameName);
+  forceEndTurnImpl(game);
+  broadcastGameState(game);
 }
 
 function performPhaseStep(
@@ -81,6 +102,7 @@ function performPhaseStep(
       inFlight.delete(gameName);
       if (!res.ok) {
         console.error('bot turn planning failed', res.error);
+        handleStall(gameName);
         return;
       }
       const current = games.get(gameName);
@@ -91,11 +113,16 @@ function performPhaseStep(
         current.roundNumber !== requestedRoundNumber ||
         current.turnPhase !== requestedPhase ||
         current.playerIds[current.turnPlayerIndex] !== botId
-      )
+      ) {
+        if (current) scheduleBotTurnIfNeeded(current);
         return;
+      }
 
       turnPlanByGame.set(gameName, res.result.plan);
-      dispatchActions(player, res.result.actions);
+      const { actions } = res.result;
+      if (actions.length > 0 && dispatchActions(player, actions))
+        stalledSteps.delete(gameName);
+      else handleStall(gameName);
     },
   );
 }

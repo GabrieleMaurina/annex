@@ -417,6 +417,8 @@ export function useAutoAdvancePhase({
 export function useSupplyLineOverlay({
   supplyLines,
   territories,
+  seaTerritories,
+  seas,
   ownerById,
   portalTerritoryIds,
   portalsEnabled,
@@ -428,6 +430,8 @@ export function useSupplyLineOverlay({
 }: {
   supplyLines: GameState['supplyLines'];
   territories: Territory[];
+  seaTerritories: SeaTerritory[];
+  seas: GameState['seas'];
   ownerById: Map<number, GameState['territories'][number]>;
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
@@ -437,11 +441,16 @@ export function useSupplyLineOverlay({
   visibleTerritoryIds: GameState['visibleTerritoryIds'];
   selfId: number | null;
 }) {
+  const nodes = useMemo(
+    () => [...territories, ...seaTerritories],
+    [territories, seaTerritories],
+  );
   const supplyLineEdgesByPlayer = useMemo(() => {
     if (supplyLines !== 'on' || territories.length === 0)
       return new Map<number, RailEdge[]>();
     const edges = computeSupplyLineEdges(
-      territories,
+      nodes,
+      seas,
       ownerById,
       portalTerritoryIds,
       portalsEnabled,
@@ -458,6 +467,8 @@ export function useSupplyLineOverlay({
   }, [
     supplyLines,
     territories,
+    nodes,
+    seas,
     ownerById,
     portalTerritoryIds,
     portalsEnabled,
@@ -471,7 +482,8 @@ export function useSupplyLineOverlay({
     () =>
       supplyLines === 'on' && selfId !== null
         ? computeSupplyConnectedTerritoryIds(
-            territories,
+            nodes,
+            seas,
             ownerById,
             selfId,
             portalTerritoryIds,
@@ -480,7 +492,8 @@ export function useSupplyLineOverlay({
         : null,
     [
       supplyLines,
-      territories,
+      nodes,
+      seas,
       ownerById,
       selfId,
       portalTerritoryIds,

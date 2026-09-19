@@ -1,4 +1,4 @@
-import { connectedOwnedTerritories } from '../../game/world/connectivity';
+import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { Game } from '../../types';
 import {
   frontierTerritories,
@@ -23,7 +23,7 @@ function isReachable(
   if (game.fortification === 'Unrestricted') return true;
   if (game.fortification === 'Neighboring')
     return neighborsOf(game, startId).includes(endId);
-  return connectedOwnedTerritories(game, botId, [startId]).has(endId);
+  return connectedFortifyTerritories(game, botId, [startId]).has(endId);
 }
 
 export function chooseFortify(

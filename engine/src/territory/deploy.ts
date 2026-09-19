@@ -6,7 +6,7 @@ import {
 import { hasPlayableSet } from '../game/progression/cards';
 import { bumpStat } from '../game/progression/stats';
 import { advanceTurnPhase } from '../game/turns';
-import { connectedOwnedTerritories } from '../game/world/connectivity';
+import { connectedFortifyTerritories } from '../game/world/connectivity';
 import { fogFilterEmit } from '../game/world/fog';
 import { visibleTerritoryIdsOrAll } from '../game/world/visibility';
 import { GameResponse, requireGame } from '../session/context';
@@ -42,7 +42,7 @@ export function selectTerritory(
     if (
       (game.turnPhase === 'deploy' || game.turnPhase === 'troop') &&
       game.supplyLines === 'on' &&
-      !connectedOwnedTerritories(
+      !connectedFortifyTerritories(
         game,
         playerId,
         supplyHubTerritoryIds(game, playerId),

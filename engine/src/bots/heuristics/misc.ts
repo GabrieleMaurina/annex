@@ -1,5 +1,5 @@
 import { supplyHubTerritoryIds } from '../../game/mechanics';
-import { connectedOwnedTerritories } from '../../game/world/connectivity';
+import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import {
@@ -27,7 +27,7 @@ export function chooseTroopPlacement(game: Game, botId: number): number | null {
   if (owned.length === 0) return null;
   if (game.supplyLines !== 'on')
     return owned[Math.floor(Math.random() * owned.length)];
-  const reachable = connectedOwnedTerritories(
+  const reachable = connectedFortifyTerritories(
     game,
     botId,
     supplyHubTerritoryIds(game, botId),
@@ -37,18 +37,26 @@ export function chooseTroopPlacement(game: Game, botId: number): number | null {
   return connected[Math.floor(Math.random() * connected.length)];
 }
 
+const OWNED_NEIGHBOR_VALUE = 1;
+const FOREIGN_NEIGHBOR_COST = 1.5;
+const TROOP_VALUE = 0.2;
+
+function capitalValue(game: Game, botId: number, territoryId: number): number {
+  let value = (game.territoryTroops.get(territoryId) ?? 0) * TROOP_VALUE;
+  for (const n of neighborsOf(game, territoryId))
+    value +=
+      game.territoryOwners.get(n) === botId
+        ? OWNED_NEIGHBOR_VALUE
+        : -FOREIGN_NEIGHBOR_COST;
+  return value;
+}
+
 export function chooseCapital(game: Game, botId: number): number | null {
   const owned = ownedTerritoryIds(game, botId);
   if (owned.length === 0) return null;
-  return owned.reduce((best, id) => {
-    const ownedNeighbors = neighborsOf(game, id).filter(
-      (n) => game.territoryOwners.get(n) === botId,
-    ).length;
-    const bestNeighbors = neighborsOf(game, best).filter(
-      (n) => game.territoryOwners.get(n) === botId,
-    ).length;
-    return ownedNeighbors > bestNeighbors ? id : best;
-  }, owned[0]);
+  return owned.reduce((best, id) =>
+    capitalValue(game, botId, id) > capitalValue(game, botId, best) ? id : best,
+  );
 }
 
 export function chooseEntrench(

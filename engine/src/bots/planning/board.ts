@@ -1,5 +1,9 @@
 import { upcomingSetValues } from '../../game/progression/cards';
 import { grudgeAgainst } from '../features/grudge';
+import { modeGoalFor } from '../features/modeGoals';
+import { antiLeaderActive } from '../features/standing';
+import { modeScore } from '../goals/modeScore';
+import { standingScore } from '../goals/standingScore';
 import {
   PlanContext,
   SimState,
@@ -72,6 +76,7 @@ const ELIMINATION = 9;
 const DAMAGE = 0.15;
 
 function eliminationBonus(ctx: PlanContext, state: SimState): number {
+  const killWeight = modeGoalFor(ctx).killWeight;
   let bonus = 0;
   for (const opponentId of ctx.preTurnOpponents) {
     let alive = false;
@@ -81,7 +86,7 @@ function eliminationBonus(ctx: PlanContext, state: SimState): number {
         break;
       }
     if (alive) continue;
-    bonus += ELIMINATION;
+    bonus += ELIMINATION * killWeight;
     if (ctx.game.bounties === 'on') bonus += 8;
     bonus += (ctx.game.playerCards.get(opponentId)?.length ?? 0) * 1.5;
   }
@@ -100,7 +105,10 @@ function incomeEstimate(
           (id) => state.owners.get(id) === playerId,
         ).length * 2
       : 0;
-  return Math.max(3, Math.floor(owned / 3)) + capitals;
+  return (
+    (Math.max(3, Math.floor(owned / 3)) + capitals) *
+    modeGoalFor(ctx).incomeFactor
+  );
 }
 
 function continentProgress(ctx: PlanContext, state: SimState): number {
@@ -188,7 +196,9 @@ function damageDealt(state: SimState): number {
 
 function scoreState(ctx: PlanContext, state: SimState): number {
   const { risk, waste, concentration } = riskAndWaste(ctx, state);
-  const leader = strongestOpponent(ctx, state);
+  const leader = antiLeaderActive(ctx.standing)
+    ? strongestOpponent(ctx, state)
+    : null;
   let score = 0;
   score += INCOME * incomeEstimate(ctx, state, ctx.botId);
   score += HELD_BONUS * heldContinentBonus(ctx, state, ctx.botId);
@@ -200,12 +210,18 @@ function scoreState(ctx: PlanContext, state: SimState): number {
   score += CONCENTRATION * concentration;
   score -= CAPITAL_RISK * capitalRisk(ctx, state);
   if (leader && leader.playerId !== ctx.botId)
-    score -= ctx.weights.antiLeader * ANTI_LEADER * leader.strength;
+    score -=
+      ctx.weights.antiLeader *
+      ANTI_LEADER *
+      ctx.standing.gangUp *
+      leader.strength;
   score += ctx.weights.grudge * GRUDGE * grudgeSatisfaction(ctx, state);
   if (state.conquered) score += CARD * cardValue(ctx);
   score -= TROOP_LOSS * state.troopsLost;
   score += eliminationBonus(ctx, state);
   score += DAMAGE * damageDealt(state);
+  score += standingScore(ctx, state);
+  score += modeScore(ctx, state);
   return score;
 }
 

@@ -3,9 +3,10 @@ import {
   supplyHubTerritoryIds,
 } from '../../game/mechanics';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
-import { connectedOwnedTerritories } from '../../game/world/connectivity';
+import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
 import { attackWinProbability, defenceDiceFor } from '../features/combat';
+import { frustrationLevel } from '../features/pressure';
 import { chooseAttack, chooseAttackMoveTroops } from '../heuristics/attack';
 import { chooseCardSet } from '../heuristics/cards';
 import { chooseDeploy } from '../heuristics/deploy';
@@ -21,10 +22,13 @@ import {
   chooseNukeConstruction,
   chooseNukeLaunch,
 } from '../heuristics/nukes';
+import { chooseLosingAttack } from '../heuristics/sacrifice';
 import {
+  ShipPurchase,
   chooseSail,
   chooseShipAttack,
   chooseShipPurchase,
+  chooseSupplyBridge,
 } from '../heuristics/ships';
 import { PlanContext, buildContext } from './context';
 import { buildTurnPlan, repairPlan } from './enumerate';
@@ -60,6 +64,18 @@ const NEXT_PHASE: BotAction = { event: 'game:nextPhase', payload: undefined };
 
 function result(actions: BotAction[], plan: TurnPlan): PlanBotTurnResult {
   return { actions, plan };
+}
+
+function buyShipsAction(purchase: ShipPurchase): BotAction {
+  return {
+    event: 'game:buyShips',
+    payload: {
+      sourceTerritoryId: purchase.sourceTerritoryId,
+      seaTerritoryId: purchase.seaTerritoryId,
+      ships: purchase.ships,
+      fromPool: purchase.fromPool,
+    },
+  };
 }
 
 function resolvePlan(
@@ -115,6 +131,11 @@ export function planBotTurn(
   }
   if (phase === 'toxins') return result([NEXT_PHASE], stale);
 
+  if (phase === 'deploy' && !isPlanFresh(cachedPlan, game, botId)) {
+    const bridge = chooseSupplyBridge(game, botId, game.troopsToDeploy);
+    if (bridge) return result([buyShipsAction(bridge)], stale);
+  }
+
   const ctx = buildContext(game, botId, botProfile, cachedPlan);
   const plan = resolvePlan(ctx, game, botId, cachedPlan);
 
@@ -148,21 +169,7 @@ function planDeploy(
     ctx.botId,
     game.troopsToDeploy,
   );
-  if (shipPurchase)
-    return result(
-      [
-        {
-          event: 'game:buyShips',
-          payload: {
-            sourceTerritoryId: shipPurchase.sourceTerritoryId,
-            seaTerritoryId: shipPurchase.seaTerritoryId,
-            ships: shipPurchase.ships,
-            fromPool: shipPurchase.fromPool,
-          },
-        },
-      ],
-      plan,
-    );
+  if (shipPurchase) return result([buyShipsAction(shipPurchase)], plan);
 
   if (game.troopsToDeploy > 0) {
     const deployment = nextDeployment(ctx, game, plan);
@@ -191,7 +198,7 @@ function canDeployTo(
   if (game.territoryOwners.get(territoryId) !== ctx.botId) return false;
   if (troopRoom(game, territoryId) < 1) return false;
   if (game.supplyLines !== 'on') return true;
-  return connectedOwnedTerritories(
+  return connectedFortifyTerritories(
     game,
     ctx.botId,
     supplyHubTerritoryIds(game, ctx.botId),
@@ -264,6 +271,11 @@ function planAttack(
     plan.shipAttacksIssued < ctx.params.maxPlanDepth
       ? chooseShipAttack(game, ctx.botId)
       : null;
+  if (shipAttack && game.attackStartTerritoryId !== null)
+    return result(
+      [{ event: 'game:attackSelectStart', payload: { territoryId: null } }],
+      plan,
+    );
   if (shipAttack) {
     plan.shipAttacksIssued++;
     return result(
@@ -328,7 +340,10 @@ function planAttack(
   }
 
   plan.step = plan.attackSteps.length;
-  const fallbackBudget = Math.ceil(ctx.params.maxPlanDepth / 3);
+  const frustration = frustrationLevel(game);
+  const fallbackBudget =
+    Math.ceil(ctx.params.maxPlanDepth / 3) +
+    Math.round(frustration * ctx.params.maxPlanDepth);
   if (plan.attacksIssued >= plan.attackSteps.length + fallbackBudget)
     return result([NEXT_PHASE], plan);
   const choice = chooseAttack(
@@ -337,19 +352,21 @@ function planAttack(
     ctx.botId,
     ctx.weights,
     ctx.params.noise,
+    ctx.standing,
   );
-  if (!choice) return result([NEXT_PHASE], plan);
+  const attack = choice ?? chooseLosingAttack(ctx, frustration);
+  if (!attack) return result([NEXT_PHASE], plan);
   plan.attacksIssued++;
   return result(
     [
       {
         event: 'game:attackSelectStart',
-        payload: { territoryId: choice.startId },
+        payload: { territoryId: attack.startId },
       },
-      { event: 'game:attackSelectEnd', payload: { territoryId: choice.endId } },
+      { event: 'game:attackSelectEnd', payload: { territoryId: attack.endId } },
       {
         event: 'game:attack',
-        payload: { type: choice.type, troops: choice.troops },
+        payload: { type: attack.type, troops: attack.troops },
       },
     ],
     plan,
@@ -469,7 +486,7 @@ function fortifyValid(
   if (game.fortification === 'Unrestricted') return true;
   if (game.fortification === 'Neighboring')
     return (ctx.neighbors.get(move.startId) ?? []).includes(move.endId);
-  return connectedOwnedTerritories(game, ctx.botId, [move.startId]).has(
+  return connectedFortifyTerritories(game, ctx.botId, [move.startId]).has(
     move.endId,
   );
 }

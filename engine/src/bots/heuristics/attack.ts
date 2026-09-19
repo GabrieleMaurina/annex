@@ -7,9 +7,12 @@ import {
 import { grudgeAgainst } from '../features/grudge';
 import { seaBridgeTargets } from '../features/navy';
 import { minWinProbability } from '../features/pressure';
+import { Standing, targetPreference } from '../features/standing';
 import { frontierTerritories, hostileNeighbors } from '../features/territory';
 import { Weights } from '../types';
 import { BotView, ownerOf } from '../view';
+
+const PREF_WEIGHT = 0.25;
 
 export interface AttackChoice {
   startId: number;
@@ -48,6 +51,7 @@ export function chooseAttack(
   botId: number,
   weights: Weights,
   noise: number,
+  standing: Standing,
 ): AttackChoice | null {
   const breakTargets = new Set(
     continentBreakCandidates(game, view, botId).map(
@@ -87,6 +91,7 @@ export function chooseAttack(
         weights.grudge *
         0.1 *
         Math.min(grudgeAgainst(game, botId, defenderId) / 10, 1);
+    score += PREF_WEIGHT * targetPreference(standing, defenderId);
     if (completeTargets.has(endId)) score += weights.completeContinent * 0.1;
     if (breakTargets.has(endId)) score += weights.breakContinent * 0.1;
     score += (Math.random() - 0.5) * noise;

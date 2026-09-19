@@ -1,3 +1,6 @@
+import { alliedIds } from '../../game/alliances';
+import { supplyHubTerritoryIds } from '../../game/mechanics';
+import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { BotView, isVisible, ownerOf, shipsAt } from '../view';
@@ -29,12 +32,23 @@ export function coastalTerritoriesOf(
   return result;
 }
 
-function coastalSourceBySeaId(
-  game: Game,
-  coastal: CoastalTerritory[],
-): Map<number, number> {
+function coastalSourceBySeaId(game: Game, botId: number): Map<number, number> {
+  const supplied =
+    game.supplyLines === 'on'
+      ? connectedFortifyTerritories(
+          game,
+          botId,
+          supplyHubTerritoryIds(game, botId),
+        )
+      : null;
   const bySeaId = new Map<number, number>();
-  for (const { territoryId, seaIds } of coastal) {
+  for (const { territoryId, seaIds } of coastalTerritoriesOf(game, botId)) {
+    if (
+      supplied !== null &&
+      !supplied.has(territoryId) &&
+      (game.territoryTroops.get(territoryId) ?? 0) < 2
+    )
+      continue;
     for (const seaId of seaIds) {
       const current = bySeaId.get(seaId);
       if (
@@ -46,6 +60,83 @@ function coastalSourceBySeaId(
     }
   }
   return bySeaId;
+}
+
+const MIN_SUPPLY_BRIDGE_GAIN = 2;
+
+export function shippedSeaIdsOf(game: Game, botId: number): Set<number> {
+  const ids = new Set<number>();
+  for (const [seaId, shipsByPlayer] of game.seaShips)
+    if ((shipsByPlayer.get(botId) ?? 0) > 0) ids.add(seaId);
+  return ids;
+}
+
+function suppliedTerritoryCount(
+  game: Game,
+  botId: number,
+  hubIds: number[],
+  shippedSeaIds: Set<number>,
+): number {
+  let count = 0;
+  for (const id of connectedFortifyTerritories(
+    game,
+    botId,
+    hubIds,
+    shippedSeaIds,
+  ))
+    if (game.territoryOwners.get(id) === botId) count++;
+  return count;
+}
+
+export interface SupplyBridge {
+  sourceTerritoryId: number;
+  seaTerritoryId: number;
+}
+
+export function supplyBridgeSite(
+  game: Game,
+  botId: number,
+): SupplyBridge | null {
+  if (game.supplyLines !== 'on') return null;
+  const hubIds = supplyHubTerritoryIds(game, botId);
+  const shipped = shippedSeaIdsOf(game, botId);
+  const base = suppliedTerritoryCount(game, botId, hubIds, shipped);
+  const tried = new Set<number>();
+  let best: SupplyBridge | null = null;
+  let bestGain = MIN_SUPPLY_BRIDGE_GAIN - 1;
+  for (const { territoryId, seaIds } of coastalTerritoriesOf(game, botId)) {
+    for (const seaId of seaIds) {
+      if (shipped.has(seaId) || tried.has(seaId)) continue;
+      tried.add(seaId);
+      const gain =
+        suppliedTerritoryCount(
+          game,
+          botId,
+          hubIds,
+          new Set(shipped).add(seaId),
+        ) - base;
+      if (gain > bestGain) {
+        bestGain = gain;
+        best = { sourceTerritoryId: territoryId, seaTerritoryId: seaId };
+      }
+    }
+  }
+  return best;
+}
+
+export function supplyCarryingSeaIds(game: Game, botId: number): Set<number> {
+  const carrying = new Set<number>();
+  if (game.supplyLines !== 'on') return carrying;
+  const hubIds = supplyHubTerritoryIds(game, botId);
+  const shipped = shippedSeaIdsOf(game, botId);
+  const base = suppliedTerritoryCount(game, botId, hubIds, shipped);
+  for (const seaId of shipped) {
+    const without = new Set(shipped);
+    without.delete(seaId);
+    if (suppliedTerritoryCount(game, botId, hubIds, without) < base)
+      carrying.add(seaId);
+  }
+  return carrying;
 }
 
 export interface SeaBridgeTarget {
@@ -61,7 +152,7 @@ export function seaBridgeTargets(
   botId: number,
 ): SeaBridgeTarget[] {
   const seaIds = seaTerritoryIds(game);
-  const bySeaId = coastalSourceBySeaId(game, coastalTerritoriesOf(game, botId));
+  const bySeaId = coastalSourceBySeaId(game, botId);
   if (bySeaId.size === 0) return [];
 
   const results: SeaBridgeTarget[] = [];
@@ -106,7 +197,7 @@ export function navalOpportunities(
   botId: number,
 ): NavalOpportunity[] {
   const seaIds = seaTerritoryIds(game);
-  const bySeaId = coastalSourceBySeaId(game, coastalTerritoriesOf(game, botId));
+  const bySeaId = coastalSourceBySeaId(game, botId);
   if (bySeaId.size === 0) return [];
 
   const results: NavalOpportunity[] = [];
@@ -137,6 +228,51 @@ export function navalOpportunities(
     }
   }
   return results;
+}
+
+export interface ScoutSite {
+  sourceTerritoryId: number;
+  seaTerritoryId: number;
+}
+
+function enemyVisible(game: Game, view: BotView, botId: number): boolean {
+  const allies = new Set(alliedIds(game, botId));
+  for (const [territoryId, ownerId] of game.territoryOwners) {
+    if (
+      ownerId !== botId &&
+      !allies.has(ownerId) &&
+      !isTeammate(game, botId, ownerId) &&
+      isVisible(view, territoryId)
+    )
+      return true;
+  }
+  return false;
+}
+
+export function scoutSite(
+  game: Game,
+  view: BotView,
+  botId: number,
+): ScoutSite | null {
+  const visible = view.visibleIds;
+  if (visible === null || enemyVisible(game, view, botId)) return null;
+  const neighborsBySeaId = new Map(
+    getGameMap(game).seaTerritories.map((t) => [t.id, t.neighbors]),
+  );
+  let best: ScoutSite | null = null;
+  let bestUnseen = 0;
+  const sources = coastalSourceBySeaId(game, botId);
+  for (const [seaTerritoryId, sourceTerritoryId] of sources) {
+    if (shipsAt(game, view, seaTerritoryId, botId) > 0) continue;
+    const unseen = (neighborsBySeaId.get(seaTerritoryId) ?? []).filter(
+      (id) => !visible.has(id),
+    ).length;
+    if (unseen > bestUnseen) {
+      bestUnseen = unseen;
+      best = { sourceTerritoryId, seaTerritoryId };
+    }
+  }
+  return best;
 }
 
 export function landingViable(

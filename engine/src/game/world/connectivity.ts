@@ -80,9 +80,12 @@ function canEnterFortifyNode(
   playerId: number,
   seaIds: Set<number>,
   nodeId: number,
+  shippedSeaIds?: Set<number>,
 ): boolean {
   if (seaIds.has(nodeId))
-    return (game.seaShips.get(nodeId)?.get(playerId) ?? 0) > 0;
+    return shippedSeaIds
+      ? shippedSeaIds.has(nodeId)
+      : (game.seaShips.get(nodeId)?.get(playerId) ?? 0) > 0;
   return game.territoryOwners.get(nodeId) === playerId;
 }
 
@@ -149,6 +152,7 @@ export function connectedFortifyTerritories(
   game: Game,
   playerId: number,
   startIds: number[],
+  shippedSeaIds?: Set<number>,
 ): Set<number> {
   const map = getGameMap(game);
   const seaIds = new Set(map.seaTerritories.map((t) => t.id));
@@ -166,7 +170,10 @@ export function connectedFortifyTerritories(
       current,
     )) {
       if (visited.has(neighborId)) continue;
-      if (!canEnterFortifyNode(game, playerId, seaIds, neighborId)) continue;
+      if (
+        !canEnterFortifyNode(game, playerId, seaIds, neighborId, shippedSeaIds)
+      )
+        continue;
       visited.add(neighborId);
       queue.push(neighborId);
     }

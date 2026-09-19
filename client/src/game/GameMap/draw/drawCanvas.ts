@@ -202,7 +202,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     drawSupplyLines(
       ctx,
       supplyLineEdgesByPlayer,
-      territoryById,
+      pathPointById,
+      new Set(seaTerritories.map((t) => t.id)),
       toScreen,
       imgW,
       imgH,

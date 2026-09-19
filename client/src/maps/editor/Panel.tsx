@@ -1,6 +1,7 @@
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { useRef, useState } from 'react';
 import { Alert, Button, ButtonGroup, Form, Table } from 'react-bootstrap';
+import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useDragNumber } from '../../common/useDragNumber';
 import type { EditorTerritory as Territory } from './model/editorTypes';
 import type { PaintTool } from './paint/paintTools';
@@ -186,6 +187,9 @@ function Panel(props: Props) {
     customColors[customColors.length - 1] ?? '#000000',
   );
   const pickerFocusValue = useRef(customPicker);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
 
   const undoRedo = (
     <div className="d-flex gap-1 mb-2">
@@ -253,6 +257,7 @@ function Panel(props: Props) {
 
   return (
     <div
+      ref={panelRef}
       className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column"
       style={{
         width: 'min(300px, calc(100vw - 1rem))',

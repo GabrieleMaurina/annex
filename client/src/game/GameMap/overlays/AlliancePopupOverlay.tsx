@@ -30,6 +30,7 @@ export default function AlliancePopupOverlay({
   return (
     <div
       ref={alliancePopupRef}
+      data-keep-panel-open
       className={`position-fixed ${PANEL_BG_CLASS} border rounded d-flex align-items-center`}
       style={{
         top: rect.bottom + 4,

@@ -5,6 +5,7 @@ import { connector } from '../connector';
 import { playerColor } from '../lib/palette';
 import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
+import { useDismissOnOutsideClick } from './dismiss/useDismissOnOutsideClick';
 import { PANEL_CLASS } from './panelStyle';
 
 interface Props {
@@ -23,6 +24,9 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const summaryRef = useRef<HTMLElement>(null);
   const openRef = useRef(open);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useDismissOnOutsideClick(open, containerRef, () => setOpen(false));
 
   useEffect(() => {
     openRef.current = open;
@@ -65,6 +69,7 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
 
   return (
     <div
+      ref={containerRef}
       className={`position-fixed bottom-0 start-0 m-3 ${
         open
           ? `${PANEL_CLASS} bg-body${transparent ? ' bg-opacity-75' : ''}`

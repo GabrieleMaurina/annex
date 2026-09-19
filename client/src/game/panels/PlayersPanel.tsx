@@ -1,6 +1,8 @@
 import type { MutableRefObject, ReactNode } from 'react';
+import { useRef } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
 import Tip from '../../common/Tip';
+import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useWhiteIcon } from '../../common/icon';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
@@ -153,6 +155,9 @@ function PlayersPanel({
   };
   const showAllianceColumn = alliances === 'on' && !isSpectator && !gameEnded;
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
+
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
   const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
@@ -186,7 +191,8 @@ function PlayersPanel({
 
   return (
     <div
-      className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3`}
+      ref={panelRef}
+      className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3 d-flex flex-column`}
       style={{
         width:
           270 +
@@ -250,8 +256,9 @@ function PlayersPanel({
         </div>
       )}
       <div
-        className="overflow-auto no-scrollbar"
-        style={{ maxHeight: 'calc(100vh - 8rem)' }}
+        className="no-scrollbar"
+        style={{ overflowY: 'auto', minHeight: 0 }}
+        onWheel={(e) => e.stopPropagation()}
       >
         <Table
           size="sm"
@@ -562,95 +569,95 @@ function PlayersPanel({
             </ListGroup>
           </>
         )}
-      </div>
-      {canPause && (
-        <div className="d-flex mt-2 gap-2 justify-content-end">
-          <Tip
-            text={
-              paused ? 'Resume game for everyone' : 'Pause game for everyone'
-            }
-            placement="bottom"
-          >
-            <Button
-              variant="secondary"
-              size="sm"
-              className="d-flex align-items-center gap-1"
-              onClick={onTogglePause}
+        {canPause && (
+          <div className="d-flex mt-2 gap-2 justify-content-end">
+            <Tip
+              text={
+                paused ? 'Resume game for everyone' : 'Pause game for everyone'
+              }
+              placement="bottom"
             >
-              <img
-                src={
-                  paused
-                    ? (whitePlayIcon ?? '/icons/play.svg')
-                    : (whitePauseIcon ?? '/icons/pause.svg')
-                }
-                width={14}
-                height={14}
-                alt=""
-              />
-              {paused ? 'Resume' : 'Pause'}
-            </Button>
-          </Tip>
-          {hasLivingBot && (
-            <Tip text="Change bots speed" placement="bottom">
               <Button
                 variant="secondary"
                 size="sm"
                 className="d-flex align-items-center gap-1"
-                onClick={onCycleBotSpeed}
+                onClick={onTogglePause}
               >
                 <img
                   src={
-                    botSpeed === 'slow'
+                    paused
                       ? (whitePlayIcon ?? '/icons/play.svg')
-                      : botSpeed === 'medium'
-                        ? (whiteStepForwardIcon ?? '/icons/step-forward.svg')
-                        : (whiteSkipForwardIcon ?? '/icons/skip-forward.svg')
+                      : (whitePauseIcon ?? '/icons/pause.svg')
                   }
                   width={14}
                   height={14}
                   alt=""
                 />
-                {botSpeedLabel[botSpeed]}
+                {paused ? 'Resume' : 'Pause'}
               </Button>
             </Tip>
-          )}
-        </div>
-      )}
-      {(canSurrender || canLeave) && (
-        <div
-          className={`d-flex mt-2 ${canSurrender && canLeave ? 'justify-content-between' : 'justify-content-end'}`}
-        >
-          {canSurrender && (
-            <Tip text="Surrender the game" placement="bottom">
-              <Button
-                variant="danger"
-                size="sm"
-                className="d-flex align-items-center gap-1"
-                onClick={onSurrender}
-              >
-                <img
-                  src={whiteFlagIcon ?? '/icons/flag.svg'}
-                  width={14}
-                  height={14}
-                  alt=""
-                />
-                Surrender
-              </Button>
-            </Tip>
-          )}
-          {canLeave && (
-            <Tip text="Go back to home" placement="bottom">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => navigate('/')}
-              >
-                Leave
-              </Button>
-            </Tip>
-          )}
-        </div>
-      )}
+            {hasLivingBot && (
+              <Tip text="Change bots speed" placement="bottom">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="d-flex align-items-center gap-1"
+                  onClick={onCycleBotSpeed}
+                >
+                  <img
+                    src={
+                      botSpeed === 'slow'
+                        ? (whitePlayIcon ?? '/icons/play.svg')
+                        : botSpeed === 'medium'
+                          ? (whiteStepForwardIcon ?? '/icons/step-forward.svg')
+                          : (whiteSkipForwardIcon ?? '/icons/skip-forward.svg')
+                    }
+                    width={14}
+                    height={14}
+                    alt=""
+                  />
+                  {botSpeedLabel[botSpeed]}
+                </Button>
+              </Tip>
+            )}
+          </div>
+        )}
+        {(canSurrender || canLeave) && (
+          <div
+            className={`d-flex mt-2 ${canSurrender && canLeave ? 'justify-content-between' : 'justify-content-end'}`}
+          >
+            {canSurrender && (
+              <Tip text="Surrender the game" placement="bottom">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="d-flex align-items-center gap-1"
+                  onClick={onSurrender}
+                >
+                  <img
+                    src={whiteFlagIcon ?? '/icons/flag.svg'}
+                    width={14}
+                    height={14}
+                    alt=""
+                  />
+                  Surrender
+                </Button>
+              </Tip>
+            )}
+            {canLeave && (
+              <Tip text="Go back to home" placement="bottom">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate('/')}
+                >
+                  Leave
+                </Button>
+              </Tip>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

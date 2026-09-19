@@ -26,6 +26,12 @@ export function getScales(
 export const MIN_ZOOM = 0.8;
 export const MAX_ZOOM = 10;
 
+const BORDER_REFERENCE_RADIUS = 12;
+
+export function borderScale(fitVertexRadius: number): number {
+  return Math.min(1, fitVertexRadius / BORDER_REFERENCE_RADIUS);
+}
+
 const RUBBER_RESISTANCE = 0.55;
 
 function rubberBand(overshoot: number, dimension: number): number {
@@ -59,6 +65,8 @@ function rubberClampInverse(
   );
 }
 
+const DRAG_BACKGROUND_FRACTION = 0.3;
+
 function panLimits(
   canvasW: number,
   canvasH: number,
@@ -67,10 +75,10 @@ function panLimits(
   imgW: number,
   imgH: number,
 ) {
-  const minScale = Math.min(canvasW / imgW, canvasH / imgH) * MIN_ZOOM;
+  const slack = 0.5 - DRAG_BACKGROUND_FRACTION;
   return {
-    x: Math.max(0, (imgW * (scaleX - minScale)) / 2),
-    y: Math.max(0, (imgH * (scaleY - minScale)) / 2),
+    x: Math.max(0, (imgW * scaleX) / 2 - canvasW * slack),
+    y: Math.max(0, (imgH * scaleY) / 2 - canvasH * slack),
   };
 }
 

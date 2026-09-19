@@ -48,8 +48,15 @@ export const DURATIONS: Record<AnimationType, number> = {
   nuke: NUKE_FLIGHT_MS + NUKE_MUSHROOM_MS,
 };
 export const TROOP_CHANGE_RING_COLOR = '255, 255, 255';
+const REFERENCE_RADIUS = 20;
 const LABEL_DURATION = 1500;
+const LABEL_GAP = 8;
+const LABEL_RISE = 24;
 export const CARD_SET_FLASH_DURATION = 2000;
+
+export function radiusScale(radius: number): number {
+  return Math.min(1, radius / REFERENCE_RADIUS);
+}
 
 export function pseudoRandom(seed: number): number {
   const x = Math.sin(seed * 12.9898) * 43758.5453;
@@ -242,13 +249,14 @@ export function drawLabel(
   const labelProgress = Math.min(1, (now - a.startedAt) / LABEL_DURATION);
   const alpha = 1 - labelProgress;
   const [r, g, b] = hexToRgb(a.labelColor ?? '#ffffff');
+  const scale = radiusScale(radius);
   const x = p.x;
-  const y = p.y - radius - 8 - labelProgress * 24;
+  const y = p.y - radius - (LABEL_GAP + labelProgress * LABEL_RISE) * scale;
   ctx.save();
   ctx.font = `bold ${radius}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  ctx.lineWidth = Math.max(2, radius * 0.15);
+  ctx.lineWidth = radius * 0.15;
   ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
   ctx.strokeText(a.label, x, y);
   ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;

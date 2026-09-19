@@ -7,8 +7,11 @@ import {
   drawLabel,
   DURATIONS,
   getAnimations,
+  radiusScale,
   TROOP_CHANGE_RING_COLOR,
 } from './state';
+
+const TROOP_CHANGE_RING_WIDTH = 4;
 
 export function drawAnimations(
   ctx: CanvasRenderingContext2D,
@@ -33,7 +36,7 @@ export function drawAnimations(
       ctx.beginPath();
       ctx.arc(p.x, p.y, radius * (1 + progress), 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(${TROOP_CHANGE_RING_COLOR}, ${1 - progress})`;
-      ctx.lineWidth = 4;
+      ctx.lineWidth = TROOP_CHANGE_RING_WIDTH * radiusScale(radius);
       ctx.stroke();
     }
 
@@ -50,7 +53,7 @@ export function drawAnimations(
             mapH,
             forcedWraps,
           );
-          drawFortifyPath(ctx, segments, runFades?.[i]);
+          drawFortifyPath(ctx, segments, radius, runFades?.[i]);
         }
       }
     }

@@ -1,18 +1,30 @@
 import type { GameState } from '../lib/types';
-import type { Territory } from './mapData';
 import { buildWrappedPathSegments, type Point } from './mapMath';
 import { withPortalEdges } from './portals';
 
 type OwnerById = Map<number, GameState['territories'][number]>;
+
+interface GraphNode extends Point {
+  id: number;
+  neighbors: number[];
+}
 
 export interface RailEdge {
   fromId: number;
   toId: number;
 }
 
+function shippedSeaIds(seas: GameState['seas'], playerId: number): number[] {
+  return seas
+    .filter((sea) =>
+      sea.ships.some((s) => s.playerId === playerId && s.ships > 0),
+    )
+    .map((sea) => sea.id);
+}
+
 function wrappedDistance(
-  a: Territory,
-  b: Territory,
+  a: Point,
+  b: Point,
   mapW: number,
   mapH: number,
 ): number {
@@ -25,7 +37,7 @@ function wrappedDistance(
 
 function territoryClusters(
   ownedIds: number[],
-  territoryById: Map<number, Territory>,
+  territoryById: Map<number, GraphNode>,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
 ): number[][] {
@@ -100,7 +112,7 @@ function largestClusterHubId(
 function supplyHubIds(
   ownedIds: number[],
   ownerById: OwnerById,
-  territoryById: Map<number, Territory>,
+  territoryById: Map<number, GraphNode>,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
 ): number[] {
@@ -119,7 +131,7 @@ function supplyHubIds(
 function primMST(
   nodeIds: number[],
   rootId: number,
-  territoryById: Map<number, Territory>,
+  territoryById: Map<number, GraphNode>,
   adjacency: Map<number, number[]>,
   mapW: number,
   mapH: number,
@@ -167,14 +179,15 @@ function primMST(
 }
 
 export function computeSupplyLineEdges(
-  territories: Territory[],
+  nodes: GraphNode[],
+  seas: GameState['seas'],
   ownerById: OwnerById,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
   mapW: number,
   mapH: number,
 ): Map<number, RailEdge[]> {
-  const territoryById = new Map(territories.map((t) => [t.id, t]));
+  const territoryById = new Map(nodes.map((t) => [t.id, t]));
   const ownedByPlayer = new Map<number, number[]>();
   for (const [id, owner] of ownerById) {
     const list = ownedByPlayer.get(owner.ownerId);
@@ -184,7 +197,10 @@ export function computeSupplyLineEdges(
 
   const result = new Map<number, RailEdge[]>();
   for (const [playerId, ownedIds] of ownedByPlayer) {
-    const ownedSet = new Set(ownedIds);
+    const suppliableSet = new Set([
+      ...ownedIds,
+      ...shippedSeaIds(seas, playerId),
+    ]);
     const hubIds = supplyHubIds(
       ownedIds,
       ownerById,
@@ -207,7 +223,7 @@ export function computeSupplyLineEdges(
           current,
           portalTerritoryIds,
           portalsEnabled,
-        ).filter((n) => ownedSet.has(n));
+        ).filter((n) => suppliableSet.has(n));
         adjacency.set(current, ownedNeighbors);
         for (const n of ownedNeighbors) {
           if (visited.has(n)) continue;
@@ -227,18 +243,22 @@ export function computeSupplyLineEdges(
 }
 
 export function computeSupplyConnectedTerritoryIds(
-  territories: Territory[],
+  nodes: GraphNode[],
+  seas: GameState['seas'],
   ownerById: OwnerById,
   playerId: number,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
 ): Set<number> {
-  const territoryById = new Map(territories.map((t) => [t.id, t]));
+  const territoryById = new Map(nodes.map((t) => [t.id, t]));
   const ownedIds: number[] = [];
   for (const [id, owner] of ownerById) {
     if (owner.ownerId === playerId) ownedIds.push(id);
   }
-  const ownedSet = new Set(ownedIds);
+  const suppliableSet = new Set([
+    ...ownedIds,
+    ...shippedSeaIds(seas, playerId),
+  ]);
   const hubIds = supplyHubIds(
     ownedIds,
     ownerById,
@@ -258,7 +278,7 @@ export function computeSupplyConnectedTerritoryIds(
       portalsEnabled,
     );
     for (const n of neighbors) {
-      if (visited.has(n) || !ownedSet.has(n)) continue;
+      if (visited.has(n) || !suppliableSet.has(n)) continue;
       visited.add(n);
       queue.push(n);
     }
@@ -275,6 +295,9 @@ const SLEEPER_HALF_LENGTH = 4;
 const SLEEPER_HALF_THICKNESS = 0.9;
 const SLEEPER_COLOR = '#7a4a26';
 const SLEEPER_STROKE = '#4a2c16';
+const DOT_COLOR = '#0b2a6b';
+const DOT_WIDTH = 4;
+const DOT_SPACING = 8;
 
 function drawSleeper(
   ctx: CanvasRenderingContext2D,
@@ -363,10 +386,29 @@ function drawRailwaySegment(
   ctx.restore();
 }
 
+function drawDottedSegment(
+  ctx: CanvasRenderingContext2D,
+  a: Point,
+  b: Point,
+  zoom: number,
+) {
+  ctx.save();
+  ctx.strokeStyle = DOT_COLOR;
+  ctx.lineWidth = DOT_WIDTH * zoom;
+  ctx.lineCap = 'round';
+  ctx.setLineDash([0, DOT_SPACING * zoom]);
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function drawSupplyLines(
   ctx: CanvasRenderingContext2D,
   edgesByPlayer: Map<number, RailEdge[]>,
-  territoryById: Map<number, Territory>,
+  territoryById: Map<number, Point>,
+  seaIds: Set<number>,
   toScreen: (p: Point) => Point,
   mapW: number,
   mapH: number,
@@ -377,13 +419,16 @@ export function drawSupplyLines(
       const from = territoryById.get(edge.fromId);
       const to = territoryById.get(edge.toId);
       if (!from || !to) continue;
+      const overSea = seaIds.has(edge.fromId) || seaIds.has(edge.toId);
       const segments = buildWrappedPathSegments(
         [from, to],
         toScreen,
         mapW,
         mapH,
       );
-      for (const { a, b } of segments) drawRailwaySegment(ctx, a, b, zoom);
+      for (const { a, b } of segments)
+        if (overSea) drawDottedSegment(ctx, a, b, zoom);
+        else drawRailwaySegment(ctx, a, b, zoom);
     }
   }
 }

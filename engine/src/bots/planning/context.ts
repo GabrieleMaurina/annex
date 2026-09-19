@@ -4,6 +4,8 @@ import { getGameMap } from '../../maps/maps';
 import { BotPersonality, BotProfile, Game, GameMap } from '../../types';
 import { difficultyParams } from '../difficulty';
 import { defenceDiceFor } from '../features/combat';
+import { shippedSeaIdsOf } from '../features/navy';
+import { buildStanding, playerStrengths, Standing } from '../features/standing';
 import { getWeights } from '../personality/registry';
 import { DifficultyParams, Weights } from '../types';
 import { BotView, getBotView, isVisible } from '../view';
@@ -18,19 +20,28 @@ export interface PlanContext {
   weights: Weights;
   params: DifficultyParams;
   neighbors: Map<number, number[]>;
+  seaLinks: Map<number, number[]>;
+  shippedSeaIds: Set<number>;
   continentTerritories: Map<number, number[]>;
   territoryContinent: Map<number, number>;
   friendlyIds: Set<number>;
   preTurnOpponents: Set<number>;
+  standing: Standing;
 }
 
 function buildTopology(game: Game, map: GameMap): MapTopology {
   const seaIds = new Set(map.seaTerritories.map((t) => t.id));
   const neighbors = new Map<number, number[]>();
+  const seaLinks = new Map<number, number[]>();
   const continentTerritories = new Map<number, number[]>();
   const territoryContinent = new Map<number, number>();
 
+  for (const sea of map.seaTerritories) seaLinks.set(sea.id, sea.neighbors);
   for (const territory of map.territories) {
+    seaLinks.set(
+      territory.id,
+      territory.neighbors.filter((n) => seaIds.has(n)),
+    );
     neighbors.set(
       territory.id,
       withPortalEdges(
@@ -46,7 +57,7 @@ function buildTopology(game: Game, map: GameMap): MapTopology {
     else continentTerritories.set(territory.continentId, [territory.id]);
   }
 
-  return { neighbors, continentTerritories, territoryContinent };
+  return { neighbors, seaLinks, continentTerritories, territoryContinent };
 }
 
 export function buildContext(
@@ -93,10 +104,20 @@ export function buildContext(
     weights: getWeights(botProfile.personality),
     params: difficultyParams(botProfile.difficulty),
     neighbors: topology.neighbors,
+    seaLinks: topology.seaLinks,
+    shippedSeaIds: shippedSeaIdsOf(game, botId),
     continentTerritories: topology.continentTerritories,
     territoryContinent: topology.territoryContinent,
     friendlyIds,
     preTurnOpponents,
+    standing: buildStanding(
+      game,
+      view,
+      botId,
+      friendlyIds,
+      topology.continentTerritories,
+      map.bonuses,
+    ),
   };
 }
 
@@ -128,6 +149,7 @@ export interface SimState {
   owners: Map<number, number>;
   troops: Map<number, number>;
   damageByPlayer: Map<number, number>;
+  conquestsByPlayer: Map<number, number>;
   conquered: boolean;
   troopsLost: number;
 }
@@ -145,6 +167,7 @@ export function snapshotState(ctx: PlanContext): SimState {
     owners,
     troops,
     damageByPlayer: new Map(),
+    conquestsByPlayer: new Map(),
     conquered: false,
     troopsLost: 0,
   };
@@ -155,6 +178,7 @@ export function cloneState(state: SimState): SimState {
     owners: new Map(state.owners),
     troops: new Map(state.troops),
     damageByPlayer: new Map(state.damageByPlayer),
+    conquestsByPlayer: new Map(state.conquestsByPlayer),
     conquered: state.conquered,
     troopsLost: state.troopsLost,
   };
@@ -274,44 +298,18 @@ export function opponentIds(ctx: PlanContext, state: SimState): number[] {
   return [...ids];
 }
 
-function continentBonusByOwner(
-  ctx: PlanContext,
-  state: SimState,
-): Map<number, number> {
-  const bonusByPlayer = new Map<number, number>();
-  for (const [continentId, territoryIds] of ctx.continentTerritories) {
-    const first = state.owners.get(territoryIds[0]);
-    if (first === undefined) continue;
-    if (territoryIds.every((id) => state.owners.get(id) === first))
-      bonusByPlayer.set(
-        first,
-        (bonusByPlayer.get(first) ?? 0) + bonusOf(ctx, continentId),
-      );
-  }
-  return bonusByPlayer;
-}
-
 function strengthsByPlayer(
   ctx: PlanContext,
   state: SimState,
   playerIds: number[],
 ): Map<number, number> {
-  const territories = new Map<number, number>();
-  const troops = new Map<number, number>();
-  for (const [id, ownerId] of state.owners) {
-    territories.set(ownerId, (territories.get(ownerId) ?? 0) + 1);
-    troops.set(ownerId, (troops.get(ownerId) ?? 0) + troopsIn(state, id));
-  }
-  const continentBonus = continentBonusByOwner(ctx, state);
-  const strengths = new Map<number, number>();
-  for (const playerId of playerIds)
-    strengths.set(
-      playerId,
-      (territories.get(playerId) ?? 0) +
-        3 * (continentBonus.get(playerId) ?? 0) +
-        0.5 * (troops.get(playerId) ?? 0),
-    );
-  return strengths;
+  const all = playerStrengths(
+    state.owners,
+    state.troops,
+    ctx.continentTerritories,
+    ctx.map.bonuses,
+  );
+  return new Map(playerIds.map((id) => [id, all.get(id) ?? 0]));
 }
 
 export function strongestOpponent(

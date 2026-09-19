@@ -368,7 +368,7 @@ test('antiLeader: hit the runaway leader we border', () => {
     },
     players: [1, 2, 3],
     owners,
-    troops: { 3: 20, 4: 5, 6: 5, 8: 5, 10: 5 },
+    troops: { 3: 20, 4: 5, 6: 25, 8: 25, 10: 25 },
   };
   expectKind(spec, 'antiLeader');
   expectTargetsPlayer(spec, 2);

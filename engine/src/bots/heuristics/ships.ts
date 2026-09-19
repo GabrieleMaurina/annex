@@ -6,9 +6,12 @@ import { isTeammate } from '../features/mode';
 import {
   landingViable,
   navalOpportunities,
+  scoutSite,
   seaThreats,
+  supplyBridgeSite,
+  supplyCarryingSeaIds,
 } from '../features/navy';
-import { minWinProbability } from '../features/pressure';
+import { frustrationLevel, minWinProbability } from '../features/pressure';
 import { BotView } from '../view';
 
 export interface ShipPurchase {
@@ -16,6 +19,16 @@ export interface ShipPurchase {
   seaTerritoryId: number;
   ships: number;
   fromPool: boolean;
+}
+
+export function chooseSupplyBridge(
+  game: Game,
+  botId: number,
+  troopsToDeploy: number,
+): ShipPurchase | null {
+  if (troopsToDeploy < SHIP_COST + 1) return null;
+  const site = supplyBridgeSite(game, botId);
+  return site ? { ...site, ships: 1, fromPool: true } : null;
 }
 
 export function chooseShipPurchase(
@@ -39,6 +52,7 @@ export function chooseShipPurchase(
       };
   }
 
+  const frustrated = Math.random() < frustrationLevel(game);
   const best = navalOpportunities(game, view, botId)
     .map((o) => ({
       ...o,
@@ -50,16 +64,22 @@ export function chooseShipPurchase(
         (o.fromPool ? sourceTroops : sourceTroops - o.shipsNeeded * SHIP_COST) -
         1;
       return (
-        attackWinProbability(
-          game,
-          attackers,
-          o.targetTroops,
-          defenceDiceFor(game, o.targetId),
-        ) >= minWinProbability(game)
+        attackers >= 1 &&
+        (frustrated ||
+          attackWinProbability(
+            game,
+            attackers,
+            o.targetTroops,
+            defenceDiceFor(game, o.targetId),
+          ) >= minWinProbability(game))
       );
     })
     .sort((a, b) => a.shipsNeeded - b.shipsNeeded)[0];
-  if (!best) return null;
+  if (!best) {
+    const scout = scoutSite(game, view, botId);
+    if (!scout || troopsToDeploy < SHIP_COST) return null;
+    return { ...scout, ships: 1, fromPool: true };
+  }
   return {
     sourceTerritoryId: best.sourceTerritoryId,
     seaTerritoryId: best.seaTerritoryId,
@@ -80,9 +100,11 @@ export function chooseSail(
   botId: number,
 ): SailChoice | null {
   const stacks: { seaTerritoryId: number; ships: number }[] = [];
+  const carryingSupply = supplyCarryingSeaIds(game, botId);
   for (const [seaTerritoryId, shipsByPlayer] of game.seaShips) {
     const ships = shipsByPlayer.get(botId) ?? 0;
-    if (ships > 0) stacks.push({ seaTerritoryId, ships });
+    if (ships > 0 && !carryingSupply.has(seaTerritoryId))
+      stacks.push({ seaTerritoryId, ships });
   }
   if (stacks.length === 0) return null;
 

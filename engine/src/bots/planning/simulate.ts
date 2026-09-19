@@ -2,7 +2,7 @@ import {
   MAX_TERRITORY_TROOPS,
   supplyHubTerritoryIds,
 } from '../../game/mechanics';
-import { connectedOwnedTerritories } from '../../game/world/connectivity';
+import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { expectedOutcome } from '../features/combat';
 import { evaluateBoard } from './board';
 import {
@@ -13,7 +13,6 @@ import {
   isBotBorder,
   isFriendly,
   neighborsOf,
-  ownedClusters,
   ownedIds,
   snapshotState,
   strongestThreatAt,
@@ -119,11 +118,16 @@ export function walkStack(
     objectiveProb *= outcome.winProbability;
 
     const defenderId = state.owners.get(next);
-    if (defenderId !== undefined)
+    if (defenderId !== undefined) {
       state.damageByPlayer.set(
         defenderId,
         (state.damageByPlayer.get(defenderId) ?? 0) + defenders,
       );
+      state.conquestsByPlayer.set(
+        defenderId,
+        (state.conquestsByPlayer.get(defenderId) ?? 0) + 1,
+      );
+    }
     state.troopsLost += Math.max(0, attackers - outcome.attackerSurvivorsMean);
 
     const survivors = Math.max(1, Math.round(outcome.attackerSurvivorsMean));
@@ -151,9 +155,22 @@ function reachableOwned(
     return new Set(
       neighborsOf(ctx, fromId).filter((n) => state.owners.get(n) === ctx.botId),
     );
-  for (const cluster of ownedClusters(ctx, state))
-    if (cluster.includes(fromId)) return new Set(cluster);
-  return new Set([fromId]);
+  const reached = new Set<number>([fromId]);
+  const queue = [fromId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const n of [
+      ...neighborsOf(ctx, current),
+      ...(ctx.seaLinks.get(current) ?? []),
+    ]) {
+      if (reached.has(n)) continue;
+      if (state.owners.get(n) !== ctx.botId && !ctx.shippedSeaIds.has(n))
+        continue;
+      reached.add(n);
+      queue.push(n);
+    }
+  }
+  return reached;
 }
 
 function stepToward(
@@ -330,7 +347,7 @@ export function supplyConnected(
   territoryId: number,
 ): boolean {
   if (ctx.game.supplyLines !== 'on') return true;
-  return connectedOwnedTerritories(
+  return connectedFortifyTerritories(
     ctx.game,
     ctx.botId,
     supplyHubTerritoryIds(ctx.game, ctx.botId),
@@ -342,12 +359,12 @@ export function pickStaging(
   state: SimState,
   mustVisit: Set<number>,
 ): number | null {
-  const owned = ownedIds(state, ctx.botId).filter(
+  const border = ownedIds(state, ctx.botId).filter(
     (id) =>
-      troopsIn(state, id) >= 2 &&
-      hostileNeighborsOf(ctx, state, id).length > 0 &&
-      supplyConnected(ctx, id),
+      hostileNeighborsOf(ctx, state, id).length > 0 && supplyConnected(ctx, id),
   );
+  const stacked = border.filter((id) => troopsIn(state, id) >= 2);
+  const owned = stacked.length > 0 ? stacked : border;
   if (owned.length === 0) return null;
   const adjacent = owned.filter((id) =>
     neighborsOf(ctx, id).some((n) => mustVisit.has(n)),

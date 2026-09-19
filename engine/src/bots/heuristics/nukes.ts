@@ -5,6 +5,7 @@ import {
   playerProjects,
 } from '../../game/nukes/nukes';
 import { BotPersonality, Game } from '../../types';
+import { assassinKillShot, threatTile } from '../features/modeGoals';
 import type { PlanContext } from '../planning/context';
 import { isVisible } from '../view';
 
@@ -115,10 +116,16 @@ export function chooseNukeLaunch(
   }
   if (enemyTiles.length === 0) return null;
 
+  const assassination = assassinKillShot(ctx);
+  if (assassination !== null) return { territoryId: assassination };
+
   const killShots = enemyTiles
     .filter((tile) => (counts.get(tile.owner) ?? 0) === 1)
     .sort((a, b) => b.troops - a.troops);
   if (killShots.length > 0) return { territoryId: killShots[0].id };
+
+  const denial = threatTile(ctx);
+  if (denial !== null) return { territoryId: denial };
 
   if (game.gameMode === 'Capitals') {
     const capitals = enemyTiles

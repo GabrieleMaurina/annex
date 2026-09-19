@@ -3,7 +3,7 @@ import { Game } from '../types';
 import { isInteger } from '../util/validate';
 import { recordReplayFrame } from './replay';
 import {
-  connectedOwnedTerritories,
+  connectedFortifyTerritories,
   ownedTerritoryClusters,
 } from './world/connectivity';
 
@@ -259,7 +259,7 @@ export function depositTroopsOnOwnedTerritory(
     return { error: 'territory troop cap exceeded' };
   if (
     game.supplyLines === 'on' &&
-    !connectedOwnedTerritories(
+    !connectedFortifyTerritories(
       game,
       playerId,
       supplyHubTerritoryIds(game, playerId),

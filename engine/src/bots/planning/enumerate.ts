@@ -34,6 +34,10 @@ const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
   holdChokepoint: (w) => w.holdChokepoint,
   card: () => 0.4,
   defensive: (w) => w.defense * 0.4,
+  prey: (w) => w.stack * 0.3,
+  capture: () => 2,
+  expand: () => 1,
+  deny: () => 2,
 };
 
 function personalityBonus(ctx: PlanContext, objectives: Objective[]): number {
@@ -74,6 +78,7 @@ function materialize(
     playerId: ctx.botId,
     topology: {
       neighbors: ctx.neighbors,
+      seaLinks: ctx.seaLinks,
       continentTerritories: ctx.continentTerritories,
       territoryContinent: ctx.territoryContinent,
     },

@@ -653,6 +653,8 @@ function GameMap({
     useSupplyLineOverlay({
       supplyLines,
       territories,
+      seaTerritories,
+      seas: displayedSeas,
       ownerById,
       portalTerritoryIds,
       portalsEnabled,

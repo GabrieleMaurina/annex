@@ -2,8 +2,12 @@ import {
   continentBreakCandidates,
   continentCompletionCandidates,
 } from '../features/continents';
+import { modeGoalFor } from '../features/modeGoals';
 import { navalOpportunities, seaBridgeTargets } from '../features/navy';
 import { stalematePressure } from '../features/pressure';
+import { antiLeaderActive } from '../features/standing';
+import { modeCandidates } from '../goals/modeObjectives';
+import { preyCandidates } from '../goals/preyObjectives';
 import { killerWeaknessThreshold } from '../personality/killer';
 import {
   PlanContext,
@@ -34,6 +38,7 @@ import { Objective } from './turnPlan';
 
 const DEFAULT_WEAKNESS_THRESHOLD = 0.15;
 const MAX_ELIMINATE_TARGETS = 2;
+const PASSIVE_RELEASE_PRESSURE = 0.6;
 export const MAX_ELIMINATE_MUST_VISIT = 12;
 
 function objective(
@@ -87,18 +92,36 @@ function breakCandidates(
   );
 }
 
+function eliminationTargets(
+  ctx: PlanContext,
+  state: SimState,
+  ids: number[],
+): number[] {
+  if (ids.length <= MAX_ELIMINATE_MUST_VISIT) return ids;
+  const touchesBot = (id: number) =>
+    neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId);
+  return [...ids]
+    .sort(
+      (a, b) =>
+        Number(!touchesBot(a)) - Number(!touchesBot(b)) ||
+        troopsIn(state, a) - troopsIn(state, b),
+    )
+    .slice(0, MAX_ELIMINATE_MUST_VISIT);
+}
+
 function eliminateCandidates(
   ctx: PlanContext,
   state: SimState,
   budget: number,
 ): Candidate[] {
   const totalTerritories = state.owners.size || 1;
-  const threshold =
-    ctx.game.gameMode === 'Assassin'
-      ? 1
-      : ctx.personality === 'killer'
-        ? killerWeaknessThreshold
-        : DEFAULT_WEAKNESS_THRESHOLD;
+  const threshold = Math.max(
+    ctx.personality === 'killer'
+      ? killerWeaknessThreshold
+      : DEFAULT_WEAKNESS_THRESHOLD,
+    modeGoalFor(ctx).eliminateThreshold,
+    stalematePressure(ctx.game),
+  );
   const byPlayer = new Map<number, number[]>();
   for (const [id, ownerId] of state.owners) {
     if (isFriendly(ctx, ownerId)) continue;
@@ -107,11 +130,7 @@ function eliminateCandidates(
     else byPlayer.set(ownerId, [id]);
   }
   return [...byPlayer.entries()]
-    .filter(
-      ([, ids]) =>
-        ids.length <= MAX_ELIMINATE_MUST_VISIT &&
-        ids.length / totalTerritories <= threshold,
-    )
+    .filter(([, ids]) => ids.length / totalTerritories <= threshold)
     .sort((a, b) => a[1].length - b[1].length)
     .slice(0, MAX_ELIMINATE_TARGETS)
     .flatMap(([playerId, ids]) =>
@@ -121,7 +140,7 @@ function eliminateCandidates(
         objective({
           kind: 'eliminate',
           targetPlayerId: playerId,
-          mustVisit: ids,
+          mustVisit: eliminationTargets(ctx, state, ids),
         }),
         budget,
       ),
@@ -276,6 +295,11 @@ function holdChokepointCandidates(
   state: SimState,
   budget: number,
 ): Candidate[] {
+  if (
+    stalematePressure(ctx.game) >= PASSIVE_RELEASE_PRESSURE &&
+    siegeStaging(ctx, state) !== null
+  )
+    return [];
   const chokes = ownedChokepoints(ctx, state).filter((id) =>
     supplyConnected(ctx, id),
   );
@@ -363,6 +387,7 @@ function antiLeaderCandidates(
   state: SimState,
   budget: number,
 ): Candidate[] {
+  if (!antiLeaderActive(ctx.standing)) return [];
   const ranked = rankedOpponents(ctx, state);
   if (ranked.length === 0) return [];
   const leader = ranked[0];
@@ -449,6 +474,8 @@ export function gatherCandidates(
     ...spoilContinentCandidates(ctx, state, budget),
     ...neutralizeThreatCandidates(ctx, state, budget),
     ...antiLeaderCandidates(ctx, state, budget),
+    ...preyCandidates(ctx, state, budget),
+    ...modeCandidates(ctx, state, budget),
     ...mergeCandidates(ctx, state, budget),
     ...shrinkBorderCandidates(ctx, state, budget),
     ...holdChokepointCandidates(ctx, state, budget),

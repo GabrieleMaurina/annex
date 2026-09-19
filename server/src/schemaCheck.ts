@@ -1,5 +1,7 @@
 import { Binary, Document, FindCursor, ObjectId } from 'mongodb';
 import { connectDb } from './db';
+import { replaceGamesMapId } from './db/games';
+import { REPLAY_MAPS, replayMapId } from './db/maps/replayMaps';
 import { getCollection, getDb } from './db/mongo';
 
 type Node = Record<string, unknown>;
@@ -188,6 +190,49 @@ function forEachDoc(
   });
 }
 
+function replayContentId(doc: Document): string {
+  const image: unknown = doc.image;
+  return replayMapId(
+    {
+      territories: doc.territories,
+      seaTerritories: doc.seaTerritories,
+      bonuses: doc.bonuses,
+      wraps: doc.wraps,
+      imageMime: doc.imageMime,
+    },
+    image instanceof Binary
+      ? image.buffer.subarray(0, image.position)
+      : new Uint8Array(0),
+  );
+}
+
+function saveReplayMap(
+  doc: Document,
+  fixed: Document,
+  changes: string[],
+): Promise<unknown> {
+  const coll = getCollection<{ _id: string } & Document>(REPLAY_MAPS);
+  const oldId: string = doc._id;
+  const newId = replayContentId(fixed);
+  if (newId === oldId)
+    return coll.replaceOne({ _id: doc._id }, fixed, {
+      bypassDocumentValidation: true,
+    });
+  const rest = { ...fixed };
+  delete rest._id;
+  return coll
+    .updateOne(
+      { _id: newId },
+      { $setOnInsert: rest },
+      { upsert: true, bypassDocumentValidation: true },
+    )
+    .then(() => replaceGamesMapId(oldId, newId))
+    .then((repointed) => {
+      changes.push(`_id ${oldId} -> ${newId}, ${repointed} games repointed`);
+      return coll.deleteOne({ _id: doc._id });
+    });
+}
+
 function checkCollection(name: string, schema: Document): Promise<void> {
   const coll = getCollection<Document>(name);
   const counts = { fixed: 0, skipped: 0 };
@@ -196,19 +241,23 @@ function checkCollection(name: string, schema: Document): Promise<void> {
     const changes: string[] = [];
     const fixed = reconcile(doc, schema, '', changes) as Document;
     const label = `[schemaCheck] ${name} ${String(doc._id)}`;
-    return coll
-      .replaceOne({ _id: doc._id }, fixed, { bypassDocumentValidation: true })
-      .then(
-        () => {
-          counts.fixed += 1;
-          if (changes.length) console.log(`${label}: ${changes.join('; ')}`);
-        },
-        (error: Error) => {
-          counts.skipped += 1;
-          if (changes.length) console.log(`${label}: ${changes.join('; ')}`);
-          console.error(`${label} not saved: ${error.message}`);
-        },
-      );
+    const saved =
+      name === REPLAY_MAPS
+        ? saveReplayMap(doc, fixed, changes)
+        : coll.replaceOne({ _id: doc._id }, fixed, {
+            bypassDocumentValidation: true,
+          });
+    return saved.then(
+      () => {
+        counts.fixed += 1;
+        if (changes.length) console.log(`${label}: ${changes.join('; ')}`);
+      },
+      (error: Error) => {
+        counts.skipped += 1;
+        if (changes.length) console.log(`${label}: ${changes.join('; ')}`);
+        console.error(`${label} not saved: ${error.message}`);
+      },
+    );
   }).then(() => {
     if (counts.fixed || counts.skipped)
       console.log(

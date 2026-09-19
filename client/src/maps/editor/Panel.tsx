@@ -3,12 +3,15 @@ import { useRef, useState } from 'react';
 import { Alert, Button, ButtonGroup, Form, Table } from 'react-bootstrap';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useDragNumber } from '../../common/useDragNumber';
-import type { EditorTerritory as Territory } from './model/editorTypes';
+import {
+  NO_CONTINENT,
+  type EditorTerritory as Territory,
+} from './model/editorTypes';
 import type { PaintTool } from './paint/paintTools';
 import { PALETTE_GROUPS } from './paint/paintTools';
 import { continentColor } from './palette';
 
-const MIN_CONTINENTS = 1;
+const MIN_CONTINENTS = 0;
 const MAX_CONTINENTS = 20;
 const MIN_BONUS = 2;
 const MAX_BONUS = 15;
@@ -222,7 +225,8 @@ function Panel(props: Props) {
 
   function deleteContinent(index: number) {
     if (continentCount <= MIN_CONTINENTS) return;
-    const target = index > 0 ? index - 1 : index + 1;
+    const target =
+      continentCount === 1 ? NO_CONTINENT : index > 0 ? index - 1 : index + 1;
     setTerritories((prev) =>
       prev.map((t) => {
         if (t.isSea) return t;

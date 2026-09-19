@@ -8,6 +8,7 @@ export interface LoadedPlayerMap {
   territories: GameMap['territories'];
   seaTerritories: GameMap['seaTerritories'];
   bonuses: number[];
+  wraps: GameMap['wraps'];
   imageSrc: string;
 }
 
@@ -22,6 +23,7 @@ export function loadPlayerMap(id: string): Promise<LoadedPlayerMap> {
           territories: map.territories,
           seaTerritories: map.seaTerritories,
           bonuses: map.bonuses,
+          wraps: map.wraps,
           imageSrc: map.image,
         }
       : Promise.reject(new Error('map unavailable')),

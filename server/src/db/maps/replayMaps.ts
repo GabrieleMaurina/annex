@@ -1,7 +1,10 @@
+import { createHash } from 'crypto';
 import { Binary } from 'mongodb';
+import { MapGeneration } from '../../validate';
 import { ensureCollection, getCollection } from '../mongo';
+import { MAP_PROPERTIES, MAP_REQUIRED } from './mapSchema';
 
-const NAME = 'replay_maps';
+export const REPLAY_MAPS = 'replay_maps';
 
 export interface MapDoc {
   _id: string;
@@ -15,12 +18,8 @@ export interface MapDoc {
   }[];
   seaTerritories: { id: number; x: number; y: number; neighbors: number[] }[];
   bonuses: number[];
-  generation: {
-    seed: string;
-    size: string;
-    type: string;
-    fill: string;
-  } | null;
+  wraps: { a: number; b: number; x: boolean; y: boolean }[];
+  generation: MapGeneration | null;
   image: Binary;
   imageMime: string;
 }
@@ -29,63 +28,11 @@ const schema = {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: [
-        '_id',
-        'name',
-        'territories',
-        'seaTerritories',
-        'bonuses',
-        'generation',
-        'image',
-        'imageMime',
-      ],
+      required: ['_id', ...MAP_REQUIRED],
       additionalProperties: false,
       properties: {
         _id: { bsonType: 'string' },
-        name: { bsonType: 'string' },
-        territories: {
-          bsonType: 'array',
-          items: {
-            bsonType: 'object',
-            required: ['id', 'continentId', 'x', 'y', 'neighbors'],
-            additionalProperties: false,
-            properties: {
-              id: { bsonType: 'number' },
-              continentId: { bsonType: 'number' },
-              x: { bsonType: 'number' },
-              y: { bsonType: 'number' },
-              neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
-            },
-          },
-        },
-        seaTerritories: {
-          bsonType: 'array',
-          items: {
-            bsonType: 'object',
-            required: ['id', 'x', 'y', 'neighbors'],
-            additionalProperties: false,
-            properties: {
-              id: { bsonType: 'number' },
-              x: { bsonType: 'number' },
-              y: { bsonType: 'number' },
-              neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
-            },
-          },
-        },
-        bonuses: { bsonType: 'array', items: { bsonType: 'number' } },
-        generation: {
-          bsonType: ['object', 'null'],
-          required: ['seed', 'size', 'type', 'fill'],
-          additionalProperties: false,
-          properties: {
-            seed: { bsonType: 'string' },
-            size: { enum: ['small', 'medium', 'large', 'xlarge'] },
-            type: { enum: ['terrain', 'dungeon', 'temple'] },
-            fill: { enum: ['full', 'mixed', 'sparse'] },
-          },
-        },
-        image: { bsonType: 'binData' },
-        imageMime: { bsonType: 'string' },
+        ...MAP_PROPERTIES,
       },
     },
   },
@@ -93,12 +40,33 @@ const schema = {
   validationAction: 'error',
 };
 
+export function replayMapId(
+  map: Pick<
+    MapDoc,
+    'territories' | 'seaTerritories' | 'bonuses' | 'wraps' | 'imageMime'
+  >,
+  imageBytes: Uint8Array,
+): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        territories: map.territories,
+        seaTerritories: map.seaTerritories,
+        bonuses: map.bonuses,
+        wraps: map.wraps,
+        imageMime: map.imageMime,
+      }),
+    )
+    .update(imageBytes)
+    .digest('hex');
+}
+
 function collection() {
-  return getCollection<MapDoc>(NAME);
+  return getCollection<MapDoc>(REPLAY_MAPS);
 }
 
 export function ensureReplayMaps(): Promise<unknown> {
-  return ensureCollection(NAME, schema).then(() =>
+  return ensureCollection(REPLAY_MAPS, schema).then(() =>
     collection().createIndex({ name: 1 }),
   );
 }
@@ -115,6 +83,7 @@ export interface StoredMap {
   territories: MapDoc['territories'];
   seaTerritories: MapDoc['seaTerritories'];
   bonuses: number[];
+  wraps: MapDoc['wraps'];
   image: string;
   imageMime: string;
 }
@@ -144,6 +113,7 @@ export function getMapById(id: string): Promise<StoredMap | null> {
             territories: doc.territories,
             seaTerritories: doc.seaTerritories ?? [],
             bonuses: doc.bonuses,
+            wraps: doc.wraps,
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
           }

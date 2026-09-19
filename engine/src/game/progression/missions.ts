@@ -28,6 +28,7 @@ export function cyclicTargets(playerIds: number[]): Map<number, number> {
 export function generateContinentCombos(map: GameMap): number[][] {
   const territoryCountByContinent = new Map<number, number>();
   for (const territory of map.territories) {
+    if (territory.continentId < 0) continue;
     territoryCountByContinent.set(
       territory.continentId,
       (territoryCountByContinent.get(territory.continentId) ?? 0) + 1,

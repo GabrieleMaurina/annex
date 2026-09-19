@@ -175,57 +175,84 @@ export interface WrappedSegment {
 
 const WRAP_THRESHOLD_FRACTION = 0.8;
 
-function wrapSplitX(
+export interface WrapAxes {
+  x: boolean;
+  y: boolean;
+}
+
+export type ForcedWraps = Map<string, WrapAxes>;
+
+function pairKey(a: Point, b: Point): string {
+  return `${a.x},${a.y}|${b.x},${b.y}`;
+}
+
+export function buildForcedWraps(
+  nodes: (Point & { id: number })[],
+  wraps: { a: number; b: number; x: boolean; y: boolean }[],
+): ForcedWraps {
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
+  const forced: ForcedWraps = new Map();
+  for (const { a, b, x, y } of wraps) {
+    const from = nodeById.get(a);
+    const to = nodeById.get(b);
+    if (!from || !to) continue;
+    forced.set(pairKey(from, to), { x, y });
+    forced.set(pairKey(to, from), { x, y });
+  }
+  return forced;
+}
+
+function wrapShift(delta: number, size: number, forced: boolean): number {
+  return forced || Math.abs(delta) > size * WRAP_THRESHOLD_FRACTION
+    ? (Math.sign(delta) || 1) * size
+    : 0;
+}
+
+function boundaryCrossings(from: number, to: number, size: number): number[] {
+  const crossings: number[] = [];
+  const first = Math.floor(Math.min(from, to) / size) + 1;
+  const last = Math.ceil(Math.max(from, to) / size) - 1;
+  for (let k = first; k <= last; k++)
+    crossings.push((k * size - from) / (to - from));
+  return crossings;
+}
+
+export function wrapEdgeSegments(
   a: Point,
   b: Point,
   mapW: number,
-  t0: number,
-  t1: number,
-): WrappedSegment[] {
-  const d = b.x - a.x;
-  if (Math.abs(d) <= mapW * WRAP_THRESHOLD_FRACTION) return [{ a, b, t0, t1 }];
-  const sign = Math.sign(d);
-  const bx = b.x - sign * mapW;
-  const boundary = sign < 0 ? mapW : 0;
-  const t = (boundary - a.x) / (bx - a.x);
-  const y = a.y + t * (b.y - a.y);
-  const tMid = t0 + t * (t1 - t0);
-  return [
-    { a, b: { x: boundary, y }, t0, t1: tMid },
-    { a: { x: mapW - boundary, y }, b, t0: tMid, t1 },
-  ];
-}
-
-function wrapSplitY(
-  a: Point,
-  b: Point,
   mapH: number,
-  t0: number,
-  t1: number,
+  forced?: WrapAxes,
 ): WrappedSegment[] {
-  const d = b.y - a.y;
-  if (Math.abs(d) <= mapH * WRAP_THRESHOLD_FRACTION) return [{ a, b, t0, t1 }];
-  const sign = Math.sign(d);
-  const by = b.y - sign * mapH;
-  const boundary = sign < 0 ? mapH : 0;
-  const t = (boundary - a.y) / (by - a.y);
-  const x = a.x + t * (b.x - a.x);
-  const tMid = t0 + t * (t1 - t0);
-  return [
-    { a, b: { x, y: boundary }, t0, t1: tMid },
-    { a: { x, y: mapH - boundary }, b, t0: tMid, t1 },
-  ];
-}
+  const shiftX = wrapShift(b.x - a.x, mapW, forced?.x ?? false);
+  const shiftY = wrapShift(b.y - a.y, mapH, forced?.y ?? false);
+  if (shiftX === 0 && shiftY === 0) return [{ a, b, t0: 0, t1: 1 }];
 
-function wrapEdgeSegments(
-  a: Point,
-  b: Point,
-  mapW: number,
-  mapH: number,
-): WrappedSegment[] {
+  const end = { x: b.x - shiftX, y: b.y - shiftY };
+  const cuts = [
+    0,
+    ...boundaryCrossings(a.x, end.x, mapW),
+    ...boundaryCrossings(a.y, end.y, mapH),
+    1,
+  ].sort((p, q) => p - q);
+  const at = (t: number): Point => ({
+    x: a.x + t * (end.x - a.x),
+    y: a.y + t * (end.y - a.y),
+  });
+
   const segments: WrappedSegment[] = [];
-  for (const seg of wrapSplitX(a, b, mapW, 0, 1)) {
-    segments.push(...wrapSplitY(seg.a, seg.b, mapH, seg.t0, seg.t1));
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const t0 = cuts[i];
+    const t1 = cuts[i + 1];
+    if (t1 === t0) continue;
+    const mid = at((t0 + t1) / 2);
+    const cellX = shiftX === 0 ? 0 : Math.floor(mid.x / mapW);
+    const cellY = shiftY === 0 ? 0 : Math.floor(mid.y / mapH);
+    const fold = (p: Point): Point => ({
+      x: p.x - cellX * mapW,
+      y: p.y - cellY * mapH,
+    });
+    segments.push({ a: fold(at(t0)), b: fold(at(t1)), t0, t1 });
   }
   return segments;
 }
@@ -563,10 +590,18 @@ export function buildWrappedPathSegments(
   toScreen: (p: Point) => Point,
   mapW: number,
   mapH: number,
+  forcedWraps?: ForcedWraps,
 ): WrappedSegment[] {
   const segments: WrappedSegment[] = [];
   for (let i = 0; i < path.length - 1; i++) {
-    for (const seg of wrapEdgeSegments(path[i], path[i + 1], mapW, mapH)) {
+    const forced = forcedWraps?.get(pairKey(path[i], path[i + 1]));
+    for (const seg of wrapEdgeSegments(
+      path[i],
+      path[i + 1],
+      mapW,
+      mapH,
+      forced,
+    )) {
       segments.push({
         a: toScreen(seg.a),
         b: toScreen(seg.b),

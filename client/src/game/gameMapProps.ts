@@ -1,5 +1,5 @@
 import type { GameState } from '../lib/types';
-import type { GameMapProps } from './GameMap';
+import type { GameMapProps } from './GameMap/props';
 
 type DerivedKeys =
   | 'game'

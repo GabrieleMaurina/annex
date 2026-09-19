@@ -8,33 +8,35 @@ import {
   useRef,
   useState,
 } from 'react';
-import { contrastTextColor } from '../../lib/palette';
+import type { WrapAxes } from '../../game/mapMath';
+import {
+  hitVertex,
+  NO_WRAP,
+  segmentWouldCross,
+  wrapAxesOf,
+} from './canvas/canvasGeometry';
+import { drawGraph } from './canvas/drawGraph';
 import { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from './defaultImage';
 import {
-  edgeKey,
-  pointToSegmentDistance,
-  segmentsProperlyIntersect,
   touchDistance,
   touchMidpoint,
   wrapEdgeSegments,
   type Point,
 } from './mapCanvasGeometry';
 import {
-  borderScale,
   clamp,
-  clampPan,
   createSettleSampler,
   easeOutCubic,
-  MAX_ZOOM,
-  MIN_ZOOM,
   screenOffset,
+  zoomTransform,
 } from './mapViewport';
 import {
+  nextInContinentCycle,
   SEA_BRUSH,
   type EditorTerritory as Territory,
+  type WrapMark,
 } from './model/editorTypes';
 import { drawFreehand, paintContext, type Rect } from './paint/paintTools';
-import { continentColor, SEA_MARKER_COLOR } from './palette';
 
 interface Props {
   territories: Territory[];
@@ -80,10 +82,6 @@ type DragState =
     }
   | null;
 
-const VERTEX_DIAMETERS_PER_LONGEST_SIDE = 50;
-const SEA_SIZE_MULTIPLIER = 1.5;
-const HIT_TOLERANCE = 6;
-const HIT_RADIUS_MULTIPLIER = 2;
 const DRAG_THRESHOLD = 4;
 const SETTLE_DURATION = 200;
 const DOUBLE_TAP_MS = 300;
@@ -93,30 +91,8 @@ const SYNTHETIC_MOUSE_WINDOW_MS = 500;
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_REPEAT_MS = 2000;
 
-function nextInContinentCycle(current: number, continentCount: number): number {
-  if (current === SEA_BRUSH) return 0;
-  if (current + 1 >= continentCount) return SEA_BRUSH;
-  return current + 1;
-}
-
 export interface MapCanvasHandle {
   zoomAt: (clientX: number, clientY: number, deltaY: number) => void;
-}
-
-function hexagonPath(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  r: number,
-): void {
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 3) * i - Math.PI / 2;
-    const x = cx + r * Math.cos(angle);
-    const y = cy + r * Math.sin(angle);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
 }
 
 const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
@@ -144,6 +120,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   ref,
 ) {
   void paintVersion;
+  const brushContinentId = Math.min(currentContinentId, continentCount - 1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<DragState>(null);
@@ -176,6 +153,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   const [hoveredVertexId, setHoveredVertexId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [mouseWorldPos, setMouseWorldPos] = useState<Point | null>(null);
+  const [forceWrap, setForceWrap] = useState<WrapAxes>(NO_WRAP);
   const [rejectedEdge, setRejectedEdge] = useState<[Point, Point][] | null>(
     null,
   );
@@ -204,10 +182,6 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     return img
       ? { w: img.naturalWidth, h: img.naturalHeight }
       : { w: DEFAULT_IMAGE_WIDTH, h: DEFAULT_IMAGE_HEIGHT };
-  }
-
-  function getVertexRadius(imgW: number, imgH: number): number {
-    return Math.max(imgW, imgH) / (VERTEX_DIAMETERS_PER_LONGEST_SIDE * 2);
   }
 
   function getScales(canvasW: number, canvasH: number, zoom: number) {
@@ -344,6 +318,25 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     return () => document.removeEventListener('fullscreenchange', resetView);
   }, [resetView]);
 
+  const syncForceWrap = useCallback(
+    (e: { ctrlKey: boolean; shiftKey: boolean }) => {
+      const next = wrapAxesOf(e);
+      setForceWrap((prev) =>
+        prev.x === next.x && prev.y === next.y ? prev : next,
+      );
+    },
+    [],
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', syncForceWrap);
+    window.addEventListener('keyup', syncForceWrap);
+    return () => {
+      window.removeEventListener('keydown', syncForceWrap);
+      window.removeEventListener('keyup', syncForceWrap);
+    };
+  }, [syncForceWrap]);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -360,6 +353,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         .map((t) => ({
           ...t,
           neighbors: t.neighbors.filter((n) => n !== id),
+          wraps: t.wraps.filter((w) => w.id !== id),
         }));
       applyResortRef.current(next);
     }
@@ -377,27 +371,9 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       const img = imageRef.current;
       const imgW = img ? img.naturalWidth : DEFAULT_IMAGE_WIDTH;
       const imgH = img ? img.naturalHeight : DEFAULT_IMAGE_HEIGHT;
-      const baseScale = Math.min(canvasW / imgW, canvasH / imgH);
-      setTransform((prev) => {
-        const oldScale = baseScale * prev.zoom;
-        const oldOffX = (canvasW - imgW * oldScale) / 2 + prev.offsetX;
-        const oldOffY = (canvasH - imgH * oldScale) / 2 + prev.offsetY;
-        const worldX = (pos.x - oldOffX) / oldScale;
-        const worldY = (pos.y - oldOffY) / oldScale;
-        const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
-        const newScale = baseScale * newZoom;
-        const { x, y } = clampPan(
-          canvasW,
-          canvasH,
-          newScale,
-          newScale,
-          imgW,
-          imgH,
-          pos.x - worldX * newScale - (canvasW - imgW * newScale) / 2,
-          pos.y - worldY * newScale - (canvasH - imgH * newScale) / 2,
-        );
-        return { zoom: newZoom, offsetX: x, offsetY: y };
-      });
+      setTransform((prev) =>
+        zoomTransform(prev, canvasW, canvasH, imgW, imgH, pos, factor),
+      );
     },
     [cancelSettle],
   );
@@ -473,124 +449,18 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     }
 
     if (!hideGraph) {
-      const toScreen = (p: Point): Point => ({
-        x: p.x * scaleX + offsetX,
-        y: p.y * scaleY + offsetY,
+      drawGraph({
+        ctx,
+        viewport: { imgW, imgH, scaleX, scaleY, offsetX, offsetY },
+        zoom,
+        territories,
+        rejectedEdge,
+        selectedVertexId,
+        hoveredVertexId,
+        mouseWorldPos,
+        dragging: dragRef.current !== null,
+        forceWrap,
       });
-      const byId = new Map(territories.map((t) => [t.id, t]));
-
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2 * zoom;
-      const drawnEdges = new Set<string>();
-      for (const t of territories) {
-        for (const n of t.neighbors) {
-          const key = edgeKey(t.id, n);
-          if (drawnEdges.has(key)) continue;
-          drawnEdges.add(key);
-          const other = byId.get(n);
-          if (!other) continue;
-          for (const [a, b] of wrapEdgeSegments(t, other, imgW, imgH)) {
-            const p1 = toScreen(a);
-            const p2 = toScreen(b);
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      if (rejectedEdge) {
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = 3 * zoom;
-        for (const [a, b] of rejectedEdge) {
-          const p1 = toScreen(a);
-          const p2 = toScreen(b);
-          ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.stroke();
-        }
-      }
-
-      if (
-        selectedVertexId !== null &&
-        mouseWorldPos !== null &&
-        !dragRef.current
-      ) {
-        const fromTerritory = byId.get(selectedVertexId);
-        if (fromTerritory) {
-          const excludeIds = new Set<number>([selectedVertexId]);
-          if (hoveredVertexId !== null) excludeIds.add(hoveredVertexId);
-          const overlapping = segmentWouldCross(
-            fromTerritory,
-            mouseWorldPos,
-            excludeIds,
-          );
-          ctx.strokeStyle = overlapping ? '#ff0000' : '#000000';
-          ctx.lineWidth = 2 * zoom;
-          for (const [a, b] of wrapEdgeSegments(
-            fromTerritory,
-            mouseWorldPos,
-            imgW,
-            imgH,
-          )) {
-            const p1 = toScreen(a);
-            const p2 = toScreen(b);
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      const vertexRadius = getVertexRadius(imgW, imgH);
-      const vertexBorderScale = borderScale((vertexRadius * scaleX) / zoom);
-      for (const t of territories) {
-        const p = toScreen(t);
-        const isSelected = selectedVertexId === t.id;
-        const isHovered = hoveredVertexId === t.id;
-        ctx.beginPath();
-        if (t.isSea) {
-          hexagonPath(
-            ctx,
-            p.x,
-            p.y,
-            vertexRadius * scaleX * SEA_SIZE_MULTIPLIER,
-          );
-          ctx.fillStyle = SEA_MARKER_COLOR;
-        } else {
-          ctx.arc(p.x, p.y, vertexRadius * scaleX, 0, Math.PI * 2);
-          ctx.fillStyle = continentColor(t.continentId);
-        }
-        ctx.fill();
-        ctx.strokeStyle = isSelected
-          ? '#bbbbbb'
-          : isHovered
-            ? '#555555'
-            : '#000000';
-        ctx.lineWidth =
-          (isSelected || isHovered ? 7 : 2) * zoom * vertexBorderScale;
-        ctx.stroke();
-
-        const labelRadius = t.isSea
-          ? vertexRadius * scaleX * SEA_SIZE_MULTIPLIER
-          : vertexRadius * scaleX;
-        ctx.fillStyle = contrastTextColor(
-          t.isSea ? SEA_MARKER_COLOR : continentColor(t.continentId),
-        );
-        ctx.font = `bold ${labelRadius}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'alphabetic';
-        const text = String(t.id + 1);
-        const metrics = ctx.measureText(text);
-        const baselineY =
-          p.y +
-          (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
-            2;
-        ctx.fillText(text, p.x, baselineY);
-      }
     }
   });
 
@@ -628,28 +498,6 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     onPaintStrokeEnd?.();
   }
 
-  function hitVertex(pos: Point): Territory | null {
-    const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = getViewport();
-    const baseHitRadius =
-      getVertexRadius(imgW, imgH) * HIT_RADIUS_MULTIPLIER * scaleX;
-    let nearest: Territory | null = null;
-    let nearestDist = Infinity;
-    for (const t of territories) {
-      const hitRadius =
-        (t.isSea ? baseHitRadius * SEA_SIZE_MULTIPLIER : baseHitRadius) +
-        HIT_TOLERANCE;
-      const d = Math.hypot(
-        pos.x - (t.x * scaleX + offsetX),
-        pos.y - (t.y * scaleY + offsetY),
-      );
-      if (d <= hitRadius && d < nearestDist) {
-        nearest = t;
-        nearestDist = d;
-      }
-    }
-    return nearest;
-  }
-
   function applyResort(next: Territory[]): Map<number, number> {
     const idMap = resort(next);
     setSelectedVertexId((id) => (id === null ? null : (idMap.get(id) ?? null)));
@@ -674,10 +522,11 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       ...territories,
       {
         id: nextId,
-        continentId: isSea ? 0 : currentContinentId % continentCount,
+        continentId: isSea ? 0 : brushContinentId,
         x: worldX,
         y: worldY,
         neighbors: [],
+        wraps: [],
         isSea,
       },
     ];
@@ -687,59 +536,24 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     return newId;
   }
 
-  function segmentWouldCross(
-    from: Point,
-    to: Point,
-    excludeIds: Set<number>,
+  function edgeWouldCross(
+    from: Territory,
+    to: Territory,
+    forced: WrapAxes,
   ): boolean {
-    const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = getViewport();
-    const toScreenPos = (p: Point): Point => ({
-      x: p.x * scaleX + offsetX,
-      y: p.y * scaleY + offsetY,
-    });
-    const toScreenSegments = (a: Point, b: Point): [Point, Point][] =>
-      wrapEdgeSegments(a, b, imgW, imgH).map(
-        ([p1, p2]) => [toScreenPos(p1), toScreenPos(p2)] as [Point, Point],
-      );
-    const candidateSegments = toScreenSegments(from, to);
-    const radius = getVertexRadius(imgW, imgH) * scaleX;
-    const byId = new Map(territories.map((t) => [t.id, t]));
-
-    for (const v of territories) {
-      if (excludeIds.has(v.id)) continue;
-      const vScreen = toScreenPos(v);
-      for (const [p1, p2] of candidateSegments) {
-        if (pointToSegmentDistance(vScreen, p1, p2) < radius) return true;
-      }
-    }
-
-    const seen = new Set<string>();
-    for (const t of territories) {
-      for (const n of t.neighbors) {
-        if (excludeIds.has(t.id) || excludeIds.has(n)) continue;
-        const key = edgeKey(t.id, n);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const other = byId.get(n);
-        if (!other) continue;
-        const existingSegments = toScreenSegments(t, other);
-        for (const [c1, c2] of candidateSegments) {
-          for (const [e1, e2] of existingSegments) {
-            if (segmentsProperlyIntersect(c1, c2, e1, e2)) return true;
-          }
-        }
-      }
-    }
-    return false;
+    return segmentWouldCross(
+      territories,
+      getViewport(),
+      from,
+      to,
+      new Set([from.id, to.id]),
+      forced,
+    );
   }
 
-  function edgeWouldCross(from: Territory, to: Territory): boolean {
-    return segmentWouldCross(from, to, new Set([from.id, to.id]));
-  }
-
-  function flashRejectedEdge(from: Territory, to: Territory) {
+  function flashRejectedEdge(from: Territory, to: Territory, forced: WrapAxes) {
     const { w: imgW, h: imgH } = getImageDims();
-    setRejectedEdge(wrapEdgeSegments(from, to, imgW, imgH));
+    setRejectedEdge(wrapEdgeSegments(from, to, imgW, imgH, forced));
     if (rejectedTimeoutRef.current !== null) {
       window.clearTimeout(rejectedTimeoutRef.current);
     }
@@ -749,7 +563,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     );
   }
 
-  function handleVertexClick(id: number) {
+  function handleVertexClick(id: number, forced: WrapAxes) {
     if (selectedVertexId === null) {
       setSelectedVertexId(id);
       return;
@@ -766,12 +580,16 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       !linked &&
       fromTerritory &&
       toTerritory &&
-      edgeWouldCross(fromTerritory, toTerritory)
+      edgeWouldCross(fromTerritory, toTerritory, forced)
     ) {
-      flashRejectedEdge(fromTerritory, toTerritory);
+      flashRejectedEdge(fromTerritory, toTerritory, forced);
       setSelectedVertexId(id);
       return;
     }
+    const wrapMarks = (otherId: number): WrapMark[] =>
+      !linked && (forced.x || forced.y)
+        ? [{ id: otherId, x: forced.x, y: forced.y }]
+        : [];
     setTerritories((ts) =>
       ts.map((t) => {
         if (t.id === from) {
@@ -780,6 +598,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
             neighbors: linked
               ? t.neighbors.filter((n) => n !== id)
               : [...t.neighbors, id],
+            wraps: [...t.wraps.filter((w) => w.id !== id), ...wrapMarks(id)],
           };
         }
         if (t.id === id) {
@@ -788,6 +607,10 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
             neighbors: linked
               ? t.neighbors.filter((n) => n !== from)
               : [...t.neighbors, from],
+            wraps: [
+              ...t.wraps.filter((w) => w.id !== from),
+              ...wrapMarks(from),
+            ],
           };
         }
         return t;
@@ -819,7 +642,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       };
       return;
     }
-    const vertex = hitVertex(pos);
+    const vertex = hitVertex(territories, getViewport(), pos);
     if (vertex) {
       dragRef.current = {
         type: 'vertex',
@@ -903,7 +726,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     return true;
   }
 
-  function endPointer(pos: Point) {
+  function endPointer(pos: Point, forced: WrapAxes = NO_WRAP) {
     detachWindowDragListeners();
     const drag = dragRef.current;
     dragRef.current = null;
@@ -932,14 +755,14 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     if (!drag.moved) {
       lastTapAtRef.current = 0;
       lastAddedVertexRef.current = null;
-      handleVertexClick(drag.id);
+      handleVertexClick(drag.id, forced);
       return;
     }
     applyResort(territories);
   }
 
   function cycleContinentAt(pos: Point) {
-    const vertex = hitVertex(pos);
+    const vertex = hitVertex(territories, getViewport(), pos);
     if (!vertex) {
       if (selectedVertexId !== null) {
         setSelectedVertexId(null);
@@ -952,7 +775,10 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     }
     const id = vertex.id;
     const current = vertex.isSea ? SEA_BRUSH : vertex.continentId;
-    const next = nextInContinentCycle(current, continentCount);
+    const next =
+      brushContinentId === current
+        ? nextInContinentCycle(current, continentCount)
+        : brushContinentId;
     setCurrentContinentId(next);
     setTerritories((prev) =>
       prev.map((t) =>
@@ -992,13 +818,16 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     if (panOnlyRef.current) {
       return;
     }
+    syncForceWrap(e);
     const { scaleX, scaleY, offsetX, offsetY } = getViewport();
     setMouseWorldPos({
       x: (pos.x - offsetX) / scaleX,
       y: (pos.y - offsetY) / scaleY,
     });
     if (!dragRef.current) {
-      setHoveredVertexId(hitVertex(pos)?.id ?? null);
+      setHoveredVertexId(
+        hitVertex(territories, getViewport(), pos)?.id ?? null,
+      );
     }
   }
 
@@ -1009,7 +838,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     }
     if ((disabledRef.current && !panOnlyRef.current) || isSyntheticMouse())
       return;
-    endPointer(getPos(e));
+    endPointer(getPos(e), wrapAxesOf(e));
   }
 
   function handleMouseLeave() {
@@ -1129,7 +958,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   };
   dragUpHandlerRef.current = (e: MouseEvent) => {
     if (isSyntheticMouse()) return;
-    endPointer(getPos(e));
+    endPointer(getPos(e), wrapAxesOf(e));
   };
 
   return (

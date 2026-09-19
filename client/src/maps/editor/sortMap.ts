@@ -1,5 +1,8 @@
-import type { MapSeaTerritory, MapTerritory } from '../../lib/types';
-import type { EditorTerritory as Territory } from './model/editorTypes';
+import type { MapSeaTerritory, MapTerritory, MapWrap } from '../../lib/types';
+import {
+  NO_CONTINENT,
+  type EditorTerritory as Territory,
+} from './model/editorTypes';
 
 const ROW_TOLERANCE_FRACTION = 0.5;
 
@@ -64,16 +67,23 @@ export function sortTerritories(
   const newBonuses = sortedContinents.map((c) => bonuses[c.id]);
   const remapped = land.map((t) => ({
     ...t,
-    continentId: continentIdMap.get(t.continentId)!,
+    continentId: continentIdMap.get(t.continentId) ?? NO_CONTINENT,
   }));
 
-  const sortedLand = sortedContinents.flatMap((_, newContinentId) =>
-    sortByPosition(
-      remapped.filter((t) => t.continentId === newContinentId),
+  const sortedLand = [
+    ...sortedContinents.flatMap((_, newContinentId) =>
+      sortByPosition(
+        remapped.filter((t) => t.continentId === newContinentId),
+        (t) => t.x,
+        (t) => t.y,
+      ),
+    ),
+    ...sortByPosition(
+      remapped.filter((t) => t.continentId === NO_CONTINENT),
       (t) => t.x,
       (t) => t.y,
     ),
-  );
+  ];
   const sortedSea = sortByPosition(
     sea,
     (t) => t.x,
@@ -89,6 +99,7 @@ export function sortTerritories(
       ...t,
       id: idMap.get(t.id)!,
       neighbors: t.neighbors.map((n) => idMap.get(n)!),
+      wraps: t.wraps.map((w) => ({ ...w, id: idMap.get(w.id)! })),
     }),
   );
 
@@ -107,6 +118,7 @@ export function sortMapData(
   territories: MapTerritory[];
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
+  wraps: MapWrap[];
 } {
   const sorted = sortTerritories(territories, bonuses);
   const newTerritories: MapTerritory[] = sorted.territories
@@ -126,5 +138,10 @@ export function sortMapData(
     territories: newTerritories,
     seaTerritories: newSeaTerritories,
     bonuses: sorted.bonuses,
+    wraps: sorted.territories.flatMap((t) =>
+      t.wraps
+        .filter((w) => t.id < w.id)
+        .map((w) => ({ a: t.id, b: w.id, x: w.x, y: w.y })),
+    ),
   };
 }

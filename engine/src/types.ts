@@ -18,11 +18,19 @@ export interface SeaTerritory {
   neighbors: number[];
 }
 
+export interface MapWrap {
+  a: number;
+  b: number;
+  x: boolean;
+  y: boolean;
+}
+
 export interface GameMap {
   name: string;
   territories: Territory[];
   seaTerritories: SeaTerritory[];
   bonuses: number[];
+  wraps: MapWrap[];
 }
 
 export interface GeneratedGameMap {
@@ -278,6 +286,7 @@ export interface PlayerGameMap {
   territories: Territory[];
   seaTerritories: SeaTerritory[];
   bonuses: number[];
+  wraps: MapWrap[];
   imageSrc: string;
 }
 

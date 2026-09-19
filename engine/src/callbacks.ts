@@ -203,6 +203,7 @@ export interface EngineCallbacks {
       territories: unknown[];
       seaTerritories: unknown[];
       bonuses: number[];
+      wraps: unknown[];
       imageSrc: string;
     },
   ): void;

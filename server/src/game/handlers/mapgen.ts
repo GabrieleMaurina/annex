@@ -40,6 +40,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               territories: map.territories,
               seaTerritories: map.seaTerritories,
               bonuses: map.bonuses,
+              wraps: map.wraps,
               imageSrc: `data:${map.imageMime};base64,${map.image}`,
             },
             callback,

@@ -89,6 +89,7 @@ export function buildMap(spec: MapSpec): GameMap {
     territories,
     seaTerritories,
     bonuses: spec.bonuses,
+    wraps: [],
   };
 }
 

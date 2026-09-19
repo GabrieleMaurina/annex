@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import { useEffect, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useDragNumber } from '../../../common/useDragNumber';
+import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome } from '../../../lib/types';
 import {
   DICE_ROLL_STEP_DURATION,
@@ -101,6 +102,10 @@ export function DiceRollDisplay({
       generateDiceRollSequence(value, DICE_ROLL_STEPS),
     ),
   }));
+
+  useEffect(() => {
+    playSound('dice');
+  }, []);
 
   useEffect(() => {
     if (step >= DICE_ROLL_STEPS - 1) return;

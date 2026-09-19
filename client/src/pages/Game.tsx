@@ -345,7 +345,7 @@ function Game({
         shareUrl={window.location.href}
         hidden={showMap && gamePanelOpen}
         onOpenChange={setSettingsMenuOpen}
-        lockScrollOnFullscreen
+        lockScrollOnFullscreen={showMap}
       />
       {game.state === 'lobby' ? (
         <Container fluid className="pt-5 pb-5 px-2 px-sm-4">

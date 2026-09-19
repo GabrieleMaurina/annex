@@ -253,6 +253,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     drawFortifyPath(
       ctx,
       buildWrappedPathSegments([a, b], toScreen, imgW, imgH, forcedWraps),
+      VERTEX_RADIUS * scaleX,
       fade,
     );
   };

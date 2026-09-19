@@ -134,7 +134,9 @@ function SettingsPanel({
         ...prev,
         [name]: {
           territories: territories.length,
-          continents: new Set(territories.map((t) => t.continentId)).size,
+          continents: new Set(
+            territories.map((t) => t.continentId).filter((c) => c >= 0),
+          ).size,
         },
       }));
     });

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { MapWrap } from '../../../lib/types';
 import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
@@ -14,6 +15,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [seaTerritories, setSeaTerritories] = useState<SeaTerritory[]>([]);
   const [bonuses, setBonuses] = useState<number[]>([]);
+  const [wraps, setWraps] = useState<MapWrap[]>([]);
   const [transform, setTransform] = useState<Transform>({
     zoom: 1,
     offsetX: 0,
@@ -30,10 +32,11 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
 
   useEffect(() => {
     loadGameMap(mapName, playerMapId).then(
-      ({ territories, seaTerritories, bonuses, imageSrc }) => {
+      ({ territories, seaTerritories, bonuses, wraps, imageSrc }) => {
         setTerritories(territories);
         setSeaTerritories(seaTerritories);
         setBonuses(bonuses);
+        setWraps(wraps);
         setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
         if (!imageSrc) {
           imageRef.current = null;
@@ -65,6 +68,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     territories,
     seaTerritories,
     bonuses,
+    wraps,
     transform,
     setTransform,
     imgDims,

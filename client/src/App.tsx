@@ -18,7 +18,7 @@ import {
 } from './game/mapData';
 import { applySavedGameSettings } from './lib/gameSetup';
 import { applyServerSettings, setPlayerName } from './lib/player';
-import type { Account, Ack, IdentifyResult } from './lib/types';
+import type { Account, Ack, IdentifyResult, MapWrap } from './lib/types';
 import MapEditor from './maps/MapEditor';
 import Maps from './maps/Maps';
 import MyMaps from './maps/MyMaps';
@@ -230,12 +230,14 @@ function App() {
       territories: Territory[];
       seaTerritories: SeaTerritory[];
       bonuses: number[];
+      wraps: MapWrap[];
       imageSrc: string;
     }) {
       registerGeneratedMap(data.name, {
         territories: data.territories,
         seaTerritories: data.seaTerritories,
         bonuses: data.bonuses,
+        wraps: data.wraps,
         imageSrc: data.imageSrc,
       });
     }

@@ -161,6 +161,7 @@ function ReplayPage({ navigate, onViewChange }: Props) {
             territories: map.territories,
             seaTerritories: map.seaTerritories,
             bonuses: map.bonuses,
+            wraps: map.wraps,
             imageSrc: `data:${map.imageMime};base64,${map.image}`,
           });
         }

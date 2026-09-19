@@ -1,3 +1,7 @@
+import {
+  wrapEdgeSegments as wrapSegments,
+  type WrapAxes,
+} from '../../game/mapMath';
 import { clamp } from './mapViewport';
 
 export interface Point {
@@ -38,47 +42,14 @@ export function pointToSegmentDistance(p: Point, a: Point, b: Point): number {
   return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
 }
 
-const WRAP_THRESHOLD_FRACTION = 0.8;
-
-export function wrapSplitX(a: Point, b: Point, mapW: number): [Point, Point][] {
-  const d = b.x - a.x;
-  if (Math.abs(d) <= mapW * WRAP_THRESHOLD_FRACTION) return [[a, b]];
-  const sign = Math.sign(d);
-  const bx = b.x - sign * mapW;
-  const boundary = sign < 0 ? mapW : 0;
-  const t = (boundary - a.x) / (bx - a.x);
-  const y = a.y + t * (b.y - a.y);
-  return [
-    [a, { x: boundary, y }],
-    [{ x: mapW - boundary, y }, b],
-  ];
-}
-
-export function wrapSplitY(a: Point, b: Point, mapH: number): [Point, Point][] {
-  const d = b.y - a.y;
-  if (Math.abs(d) <= mapH * WRAP_THRESHOLD_FRACTION) return [[a, b]];
-  const sign = Math.sign(d);
-  const by = b.y - sign * mapH;
-  const boundary = sign < 0 ? mapH : 0;
-  const t = (boundary - a.y) / (by - a.y);
-  const x = a.x + t * (b.x - a.x);
-  return [
-    [a, { x, y: boundary }],
-    [{ x, y: mapH - boundary }, b],
-  ];
-}
-
 export function wrapEdgeSegments(
   a: Point,
   b: Point,
   mapW: number,
   mapH: number,
+  forced?: WrapAxes,
 ): [Point, Point][] {
-  const segments: [Point, Point][] = [];
-  for (const [p1, p2] of wrapSplitX(a, b, mapW)) {
-    segments.push(...wrapSplitY(p1, p2, mapH));
-  }
-  return segments;
+  return wrapSegments(a, b, mapW, mapH, forced).map((s) => [s.a, s.b]);
 }
 
 export function touchDistance(touches: React.TouchList): number {

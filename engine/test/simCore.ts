@@ -45,6 +45,7 @@ function buildGridMap(name: string, cols: number, rows: number): GameMap {
     territories,
     seaTerritories: [],
     bonuses: Array.from({ length: continents }, () => 3),
+    wraps: [],
   };
 }
 

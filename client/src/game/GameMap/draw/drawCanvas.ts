@@ -15,7 +15,11 @@ import {
 import type { EvaluatedCombo } from '../../logic/cards';
 import { formatTroops } from '../../logic/formatTroops';
 import type { SeaTerritory, Territory } from '../../mapData';
-import { borderScale, buildWrappedPathSegments } from '../../mapMath';
+import {
+  borderScale,
+  buildWrappedPathSegments,
+  type ForcedWraps,
+} from '../../mapMath';
 import { isPortalHop } from '../../portals';
 import type { ConquestArrow } from '../../replay';
 import type { RailEdge } from '../../supplyLines';
@@ -90,6 +94,7 @@ export interface DrawCanvasParams {
   selectedCombo: EvaluatedCombo | undefined;
   cardImagesRef: RefObject<Record<CardSymbol, HTMLImageElement>>;
   bonuses: number[];
+  forcedWraps: ForcedWraps;
 }
 
 export function drawGameMapCanvas(params: DrawCanvasParams) {
@@ -146,6 +151,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     selectedCombo,
     cardImagesRef,
     bonuses,
+    forcedWraps,
   } = params;
 
   const canvas = canvasRef.current;
@@ -210,6 +216,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       imgW,
       imgH,
       zoom,
+      forcedWraps,
     );
   }
 
@@ -217,7 +224,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   ctx.beginPath();
   ctx.rect(offsetX, offsetY, imgW * scaleX, imgH * scaleY);
   ctx.clip();
-  drawAnimations(ctx, toScreen, VERTEX_RADIUS * scaleX, imgW, imgH);
+  drawAnimations(
+    ctx,
+    toScreen,
+    VERTEX_RADIUS * scaleX,
+    imgW,
+    imgH,
+    forcedWraps,
+  );
 
   const visibleSet = visibleTerritoryIds
     ? new Set([
@@ -238,7 +252,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   const drawArrowSegment = (a: Point, b: Point, fade?: 'start' | 'end') => {
     drawFortifyPath(
       ctx,
-      buildWrappedPathSegments([a, b], toScreen, imgW, imgH),
+      buildWrappedPathSegments([a, b], toScreen, imgW, imgH, forcedWraps),
       fade,
     );
   };
@@ -286,6 +300,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ? (() => {
         const groups = new Map<number, Territory[]>();
         for (const t of territories) {
+          if (t.continentId < 0) continue;
           const list = groups.get(t.continentId);
           if (list) list.push(t);
           else groups.set(t.continentId, [t]);

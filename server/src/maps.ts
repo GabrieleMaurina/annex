@@ -1,7 +1,6 @@
-import { createHash } from 'crypto';
 import { Engine } from 'engine';
 import { Binary } from 'mongodb';
-import { storeMap } from './db';
+import { replayMapId, storeMap } from './db';
 
 function decodeDataUrl(src: string): { bytes: Buffer; mime: string } | null {
   const match = /^data:([^;]+);base64,(.*)$/s.exec(src);
@@ -18,17 +17,7 @@ export function persistGameMap(
   const image = decodeDataUrl(map.imageSrc);
   if (!image) return Promise.resolve(null);
 
-  const hash = createHash('sha256')
-    .update(
-      JSON.stringify({
-        territories: map.territories,
-        seaTerritories: map.seaTerritories,
-        bonuses: map.bonuses,
-        imageMime: image.mime,
-      }),
-    )
-    .update(image.bytes)
-    .digest('hex');
+  const hash = replayMapId({ ...map, imageMime: image.mime }, image.bytes);
 
   return storeMap({
     _id: hash,
@@ -36,6 +25,7 @@ export function persistGameMap(
     territories: map.territories,
     seaTerritories: map.seaTerritories,
     bonuses: map.bonuses,
+    wraps: map.wraps,
     generation: map.generation,
     image: new Binary(image.bytes),
     imageMime: image.mime,

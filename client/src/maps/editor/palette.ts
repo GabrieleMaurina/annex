@@ -21,7 +21,10 @@ const CONTINENT_COLORS = [
   '#00897B',
 ];
 
+const NO_CONTINENT_COLOR = '#9E9E9E';
+
 export function continentColor(continentId: number): string {
+  if (continentId < 0) return NO_CONTINENT_COLOR;
   return CONTINENT_COLORS[continentId % CONTINENT_COLORS.length];
 }
 

@@ -1,5 +1,9 @@
 import type { GameState } from '../lib/types';
-import { buildWrappedPathSegments, type Point } from './mapMath';
+import {
+  buildWrappedPathSegments,
+  type ForcedWraps,
+  type Point,
+} from './mapMath';
 import { withPortalEdges } from './portals';
 
 type OwnerById = Map<number, GameState['territories'][number]>;
@@ -413,6 +417,7 @@ export function drawSupplyLines(
   mapW: number,
   mapH: number,
   zoom: number,
+  forcedWraps: ForcedWraps,
 ) {
   for (const edges of edgesByPlayer.values()) {
     for (const edge of edges) {
@@ -425,6 +430,7 @@ export function drawSupplyLines(
         toScreen,
         mapW,
         mapH,
+        forcedWraps,
       );
       for (const { a, b } of segments)
         if (overSea) drawDottedSegment(ctx, a, b, zoom);

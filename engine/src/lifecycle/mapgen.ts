@@ -66,6 +66,7 @@ export function generateMap(
         territories: generated.territories,
         seaTerritories: generated.seaTerritories,
         bonuses: generated.bonuses,
+        wraps: [],
         imageSrc: generated.imageSrc,
       });
     }
@@ -97,6 +98,7 @@ export function selectPlayerMap(
     territories: map.territories,
     seaTerritories: map.seaTerritories,
     bonuses: map.bonuses,
+    wraps: map.wraps,
     imageSrc: map.imageSrc,
   };
 
@@ -106,6 +108,7 @@ export function selectPlayerMap(
       territories: map.territories,
       seaTerritories: map.seaTerritories,
       bonuses: map.bonuses,
+      wraps: map.wraps,
       imageSrc: map.imageSrc,
     });
   }

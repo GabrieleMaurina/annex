@@ -82,6 +82,36 @@ export function clampPan(
   return { x: clamp(panX, -kx, kx), y: clamp(panY, -ky, ky) };
 }
 
+export function zoomTransform(
+  prev: { zoom: number; offsetX: number; offsetY: number },
+  canvasW: number,
+  canvasH: number,
+  imgW: number,
+  imgH: number,
+  pos: { x: number; y: number },
+  factor: number,
+) {
+  const baseScale = Math.min(canvasW / imgW, canvasH / imgH);
+  const oldScale = baseScale * prev.zoom;
+  const oldOffX = (canvasW - imgW * oldScale) / 2 + prev.offsetX;
+  const oldOffY = (canvasH - imgH * oldScale) / 2 + prev.offsetY;
+  const worldX = (pos.x - oldOffX) / oldScale;
+  const worldY = (pos.y - oldOffY) / oldScale;
+  const newZoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
+  const newScale = baseScale * newZoom;
+  const { x, y } = clampPan(
+    canvasW,
+    canvasH,
+    newScale,
+    newScale,
+    imgW,
+    imgH,
+    pos.x - worldX * newScale - (canvasW - imgW * newScale) / 2,
+    pos.y - worldY * newScale - (canvasH - imgH * newScale) / 2,
+  );
+  return { zoom: newZoom, offsetX: x, offsetY: y };
+}
+
 export function screenOffset(
   canvasW: number,
   canvasH: number,

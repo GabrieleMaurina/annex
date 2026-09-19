@@ -801,11 +801,19 @@ export interface MapSeaTerritory {
   neighbors: number[];
 }
 
+export interface MapWrap {
+  a: number;
+  b: number;
+  x: boolean;
+  y: boolean;
+}
+
 export interface StoredMap {
   name: string;
   territories: MapTerritory[];
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
+  wraps: MapWrap[];
   image: string;
   imageMime: string;
 }
@@ -859,6 +867,7 @@ export interface PlayerMapDetail {
   territories: MapTerritory[];
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
+  wraps: MapWrap[];
   image: string;
   imageMime: string;
   generation: GenerateMapInput | null;
@@ -873,6 +882,7 @@ export interface PlayerMapSaveBody {
   territories: MapTerritory[];
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
+  wraps: MapWrap[];
   image: string;
   generation: GenerateMapInput | null;
 }

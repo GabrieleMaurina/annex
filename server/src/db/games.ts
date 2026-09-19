@@ -407,6 +407,19 @@ function playerDisplayName(
     : (player.name ?? '?');
 }
 
+export function replaceGamesMapId(
+  oldId: string,
+  newId: string,
+): Promise<number> {
+  return collection()
+    .updateMany(
+      { mapId: oldId },
+      { $set: { mapId: newId } },
+      { bypassDocumentValidation: true },
+    )
+    .then((res) => res.modifiedCount);
+}
+
 function resolveNames(
   docs: { mapId: string; players: GamePlayerDoc[] }[],
 ): Promise<{

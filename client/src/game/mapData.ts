@@ -1,4 +1,5 @@
 import { httpGet } from '../lib/http';
+import type { MapWrap } from '../lib/types';
 
 export interface Territory {
   id: number;
@@ -22,6 +23,7 @@ export interface GeneratedMapData {
   territories: Territory[];
   seaTerritories: SeaTerritory[];
   bonuses: number[];
+  wraps: MapWrap[];
   imageSrc: string;
 }
 
@@ -56,6 +58,7 @@ function ensurePlayerMap(
     territories?: Territory[];
     seaTerritories?: SeaTerritory[];
     bonuses?: number[];
+    wraps?: MapWrap[];
     image?: string;
   }>('/player-maps/' + encodeURIComponent(playerMapId))
     .then((map) => {
@@ -64,6 +67,7 @@ function ensurePlayerMap(
           territories: map.territories,
           seaTerritories: map.seaTerritories ?? [],
           bonuses: map.bonuses,
+          wraps: map.wraps ?? [],
           imageSrc: map.image,
         });
         fetchedPlayerMapIds.add(playerMapId);
@@ -76,6 +80,7 @@ const EMPTY_MAP = {
   territories: [] as Territory[],
   seaTerritories: [] as SeaTerritory[],
   bonuses: [],
+  wraps: [] as MapWrap[],
   imageSrc: null,
 };
 
@@ -86,6 +91,7 @@ export function loadGameMap(
   territories: Territory[];
   seaTerritories: SeaTerritory[];
   bonuses: number[];
+  wraps: MapWrap[];
   imageSrc: string | null;
 }> {
   return ensurePlayerMap(mapName, playerMapId).then(

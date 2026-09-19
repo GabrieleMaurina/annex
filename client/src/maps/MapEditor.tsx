@@ -397,9 +397,11 @@ function MapEditor({ account }: { account: Account | null }) {
         navigate('/maps/mine', { replace: true });
         return;
       }
-      setTerritories(toEditorTerritories(map.territories, map.seaTerritories));
-      setBonuses(map.bonuses.length ? map.bonuses : [2]);
-      setContinentCount(Math.max(1, map.bonuses.length));
+      setTerritories(
+        toEditorTerritories(map.territories, map.seaTerritories, map.wraps),
+      );
+      setBonuses(map.bonuses);
+      setContinentCount(map.bonuses.length);
       setMapName(map.name);
       setSavedName(map.name);
       setGeneration(map.generation ?? null);
@@ -550,7 +552,7 @@ function MapEditor({ account }: { account: Account | null }) {
     pendingDirtyRef.current = true;
     const bonusesIn = map.bonuses.length ? map.bonuses : [2];
     const sorted = sortTerritories(
-      toEditorTerritories(map.territories, map.seaTerritories),
+      toEditorTerritories(map.territories, map.seaTerritories, []),
       bonusesIn,
     );
     setTerritories(sorted.territories);
@@ -570,9 +572,11 @@ function MapEditor({ account }: { account: Account | null }) {
         return;
       }
       pendingDirtyRef.current = true;
-      setTerritories(toEditorTerritories(map.territories, map.seaTerritories));
-      setBonuses(map.bonuses.length ? map.bonuses : [2]);
-      setContinentCount(Math.max(1, map.bonuses.length));
+      setTerritories(
+        toEditorTerritories(map.territories, map.seaTerritories, map.wraps),
+      );
+      setBonuses(map.bonuses);
+      setContinentCount(map.bonuses.length);
       setGeneration(map.generation ?? null);
       setMapName(map.name);
       setCurrentContinentId(0);
@@ -619,6 +623,7 @@ function MapEditor({ account }: { account: Account | null }) {
       territories: sorted.territories,
       seaTerritories: sorted.seaTerritories,
       bonuses: sorted.bonuses,
+      wraps: sorted.wraps,
       image,
       generation,
     };

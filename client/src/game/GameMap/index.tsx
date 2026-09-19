@@ -1,35 +1,11 @@
 import { MAX_TERRITORY_TROOPS } from 'engine';
-import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
-import { Toast, ToastContainer } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
-import type { ResultRow } from '../../common/ResultsTable';
 import { connector } from '../../connector';
-import { playerColor } from '../../lib/palette';
-import type {
-  Ack,
-  Alliances,
-  BotSpeed,
-  Bounties,
-  CardsMode,
-  Entrenchments,
-  Fortification,
-  GameMode,
-  GameState,
-  Mission,
-  Starvation,
-  SupplyLines,
-  Toxins,
-  TurnDuration,
-  TurnPhase,
-} from '../../lib/types';
-import { CARD_SET_FLASH_DURATION } from '../animations';
-import { formatLogEntriesWithFrames } from '../logFormat';
-import { CardFace } from '../panels/CardsPanel';
+import type { Ack } from '../../lib/types';
+import { buildForcedWraps } from '../mapMath';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
-import { replayPlayerCounts, type ReplayData } from '../replay';
-import type { LogEntry } from '../useGameLogs';
 import { drawGameMapCanvas } from './draw/drawCanvas';
 import {
   computeTooltipLabels,
@@ -41,7 +17,6 @@ import { useDeploySeaFlow } from './hooks/sea/useDeploySeaFlow';
 import { useSailFlow } from './hooks/sea/useSailFlow';
 import { useAllianceUI } from './hooks/useAllianceUI';
 import { useAttackFlow } from './hooks/useAttackFlow';
-import { useCanvasInteractions } from './hooks/useCanvasInteractions';
 import { useCardsAndDeploy } from './hooks/useCardsAndDeploy';
 import { useEmojiUI } from './hooks/useEmojiUI';
 import { useGameSocketEvents } from './hooks/useGameSocketEvents';
@@ -56,90 +31,17 @@ import {
 } from './hooks/useMiscUiState';
 import { usePanelsUI } from './hooks/usePanelsUI';
 import { useTurnActionFlows } from './hooks/useTurnActionFlows';
+import { useDisplayedGame } from './hooks/view/useDisplayedGame';
+import { useGameCanvasInteractions } from './hooks/view/useGameCanvasInteractions';
+import { useNukeControls } from './hooks/view/useNukeControls';
+import { useTurnToasts } from './hooks/view/useTurnToasts';
 import AlliancePopupOverlay from './overlays/AlliancePopupOverlay';
+import CardSetFlash from './overlays/CardSetFlash';
 import EmojiOverlay from './overlays/EmojiOverlay';
+import GameToasts, { type GameToast } from './overlays/GameToasts';
 import MapButtonsColumn from './overlays/MapButtonsColumn';
 import TurnActionPanels from './overlays/TurnActionPanels';
-
-export interface GameMapProps {
-  game: GameState;
-  mapName: string;
-  players: GameState['players'];
-  spectators: GameState['spectators'];
-  ownership: GameState['territories'];
-  visibleTerritoryIds: GameState['visibleTerritoryIds'];
-  gameMode: GameMode;
-  isTeamDeathmatch: boolean;
-  isCapitals: boolean;
-  continentId: number | null;
-  mission: Mission | null;
-  selfId: number | null;
-  roundNumber: number;
-  turnPlayerIndex: number;
-  turnPhase: TurnPhase;
-  turnDuration: TurnDuration;
-  fortification: Fortification;
-  entrenchments: Entrenchments;
-  toxins: Toxins;
-  toxinTerritories: GameState['toxinTerritories'];
-  cards: CardsMode;
-  portalTerritoryIds: number[];
-  portalsEnabled: boolean;
-  radiationTerritoryIds: number[];
-  radiationUpcomingTerritoryIds: number[];
-  starvation: Starvation;
-  bounties: Bounties;
-  supplyLines: SupplyLines;
-  alliances: Alliances;
-  allianceStates: GameState['allianceStates'];
-  territoryTroopsCap: number;
-  totalTroopsCap: number;
-  troopsToDeploy: number;
-  turnStartedAt: number;
-  paused: boolean;
-  botSpeed: BotSpeed;
-  hostId: number;
-  onTogglePause: () => void;
-  onCycleBotSpeed: () => void;
-  selectedTerritoryId: number | null;
-  fortifyStartTerritoryId: number | null;
-  fortifyEndTerritoryId: number | null;
-  fortifyPathTerritoryIds: number[][];
-  attackStartTerritoryId: number | null;
-  attackEndTerritoryId: number | null;
-  attackConquestMinTroops: number | null;
-  attackPathTerritoryIds: number[][];
-  sailStartTerritoryId: number | null;
-  sailEndTerritoryId: number | null;
-  sailPathTerritoryIds: number[][];
-  attackSeaTerritoryId: number | null;
-  attackSeaDefenderId: number | null;
-  seas: GameState['seas'];
-  nextSetBaseValues: GameState['nextSetBaseValues'];
-  upcomingSetValues: GameState['upcomingSetValues'];
-  results: Map<number, ResultRow> | null;
-  gameEnded: boolean;
-  showReplay: boolean;
-  replayData?: ReplayData | null;
-  onReplayIndexChange?: (index: number) => void;
-  logs: LogEntry[];
-  setGame: (game: GameState) => void;
-  adjustTerritoryTroops: (
-    deltas: { territoryId: number; delta: number; ownerId?: number }[],
-  ) => void;
-  adjustToxinTerritories: (
-    changes: (
-      | { territoryId: number; remove: true }
-      | { territoryId: number; permanent: boolean; roundsRemaining: number }
-    )[],
-  ) => void;
-  setRadiationTerritoryIds: (territoryIds: number[]) => void;
-  setRadiationUpcomingTerritoryIds: (territoryIds: number[]) => void;
-  setChatOpen: Dispatch<SetStateAction<boolean>>;
-  settingsMenuOpen: boolean;
-  onPanelOpenChange: (open: boolean) => void;
-  navigate: (path: string) => void;
-}
+import type { GameMapProps } from './props';
 
 function GameMap({
   game,
@@ -228,11 +130,17 @@ function GameMap({
     territories,
     seaTerritories,
     bonuses,
+    wraps,
     transform,
     setTransform,
     imgDims,
     size,
   } = useMapView(mapName, game.playerMapId);
+
+  const forcedWraps = useMemo(
+    () => buildForcedWraps([...territories, ...seaTerritories], wraps),
+    [territories, seaTerritories, wraps],
+  );
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="viewport"]');
@@ -265,11 +173,15 @@ function GameMap({
     cardImagesRef,
   } = useLiveGameRefs();
 
-  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
-  const [processedDeployPhaseKey, setProcessedDeployPhaseKey] = useState<
-    string | null
-  >(null);
-  const [capitalModeAnnounced, setCapitalModeAnnounced] = useState(false);
+  const [toasts, setToasts] = useState<GameToast[]>([]);
+  const addToasts = useCallback(
+    (messages: string[]) =>
+      setToasts((prev) => [
+        ...prev,
+        ...messages.map((message, i) => ({ id: Date.now() + i, message })),
+      ]),
+    [],
+  );
   const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
 
   const {
@@ -302,130 +214,50 @@ function GameMap({
     setRadiationTerritoryIds,
     setRadiationUpcomingTerritoryIds,
   });
-  const {
-    index: replayIndex,
-    totalFrames: replayTotalFrames,
-    playing: replayPlaying,
-    speed: replaySpeed,
-    territories: replayTerritories,
-    toxinTerritories: replayToxinTerritories,
-    radiationTerritories: replayRadiationTerritories,
-    radiationUpcoming: replayRadiationUpcoming,
-    seas: replaySeas,
-    hands: replayHands,
-    playerStates: replayPlayerStates,
-    log: replayLog,
-    turnPhase: replayTurnPhase,
-    roundNumber: replayRoundNumber,
-    turnPlayerId: replayTurnPlayerId,
-    conquestArrow: replayConquestArrow,
-    stepForward: replayStepForward,
-    stepBackward: replayStepBackward,
-    jumpToStart: replayJumpToStart,
-    jumpToEnd: replayJumpToEnd,
-    seek: replaySeek,
-    togglePlay: replayTogglePlay,
-    cycleSpeed: replayCycleSpeed,
-  } = replay;
-
   useEffect(() => {
-    onReplayIndexChange?.(replayIndex);
-  }, [replayIndex, onReplayIndexChange]);
+    onReplayIndexChange?.(replay.index);
+  }, [replay.index, onReplayIndexChange]);
 
   const currentTurnPlayer = players[turnPlayerIndex];
   const isMyTurn = currentTurnPlayer?.id === selfId;
-  const isCapitalById = new Map(ownership.map((o) => [o.id, o.isCapital]));
-  const displayedOwnership = replayTerritories
-    ? replayTerritories.map((t) => ({
-        ...t,
-        isCapital: isCapitalById.get(t.id) ?? false,
-      }))
-    : ownership;
-  const displayedSeas = replaySeas ?? seas;
-  const ownerById = useMemo(
-    () => new Map(displayedOwnership.map((o) => [o.id, o])),
-    [displayedOwnership],
-  );
-  const replayCounts =
-    showReplay && replayTerritories
-      ? replayPlayerCounts(
-          replayTerritories,
-          replayHands ?? [],
-          new Set(
-            displayedOwnership.filter((o) => o.isCapital).map((o) => o.id),
-          ),
-        )
-      : null;
-  const replayStateById =
-    showReplay && replayPlayerStates && replayPlayerStates.length > 0
-      ? new Map(replayPlayerStates.map((s) => [s.playerId, s]))
-      : null;
-  const displayedPlayers = replayCounts
-    ? players.map((p) => {
-        const state = replayStateById?.get(p.id);
-        return {
-          ...p,
-          territoryCount: 0,
-          troopCount: 0,
-          capitalCount: 0,
-          cardCount: 0,
-          ...replayCounts.get(p.id),
-          ...(state
-            ? {
-                eliminated: state.eliminated,
-                surrendered: state.surrendered,
-                playersKilled: state.killedPlayerIds,
-              }
-            : {}),
-        };
-      })
-    : players;
-  const playersWithAccounts = displayedPlayers.map((p) => ({
-    ...p,
-    userId: results?.get(p.id)?.userId ?? p.userId,
-  }));
-  const panelRoundNumber =
-    showReplay && replayRoundNumber !== null ? replayRoundNumber : roundNumber;
-  const panelTurnPhase =
-    showReplay && replayTurnPhase !== null ? replayTurnPhase : turnPhase;
-  const displayedToxinTerritories = replayToxinTerritories ?? toxinTerritories;
-  const toxinById = useMemo(
-    () => new Set(displayedToxinTerritories.map((t) => t.id)),
-    [displayedToxinTerritories],
-  );
-  const displayedRadiationTerritories =
-    replayRadiationTerritories ?? radiationTerritoryIds;
-  const radiationById = useMemo(
-    () => new Set(displayedRadiationTerritories),
-    [displayedRadiationTerritories],
-  );
-  const radiationUpcomingById = useMemo(
-    () =>
-      new Set(
-        (showReplay
-          ? (replayRadiationUpcoming ?? [])
-          : radiationUpcomingTerritoryIds
-        ).filter((id) => !radiationById.has(id)),
-      ),
-    [
-      showReplay,
-      replayRadiationUpcoming,
-      radiationUpcomingTerritoryIds,
-      radiationById,
-    ],
-  );
-  const unusableTerritoryById = useMemo(
-    () => new Set([...toxinById, ...radiationById]),
-    [toxinById, radiationById],
-  );
-  const antiNukeById = useMemo(
-    () => new Set(showReplay ? [] : game.antiNukeTerritoryIds),
-    [showReplay, game.antiNukeTerritoryIds],
-  );
-  const visibleTerritoryById = useMemo(
-    () => (visibleTerritoryIds ? new Set(visibleTerritoryIds) : null),
-    [visibleTerritoryIds],
-  );
+  const {
+    ownerById,
+    displayedSeas,
+    displayedPlayers,
+    playersWithAccounts,
+    panelRoundNumber,
+    panelTurnPhase,
+    panelTurnPlayerId,
+    displayedToxinTerritories,
+    toxinById,
+    radiationById,
+    radiationUpcomingById,
+    unusableTerritoryById,
+    antiNukeById,
+    visibleTerritoryById,
+    replayPlayer,
+    replayPlayerColor,
+    replayHandCards,
+    replayActingOwnedIds,
+    displayedLogs,
+    nukesGame,
+  } = useDisplayedGame({
+    game,
+    players,
+    ownership,
+    seas,
+    results,
+    roundNumber,
+    turnPhase,
+    turnPlayerIndex,
+    toxinTerritories,
+    radiationTerritoryIds,
+    radiationUpcomingTerritoryIds,
+    visibleTerritoryIds,
+    logs,
+    showReplay,
+    replay,
+  });
   const ownedTerritoryIds = new Set(
     ownership.filter((o) => o.ownerId === selfId).map((o) => o.id),
   );
@@ -540,54 +372,19 @@ function GameMap({
     onPanelOpenChange(openPanel !== null);
   }, [openPanel, onPanelOpenChange]);
 
-  const [armedNuke, setArmedNuke] = useState<{
-    mode: 'launch' | 'antiNuke';
-    turnId: string;
-  } | null>(null);
-  const nukesEnabled = game.nukes === 'on';
-  const nukeTurnId = `${roundNumber}-${turnPlayerIndex}`;
-  const canUseNuke =
-    nukesEnabled && isMyTurn && turnPhase === 'attack' && !paused;
-  const nukeReady =
-    canUseNuke && (game.arsenal.nukes > 0 || game.arsenal.antiNukes > 0);
-  const nukeTargeting =
-    canUseNuke && nukesOpen && armedNuke?.turnId === nukeTurnId
-      ? armedNuke.mode
-      : null;
-  const setNukeTargeting = useCallback(
-    (mode: 'launch' | 'antiNuke' | null) =>
-      setArmedNuke(mode === null ? null : { mode, turnId: nukeTurnId }),
-    [nukeTurnId],
-  );
-
-  const runNukeAck = useCallback(
-    (res: Ack) => {
-      if (res.ok) setGame(res.game);
-      else
-        setToasts((prev) => [...prev, { id: Date.now(), message: res.error }]);
+  const { nukeReady, nukeTargeting, setNukeTargeting, nukes } = useNukeControls(
+    {
+      game,
+      roundNumber,
+      turnPlayerIndex,
+      turnPhase,
+      paused,
+      showReplay,
+      setGame,
+      isMyTurn,
+      nukesOpen,
+      setToasts,
     },
-    [setGame],
-  );
-  const buildNuke = useCallback(
-    () => connector.buildNuke(runNukeAck),
-    [runNukeAck],
-  );
-  const buildAntiNuke = useCallback(
-    () => connector.buildAntiNuke(runNukeAck),
-    [runNukeAck],
-  );
-  const advanceNuke = useCallback(
-    (index: number) => connector.advanceNuke({ index }, runNukeAck),
-    [runNukeAck],
-  );
-  const armNuke = useCallback(
-    (mode: 'launch' | 'antiNuke') =>
-      setArmedNuke((current) =>
-        current?.mode === mode && current.turnId === nukeTurnId
-          ? null
-          : { mode, turnId: nukeTurnId },
-      ),
-    [nukeTurnId],
   );
 
   const deploySeaFlow = useDeploySeaFlow({
@@ -664,60 +461,6 @@ function GameMap({
       visibleTerritoryIds,
       selfId,
     });
-  const replayPlayer = players.find((p) => p.id === replayTurnPlayerId);
-  const replayPlayerColor = replayPlayer
-    ? playerColor(replayPlayer.color)
-    : '#ffffff';
-
-  const replayActingId = showReplay ? replayTurnPlayerId : null;
-  const replayHandCards =
-    replayActingId !== null
-      ? ((replayHands ?? []).find((h) => h.playerId === replayActingId)
-          ?.cards ?? [])
-      : [];
-  const replayActingOwnedIds =
-    replayActingId !== null && replayTerritories
-      ? new Set(
-          replayTerritories
-            .filter((t) => t.ownerId === replayActingId)
-            .map((t) => t.id),
-        )
-      : new Set<number>();
-  const replayActingState =
-    replayActingId !== null
-      ? (replayPlayerStates ?? []).find((s) => s.playerId === replayActingId)
-      : undefined;
-  const replayFormattedLog = useMemo(
-    () =>
-      showReplay && replayLog
-        ? formatLogEntriesWithFrames(
-            replayLog,
-            players.map((p) => ({
-              id: p.id,
-              name: p.name,
-              color: p.color,
-              isBot: p.isBot,
-            })),
-          )
-        : null,
-    [showReplay, replayLog, players],
-  );
-  const displayedLogs = replayFormattedLog
-    ? replayFormattedLog.filter((l) => l.afterFrame <= replayIndex)
-    : logs;
-  const nukesGame = showReplay
-    ? {
-        ...game,
-        arsenal: {
-          nukes: replayActingState?.nukes ?? 0,
-          antiNukes: replayActingState?.antiNukes ?? 0,
-        },
-        nukeProjects: replayActingState?.nukeProjects ?? [],
-        roundNumber: panelRoundNumber,
-        troopsToDeploy: 0,
-      }
-    : game;
-
   const territoryClaimCandidates =
     turnPhase === 'territory' && isMyTurn
       ? new Set(
@@ -741,34 +484,14 @@ function GameMap({
       (entrenchments !== 'on' || turnFlow.entrenchCandidates.size === 0) &&
       (toxins === 'off' || turnFlow.toxinsCandidates.size === 0));
 
-  const interactions = useCanvasInteractions({
+  const interactions = useGameCanvasInteractions({
     canvasRef,
     territories,
     seaTerritories,
     sailStartTerritoryId,
     sailEndTerritoryId,
-    sailStartCandidates: sailFlow.sailStartCandidates,
-    sailEndCandidates: sailFlow.sailEndCandidates,
-    sailPanelOpen: sailFlow.sailPanelOpen,
-    sailInputRef: sailFlow.sailInputRef,
-    sailMaxShips: sailFlow.sailMaxShips,
-    setSailShips: sailFlow.setSailShips,
-    selectSailStart: sailFlow.selectSailStart,
-    selectSailEnd: sailFlow.selectSailEnd,
-    submitSail: sailFlow.submitSail,
-    cancelSail: sailFlow.cancelSail,
     attackSeaTerritoryId,
     attackSeaDefenderId,
-    attackSeaStartCandidates: attackSeaFlow.attackSeaStartCandidates,
-    attackSeaPanelOpen: attackSeaFlow.attackSeaPanelOpen,
-    attackSeaInputRef: attackSeaFlow.attackSeaInputRef,
-    attackSeaBlitzInputRef: attackSeaFlow.attackSeaBlitzInputRef,
-    attackSeaRevealing: attackSeaFlow.attackSeaRevealing,
-    attackSeaDiceOnly: attackSeaFlow.attackSeaDiceOnly,
-    setAttackSeaDiceRoll: attackSeaFlow.setAttackSeaDiceRoll,
-    selectAttackSeaStart: attackSeaFlow.selectAttackSeaStart,
-    submitAttackSea: attackSeaFlow.submitAttackSea,
-    cancelAttackSea: attackSeaFlow.cancelAttackSea,
     transform,
     setTransform,
     imgDims,
@@ -786,85 +509,28 @@ function GameMap({
     ownerById,
     fortifyStartTerritoryId,
     fortifyEndTerritoryId,
-    fortifyStartCandidates: turnFlow.fortifyStartCandidates,
-    fortifyEndCandidates: turnFlow.fortifyEndCandidates,
-    fortifyMaxTroops: turnFlow.fortifyMaxTroops,
-    fortifyInputRef: turnFlow.fortifyInputRef,
-    attackPendingConquest: attackFlow.attackPendingConquest,
     attackStartTerritoryId,
     attackEndTerritoryId,
-    attackStartCandidates: attackFlow.attackStartCandidates,
-    attackEndCandidates: attackFlow.attackEndCandidates,
-    attackMoveMinTroops: attackFlow.attackMoveMinTroops,
-    attackMoveMaxTroops: attackFlow.attackMoveMaxTroops,
-    attackDiceRoll: attackFlow.attackDiceRoll,
-    setAttackDiceRoll: attackFlow.setAttackDiceRoll,
-    attackRevealing: attackFlow.attackRevealing,
-    attackDiceOnly: attackFlow.attackDiceOnly,
-    maxBlitzTroops: attackFlow.maxBlitzTroops,
-    setAttackSelectedType: attackFlow.setAttackSelectedType,
-    setAttackBlitzTroops: attackFlow.setAttackBlitzTroops,
-    attackMoveInputRef: attackFlow.attackMoveInputRef,
-    blitzInputRef: attackFlow.blitzInputRef,
-    entrenchCandidates: turnFlow.entrenchCandidates,
-    entrenchMaxTroops: turnFlow.entrenchMaxTroops,
-    entrenchInputRef: turnFlow.entrenchInputRef,
-    toxinsCandidates: turnFlow.toxinsCandidates,
     nukeTargeting,
     setNukeTargeting,
     antiNukeTerritoryIds: game.antiNukeTerritoryIds,
-    pendingAttackEmoji: emojiUI.pendingAttackEmoji,
-    setPendingAttackEmoji: emojiUI.setPendingAttackEmoji,
-    sendEmoji: emojiUI.sendEmoji,
-    emojiPickerFor: emojiUI.emojiPickerFor,
-    setEmojiPickerFor: emojiUI.setEmojiPickerFor,
-    alliancePopupFor: allianceUI.alliancePopupFor,
-    setAlliancePopupFor: allianceUI.setAlliancePopupFor,
     setToasts,
     setGame,
     setChatOpen,
-    setPanelCollapsed: setPanelCollapsed,
-    openPanel: openPanel,
-    setOpenPanel: setOpenPanel,
-    cardsOpen: cardsOpen,
-    selectedCombo: cardsFlow.selectedCombo,
-    playCardSet: cardsFlow.playCardSet,
+    setPanelCollapsed,
+    openPanel,
+    setOpenPanel,
+    cardsOpen,
     deployPanelOpen: deployTroopsPanelOpen,
-    deployInputRef: cardsFlow.deployInputRef,
-    setDeployTroops: cardsFlow.setDeployTroops,
-    submitDeploy: cardsFlow.submitDeploy,
-    deploySeaCandidates: deploySeaFlow.deploySeaCandidates,
-    deploySeaTerritoryId: deploySeaFlow.deploySeaTerritoryId,
-    selectDeploySea: deploySeaFlow.selectDeploySea,
-    cancelDeploySea: deploySeaFlow.cancelDeploySea,
-    submitDeploySea: deploySeaFlow.submitDeploySea,
-    deploySeaPanelOpen: deploySeaFlow.deploySeaPanelOpen,
-    deploySeaInputRef: deploySeaFlow.deploySeaInputRef,
-    setDeploySeaShips: deploySeaFlow.setDeploySeaShips,
-    deploySeaMaxShips: deploySeaFlow.deploySeaMaxShips,
-    comboActive: deploySeaFlow.comboActive,
-    isSeaAdjacentToTerritory: deploySeaFlow.isSeaAdjacentToTerritory,
-    fortifyPanelOpen: turnFlow.fortifyPanelOpen,
-    setFortifyTroops: turnFlow.setFortifyTroops,
-    cancelFortify: turnFlow.cancelFortify,
-    selectFortifyStart: turnFlow.selectFortifyStart,
-    selectFortifyEnd: turnFlow.selectFortifyEnd,
-    submitFortify: turnFlow.submitFortify,
-    entrenchPanelOpen: turnFlow.entrenchPanelOpen,
-    setEntrenchTroops: turnFlow.setEntrenchTroops,
-    submitEntrench: turnFlow.submitEntrench,
-    toxinsPanelOpen: turnFlow.toxinsPanelOpen,
-    submitToxins: turnFlow.submitToxins,
-    attackPanelOpen: attackFlow.attackPanelOpen,
-    attackShowPendingConquest: attackFlow.attackShowPendingConquest,
-    setAttackMoveTroops: attackFlow.setAttackMoveTroops,
-    cycleAttackOption: attackFlow.cycleAttackOption,
-    selectAttackStart: attackFlow.selectAttackStart,
-    selectAttackEnd: attackFlow.selectAttackEnd,
-    submitAttackMove: attackFlow.submitAttackMove,
-    cancelAttack: attackFlow.cancelAttack,
-    submitAttack: attackFlow.submitAttack,
     canAdvancePhase,
+    sailFlow,
+    attackSeaFlow,
+    attackFlow,
+    turnFlow,
+    deploySeaFlow,
+    cardsFlow,
+    emojiUI,
+    allianceUI,
   });
 
   const tooltipLabels = computeTooltipLabels(
@@ -892,40 +558,17 @@ function GameMap({
     setGame,
   });
 
-  const deployPhaseKey =
-    turnPhase === 'deploy' && currentTurnPlayer
-      ? `${roundNumber}-${turnPlayerIndex}`
-      : null;
-  if (
-    deployPhaseKey !== null &&
-    processedDeployPhaseKey !== deployPhaseKey &&
-    currentTurnPlayer
-  ) {
-    setProcessedDeployPhaseKey(deployPhaseKey);
-    setToasts((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        message: `${currentTurnPlayer.name} received ${troopsToDeploy} troops at the start of their turn`,
-      },
-      ...(isMyTurn && cardsFlow.hasSetToPlay
-        ? [
-            {
-              id: Date.now() + 1,
-              message: 'You have a card set available to play!',
-            },
-          ]
-        : []),
-    ]);
-  }
-
-  if (isCapitals && !capitalModeAnnounced && roundNumber >= 2) {
-    setCapitalModeAnnounced(true);
-    setToasts((prev) => [
-      ...prev,
-      { id: Date.now(), message: 'Capitals mode activated' },
-    ]);
-  }
+  useTurnToasts({
+    turnPhase,
+    roundNumber,
+    turnPlayerIndex,
+    troopsToDeploy,
+    isCapitals,
+    players,
+    isMyTurn,
+    hasSetToPlay: cardsFlow.hasSetToPlay,
+    addToasts,
+  });
 
   useResetTroopInputOnSelection({
     selectedTerritoryId,
@@ -944,7 +587,7 @@ function GameMap({
     attackEndTerritoryId,
     sailStartTerritoryId,
     sailEndTerritoryId,
-    replayConquestArrow,
+    replayConquestArrow: replay.conquestArrow,
     portalsEnabled,
     portalTerritoryIds,
     hasToxinTerritories,
@@ -1001,7 +644,7 @@ function GameMap({
       portalsEnabled,
       attackStartTerritoryId,
       attackEndTerritoryId,
-      replayConquestArrow,
+      replayConquestArrow: replay.conquestArrow,
       bonusesOpen: bonusesOpen,
       gameMode,
       continentId,
@@ -1037,6 +680,7 @@ function GameMap({
       selectedCombo: cardsFlow.selectedCombo,
       cardImagesRef,
       bonuses,
+      forcedWraps,
     });
   });
 
@@ -1142,29 +786,7 @@ function GameMap({
         nukesButtonRef={nukesButtonRef}
         nukesPanelRef={nukesPanelRef}
         whiteNukesIcon={whiteNukesIcon}
-        nukes={
-          nukesEnabled
-            ? showReplay
-              ? {
-                  open: nukesOpen,
-                  paused: true,
-                  targeting: null,
-                  onBuildNuke: () => {},
-                  onBuildAntiNuke: () => {},
-                  onAdvanceNuke: () => {},
-                  onArmNuke: () => {},
-                }
-              : {
-                  open: nukesOpen,
-                  paused,
-                  targeting: nukeTargeting,
-                  onBuildNuke: buildNuke,
-                  onBuildAntiNuke: buildAntiNuke,
-                  onAdvanceNuke: advanceNuke,
-                  onArmNuke: armNuke,
-                }
-            : null
-        }
+        nukes={nukes}
       />
       <PlayersPanel
         players={displayedPlayers}
@@ -1182,11 +804,7 @@ function GameMap({
         selfId={selfId}
         roundNumber={panelRoundNumber}
         turnPhase={panelTurnPhase}
-        turnPlayerId={
-          showReplay && replayTurnPlayerId !== null
-            ? replayTurnPlayerId
-            : (currentTurnPlayer?.id ?? null)
-        }
+        turnPlayerId={panelTurnPlayerId}
         hostId={hostId}
         paused={paused}
         botSpeed={botSpeed}
@@ -1233,21 +851,21 @@ function GameMap({
         players={playersWithAccounts}
         navigate={navigate}
       />
-      {showReplay && replayTerritories && (
+      {showReplay && replay.territories && (
         <ReplayPanel
-          index={replayIndex}
-          totalFrames={replayTotalFrames}
-          playing={replayPlaying}
-          speed={replaySpeed}
-          roundNumber={(replayRoundNumber ?? 0) + 1}
+          index={replay.index}
+          totalFrames={replay.totalFrames}
+          playing={replay.playing}
+          speed={replay.speed}
+          roundNumber={(replay.roundNumber ?? 0) + 1}
           color={replayPlayerColor}
-          onTogglePlay={replayTogglePlay}
-          onStepBack={replayStepBackward}
-          onStepForward={replayStepForward}
-          onJumpStart={replayJumpToStart}
-          onJumpEnd={replayJumpToEnd}
-          onSeek={replaySeek}
-          onCycleSpeed={replayCycleSpeed}
+          onTogglePlay={replay.togglePlay}
+          onStepBack={replay.stepBackward}
+          onStepForward={replay.stepForward}
+          onJumpStart={replay.jumpToStart}
+          onJumpEnd={replay.jumpToEnd}
+          onSeek={replay.seek}
+          onCycleSpeed={replay.cycleSpeed}
         />
       )}
       <TurnActionPanels
@@ -1347,56 +965,17 @@ function GameMap({
         submitAttackSea={attackSeaFlow.submitAttackSea}
         players={players}
       />
-      <ToastContainer
-        position="top-center"
-        className="position-fixed p-3"
-        style={{ zIndex: 3 }}
-      >
-        <Toast
-          show={paused && !gameEnded}
-          className="mx-auto"
-          style={{ width: 'fit-content', maxWidth: 'none' }}
-        >
-          <Toast.Body className="text-nowrap fw-bold">Game Paused</Toast.Body>
-        </Toast>
-        {toasts.map((t) => (
-          <Toast
-            key={t.id}
-            onClose={() =>
-              setToasts((prev) => prev.filter((x) => x.id !== t.id))
-            }
-            autohide
-            delay={5000}
-            className="mx-auto"
-            style={{ width: 'fit-content', maxWidth: 'none' }}
-          >
-            <Toast.Body className="text-nowrap">{t.message}</Toast.Body>
-          </Toast>
-        ))}
-      </ToastContainer>
+      <GameToasts
+        paused={paused}
+        gameEnded={gameEnded}
+        toasts={toasts}
+        setToasts={setToasts}
+      />
       {!gameEnded && cardsFlow.cardSetFlash && (
-        <div
+        <CardSetFlash
           key={cardsFlow.cardSetFlash.id}
-          className="position-fixed top-50 start-50 d-flex gap-3 bg-body bg-opacity-75 border rounded p-3"
-          style={{
-            zIndex: 4,
-            pointerEvents: 'none',
-            animation: `annexCardSetFlash ${CARD_SET_FLASH_DURATION / 1000}s ease-out forwards`,
-          }}
-        >
-          <style>{`
-            @keyframes annexCardSetFlash {
-              0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
-              15% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
-              25% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-              85% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-              100% { transform: translate(-50%, -50%) scale(0.92); opacity: 0; }
-            }
-          `}</style>
-          {cardsFlow.cardSetFlash.cards.map((card, i) => (
-            <CardFace key={i} card={card} size={90} />
-          ))}
-        </div>
+          cards={cardsFlow.cardSetFlash.cards}
+        />
       )}
     </div>
   );

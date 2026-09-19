@@ -52,6 +52,7 @@ function buildTopology(game: Game, map: GameMap): MapTopology {
       ),
     );
     territoryContinent.set(territory.id, territory.continentId);
+    if (territory.continentId < 0) continue;
     const list = continentTerritories.get(territory.continentId);
     if (list) list.push(territory.id);
     else continentTerritories.set(territory.continentId, [territory.id]);

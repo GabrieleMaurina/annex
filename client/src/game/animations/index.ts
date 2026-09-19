@@ -1,4 +1,4 @@
-import { buildWrappedPathSegments } from '../mapMath';
+import { buildWrappedPathSegments, type ForcedWraps } from '../mapMath';
 import { drawFortifyPath } from './arrow';
 import { drawEntrench } from './entrench';
 import { drawExplosion } from './explosion';
@@ -16,6 +16,7 @@ export function drawAnimations(
   radius: number,
   mapW: number,
   mapH: number,
+  forcedWraps: ForcedWraps,
 ) {
   const now = performance.now();
   for (const a of getAnimations()) {
@@ -47,6 +48,7 @@ export function drawAnimations(
             toScreen,
             mapW,
             mapH,
+            forcedWraps,
           );
           drawFortifyPath(ctx, segments, runFades?.[i]);
         }

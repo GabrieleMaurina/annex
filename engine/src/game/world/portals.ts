@@ -1,13 +1,17 @@
 import { getGameMap } from '../../maps/maps';
-import { Game, GameMap } from '../../types';
+import { Game, GameMap, Territory } from '../../types';
 import { shuffle } from '../mechanics';
 
 const MAX_PORTALS = 6;
 const TERRITORIES_PER_PORTAL = 10;
 const SELECTION_ATTEMPTS = 30;
 
+function continentKey(territory: Territory): number {
+  return territory.continentId >= 0 ? territory.continentId : -1 - territory.id;
+}
+
 function continentCount(map: GameMap): number {
-  return new Set(map.territories.map((t) => t.continentId)).size;
+  return new Set(map.territories.map(continentKey)).size;
 }
 
 export function portalCount(map: GameMap): number {
@@ -27,7 +31,7 @@ export function selectPortalTerritories(
     map.territories.map((t) => [t.id, t.neighbors]),
   );
   const continentById = new Map(
-    map.territories.map((t) => [t.id, t.continentId]),
+    map.territories.map((t) => [t.id, continentKey(t)]),
   );
   const eligibleIds = map.territories
     .map((t) => t.id)

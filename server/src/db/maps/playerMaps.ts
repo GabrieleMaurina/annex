@@ -1,21 +1,12 @@
-import {
-  Fill,
-  FILL_VALUES,
-  GENERATION_TYPE_VALUES,
-  GenerationType,
-  MAP_SIZE_VALUES,
-  MapSize,
-} from 'engine';
+import { Fill, GenerationType, MapSize } from 'engine';
 import { Binary, ObjectId } from 'mongodb';
 import { MapGeneration } from '../../validate';
 import { ensureCollection, getCollection } from '../mongo';
 import { getUsernamesByIds, searchUsers } from '../users';
 import { likedMapIds } from './mapLikes';
+import { MAP_PROPERTIES, MAP_REQUIRED } from './mapSchema';
 
 const NAME = 'player_maps';
-
-const MAX_NAME_LENGTH = 40;
-const PICTURE_MIMES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export interface PlayerMapTerritory {
   id: number;
@@ -32,15 +23,23 @@ export interface PlayerMapSeaTerritory {
   neighbors: number[];
 }
 
+export interface PlayerMapWrap {
+  a: number;
+  b: number;
+  x: boolean;
+  y: boolean;
+}
+
 interface PlayerMapDoc {
   authorId: ObjectId;
   name: string;
   territories: PlayerMapTerritory[];
   seaTerritories: PlayerMapSeaTerritory[];
   bonuses: number[];
+  wraps: PlayerMapWrap[];
   image: Binary;
   imageMime: string;
-  generation?: MapGeneration | null;
+  generation: MapGeneration | null;
   territoryCount: number;
   continentCount: number;
   likeCount: number;
@@ -53,12 +52,7 @@ const schema = {
       bsonType: 'object',
       required: [
         'authorId',
-        'name',
-        'territories',
-        'seaTerritories',
-        'bonuses',
-        'image',
-        'imageMime',
+        ...MAP_REQUIRED,
         'territoryCount',
         'continentCount',
         'likeCount',
@@ -68,51 +62,7 @@ const schema = {
       properties: {
         _id: {},
         authorId: { bsonType: 'objectId' },
-        name: { bsonType: 'string', minLength: 1, maxLength: MAX_NAME_LENGTH },
-        territories: {
-          bsonType: 'array',
-          items: {
-            bsonType: 'object',
-            required: ['id', 'continentId', 'x', 'y', 'neighbors'],
-            additionalProperties: false,
-            properties: {
-              id: { bsonType: 'number' },
-              continentId: { bsonType: 'number' },
-              x: { bsonType: 'number' },
-              y: { bsonType: 'number' },
-              neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
-            },
-          },
-        },
-        seaTerritories: {
-          bsonType: 'array',
-          items: {
-            bsonType: 'object',
-            required: ['id', 'x', 'y', 'neighbors'],
-            additionalProperties: false,
-            properties: {
-              id: { bsonType: 'number' },
-              x: { bsonType: 'number' },
-              y: { bsonType: 'number' },
-              neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
-            },
-          },
-        },
-        bonuses: { bsonType: 'array', items: { bsonType: 'number' } },
-        image: { bsonType: 'binData' },
-        imageMime: { enum: PICTURE_MIMES },
-        generation: {
-          bsonType: ['object', 'null'],
-          required: ['seed', 'size', 'type', 'fill', 'seas'],
-          additionalProperties: false,
-          properties: {
-            seed: { bsonType: 'string', minLength: 1, maxLength: 20 },
-            size: { enum: MAP_SIZE_VALUES },
-            type: { enum: GENERATION_TYPE_VALUES },
-            fill: { enum: FILL_VALUES },
-            seas: { bsonType: 'bool' },
-          },
-        },
+        ...MAP_PROPERTIES,
         territoryCount: { bsonType: 'number' },
         continentCount: { bsonType: 'number' },
         likeCount: { bsonType: 'number' },
@@ -172,6 +122,7 @@ export interface PlayerMapInput {
   territories: PlayerMapTerritory[];
   seaTerritories: PlayerMapSeaTerritory[];
   bonuses: number[];
+  wraps: PlayerMapWrap[];
   image: Buffer;
   imageMime: string;
   generation: MapGeneration | null;
@@ -188,6 +139,7 @@ export function createPlayerMap(
       territories: input.territories,
       seaTerritories: input.seaTerritories,
       bonuses: input.bonuses,
+      wraps: input.wraps,
       image: new Binary(input.image),
       imageMime: input.imageMime,
       generation: input.generation,
@@ -229,6 +181,7 @@ export function updatePlayerMap(
               territories: input.territories,
               seaTerritories: input.seaTerritories,
               bonuses: input.bonuses,
+              wraps: input.wraps,
               image: new Binary(input.image),
               imageMime: input.imageMime,
               generation: input.generation,
@@ -264,6 +217,7 @@ export interface PlayerMapDetail {
   territories: PlayerMapTerritory[];
   seaTerritories: PlayerMapSeaTerritory[];
   bonuses: number[];
+  wraps: PlayerMapWrap[];
   image: string;
   imageMime: string;
   generation: MapGeneration | null;
@@ -285,9 +239,10 @@ export function getPlayerMapById(id: string): Promise<PlayerMapDetail | null> {
             territories: doc.territories,
             seaTerritories: doc.seaTerritories ?? [],
             bonuses: doc.bonuses,
+            wraps: doc.wraps,
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
-            generation: doc.generation ?? null,
+            generation: doc.generation,
             dangerous: doc.dangerous,
             likeCount: doc.likeCount,
             createdAt: doc._id.getTimestamp().getTime(),
@@ -468,6 +423,7 @@ export function listPlayerMaps(
           territories: 0,
           seaTerritories: 0,
           bonuses: 0,
+          wraps: 0,
         },
       })
       .sort(sortSpec(query.sort))
@@ -506,7 +462,7 @@ export function listPlayerMaps(
               liked: likedStrings.has(d._id.toString()),
               mine: viewer ? d.authorId.equals(viewer) : false,
               dangerous: d.dangerous,
-              generation: d.generation ?? null,
+              generation: d.generation,
               createdAt: d._id.getTimestamp().getTime(),
             })),
           };

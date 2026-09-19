@@ -30,6 +30,7 @@ import {
   MapGeneration,
   MapSeaTerritory,
   MapTerritory,
+  MapWrap,
   readImageDimensions,
   validateMapGeneration,
   validateMapGeometry,
@@ -65,6 +66,7 @@ interface ParsedInput {
   territories: MapTerritory[];
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
+  wraps: MapWrap[];
   image: Buffer;
   imageMime: string;
   imageDataUrl: string;
@@ -105,6 +107,7 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
     body.territories,
     body.seaTerritories,
     body.bonuses,
+    body.wraps,
     dimensions.width,
     dimensions.height,
   );
@@ -117,6 +120,7 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
       territories: geometry.territories,
       seaTerritories: geometry.seaTerritories,
       bonuses: geometry.bonuses,
+      wraps: geometry.wraps,
       image: data,
       imageMime: match[1],
       imageDataUrl: match[0],
@@ -196,6 +200,7 @@ playerMapsRouter.get('/player-maps/:id', (req, res) => {
         territories: map.territories,
         seaTerritories: map.seaTerritories,
         bonuses: map.bonuses,
+        wraps: map.wraps,
         image: `data:${map.imageMime};base64,${map.image}`,
         imageMime: map.imageMime,
         generation: map.generation,

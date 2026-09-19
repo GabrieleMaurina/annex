@@ -34,6 +34,14 @@ export interface MapSeaTerritory {
   neighbors: number[];
 }
 
+export interface MapWrap {
+  a: number;
+  b: number;
+  x: boolean;
+  y: boolean;
+}
+
+const NO_CONTINENT = -1;
 const MAX_CONTINENTS = 30;
 const MIN_BONUS = 2;
 const MAX_BONUS = 25;
@@ -67,6 +75,18 @@ function isSeaTerritory(value: unknown): value is MapSeaTerritory {
     Number.isFinite(value.y) &&
     Array.isArray(value.neighbors) &&
     value.neighbors.every((n) => Number.isInteger(n))
+  );
+}
+
+function isWrap(value: unknown): value is MapWrap {
+  if (!isObject(value)) return false;
+  return (
+    Object.keys(value).length === 4 &&
+    Number.isInteger(value.a) &&
+    Number.isInteger(value.b) &&
+    typeof value.x === 'boolean' &&
+    typeof value.y === 'boolean' &&
+    (value.x === true || value.y === true)
   );
 }
 
@@ -227,6 +247,7 @@ export function validateMapGeometry(
   territoriesRaw: unknown,
   seaTerritoriesRaw: unknown,
   bonusesRaw: unknown,
+  wrapsRaw: unknown,
   imageWidth: number,
   imageHeight: number,
 ):
@@ -235,6 +256,7 @@ export function validateMapGeometry(
       territories: MapTerritory[];
       seaTerritories: MapSeaTerritory[];
       bonuses: number[];
+      wraps: MapWrap[];
     }
   | { ok: false; error: string } {
   if (!Array.isArray(territoriesRaw))
@@ -249,17 +271,19 @@ export function validateMapGeometry(
     return { ok: false, error: 'invalid seas' };
   if (
     !Array.isArray(bonusesRaw) ||
-    bonusesRaw.length < 1 ||
     bonusesRaw.length > MAX_CONTINENTS ||
     !bonusesRaw.every(
       (b) => Number.isInteger(b) && b >= MIN_BONUS && b <= MAX_BONUS,
     )
   )
     return { ok: false, error: 'invalid bonuses' };
+  if (!Array.isArray(wrapsRaw) || !wrapsRaw.every(isWrap))
+    return { ok: false, error: 'invalid wraps' };
 
   const territories = territoriesRaw as MapTerritory[];
   const seaTerritories = seaTerritoriesRaw as MapSeaTerritory[];
   const bonuses = bonusesRaw as number[];
+  const wraps = wrapsRaw as MapWrap[];
 
   if (territories.length < MIN_CONTINENT_SIZE)
     return { ok: false, error: 'not enough territories' };
@@ -275,7 +299,7 @@ export function validateMapGeometry(
       return { ok: false, error: 'territory out of bounds' };
   }
   for (const t of territories) {
-    if (t.continentId < 0 || t.continentId >= bonuses.length)
+    if (t.continentId < NO_CONTINENT || t.continentId >= bonuses.length)
       return { ok: false, error: 'invalid continent' };
   }
   for (const t of allNodes) {
@@ -283,6 +307,14 @@ export function validateMapGeometry(
       return { ok: false, error: 'invalid neighbor' };
     if (t.neighbors.some((n) => !byId.get(n)!.neighbors.includes(t.id)))
       return { ok: false, error: 'asymmetric neighbor' };
+  }
+
+  const wrapKeys = new Set<string>();
+  for (const w of wraps) {
+    const key = w.a < w.b ? `${w.a}-${w.b}` : `${w.b}-${w.a}`;
+    if (wrapKeys.has(key) || !byId.get(w.a)?.neighbors.includes(w.b))
+      return { ok: false, error: 'invalid wraps' };
+    wrapKeys.add(key);
   }
 
   if (!allConnected(allNodes, byId))
@@ -300,5 +332,5 @@ export function validateMapGeometry(
       return { ok: false, error: 'invalid continent size' };
   }
 
-  return { ok: true, territories, seaTerritories, bonuses };
+  return { ok: true, territories, seaTerritories, bonuses, wraps };
 }

@@ -22,10 +22,15 @@ export function initializeContinent(game: Game) {
   const map = getGameMap(game);
   const sizeByContinentId = new Map<number, number>();
   for (const t of map.territories) {
+    if (t.continentId < 0) continue;
     sizeByContinentId.set(
       t.continentId,
       (sizeByContinentId.get(t.continentId) ?? 0) + 1,
     );
+  }
+  if (sizeByContinentId.size === 0) {
+    game.continentId = null;
+    return;
   }
   const qualifying = [...sizeByContinentId.entries()].filter(
     ([, size]) => size >= MIN_CONTINENT_SIZE,

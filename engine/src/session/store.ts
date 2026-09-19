@@ -10,6 +10,7 @@ import { assignRandomColor, maxTeam } from '../game/mechanics';
 import { gameResultsStats, gameState, gameSummary } from '../game/state';
 import { clearTurnTimer } from '../game/turns';
 import { filterGameStateForViewer } from '../game/world/visibility';
+import { getGameMap } from '../maps/maps';
 import { Game, HOME_ROOM, Player } from '../types';
 import { playersById } from './players';
 
@@ -389,6 +390,7 @@ export function sendGeneratedMapIfAny(game: Game, playerId: number) {
     territories: map.territories,
     seaTerritories: map.seaTerritories,
     bonuses: map.bonuses,
+    wraps: getGameMap(game).wraps,
     imageSrc: map.imageSrc,
   });
 }

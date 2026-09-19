@@ -9,7 +9,13 @@ function lossDamp(rating: number): number {
   return Math.min(1, Math.max(0, rating / LOSS_DAMP_ELO));
 }
 
+export interface GameElo {
+  elo: number;
+  eloDelta: number;
+}
+
 const participantsByGame = new Map<string, Map<number, string>>();
+const elosByGame = new Map<string, Map<number, GameElo>>();
 
 export function recordGameParticipants(game: {
   name: string;
@@ -27,34 +33,59 @@ export function gameParticipants(gameName: string): Map<number, string> {
   return participantsByGame.get(gameName) ?? new Map();
 }
 
+export function gameElos(gameName: string): Map<number, GameElo> {
+  return elosByGame.get(gameName) ?? new Map();
+}
+
+export function reconcileGameElos(existing: Set<string>): void {
+  for (const name of [...elosByGame.keys()]) {
+    if (!existing.has(name)) elosByGame.delete(name);
+  }
+}
+
 export function handleGameEnded(payload: {
   gameName: string;
   gameMode: string;
   roundNumber: number;
   ranking: { playerId: number; team: number }[];
-}): void {
+}): Promise<Map<number, GameElo>> {
   const participants = participantsByGame.get(payload.gameName);
   participantsByGame.delete(payload.gameName);
-  if (!participants) return;
-  if (payload.roundNumber < 1) return;
+  elosByGame.delete(payload.gameName);
+  const noElos = Promise.resolve(new Map<number, GameElo>());
+  if (!participants || participants.size === 0) return noElos;
+  if (payload.roundNumber < 1) return noElos;
 
   const isTeam = payload.gameMode === 'Team Deathmatch';
   const ranked = payload.ranking
     .map((entry, rank) => ({
       rank,
+      playerId: entry.playerId,
       team: entry.team,
       userId: participants.get(entry.playerId),
     }))
     .filter(
-      (entry): entry is { rank: number; team: number; userId: string } =>
-        entry.userId !== undefined,
+      (
+        entry,
+      ): entry is {
+        rank: number;
+        playerId: number;
+        team: number;
+        userId: string;
+      } => entry.userId !== undefined,
     );
-  if (ranked.length < 2) return;
+  const contenders = ranked.length < 2 ? [] : ranked;
 
-  getElosByIds(ranked.map((entry) => entry.userId))
+  return getElosByIds([...participants.values()])
     .then((ratings) => {
       const updates: { userId: string; elo: number }[] = [];
-      for (const player of ranked) {
+      const elos = new Map<number, GameElo>(
+        [...participants].map(([playerId, userId]) => [
+          playerId,
+          { elo: ratings.get(userId) ?? DEFAULT_ELO, eloDelta: 0 },
+        ]),
+      );
+      for (const player of contenders) {
         const rating = ratings.get(player.userId) ?? DEFAULT_ELO;
         let delta = 0;
         let opponents = 0;
@@ -70,15 +101,20 @@ export function handleGameEnded(payload: {
           opponents += 1;
         }
         if (opponents === 0) continue;
-        updates.push({
-          userId: player.userId,
-          elo: Math.min(
-            MAX_ELO,
-            Math.max(0, Math.round(rating + delta / opponents)),
-          ),
+        const nextRating = Math.min(
+          MAX_ELO,
+          Math.max(0, Math.round(rating + delta / opponents)),
+        );
+        updates.push({ userId: player.userId, elo: nextRating });
+        elos.set(player.playerId, {
+          elo: rating,
+          eloDelta: nextRating - rating,
         });
       }
-      return setElos(updates);
+      return setElos(updates).then(() => {
+        elosByGame.set(payload.gameName, elos);
+        return elos;
+      });
     })
-    .catch(() => {});
+    .catch(() => new Map<number, GameElo>());
 }

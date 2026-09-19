@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Container, Spinner, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
+import EloChart from '../common/charts/EloChart';
 import { formatError } from '../common/formatError';
 import FriendshipButton from '../common/FriendshipButton';
 import { useWhiteIcon } from '../common/icon';
@@ -14,6 +15,7 @@ import {
 import { rankForElo } from '../lib/ranks';
 import type {
   Account,
+  EloHistoryPoint,
   GameHistoryRow,
   GamesPage,
   GameSummary,
@@ -84,6 +86,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<GamesPage | null>(null);
   const [mapTotal, setMapTotal] = useState<number | null>(null);
+  const [eloHistory, setEloHistory] = useState<EloHistoryPoint[]>([]);
   const [liveGame, setLiveGame] = useState<GameSummary | null>(null);
   const [reportMenu, setReportMenu] = useState<{ x: number; y: number } | null>(
     null,
@@ -124,6 +127,17 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
         if (!stale) setMapTotal(r.total);
       },
     );
+    return () => {
+      stale = true;
+    };
+  }, [profile]);
+
+  useEffect(() => {
+    if (!profile) return;
+    let stale = false;
+    connector.getEloHistory(profile.username, (history) => {
+      if (!stale) setEloHistory(history);
+    });
     return () => {
       stale = true;
     };
@@ -314,6 +328,13 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
           </div>
         )}
       </div>
+
+      {profile.elo > 0 && eloHistory.length >= 2 && (
+        <div className="mb-4">
+          <div className="small text-muted mb-1">Elo over time</div>
+          <EloChart history={eloHistory} />
+        </div>
+      )}
 
       {liveGame && liveGameState && (
         <div className="d-flex justify-content-center mb-4">

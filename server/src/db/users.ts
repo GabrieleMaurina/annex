@@ -90,11 +90,11 @@ interface UserDoc {
   email_normalized: string;
   password: string;
   validated_email: boolean;
-  elo?: number;
+  elo: number;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
-  picture?: PictureDoc;
+  picture: PictureDoc | null;
 }
 
 export interface StoredPicture {
@@ -273,9 +273,11 @@ const schema = {
         'email_normalized',
         'password',
         'validated_email',
+        'elo',
         'clientSettings',
         'gameSettings',
         'homeFilters',
+        'picture',
       ],
       additionalProperties: false,
       properties: {
@@ -667,7 +669,7 @@ function toUser(doc: WithId<UserDoc>): User {
     email: doc.email,
     passwordHash: doc.password,
     emailValidated: doc.validated_email,
-    elo: doc.elo ?? DEFAULT_ELO,
+    elo: doc.elo,
     clientSettings: sanitizeClientSettings(doc.clientSettings),
     gameSettings: sanitizeGameSettings(doc.gameSettings),
     homeFilters: sanitizeHomeFilters(doc.homeFilters),
@@ -737,7 +739,7 @@ export function setUserPicture(
 
 export function unsetUserPicture(userId: string): Promise<void> {
   return collection()
-    .updateOne({ _id: new ObjectId(userId) }, { $unset: { picture: '' } })
+    .updateOne({ _id: new ObjectId(userId) }, { $set: { picture: null } })
     .then(() => undefined);
 }
 
@@ -770,6 +772,7 @@ export function insertUser(data: {
       clientSettings: { ...DEFAULT_CLIENT_SETTINGS },
       gameSettings: { ...DEFAULT_GAME_SETTINGS },
       homeFilters: { ...DEFAULT_HOME_FILTERS },
+      picture: null,
     })
     .then((res) => ({ id: res.insertedId.toString() }))
     .catch((error: { code?: number }) => {
@@ -855,12 +858,7 @@ export function getElosByIds(ids: string[]): Promise<Map<string, number>> {
       { projection: { elo: 1 } },
     )
     .toArray()
-    .then(
-      (docs) =>
-        new Map(
-          docs.map((doc) => [doc._id.toString(), doc.elo ?? DEFAULT_ELO]),
-        ),
-    );
+    .then((docs) => new Map(docs.map((doc) => [doc._id.toString(), doc.elo])));
 }
 
 export function setElos(
@@ -1017,7 +1015,7 @@ export function listPlayers(query: PlayersQuery): Promise<PlayersPage> {
             return {
               id,
               username: doc.username,
-              elo: doc.elo ?? DEFAULT_ELO,
+              elo: doc.elo,
               gamesPlayed: stats?.gamesPlayed ?? 0,
             };
           });
@@ -1056,7 +1054,7 @@ export function getPlayerProfile(
     .findOne({ username_lower: normalizeUsername(username) })
     .then((doc) => {
       if (!doc) return null;
-      const elo = doc.elo ?? DEFAULT_ELO;
+      const elo = doc.elo;
       const id = doc._id.toString();
       return Promise.all([
         collection().countDocuments({}),

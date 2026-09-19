@@ -320,6 +320,8 @@ export interface PlayerResultStats {
   turnsPlayed: number;
   setsPlayed: number;
   userId?: string | null;
+  elo?: number | null;
+  eloDelta?: number | null;
 }
 
 export interface GameResults {
@@ -612,6 +614,8 @@ export interface StoredGame {
     turnOrder: number;
     rank: number;
     won: boolean;
+    elo: number;
+    eloDelta: number;
   }[];
   results: StoredGameResult[];
   serverLog: ReplayLogEntry[];
@@ -620,6 +624,13 @@ export interface StoredGame {
     initialRadiation: number[];
     frames: ReplayEntry[];
   };
+}
+
+export interface EloHistoryPoint {
+  startedAt: number;
+  endedAt: number;
+  elo: number;
+  eloDelta: number;
 }
 
 export interface GameHistoryRow {

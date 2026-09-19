@@ -9,6 +9,7 @@ import type {
   AccountResult,
   Ack,
   ClientSettings,
+  EloHistoryPoint,
   FriendsOverview,
   GameSettingsInput,
   GamesPage,
@@ -374,6 +375,17 @@ export const connector = {
     httpGet<PlayersPage>('/players?' + params.toString())
       .then(cb)
       .catch(() => cb(empty));
+  },
+
+  getEloHistory(
+    username: string,
+    cb: (history: EloHistoryPoint[]) => void,
+  ): void {
+    httpGet<EloHistoryPoint[]>(
+      '/players/' + encodeURIComponent(username) + '/elo-history',
+    )
+      .then((history) => cb(Array.isArray(history) ? history : []))
+      .catch(() => cb([]));
   },
 
   getPlayerProfile(

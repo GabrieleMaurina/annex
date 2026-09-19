@@ -17,6 +17,14 @@ export interface ResultRow {
   turnsPlayed: number;
   setsPlayed: number;
   userId?: string | null;
+  elo?: number | null;
+  eloDelta?: number | null;
+}
+
+function formatElo(row: ResultRow): string {
+  if (row.elo == null || row.eloDelta == null) return '-';
+  const sign = row.eloDelta > 0 ? '+' : '';
+  return `${row.elo} (${sign}${row.eloDelta})`;
 }
 
 const EMPTY_ROW: ResultRow = {
@@ -76,6 +84,7 @@ function ResultsTable({
     .map((id) => playerById.get(id))
     .filter((p): p is GameState['players'][number] => !!p);
   const nameById = new Map(players.map((p) => [p.id, p.name]));
+  const showElo = rankedPlayers.some((p) => results?.get(p.id)?.elo != null);
 
   return (
     <div className="table-responsive">
@@ -84,6 +93,7 @@ function ResultsTable({
           <tr>
             <th>#</th>
             <th className="text-start">Player</th>
+            {showElo && <th>Elo</th>}
             <th>Turns</th>
             <th>Players Killed</th>
             <th>Troops Gained</th>
@@ -201,6 +211,7 @@ function ResultsTable({
                     )}
                   </div>
                 </td>
+                {showElo && <td style={rowStyle}>{formatElo(stats)}</td>}
                 <td style={rowStyle}>
                   {stats.turnsPlayed}/{roundNumber + 1}
                 </td>

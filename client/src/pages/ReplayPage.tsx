@@ -23,6 +23,23 @@ function countsByOwner(territories: ReplayTerritory[]) {
   return counts;
 }
 
+function resultsWithElo(doc: StoredGame) {
+  const playerById = new Map(doc.players.map((p) => [p.playerId, p]));
+  return new Map(
+    doc.results.map((r) => {
+      const player = playerById.get(r.playerId);
+      return [
+        r.playerId,
+        {
+          ...r,
+          elo: player?.userId ? player.elo : null,
+          eloDelta: player?.userId ? player.eloDelta : null,
+        },
+      ];
+    }),
+  );
+}
+
 function buildGameState(
   doc: StoredGame,
   finalTerritories: ReplayTerritory[],
@@ -206,7 +223,7 @@ function ReplayPage({ navigate, onViewChange }: Props) {
   return (
     <GameReplayView
       game={game}
-      results={new Map(doc.results.map((r) => [r.playerId, r]))}
+      results={resultsWithElo(doc)}
       selfId={null}
       mapRenderName={resolved.mapRenderName}
       replayData={folded.data}

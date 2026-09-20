@@ -89,6 +89,14 @@ const CARD = 0.5;
 const TROOP_LOSS = 0.25;
 const ELIMINATION = 9;
 const DAMAGE = 0.15;
+const CARD_VALUE_CAP = 40;
+const TROOP_SCALE_BASE = 20;
+
+function troopScale(state: SimState): number {
+  let total = 0;
+  for (const troops of state.troops.values()) total += troops;
+  return Math.max(1, total / Math.max(1, state.troops.size) / TROOP_SCALE_BASE);
+}
 
 function eliminationBonus(ctx: PlanContext, state: SimState): number {
   const killWeight = modeGoalFor(ctx).killWeight;
@@ -203,7 +211,7 @@ function grudgeSatisfaction(ctx: PlanContext, state: SimState): number {
 
 function cardValue(ctx: PlanContext): number {
   const upcoming = upcomingSetValues(ctx.game, ctx.botId, 1)[0];
-  return upcoming ?? 6;
+  return Math.min(upcoming ?? 6, CARD_VALUE_CAP);
 }
 
 function damageDealt(state: SimState): number {
@@ -217,15 +225,16 @@ function scoreState(ctx: PlanContext, state: SimState): number {
   const leader = antiLeaderActive(ctx.standing)
     ? strongestOpponent(ctx, state)
     : null;
+  const scale = troopScale(state);
   let score = 0;
   score += INCOME * incomeEstimate(ctx, state, ctx.botId);
   score += HELD_BONUS * heldContinentBonus(ctx, state, ctx.botId);
   score += CONTINENT_PROGRESS * continentProgress(ctx, state);
   score += denial(ctx, state);
-  score -= ctx.weights.defense * FRONTIER_RISK * risk;
-  score -= INTERIOR_WASTE * waste;
+  score -= (ctx.weights.defense * FRONTIER_RISK * risk) / scale;
+  score -= (INTERIOR_WASTE * waste) / scale;
   score -= ctx.weights.defense * EXPOSURE * exposure(ctx, state);
-  score += CONCENTRATION * concentration;
+  score += (CONCENTRATION * concentration) / scale;
   score -= CAPITAL_RISK * capitalRisk(ctx, state);
   if (leader && leader.playerId !== ctx.botId)
     score -=
@@ -234,10 +243,11 @@ function scoreState(ctx: PlanContext, state: SimState): number {
       ctx.standing.gangUp *
       leader.strength;
   score += ctx.weights.grudge * GRUDGE * grudgeSatisfaction(ctx, state);
-  if (state.conquered) score += CARD * cardValue(ctx);
-  score -= TROOP_LOSS * state.troopsLost;
+  if (state.conquered && ctx.game.cards !== 'Off')
+    score += CARD * cardValue(ctx);
+  score -= (TROOP_LOSS * state.troopsLost) / scale;
   score += eliminationBonus(ctx, state);
-  score += DAMAGE * damageDealt(state);
+  score += (DAMAGE * damageDealt(state)) / scale;
   score += standingScore(ctx, state);
   score += modeScore(ctx, state);
   return score;

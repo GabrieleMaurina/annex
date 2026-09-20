@@ -272,8 +272,16 @@ export function gameState(game: Game) {
         troopsKilled: playerStats.troopsKilled as number | null,
         troopsLost: playerStats.troopsLost as number | null,
         isBot: !!member?.isBot,
-        botDifficulty: member?.botProfile?.difficulty ?? null,
-        botPersonality: member?.botProfile?.personality ?? null,
+        botDifficulty: member?.botProfile
+          ? member.botProfile.difficultyHidden
+            ? ('random' as const)
+            : member.botProfile.difficulty
+          : null,
+        botPersonality: member?.botProfile
+          ? member.botProfile.personalityHidden
+            ? ('random' as const)
+            : member.botProfile.personality
+          : null,
       };
     }),
     spectators: toSummaries(game.spectatorIds),

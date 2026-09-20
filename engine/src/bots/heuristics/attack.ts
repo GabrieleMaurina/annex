@@ -21,11 +21,18 @@ export interface AttackChoice {
   type: 'regular' | 'blitz';
 }
 
-function blitzAllTroops(attackingTroops: number): {
-  type: 'regular' | 'blitz';
-  troops: number;
-} {
-  return { type: 'blitz', troops: attackingTroops - 1 };
+const REGULAR_ATTACK_MAX_TROOPS = 3;
+
+export function attackOrder(
+  game: Game,
+  troops: number,
+): { type: 'regular' | 'blitz'; troops: number } {
+  if (game.blitz === 'Off')
+    return {
+      type: 'regular',
+      troops: Math.min(troops, REGULAR_ATTACK_MAX_TROOPS),
+    };
+  return { type: 'blitz', troops };
 }
 
 export function chooseAttackMoveTroops(
@@ -98,7 +105,7 @@ export function chooseAttack(
 
     if (score > bestScore) {
       bestScore = score;
-      const { type, troops } = blitzAllTroops(attackingTroops);
+      const { type, troops } = attackOrder(game, attackingTroops - 1);
       best = { startId, endId, troops, type };
     }
   };

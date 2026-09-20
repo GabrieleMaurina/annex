@@ -27,6 +27,7 @@ interface Props {
   selectedType: AttackType;
   regularTroops: 1 | 2 | 3;
   blitzTroops: number;
+  blitzEnabled: boolean;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   diceRoll: DiceRoll | null;
   onSelectRegular: (troops: 1 | 2 | 3) => void;
@@ -176,6 +177,7 @@ function AttackPanel({
   selectedType,
   regularTroops,
   blitzTroops,
+  blitzEnabled,
   blitzInputRef,
   diceRoll,
   onSelectRegular,
@@ -273,44 +275,46 @@ function AttackPanel({
               </div>
             );
           })}
-          <div
-            style={attackOptionStyle(selectedType === 'blitz')}
-            onClick={onSelectBlitz}
-            onWheel={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onBlitzTroopsWheel(e.deltaY < 0 ? 1 : -1);
-            }}
-          >
-            <div className="d-flex align-items-center gap-1">
-              <span>Blitz</span>
-              <Form.Control
-                ref={blitzInputRef}
-                type="number"
-                size="sm"
-                min={1}
-                max={maxBlitzTroops}
-                value={blitzTroops}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  onSelectBlitz();
-                  onBlitzTroopsChange(
-                    Math.min(
-                      maxBlitzTroops,
-                      Math.max(1, Number(e.target.value) || 1),
-                    ),
-                  );
-                }}
-                {...blitzDragNumber}
-                style={{ ...blitzDragNumber.style, width: 60 }}
-              />
-              <span className="small">
-                {blitzOutcome
-                  ? `Lose ${blitzOutcome.attackLosses} / Kill ${blitzOutcome.defenceLosses}`
-                  : formatProbability(blitzProbability)}
-              </span>
+          {blitzEnabled && (
+            <div
+              style={attackOptionStyle(selectedType === 'blitz')}
+              onClick={onSelectBlitz}
+              onWheel={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onBlitzTroopsWheel(e.deltaY < 0 ? 1 : -1);
+              }}
+            >
+              <div className="d-flex align-items-center gap-1">
+                <span>Blitz</span>
+                <Form.Control
+                  ref={blitzInputRef}
+                  type="number"
+                  size="sm"
+                  min={1}
+                  max={maxBlitzTroops}
+                  value={blitzTroops}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    onSelectBlitz();
+                    onBlitzTroopsChange(
+                      Math.min(
+                        maxBlitzTroops,
+                        Math.max(1, Number(e.target.value) || 1),
+                      ),
+                    );
+                  }}
+                  {...blitzDragNumber}
+                  style={{ ...blitzDragNumber.style, width: 60 }}
+                />
+                <span className="small">
+                  {blitzOutcome
+                    ? `Lose ${blitzOutcome.attackLosses} / Kill ${blitzOutcome.defenceLosses}`
+                    : formatProbability(blitzProbability)}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
           <Button size="sm" onClick={onConfirm} disabled={revealing}>
             Attack
           </Button>

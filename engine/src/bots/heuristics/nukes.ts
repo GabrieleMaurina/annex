@@ -4,8 +4,10 @@ import {
   playerArsenal,
   playerProjects,
 } from '../../game/nukes/nukes';
+import { getGameMap } from '../../maps/maps';
 import { BotPersonality, Game } from '../../types';
 import { assassinKillShot, threatTile } from '../features/modeGoals';
+import { stalematePressure } from '../features/pressure';
 import type { PlanContext } from '../planning/context';
 import { isVisible } from '../view';
 
@@ -13,6 +15,8 @@ export interface NukeAction {
   event: string;
   payload: unknown;
 }
+
+const BLIND_LAUNCH_PRESSURE = 0.5;
 
 const PERSONALITY_AGGRESSION: Record<BotPersonality, number> = {
   killer: 1,
@@ -101,6 +105,15 @@ export function chooseNukeConstruction(ctx: PlanContext): NukeAction | null {
   return null;
 }
 
+function blindNukeTarget(ctx: PlanContext): { territoryId: number } | null {
+  if (stalematePressure(ctx.game) < BLIND_LAUNCH_PRESSURE) return null;
+  const hidden = getGameMap(ctx.game).territories.filter(
+    (t) => !isVisible(ctx.view, t.id),
+  );
+  if (hidden.length === 0) return null;
+  return { territoryId: hidden[Math.floor(Math.random() * hidden.length)].id };
+}
+
 export function chooseNukeLaunch(
   ctx: PlanContext,
 ): { territoryId: number } | null {
@@ -114,7 +127,7 @@ export function chooseNukeLaunch(
     if (!isVisible(view, id)) continue;
     enemyTiles.push({ id, owner, troops: game.territoryTroops.get(id) ?? 0 });
   }
-  if (enemyTiles.length === 0) return null;
+  if (enemyTiles.length === 0) return blindNukeTarget(ctx);
 
   const assassination = assassinKillShot(ctx);
   if (assassination !== null) return { territoryId: assassination };

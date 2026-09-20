@@ -144,6 +144,10 @@ export function useDisplayedGame({
     () => new Set([...toxinById, ...radiationById]),
     [toxinById, radiationById],
   );
+  const upcomingUnusableTerritoryById = useMemo(
+    () => new Set([...toxinById, ...radiationUpcomingTerritoryIds]),
+    [toxinById, radiationUpcomingTerritoryIds],
+  );
   const antiNukeById = useMemo(
     () => new Set(showReplay ? [] : game.antiNukeTerritoryIds),
     [showReplay, game.antiNukeTerritoryIds],
@@ -220,6 +224,7 @@ export function useDisplayedGame({
     radiationById,
     radiationUpcomingById,
     unusableTerritoryById,
+    upcomingUnusableTerritoryById,
     antiNukeById,
     visibleTerritoryById,
     replayPlayer,

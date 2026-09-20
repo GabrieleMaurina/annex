@@ -6,6 +6,7 @@ import { recordElimination } from '../progression/stats';
 import { wouldSplitMap } from '../world/connectivity';
 import { fogFilterEmit } from '../world/fog';
 import { removePortalTerritory } from '../world/portals';
+import { isSeaTerritory } from '../world/seaShips';
 import { visibleTerritoryIdsOrAll } from '../world/visibility';
 import { selectRadiationTerritories } from './selection';
 
@@ -40,7 +41,7 @@ export function initializeRadiation(game: Game) {
   const map = getGameMap(game);
   const count = radiationInitialCount(game.radiations, map.territories.length);
   game.radiationTerritoryIds = new Set(
-    selectRadiationTerritories(map.territories, count),
+    selectRadiationTerritories(map.territories, map.seaTerritories, count),
   );
   game.radiationUpcomingTerritoryIds = new Set();
 }
@@ -50,6 +51,7 @@ function isValidRadiationTarget(
   working: Set<number>,
   candidateId: number,
 ): boolean {
+  if (isSeaTerritory(game, candidateId)) return false;
   if (working.has(candidateId)) return false;
   if (game.capitalTerritoryIds.has(candidateId)) return false;
   if (game.radiations === 'dynamic' && game.territoryToxins.has(candidateId))

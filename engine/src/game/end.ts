@@ -1,3 +1,4 @@
+import { revealBotProfiles } from '../bots/reveal';
 import { callbacks } from '../callbacks';
 import { playersById } from '../session/players';
 import { broadcastGameResults, broadcastHomeGames } from '../session/store';
@@ -37,6 +38,7 @@ export function endAbandonedGame(game: Game): void {
   if (game.state !== 'playing') return;
   game.state = 'ended';
   game.endedAt = Date.now();
+  revealBotProfiles(game);
   game.finalRanking = computeFinalRanking(game);
   emitGameEnded(game);
 }
@@ -112,6 +114,7 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   game.state = 'ended';
   game.endedAt = Date.now();
   game.winnerIds = winnerIds;
+  revealBotProfiles(game);
   if (!turnAlreadyEnded) {
     const currentPlayerId = game.playerIds[game.turnPlayerIndex];
     if (ownsAnyTerritory(game, currentPlayerId))

@@ -29,6 +29,7 @@ export function useTurnActionFlows({
   cards,
   nextSetBaseValues,
   blockedById,
+  upcomingBlockedById,
   setGame,
 }: {
   fortifyStartTerritoryId: number | null;
@@ -49,6 +50,7 @@ export function useTurnActionFlows({
   cards: GameState['cards'];
   nextSetBaseValues: GameState['nextSetBaseValues'];
   blockedById: Set<number>;
+  upcomingBlockedById: Set<number>;
   setGame: (game: GameState) => void;
 }) {
   const [fortifyTroops, setFortifyTroops] = useState(1);
@@ -167,10 +169,12 @@ export function useTurnActionFlows({
   const toxinsCandidates = isMyTurn
     ? getToxinsCandidates(
         territories,
+        seaTerritories,
         ownerById,
         selfId,
         toxinsCostValue,
         blockedById,
+        upcomingBlockedById,
         portalTerritoryIds,
         portalsEnabled,
       )

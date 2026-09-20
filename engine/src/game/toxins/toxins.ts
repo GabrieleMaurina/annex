@@ -5,7 +5,8 @@ import { wouldSplitMap as wouldSplitMapShared } from '../world/connectivity';
 
 export function toxinsCost(game: Game, playerId: number): number {
   if (game.toxins === 'off') return Infinity;
-  if (game.cards === 'Constant') return game.toxins === 'temporary' ? 5 : 10;
+  if (game.cards === 'Constant' || game.cards === 'Off')
+    return game.toxins === 'temporary' ? 5 : 10;
   const base = nextSetBaseValues(game, playerId).mixed;
   return Math.ceil(base * (game.toxins === 'temporary' ? 0.25 : 0.5));
 }
@@ -23,10 +24,13 @@ export function wouldSplitMap(
   game: Game,
   candidateTerritoryId: number,
 ): boolean {
-  return wouldSplitMapShared(
-    game,
-    new Set([...game.territoryToxins.keys(), ...game.radiationTerritoryIds]),
-    candidateTerritoryId,
+  return [game.radiationTerritoryIds, game.radiationUpcomingTerritoryIds].some(
+    (radiationIds) =>
+      wouldSplitMapShared(
+        game,
+        new Set([...game.territoryToxins.keys(), ...radiationIds]),
+        candidateTerritoryId,
+      ),
   );
 }
 

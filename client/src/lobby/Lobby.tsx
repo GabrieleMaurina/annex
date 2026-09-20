@@ -151,7 +151,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
           botInputsRef.current.get(p.id) ??
           getRestoredBotInput(p.id) ?? {
             difficulty: p.botDifficulty ?? 'easy',
-            personality: p.botPersonality ?? 'balanced',
+            personality: p.botPersonality ?? 'random',
           },
       );
   }
@@ -159,7 +159,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
   function addBot() {
     const lastBot = [...game.players].reverse().find((p) => p.isBot);
     const difficulty = lastBot?.botDifficulty ?? 'easy';
-    const personality = lastBot?.botPersonality ?? 'balanced';
+    const personality = lastBot?.botPersonality ?? 'random';
     const knownBotIds = new Set(game.players.map((p) => p.id));
     connector.addBot({ difficulty, personality }, (res: Ack) => {
       if (!res.ok) {

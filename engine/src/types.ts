@@ -61,7 +61,9 @@ export type BotSpeed = 'slow' | 'medium' | 'fast';
 
 export interface BotProfile {
   difficulty: BotDifficulty;
+  difficultyHidden?: boolean;
   personality: BotPersonality;
+  personalityHidden?: boolean;
 }
 
 export type CardSymbol = 'soldier' | 'humvee' | 'tank';
@@ -71,14 +73,15 @@ export interface Card {
   symbol: CardSymbol | null;
 }
 
-export type Blitz = 'Balanced' | 'True' | 'Fair';
+export type Blitz = 'Balanced' | 'True' | 'Fair' | 'Off';
 export type DefenceDice = 2 | 3;
 export type CardsMode =
   | 'Constant'
   | 'Linear'
   | 'Exponential'
   | 'Linear Per Player'
-  | 'Exponential Per Player';
+  | 'Exponential Per Player'
+  | 'Off';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
   | 'Supremacy'

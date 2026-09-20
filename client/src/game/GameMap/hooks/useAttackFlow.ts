@@ -45,6 +45,7 @@ export function useAttackFlow({
   turnPhase,
   isMyTurn,
   paused,
+  blitzEnabled,
   setGame,
 }: {
   attackStartTerritoryId: number | null;
@@ -61,6 +62,7 @@ export function useAttackFlow({
   turnPhase: GameState['turnPhase'];
   isMyTurn: boolean;
   paused: boolean;
+  blitzEnabled: boolean;
   setGame: (game: GameState) => void;
 }) {
   const [attackWinProbabilities, setAttackWinProbabilities] = useState<
@@ -114,11 +116,16 @@ export function useAttackFlow({
     (blitzWinProbabilities: number[], blitzOutcomes: BlitzOutcome[] | null) => {
       setAttackWinProbabilities(blitzWinProbabilities);
       setAttackBlitzOutcomes(blitzOutcomes);
-      setAttackSelectedType('blitz');
-      setAttackRegularTroops(1);
+      setAttackSelectedType(blitzEnabled ? 'blitz' : 'regular');
+      setAttackRegularTroops(
+        blitzEnabled
+          ? 1
+          : (Math.min(3, Math.max(1, blitzWinProbabilities.length)) as
+              1 | 2 | 3),
+      );
       setAttackBlitzTroops(Math.max(1, blitzWinProbabilities.length));
     },
-    [],
+    [blitzEnabled],
   );
 
   const continueAttackSelection = useCallback(
@@ -332,7 +339,7 @@ export function useAttackFlow({
 
   const cycleAttackOption = useCallback(
     (direction: 1 | -1) => {
-      const optionCount = maxRegularTroops + 1;
+      const optionCount = maxRegularTroops + (blitzEnabled ? 1 : 0);
       const nextIndex =
         (attackOptionIndexRef.current + direction + optionCount) % optionCount;
       attackOptionIndexRef.current = nextIndex;
@@ -344,7 +351,7 @@ export function useAttackFlow({
         setAttackRegularTroops((nextIndex + 1) as 1 | 2 | 3);
       }
     },
-    [maxRegularTroops],
+    [maxRegularTroops, blitzEnabled],
   );
 
   if (attackEndTerritoryId === null && attackWinProbabilities !== null) {

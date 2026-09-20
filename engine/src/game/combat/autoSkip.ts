@@ -10,6 +10,7 @@ import {
   connectedSeaTerritories,
   hasConnectedFortifyDestination,
 } from '../world/connectivity';
+import { withPortalEdges } from '../world/portals';
 import { hasAnySeaBridgeFrom } from './seaBridge';
 
 export function hasAnyAttack(game: Game, playerId: number): boolean {
@@ -17,14 +18,18 @@ export function hasAnyAttack(game: Game, playerId: number): boolean {
   const territoryById = new Map(map.territories.map((t) => [t.id, t]));
   return ownedTerritoryIds(game, playerId).some((id) => {
     if ((game.territoryTroops.get(id) ?? 0) < 2) return false;
+    const neighbors = withPortalEdges(
+      territoryById.get(id)?.neighbors ?? [],
+      id,
+      game.portalTerritoryIds,
+      game.portalsEnabled,
+    );
     return (
-      (territoryById.get(id)?.neighbors.some((n) => {
+      neighbors.some((n) => {
         const ownerId = game.territoryOwners.get(n);
         if (ownerId !== undefined) return ownerId !== playerId;
         return isFreeConquestTarget(game, n);
-      }) ??
-        false) ||
-      hasAnySeaBridgeFrom(game, playerId, id)
+      }) || hasAnySeaBridgeFrom(game, playerId, id)
     );
   });
 }
@@ -48,12 +53,12 @@ export function hasAnyFortify(game: Game, playerId: number): boolean {
     if ((game.territoryTroops.get(id) ?? 0) < 2) return false;
     if (game.fortification === 'Connected')
       return hasConnectedFortifyDestination(game, playerId, id);
-    return (
-      territoryById
-        .get(id)
-        ?.neighbors.some((n) => game.territoryOwners.get(n) === playerId) ??
-      false
-    );
+    return withPortalEdges(
+      territoryById.get(id)?.neighbors ?? [],
+      id,
+      game.portalTerritoryIds,
+      game.portalsEnabled,
+    ).some((n) => game.territoryOwners.get(n) === playerId);
   });
 }
 

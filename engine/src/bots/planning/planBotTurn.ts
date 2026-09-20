@@ -9,6 +9,7 @@ import { attackWinProbability, defenceDiceFor } from '../features/combat';
 import { frustrationLevel, stalemateRamp } from '../features/pressure';
 import {
   AttackChoice,
+  attackOrder,
   chooseAttack,
   chooseAttackMoveTroops,
 } from '../heuristics/attack';
@@ -272,9 +273,15 @@ function planAttack(
       return result([{ event: 'game:launchNuke', payload: launch }], plan);
   }
 
+  const candidateShipAttack = chooseShipAttack(game, ctx.botId);
+  const continuingShipAttack =
+    candidateShipAttack !== null &&
+    game.blitz === 'Off' &&
+    game.attackSeaTerritoryId === candidateShipAttack.seaTerritoryId &&
+    game.attackSeaDefenderId === candidateShipAttack.defenderId;
   const shipAttack =
-    plan.shipAttacksIssued < ctx.params.maxPlanDepth
-      ? chooseShipAttack(game, ctx.botId)
+    continuingShipAttack || plan.shipAttacksIssued < ctx.params.maxPlanDepth
+      ? candidateShipAttack
       : null;
   if (shipAttack && game.attackStartTerritoryId !== null)
     return result(
@@ -282,7 +289,7 @@ function planAttack(
       plan,
     );
   if (shipAttack) {
-    plan.shipAttacksIssued++;
+    if (!continuingShipAttack) plan.shipAttacksIssued++;
     return result(
       [
         {
@@ -317,8 +324,8 @@ function planAttack(
     }
     if (status === 'ok') {
       const attackers = (game.territoryTroops.get(step.startId) ?? 0) - 1;
-      plan.step++;
-      plan.attacksIssued++;
+      if (!isContinuation(game, step.startId, step.endId)) plan.attacksIssued++;
+      if (game.blitz !== 'Off') plan.step++;
       return result(
         [
           {
@@ -331,7 +338,7 @@ function planAttack(
           },
           {
             event: 'game:attack',
-            payload: { type: 'blitz', troops: attackers },
+            payload: attackOrder(game, attackers),
           },
         ],
         plan,
@@ -365,8 +372,9 @@ function planAttack(
     chooseLosingAttack(ctx, frustration);
   if (!attack) return result([NEXT_PHASE], plan);
   const overwhelming = isOverwhelming(game, attack);
-  if (capped && !overwhelming) return result([NEXT_PHASE], plan);
-  if (!overwhelming) plan.attacksIssued++;
+  const continuing = isContinuation(game, attack.startId, attack.endId);
+  if (capped && !overwhelming && !continuing) return result([NEXT_PHASE], plan);
+  if (!overwhelming && !continuing) plan.attacksIssued++;
   return result(
     [
       {
@@ -380,6 +388,14 @@ function planAttack(
       },
     ],
     plan,
+  );
+}
+
+function isContinuation(game: Game, startId: number, endId: number): boolean {
+  return (
+    game.blitz === 'Off' &&
+    game.attackStartTerritoryId === startId &&
+    game.attackEndTerritoryId === endId
   );
 }
 

@@ -48,6 +48,7 @@ function computeSeaBlitzWinProbabilities(
   defendingShips: number,
   defendingDice: number,
 ): number[] {
+  if (game.blitz === 'Off') return new Array<number>(attackingShips).fill(0);
   if (game.blitz === 'Fair')
     return trueWinProbs(
       attackingShips,
@@ -170,6 +171,8 @@ export function attackSea(
   if (!isAttackType(rawType))
     return { ok: false, error: 'invalid attack type' };
   const type = rawType;
+  if (type === 'blitz' && game.blitz === 'Off')
+    return { ok: false, error: 'blitz disabled' };
 
   const seaTerritoryId = game.attackSeaTerritoryId;
   const defenderId = game.attackSeaDefenderId;

@@ -226,12 +226,12 @@ function PlayerRoster({
                           <Form.Select
                             size="sm"
                             className="w-auto"
-                            value={p.botPersonality ?? 'balanced'}
+                            value={p.botPersonality ?? 'random'}
                             onChange={(e) =>
                               setBotProfile(
                                 p.id,
                                 p.botDifficulty ?? 'easy',
-                                e.target.value as BotPersonality,
+                                e.target.value as BotPersonality | 'random',
                               )
                             }
                           >
@@ -262,8 +262,8 @@ function PlayerRoster({
                             onChange={(e) =>
                               setBotProfile(
                                 p.id,
-                                e.target.value as BotDifficulty,
-                                p.botPersonality ?? 'balanced',
+                                e.target.value as BotDifficulty | 'random',
+                                p.botPersonality ?? 'random',
                               )
                             }
                           >

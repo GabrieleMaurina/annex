@@ -1,13 +1,13 @@
 import { Game, Player } from '../types';
-import { resolveDifficulty, resolvePersonality } from './randomProfile';
+import { resolveBotProfile } from './randomProfile';
 
 export function startTakeover(game: Game, player: Player): void {
   if (player.isBot) return;
   player.isBot = true;
-  player.botProfile = {
-    difficulty: resolveDifficulty(game.disconnectBotDifficulty),
-    personality: resolvePersonality(game.disconnectBotPersonality),
-  };
+  player.botProfile = resolveBotProfile(
+    game.disconnectBotDifficulty,
+    game.disconnectBotPersonality,
+  );
 }
 
 export function endTakeover(player: Player): void {

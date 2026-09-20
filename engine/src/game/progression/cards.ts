@@ -72,7 +72,8 @@ export function nextSetBaseValues(
   game: Game,
   playerId: number,
 ): Record<SetKind, number> {
-  if (game.cards === 'Constant') return { ...CONSTANT_VALUES };
+  if (game.cards === 'Constant' || game.cards === 'Off')
+    return { ...CONSTANT_VALUES };
   const key = counterKey(game, playerId);
   const value =
     game.cards === 'Linear' || game.cards === 'Linear Per Player'
@@ -86,7 +87,7 @@ export function upcomingSetValues(
   playerId: number,
   count: number,
 ): number[] {
-  if (game.cards === 'Constant') return [];
+  if (game.cards === 'Constant' || game.cards === 'Off') return [];
   const key = counterKey(game, playerId);
   if (game.cards === 'Linear' || game.cards === 'Linear Per Player') {
     return Array.from({ length: count }, (_, i) =>

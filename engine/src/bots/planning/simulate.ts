@@ -315,11 +315,11 @@ export function simulateTurn(
     const captured = objective.mustVisit.filter(
       (id) => state.owners.get(id) === ctx.botId,
     ).length;
-    if (
-      captured / objective.mustVisit.length >= FEASIBILITY_RATIO &&
-      state.conquered
-    )
-      feasible = true;
+    const required = Math.min(
+      Math.ceil(objective.mustVisit.length * FEASIBILITY_RATIO),
+      ctx.params.maxPlanDepth,
+    );
+    if (captured >= required && state.conquered) feasible = true;
   }
 
   const hint = candidate.fortifyHint ?? candidate.objectives[0]?.fortifyHint;

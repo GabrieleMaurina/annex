@@ -77,6 +77,10 @@ export const BLITZ_HELP = (
         counts and defence dice, set to the average of a True blitz, so the same
         attack always costs the same.
       </li>
+      <li>
+        Off: all-out attacks are disabled, on land and at sea. Every battle is
+        fought exchange by exchange.
+      </li>
     </ul>
   </>
 );
@@ -116,6 +120,10 @@ export const CARDS_HELP = (
         Exponential Per Player: same as Exponential, but each player has their
         own progression: playing a set only raises the value of your own next
         set.
+      </li>
+      <li>
+        Off: no cards are earned by conquering territories, and the cards panel
+        is hidden.
       </li>
     </ul>
   </>

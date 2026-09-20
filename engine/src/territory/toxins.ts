@@ -6,6 +6,7 @@ import { toxinsCost, wouldSplitMap } from '../game/toxins/toxins';
 import { advanceTurnPhase } from '../game/turns';
 import { fogFilterEmit } from '../game/world/fog';
 import { removePortalTerritory } from '../game/world/portals';
+import { isSeaTerritory } from '../game/world/seaShips';
 import { visibleTerritoryIdsOrAll } from '../game/world/visibility';
 import { GameResponse, requireGame } from '../session/context';
 import { respondGameState } from '../session/store';
@@ -24,6 +25,8 @@ export function toxin(playerId: number, rawTerritoryId: unknown): GameResponse {
   if (!isInteger(rawTerritoryId))
     return { ok: false, error: 'invalid territory' };
   const territoryId = rawTerritoryId;
+  if (isSeaTerritory(game, territoryId))
+    return { ok: false, error: 'invalid territory' };
   if (game.territoryOwners.get(territoryId) !== playerId)
     return { ok: false, error: 'territory not owned' };
   if (game.capitalTerritoryIds.has(territoryId))

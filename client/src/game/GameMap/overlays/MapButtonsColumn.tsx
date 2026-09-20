@@ -152,7 +152,7 @@ export default function MapButtonsColumn({
             </Button>
           </Tip>
         )}
-        {cardsOpen ? (
+        {game.cards === 'Off' ? null : cardsOpen ? (
           <div ref={cardsPanelRef}>
             <CardsPanel
               hand={hand}

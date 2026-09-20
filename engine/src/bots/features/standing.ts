@@ -8,8 +8,8 @@ export interface Standing {
   preference: Map<number, number>;
 }
 
-const STANCE_SHIFT_START = 100;
-const STANCE_SHIFT_END = 150;
+const STANCE_SHIFT_START = 60;
+const STANCE_SHIFT_END = 100;
 const TROOP_STRENGTH = 0.5;
 const BONUS_STRENGTH = 3;
 const TRIAD_SIDES = 3;

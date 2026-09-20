@@ -137,7 +137,7 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'Player Kills',
     'Troop Kills',
   ],
-  blitz: ['Balanced', 'True', 'Fair'],
+  blitz: ['Balanced', 'True', 'Fair', 'Off'],
   defenceDice: [2, 3],
   cards: [
     'Constant',
@@ -145,6 +145,7 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'Exponential',
     'Linear Per Player',
     'Exponential Per Player',
+    'Off',
   ],
   placement: ['Random', 'Semi', 'Custom'],
   fortification: ['Connected', 'Neighboring', 'Unrestricted'],

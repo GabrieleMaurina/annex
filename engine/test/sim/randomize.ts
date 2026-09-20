@@ -48,6 +48,7 @@ const CARDS_MODES: CardsMode[] = [
   'Exponential',
   'Linear Per Player',
   'Exponential Per Player',
+  'Off',
 ];
 const GAME_MODES: GameMode[] = [
   'Supremacy',
@@ -63,7 +64,7 @@ const GAME_MODES: GameMode[] = [
   'Player Kills',
   'Troop Kills',
 ];
-const BLITZ_VALUES: Blitz[] = ['Balanced', 'True', 'Fair'];
+const BLITZ_VALUES: Blitz[] = ['Balanced', 'True', 'Fair', 'Off'];
 const PLACEMENT_VALUES: Placement[] = ['Random', 'Random', 'Semi', 'Custom'];
 
 export interface BotIdentity {

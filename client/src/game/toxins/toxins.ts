@@ -1,5 +1,5 @@
 import type { GameState } from '../../lib/types';
-import type { Territory } from '../mapData';
+import type { SeaTerritory, Territory } from '../mapData';
 import { withPortalEdges } from '../portals';
 
 type OwnerById = Map<number, GameState['territories'][number]>;
@@ -10,7 +10,8 @@ export function toxinsCost(
   nextSetBaseValues: GameState['nextSetBaseValues'],
 ): number {
   if (toxinsSetting === 'off') return Infinity;
-  if (cards === 'Constant') return toxinsSetting === 'temporary' ? 5 : 10;
+  if (cards === 'Constant' || cards === 'Off')
+    return toxinsSetting === 'temporary' ? 5 : 10;
   return Math.ceil(
     nextSetBaseValues.mixed * (toxinsSetting === 'temporary' ? 0.25 : 0.5),
   );
@@ -18,6 +19,7 @@ export function toxinsCost(
 
 export function wouldSplitMap(
   territories: Territory[],
+  seaTerritories: SeaTerritory[],
   blockedById: Set<number>,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
@@ -28,34 +30,39 @@ export function wouldSplitMap(
   const remaining = territories.filter((t) => !removed.has(t.id));
   if (remaining.length === 0) return false;
 
-  const remainingIds = new Set(remaining.map((t) => t.id));
-  const territoryById = new Map(territories.map((t) => [t.id, t]));
+  const seaIds = new Set(seaTerritories.map((t) => t.id));
+  const neighborsById = new Map(
+    [...territories, ...seaTerritories].map((t) => [t.id, t.neighbors]),
+  );
   const visited = new Set<number>([remaining[0].id]);
   const stack = [remaining[0].id];
   while (stack.length > 0) {
     const id = stack.pop()!;
-    const territory = territoryById.get(id)!;
-    const neighbors = withPortalEdges(
-      territory.neighbors,
-      id,
-      portalTerritoryIds,
-      portalsEnabled,
-    );
+    const neighbors = seaIds.has(id)
+      ? neighborsById.get(id)!
+      : withPortalEdges(
+          neighborsById.get(id)!,
+          id,
+          portalTerritoryIds,
+          portalsEnabled,
+        );
     for (const n of neighbors) {
-      if (!remainingIds.has(n) || visited.has(n)) continue;
+      if (removed.has(n) || visited.has(n)) continue;
       visited.add(n);
       stack.push(n);
     }
   }
-  return visited.size !== remaining.length;
+  return remaining.some((t) => !visited.has(t.id));
 }
 
 export function getToxinsCandidates(
   territories: Territory[],
+  seaTerritories: SeaTerritory[],
   ownerById: OwnerById,
   selfId: number | null,
   cost: number,
   blockedById: Set<number>,
+  upcomingBlockedById: Set<number>,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
 ): Set<number> {
@@ -70,12 +77,15 @@ export function getToxinsCandidates(
     if (owner.isCapital) continue;
     if (owner.troops < cost) continue;
     if (
-      wouldSplitMap(
-        territories,
-        blockedById,
-        portalTerritoryIds,
-        portalsEnabled,
-        t.id,
+      [blockedById, upcomingBlockedById].some((blocked) =>
+        wouldSplitMap(
+          territories,
+          seaTerritories,
+          blocked,
+          portalTerritoryIds,
+          portalsEnabled,
+          t.id,
+        ),
       )
     )
       continue;

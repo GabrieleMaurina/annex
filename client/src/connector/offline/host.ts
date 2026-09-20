@@ -81,7 +81,7 @@ export function seedOffline(state: GameState): void {
         : null,
     bots: bots.map((b) => ({
       difficulty: b.botDifficulty ?? 'easy',
-      personality: b.botPersonality ?? 'balanced',
+      personality: b.botPersonality ?? 'random',
     })),
   };
 }

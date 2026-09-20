@@ -13,6 +13,7 @@ import type {
   Alliances,
   BotSpeed,
   Bounties,
+  CardsMode,
   GameMode,
   GameState,
   Mission,
@@ -67,6 +68,7 @@ interface Props {
   isCapitals: boolean;
   starvation: Starvation;
   bounties: Bounties;
+  cards: CardsMode;
   territoryTroopsCap: number;
   totalTroopsCap: number;
   toxins: Toxins;
@@ -106,6 +108,7 @@ function PlayersPanel({
   isCapitals,
   starvation,
   bounties,
+  cards,
   territoryTroopsCap,
   totalTroopsCap,
   toxins,
@@ -201,7 +204,8 @@ function PlayersPanel({
           (isTeamDeathmatch ? 40 : 0) +
           (isCapitals ? 40 : 0) +
           (bounties === 'on' ? 40 : 0) +
-          (showAllianceColumn ? 24 : 0),
+          (showAllianceColumn ? 24 : 0) -
+          (cards === 'Off' ? 34 : 0),
         maxHeight: 'calc(100vh - 2rem)',
       }}
     >
@@ -339,17 +343,19 @@ function PlayersPanel({
                   />
                 </Tip>
               </th>
-              <th className="text-center" style={{ width: 34 }}>
-                <Tip text="Cards">
-                  <img
-                    src={whiteCardsIcon ?? '/icons/cards.svg'}
-                    width={14}
-                    height={14}
-                    alt="Cards"
-                    className="align-middle"
-                  />
-                </Tip>
-              </th>
+              {cards !== 'Off' && (
+                <th className="text-center" style={{ width: 34 }}>
+                  <Tip text="Cards">
+                    <img
+                      src={whiteCardsIcon ?? '/icons/cards.svg'}
+                      width={14}
+                      height={14}
+                      alt="Cards"
+                      className="align-middle"
+                    />
+                  </Tip>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -526,9 +532,11 @@ function PlayersPanel({
                   <td className="align-middle text-center" style={rowStyle}>
                     {p.eliminated ? '-' : (p.troopCount ?? '?')}
                   </td>
-                  <td className="align-middle text-center" style={rowStyle}>
-                    {p.eliminated ? '-' : p.cardCount}
-                  </td>
+                  {cards !== 'Off' && (
+                    <td className="align-middle text-center" style={rowStyle}>
+                      {p.eliminated ? '-' : p.cardCount}
+                    </td>
+                  )}
                 </tr>
               );
             })}

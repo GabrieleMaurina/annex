@@ -17,6 +17,7 @@ interface Props {
   selectedType: AttackType;
   regularShips: number;
   blitzShips: number;
+  blitzEnabled: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   onSelectRegular: () => void;
@@ -41,6 +42,7 @@ function AttackSeaPanel({
   selectedType,
   regularShips,
   blitzShips,
+  blitzEnabled,
   inputRef,
   blitzInputRef,
   onSelectRegular,
@@ -125,39 +127,41 @@ function AttackSeaPanel({
               />
             </div>
           </div>
-          <div
-            style={attackOptionStyle(selectedType === 'blitz')}
-            onClick={onSelectBlitz}
-          >
-            <div className="d-flex align-items-center gap-1">
-              <span>Blitz</span>
-              <Form.Control
-                ref={blitzInputRef}
-                type="number"
-                size="sm"
-                min={1}
-                max={maxBlitzShips}
-                value={blitzShips}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  onSelectBlitz();
-                  onBlitzShipsChange(
-                    Math.min(
-                      maxBlitzShips,
-                      Math.max(1, Number(e.target.value) || 1),
-                    ),
-                  );
-                }}
-                {...blitzDragNumber}
-                style={{ ...blitzDragNumber.style, width: 60 }}
-              />
-              <span className="small">
-                {blitzOutcome
-                  ? `Lose ${blitzOutcome.attackLosses} / Kill ${blitzOutcome.defenceLosses}`
-                  : formatProbability(blitzProbability)}
-              </span>
+          {blitzEnabled && (
+            <div
+              style={attackOptionStyle(selectedType === 'blitz')}
+              onClick={onSelectBlitz}
+            >
+              <div className="d-flex align-items-center gap-1">
+                <span>Blitz</span>
+                <Form.Control
+                  ref={blitzInputRef}
+                  type="number"
+                  size="sm"
+                  min={1}
+                  max={maxBlitzShips}
+                  value={blitzShips}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    onSelectBlitz();
+                    onBlitzShipsChange(
+                      Math.min(
+                        maxBlitzShips,
+                        Math.max(1, Number(e.target.value) || 1),
+                      ),
+                    );
+                  }}
+                  {...blitzDragNumber}
+                  style={{ ...blitzDragNumber.style, width: 60 }}
+                />
+                <span className="small">
+                  {blitzOutcome
+                    ? `Lose ${blitzOutcome.attackLosses} / Kill ${blitzOutcome.defenceLosses}`
+                    : formatProbability(blitzProbability)}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
           <Button size="sm" onClick={onConfirm} disabled={revealing}>
             Attack
           </Button>

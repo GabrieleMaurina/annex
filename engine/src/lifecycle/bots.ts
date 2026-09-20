@@ -1,23 +1,15 @@
 import {
   isDifficultyInput,
   isPersonalityInput,
-  resolveDifficulty,
-  resolvePersonality,
+  resolveBotProfile,
 } from '../bots/randomProfile';
+import { botDisplayName } from '../bots/reveal';
 import { addHostCandidate } from '../game/host';
 import { assignRandomColor, cycleColor } from '../game/mechanics';
 import { GameResponse } from '../session/context';
 import { createBotPlayer, playersById } from '../session/players';
 import { games, respondGameState } from '../session/store';
-import { BotProfile, Game, Player } from '../types';
-
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function botDisplayName(profile: BotProfile): string {
-  return `${capitalize(profile.personality)} (${capitalize(profile.difficulty)})`;
-}
+import { Game, Player } from '../types';
 
 function requireLobbyHost(
   playerId: number,
@@ -57,10 +49,7 @@ export function addBot(
   if (!isPersonalityInput(personality))
     return { ok: false, error: 'invalid personality' };
 
-  const profile: BotProfile = {
-    difficulty: resolveDifficulty(difficulty),
-    personality: resolvePersonality(personality),
-  };
+  const profile = resolveBotProfile(difficulty, personality);
   const bot = createBotPlayer(botDisplayName(profile), profile);
   bot.gameName = game.name;
   game.playerIds.push(bot.id);
@@ -88,10 +77,7 @@ export function setBotProfile(
   if (!isPersonalityInput(personality))
     return { ok: false, error: 'invalid personality' };
 
-  const profile: BotProfile = {
-    difficulty: resolveDifficulty(difficulty),
-    personality: resolvePersonality(personality),
-  };
+  const profile = resolveBotProfile(difficulty, personality);
   bot.botProfile = profile;
   bot.name = botDisplayName(profile);
 

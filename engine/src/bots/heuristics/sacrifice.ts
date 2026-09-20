@@ -11,7 +11,7 @@ import {
   snapshotState,
 } from '../planning/context';
 import { ownerOf, troopsAt } from '../view';
-import { AttackChoice } from './attack';
+import { AttackChoice, attackOrder } from './attack';
 
 const MIN_COMMIT = 3;
 const MIN_KILL_SHARE = 0.15;
@@ -229,7 +229,7 @@ function evaluatePair(
     PREFERENCE_SCORE * preference +
     (Math.random() - 0.5) * ctx.params.noise;
   return {
-    choice: { startId, endId, troops: commit, type: 'blitz' },
+    choice: { startId, endId, ...attackOrder(game, commit) },
     score,
   };
 }

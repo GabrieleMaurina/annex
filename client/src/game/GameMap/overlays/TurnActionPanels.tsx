@@ -72,6 +72,7 @@ export default function TurnActionPanels({
   attackPanelOpen,
   attackPanelStyle,
   attackDisplay,
+  blitzEnabled,
   blitzInputRef,
   attackDiceRoll,
   setAttackDiceRoll,
@@ -173,6 +174,7 @@ export default function TurnActionPanels({
     regularTroops: 1 | 2 | 3;
     blitzTroops: number;
   };
+  blitzEnabled: boolean;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   attackDiceRoll: DiceRoll | null;
   setAttackDiceRoll: Dispatch<SetStateAction<DiceRoll | null>>;
@@ -327,6 +329,7 @@ export default function TurnActionPanels({
           selectedType={attackDisplay.selectedType}
           regularTroops={attackDisplay.regularTroops}
           blitzTroops={attackDisplay.blitzTroops}
+          blitzEnabled={blitzEnabled}
           blitzInputRef={blitzInputRef}
           diceRoll={attackDiceRoll}
           onSelectRegular={(troops) => {
@@ -377,6 +380,7 @@ export default function TurnActionPanels({
           selectedType={attackSeaSelectedType}
           regularShips={attackSeaRegularShips}
           blitzShips={attackSeaBlitzShips}
+          blitzEnabled={blitzEnabled}
           inputRef={attackSeaInputRef}
           blitzInputRef={attackSeaBlitzInputRef}
           onSelectRegular={() => setAttackSeaSelectedType('regular')}

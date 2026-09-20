@@ -1,4 +1,4 @@
-import { BotDifficulty, BotPersonality } from '../types';
+import { BotDifficulty, BotPersonality, BotProfile } from '../types';
 
 export const DIFFICULTIES: BotDifficulty[] = ['idle', 'easy', 'medium', 'hard'];
 export const PERSONALITIES: BotPersonality[] = [
@@ -36,4 +36,16 @@ export function resolvePersonality(
   value: BotPersonality | 'random',
 ): BotPersonality {
   return value === 'random' ? pick(PERSONALITIES) : value;
+}
+
+export function resolveBotProfile(
+  difficulty: BotDifficulty | 'random',
+  personality: BotPersonality | 'random',
+): BotProfile {
+  return {
+    difficulty: resolveDifficulty(difficulty),
+    difficultyHidden: difficulty === 'random',
+    personality: resolvePersonality(personality),
+    personalityHidden: personality === 'random',
+  };
 }

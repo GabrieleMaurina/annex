@@ -73,6 +73,7 @@ function computeBlitzWinProbabilities(
   defendingDice: number,
 ): number[] {
   const maxBlitz = attackingTroops - 1;
+  if (game.blitz === 'Off') return new Array<number>(maxBlitz).fill(0);
   if (game.blitz === 'Fair')
     return trueWinProbs(maxBlitz, defendingTroops, defendingDice).map((p) =>
       p >= 0.5 ? 1 : 0,
@@ -261,6 +262,8 @@ export function attack(
   if (!isAttackType(rawType))
     return { ok: false, error: 'invalid attack type' };
   const type = rawType;
+  if (type === 'blitz' && game.blitz === 'Off')
+    return { ok: false, error: 'blitz disabled' };
 
   const startId = game.attackStartTerritoryId;
   const endId = game.attackEndTerritoryId;

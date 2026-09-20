@@ -100,7 +100,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     key: 'blitz',
     label: 'Blitz',
     section: 'Combat',
-    options: options('Balanced', 'True', 'Fair'),
+    options: options('Balanced', 'True', 'Fair', 'Off'),
     help: BLITZ_HELP,
   },
   {
@@ -128,6 +128,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
       'Exponential',
       'Linear Per Player',
       'Exponential Per Player',
+      'Off',
     ),
     help: CARDS_HELP,
   },

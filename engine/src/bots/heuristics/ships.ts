@@ -13,6 +13,7 @@ import {
 } from '../features/navy';
 import { frustrationLevel, minWinProbability } from '../features/pressure';
 import { BotView } from '../view';
+import { attackOrder } from './attack';
 
 export interface ShipPurchase {
   sourceTerritoryId: number;
@@ -174,11 +175,12 @@ export function chooseShipAttack(game: Game, botId: number): ShipAttack | null {
       const margin = ownShips - ships;
       if (margin > bestMargin) {
         bestMargin = margin;
+        const order = attackOrder(game, ownShips);
         best = {
           seaTerritoryId,
           defenderId: otherId,
-          ships: ownShips,
-          type: 'blitz',
+          ships: order.troops,
+          type: order.type,
         };
       }
     }

@@ -1,8 +1,8 @@
 import { TERRITORY_CAP } from '../../game/world/starvation';
 import { Game } from '../../types';
 
-const PRESSURE_START_ROUND = 150;
-const PRESSURE_RAMP_ROUNDS = 150;
+const PRESSURE_START_ROUND = 100;
+const PRESSURE_RAMP_ROUNDS = 100;
 const MIN_WIN_PROBABILITY = 0.55;
 const RELAXED_MIN_WIN_PROBABILITY = 0.3;
 const FRUSTRATION_START_ROUND = 50;

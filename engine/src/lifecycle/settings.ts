@@ -34,7 +34,7 @@ import { isInteger } from '../util/validate';
 import { validateGameName } from './create';
 
 const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
-const BLITZ_VALUES: Blitz[] = ['Balanced', 'True', 'Fair'];
+const BLITZ_VALUES: Blitz[] = ['Balanced', 'True', 'Fair', 'Off'];
 const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
 const CARDS_VALUES: CardsMode[] = [
   'Constant',
@@ -42,6 +42,7 @@ const CARDS_VALUES: CardsMode[] = [
   'Exponential',
   'Linear Per Player',
   'Exponential Per Player',
+  'Off',
 ];
 const DEFENCE_DICE_VALUES: DefenceDice[] = [2, 3];
 const ENTRENCHMENTS_VALUES: Entrenchments[] = ['off', 'on'];

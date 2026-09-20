@@ -78,7 +78,7 @@ export interface Card {
   symbol: CardSymbol | null;
 }
 
-export type Blitz = 'Balanced' | 'True' | 'Fair';
+export type Blitz = 'Balanced' | 'True' | 'Fair' | 'Off';
 export interface BlitzOutcome {
   attackLosses: number;
   defenceLosses: number;
@@ -89,7 +89,8 @@ export type CardsMode =
   | 'Linear'
   | 'Exponential'
   | 'Linear Per Player'
-  | 'Exponential Per Player';
+  | 'Exponential Per Player'
+  | 'Off';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
   | 'Supremacy'
@@ -292,8 +293,8 @@ export interface GameState {
     troopsKilled: number | null;
     troopsLost: number | null;
     isBot: boolean;
-    botDifficulty: BotDifficulty | null;
-    botPersonality: BotPersonality | null;
+    botDifficulty: BotDifficulty | 'random' | null;
+    botPersonality: BotPersonality | 'random' | null;
   }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];

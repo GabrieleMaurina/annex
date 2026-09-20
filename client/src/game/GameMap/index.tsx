@@ -233,6 +233,7 @@ function GameMap({
     radiationById,
     radiationUpcomingById,
     unusableTerritoryById,
+    upcomingUnusableTerritoryById,
     antiNukeById,
     visibleTerritoryById,
     replayPlayer,
@@ -294,6 +295,7 @@ function GameMap({
     turnPhase,
     isMyTurn,
     paused,
+    blitzEnabled: game.blitz !== 'Off',
     setGame,
   });
 
@@ -340,6 +342,7 @@ function GameMap({
     cards,
     nextSetBaseValues,
     blockedById: unusableTerritoryById,
+    upcomingBlockedById: upcomingUnusableTerritoryById,
     setGame,
   });
 
@@ -799,6 +802,7 @@ function GameMap({
         isCapitals={isCapitals}
         starvation={starvation}
         bounties={bounties}
+        cards={cards}
         territoryTroopsCap={territoryTroopsCap}
         totalTroopsCap={totalTroopsCap}
         toxins={toxins}
@@ -928,6 +932,7 @@ function GameMap({
         attackPanelOpen={attackFlow.attackPanelOpen}
         attackPanelStyle={attackPanelStyle}
         attackDisplay={attackDisplay}
+        blitzEnabled={game.blitz !== 'Off'}
         blitzInputRef={attackFlow.blitzInputRef}
         attackDiceRoll={attackFlow.attackDiceRoll}
         setAttackDiceRoll={attackFlow.setAttackDiceRoll}

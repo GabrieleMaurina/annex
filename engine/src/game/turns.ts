@@ -697,7 +697,7 @@ export function advanceToNextPlayer(game: Game) {
   const endingPlayerId = game.playerIds[game.turnPlayerIndex];
   bumpStat(game, endingPlayerId, 'turnsPlayed');
 
-  if (game.conqueredThisTurn) {
+  if (game.conqueredThisTurn && game.cards !== 'Off') {
     const card = popRandomCard(game.deck);
     if (card) {
       game.playerCards.get(endingPlayerId)?.push(card);

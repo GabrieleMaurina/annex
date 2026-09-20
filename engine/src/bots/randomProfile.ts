@@ -7,6 +7,7 @@ export const PERSONALITIES: BotPersonality[] = [
   'breaker',
   'killer',
   'vengeful',
+  'defensive',
   'erratic',
 ];
 

@@ -8,6 +8,10 @@ import { BotProfile, Game, GameMap } from '../../types';
 import { attackWinProbability, defenceDiceFor } from '../features/combat';
 import { frustrationLevel, stalemateRamp } from '../features/pressure';
 import {
+  conquestEndShare,
+  openedEnemyStackPower,
+} from '../goals/stackOpenness';
+import {
   AttackChoice,
   attackOrder,
   chooseAttack,
@@ -35,7 +39,7 @@ import {
   chooseShipPurchase,
   chooseSupplyBridge,
 } from '../heuristics/ships';
-import { PlanContext, buildContext } from './context';
+import { PlanContext, buildContext, snapshotState } from './context';
 import { buildTurnPlan, repairPlan } from './enumerate';
 import {
   AttackStep,
@@ -67,6 +71,7 @@ export interface PlanBotTurnInput {
 
 const NEXT_PHASE: BotAction = { event: 'game:nextPhase', payload: undefined };
 const OVERWHELMING_RATIO = 10;
+const OPENED_STACK_PENALTY = 0.3;
 
 function result(actions: BotAction[], plan: TurnPlan): PlanBotTurnResult {
   return { actions, plan };
@@ -252,8 +257,9 @@ function planAttack(
   plan: TurnPlan,
 ): PlanBotTurnResult {
   if (game.attackConquestMinTroops !== null) {
-    const scripted = plan.step < plan.attackSteps.length;
-    const troops = chooseAttackMoveTroops(game, ctx.view, ctx.botId, scripted);
+    const chained = continuesFromConquest(ctx, game, plan);
+    const endShare = chained ? 1 : conquestShare(ctx, game);
+    const troops = chooseAttackMoveTroops(game, chained, endShare);
     return result([{ event: 'game:attackMove', payload: { troops } }], plan);
   }
 
@@ -359,17 +365,29 @@ function planAttack(
   const capped = plan.attacksIssued >= plan.attackSteps.length + fallbackBudget;
   const desperate = Math.random() < stalemateRamp(game);
   const sacrifice = desperate ? chooseLosingAttack(ctx, frustration) : null;
+  const boardNow = snapshotState(ctx);
+  const stackRisk = (startId: number, endId: number) =>
+    ctx.weights.defense *
+    OPENED_STACK_PENALTY *
+    Math.min(
+      1,
+      openedEnemyStackPower(ctx, boardNow, endId) /
+        (game.territoryTroops.get(startId) ?? 1),
+    );
   const attack =
-    sacrifice ??
-    chooseAttack(
-      game,
-      ctx.view,
-      ctx.botId,
-      ctx.weights,
-      ctx.params.noise,
-      ctx.standing,
-    ) ??
-    chooseLosingAttack(ctx, frustration);
+    ctx.personality === 'defensive'
+      ? sacrifice
+      : (sacrifice ??
+        chooseAttack(
+          game,
+          ctx.view,
+          ctx.botId,
+          ctx.weights,
+          ctx.params.noise,
+          ctx.standing,
+          stackRisk,
+        ) ??
+        chooseLosingAttack(ctx, frustration));
   if (!attack) return result([NEXT_PHASE], plan);
   const overwhelming = isOverwhelming(game, attack);
   const continuing = isContinuation(game, attack.startId, attack.endId);
@@ -388,6 +406,30 @@ function planAttack(
       },
     ],
     plan,
+  );
+}
+
+function continuesFromConquest(
+  ctx: PlanContext,
+  game: Game,
+  plan: TurnPlan,
+): boolean {
+  if (ctx.personality === 'defensive') return false;
+  const firstUpcoming = game.blitz === 'Off' ? plan.step + 1 : plan.step;
+  return plan.attackSteps
+    .slice(firstUpcoming)
+    .some((step) => step.startId === game.attackEndTerritoryId);
+}
+
+function conquestShare(ctx: PlanContext, game: Game): number {
+  const startId = game.attackStartTerritoryId!;
+  const attackers = (game.territoryTroops.get(startId) ?? 0) - 1;
+  return conquestEndShare(
+    ctx,
+    snapshotState(ctx),
+    startId,
+    game.attackEndTerritoryId!,
+    attackers,
   );
 }
 

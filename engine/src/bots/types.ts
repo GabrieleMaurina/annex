@@ -8,6 +8,9 @@ export interface Weights {
   antiLeader: number;
   defense: number;
   holdChokepoint: number;
+  duelBreak: number;
+  duelStack: number;
+  duelRoll: number;
 }
 
 export interface DifficultyParams {
@@ -16,4 +19,5 @@ export interface DifficultyParams {
   maxPlanDepth: number;
   optimizeFortify: boolean;
   maxCampaigns: number;
+  duelSkill: number;
 }

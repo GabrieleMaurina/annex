@@ -142,7 +142,7 @@ A private game (visibility, a server-only attribute; see "Password and visibilit
   placement: 'Random' | 'Semi' | 'Custom';
   fortification: 'Connected' | 'Neighboring' | 'Unrestricted';
   disconnectBotDifficulty: 'idle' | 'easy' | 'medium' | 'hard' | 'random';
-  disconnectBotPersonality: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic' | 'random';
+  disconnectBotPersonality: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'defensive' | 'erratic' | 'random';
   entrenchments: 'off' | 'on';
   toxins: 'off' | 'temporary' | 'permanent';
   portals: 'off' | 'static' | 'dynamic';
@@ -192,7 +192,7 @@ A private game (visibility, a server-only attribute; see "Password and visibilit
   finalRanking: number[];
   nextSetBaseValues: { soldier: number; humvee: number; tank: number; mixed: number };
   upcomingSetValues: number[];
-  players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number; capitalCount: number; troopsRemaining: number; cardCount: number; connected: boolean; surrendered: boolean; eliminated: boolean; playersKilled: number[] | null; troopsKilled: number | null; troopsLost: number | null; isBot: boolean; botDifficulty: 'idle' | 'easy' | 'medium' | 'hard' | 'random' | null; botPersonality: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic' | 'random' | null }[];
+  players: { id: number; name: string; team: number; color: number; territoryCount: number; troopCount: number; capitalCount: number; troopsRemaining: number; cardCount: number; connected: boolean; surrendered: boolean; eliminated: boolean; playersKilled: number[] | null; troopsKilled: number | null; troopsLost: number | null; isBot: boolean; botDifficulty: 'idle' | 'easy' | 'medium' | 'hard' | 'random' | null; botPersonality: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'defensive' | 'erratic' | 'random' | null }[];
   spectators: { id: number; name: string }[];
   bannedPlayers: { id: number; name: string }[];
   territories: { id: number; ownerId: number; troops: number; isCapital: boolean; entrenchedTurns: number }[];
@@ -579,7 +579,7 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
     cards?: 'Constant' | 'Linear' | 'Exponential' | 'Linear Per Player' | 'Exponential Per Player' | 'Off';
     defenceDice?: 2 | 3;
     disconnectBotDifficulty?: 'idle' | 'easy' | 'medium' | 'hard' | 'random'; // difficulty a bot takes over with on a playing-state disconnect, see "Bots" above
-    disconnectBotPersonality?: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic' | 'random'; // personality for the same takeover
+    disconnectBotPersonality?: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'defensive' | 'erratic' | 'random'; // personality for the same takeover
     entrenchments?: 'off' | 'on'; // 'on' requires defenceDice to be (or become, in this same call) 2
     fogOfWar?: 'off' | 'on';
     fortification?: 'Connected' | 'Neighboring' | 'Unrestricted';
@@ -651,7 +651,7 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
   ```ts
   {
     difficulty: 'idle' | 'easy' | 'medium' | 'hard' | 'random';
-    personality: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic' | 'random';
+    personality: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'defensive' | 'erratic' | 'random';
   }
   ```
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `no open slots`, `invalid difficulty`, `invalid personality`.
@@ -664,7 +664,7 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
   {
     botPlayerId: number;
     difficulty: 'idle' | 'easy' | 'medium' | 'hard' | 'random';
-    personality: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic' | 'random';
+    personality: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'defensive' | 'erratic' | 'random';
   }
   ```
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid bot`, `invalid difficulty`, `invalid personality`.

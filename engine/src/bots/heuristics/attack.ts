@@ -37,9 +37,8 @@ export function attackOrder(
 
 export function chooseAttackMoveTroops(
   game: Game,
-  view: BotView,
-  botId: number,
   moveMax: boolean,
+  endShare: number,
 ): number {
   const startId = game.attackStartTerritoryId!;
   const startTroops = game.territoryTroops.get(startId) ?? 0;
@@ -47,9 +46,7 @@ export function chooseAttackMoveTroops(
   const max = startTroops - 1;
 
   if (moveMax) return max;
-  if (hostileNeighbors(game, view, botId, startId).length > 0)
-    return Math.max(min, Math.floor(max / 2));
-  return max;
+  return min + Math.round((max - min) * endShare);
 }
 
 export function chooseAttack(
@@ -59,6 +56,7 @@ export function chooseAttack(
   weights: Weights,
   noise: number,
   standing: Standing,
+  stackRisk: (startId: number, endId: number) => number,
 ): AttackChoice | null {
   const breakTargets = new Set(
     continentBreakCandidates(game, view, botId).map(
@@ -101,6 +99,7 @@ export function chooseAttack(
     score += PREF_WEIGHT * targetPreference(standing, defenderId);
     if (completeTargets.has(endId)) score += weights.completeContinent * 0.1;
     if (breakTargets.has(endId)) score += weights.breakContinent * 0.1;
+    score -= stackRisk(startId, endId);
     score += (Math.random() - 0.5) * noise;
 
     if (score > bestScore) {

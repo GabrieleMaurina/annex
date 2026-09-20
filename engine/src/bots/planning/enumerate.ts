@@ -35,6 +35,7 @@ const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
   card: () => 0.4,
   defensive: (w) => w.defense * 0.4,
   prey: (w) => w.stack * 0.3,
+  roll: () => 0,
   capture: () => 2,
   expand: () => 1,
   deny: () => 2,
@@ -281,7 +282,8 @@ export function buildTurnPlan(
     }
   }
 
-  if (bestPlan.objectives[0]?.kind === 'defensive') {
+  const needsCard = ctx.personality !== 'defensive' || ctx.game.cards !== 'Off';
+  if (needsCard && bestPlan.objectives[0]?.kind === 'defensive') {
     const cardEntry = scored.find(
       (e) =>
         e.feasible &&

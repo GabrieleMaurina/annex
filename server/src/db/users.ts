@@ -168,6 +168,7 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'breaker',
     'killer',
     'vengeful',
+    'defensive',
     'erratic',
     'random',
   ],

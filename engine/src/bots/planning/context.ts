@@ -4,6 +4,7 @@ import { getGameMap } from '../../maps/maps';
 import { BotPersonality, BotProfile, Game, GameMap } from '../../types';
 import { difficultyParams } from '../difficulty';
 import { defenceDiceFor } from '../features/combat';
+import { DuelFocus, duelFocus } from '../features/duel';
 import { shippedSeaIdsOf } from '../features/navy';
 import { buildStanding, playerStrengths, Standing } from '../features/standing';
 import { getWeights } from '../personality/registry';
@@ -27,6 +28,7 @@ export interface PlanContext {
   friendlyIds: Set<number>;
   preTurnOpponents: Map<number, number>;
   standing: Standing;
+  duel: DuelFocus;
 }
 
 function buildTopology(game: Game, map: GameMap): MapTopology {
@@ -95,14 +97,17 @@ export function buildContext(
     ),
   );
 
+  const weights = getWeights(botProfile.personality);
+  const params = difficultyParams(botProfile.difficulty);
+
   return {
     game,
     map,
     botId,
     personality: botProfile.personality,
     view,
-    weights: getWeights(botProfile.personality),
-    params: difficultyParams(botProfile.difficulty),
+    weights,
+    params,
     neighbors: topology.neighbors,
     seaLinks: topology.seaLinks,
     shippedSeaIds: shippedSeaIdsOf(game, botId),
@@ -118,6 +123,7 @@ export function buildContext(
       topology.continentTerritories,
       map.bonuses,
     ),
+    duel: duelFocus(game, botId, friendlyIds, weights, params),
   };
 }
 

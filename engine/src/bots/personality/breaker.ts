@@ -10,4 +10,7 @@ export const breakerWeights: Weights = {
   antiLeader: 0.5,
   defense: 1,
   holdChokepoint: 0.5,
+  duelBreak: 3,
+  duelStack: 1.5,
+  duelRoll: 1,
 };

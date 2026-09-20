@@ -14,9 +14,10 @@ function average(profiles: Weights[]): Weights {
   return result;
 }
 
-export const balancedWeights: Weights = average([
-  takerWeights,
-  breakerWeights,
-  killerWeights,
-  vengefulWeights,
-]);
+export const balancedWeights: Weights = {
+  ...average([takerWeights, breakerWeights, killerWeights, vengefulWeights]),
+  stack: 1.3,
+  duelBreak: 3,
+  duelStack: 3,
+  duelRoll: 3,
+};

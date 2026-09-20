@@ -15,6 +15,7 @@ interface LogEntry {
 
 interface Props {
   logs: LogEntry[];
+  stats?: { troopsKilled: number | null; troopsLost: number | null };
   top: number;
   onClose: () => void;
 }
@@ -135,7 +136,7 @@ function LogText({
   return <>{logNodes(text, colorRanges, whiteBotIcon, rowForeground)}</>;
 }
 
-function LogsPanel({ logs, top, onClose }: Props) {
+function LogsPanel({ logs, stats, top, onClose }: Props) {
   const newestFirst = [...logs].reverse();
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
 
@@ -147,7 +148,18 @@ function LogsPanel({ logs, top, onClose }: Props) {
         maxHeight: `calc(100vh - ${top}px - ${BOTTOM_MARGIN}px)`,
       }}
     >
-      <PanelHeader title="Logs" onClose={onClose} />
+      <PanelHeader
+        title="Logs"
+        onClose={onClose}
+        right={
+          stats && (
+            <span className="fw-normal small">
+              Killed <strong>{stats.troopsKilled ?? '?'}</strong> / Lost{' '}
+              <strong>{stats.troopsLost ?? '?'}</strong>
+            </span>
+          )
+        }
+      />
       {newestFirst.length === 0 ? (
         <div className="text-muted small">No actions yet</div>
       ) : (

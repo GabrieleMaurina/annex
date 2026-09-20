@@ -25,7 +25,7 @@ export interface PlanContext {
   continentTerritories: Map<number, number[]>;
   territoryContinent: Map<number, number>;
   friendlyIds: Set<number>;
-  preTurnOpponents: Set<number>;
+  preTurnOpponents: Map<number, number>;
   standing: Standing;
 }
 
@@ -89,10 +89,9 @@ export function buildContext(
         (visibleOpponentTerritories.get(ownerId) ?? 0) + 1,
       );
   }
-  const preTurnOpponents = new Set(
-    [...opponentTerritories.keys()].filter(
-      (id) =>
-        visibleOpponentTerritories.get(id) === opponentTerritories.get(id),
+  const preTurnOpponents = new Map(
+    [...opponentTerritories].filter(
+      ([id, count]) => visibleOpponentTerritories.get(id) === count,
     ),
   );
 

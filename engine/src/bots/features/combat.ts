@@ -12,6 +12,8 @@ export function defenceDiceFor(game: Game, territoryId: number): number {
   return game.defenceDice;
 }
 
+const BOT_COMBAT_CAP = 60;
+
 export function attackWinProbability(
   game: Game,
   attackingTroops: number,
@@ -22,7 +24,15 @@ export function attackWinProbability(
   if (defendingTroops <= 0) return 1;
   if (attackingTroops > 80 && attackingTroops > defendingTroops * 3)
     return 0.99;
-  const trueProb = trueWinProb(attackingTroops, defendingTroops, defendingDice);
+  const scale = Math.min(
+    1,
+    BOT_COMBAT_CAP / Math.max(attackingTroops, defendingTroops),
+  );
+  const trueProb = trueWinProb(
+    Math.max(1, Math.round(attackingTroops * scale)),
+    Math.max(1, Math.round(defendingTroops * scale)),
+    defendingDice,
+  );
   if (game.blitz === 'Fair') return trueProb >= 0.5 ? 1 : 0;
   if (game.blitz === 'Balanced') return distortProbability(trueProb);
   return trueProb;

@@ -44,8 +44,8 @@ function main(): void {
   while (true) {
     const index = Atomics.add(counter, 0, 1);
     if (index >= input.totalGames) break;
-    const seed = index + 1;
-    const result = runSimGame(seed, input.roundCap);
+    const gameNumber = index + 1;
+    const result = runSimGame(gameNumber, input.roundCap);
     dispatchFailures += result.dispatchFailures;
     if (!result.settingsApplied) settingsFailures++;
     if (!result.truncated) finished++;
@@ -65,7 +65,7 @@ function main(): void {
       planMs.set(k, arr);
     }
 
-    writeGameLog(input.logDir, result);
+    writeGameLog(input.logDir, gameNumber, result);
     parentPort?.postMessage({
       type: 'progress',
     } satisfies WorkerProgressMessage);

@@ -135,6 +135,8 @@ function buildGameState(
         surrendered: result?.surrendered ?? false,
         eliminated: result?.eliminated ?? false,
         playersKilled: result?.playersKilled ?? [],
+        troopsKilled: result?.troopsKilled ?? 0,
+        troopsLost: result?.troopsLost ?? 0,
         isBot: p.isBot,
         botDifficulty: p.botDifficulty,
         botPersonality: p.botPersonality,

@@ -1,6 +1,6 @@
 import { Game } from '../../types';
 
-export const SERVER_VIEW_ID = -1;
+export const SERVER_VIEW_ID = 0;
 
 const LOGGED_EVENTS = new Set([
   'game:deployed',

@@ -14,7 +14,7 @@ import {
 import { clearTurnTimer } from './turns';
 import { continentTerritoryIds } from './world/continent';
 
-const EARLY_WIN_GATE_ROUND_NUMBER = 2;
+const EARLY_WIN_GATE_ROUND_NUMBER = 3;
 export const HUMANS_ABANDONED_GRACE_MS = 5000;
 
 function emitGameEnded(game: Game): void {

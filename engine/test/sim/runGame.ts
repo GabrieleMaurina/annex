@@ -67,7 +67,6 @@ export interface RankedBot {
 }
 
 export interface SimGameResult {
-  seed: number;
   mapParams: GenerateMapParams;
   settings: Record<string, unknown>;
   settingsApplied: boolean;
@@ -85,10 +84,13 @@ export interface SimGameResult {
   turns: TurnLogEntry[];
 }
 
-export function runSimGame(seed: number, roundCap: number): SimGameResult {
+export function runSimGame(
+  gameNumber: number,
+  roundCap: number,
+): SimGameResult {
   ensureCallbacks();
   const rng = mulberry32(Math.floor(Math.random() * 0xffffffff));
-  const name = `sim-${seed}`;
+  const name = `sim-${gameNumber}`;
   const roster = randomRoster(rng, ROSTER_SIZE);
 
   const host = createBotPlayer('Bot 1', roster[0]);
@@ -264,7 +266,6 @@ export function runSimGame(seed: number, roundCap: number): SimGameResult {
   games.delete(name);
 
   return {
-    seed,
     mapParams,
     settings,
     settingsApplied,

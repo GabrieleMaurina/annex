@@ -288,7 +288,9 @@ export interface GameState {
     connected: boolean;
     surrendered: boolean;
     eliminated: boolean;
-    playersKilled: number[];
+    playersKilled: number[] | null;
+    troopsKilled: number | null;
+    troopsLost: number | null;
     isBot: boolean;
     botDifficulty: BotDifficulty | null;
     botPersonality: BotPersonality | null;

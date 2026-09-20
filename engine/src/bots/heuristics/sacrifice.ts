@@ -21,7 +21,7 @@ const SPECULATIVE_SHARE = 0.5;
 const SPECULATIVE_FRUSTRATION_SHARE = 0.4;
 const CONTESTED_MIN_EFFICIENCY = 1;
 const FRUSTRATED_MIN_EFFICIENCY = 0.55;
-const GARRISON_RELAX = 0.4;
+const GARRISON_RELAX = 1;
 const PROTECTED_GARRISON = 1.3;
 const FOLLOW_UP_SCORE = 1.5;
 const CONTESTED_SCORE = 0.5;
@@ -115,10 +115,10 @@ function settleCommit(input: CommitInput): {
       startTroops - garrison,
       followUp ? startTroops : input.speculativeCap,
     );
-    if (limit >= commit)
-      return commit >= MIN_COMMIT ? { commit, followUp } : null;
-    commit = limit;
+    const settled = limit >= commit;
+    commit = Math.min(commit, limit);
     if (commit < MIN_COMMIT) return null;
+    if (settled || pass === FIXED_POINT_PASSES - 1) return { commit, followUp };
   }
   return null;
 }
@@ -193,7 +193,7 @@ function evaluatePair(
   const startTroops = scan.stackTroops.get(startId) ?? 0;
   const startEfficiency = killsPerLoss(defenceDiceFor(game, startId));
   const garrisonFactor = scan.guard().has(startId)
-    ? PROTECTED_GARRISON
+    ? PROTECTED_GARRISON * (1 - scan.frustration)
     : 1 - GARRISON_RELAX * scan.frustration;
   const otherThreat = Math.max(
     0,

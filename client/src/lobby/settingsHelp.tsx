@@ -13,7 +13,7 @@ export const GAME_MODE_HELP = (
       </li>
       <li>
         Capitals: everyone places a capital at the start; win by owning every
-        territory, or by owning every capital from round 3 onward.
+        territory, or by owning every capital from round 4 onward.
       </li>
       <li>
         Team Deathmatch: players are split into teams; your team wins by owning
@@ -23,7 +23,7 @@ export const GAME_MODE_HELP = (
         Continent: the server picks one continent (at least 7 territories if the
         map has one, otherwise its largest) for everyone to fight over. Win by
         owning every territory of that continent (ignoring any currently toxined
-        or radiated) from round 3 onward.
+        or radiated) from round 4 onward.
       </li>
       <li>
         5-Round: the game ends after 5 full rounds, whoever holds the most

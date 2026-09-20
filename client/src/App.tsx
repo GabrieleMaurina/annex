@@ -197,7 +197,10 @@ function App() {
       setNeedsPassword(false);
       setPasswordError(false);
       if (isOffline) {
-        if (sessionReady && !offlineSetupApplied.current) {
+        if (
+          (sessionReady || serverUnreachable) &&
+          !offlineSetupApplied.current
+        ) {
           offlineSetupApplied.current = true;
           if (!connector.isConvertingOffline()) applySavedGameSettings();
         }
@@ -222,7 +225,15 @@ function App() {
       connector.off('connect', afterConnect);
       if (!isOffline) connector.close();
     };
-  }, [inGame, isOffline, sessionReady, room, attemptJoin, navigate]);
+  }, [
+    inGame,
+    isOffline,
+    sessionReady,
+    serverUnreachable,
+    room,
+    attemptJoin,
+    navigate,
+  ]);
 
   useEffect(() => {
     function onMapGenerated(data: {

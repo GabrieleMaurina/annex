@@ -11,6 +11,7 @@ import type {
   GenerationType,
   MapSize,
 } from '../lib/types';
+import { DEFAULT_MAP_GENERATION, randomSeed } from '../maps/randomMap';
 
 export interface MapGenerationPanelHandle {
   generate: () => void;
@@ -27,21 +28,7 @@ interface Props {
 }
 
 const MAX_SEED_LENGTH = 20;
-const SEED_LENGTH = 10;
-const RANDOM_SEED_ALPHABET =
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 const PRINTABLE_ASCII = /^[\x20-\x7e]+$/;
-
-function randomSeed(): string {
-  let result = '';
-  for (let i = 0; i < SEED_LENGTH; i++) {
-    result +=
-      RANDOM_SEED_ALPHABET[
-        Math.floor(Math.random() * RANDOM_SEED_ALPHABET.length)
-      ];
-  }
-  return result;
-}
 
 function seedError(seed: string): string | null {
   if (
@@ -63,11 +50,17 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
     const saved = getGameSettings().mapGeneration;
     const [seed, setSeed] = useState(() => saved?.seed ?? randomSeed());
     const [genType, setGenType] = useState<GenerationType>(
-      saved?.type ?? 'terrain',
+      saved?.type ?? DEFAULT_MAP_GENERATION.type,
     );
-    const [genFill, setGenFill] = useState<Fill>(saved?.fill ?? 'mixed');
-    const [genSize, setGenSize] = useState<MapSize>(saved?.size ?? 'medium');
-    const [genSeas, setGenSeas] = useState(saved?.seas ?? false);
+    const [genFill, setGenFill] = useState<Fill>(
+      saved?.fill ?? DEFAULT_MAP_GENERATION.fill,
+    );
+    const [genSize, setGenSize] = useState<MapSize>(
+      saved?.size ?? DEFAULT_MAP_GENERATION.size,
+    );
+    const [genSeas, setGenSeas] = useState(
+      saved?.seas ?? DEFAULT_MAP_GENERATION.seas,
+    );
     const [generating, setGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState<GenerateMapInput | null>(
       saved ?? null,

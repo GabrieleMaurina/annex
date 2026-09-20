@@ -210,7 +210,14 @@ export function filterGameStateForViewer(
     players: base.players.map((p) =>
       p.id === viewerId || allies.has(p.id)
         ? p
-        : { ...p, territoryCount: null, troopCount: null },
+        : {
+            ...p,
+            territoryCount: null,
+            troopCount: null,
+            playersKilled: null,
+            troopsKilled: null,
+            troopsLost: null,
+          },
     ),
   };
 }

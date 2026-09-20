@@ -6,8 +6,12 @@ import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
 import { attackWinProbability, defenceDiceFor } from '../features/combat';
-import { frustrationLevel } from '../features/pressure';
-import { chooseAttack, chooseAttackMoveTroops } from '../heuristics/attack';
+import { frustrationLevel, stalemateRamp } from '../features/pressure';
+import {
+  AttackChoice,
+  chooseAttack,
+  chooseAttackMoveTroops,
+} from '../heuristics/attack';
 import { chooseCardSet } from '../heuristics/cards';
 import { chooseDeploy } from '../heuristics/deploy';
 import { chooseFortify } from '../heuristics/fortify';
@@ -61,6 +65,7 @@ export interface PlanBotTurnInput {
 }
 
 const NEXT_PHASE: BotAction = { event: 'game:nextPhase', payload: undefined };
+const OVERWHELMING_RATIO = 10;
 
 function result(actions: BotAction[], plan: TurnPlan): PlanBotTurnResult {
   return { actions, plan };
@@ -344,19 +349,24 @@ function planAttack(
   const fallbackBudget =
     Math.ceil(ctx.params.maxPlanDepth / 3) +
     Math.round(frustration * ctx.params.maxPlanDepth);
-  if (plan.attacksIssued >= plan.attackSteps.length + fallbackBudget)
-    return result([NEXT_PHASE], plan);
-  const choice = chooseAttack(
-    game,
-    ctx.view,
-    ctx.botId,
-    ctx.weights,
-    ctx.params.noise,
-    ctx.standing,
-  );
-  const attack = choice ?? chooseLosingAttack(ctx, frustration);
+  const capped = plan.attacksIssued >= plan.attackSteps.length + fallbackBudget;
+  const desperate = Math.random() < stalemateRamp(game);
+  const sacrifice = desperate ? chooseLosingAttack(ctx, frustration) : null;
+  const attack =
+    sacrifice ??
+    chooseAttack(
+      game,
+      ctx.view,
+      ctx.botId,
+      ctx.weights,
+      ctx.params.noise,
+      ctx.standing,
+    ) ??
+    chooseLosingAttack(ctx, frustration);
   if (!attack) return result([NEXT_PHASE], plan);
-  plan.attacksIssued++;
+  const overwhelming = isOverwhelming(game, attack);
+  if (capped && !overwhelming) return result([NEXT_PHASE], plan);
+  if (!overwhelming) plan.attacksIssued++;
   return result(
     [
       {
@@ -371,6 +381,12 @@ function planAttack(
     ],
     plan,
   );
+}
+
+function isOverwhelming(game: Game, attack: AttackChoice): boolean {
+  const attackers = game.territoryTroops.get(attack.startId) ?? 0;
+  const defenders = game.territoryTroops.get(attack.endId) ?? 0;
+  return attackers >= defenders * OVERWHELMING_RATIO;
 }
 
 function stepStatus(

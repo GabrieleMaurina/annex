@@ -154,6 +154,8 @@ function PlayersPanel({
     fast: 'Fast',
   };
   const showAllianceColumn = alliances === 'on' && !isSpectator && !gameEnded;
+  const totalCapitals = players.reduce((sum, p) => sum + p.capitalCount, 0);
+  const leaderCapitals = Math.max(0, ...players.map((p) => p.capitalCount));
 
   const panelRef = useRef<HTMLDivElement>(null);
   useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
@@ -253,6 +255,11 @@ function PlayersPanel({
       {starvation === 'total' && (
         <div className="text-center small mb-2">
           Total troops cap: {totalTroopsCap}
+        </div>
+      )}
+      {isCapitals && (
+        <div className="text-center small mb-2">
+          Leader {leaderCapitals}/{totalCapitals}
         </div>
       )}
       <div
@@ -513,7 +520,7 @@ function PlayersPanel({
                   )}
                   {bounties === 'on' && (
                     <td className="align-middle text-center" style={rowStyle}>
-                      {p.playersKilled.length}
+                      {p.playersKilled?.length ?? '?'}
                     </td>
                   )}
                   <td className="align-middle text-center" style={rowStyle}>

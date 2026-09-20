@@ -1,6 +1,7 @@
 import { upcomingSetValues } from '../../game/progression/cards';
 import { grudgeAgainst } from '../features/grudge';
 import { modeGoalFor } from '../features/modeGoals';
+import { stalematePressure } from '../features/pressure';
 import { antiLeaderActive } from '../features/standing';
 import { modeScore } from '../goals/modeScore';
 import { standingScore } from '../goals/standingScore';
@@ -22,8 +23,22 @@ import {
 
 const ENEMY_SWEEP_LIMIT = 5;
 
+function addEnemyRoundTroops(ctx: PlanContext, s: SimState): void {
+  if (ctx.game.roundTroops !== 'on') return;
+  const strongest = new Map<number, number>();
+  for (const [id, ownerId] of s.owners) {
+    if (isFriendly(ctx, ownerId)) continue;
+    const best = strongest.get(ownerId);
+    if (best === undefined || troopsIn(s, id) > troopsIn(s, best))
+      strongest.set(ownerId, id);
+  }
+  for (const id of strongest.values())
+    s.troops.set(id, troopsIn(s, id) + ctx.game.roundNumber + 1);
+}
+
 function applyEnemyResponse(ctx: PlanContext, state: SimState): SimState {
   const s = cloneState(state);
+  addEnemyRoundTroops(ctx, s);
   const enemyStacks: number[] = [];
   for (const [id, ownerId] of s.owners) {
     if (isFriendly(ctx, ownerId)) continue;
@@ -77,15 +92,18 @@ const DAMAGE = 0.15;
 
 function eliminationBonus(ctx: PlanContext, state: SimState): number {
   const killWeight = modeGoalFor(ctx).killWeight;
+  const pressure = stalematePressure(ctx.game);
+  const remaining = new Map<number, number>();
+  for (const ownerId of state.owners.values())
+    remaining.set(ownerId, (remaining.get(ownerId) ?? 0) + 1);
   let bonus = 0;
-  for (const opponentId of ctx.preTurnOpponents) {
-    let alive = false;
-    for (const ownerId of state.owners.values())
-      if (ownerId === opponentId) {
-        alive = true;
-        break;
-      }
-    if (alive) continue;
+  for (const [opponentId, before] of ctx.preTurnOpponents) {
+    const left = remaining.get(opponentId);
+    if (left !== undefined) {
+      const cleared = Math.max(0, 1 - left / before);
+      bonus += ELIMINATION * killWeight * pressure * cleared * cleared;
+      continue;
+    }
     bonus += ELIMINATION * killWeight;
     if (ctx.game.bounties === 'on') bonus += 8;
     bonus += (ctx.game.playerCards.get(opponentId)?.length ?? 0) * 1.5;

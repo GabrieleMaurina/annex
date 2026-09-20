@@ -47,6 +47,7 @@ export default function MapButtonsColumn({
   logsOpen,
   logsPanelRef,
   logs,
+  logsStats,
   logsPanelTop,
   logsButtonRef,
   whiteLogsIcon,
@@ -92,6 +93,7 @@ export default function MapButtonsColumn({
   logsOpen: boolean;
   logsPanelRef: RefObject<HTMLDivElement | null>;
   logs: LogEntry[];
+  logsStats?: { troopsKilled: number | null; troopsLost: number | null };
   logsPanelTop: number;
   logsButtonRef: RefObject<HTMLButtonElement | null>;
   whiteLogsIcon: string | undefined;
@@ -202,6 +204,7 @@ export default function MapButtonsColumn({
           <div ref={logsPanelRef}>
             <LogsPanel
               logs={logs}
+              stats={logsStats}
               top={logsPanelTop}
               onClose={() => setOpenPanel(null)}
             />

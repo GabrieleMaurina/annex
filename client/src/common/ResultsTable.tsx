@@ -126,7 +126,8 @@ function ResultsTable({
             const isDark = fg === '#ffffff';
             const rowIcon = (white: string | undefined, path: string) =>
               isDark ? (white ?? path) : path;
-            const killedNames = p.playersKilled
+            const playersKilled = p.playersKilled ?? [];
+            const killedNames = playersKilled
               .map((id) => nameById.get(id) ?? '?')
               .join(', ');
             const stats = results?.get(p.id) ?? EMPTY_ROW;
@@ -217,10 +218,10 @@ function ResultsTable({
                 </td>
                 {killedNames ? (
                   <Tip text={killedNames}>
-                    <td style={rowStyle}>{p.playersKilled.length}</td>
+                    <td style={rowStyle}>{playersKilled.length}</td>
                   </Tip>
                 ) : (
-                  <td style={rowStyle}>{p.playersKilled.length}</td>
+                  <td style={rowStyle}>{playersKilled.length}</td>
                 )}
                 <td style={rowStyle}>{stats.troopsGained}</td>
                 <td style={rowStyle}>{stats.troopsKilled}</td>

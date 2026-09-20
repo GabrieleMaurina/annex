@@ -39,7 +39,15 @@ import { Objective } from './turnPlan';
 const DEFAULT_WEAKNESS_THRESHOLD = 0.15;
 const MAX_ELIMINATE_TARGETS = 2;
 const PASSIVE_RELEASE_PRESSURE = 0.6;
-export const MAX_ELIMINATE_MUST_VISIT = 12;
+const MAX_ELIMINATE_MUST_VISIT = 12;
+const MAX_DUEL_ELIMINATE_MUST_VISIT = 40;
+const DUEL_PLAYER_COUNT = 2;
+
+export function eliminateMustVisitLimit(state: SimState): number {
+  return new Set(state.owners.values()).size <= DUEL_PLAYER_COUNT
+    ? MAX_DUEL_ELIMINATE_MUST_VISIT
+    : MAX_ELIMINATE_MUST_VISIT;
+}
 
 function objective(
   fields: Partial<Objective> & { kind: Objective['kind'] },
@@ -97,7 +105,8 @@ function eliminationTargets(
   state: SimState,
   ids: number[],
 ): number[] {
-  if (ids.length <= MAX_ELIMINATE_MUST_VISIT) return ids;
+  const limit = eliminateMustVisitLimit(state);
+  if (ids.length <= limit) return ids;
   const touchesBot = (id: number) =>
     neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId);
   return [...ids]
@@ -106,7 +115,7 @@ function eliminationTargets(
         Number(!touchesBot(a)) - Number(!touchesBot(b)) ||
         troopsIn(state, a) - troopsIn(state, b),
     )
-    .slice(0, MAX_ELIMINATE_MUST_VISIT);
+    .slice(0, limit);
 }
 
 function eliminateCandidates(

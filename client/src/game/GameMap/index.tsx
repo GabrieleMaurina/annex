@@ -772,6 +772,9 @@ function GameMap({
         logsOpen={logsOpen}
         logsPanelRef={logsPanelRef}
         logs={displayedLogs}
+        logsStats={
+          showReplay ? undefined : players.find((p) => p.id === selfId)
+        }
         logsPanelTop={logsPanelTop}
         logsButtonRef={logsButtonRef}
         whiteLogsIcon={whiteLogsIcon}

@@ -10,6 +10,8 @@ import {
 import { Weights } from '../types';
 import { BotView } from '../view';
 
+const MAX_ENTRENCH_TROOPS = 5;
+
 export function chooseTerritoryClaim(game: Game): number | null {
   const map = getGameMap(game);
   const unclaimed = map.territories
@@ -74,6 +76,9 @@ export function chooseEntrench(
   );
   if (owned.length === 0) return null;
   const territoryId = owned[0];
-  const troops = Math.floor((game.territoryTroops.get(territoryId) ?? 0) / 2);
+  const troops = Math.min(
+    MAX_ENTRENCH_TROOPS,
+    Math.floor((game.territoryTroops.get(territoryId) ?? 0) / 2),
+  );
   return troops >= 1 ? { territoryId, troops } : null;
 }

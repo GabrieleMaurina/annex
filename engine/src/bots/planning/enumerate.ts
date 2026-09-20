@@ -3,7 +3,7 @@ import { chooseCardSet } from '../heuristics/cards';
 import { Weights } from '../types';
 import { PlanContext, SimState, isFriendly, snapshotState } from './context';
 import {
-  MAX_ELIMINATE_MUST_VISIT,
+  eliminateMustVisitLimit,
   gatherCandidates,
   repairStaging,
 } from './objectives';
@@ -103,7 +103,7 @@ export function repairPlan(ctx: PlanContext, plan: TurnPlan): boolean {
       const ownerId = state.owners.get(id);
       return ownerId === undefined || !isFriendly(ctx, ownerId);
     })
-    .slice(0, MAX_ELIMINATE_MUST_VISIT);
+    .slice(0, eliminateMustVisitLimit(state));
   if (remaining.length === 0) return false;
 
   const routed = repairStaging(ctx, state, remaining);

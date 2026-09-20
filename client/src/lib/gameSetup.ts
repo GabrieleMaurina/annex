@@ -1,5 +1,6 @@
 import { connector } from '../connector';
 import { publish } from '../connector/inbound';
+import { randomMapInput } from '../maps/randomMap';
 import {
   getGameBots,
   getGameLocalPlayers,
@@ -9,7 +10,7 @@ import {
   recordRestoredBotInput,
   resetRestoredBotInputs,
 } from './player';
-import type { Ack } from './types';
+import type { Ack, GenerateMapInput } from './types';
 
 let regeneratingMap = false;
 
@@ -26,21 +27,40 @@ function apply(res: Ack): void {
   if (res.ok) publish('game:state', res.game);
 }
 
+function generateMap(input: GenerateMapInput): void {
+  setRegeneratingMap(true);
+  connector.generateMap(input, (res) => {
+    setRegeneratingMap(false);
+    apply(res);
+  });
+}
+
+function applySavedMap(
+  mapGeneration: GenerateMapInput | undefined,
+  playerMapId: string | undefined,
+): void {
+  if (mapGeneration) {
+    generateMap(mapGeneration);
+  } else if (playerMapId) {
+    connector.selectPlayerMap({ mapId: playerMapId }, (res) => {
+      if (res.ok) apply(res);
+      else generateMap(randomMapInput());
+    });
+  } else {
+    generateMap(randomMapInput());
+  }
+}
+
 export function applySavedGameSettings(): void {
-  if (!isLoggedIn()) return;
-  resetRestoredBotInputs();
   const { mapGeneration, playerMapId, mapName, ...rules } = getGameSettings();
   void mapName;
-  if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
-  if (mapGeneration) {
-    setRegeneratingMap(true);
-    connector.generateMap(mapGeneration, (res) => {
-      setRegeneratingMap(false);
-      apply(res);
-    });
-  } else if (playerMapId) {
-    connector.selectPlayerMap({ mapId: playerMapId }, apply);
+  if (!isLoggedIn()) {
+    applySavedMap(mapGeneration, playerMapId);
+    return;
   }
+  resetRestoredBotInputs();
+  if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
+  applySavedMap(mapGeneration, playerMapId);
   connector.updateSettings({ slots: getGameSlots() }, apply);
   getGameBots().forEach((bot, index) => {
     connector.addBot(

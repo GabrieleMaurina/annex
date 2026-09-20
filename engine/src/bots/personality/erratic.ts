@@ -24,6 +24,9 @@ function randomWeights(): Weights {
     antiLeader: Math.random() * 3,
     defense: Math.random() * 3,
     holdChokepoint: Math.random() * 3,
+    duelBreak: Math.random() * 3,
+    duelStack: Math.random() * 3,
+    duelRoll: Math.random() * 3,
   };
 }
 

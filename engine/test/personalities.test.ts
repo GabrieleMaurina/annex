@@ -175,6 +175,61 @@ test('vengeful turns on the player that has been attacking it', () => {
   );
 });
 
+test('defensive keeps attacks few and reinforces its borders', () => {
+  const plan = planScenario(withPersonality(completeVsBreak, 'defensive'));
+  assert.ok(
+    ['card', 'defensive'].includes(primaryKind(plan) ?? 'none'),
+    `defensive picked ${primaryKind(plan)}`,
+  );
+  assert.ok(plan.attackSteps.length <= 3);
+  assert.ok(new Set(plan.deployments.map((d) => d.territoryId)).size >= 2);
+});
+
+function fightBoard(
+  attackerTroops: number,
+  firstDefenders: number,
+  secondDefenders: number,
+): ScenarioSpec {
+  return {
+    map: {
+      continents: [[0, 1, 2, 3, 4, 5, 6, 7]],
+      edges: line(0, 1, 2, 3, 4, 5, 6, 7),
+      bonuses: [4],
+    },
+    players: [1, 2],
+    owners: { 0: 1, 1: 1, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2 },
+    troops: {
+      0: 2,
+      1: attackerTroops,
+      2: firstDefenders,
+      3: secondDefenders,
+      4: 4,
+      5: 4,
+      6: 4,
+      7: 4,
+    },
+    troopsToDeploy: 1,
+    difficulty: 'hard',
+  };
+}
+
+function attackCount(spec: ScenarioSpec): number {
+  return planScenario(withPersonality(spec, 'defensive')).attackSteps.length;
+}
+
+test('defensive never attacks when the attack is not safe', () => {
+  assert.equal(attackCount(fightBoard(14, 6, 4)), 0);
+});
+
+test('defensive usually makes a single safe attack', () => {
+  assert.equal(attackCount(fightBoard(14, 3, 4)), 1);
+});
+
+test('defensive chains a second attack only with a large surplus', () => {
+  assert.equal(attackCount(fightBoard(30, 2, 8)), 1);
+  assert.equal(attackCount(fightBoard(30, 2, 3)), 2);
+});
+
 test('taker ignores the grudge and finishes its continent', () => {
   assert.equal(primaryFor(grudgeBoard, 'taker'), 'complete');
 });
@@ -289,6 +344,7 @@ for (const personality of [
   'breaker',
   'killer',
   'vengeful',
+  'defensive',
   'erratic',
 ] as BotPersonality[]) {
   test(`${personality} produces a feasible plan on a plain board`, () => {

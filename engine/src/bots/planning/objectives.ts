@@ -6,6 +6,7 @@ import { modeGoalFor } from '../features/modeGoals';
 import { navalOpportunities, seaBridgeTargets } from '../features/navy';
 import { stalematePressure } from '../features/pressure';
 import { antiLeaderActive } from '../features/standing';
+import { duelBreakCandidates, rollCandidates } from '../goals/duelObjectives';
 import { modeCandidates } from '../goals/modeObjectives';
 import { preyCandidates } from '../goals/preyObjectives';
 import { killerWeaknessThreshold } from '../personality/killer';
@@ -13,10 +14,12 @@ import {
   PlanContext,
   SimState,
   botBorderIds,
+  cloneState,
   conquerablePath,
   defenceDiceAt,
   frontierStacks,
   hostileNeighborsOf,
+  isEnemyTerritory,
   isFriendly,
   neighborsOf,
   ownedChokepoints,
@@ -30,6 +33,7 @@ import {
   Candidate,
   defensiveDeployments,
   offensiveDeployments,
+  openStackDeployments,
   pickStaging,
   stackCandidates,
   supplyConnected,
@@ -193,6 +197,131 @@ function cardCandidates(
   ];
 }
 
+const SAFE_ATTACK_RATIO = 2;
+const EXTRA_ATTACK_RATIO = 3;
+const MAX_SAFE_SEEDS = 3;
+const MAX_ATTACKS_PER_TURN = 3;
+
+interface SafeAttack {
+  from: number;
+  to: number;
+  foreignNeighbors: number;
+  defenders: number;
+}
+
+function enemyThreatExcluding(
+  ctx: PlanContext,
+  state: SimState,
+  territoryId: number,
+  excludedId: number,
+): number {
+  let worst = 0;
+  for (const n of neighborsOf(ctx, territoryId)) {
+    if (n === excludedId || !isEnemyTerritory(ctx, state, n)) continue;
+    worst = Math.max(worst, troopsIn(state, n));
+  }
+  return worst;
+}
+
+function safeAttacks(
+  ctx: PlanContext,
+  state: SimState,
+  ratio: number,
+): SafeAttack[] {
+  const attacks: SafeAttack[] = [];
+  for (const from of botBorderIds(ctx, state)) {
+    if (!supplyConnected(ctx, from)) continue;
+    const attackers = troopsIn(state, from) - 1;
+    for (const to of hostileNeighborsOf(ctx, state, from)) {
+      const defenders = troopsIn(state, to);
+      if (attackers < defenders * ratio + 2) continue;
+      const garrison = Math.floor((attackers - defenders) / 2);
+      const threat = Math.max(
+        enemyThreatExcluding(ctx, state, to, from),
+        enemyThreatExcluding(ctx, state, from, to),
+      );
+      if (garrison < threat) continue;
+      const foreignNeighbors = neighborsOf(ctx, to).filter(
+        (n) => n !== from && state.owners.get(n) !== ctx.botId,
+      ).length;
+      attacks.push({ from, to, foreignNeighbors, defenders });
+    }
+  }
+  return attacks.sort(
+    (a, b) =>
+      a.foreignNeighbors - b.foreignNeighbors || a.defenders - b.defenders,
+  );
+}
+
+function afterConquest(
+  ctx: PlanContext,
+  state: SimState,
+  attack: SafeAttack,
+): SimState {
+  const leftover = Math.max(
+    1,
+    troopsIn(state, attack.from) - 1 - attack.defenders,
+  );
+  const moved = Math.max(1, Math.floor(leftover / 2));
+  const next = cloneState(state);
+  next.owners.set(attack.to, ctx.botId);
+  next.troops.set(attack.to, moved);
+  next.troops.set(attack.from, 1 + leftover - moved);
+  return next;
+}
+
+function safeChain(
+  ctx: PlanContext,
+  state: SimState,
+  seed: SafeAttack,
+): SafeAttack[] {
+  const chain = [seed];
+  let current = afterConquest(ctx, state, seed);
+  while (chain.length < MAX_ATTACKS_PER_TURN) {
+    const borders = botBorderIds(ctx, current).length;
+    const extra = safeAttacks(ctx, current, EXTRA_ATTACK_RATIO).find(
+      (attack) =>
+        botBorderIds(ctx, afterConquest(ctx, current, attack)).length <=
+        borders,
+    );
+    if (!extra) break;
+    chain.push(extra);
+    current = afterConquest(ctx, current, extra);
+  }
+  return chain;
+}
+
+function safeCardCandidates(
+  ctx: PlanContext,
+  state: SimState,
+  budget: number,
+): Candidate[] {
+  const deployments = defensiveDeployments(ctx, state, budget);
+  return safeAttacks(ctx, state, SAFE_ATTACK_RATIO)
+    .slice(0, MAX_SAFE_SEEDS)
+    .flatMap((seed) => {
+      const chain = safeChain(ctx, state, seed);
+      return chain.map((_, index) => {
+        const attacks = chain.slice(0, index + 1);
+        return {
+          objectives: [
+            objective({
+              kind: 'card',
+              targetPlayerId: state.owners.get(seed.to) ?? null,
+              mustVisit: attacks.map((attack) => attack.to),
+            }),
+          ],
+          deployments,
+          stacks: attacks.map((attack) => ({
+            startId: attack.from,
+            route: [attack.to],
+            objectiveIndex: 0,
+          })),
+        };
+      });
+    });
+}
+
 function siegeStaging(ctx: PlanContext, state: SimState): number | null {
   const border = botBorderIds(ctx, state)
     .filter(
@@ -219,14 +348,19 @@ function defensiveCandidates(
   const objectives = [objective({ kind: 'defensive' })];
   const staging =
     stalematePressure(ctx.game) > 0 ? siegeStaging(ctx, state) : null;
-  if (staging === null)
+  if (staging === null) {
+    const stacking = openStackDeployments(ctx, state, budget);
     return [
       {
         objectives,
         deployments: defensiveDeployments(ctx, state, budget),
         stacks: [],
       },
+      ...(stacking.length > 0
+        ? [{ objectives, deployments: stacking, stacks: [] }]
+        : []),
     ];
+  }
   return [
     {
       objectives,
@@ -476,9 +610,17 @@ export function gatherCandidates(
   state: SimState,
   budget: number,
 ): Candidate[] {
+  if (ctx.personality === 'defensive')
+    return [
+      ...holdChokepointCandidates(ctx, state, budget),
+      ...safeCardCandidates(ctx, state, budget),
+      ...defensiveCandidates(ctx, state, budget),
+    ];
   return [
     ...completeCandidates(ctx, state, budget),
     ...breakCandidates(ctx, state, budget),
+    ...duelBreakCandidates(ctx, state, budget),
+    ...rollCandidates(ctx, state, budget),
     ...eliminateCandidates(ctx, state, budget),
     ...spoilContinentCandidates(ctx, state, budget),
     ...neutralizeThreatCandidates(ctx, state, budget),

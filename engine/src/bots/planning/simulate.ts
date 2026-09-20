@@ -4,10 +4,19 @@ import {
 } from '../../game/mechanics';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { expectedOutcome } from '../features/combat';
+import {
+  bestStackingBorder,
+  conquestEndShare,
+  isStackFight,
+  mostOpenBorders,
+  openStackWeight,
+} from '../goals/stackOpenness';
 import { evaluateBoard } from './board';
 import {
   PlanContext,
   SimState,
+  botBorderIds,
+  cloneState,
   defenceDiceAt,
   hostileNeighborsOf,
   isBotBorder,
@@ -50,6 +59,14 @@ const HOPELESS_FLOOR = 0.3;
 const CHAIN_FLOOR = 0.08;
 const EXACT_COMBAT_CAP = 60;
 const FEASIBILITY_RATIO = 0.55;
+const ROLL_DEFEAT_SURVIVAL = 0.5;
+
+interface RollAttempt {
+  stack: StackPlan;
+  ownerId: number | undefined;
+  defenders: number;
+  attackers: number;
+}
 
 function stepOutcome(
   ctx: PlanContext,
@@ -80,6 +97,20 @@ function applyDeployments(state: SimState, deployments: Deployment[]): void {
   }
 }
 
+function settleConquest(
+  ctx: PlanContext,
+  state: SimState,
+  fromId: number,
+  toId: number,
+): void {
+  const survivors = troopsIn(state, toId);
+  if (survivors < 2) return;
+  const share = conquestEndShare(ctx, state, fromId, toId, survivors);
+  const moved = 1 + Math.round((survivors - 1) * share);
+  state.troops.set(toId, moved);
+  state.troops.set(fromId, troopsIn(state, fromId) + survivors - moved);
+}
+
 export function walkStack(
   ctx: PlanContext,
   state: SimState,
@@ -89,6 +120,7 @@ export function walkStack(
   let cur = stack.startId;
   let objectiveProb = 1;
   let taken = 0;
+  let lastConquest: { fromId: number; toId: number } | null = null;
   for (let i = 0; i < stack.route.length; i++) {
     if (taken >= ctx.params.maxPlanDepth) break;
     const next = stack.route[i];
@@ -135,12 +167,15 @@ export function walkStack(
     state.owners.set(next, ctx.botId);
     state.troops.set(next, survivors);
     state.conquered = true;
+    lastConquest = { fromId: cur, toId: next };
     cur = next;
     taken++;
 
     if (outcome.winProbability < STEP_FLOOR) break;
     if (objectiveProb < CHAIN_FLOOR) break;
   }
+  if (lastConquest)
+    settleConquest(ctx, state, lastConquest.fromId, lastConquest.toId);
   return objectiveProb;
 }
 
@@ -234,10 +269,17 @@ function bestFortify(
     .sort((a, b) => b.deficit - a.deficit)
     .slice(0, 6)
     .map((t) => t.id);
+  const openTargets =
+    openStackWeight(ctx) > 0
+      ? mostOpenBorders(ctx, state, 2).filter(
+          (id) => !borderTargets.includes(id),
+        )
+      : [];
+  const allTargets = [...borderTargets, ...openTargets];
   const targets =
     hint !== undefined && state.owners.get(hint) === ctx.botId
-      ? [hint, ...borderTargets.filter((id) => id !== hint)]
-      : borderTargets;
+      ? [hint, ...allTargets.filter((id) => id !== hint)]
+      : allTargets;
 
   const sources = owned
     .filter((id) => troopsIn(state, id) >= 2)
@@ -297,6 +339,27 @@ function bestFortify(
   return { move: best, score: bestScore };
 }
 
+function blendRollScore(
+  ctx: PlanContext,
+  roll: RollAttempt,
+  defeat: SimState,
+  winProbability: number,
+  victoryScore: number,
+): number {
+  const targetId = roll.stack.route[0];
+  if (roll.ownerId !== undefined) defeat.owners.set(targetId, roll.ownerId);
+  defeat.troops.set(
+    targetId,
+    Math.max(1, Math.round(roll.defenders * ROLL_DEFEAT_SURVIVAL)),
+  );
+  defeat.troops.set(roll.stack.startId, 1);
+  defeat.troopsLost += roll.attackers;
+  return (
+    winProbability * victoryScore +
+    (1 - winProbability) * evaluateBoard(ctx, defeat)
+  );
+}
+
 export function simulateTurn(
   ctx: PlanContext,
   candidate: Candidate,
@@ -304,10 +367,29 @@ export function simulateTurn(
   const state = snapshotState(ctx);
   applyDeployments(state, candidate.deployments);
 
+  const rollStack = candidate.stacks.find(
+    (stack) =>
+      candidate.objectives[stack.objectiveIndex].kind === 'roll' ||
+      isStackFight(ctx, state, stack.startId, stack.route[0]),
+  );
+  const roll: RollAttempt | null = rollStack
+    ? {
+        stack: rollStack,
+        ownerId: state.owners.get(rollStack.route[0]),
+        defenders: troopsIn(state, rollStack.route[0]),
+        attackers: troopsIn(state, rollStack.startId) - 1,
+      }
+    : null;
+
   const attackSteps: AttackStep[] = [];
   let successProbability = 1;
-  for (const stack of candidate.stacks)
-    successProbability *= walkStack(ctx, state, stack, attackSteps);
+  let rollProbability = 1;
+  for (const stack of candidate.stacks) {
+    const probability = walkStack(ctx, state, stack, attackSteps);
+    successProbability *= probability;
+    if (stack === rollStack) rollProbability = probability;
+  }
+  const defeat = roll ? cloneState(state) : null;
 
   let feasible = candidate.stacks.length === 0;
   for (const objective of candidate.objectives) {
@@ -332,10 +414,15 @@ export function simulateTurn(
     );
   }
 
+  const score =
+    roll && defeat
+      ? blendRollScore(ctx, roll, defeat, rollProbability, fortify.score)
+      : fortify.score;
+
   return {
     attackSteps,
     fortify: fortify.move,
-    score: fortify.score,
+    score,
     successProbability,
     projected: state,
     feasible,
@@ -405,6 +492,7 @@ export function defensiveDeployments(
   budget: number,
 ): Deployment[] {
   if (budget <= 0) return [];
+  const maxBorders = ctx.personality === 'defensive' ? Infinity : 3;
   const borders = ownedIds(state, ctx.botId)
     .filter((id) => isBotBorder(ctx, state, id) && supplyConnected(ctx, id))
     .map((id) => ({
@@ -415,7 +503,7 @@ export function defensiveDeployments(
       ),
     }))
     .sort((a, b) => b.deficit - a.deficit)
-    .slice(0, 3);
+    .slice(0, maxBorders);
   if (borders.length === 0) {
     const fallback = ownedIds(state, ctx.botId)
       .filter((id) => supplyConnected(ctx, id))
@@ -438,6 +526,19 @@ export function defensiveDeployments(
     }
   });
   return deployments;
+}
+
+export function openStackDeployments(
+  ctx: PlanContext,
+  state: SimState,
+  budget: number,
+): Deployment[] {
+  if (budget <= 0 || openStackWeight(ctx) <= 0) return [];
+  const borders = botBorderIds(ctx, state).filter((id) =>
+    supplyConnected(ctx, id),
+  );
+  const target = bestStackingBorder(ctx, state, borders, budget);
+  return target === null ? [] : [{ territoryId: target, troops: budget }];
 }
 
 export function multiDeployments(

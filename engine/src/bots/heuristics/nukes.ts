@@ -25,6 +25,7 @@ const PERSONALITY_AGGRESSION: Record<BotPersonality, number> = {
   erratic: 0.6,
   balanced: 0.5,
   taker: 0.35,
+  defensive: 0.2,
 };
 
 const PERSONALITY_MIN_STACK: Record<BotPersonality, number> = {
@@ -34,6 +35,7 @@ const PERSONALITY_MIN_STACK: Record<BotPersonality, number> = {
   erratic: 10,
   balanced: 12,
   taker: 14,
+  defensive: 16,
 };
 
 function aggression(ctx: PlanContext): number {

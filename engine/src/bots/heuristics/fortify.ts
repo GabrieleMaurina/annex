@@ -63,6 +63,7 @@ export function chooseFortify(
     );
 
   const shouldStack = weights.stack >= 1.5;
+  const shouldSpread = weights.stack < 0;
   if (!shouldStack && sourceCandidates.length === 0) return null;
 
   const source = sourceCandidates[0];
@@ -70,6 +71,11 @@ export function chooseFortify(
 
   const sourceTroops = game.territoryTroops.get(source) ?? 0;
   if (sourceTroops < 2) return null;
+  if (shouldSpread) {
+    const targetTroops = game.territoryTroops.get(target) ?? 0;
+    const troops = Math.floor((sourceTroops - targetTroops) / 2);
+    return troops >= 1 ? { startId: source, endId: target, troops } : null;
+  }
   const troops = shouldStack
     ? sourceTroops - 1
     : Math.max(1, Math.floor((sourceTroops - 1) / 2));

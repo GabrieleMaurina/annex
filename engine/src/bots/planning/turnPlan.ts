@@ -13,6 +13,7 @@ export type ObjectiveKind =
   | 'antiLeader'
   | 'spoilContinent'
   | 'prey'
+  | 'roll'
   | 'capture'
   | 'expand'
   | 'deny';

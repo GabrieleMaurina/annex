@@ -2,6 +2,7 @@ import { BotPersonality } from '../../types';
 import { Weights } from '../types';
 import { balancedWeights } from './balanced';
 import { breakerWeights } from './breaker';
+import { defensiveWeights } from './defensive';
 import { erraticWeights } from './erratic';
 import { killerWeights } from './killer';
 import { takerWeights } from './taker';
@@ -17,6 +18,8 @@ export function getWeights(personality: BotPersonality): Weights {
       return killerWeights;
     case 'vengeful':
       return vengefulWeights;
+    case 'defensive':
+      return defensiveWeights;
     case 'erratic':
       return erraticWeights();
     case 'balanced':

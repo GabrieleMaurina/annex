@@ -26,6 +26,7 @@ export default defineConfig({
         short_name: 'Annex',
         start_url: '/',
         display: 'standalone',
+        orientation: 'landscape',
         background_color: '#212529',
         theme_color: '#212529',
         icons: [

@@ -56,7 +56,13 @@ export interface Player {
 
 export type BotDifficulty = 'idle' | 'easy' | 'medium' | 'hard';
 export type BotPersonality =
-  'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'erratic';
+  | 'balanced'
+  | 'taker'
+  | 'breaker'
+  | 'killer'
+  | 'vengeful'
+  | 'defensive'
+  | 'erratic';
 export type BotSpeed = 'slow' | 'medium' | 'fast';
 
 export interface BotProfile {

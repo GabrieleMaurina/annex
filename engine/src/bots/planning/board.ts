@@ -4,6 +4,7 @@ import { modeGoalFor } from '../features/modeGoals';
 import { stalematePressure } from '../features/pressure';
 import { antiLeaderActive } from '../features/standing';
 import { modeScore } from '../goals/modeScore';
+import { openStackWeight, stackScores } from '../goals/stackOpenness';
 import { standingScore } from '../goals/standingScore';
 import {
   PlanContext,
@@ -14,6 +15,7 @@ import {
   isBotBorder,
   isFriendly,
   neighborsOf,
+  opponentIds,
   ownedClusters,
   ownedIds,
   strongestOpponent,
@@ -36,7 +38,10 @@ function addEnemyRoundTroops(ctx: PlanContext, s: SimState): void {
     s.troops.set(id, troopsIn(s, id) + ctx.game.roundNumber + 1);
 }
 
-function applyEnemyResponse(ctx: PlanContext, state: SimState): SimState {
+export function applyEnemyResponse(
+  ctx: PlanContext,
+  state: SimState,
+): SimState {
   const s = cloneState(state);
   addEnemyRoundTroops(ctx, s);
   const enemyStacks: number[] = [];
@@ -45,6 +50,7 @@ function applyEnemyResponse(ctx: PlanContext, state: SimState): SimState {
     if (troopsIn(s, id) >= 2) enemyStacks.push(id);
   }
   enemyStacks.sort((a, b) => troopsIn(s, b) - troopsIn(s, a));
+  const attackRatio = BASE_ATTACK_RATIO - DUEL_ATTACK_EDGE * ctx.duel.rolling;
 
   for (const start of enemyStacks) {
     const ownerId = s.owners.get(start);
@@ -63,7 +69,7 @@ function applyEnemyResponse(ctx: PlanContext, state: SimState): SimState {
           target = n;
         }
       }
-      if (target === null || attackers <= targetTroops * 1.05 + 1) break;
+      if (target === null || attackers <= targetTroops * attackRatio + 1) break;
       const survivors = Math.max(1, Math.round(attackers - targetTroops * 0.9));
       s.troops.set(from, 1);
       s.owners.set(target, ownerId);
@@ -82,6 +88,13 @@ const FRONTIER_RISK = 0.5;
 const INTERIOR_WASTE = 0.12;
 const EXPOSURE = 0.35;
 const CONCENTRATION = 0.05;
+const OPEN_STACK = 0.03;
+const STACK_PRESSURE = 0.03;
+const DUEL_BREAK = 4;
+const DUEL_PRESSURE = 2;
+const DUEL_STACK_MASS = 0.05;
+const BASE_ATTACK_RATIO = 1.05;
+const DUEL_ATTACK_EDGE = 0.15;
 const CAPITAL_RISK = 2;
 const ANTI_LEADER = 0.15;
 const GRUDGE = 0.1;
@@ -175,7 +188,7 @@ function riskAndWaste(
       const threat = strongestThreatAt(ctx, state, id);
       risk += Math.max(0, threat - troops);
       concentration += Math.pow(Math.max(1, troops), 1.15);
-    } else {
+    } else if (!ctx.game.capitalTerritoryIds.has(id)) {
       waste += Math.max(0, troops - 1);
     }
   }
@@ -187,6 +200,14 @@ function exposure(ctx: PlanContext, state: SimState): number {
   if (clusters.length === 0) return 0;
   const main = clusters.reduce((a, b) => (a.length >= b.length ? a : b));
   return main.filter((id) => isBotBorder(ctx, state, id)).length;
+}
+
+function opponentHeldBonus(ctx: PlanContext, state: SimState): number {
+  if (ctx.duel.breaking <= 0) return 0;
+  return opponentIds(ctx, state).reduce(
+    (sum, id) => sum + heldContinentBonus(ctx, state, id),
+    0,
+  );
 }
 
 function capitalRisk(ctx: PlanContext, state: SimState): number {
@@ -235,6 +256,15 @@ function scoreState(ctx: PlanContext, state: SimState): number {
   score -= (INTERIOR_WASTE * waste) / scale;
   score -= ctx.weights.defense * EXPOSURE * exposure(ctx, state);
   score += (CONCENTRATION * concentration) / scale;
+  const stacks = stackScores(ctx, state);
+  score += (OPEN_STACK * openStackWeight(ctx) * stacks.open) / scale;
+  score -=
+    (STACK_PRESSURE *
+      (ctx.weights.defense + DUEL_PRESSURE * ctx.duel.stacking) *
+      stacks.pressure) /
+    scale;
+  score -= DUEL_BREAK * ctx.duel.breaking * opponentHeldBonus(ctx, state);
+  score -= (DUEL_STACK_MASS * ctx.duel.rolling * stacks.mass) / scale;
   score -= CAPITAL_RISK * capitalRisk(ctx, state);
   if (leader && leader.playerId !== ctx.botId)
     score -=

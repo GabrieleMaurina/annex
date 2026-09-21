@@ -4,7 +4,10 @@ import {
 } from '../features/continents';
 import { modeGoalFor } from '../features/modeGoals';
 import { navalOpportunities, seaBridgeTargets } from '../features/navy';
-import { stalematePressure } from '../features/pressure';
+import {
+  PASSIVE_RELEASE_PRESSURE,
+  stalematePressure,
+} from '../features/pressure';
 import { antiLeaderActive } from '../features/standing';
 import { duelBreakCandidates, rollCandidates } from '../goals/duelObjectives';
 import { modeCandidates } from '../goals/modeObjectives';
@@ -42,13 +45,16 @@ import { Objective } from './turnPlan';
 
 const DEFAULT_WEAKNESS_THRESHOLD = 0.15;
 const MAX_ELIMINATE_TARGETS = 2;
-const PASSIVE_RELEASE_PRESSURE = 0.6;
-const MAX_ELIMINATE_MUST_VISIT = 12;
+const MAX_ELIMINATE_MUST_VISIT = 20;
 const MAX_DUEL_ELIMINATE_MUST_VISIT = 40;
 const DUEL_PLAYER_COUNT = 2;
 
-export function eliminateMustVisitLimit(state: SimState): number {
-  return new Set(state.owners.values()).size <= DUEL_PLAYER_COUNT
+export function eliminateMustVisitLimit(
+  ctx: PlanContext,
+  state: SimState,
+): number {
+  return ctx.finisher &&
+    new Set(state.owners.values()).size <= DUEL_PLAYER_COUNT
     ? MAX_DUEL_ELIMINATE_MUST_VISIT
     : MAX_ELIMINATE_MUST_VISIT;
 }
@@ -109,8 +115,12 @@ function eliminationTargets(
   state: SimState,
   ids: number[],
 ): number[] {
-  const limit = eliminateMustVisitLimit(state);
+  const limit = eliminateMustVisitLimit(ctx, state);
   if (ids.length <= limit) return ids;
+  if (ctx.finisher)
+    return [...ids]
+      .sort((a, b) => troopsIn(state, a) - troopsIn(state, b))
+      .slice(0, limit);
   const touchesBot = (id: number) =>
     neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId);
   return [...ids]
@@ -134,6 +144,7 @@ function eliminateCandidates(
       : DEFAULT_WEAKNESS_THRESHOLD,
     modeGoalFor(ctx).eliminateThreshold,
     stalematePressure(ctx.game),
+    ctx.finisher ? 1 : 0,
   );
   const byPlayer = new Map<number, number[]>();
   for (const [id, ownerId] of state.owners) {
@@ -323,20 +334,33 @@ function safeCardCandidates(
 }
 
 function siegeStaging(ctx: PlanContext, state: SimState): number | null {
-  const border = botBorderIds(ctx, state)
-    .filter(
-      (id) =>
-        hostileNeighborsOf(ctx, state, id).length > 0 &&
-        supplyConnected(ctx, id),
-    )
-    .sort((a, b) => troopsIn(state, b) - troopsIn(state, a))[0];
+  const candidates = botBorderIds(ctx, state).filter(
+    (id) =>
+      hostileNeighborsOf(ctx, state, id).length > 0 && supplyConnected(ctx, id),
+  );
+  const opponents = rankedOpponents(ctx, state);
+  const finisherTarget =
+    ctx.finisher && opponents.length <= 1 ? opponents[0]?.playerId : undefined;
+  const targeted =
+    finisherTarget !== undefined
+      ? candidates.filter((id) =>
+          hostileNeighborsOf(ctx, state, id).some(
+            (n) => state.owners.get(n) === finisherTarget,
+          ),
+        )
+      : [];
+  const border = (targeted.length > 0 ? targeted : candidates).sort(
+    (a, b) => troopsIn(state, b) - troopsIn(state, a),
+  )[0];
   if (border !== undefined) return border;
   const bridgehead = [
     ...seaBridgeTargets(ctx.game, ctx.view, ctx.botId),
     ...navalOpportunities(ctx.game, ctx.view, ctx.botId),
-  ].sort(
-    (a, b) => troopsIn(state, a.targetId) - troopsIn(state, b.targetId),
-  )[0];
+  ]
+    .filter((o) => supplyConnected(ctx, o.sourceTerritoryId))
+    .sort(
+      (a, b) => troopsIn(state, a.targetId) - troopsIn(state, b.targetId),
+    )[0];
   return bridgehead?.sourceTerritoryId ?? null;
 }
 

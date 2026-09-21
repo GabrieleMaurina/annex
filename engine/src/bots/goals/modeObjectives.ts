@@ -28,6 +28,7 @@ import { isVisible } from '../view';
 
 const MAX_HOPS = 3;
 const MAX_TARGETS = 4;
+const MAX_EXPAND_BORDER_SCAN = 30;
 const MAX_ASSASSIN_TARGETS = 8;
 const MAX_THREATS = 2;
 const THREAT_PROGRESS = 0.75;
@@ -175,7 +176,10 @@ function expandCandidates(
 ): Candidate[] {
   if (!goal.expand) return [];
   const costs = new Map<number, number>();
-  for (const border of botBorderIds(ctx, state))
+  for (const border of botBorderIds(ctx, state).slice(
+    0,
+    MAX_EXPAND_BORDER_SCAN,
+  ))
     for (const n of hostileNeighborsOf(ctx, state, border))
       if (!costs.has(n))
         costs.set(

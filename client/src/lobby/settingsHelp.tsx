@@ -79,7 +79,8 @@ export const BLITZ_HELP = (
       </li>
       <li>
         Off: all-out attacks are disabled, on land and at sea. Every battle is
-        fought exchange by exchange.
+        fought exchange by exchange. Not available with Round Troops on or with
+        any Cards mode other than Constant and Off.
       </li>
     </ul>
   </>

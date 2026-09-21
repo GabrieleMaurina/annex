@@ -1,5 +1,6 @@
 import { alliedIds } from '../../game/alliances';
 import { supplyHubTerritoryIds } from '../../game/mechanics';
+import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
@@ -143,7 +144,27 @@ export interface SeaBridgeTarget {
   sourceTerritoryId: number;
   seaTerritoryId: number;
   targetId: number;
-  ownerId: number;
+  ownerId: number | undefined;
+}
+
+function seaTargetOwner(
+  game: Game,
+  view: BotView,
+  botId: number,
+  territoryId: number,
+): { skip: boolean; ownerId: number | undefined } {
+  const ownerId = ownerOf(game, view, territoryId);
+  if (ownerId === undefined)
+    return {
+      skip:
+        !isVisible(view, territoryId) ||
+        !isFreeConquestTarget(game, territoryId),
+      ownerId,
+    };
+  return {
+    skip: ownerId === botId || isTeammate(game, botId, ownerId),
+    ownerId,
+  };
 }
 
 export function seaBridgeTargets(
@@ -157,19 +178,15 @@ export function seaBridgeTargets(
 
   const results: SeaBridgeTarget[] = [];
   for (const territory of getGameMap(game).territories) {
-    const ownerId = ownerOf(game, view, territory.id);
-    if (
-      ownerId === undefined ||
-      ownerId === botId ||
-      isTeammate(game, botId, ownerId)
-    )
-      continue;
+    const { skip, ownerId } = seaTargetOwner(game, view, botId, territory.id);
+    if (skip) continue;
     for (const seaId of territory.neighbors) {
       if (!seaIds.has(seaId)) continue;
       const sourceTerritoryId = bySeaId.get(seaId);
       if (sourceTerritoryId === undefined || !isVisible(view, seaId)) continue;
       const attackerShips = shipsAt(game, view, seaId, botId);
-      const defenderShips = shipsAt(game, view, seaId, ownerId);
+      const defenderShips =
+        ownerId === undefined ? 0 : shipsAt(game, view, seaId, ownerId);
       if (attackerShips <= defenderShips) continue;
       results.push({
         sourceTerritoryId,
@@ -186,7 +203,7 @@ export interface NavalOpportunity {
   sourceTerritoryId: number;
   seaTerritoryId: number;
   targetId: number;
-  ownerId: number;
+  ownerId: number | undefined;
   shipsNeeded: number;
   targetTroops: number;
 }
@@ -202,19 +219,15 @@ export function navalOpportunities(
 
   const results: NavalOpportunity[] = [];
   for (const territory of getGameMap(game).territories) {
-    const ownerId = ownerOf(game, view, territory.id);
-    if (
-      ownerId === undefined ||
-      ownerId === botId ||
-      isTeammate(game, botId, ownerId)
-    )
-      continue;
+    const { skip, ownerId } = seaTargetOwner(game, view, botId, territory.id);
+    if (skip) continue;
     for (const seaId of territory.neighbors) {
       if (!seaIds.has(seaId)) continue;
       const sourceTerritoryId = bySeaId.get(seaId);
       if (sourceTerritoryId === undefined || !isVisible(view, seaId)) continue;
       const ownShips = shipsAt(game, view, seaId, botId);
-      const enemyShips = shipsAt(game, view, seaId, ownerId);
+      const enemyShips =
+        ownerId === undefined ? 0 : shipsAt(game, view, seaId, ownerId);
       const shipsNeeded = enemyShips - ownShips + 1;
       if (shipsNeeded <= 0) continue;
       results.push({

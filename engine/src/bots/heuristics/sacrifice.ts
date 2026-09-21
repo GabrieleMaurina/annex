@@ -240,7 +240,8 @@ export function chooseLosingAttack(
 ): AttackChoice | null {
   const { game, view, botId } = ctx;
   const bridges = seaBridgeTargets(game, view, botId).filter(
-    (bridge) => !isFriendly(ctx, bridge.ownerId),
+    (bridge) =>
+      bridge.ownerId !== undefined && !isFriendly(ctx, bridge.ownerId),
   );
   const starts = [
     ...new Set([

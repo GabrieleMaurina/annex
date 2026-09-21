@@ -41,11 +41,25 @@ const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
   deny: () => 2,
 };
 
+const DUEL_FINISHER_ELIMINATE_BONUS = 50;
+
+function isDuelFinisher(ctx: PlanContext): boolean {
+  if (!ctx.finisher) return false;
+  const dead = new Set(ctx.game.deathOrder);
+  const rivals = ctx.game.playerIds.filter(
+    (id) => id !== ctx.botId && !dead.has(id) && !ctx.friendlyIds.has(id),
+  );
+  return rivals.length <= 1;
+}
+
 function personalityBonus(ctx: PlanContext, objectives: Objective[]): number {
   let bonus = 0;
+  const duelFinisher = isDuelFinisher(ctx);
   objectives.forEach((objective, index) => {
     bonus +=
       1.4 * KIND_WEIGHT[objective.kind](ctx.weights) * (index === 0 ? 1 : 0.5);
+    if (duelFinisher && index === 0 && objective.kind === 'eliminate')
+      bonus += DUEL_FINISHER_ELIMINATE_BONUS;
   });
   return bonus;
 }
@@ -73,6 +87,7 @@ function materialize(
     deployCursor: 0,
     step: 0,
     attacksIssued: 0,
+    overwhelmingAttacksIssued: 0,
     shipAttacksIssued: 0,
     entrenchesIssued: 0,
     roundNumber: ctx.game.roundNumber,
@@ -104,7 +119,7 @@ export function repairPlan(ctx: PlanContext, plan: TurnPlan): boolean {
       const ownerId = state.owners.get(id);
       return ownerId === undefined || !isFriendly(ctx, ownerId);
     })
-    .slice(0, eliminateMustVisitLimit(state));
+    .slice(0, eliminateMustVisitLimit(ctx, state));
   if (remaining.length === 0) return false;
 
   const routed = repairStaging(ctx, state, remaining);
@@ -171,6 +186,7 @@ function combine(
 }
 
 const MIN_CONFIDENCE = 0.15;
+const FORTIFY_REFINE_COUNT = 5;
 
 function confidentEnough(
   ctx: PlanContext,
@@ -195,24 +211,44 @@ export function buildTurnPlan(
   let bestPlan = emptyPlan(ctx.game.roundNumber, ctx.botId);
   bestPlan.cardSet = cardSet;
   let bestScore = -Infinity;
+  let bestCandidate: Candidate | null = null;
+  let bestRefined = false;
   const consider = (
     candidate: Candidate,
     result: SimResult,
     baseScore: number,
+    refined = false,
   ) => {
     const score = baseScore + (Math.random() - 0.5) * jitter;
     if (score > bestScore) {
       bestScore = score;
+      bestCandidate = candidate;
+      bestRefined = refined;
       bestPlan = materialize(ctx, candidate, result, cardSet);
     }
   };
 
   const scored = gatherCandidates(ctx, state, budget).map((candidate) => {
-    const result = simulateTurn(ctx, candidate);
+    const result = simulateTurn(ctx, candidate, false);
     const feasible =
       result.feasible || candidate.objectives[0].kind === 'defensive';
-    return { candidate, result, feasible };
+    return { candidate, result, feasible, refined: false };
   });
+
+  if (ctx.params.optimizeFortify)
+    scored
+      .filter((e) => e.feasible && confidentEnough(ctx, e.candidate, e.result))
+      .sort(
+        (a, b) =>
+          b.result.score +
+          personalityBonus(ctx, b.candidate.objectives) -
+          (a.result.score + personalityBonus(ctx, a.candidate.objectives)),
+      )
+      .slice(0, FORTIFY_REFINE_COUNT)
+      .forEach((entry) => {
+        entry.result = simulateTurn(ctx, entry.candidate, true);
+        entry.refined = true;
+      });
 
   for (const entry of scored) {
     if (!entry.feasible) continue;
@@ -221,10 +257,11 @@ export function buildTurnPlan(
       entry.candidate,
       entry.result,
       entry.result.score + personalityBonus(ctx, entry.candidate.objectives),
+      entry.refined,
     );
   }
 
-  if (ctx.params.maxCampaigns >= 2 && budget >= 8) {
+  if (ctx.params.maxCampaigns >= 2 && budget >= 8 && !ctx.finisher) {
     const offensive = scored
       .filter(
         (e) =>
@@ -251,7 +288,7 @@ export function buildTurnPlan(
         );
         if (!pair) continue;
         comboSims++;
-        const pairResult = simulateTurn(ctx, pair);
+        const pairResult = simulateTurn(ctx, pair, false);
         if (!pairResult.feasible) continue;
         if (!confidentEnough(ctx, pair, pairResult)) continue;
         consider(
@@ -270,7 +307,7 @@ export function buildTurnPlan(
           );
           if (!trio) continue;
           comboSims++;
-          const trioResult = simulateTurn(ctx, trio);
+          const trioResult = simulateTurn(ctx, trio, false);
           if (trioResult.feasible && confidentEnough(ctx, trio, trioResult))
             consider(
               trio,
@@ -281,6 +318,14 @@ export function buildTurnPlan(
       }
     }
   }
+
+  if (ctx.params.optimizeFortify && bestCandidate && !bestRefined)
+    bestPlan = materialize(
+      ctx,
+      bestCandidate,
+      simulateTurn(ctx, bestCandidate, true),
+      cardSet,
+    );
 
   const needsCard = ctx.personality !== 'defensive' || ctx.game.cards !== 'Off';
   if (needsCard && bestPlan.objectives[0]?.kind === 'defensive') {

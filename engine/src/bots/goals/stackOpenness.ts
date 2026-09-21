@@ -2,6 +2,7 @@ import {
   PlanContext,
   SimState,
   botBorderIds,
+  cloneState,
   isFriendly,
   isHazard,
   neighborsOf,
@@ -225,4 +226,21 @@ export function openedEnemyStackPower(
     power += troops - 1;
   }
   return power;
+}
+
+export function ownStackClosure(
+  ctx: PlanContext,
+  state: SimState,
+  startId: number,
+  endId: number,
+): number {
+  const troops = troopsIn(state, startId);
+  if (troops < stackThreshold(state)) return 0;
+  const attackers = troops - 1;
+  const before = reachTotal(stackReach(ctx, state, startId, attackers));
+  if (before <= 0) return 0;
+  const projected = cloneState(state);
+  projected.owners.set(endId, ctx.botId);
+  const after = reachTotal(stackReach(ctx, projected, startId, attackers));
+  return after > 0 ? 0 : opennessOf(before);
 }

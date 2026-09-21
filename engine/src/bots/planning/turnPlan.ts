@@ -62,6 +62,7 @@ export interface TurnPlan {
   deployCursor: number;
   step: number;
   attacksIssued: number;
+  overwhelmingAttacksIssued: number;
   shipAttacksIssued: number;
   entrenchesIssued: number;
   roundNumber: number;
@@ -83,6 +84,7 @@ export function emptyPlan(roundNumber: number, playerId: number): TurnPlan {
     deployCursor: 0,
     step: 0,
     attacksIssued: 0,
+    overwhelmingAttacksIssued: 0,
     shipAttacksIssued: 0,
     entrenchesIssued: 0,
     roundNumber,

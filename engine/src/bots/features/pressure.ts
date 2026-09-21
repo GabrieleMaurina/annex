@@ -3,8 +3,12 @@ import { Game } from '../../types';
 
 const PRESSURE_START_ROUND = 100;
 const PRESSURE_RAMP_ROUNDS = 100;
+export const PASSIVE_RELEASE_PRESSURE = 0.6;
 const MIN_WIN_PROBABILITY = 0.55;
 const RELAXED_MIN_WIN_PROBABILITY = 0.3;
+const DESPERATION_START_ROUND = 300;
+const DESPERATION_RAMP_ROUNDS = 200;
+const DESPERATION_MIN_WIN_PROBABILITY = 0.05;
 const FRUSTRATION_START_ROUND = 50;
 const HEAVY_TERRITORY_TROOPS = 100;
 const CAPPED_HEAVY_TERRITORY_SHARE = 0.95;
@@ -57,10 +61,20 @@ export function stalematePressure(game: Game): number {
   return Math.max(frustrationLevel(game), stalemateRamp(game));
 }
 
+function desperationRamp(game: Game): number {
+  const ramp =
+    (game.roundNumber - DESPERATION_START_ROUND) / DESPERATION_RAMP_ROUNDS;
+  return Math.min(1, Math.max(0, ramp));
+}
+
 export function minWinProbability(game: Game): number {
-  return (
+  const base =
     MIN_WIN_PROBABILITY -
     (MIN_WIN_PROBABILITY - RELAXED_MIN_WIN_PROBABILITY) *
-      stalematePressure(game)
+      stalematePressure(game);
+  return (
+    base -
+    (RELAXED_MIN_WIN_PROBABILITY - DESPERATION_MIN_WIN_PROBABILITY) *
+      desperationRamp(game)
   );
 }

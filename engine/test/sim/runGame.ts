@@ -14,9 +14,13 @@ import { GenerateMapParams } from '../../src/mapgen/core/params';
 import { generateMap } from '../../src/mapgen/generate';
 import { createBotPlayer, playersById } from '../../src/session/players';
 import { games } from '../../src/session/store';
+import { ActionLogEntry, LoggedAction, compressActions } from './actionLog';
 import {
   BoardSnapshot,
+  MapGeometry,
   RoundSample,
+  TimedBoard,
+  describeMap,
   samplePlayers,
   snapshotBoard,
   totalConquests,
@@ -43,6 +47,7 @@ const MAX_TURN_STEPS = 400;
 const MAX_REPEATED_FAILURE = 5;
 const GAME_DEADLINE_MS = 300_000;
 const SAMPLE_EVERY_ROUNDS = 25;
+const BOARD_EVERY_ROUNDS = 100;
 
 export interface TurnLogEntry {
   round: number;
@@ -52,7 +57,7 @@ export interface TurnLogEntry {
   phase: string;
   objectives: string;
   planMs: number;
-  actions: { event: string; ok: boolean; error?: string }[];
+  actions: ActionLogEntry[];
 }
 
 export interface PlanMsSample {
@@ -77,6 +82,8 @@ export interface SimGameResult {
   dispatchFailures: number;
   playerTeams: Record<string, number>;
   lastConquestRound: number;
+  map: MapGeometry;
+  boards: TimedBoard[];
   finalBoard: BoardSnapshot | null;
   samples: RoundSample[];
   planMsSamples: PlanMsSample[];
@@ -141,6 +148,8 @@ export function runSimGame(
   let timedOut = false;
   const samples: RoundSample[] = [];
   let nextSampleRound = SAMPLE_EVERY_ROUNDS;
+  const boards: TimedBoard[] = [];
+  let nextBoardRound = BOARD_EVERY_ROUNDS;
   let conquestTotal = 0;
   let lastConquestRound = 0;
 
@@ -156,10 +165,14 @@ export function runSimGame(
       });
       nextSampleRound += SAMPLE_EVERY_ROUNDS;
     }
+    if (game.roundNumber >= nextBoardRound) {
+      boards.push({ round: game.roundNumber, board: snapshotBoard(game) });
+      nextBoardRound += BOARD_EVERY_ROUNDS;
+    }
     const playerId = game.playerIds[game.turnPlayerIndex];
     const identity = identityById.get(playerId)!;
     const phaseAtStart = game.turnPhase;
-    const actions: TurnLogEntry['actions'] = [];
+    const actions: LoggedAction[] = [];
     let planMs = 0;
     let objectives = '';
     let guard = 0;
@@ -192,6 +205,7 @@ export function runSimGame(
         );
         actions.push({
           event: action.event,
+          payload: action.payload,
           ok: outcome.ok,
           error: outcome.ok ? undefined : outcome.error,
         });
@@ -241,7 +255,7 @@ export function runSimGame(
         phase: phaseAtStart,
         objectives,
         planMs,
-        actions,
+        actions: compressActions(actions),
       });
   }
 
@@ -276,6 +290,8 @@ export function runSimGame(
     dispatchFailures,
     playerTeams: Object.fromEntries(game.playerTeams),
     lastConquestRound,
+    map: describeMap(game),
+    boards,
     finalBoard,
     samples,
     planMsSamples,

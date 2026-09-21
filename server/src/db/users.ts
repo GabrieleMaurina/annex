@@ -568,6 +568,11 @@ function sanitizeGameSettings(raw: unknown): GameSettings {
   for (const key of Object.keys(GAME_ENUMS)) {
     if (GAME_ENUMS[key].includes(r[key])) target[key] = r[key];
   }
+  if (
+    out.blitz === 'Off' &&
+    (out.roundTroops === 'on' || !['Constant', 'Off'].includes(out.cards))
+  )
+    out.blitz = DEFAULT_GAME_SETTINGS.blitz;
   return out;
 }
 

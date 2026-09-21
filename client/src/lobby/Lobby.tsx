@@ -22,6 +22,7 @@ import type {
   SavedBot,
 } from '../lib/types';
 import BannedList from './BannedList';
+import { isBlitzOffAllowed } from './gameSettings';
 import Header from './Header';
 import PlayerRoster from './PlayerRoster';
 import SettingsPanel from './SettingsPanel';
@@ -102,7 +103,8 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     hasMap &&
     game.players.length >= 2 &&
     (!isTeamDeathmatch || teamCount >= 2) &&
-    !(isTeamDeathmatch && game.alliances === 'on');
+    !(isTeamDeathmatch && game.alliances === 'on') &&
+    (game.blitz !== 'Off' || isBlitzOffAllowed(game));
 
   function banId(id: number) {
     bannedIdsRef.current = [...bannedIdsRef.current, id];

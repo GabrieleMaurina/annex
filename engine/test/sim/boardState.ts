@@ -17,10 +17,24 @@ export interface RoundSample {
 }
 
 export interface BoardSnapshot {
-  territoryIds: number[];
   owners: (number | null)[];
   troops: number[];
   seaShips: [number, number, number][];
+  radiations: number[];
+  toxins: [number, boolean, number][];
+  portals: number[];
+  capitals: number[];
+}
+
+export interface MapGeometry {
+  territories: { id: number; continentId: number; neighbors: number[] }[];
+  seaTerritories: { id: number; neighbors: number[] }[];
+  bonuses: number[];
+}
+
+export interface TimedBoard {
+  round: number;
+  board: BoardSnapshot;
 }
 
 interface Accumulator {
@@ -108,10 +122,33 @@ export function snapshotBoard(game: Game): BoardSnapshot {
     for (const [playerId, ships] of shipsByPlayer)
       if (ships > 0) seaShips.push([seaId, playerId, ships]);
   return {
-    territoryIds,
     owners: territoryIds.map((id) => game.territoryOwners.get(id) ?? null),
     troops: territoryIds.map((id) => game.territoryTroops.get(id) ?? 0),
     seaShips,
+    radiations: [...game.radiationTerritoryIds],
+    toxins: [...game.territoryToxins].map(([id, toxin]) => [
+      id,
+      toxin.permanent,
+      toxin.roundsRemaining,
+    ]),
+    portals: [...game.portalTerritoryIds],
+    capitals: [...game.capitalTerritoryIds],
+  };
+}
+
+export function describeMap(game: Game): MapGeometry {
+  const map = getGameMap(game);
+  return {
+    territories: map.territories.map((t) => ({
+      id: t.id,
+      continentId: t.continentId,
+      neighbors: t.neighbors,
+    })),
+    seaTerritories: map.seaTerritories.map((t) => ({
+      id: t.id,
+      neighbors: t.neighbors,
+    })),
+    bonuses: map.bonuses,
   };
 }
 

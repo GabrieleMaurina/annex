@@ -9,20 +9,14 @@ import {
   useState,
 } from 'react';
 import type { WrapAxes } from '../../game/mapMath';
-import {
-  hitVertex,
-  NO_WRAP,
-  segmentWouldCross,
-  wrapAxesOf,
-} from './canvas/canvasGeometry';
+import { hitVertex, NO_WRAP, wrapAxesOf } from './canvas/canvasGeometry';
 import { drawGraph } from './canvas/drawGraph';
-import { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from './defaultImage';
 import {
-  touchDistance,
-  touchMidpoint,
-  wrapEdgeSegments,
-  type Point,
-} from './mapCanvasGeometry';
+  handleVertexClick as linkVertices,
+  type VertexLinkContext,
+} from './canvas/vertexLink';
+import { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from './defaultImage';
+import { touchDistance, touchMidpoint, type Point } from './mapCanvasGeometry';
 import {
   clamp,
   createSettleSampler,
@@ -34,7 +28,6 @@ import {
   nextInContinentCycle,
   SEA_BRUSH,
   type EditorTerritory as Territory,
-  type WrapMark,
 } from './model/editorTypes';
 import { drawFreehand, paintContext, type Rect } from './paint/paintTools';
 
@@ -93,6 +86,9 @@ const LONG_PRESS_REPEAT_MS = 2000;
 
 export interface MapCanvasHandle {
   zoomAt: (clientX: number, clientY: number, deltaY: number) => void;
+  panStart: (clientX: number, clientY: number) => void;
+  panMove: (clientX: number, clientY: number) => void;
+  panEnd: () => void;
 }
 
 const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
@@ -136,6 +132,16 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     () => new Map(),
   );
   const eraseRef = useRef<Point[] | null>(null);
+  const forcePanRef = useRef<{ startPos: Point; startTransform: Point } | null>(
+    null,
+  );
+  const panStartImplRef = useRef<(clientX: number, clientY: number) => void>(
+    () => {},
+  );
+  const panMoveImplRef = useRef<(clientX: number, clientY: number) => void>(
+    () => {},
+  );
+  const panEndImplRef = useRef(() => {});
   const dragMoveHandlerRef = useRef<(e: MouseEvent) => void>(() => {});
   const dragUpHandlerRef = useRef<(e: MouseEvent) => void>(() => {});
   const windowMouseMoveRef = useRef((e: MouseEvent) =>
@@ -282,6 +288,40 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     settleRef.current = requestAnimationFrame(animate);
   }
 
+  function panStartImpl(clientX: number, clientY: number) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    cancelSettle();
+    const rect = canvas.getBoundingClientRect();
+    forcePanRef.current = {
+      startPos: { x: clientX - rect.left, y: clientY - rect.top },
+      startTransform: { x: transform.offsetX, y: transform.offsetY },
+    };
+  }
+  panStartImplRef.current = panStartImpl;
+
+  function panMoveImpl(clientX: number, clientY: number) {
+    const drag = forcePanRef.current;
+    const canvas = canvasRef.current;
+    if (!drag || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dx = clientX - rect.left - drag.startPos.x;
+    const dy = clientY - rect.top - drag.startPos.y;
+    setTransform((t) => ({
+      ...t,
+      offsetX: drag.startTransform.x + dx,
+      offsetY: drag.startTransform.y + dy,
+    }));
+  }
+  panMoveImplRef.current = panMoveImpl;
+
+  function panEndImpl() {
+    if (!forcePanRef.current) return;
+    forcePanRef.current = null;
+    startSettle();
+  }
+  panEndImplRef.current = panEndImpl;
+
   useEffect(() => {
     let stale = false;
     const img = new Image();
@@ -405,6 +445,15 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
           { x: clientX - rect.left, y: clientY - rect.top },
           deltaY < 0 ? 1.1 : 0.9,
         );
+      },
+      panStart(clientX: number, clientY: number) {
+        panStartImplRef.current(clientX, clientY);
+      },
+      panMove(clientX: number, clientY: number) {
+        panMoveImplRef.current(clientX, clientY);
+      },
+      panEnd() {
+        panEndImplRef.current();
       },
     }),
     [applyZoom],
@@ -536,87 +585,22 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     return newId;
   }
 
-  function edgeWouldCross(
-    from: Territory,
-    to: Territory,
+  function handleVertexClick(
+    id: number,
     forced: WrapAxes,
-  ): boolean {
-    return segmentWouldCross(
+    allowCrossover: boolean,
+  ) {
+    const ctx: VertexLinkContext = {
       territories,
-      getViewport(),
-      from,
-      to,
-      new Set([from.id, to.id]),
-      forced,
-    );
-  }
-
-  function flashRejectedEdge(from: Territory, to: Territory, forced: WrapAxes) {
-    const { w: imgW, h: imgH } = getImageDims();
-    setRejectedEdge(wrapEdgeSegments(from, to, imgW, imgH, forced));
-    if (rejectedTimeoutRef.current !== null) {
-      window.clearTimeout(rejectedTimeoutRef.current);
-    }
-    rejectedTimeoutRef.current = window.setTimeout(
-      () => setRejectedEdge(null),
-      300,
-    );
-  }
-
-  function handleVertexClick(id: number, forced: WrapAxes) {
-    if (selectedVertexId === null) {
-      setSelectedVertexId(id);
-      return;
-    }
-    if (selectedVertexId === id) {
-      setSelectedVertexId(null);
-      return;
-    }
-    const from = selectedVertexId;
-    const fromTerritory = territories.find((t) => t.id === from);
-    const toTerritory = territories.find((t) => t.id === id);
-    const linked = fromTerritory ? fromTerritory.neighbors.includes(id) : false;
-    if (
-      !linked &&
-      fromTerritory &&
-      toTerritory &&
-      edgeWouldCross(fromTerritory, toTerritory, forced)
-    ) {
-      flashRejectedEdge(fromTerritory, toTerritory, forced);
-      setSelectedVertexId(id);
-      return;
-    }
-    const wrapMarks = (otherId: number): WrapMark[] =>
-      !linked && (forced.x || forced.y)
-        ? [{ id: otherId, x: forced.x, y: forced.y }]
-        : [];
-    setTerritories((ts) =>
-      ts.map((t) => {
-        if (t.id === from) {
-          return {
-            ...t,
-            neighbors: linked
-              ? t.neighbors.filter((n) => n !== id)
-              : [...t.neighbors, id],
-            wraps: [...t.wraps.filter((w) => w.id !== id), ...wrapMarks(id)],
-          };
-        }
-        if (t.id === id) {
-          return {
-            ...t,
-            neighbors: linked
-              ? t.neighbors.filter((n) => n !== from)
-              : [...t.neighbors, from],
-            wraps: [
-              ...t.wraps.filter((w) => w.id !== from),
-              ...wrapMarks(from),
-            ],
-          };
-        }
-        return t;
-      }),
-    );
-    setSelectedVertexId(id);
+      selectedVertexId,
+      setSelectedVertexId,
+      setTerritories,
+      setRejectedEdge,
+      rejectedTimeoutRef,
+      getViewport,
+      getImageDims,
+    };
+    linkVertices(ctx, id, forced, allowCrossover);
   }
 
   function isSyntheticMouse(): boolean {
@@ -726,7 +710,11 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     return true;
   }
 
-  function endPointer(pos: Point, forced: WrapAxes = NO_WRAP) {
+  function endPointer(
+    pos: Point,
+    forced: WrapAxes = NO_WRAP,
+    allowCrossover = false,
+  ) {
     detachWindowDragListeners();
     const drag = dragRef.current;
     dragRef.current = null;
@@ -755,7 +743,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     if (!drag.moved) {
       lastTapAtRef.current = 0;
       lastAddedVertexRef.current = null;
-      handleVertexClick(drag.id, forced);
+      handleVertexClick(drag.id, forced, allowCrossover);
       return;
     }
     applyResort(territories);
@@ -838,7 +826,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     }
     if ((disabledRef.current && !panOnlyRef.current) || isSyntheticMouse())
       return;
-    endPointer(getPos(e), wrapAxesOf(e));
+    endPointer(getPos(e), wrapAxesOf(e), e.altKey);
   }
 
   function handleMouseLeave() {
@@ -958,7 +946,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   };
   dragUpHandlerRef.current = (e: MouseEvent) => {
     if (isSyntheticMouse()) return;
-    endPointer(getPos(e), wrapAxesOf(e));
+    endPointer(getPos(e), wrapAxesOf(e), e.altKey);
   };
 
   return (

@@ -114,12 +114,10 @@ function setRounds(ctx: PlanContext, goal: ModeGoal, limit: number): void {
 function setAssassin(ctx: PlanContext, goal: ModeGoal, targetId: number): void {
   const { game, botId } = ctx;
   const killerId = findKillerId(game, targetId);
+  if (killerId === botId) return;
   if (killerId !== undefined) {
-    if (killerId !== botId) {
-      goal.threshold = Math.ceil(goal.total * ASSASSIN_FALLBACK_FRACTION);
-      goal.expand = true;
-    }
-    return;
+    goal.threshold = Math.ceil(goal.total * ASSASSIN_FALLBACK_FRACTION);
+    goal.expand = true;
   }
   if (game.deathOrder.includes(targetId) || ctx.friendlyIds.has(targetId))
     return;
@@ -160,11 +158,17 @@ function buildModeGoal(ctx: PlanContext): ModeGoal {
   const goal = neutralGoal(ctx);
   switch (game.gameMode) {
     case 'Supremacy':
+      goal.threshold = goal.total;
+      goal.threatThreshold = goal.total;
+      goal.ownWeight = PASSIVE_WEIGHT;
+      goal.threatWeight = PASSIVE_WEIGHT;
+      break;
     case 'Team Deathmatch':
       goal.threshold = goal.total;
       goal.threatThreshold = goal.total;
       goal.ownWeight = PASSIVE_WEIGHT;
       goal.threatWeight = PASSIVE_WEIGHT;
+      goal.expand = true;
       break;
     case 'Supremacy 3/4':
       setRace(goal, 3 / 4);

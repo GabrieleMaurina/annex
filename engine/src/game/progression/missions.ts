@@ -123,11 +123,19 @@ export function missionAccomplished(
 
   if (mission.type === 'continents') {
     const map = getGameMap(game);
-    return mission.continentIds.every((continentId) =>
-      map.territories
+    return mission.continentIds.every((continentId) => {
+      const nonHazard = map.territories
         .filter((t) => t.continentId === continentId)
-        .every((t) => game.territoryOwners.get(t.id) === playerId),
-    );
+        .filter(
+          (t) =>
+            !game.territoryToxins.has(t.id) &&
+            !game.radiationTerritoryIds.has(t.id),
+        );
+      return (
+        nonHazard.length > 0 &&
+        nonHazard.every((t) => game.territoryOwners.get(t.id) === playerId)
+      );
+    });
   }
 
   const killerId = findKillerId(game, mission.targetId);

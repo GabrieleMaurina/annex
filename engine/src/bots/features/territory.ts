@@ -1,6 +1,6 @@
 import { withPortalEdges } from '../../game/world/portals';
 import { getGameMap } from '../../maps/maps';
-import { Game } from '../../types';
+import { Game, Territory } from '../../types';
 import { BotView, isVisible, ownerOf } from '../view';
 import { isTeammate } from './mode';
 
@@ -16,9 +16,20 @@ export function isHazardTerritory(
   );
 }
 
+const territoryIndexes = new WeakMap<Territory[], Map<number, Territory>>();
+
+function territoryById(game: Game): Map<number, Territory> {
+  const territories = getGameMap(game).territories;
+  let index = territoryIndexes.get(territories);
+  if (!index) {
+    index = new Map(territories.map((t) => [t.id, t]));
+    territoryIndexes.set(territories, index);
+  }
+  return index;
+}
+
 export function neighborsOf(game: Game, territoryId: number): number[] {
-  const map = getGameMap(game);
-  const territory = map.territories.find((t) => t.id === territoryId);
+  const territory = territoryById(game).get(territoryId);
   return withPortalEdges(
     territory?.neighbors ?? [],
     territoryId,

@@ -236,6 +236,17 @@ function MapEditor({ account }: { account: Account | null }) {
       mapCanvasRef.current?.zoomAt(clientX, clientY, deltaY),
     [],
   );
+  const handlePanStart = useCallback(
+    (clientX: number, clientY: number) =>
+      mapCanvasRef.current?.panStart(clientX, clientY),
+    [],
+  );
+  const handlePanMove = useCallback(
+    (clientX: number, clientY: number) =>
+      mapCanvasRef.current?.panMove(clientX, clientY),
+    [],
+  );
+  const handlePanEnd = useCallback(() => mapCanvasRef.current?.panEnd(), []);
   const handlePickColor = useCallback(
     (hex: string) => {
       setColor(hex);
@@ -741,6 +752,9 @@ function MapEditor({ account }: { account: Account | null }) {
           onChange={bumpPaint}
           onWheelZoom={handleWheelZoom}
           onPickColor={handlePickColor}
+          onPanStart={handlePanStart}
+          onPanMove={handlePanMove}
+          onPanEnd={handlePanEnd}
         />
       )}
 

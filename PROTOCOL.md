@@ -574,9 +574,9 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
   {
     alliances?: 'off' | 'on'; // 'on' is rejected while gameMode is (or becomes, in this same call) 'Team Deathmatch'
     bannedPlayerIds?: number[]; // replaces the game's entire ban list
-    blitz?: 'Balanced' | 'True' | 'Fair' | 'Off';
+    blitz?: 'Balanced' | 'True' | 'Fair' | 'Off'; // 'Off' is rejected while roundTroops is (or becomes, in this same call) 'on' or cards is (or becomes) Linear, Exponential, Linear Per Player or Exponential Per Player
     bounties?: 'off' | 'on';
-    cards?: 'Constant' | 'Linear' | 'Exponential' | 'Linear Per Player' | 'Exponential Per Player' | 'Off';
+    cards?: 'Constant' | 'Linear' | 'Exponential' | 'Linear Per Player' | 'Exponential Per Player' | 'Off'; // a progressive mode resets blitz 'Off' to 'Balanced'
     defenceDice?: 2 | 3;
     disconnectBotDifficulty?: 'idle' | 'easy' | 'medium' | 'hard' | 'random'; // difficulty a bot takes over with on a playing-state disconnect, see "Bots" above
     disconnectBotPersonality?: 'balanced' | 'taker' | 'breaker' | 'killer' | 'vengeful' | 'defensive' | 'erratic' | 'random'; // personality for the same takeover
@@ -596,7 +596,7 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
     supplyLines?: 'off' | 'on';
     toxins?: 'off' | 'temporary' | 'permanent';
     turnDuration?: 60 | 90 | 120 | 150 | 180 | 300; // seconds
-    roundTroops?: 'off' | 'on';
+    roundTroops?: 'off' | 'on'; // 'on' resets blitz 'Off' to 'Balanced'
     visibility?: 'public' | 'private';
   }
   ```

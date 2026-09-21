@@ -25,6 +25,7 @@ import {
   respondGameState,
   sendPlayerCards,
 } from '../session/store';
+import { isBlitzOffAllowed } from './settings';
 
 export function startGame(playerId: number): GameResponse {
   const player = playersById.get(playerId);
@@ -46,6 +47,8 @@ export function startGame(playerId: number): GameResponse {
     return { ok: false, error: 'not enough teams' };
   if (game.gameMode === 'Team Deathmatch' && game.alliances === 'on')
     return { ok: false, error: 'alliances not allowed in team deathmatch' };
+  if (game.blitz === 'Off' && !isBlitzOffAllowed(game.roundTroops, game.cards))
+    return { ok: false, error: 'blitz off not allowed with these settings' };
 
   for (const ownerId of game.substituteFor.values()) {
     const owner = playersById.get(ownerId);

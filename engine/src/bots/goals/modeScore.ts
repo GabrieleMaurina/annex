@@ -1,5 +1,6 @@
 import {
   ModeGoal,
+  SideProgress,
   modeGoalFor,
   sideProgress,
   territoryCounts,
@@ -64,7 +65,11 @@ function assassinScore(
   return ASSASSIN_PROGRESS * progress * progress;
 }
 
-export function modeScore(ctx: PlanContext, state: SimState): number {
+export function modeScore(
+  ctx: PlanContext,
+  state: SimState,
+  cachedProgress?: SideProgress,
+): number {
   const goal = modeGoalFor(ctx);
   let score = 0;
   if (!ownsAnything(ctx, state)) score -= SELF_ELIMINATION;
@@ -74,7 +79,7 @@ export function modeScore(ctx: PlanContext, state: SimState): number {
       goal.lossRefund * state.troopsLost;
   if (!goal.active) return score;
 
-  const { own, threats } = sideProgress(ctx, goal, state);
+  const { own, threats } = cachedProgress ?? sideProgress(ctx, goal, state);
   for (const progress of own)
     score +=
       progress >= 1 ? WIN : OWN_PROGRESS * goal.ownWeight * curve(progress, 0);

@@ -1,6 +1,6 @@
 import { upcomingSetValues } from '../../game/progression/cards';
 import { grudgeAgainst } from '../features/grudge';
-import { modeGoalFor } from '../features/modeGoals';
+import { SideProgress, modeGoalFor } from '../features/modeGoals';
 import { stalematePressure } from '../features/pressure';
 import { antiLeaderActive } from '../features/standing';
 import { modeScore } from '../goals/modeScore';
@@ -241,7 +241,11 @@ function damageDealt(state: SimState): number {
   return total;
 }
 
-function scoreState(ctx: PlanContext, state: SimState): number {
+function scoreState(
+  ctx: PlanContext,
+  state: SimState,
+  cachedProgress?: SideProgress,
+): number {
   const { risk, waste, concentration } = riskAndWaste(ctx, state);
   const leader = antiLeaderActive(ctx.standing)
     ? strongestOpponent(ctx, state)
@@ -279,12 +283,16 @@ function scoreState(ctx: PlanContext, state: SimState): number {
   score += eliminationBonus(ctx, state);
   score += (DAMAGE * damageDealt(state)) / scale;
   score += standingScore(ctx, state);
-  score += modeScore(ctx, state);
+  score += modeScore(ctx, state, cachedProgress);
   return score;
 }
 
-export function evaluateBoard(ctx: PlanContext, state: SimState): number {
-  const raw = scoreState(ctx, state);
+export function evaluateBoard(
+  ctx: PlanContext,
+  state: SimState,
+  cachedProgress?: SideProgress,
+): number {
+  const raw = scoreState(ctx, state, cachedProgress);
   const afterResponse = scoreState(ctx, applyEnemyResponse(ctx, state));
   return 0.25 * raw + 0.75 * afterResponse;
 }

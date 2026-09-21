@@ -62,6 +62,9 @@ interface Props {
   onChange: () => void;
   onWheelZoom: (clientX: number, clientY: number, deltaY: number) => void;
   onPickColor: (hex: string) => void;
+  onPanStart: (clientX: number, clientY: number) => void;
+  onPanMove: (clientX: number, clientY: number) => void;
+  onPanEnd: () => void;
 }
 
 const HANDLE_CURSOR = [
@@ -169,10 +172,14 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     onChange,
     onWheelZoom,
     onPickColor,
+    onPanStart,
+    onPanMove,
+    onPanEnd,
   },
   ref,
 ) {
   const surface = surfaceRef.current;
+  const forcePanRef = useRef(false);
   const divRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const lastPointerRef = useRef<Point | null>(null);
@@ -669,6 +676,16 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   }
 
   function onPointerDown(e: React.PointerEvent) {
+    if (e.button === 0 && e.ctrlKey) {
+      e.preventDefault();
+      divRef.current?.setPointerCapture(e.pointerId);
+      forcePanRef.current = true;
+      if (overlayRef.current) overlayRef.current.style.display = 'none';
+      applyCursor('grabbing');
+      onPanStart(e.clientX, e.clientY);
+      return;
+    }
+
     const p = toImage(e);
 
     if (e.button === 2) {
@@ -733,6 +750,11 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   }
 
   function onPointerMove(e: React.PointerEvent) {
+    if (forcePanRef.current) {
+      onPanMove(e.clientX, e.clientY);
+      return;
+    }
+
     const p = toImage(e);
 
     lastPointerRef.current = { x: e.clientX, y: e.clientY };
@@ -809,6 +831,10 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   }
 
   function onPointerCancel(): void {
+    if (forcePanRef.current) {
+      forcePanRef.current = false;
+      onPanEnd();
+    }
     discardTransient();
     curveRef.current.phase = 'idle';
     lineRef.current = null;
@@ -829,6 +855,14 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
 
   function onPointerUp(e: React.PointerEvent) {
     divRef.current?.releasePointerCapture(e.pointerId);
+
+    if (forcePanRef.current) {
+      forcePanRef.current = false;
+      onPanEnd();
+      applyCursor(resolveCursor());
+      return;
+    }
+
     const p = toImage(e);
 
     if (tool === 'sampler') {

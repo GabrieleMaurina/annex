@@ -167,6 +167,8 @@ function orderTargets(
   return order;
 }
 
+const MAX_ROUTE_TARGETS = 16;
+
 export function routeStack(
   ctx: PlanContext,
   state: SimState,
@@ -177,7 +179,14 @@ export function routeStack(
   const targetSet = new Set<number>();
   for (const id of mustVisit) if (id !== startId) targetSet.add(id);
   if (anchorId !== null && anchorId !== startId) targetSet.add(anchorId);
-  const targets = [...targetSet];
+  let targets = [...targetSet];
+  if (targets.length > MAX_ROUTE_TARGETS) {
+    const rest = targets
+      .filter((id) => id !== anchorId)
+      .slice(0, anchorId !== null ? MAX_ROUTE_TARGETS - 1 : MAX_ROUTE_TARGETS);
+    targets =
+      anchorId !== null && targetSet.has(anchorId) ? [...rest, anchorId] : rest;
+  }
   if (targets.length === 0) return { path: [], cost: 0, reachesAll: true };
 
   const costCache = new Map<number, number>();

@@ -3,6 +3,7 @@ import {
   continentBreakCandidates,
   continentCompletionCandidates,
 } from '../features/continents';
+import { navalOpportunities, seaBridgeTargets } from '../features/navy';
 import { hostileNeighbors, ownedTerritoryIds } from '../features/territory';
 import { Weights } from '../types';
 import { BotView, troopsAt } from '../view';
@@ -42,9 +43,33 @@ export function chooseDeploy(
   const bordering = ownedTerritoryIds(game, botId).filter(
     (id) => hostileNeighbors(game, view, botId, id).length > 0,
   );
+  const seaSources =
+    bordering.length > 0
+      ? []
+      : [
+          ...new Set(
+            [
+              ...seaBridgeTargets(game, view, botId),
+              ...navalOpportunities(game, view, botId),
+            ].map((o) => o.sourceTerritoryId),
+          ),
+        ];
   const targets =
-    bordering.length > 0 ? bordering : ownedTerritoryIds(game, botId);
+    bordering.length > 0
+      ? bordering
+      : seaSources.length > 0
+        ? seaSources
+        : ownedTerritoryIds(game, botId);
   if (targets.length === 0) return null;
+
+  if (bordering.length === 0 && seaSources.length === 0) {
+    const territoryId = targets.reduce((min, id) =>
+      (game.territoryTroops.get(id) ?? 0) < (game.territoryTroops.get(min) ?? 0)
+        ? id
+        : min,
+    );
+    return { territoryId, troops: troopsToDeploy };
+  }
 
   const breakTargets = new Set(
     continentBreakCandidates(game, view, botId).map(

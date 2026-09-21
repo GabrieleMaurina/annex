@@ -6,10 +6,18 @@ import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
 import { attackWinProbability, defenceDiceFor } from '../features/combat';
-import { frustrationLevel, stalemateRamp } from '../features/pressure';
+import { modeGoalFor } from '../features/modeGoals';
+import {
+  PASSIVE_RELEASE_PRESSURE,
+  frustrationLevel,
+  stalematePressure,
+  stalemateRamp,
+} from '../features/pressure';
 import {
   conquestEndShare,
+  openStackWeight,
   openedEnemyStackPower,
+  ownStackClosure,
 } from '../goals/stackOpenness';
 import {
   AttackChoice,
@@ -39,7 +47,13 @@ import {
   chooseShipPurchase,
   chooseSupplyBridge,
 } from '../heuristics/ships';
-import { PlanContext, buildContext, snapshotState } from './context';
+import {
+  PlanContext,
+  SimState,
+  buildContext,
+  planDepth,
+  snapshotState,
+} from './context';
 import { buildTurnPlan, repairPlan } from './enumerate';
 import {
   AttackStep,
@@ -71,7 +85,12 @@ export interface PlanBotTurnInput {
 
 const NEXT_PHASE: BotAction = { event: 'game:nextPhase', payload: undefined };
 const OVERWHELMING_RATIO = 10;
+const FINISHER_OVERWHELMING_RATIO = 2;
 const OPENED_STACK_PENALTY = 0.3;
+const OWN_STACK_CLOSURE_PENALTY = 0.3;
+const HOLD_GARRISON_SHARE = 0.6;
+const MAX_FALLBACK_ATTACKS_PER_TURN = 16;
+const MAX_OVERWHELMING_ATTACKS_PER_TURN = 40;
 
 function result(actions: BotAction[], plan: TurnPlan): PlanBotTurnResult {
   return { actions, plan };
@@ -359,40 +378,60 @@ function planAttack(
 
   plan.step = plan.attackSteps.length;
   const frustration = frustrationLevel(game);
-  const fallbackBudget =
-    Math.ceil(ctx.params.maxPlanDepth / 3) +
-    Math.round(frustration * ctx.params.maxPlanDepth);
+  const fallbackBudget = Math.min(
+    MAX_FALLBACK_ATTACKS_PER_TURN,
+    Math.ceil(planDepth(ctx) / 3) + Math.round(frustration * planDepth(ctx)),
+  );
   const capped = plan.attacksIssued >= plan.attackSteps.length + fallbackBudget;
   const desperate = Math.random() < stalemateRamp(game);
   const sacrifice = desperate ? chooseLosingAttack(ctx, frustration) : null;
-  const boardNow = snapshotState(ctx);
-  const stackRisk = (startId: number, endId: number) =>
-    ctx.weights.defense *
-    OPENED_STACK_PENALTY *
-    Math.min(
-      1,
-      openedEnemyStackPower(ctx, boardNow, endId) /
-        (game.territoryTroops.get(startId) ?? 1),
-    );
-  const attack =
-    ctx.personality === 'defensive'
-      ? sacrifice
-      : (sacrifice ??
-        chooseAttack(
-          game,
-          ctx.view,
-          ctx.botId,
-          ctx.weights,
-          ctx.params.noise,
-          ctx.standing,
-          stackRisk,
-        ) ??
-        chooseLosingAttack(ctx, frustration));
+  let boardNow: SimState | null = null;
+  const stackRisk = (startId: number, endId: number) => {
+    boardNow ??= snapshotState(ctx);
+    const opened =
+      ctx.weights.defense *
+      OPENED_STACK_PENALTY *
+      Math.min(
+        1,
+        openedEnemyStackPower(ctx, boardNow, endId) /
+          (game.territoryTroops.get(startId) ?? 1),
+      );
+    const closed =
+      openStackWeight(ctx) *
+      OWN_STACK_CLOSURE_PENALTY *
+      ownStackClosure(ctx, boardNow, startId, endId);
+    return opened + closed;
+  };
+  const passive =
+    ctx.personality === 'defensive' &&
+    stalematePressure(game) < PASSIVE_RELEASE_PRESSURE;
+  const attack = passive
+    ? sacrifice
+    : (sacrifice ??
+      chooseAttack(
+        game,
+        ctx.view,
+        ctx.botId,
+        ctx.weights,
+        ctx.params.noise,
+        ctx.standing,
+        stackRisk,
+      ) ??
+      chooseLosingAttack(ctx, frustration));
   if (!attack) return result([NEXT_PHASE], plan);
-  const overwhelming = isOverwhelming(game, attack);
+  const overwhelming = isOverwhelming(ctx, game, attack);
   const continuing = isContinuation(game, attack.startId, attack.endId);
-  if (capped && !overwhelming && !continuing) return result([NEXT_PHASE], plan);
-  if (!overwhelming && !continuing) plan.attacksIssued++;
+  const overwhelmingCapped =
+    plan.overwhelmingAttacksIssued >= MAX_OVERWHELMING_ATTACKS_PER_TURN;
+  if (!continuing) {
+    if (overwhelming) {
+      if (overwhelmingCapped) return result([NEXT_PHASE], plan);
+    } else if (capped) return result([NEXT_PHASE], plan);
+  }
+  if (!continuing) {
+    if (overwhelming) plan.overwhelmingAttacksIssued++;
+    else plan.attacksIssued++;
+  }
   return result(
     [
       {
@@ -423,14 +462,18 @@ function continuesFromConquest(
 
 function conquestShare(ctx: PlanContext, game: Game): number {
   const startId = game.attackStartTerritoryId!;
+  const endId = game.attackEndTerritoryId!;
   const attackers = (game.territoryTroops.get(startId) ?? 0) - 1;
-  return conquestEndShare(
+  const share = conquestEndShare(
     ctx,
     snapshotState(ctx),
     startId,
-    game.attackEndTerritoryId!,
+    endId,
     attackers,
   );
+  return modeGoalFor(ctx).holdSet.has(endId)
+    ? Math.max(share, HOLD_GARRISON_SHARE)
+    : share;
 }
 
 function isContinuation(game: Game, startId: number, endId: number): boolean {
@@ -441,10 +484,15 @@ function isContinuation(game: Game, startId: number, endId: number): boolean {
   );
 }
 
-function isOverwhelming(game: Game, attack: AttackChoice): boolean {
+function isOverwhelming(
+  ctx: PlanContext,
+  game: Game,
+  attack: AttackChoice,
+): boolean {
   const attackers = game.territoryTroops.get(attack.startId) ?? 0;
   const defenders = game.territoryTroops.get(attack.endId) ?? 0;
-  return attackers >= defenders * OVERWHELMING_RATIO;
+  const ratio = ctx.finisher ? FINISHER_OVERWHELMING_RATIO : OVERWHELMING_RATIO;
+  return attackers >= defenders * ratio;
 }
 
 function stepStatus(

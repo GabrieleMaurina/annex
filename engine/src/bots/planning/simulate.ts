@@ -4,6 +4,7 @@ import {
 } from '../../game/mechanics';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { expectedOutcome } from '../features/combat';
+import { modeGoalFor, sideProgress } from '../features/modeGoals';
 import {
   bestStackingBorder,
   conquestEndShare,
@@ -23,6 +24,7 @@ import {
   isFriendly,
   neighborsOf,
   ownedIds,
+  planDepth,
   snapshotState,
   strongestThreatAt,
   troopsIn,
@@ -60,6 +62,7 @@ const CHAIN_FLOOR = 0.08;
 const EXACT_COMBAT_CAP = 60;
 const FEASIBILITY_RATIO = 0.55;
 const ROLL_DEFEAT_SURVIVAL = 0.5;
+const MAX_FORTIFY_SOURCES = 5;
 
 interface RollAttempt {
   stack: StackPlan;
@@ -122,7 +125,7 @@ export function walkStack(
   let taken = 0;
   let lastConquest: { fromId: number; toId: number } | null = null;
   for (let i = 0; i < stack.route.length; i++) {
-    if (taken >= ctx.params.maxPlanDepth) break;
+    if (taken >= planDepth(ctx)) break;
     const next = stack.route[i];
     if (state.owners.get(cur) !== ctx.botId) break;
     if (state.owners.get(next) === ctx.botId) {
@@ -257,8 +260,12 @@ function bestFortify(
   state: SimState,
   hint: number | undefined,
   siege: boolean | undefined,
+  optimize: boolean,
 ): { move: FortifyMove | null; score: number } {
-  const baseScore = evaluateBoard(ctx, state);
+  const goal = modeGoalFor(ctx);
+  const cachedProgress =
+    goal.minTroops <= 1 ? sideProgress(ctx, goal, state) : undefined;
+  const baseScore = evaluateBoard(ctx, state, cachedProgress);
   const owned = ownedIds(state, ctx.botId);
   const borderTargets = owned
     .filter((id) => isBotBorder(ctx, state, id))
@@ -284,14 +291,14 @@ function bestFortify(
   const sources = owned
     .filter((id) => troopsIn(state, id) >= 2)
     .sort((a, b) => troopsIn(state, b) - troopsIn(state, a))
-    .slice(0, 10);
+    .slice(0, MAX_FORTIFY_SOURCES);
 
   if (siege && hint !== undefined && state.owners.get(hint) === ctx.botId) {
     const move = siegeMove(ctx, state, sources, hint);
     if (move) return { move, score: baseScore };
   }
 
-  if (!ctx.params.optimizeFortify) {
+  if (!optimize) {
     const source = sources.find(
       (id) => !isBotBorder(ctx, state, id) && troopsIn(state, id) >= 3,
     );
@@ -326,7 +333,7 @@ function bestFortify(
       if (troops < 1) continue;
       state.troops.set(source, 1);
       state.troops.set(target, targetTroops + troops);
-      let score = evaluateBoard(ctx, state);
+      let score = evaluateBoard(ctx, state, cachedProgress);
       state.troops.set(source, sourceTroops);
       state.troops.set(target, targetTroops);
       if (target === hint) score += 3;
@@ -363,6 +370,7 @@ function blendRollScore(
 export function simulateTurn(
   ctx: PlanContext,
   candidate: Candidate,
+  optimizeFortify = ctx.params.optimizeFortify,
 ): SimResult {
   const state = snapshotState(ctx);
   applyDeployments(state, candidate.deployments);
@@ -399,13 +407,19 @@ export function simulateTurn(
     ).length;
     const required = Math.min(
       Math.ceil(objective.mustVisit.length * FEASIBILITY_RATIO),
-      ctx.params.maxPlanDepth,
+      planDepth(ctx),
     );
     if (captured >= required && state.conquered) feasible = true;
   }
 
   const hint = candidate.fortifyHint ?? candidate.objectives[0]?.fortifyHint;
-  const fortify = bestFortify(ctx, state, hint, candidate.siege);
+  const fortify = bestFortify(
+    ctx,
+    state,
+    hint,
+    candidate.siege,
+    optimizeFortify,
+  );
   if (fortify.move) {
     state.troops.set(fortify.move.startId, 1);
     state.troops.set(
@@ -644,6 +658,7 @@ export function stackCandidates(
   if (
     stagingOverride === undefined &&
     ctx.params.maxCampaigns >= 2 &&
+    !ctx.finisher &&
     objective.mustVisit.length >= 4
   ) {
     const split = splitStackCandidate(ctx, state, objective, budget);

@@ -12,6 +12,7 @@ import {
   supplyCarryingSeaIds,
 } from '../features/navy';
 import { frustrationLevel, minWinProbability } from '../features/pressure';
+import { hostileNeighbors, ownedTerritoryIds } from '../features/territory';
 import { BotView } from '../view';
 import { attackOrder } from './attack';
 
@@ -44,7 +45,7 @@ export function chooseShipPurchase(
   if (worstThreat && troopsToDeploy >= SHIP_COST + 1) {
     const needed = worstThreat.enemyShips - worstThreat.ownShips + 1;
     const affordable = Math.min(needed, Math.floor(troopsToDeploy / SHIP_COST));
-    if (affordable >= 1)
+    if (affordable >= needed)
       return {
         sourceTerritoryId: worstThreat.sourceTerritoryId,
         seaTerritoryId: worstThreat.seaTerritoryId,
@@ -54,6 +55,9 @@ export function chooseShipPurchase(
   }
 
   const frustrated = Math.random() < frustrationLevel(game);
+  const landlocked = ownedTerritoryIds(game, botId).every(
+    (id) => hostileNeighbors(game, view, botId, id).length === 0,
+  );
   const best = navalOpportunities(game, view, botId)
     .map((o) => ({
       ...o,
@@ -62,8 +66,10 @@ export function chooseShipPurchase(
     .filter((o) => {
       const sourceTroops = game.territoryTroops.get(o.sourceTerritoryId) ?? 0;
       const attackers =
-        (o.fromPool ? sourceTroops : sourceTroops - o.shipsNeeded * SHIP_COST) -
-        1;
+        (o.fromPool
+          ? sourceTroops +
+            (landlocked ? troopsToDeploy - o.shipsNeeded * SHIP_COST : 0)
+          : sourceTroops - o.shipsNeeded * SHIP_COST) - 1;
       return (
         attackers >= 1 &&
         (frustrated ||

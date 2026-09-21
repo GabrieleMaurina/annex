@@ -44,6 +44,12 @@ const CARDS_VALUES: CardsMode[] = [
   'Exponential Per Player',
   'Off',
 ];
+const PROGRESSIVE_CARDS_VALUES: CardsMode[] = [
+  'Linear',
+  'Exponential',
+  'Linear Per Player',
+  'Exponential Per Player',
+];
 const DEFENCE_DICE_VALUES: DefenceDice[] = [2, 3];
 const ENTRENCHMENTS_VALUES: Entrenchments[] = ['off', 'on'];
 const FOG_OF_WAR_VALUES: FogOfWar[] = ['off', 'on'];
@@ -85,6 +91,16 @@ const NUKES_VALUES: Nukes[] = ['off', 'on'];
 const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
 const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
 const ROUND_TROOPS_VALUES: RoundTroops[] = ['off', 'on'];
+
+export function isBlitzOffAllowed(
+  roundTroops: unknown,
+  cards: unknown,
+): boolean {
+  return (
+    roundTroops !== 'on' &&
+    !(PROGRESSIVE_CARDS_VALUES as unknown[]).includes(cards)
+  );
+}
 
 export function updateSettings(
   playerId: number,
@@ -143,6 +159,14 @@ export function updateSettings(
 
   if (settings.blitz !== undefined) {
     if (!(BLITZ_VALUES as unknown[]).includes(settings.blitz))
+      return { ok: false, error: 'invalid blitz' };
+    if (
+      settings.blitz === 'Off' &&
+      !isBlitzOffAllowed(
+        settings.roundTroops ?? game.roundTroops,
+        settings.cards ?? game.cards,
+      )
+    )
       return { ok: false, error: 'invalid blitz' };
     game.blitz = settings.blitz as Blitz;
   }
@@ -322,6 +346,9 @@ export function updateSettings(
       return { ok: false, error: 'invalid round troops' };
     game.roundTroops = settings.roundTroops as RoundTroops;
   }
+
+  if (game.blitz === 'Off' && !isBlitzOffAllowed(game.roundTroops, game.cards))
+    game.blitz = 'Balanced';
 
   broadcastHomeGames();
   return respondGameState(game, player.id);

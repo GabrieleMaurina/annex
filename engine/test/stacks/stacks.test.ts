@@ -540,6 +540,63 @@ test('the board score rewards an open own stack over a closed one, for stack lov
   assert.equal(openGap('defensive'), openGap('defensive', -1));
 });
 
+test('given two live attacks, the one that keeps the bot stack open is favoured', () => {
+  const spec = stackBoard(
+    [
+      [0, 1],
+      [0, 2],
+      [2, 3],
+    ],
+    { 0: 1, 1: 2, 2: 2, 3: 2 },
+    { 0: 30, 1: 3, 2: 3, 3: 12 },
+  );
+  const attackGap = (personality: BotPersonality, stack?: number) => {
+    const { ctx } = stackView(spec, personality);
+    const scoring = {
+      ...ctx,
+      weights: { ...ctx.weights, stack: stack ?? ctx.weights.stack },
+    };
+    const deadEnd = simulateTurn(
+      scoring,
+      {
+        objectives: [
+          {
+            kind: 'shrinkBorder',
+            targetPlayerId: 2,
+            continentId: null,
+            mustVisit: [1],
+          },
+        ],
+        deployments: [],
+        stacks: [{ startId: 0, route: [1], objectiveIndex: 0 }],
+      },
+      false,
+    );
+    const chain = simulateTurn(
+      scoring,
+      {
+        objectives: [
+          {
+            kind: 'shrinkBorder',
+            targetPlayerId: 2,
+            continentId: null,
+            mustVisit: [2],
+          },
+        ],
+        deployments: [],
+        stacks: [{ startId: 0, route: [2], objectiveIndex: 0 }],
+      },
+      false,
+    );
+    return deadEnd.score - chain.score;
+  };
+  assert.ok(attackGap('killer') > 0);
+  assert.ok(attackGap('balanced') > 0);
+  assert.ok(attackGap('killer') > attackGap('killer', -1));
+  assert.ok(attackGap('balanced') > attackGap('balanced', -1));
+  assert.equal(attackGap('defensive'), attackGap('defensive', -1));
+});
+
 test('the board score punishes an enemy stack that is open toward the bot', () => {
   const spec = stackBoard(
     [
@@ -597,6 +654,41 @@ test('an attack that would open a big closed enemy stack is passed over', () => 
   };
   assert.equal(chosenEnd(3), 1);
   assert.equal(chosenEnd(40), 2);
+});
+
+test('a live attack that would seal off the bot own stack is passed over', () => {
+  const chosenStart = (bigStackTroops: number) => {
+    const spec = stackBoard(
+      [
+        [0, 1],
+        [5, 6],
+      ],
+      { 0: 1, 1: 2, 5: 1, 6: 2 },
+      { 0: bigStackTroops, 1: 3, 5: 5, 6: 3 },
+    );
+    const { game, botId } = buildGame(spec);
+    game.turnPhase = 'attack';
+    game.troopsToDeploy = 0;
+    const plan = emptyPlan(game.roundNumber, botId);
+    plan.antiNukeDeployed = true;
+    plan.nukeLaunched = true;
+    const original = Math.random;
+    Math.random = () => 0.5;
+    try {
+      const { actions } = planBotTurn(
+        game,
+        botId,
+        { difficulty: 'hard', personality: 'balanced' },
+        plan,
+      );
+      const start = actions.find((a) => a.event === 'game:attackSelectStart');
+      return (start?.payload as { territoryId: number }).territoryId;
+    } finally {
+      Math.random = original;
+    }
+  };
+  assert.equal(chosenStart(30), 5);
+  assert.equal(chosenStart(10), 0);
 });
 
 test('in a duel destroying an enemy stack is worth more than outside one', () => {

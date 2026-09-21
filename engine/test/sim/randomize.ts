@@ -118,18 +118,25 @@ export function randomGameSettings(
   const gameMode = pick(rng, GAME_MODES);
   const defenceDice = rng() < 0.5 ? 2 : 3;
   const alliancesAllowed = gameMode !== 'Team Deathmatch';
+  const cards = pick(rng, CARDS_MODES);
+  const roundTroops = rng() < 0.3 ? 'on' : 'off';
+  const blitzOffAllowed =
+    roundTroops === 'off' && (cards === 'Constant' || cards === 'Off');
 
   const settings: Record<string, unknown> = {
     gameMode,
     defenceDice,
     fortification: pick(rng, FORTIFICATIONS),
-    cards: pick(rng, CARDS_MODES),
-    blitz: pick(rng, BLITZ_VALUES),
+    cards,
+    blitz: pick(
+      rng,
+      blitzOffAllowed ? BLITZ_VALUES : BLITZ_VALUES.filter((b) => b !== 'Off'),
+    ),
     placement: pick(rng, PLACEMENT_VALUES),
     fogOfWar: rng() < 0.3 ? 'on' : 'off',
     entrenchments: defenceDice === 2 && rng() < 0.3 ? 'on' : 'off',
     supplyLines: rng() < 0.3 ? 'on' : 'off',
-    roundTroops: rng() < 0.3 ? 'on' : 'off',
+    roundTroops,
     bounties: rng() < 0.3 ? 'on' : 'off',
     nukes: rng() < 0.2 ? 'on' : 'off',
     portals: weightedOff(rng, 0.25, ['static', 'dynamic'] as const),

@@ -61,6 +61,16 @@ export function formatDuration(seconds: number): string {
   return sec === 0 ? `${min} min` : `${min} min ${sec} sec`;
 }
 
+export function isBlitzOffAllowed(game: {
+  roundTroops: string;
+  cards: string;
+}): boolean {
+  return (
+    game.roundTroops === 'off' &&
+    (game.cards === 'Constant' || game.cards === 'Off')
+  );
+}
+
 function onOff(): GameSettingOption[] {
   return [
     { value: 'off', label: 'Off' },

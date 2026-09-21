@@ -5,6 +5,7 @@ import { BotPersonality, BotProfile, Game, GameMap } from '../../types';
 import { difficultyParams } from '../difficulty';
 import { defenceDiceFor } from '../features/combat';
 import { DuelFocus, duelFocus } from '../features/duel';
+import { finisherMode } from '../features/finisher';
 import { shippedSeaIdsOf } from '../features/navy';
 import { buildStanding, playerStrengths, Standing } from '../features/standing';
 import { getWeights } from '../personality/registry';
@@ -29,6 +30,15 @@ export interface PlanContext {
   preTurnOpponents: Map<number, number>;
   standing: Standing;
   duel: DuelFocus;
+  finisher: boolean;
+}
+
+const FINISHER_DEPTH = 40;
+
+export function planDepth(ctx: PlanContext): number {
+  return ctx.finisher
+    ? Math.max(ctx.params.maxPlanDepth, FINISHER_DEPTH)
+    : ctx.params.maxPlanDepth;
 }
 
 function buildTopology(game: Game, map: GameMap): MapTopology {
@@ -63,18 +73,40 @@ function buildTopology(game: Game, map: GameMap): MapTopology {
   return { neighbors, seaLinks, continentTerritories, territoryContinent };
 }
 
-export function buildContext(
+interface Focus {
+  view: BotView;
+  friendlyIds: Set<number>;
+  preTurnOpponents: Map<number, number>;
+  standing: Standing;
+  duel: DuelFocus;
+  finisher: boolean;
+}
+
+interface FocusCache extends Focus {
+  game: Game;
+  botId: number;
+  roundNumber: number;
+  turnPhase: string;
+  ownedCount: number;
+}
+
+let focusCache: FocusCache | null = null;
+
+function ownedCountOf(game: Game, botId: number): number {
+  let count = 0;
+  for (const ownerId of game.territoryOwners.values())
+    if (ownerId === botId) count++;
+  return count;
+}
+
+function computeFocus(
   game: Game,
   botId: number,
-  botProfile: BotProfile,
-  cachedPlan: TurnPlan | null,
-): PlanContext {
-  const map = getGameMap(game);
-  const topology =
-    isPlanFresh(cachedPlan, game, botId) && cachedPlan.topology
-      ? cachedPlan.topology
-      : buildTopology(game, map);
-
+  continentTerritories: Map<number, number[]>,
+  bonuses: number[],
+  weights: Weights,
+  params: DifficultyParams,
+): Focus {
   const friendlyIds = alliedIds(game, botId);
   const view = getBotView(game, botId);
   const opponentTerritories = new Map<number, number>();
@@ -96,16 +128,89 @@ export function buildContext(
       ([id, count]) => visibleOpponentTerritories.get(id) === count,
     ),
   );
+  const standing = buildStanding(
+    game,
+    view,
+    botId,
+    friendlyIds,
+    continentTerritories,
+    bonuses,
+  );
+  const duel = duelFocus(game, botId, friendlyIds, weights, params);
+  const finisher =
+    params.maxPlanDepth > 0 && finisherMode(game, botId, friendlyIds);
+  return { view, friendlyIds, preTurnOpponents, standing, duel, finisher };
+}
+
+function cachedFocus(
+  game: Game,
+  botId: number,
+  continentTerritories: Map<number, number[]>,
+  bonuses: number[],
+  weights: Weights,
+  params: DifficultyParams,
+): Focus {
+  const cache = focusCache;
+  const ownedCount = ownedCountOf(game, botId);
+  if (
+    cache &&
+    game.turnPhase === 'attack' &&
+    cache.game === game &&
+    cache.botId === botId &&
+    cache.roundNumber === game.roundNumber &&
+    cache.turnPhase === game.turnPhase &&
+    cache.ownedCount === ownedCount
+  )
+    return cache;
+  const focus = computeFocus(
+    game,
+    botId,
+    continentTerritories,
+    bonuses,
+    weights,
+    params,
+  );
+  focusCache = {
+    game,
+    botId,
+    roundNumber: game.roundNumber,
+    turnPhase: game.turnPhase,
+    ownedCount,
+    ...focus,
+  };
+  return focus;
+}
+
+export function buildContext(
+  game: Game,
+  botId: number,
+  botProfile: BotProfile,
+  cachedPlan: TurnPlan | null,
+): PlanContext {
+  const map = getGameMap(game);
+  const topology =
+    isPlanFresh(cachedPlan, game, botId) && cachedPlan.topology
+      ? cachedPlan.topology
+      : buildTopology(game, map);
 
   const weights = getWeights(botProfile.personality);
   const params = difficultyParams(botProfile.difficulty);
+
+  const focus = cachedFocus(
+    game,
+    botId,
+    topology.continentTerritories,
+    map.bonuses,
+    weights,
+    params,
+  );
 
   return {
     game,
     map,
     botId,
     personality: botProfile.personality,
-    view,
+    view: focus.view,
     weights,
     params,
     neighbors: topology.neighbors,
@@ -113,17 +218,11 @@ export function buildContext(
     shippedSeaIds: shippedSeaIdsOf(game, botId),
     continentTerritories: topology.continentTerritories,
     territoryContinent: topology.territoryContinent,
-    friendlyIds,
-    preTurnOpponents,
-    standing: buildStanding(
-      game,
-      view,
-      botId,
-      friendlyIds,
-      topology.continentTerritories,
-      map.bonuses,
-    ),
-    duel: duelFocus(game, botId, friendlyIds, weights, params),
+    friendlyIds: focus.friendlyIds,
+    preTurnOpponents: focus.preTurnOpponents,
+    standing: focus.standing,
+    duel: focus.duel,
+    finisher: focus.finisher,
   };
 }
 

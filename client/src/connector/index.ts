@@ -675,6 +675,10 @@ export const connector = {
     route('game:fortify', data, cb);
   },
 
+  quickFortify(data: { territoryId: number }, cb: AckCallback): void {
+    route('game:quickFortify', data, cb);
+  },
+
   sailSelectStart(data: { territoryId: number | null }, cb: AckCallback): void {
     route('game:sailSelectStart', data, cb);
   },
@@ -685,6 +689,10 @@ export const connector = {
 
   sail(data: { ships: number }, cb: AckCallback): void {
     route('game:sail', data, cb);
+  },
+
+  quickSail(data: { territoryId: number }, cb: AckCallback): void {
+    route('game:quickSail', data, cb);
   },
 
   entrench(
@@ -766,6 +774,10 @@ export const connector = {
     cb: RichAckCallback<R>,
   ): void {
     route('game:attackSea', data, cb);
+  },
+
+  quickAttackSea(data: { territoryId: number }, cb: AckCallback): void {
+    route('game:quickAttackSea', data, cb);
   },
 
   replay(cb: (res: ReplayAck) => void): void {

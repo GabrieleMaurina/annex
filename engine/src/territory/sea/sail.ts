@@ -125,3 +125,18 @@ export function sail(playerId: number, rawShips: unknown): GameResponse {
 
   return respondGameState(game, playerId);
 }
+
+export function quickSail(
+  playerId: number,
+  rawTerritoryId: unknown,
+): GameResponse {
+  const ctx = requireSailTurn(playerId);
+  if (!ctx.ok) return ctx;
+  const { game } = ctx;
+  const selected = sailSelectEnd(playerId, rawTerritoryId);
+  if (!selected.ok) return selected;
+  return sail(
+    playerId,
+    game.seaShips.get(game.sailStartTerritoryId!)?.get(playerId) ?? 0,
+  );
+}

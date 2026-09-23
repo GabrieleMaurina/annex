@@ -89,6 +89,15 @@ export function useSailFlow({
     });
   }, [sailShips, setGame]);
 
+  const quickSail = useCallback(
+    (territoryId: number) => {
+      connector.quickSail({ territoryId }, (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      });
+    },
+    [setGame],
+  );
+
   const sailPanelOpen =
     turnPhase === 'sail' && isMyTurn && !paused && sailEndTerritoryId !== null;
 
@@ -102,6 +111,7 @@ export function useSailFlow({
     selectSailStart,
     selectSailEnd,
     submitSail,
+    quickSail,
     cancelSail,
     sailPanelOpen,
   };

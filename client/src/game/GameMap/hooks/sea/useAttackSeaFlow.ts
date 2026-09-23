@@ -198,6 +198,21 @@ export function useAttackSeaFlow({
     setGame,
   ]);
 
+  const quickAttackSea = useCallback(
+    (territoryId: number) => {
+      if (getSeaDefenders(seas, territoryId, selfId).length !== 1) {
+        selectAttackSeaStart(territoryId);
+        return;
+      }
+      setAttackSeaDiceRoll(null);
+      setAttackSeaDiceSettled(true);
+      connector.quickAttackSea({ territoryId }, (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      });
+    },
+    [seas, selfId, selectAttackSeaStart, setGame],
+  );
+
   const attackSeaRevealing =
     attackSeaDiceRoll !== null && !attackSeaDiceSettled;
   const attackSeaDiceOnly =
@@ -280,6 +295,7 @@ export function useAttackSeaFlow({
     selectAttackSeaStart,
     selectAttackSeaDefender,
     submitAttackSea,
+    quickAttackSea,
     cancelAttackSea,
     attackSeaPanelOpen,
   };

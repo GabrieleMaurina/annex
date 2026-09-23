@@ -97,19 +97,23 @@ export function useCardsAndDeploy({
     [setGame, hand, setOpenPanel],
   );
 
+  const quickDeploy = useCallback(
+    (territoryId: number, troops: number) => {
+      const payload = { territoryId, troops };
+      const cb = (res: Ack) => {
+        if (!res.ok) return;
+        setGame(res.game);
+      };
+      if (turnPhase === 'troop') connector.placeTroop(payload, cb);
+      else connector.deploy(payload, cb);
+    },
+    [setGame, turnPhase],
+  );
+
   const submitDeploy = useCallback(() => {
     if (selectedTerritoryId === null) return;
-    const payload = {
-      territoryId: selectedTerritoryId,
-      troops: deployTroops,
-    };
-    const cb = (res: Ack) => {
-      if (!res.ok) return;
-      setGame(res.game);
-    };
-    if (turnPhase === 'troop') connector.placeTroop(payload, cb);
-    else connector.deploy(payload, cb);
-  }, [selectedTerritoryId, deployTroops, setGame, turnPhase]);
+    quickDeploy(selectedTerritoryId, deployTroops);
+  }, [selectedTerritoryId, deployTroops, quickDeploy]);
 
   const deployPanelOpen =
     (turnPhase === 'deploy' || turnPhase === 'troop') &&
@@ -190,6 +194,7 @@ export function useCardsAndDeploy({
     setDeployTroops,
     deployInputRef,
     submitDeploy,
+    quickDeploy,
     deployPanelOpen,
   };
 }

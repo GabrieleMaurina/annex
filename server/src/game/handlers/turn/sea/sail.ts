@@ -14,4 +14,8 @@ export function registerSailHandlers(socket: Socket, engine: Engine) {
   registerGameAction(socket, 'game:sail', (playerId, data) =>
     engine.sail(playerId, data.ships),
   );
+
+  registerGameAction(socket, 'game:quickSail', (playerId, data) =>
+    engine.quickSail(playerId, data.territoryId),
+  );
 }

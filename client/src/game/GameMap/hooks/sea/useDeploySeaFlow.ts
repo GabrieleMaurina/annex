@@ -96,49 +96,62 @@ export function useDeploySeaFlow({
 
   const cancelDeploySea = useCallback(() => setDeploySeaTerritoryId(null), []);
 
+  const buyShips = useCallback(
+    (seaTerritoryId: number, combo: boolean, ships: number) => {
+      const sourceTerritoryId = combo
+        ? selectedTerritoryId
+        : (territories.find(
+            (t) =>
+              t.neighbors.includes(seaTerritoryId) &&
+              ownerById.get(t.id)?.ownerId === selfId,
+          )?.id ?? null);
+      if (sourceTerritoryId === null) return;
+      connector.buyShips(
+        { sourceTerritoryId, seaTerritoryId, ships, fromPool: !combo },
+        (res: Ack) => {
+          if (res.ok) {
+            setGame(res.game);
+            setDeploySeaTerritoryId(null);
+            if (combo) {
+              connector.selectTerritory(
+                { territoryId: null },
+                (selectRes: Ack) => {
+                  if (selectRes.ok) setGame(selectRes.game);
+                },
+              );
+            }
+          }
+        },
+      );
+    },
+    [selectedTerritoryId, territories, ownerById, selfId, setGame],
+  );
+
   const submitDeploySea = useCallback(() => {
     if (deploySeaTerritoryId === null) return;
-    const sourceTerritoryId = comboActive
-      ? selectedTerritoryId
-      : (territories.find(
-          (t) =>
-            t.neighbors.includes(deploySeaTerritoryId) &&
-            ownerById.get(t.id)?.ownerId === selfId,
-        )?.id ?? null);
-    if (sourceTerritoryId === null) return;
-    const wasCombo = comboActive;
-    connector.buyShips(
-      {
-        sourceTerritoryId,
-        seaTerritoryId: deploySeaTerritoryId,
-        ships: deploySeaShips,
-        fromPool: !comboActive,
-      },
-      (res: Ack) => {
-        if (res.ok) {
-          setGame(res.game);
-          setDeploySeaTerritoryId(null);
-          if (wasCombo) {
-            connector.selectTerritory(
-              { territoryId: null },
-              (selectRes: Ack) => {
-                if (selectRes.ok) setGame(selectRes.game);
-              },
-            );
-          }
-        }
-      },
-    );
-  }, [
-    deploySeaTerritoryId,
-    comboActive,
-    selectedTerritoryId,
-    territories,
-    ownerById,
-    selfId,
-    deploySeaShips,
-    setGame,
-  ]);
+    buyShips(deploySeaTerritoryId, comboActive, deploySeaShips);
+  }, [deploySeaTerritoryId, comboActive, deploySeaShips, buyShips]);
+
+  const quickDeploySea = useCallback(
+    (seaTerritoryId: number) => {
+      const combo =
+        selectedTerritoryId !== null &&
+        isSeaAdjacentToTerritory(seaTerritoryId, selectedTerritoryId);
+      const ships = combo
+        ? Math.floor(
+            ((ownerById.get(selectedTerritoryId)?.troops ?? 0) - 1) / SHIP_COST,
+          )
+        : Math.floor(troopsToDeploy / SHIP_COST);
+      if (ships >= 1) buyShips(seaTerritoryId, combo, ships);
+    },
+    [
+      selectedTerritoryId,
+      isSeaAdjacentToTerritory,
+      ownerById,
+      troopsToDeploy,
+      buyShips,
+    ],
+  );
 
   const deploySeaPanelOpen = active && deploySeaTerritoryId !== null;
 
@@ -154,6 +167,7 @@ export function useDeploySeaFlow({
     deploySeaMaxShips,
     deploySeaInputRef,
     submitDeploySea,
+    quickDeploySea,
     deploySeaPanelOpen,
   };
 }

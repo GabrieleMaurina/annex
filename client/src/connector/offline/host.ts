@@ -499,6 +499,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
     case 'game:sail':
       cb?.(engine.sail(id, d.ships));
       return;
+    case 'game:quickSail':
+      cb?.(engine.quickSail(id, d.territoryId));
+      return;
     case 'game:requestCards':
       engine.requestCards(id);
       return;
@@ -513,6 +516,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     case 'game:fortify':
       cb?.(engine.fortify(id, d.troops));
+      return;
+    case 'game:quickFortify':
+      cb?.(engine.quickFortify(id, d.territoryId));
       return;
     case 'game:entrench':
       cb?.(engine.entrench(id, d.territoryId, d.troops));
@@ -558,6 +564,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     case 'game:attackSea':
       cb?.(engine.attackSea(id, d.type, d.ships));
+      return;
+    case 'game:quickAttackSea':
+      cb?.(engine.quickAttackSea(id, d.territoryId));
       return;
     case 'game:replay':
       cb?.(engine.requestReplay(id));

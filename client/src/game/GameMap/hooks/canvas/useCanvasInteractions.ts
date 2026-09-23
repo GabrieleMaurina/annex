@@ -1,3 +1,4 @@
+import { MAX_TERRITORY_TROOPS } from 'engine';
 import { useCallback, useRef, useState } from 'react';
 import { connector } from '../../../../connector';
 import type { Ack } from '../../../../lib/types';
@@ -48,6 +49,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     selectSailStart,
     selectSailEnd,
     submitSail,
+    quickSail,
     cancelSail,
     attackSeaTerritoryId,
     attackSeaDefenderId,
@@ -57,6 +59,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     setAttackSeaDiceRoll,
     selectAttackSeaStart,
     submitAttackSea,
+    quickAttackSea,
     cancelAttackSea,
     transform,
     setTransform,
@@ -96,17 +99,20 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     setToasts,
     setGame,
     submitDeploy,
+    quickDeploy,
     deploySeaCandidates,
     deploySeaTerritoryId,
     selectDeploySea,
     cancelDeploySea,
     submitDeploySea,
+    quickDeploySea,
     comboActive,
     isSeaAdjacentToTerritory,
     cancelFortify,
     selectFortifyStart,
     selectFortifyEnd,
     submitFortify,
+    quickFortify,
     submitEntrench,
     submitToxins,
     selectAttackStart,
@@ -698,19 +704,30 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       setNukeTargeting(null);
       return;
     }
+    const vertex = hitVertex(getPos(e));
     if (turnPhase === 'sail') {
-      if (sailStartTerritoryId !== null) cancelSail();
+      if (vertex && sailEndCandidates.has(vertex.id)) quickSail(vertex.id);
+      else if (sailStartTerritoryId !== null) cancelSail();
       return;
     }
     if (turnPhase === 'fortify') {
-      if (fortifyStartTerritoryId !== null) cancelFortify();
+      if (vertex && fortifyEndCandidates.has(vertex.id))
+        quickFortify(vertex.id);
+      else if (fortifyStartTerritoryId !== null) cancelFortify();
       return;
     }
     if (turnPhase === 'attack') {
       if (attackPendingConquest) return;
-      const vertex = hitVertex(getPos(e));
       if (attackSeaTerritoryId !== null) {
         if (!attackSeaRevealing) cancelAttackSea();
+      } else if (
+        blitzEnabled &&
+        !attackSeaRevealing &&
+        vertex &&
+        attackStartTerritoryId === null &&
+        attackSeaStartCandidates.has(vertex.id)
+      ) {
+        quickAttackSea(vertex.id);
       } else if (
         blitzEnabled &&
         !attackRevealing &&
@@ -725,6 +742,25 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       } else if (attackDiceRoll !== null) {
         setAttackDiceRoll(null);
       }
+      return;
+    }
+    if (
+      (turnPhase === 'deploy' || turnPhase === 'troop') &&
+      vertex &&
+      isInteractable(vertex)
+    ) {
+      if (seaIdSet.has(vertex.id)) {
+        quickDeploySea(vertex.id);
+        return;
+      }
+      if (deploySeaTerritoryId !== null) cancelDeploySea();
+      quickDeploy(
+        vertex.id,
+        Math.min(
+          troopsToDeploy,
+          MAX_TERRITORY_TROOPS - (ownerById.get(vertex.id)?.troops ?? 0),
+        ),
+      );
       return;
     }
     if (deploySeaTerritoryId !== null) {

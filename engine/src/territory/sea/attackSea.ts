@@ -291,3 +291,32 @@ export function attackSea(
     defenderDice,
   };
 }
+
+export function quickAttackSea(
+  playerId: number,
+  rawTerritoryId: unknown,
+): GameResponse {
+  const ctx = requireAttackSeaTurn(playerId);
+  if (!ctx.ok) return ctx;
+  const { game } = ctx;
+  if (game.blitz === 'Off') return { ok: false, error: 'blitz disabled' };
+
+  const selected = attackSeaSelectStart(playerId, rawTerritoryId);
+  if (!selected.ok) return selected;
+  const shipsByPlayer = game.seaShips.get(game.attackSeaTerritoryId!)!;
+  const defenderIds = [...shipsByPlayer.keys()].filter(
+    (id) => id !== playerId && (shipsByPlayer.get(id) ?? 0) > 0,
+  );
+  if (defenderIds.length !== 1)
+    return { ok: false, error: 'ambiguous defender' };
+
+  const defended = attackSeaSelectDefender(playerId, defenderIds[0]);
+  if (!defended.ok) return defended;
+  const attacked = attackSea(
+    playerId,
+    'blitz',
+    shipsByPlayer.get(playerId) ?? 0,
+  );
+  if (!attacked.ok) return attacked;
+  return { ok: true, game: attacked.game };
+}

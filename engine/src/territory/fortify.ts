@@ -196,3 +196,21 @@ export function fortify(playerId: number, rawTroops: unknown): GameResponse {
 
   return respondGameState(game, playerId);
 }
+
+export function quickFortify(
+  playerId: number,
+  rawTerritoryId: unknown,
+): GameResponse {
+  const ctx = requireFortifyTurn(playerId);
+  if (!ctx.ok) return ctx;
+  const { game } = ctx;
+  const selected = fortifySelectEnd(playerId, rawTerritoryId);
+  if (!selected.ok) return selected;
+  const startTroops =
+    game.territoryTroops.get(game.fortifyStartTerritoryId!) ?? 0;
+  const endTroops = game.territoryTroops.get(game.fortifyEndTerritoryId!) ?? 0;
+  return fortify(
+    playerId,
+    Math.min(startTroops - 1, MAX_TERRITORY_TROOPS - endTroops),
+  );
+}

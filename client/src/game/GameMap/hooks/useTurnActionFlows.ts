@@ -135,6 +135,15 @@ export function useTurnActionFlows({
     });
   }, [fortifyTroops, setGame]);
 
+  const quickFortify = useCallback(
+    (territoryId: number) => {
+      connector.quickFortify({ territoryId }, (res: Ack) => {
+        if (res.ok) setGame(res.game);
+      });
+    },
+    [setGame],
+  );
+
   const entrenchCandidates = isMyTurn
     ? getEntrenchCandidates(territories, ownerById, selfId)
     : new Set<number>();
@@ -217,6 +226,7 @@ export function useTurnActionFlows({
     cancelFortify,
     selectFortifyEnd,
     submitFortify,
+    quickFortify,
     fortifyPanelOpen,
     entrenchTroops,
     setEntrenchTroops,

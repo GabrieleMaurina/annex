@@ -25,6 +25,7 @@ export type CanvasInteractionsParams = {
   selectSailStart: (territoryId: number | null) => void;
   selectSailEnd: (territoryId: number) => void;
   submitSail: () => void;
+  quickSail: (territoryId: number) => void;
   cancelSail: () => void;
   attackSeaTerritoryId: number | null;
   attackSeaDefenderId: number | null;
@@ -37,6 +38,7 @@ export type CanvasInteractionsParams = {
   setAttackSeaDiceRoll: Dispatch<SetStateAction<DiceRoll | null>>;
   selectAttackSeaStart: (territoryId: number | null) => void;
   submitAttackSea: () => void;
+  quickAttackSea: (territoryId: number) => void;
   cancelAttackSea: () => void;
   transform: Transform;
   setTransform: Dispatch<SetStateAction<Transform>>;
@@ -112,11 +114,13 @@ export type CanvasInteractionsParams = {
   deployInputRef: RefObject<HTMLInputElement | null>;
   setDeployTroops: Dispatch<SetStateAction<number>>;
   submitDeploy: () => void;
+  quickDeploy: (territoryId: number, troops: number) => void;
   deploySeaCandidates: Set<number>;
   deploySeaTerritoryId: number | null;
   selectDeploySea: (seaTerritoryId: number) => void;
   cancelDeploySea: () => void;
   submitDeploySea: () => void;
+  quickDeploySea: (seaTerritoryId: number) => void;
   deploySeaPanelOpen: boolean;
   deploySeaInputRef: RefObject<HTMLInputElement | null>;
   setDeploySeaShips: Dispatch<SetStateAction<number>>;
@@ -132,6 +136,7 @@ export type CanvasInteractionsParams = {
   selectFortifyStart: (territoryId: number | null) => void;
   selectFortifyEnd: (territoryId: number) => void;
   submitFortify: () => void;
+  quickFortify: (territoryId: number) => void;
   entrenchPanelOpen: boolean;
   setEntrenchTroops: Dispatch<SetStateAction<number>>;
   submitEntrench: () => void;

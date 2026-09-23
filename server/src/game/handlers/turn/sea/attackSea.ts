@@ -34,4 +34,8 @@ export function registerAttackSeaHandlers(socket: Socket, engine: Engine) {
       callback(engine.attackSea(playerId, type, ships));
     },
   );
+
+  registerGameAction(socket, 'game:quickAttackSea', (playerId, data) =>
+    engine.quickAttackSea(playerId, data.territoryId),
+  );
 }

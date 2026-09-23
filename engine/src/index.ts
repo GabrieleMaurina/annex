@@ -50,6 +50,7 @@ import {
   fortify,
   fortifySelectEnd,
   fortifySelectStart,
+  quickFortify,
 } from './territory/fortify';
 import {
   advanceNuke,
@@ -66,9 +67,15 @@ import {
   attackSea,
   attackSeaSelectDefender,
   attackSeaSelectStart,
+  quickAttackSea,
 } from './territory/sea/attackSea';
 import { buyShips } from './territory/sea/buyShips';
-import { sail, sailSelectEnd, sailSelectStart } from './territory/sea/sail';
+import {
+  quickSail,
+  sail,
+  sailSelectEnd,
+  sailSelectStart,
+} from './territory/sea/sail';
 import { toxin } from './territory/toxins';
 
 import {
@@ -184,14 +191,17 @@ export function createEngine(
     sailSelectStart,
     sailSelectEnd,
     sail,
+    quickSail,
 
     fortifySelectStart,
     fortifySelectEnd,
     fortify,
+    quickFortify,
 
     attackSeaSelectStart,
     attackSeaSelectDefender,
     attackSea,
+    quickAttackSea,
 
     entrench,
     toxin,

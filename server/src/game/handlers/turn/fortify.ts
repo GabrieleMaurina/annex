@@ -14,4 +14,8 @@ export function registerFortifyHandlers(socket: Socket, engine: Engine) {
   registerGameAction(socket, 'game:fortify', (playerId, data) =>
     engine.fortify(playerId, data.troops),
   );
+
+  registerGameAction(socket, 'game:quickFortify', (playerId, data) =>
+    engine.quickFortify(playerId, data.territoryId),
+  );
 }

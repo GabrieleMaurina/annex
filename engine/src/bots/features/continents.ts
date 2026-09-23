@@ -1,7 +1,7 @@
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { BotView, ownerOf } from '../view';
-import { isTeammate } from './mode';
+import { isTeammate } from './mode/mode';
 import { isHazardTerritory } from './territory';
 
 function continentGroups(game: Game): Map<number, number[]> {

@@ -3,7 +3,7 @@ import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import { useWhiteIcon } from './icon';
 import { isPlayerMuted } from './mutedPlayers';
-import Tip from './Tip';
+import Tip from './tooltips/Tip';
 
 export interface ResultRow {
   troopsGained: number;

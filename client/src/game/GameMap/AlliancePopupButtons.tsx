@@ -1,4 +1,4 @@
-import Tip from '../../common/Tip';
+import Tip from '../../common/tooltips/Tip';
 
 export default function AlliancePopupButtons({
   confirmText,

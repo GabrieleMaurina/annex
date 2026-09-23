@@ -4,7 +4,7 @@ import {
 } from '../../game/mechanics';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { expectedOutcome } from '../features/combat';
-import { modeGoalFor, sideProgress } from '../features/modeGoals';
+import { modeGoalFor, sideProgress } from '../features/mode/modeGoals';
 import {
   bestStackingBorder,
   conquestEndShare,

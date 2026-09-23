@@ -1,9 +1,9 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
-import BurgerMenu from '../common/BurgerMenu';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { formatError } from '../common/formatError';
+import BurgerMenu from '../common/menus/BurgerMenu';
 import { connector } from '../connector';
 import {
   getGameLocalPlayers,
@@ -22,10 +22,10 @@ import type {
   SavedBot,
 } from '../lib/types';
 import BannedList from './BannedList';
-import { isBlitzOffAllowed } from './gameSettings';
 import Header from './Header';
 import PlayerRoster from './PlayerRoster';
-import SettingsPanel from './SettingsPanel';
+import { isBlitzOffAllowed } from './settings/gameSettings';
+import SettingsPanel from './settings/SettingsPanel';
 import SpectatorList from './SpectatorList';
 
 interface Props {

@@ -2,7 +2,7 @@ import { connectedSeaTerritories } from '../../game/world/connectivity';
 import { SHIP_COST } from '../../territory/sea/buyShips';
 import { Game } from '../../types';
 import { attackWinProbability, defenceDiceFor } from '../features/combat';
-import { isTeammate } from '../features/mode';
+import { isTeammate } from '../features/mode/mode';
 import {
   landingViable,
   navalOpportunities,

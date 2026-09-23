@@ -13,7 +13,8 @@
     "format": "prettier --write src",
     "pretypes": "tsc -b ../engine",
     "types": "tsc -b",
-    "check": "npm run format && npm run lint && npm run types"
+    "limits": "node ../scripts/checkLimits.js src",
+    "check": "npm run format && npm run lint && npm run types && npm run limits"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",

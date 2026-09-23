@@ -1,8 +1,8 @@
 import { Engine } from 'engine';
 import { Server, Socket } from 'socket.io';
-import { anonNameFor } from './anonName';
-import { randomToken, resolveSession } from './auth';
-import { sessionTokenFromRequest } from './cookies';
+import { anonNameFor } from './auth/anonName';
+import { randomToken, resolveSession } from './auth/auth';
+import { sessionTokenFromRequest } from './auth/cookies';
 import { emitGameMeta } from './gameMeta';
 import {
   bindSocket,
@@ -13,7 +13,7 @@ import {
   setSocketRoom,
   socketIdByPlayerId,
   userIdBySocketId,
-} from './socketRooms';
+} from './sockets/socketRooms';
 import { isObject } from './validate';
 
 interface Identity {

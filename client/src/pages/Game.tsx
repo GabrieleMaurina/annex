@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
 import { formatError } from '../common/formatError';
-import SettingsMenu from '../common/SettingsMenu';
+import SettingsMenu from '../common/menus/SettingsMenu';
 import { connector } from '../connector';
 import GameMap from '../game/GameMap';
 import { gameMapDataProps } from '../game/gameMapProps';
+import { useGameLogs } from '../game/logs/useGameLogs';
 import OfflineHandoffGate from '../game/OfflineHandoffGate';
 import RotateDeviceOverlay from '../game/RotateDeviceOverlay';
-import { useGameLogs } from '../game/useGameLogs';
 import { playSound } from '../lib/sounds';
 import type {
   Account,

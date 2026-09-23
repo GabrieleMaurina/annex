@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Container, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import Tip from '../common/Tip';
+import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import type { Account, PlayerMapRow } from '../lib/types';
 import MapBrowser from './MapBrowser';

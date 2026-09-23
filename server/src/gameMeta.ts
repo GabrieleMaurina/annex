@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { gameRoomName } from './rooms';
+import { gameRoomName } from './sockets/rooms';
 
 export type GameVisibility = 'public' | 'private';
 

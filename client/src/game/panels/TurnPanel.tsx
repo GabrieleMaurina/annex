@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
-import Tip from '../../common/Tip';
 import { useWhiteIcon } from '../../common/icon';
+import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { contrastTextColor, withAlpha } from '../../lib/palette';
 import type { Ack, GameState, TurnPhase } from '../../lib/types';

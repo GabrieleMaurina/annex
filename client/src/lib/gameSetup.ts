@@ -37,7 +37,7 @@ function generateMap(input: GenerateMapInput): void {
 
 function applySavedMap(
   mapGeneration: GenerateMapInput | undefined,
-  playerMapId: string | undefined,
+  playerMapId: string | null | undefined,
 ): void {
   if (mapGeneration) {
     generateMap(mapGeneration);

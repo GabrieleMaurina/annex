@@ -6,7 +6,7 @@ import {
   findUserById,
   getElosByIds,
   getUsernamesByIds,
-} from './users';
+} from './users/users';
 
 const MESSAGES = 'messages';
 const BLOCKS = 'blocks';

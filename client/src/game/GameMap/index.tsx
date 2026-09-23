@@ -372,6 +372,10 @@ function GameMap({
   } = usePanelsUI();
 
   useEffect(() => {
+    if (settingsMenuOpen) setOpenPanel(null);
+  }, [settingsMenuOpen, setOpenPanel]);
+
+  useEffect(() => {
     onPanelOpenChange(openPanel !== null);
   }, [openPanel, onPanelOpenChange]);
 
@@ -514,6 +518,7 @@ function GameMap({
     fortifyEndTerritoryId,
     attackStartTerritoryId,
     attackEndTerritoryId,
+    blitzEnabled: game.blitz !== 'Off',
     nukeTargeting,
     setNukeTargeting,
     antiNukeTerritoryIds: game.antiNukeTerritoryIds,
@@ -524,6 +529,9 @@ function GameMap({
     openPanel,
     setOpenPanel,
     cardsOpen,
+    cardsEnabled: game.cards !== 'Off',
+    nukesEnabled: nukes !== null,
+    settingsMenuOpen,
     deployPanelOpen: deployTroopsPanelOpen,
     canAdvancePhase,
     sailFlow,

@@ -12,13 +12,13 @@ import {
   registerAccount,
   requestPasswordReset,
   resetPassword,
-} from '../../auth';
-import { isSecureRequest, serializeSessionCookie } from '../../cookies';
+} from '../../auth/auth';
+import { isSecureRequest, serializeSessionCookie } from '../../auth/cookies';
 import {
   clearLoginFailures,
   loginLockedOut,
   recordLoginFailure,
-} from '../../rateLimit';
+} from '../../auth/rateLimit';
 import { isObject } from '../../validate';
 import { identityOf, rateLimited } from '../middleware';
 

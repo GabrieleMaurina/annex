@@ -2,7 +2,7 @@ import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { useRef, useState } from 'react';
 import { Alert, Button, ButtonGroup, Form, Table } from 'react-bootstrap';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
-import { useDragNumber } from '../../common/useDragNumber';
+import { useNumberInput } from '../../common/inputs/useNumberInput';
 import {
   NO_CONTINENT,
   type EditorTerritory as Territory,
@@ -69,7 +69,7 @@ function BonusInput({
   value: number;
   onChange: (value: number) => void;
 }) {
-  const dragNumber = useDragNumber({
+  const numberInput = useNumberInput({
     value,
     min: MIN_BONUS,
     max: MAX_BONUS,
@@ -84,8 +84,8 @@ function BonusInput({
       max={MAX_BONUS}
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      {...dragNumber}
-      style={dragNumber.style}
+      {...numberInput}
+      style={numberInput.style}
     />
   );
 }
@@ -179,7 +179,7 @@ function Panel(props: Props) {
     error,
   } = props;
 
-  const brushDrag = useDragNumber({
+  const brushNumberInput = useNumberInput({
     value: brushSize,
     min: MIN_BRUSH,
     max: MAX_BRUSH,
@@ -434,8 +434,8 @@ function Panel(props: Props) {
                 onChange={(e) =>
                   setBrushSize(clampBrush(e.target.value, brushSize))
                 }
-                {...brushDrag}
-                style={{ ...brushDrag.style, width: 64 }}
+                {...brushNumberInput}
+                style={{ ...brushNumberInput.style, width: 64 }}
               />
               <span className="small text-muted">px</span>
             </div>

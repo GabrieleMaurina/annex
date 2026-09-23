@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Container, Form, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { useWhiteIcon } from '../common/icon';
 import {
   Field,
   FilterDetails,
   ListPager,
   RangeField,
   SortSelect,
-} from '../common/filterControls';
-import { useWhiteIcon } from '../common/icon';
-import type { SearchSelectItem } from '../common/SearchMultiSelect';
+} from '../common/inputs/filterControls';
+import type { SearchSelectItem } from '../common/inputs/SearchMultiSelect';
 import { connector } from '../connector';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type {
@@ -27,7 +27,7 @@ import {
   PlayerFilter,
   SettingFilterSections,
 } from '../lobby/gameFilters';
-import { GENERATED_MAP_VALUE } from '../lobby/gameSettings';
+import { GENERATED_MAP_VALUE } from '../lobby/settings/gameSettings';
 
 const PAGE_SIZE = 20;
 

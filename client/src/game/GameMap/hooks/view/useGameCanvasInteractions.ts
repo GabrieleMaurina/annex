@@ -1,9 +1,9 @@
+import { useCanvasInteractions } from '../canvas/useCanvasInteractions';
 import type { useAttackSeaFlow } from '../sea/useAttackSeaFlow';
 import type { useDeploySeaFlow } from '../sea/useDeploySeaFlow';
 import type { useSailFlow } from '../sea/useSailFlow';
 import type { useAllianceUI } from '../useAllianceUI';
 import type { useAttackFlow } from '../useAttackFlow';
-import { useCanvasInteractions } from '../useCanvasInteractions';
 import type { useCardsAndDeploy } from '../useCardsAndDeploy';
 import type { useEmojiUI } from '../useEmojiUI';
 import type { useTurnActionFlows } from '../useTurnActionFlows';
@@ -37,6 +37,7 @@ type OwnParamKeys =
   | 'fortifyEndTerritoryId'
   | 'attackStartTerritoryId'
   | 'attackEndTerritoryId'
+  | 'blitzEnabled'
   | 'nukeTargeting'
   | 'setNukeTargeting'
   | 'antiNukeTerritoryIds'
@@ -47,6 +48,9 @@ type OwnParamKeys =
   | 'openPanel'
   | 'setOpenPanel'
   | 'cardsOpen'
+  | 'cardsEnabled'
+  | 'nukesEnabled'
+  | 'settingsMenuOpen'
   | 'deployPanelOpen'
   | 'canAdvancePhase';
 
@@ -122,9 +126,6 @@ export function useGameCanvasInteractions({
     setAttackDiceRoll: attackFlow.setAttackDiceRoll,
     attackRevealing: attackFlow.attackRevealing,
     attackDiceOnly: attackFlow.attackDiceOnly,
-    maxBlitzTroops: attackFlow.maxBlitzTroops,
-    setAttackSelectedType: attackFlow.setAttackSelectedType,
-    setAttackBlitzTroops: attackFlow.setAttackBlitzTroops,
     attackMoveInputRef: attackFlow.attackMoveInputRef,
     blitzInputRef: attackFlow.blitzInputRef,
     attackPanelOpen: attackFlow.attackPanelOpen,
@@ -133,6 +134,8 @@ export function useGameCanvasInteractions({
     cycleAttackOption: attackFlow.cycleAttackOption,
     selectAttackStart: attackFlow.selectAttackStart,
     selectAttackEnd: attackFlow.selectAttackEnd,
+    setAwardedCards: cardsFlow.setAwardedCards,
+    quickAttack: attackFlow.quickAttack,
     submitAttackMove: attackFlow.submitAttackMove,
     cancelAttack: attackFlow.cancelAttack,
     submitAttack: attackFlow.submitAttack,

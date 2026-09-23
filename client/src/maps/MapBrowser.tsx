@@ -2,14 +2,14 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Button, Form, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { useWhiteIcon } from '../common/icon';
 import {
   Field,
   FilterDetails,
   ListPager,
   RangeField,
   SortSelect,
-} from '../common/filterControls';
-import { useWhiteIcon } from '../common/icon';
+} from '../common/inputs/filterControls';
 import { connector } from '../connector';
 import type {
   Account,

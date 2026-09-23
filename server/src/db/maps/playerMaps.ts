@@ -2,7 +2,7 @@ import { Fill, GenerationType, MapSize } from 'engine';
 import { Binary, ObjectId } from 'mongodb';
 import { MapGeneration } from '../../validate';
 import { ensureCollection, getCollection } from '../mongo';
-import { getUsernamesByIds, searchUsers } from '../users';
+import { getUsernamesByIds, searchUsers } from '../users/users';
 import { likedMapIds } from './mapLikes';
 import { MAP_PROPERTIES, MAP_REQUIRED } from './mapSchema';
 

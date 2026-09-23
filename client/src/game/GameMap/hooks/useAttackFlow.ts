@@ -156,30 +156,23 @@ export function useAttackFlow({
     [setGame, applyAttackProbabilities],
   );
 
-  const performAttackMove = useCallback(
-    (troops: number, conqueredTerritoryId: number | null) => {
-      connector.attackMove({ troops }, (res: Ack) => {
-        if (!res.ok) return;
-        setGame(res.game);
-        if (conqueredTerritoryId !== null) {
-          const freshOwnerById = new Map(
-            res.game.territories.map((t) => [t.id, t]),
-          );
-          const candidates = getAttackStartCandidates(
-            territories,
-            seaTerritories,
-            seas,
-            freshOwnerById,
-            selfId,
-            portalTerritoryIds,
-            portalsEnabled,
-            unusableTerritoryById,
-          );
-          if (candidates.has(conqueredTerritoryId)) {
-            selectAttackStart(conqueredTerritoryId);
-          }
-        }
-      });
+  const continueFromConquest = useCallback(
+    (game: GameState, conqueredTerritoryId: number) => {
+      const freshOwnerById = new Map(game.territories.map((t) => [t.id, t]));
+      if (freshOwnerById.get(conqueredTerritoryId)?.ownerId !== selfId) return;
+      const candidates = getAttackStartCandidates(
+        territories,
+        seaTerritories,
+        seas,
+        freshOwnerById,
+        selfId,
+        portalTerritoryIds,
+        portalsEnabled,
+        unusableTerritoryById,
+      );
+      if (candidates.has(conqueredTerritoryId)) {
+        selectAttackStart(conqueredTerritoryId);
+      }
     },
     [
       territories,
@@ -189,9 +182,37 @@ export function useAttackFlow({
       portalTerritoryIds,
       portalsEnabled,
       unusableTerritoryById,
-      setGame,
       selectAttackStart,
     ],
+  );
+
+  const performAttackMove = useCallback(
+    (troops: number, conqueredTerritoryId: number | null) => {
+      connector.attackMove({ troops }, (res: Ack) => {
+        if (!res.ok) return;
+        setGame(res.game);
+        if (conqueredTerritoryId !== null) {
+          continueFromConquest(res.game, conqueredTerritoryId);
+        }
+      });
+    },
+    [setGame, continueFromConquest],
+  );
+
+  const quickAttack = useCallback(
+    (territoryId: number) => {
+      connector.quickAttack({ territoryId }, (res: Ack) => {
+        if (!res.ok) return;
+        setAttackDiceRoll(null);
+        setGame(res.game);
+        if (res.game.state === 'ended') {
+          playSound('end');
+          return;
+        }
+        continueFromConquest(res.game, territoryId);
+      });
+    },
+    [setGame, continueFromConquest],
   );
 
   const submitAttack = useCallback(() => {
@@ -423,6 +444,7 @@ export function useAttackFlow({
     cancelAttack,
     selectAttackEnd,
     performAttackMove,
+    quickAttack,
     submitAttack,
     submitAttackMove,
     attackPendingConquest,

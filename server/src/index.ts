@@ -2,13 +2,13 @@ import { createEngine, EngineCallbacks } from 'engine';
 import { createServer } from 'http';
 import os from 'os';
 import { Server } from 'socket.io';
-import { randomToken } from './auth';
+import { randomToken } from './auth/auth';
 import {
   isSecureRequest,
   isSessionToken,
   parseCookies,
   serializeSessionCookie,
-} from './cookies';
+} from './auth/cookies';
 import { connectDb } from './db';
 import {
   gameElos,
@@ -41,7 +41,7 @@ import { persistFinishedGame } from './games';
 import { registerHomeHandlers } from './home';
 import { createHttpApp } from './http/app';
 import { LiveGameRow } from './http/liveGames';
-import { gameRoomName } from './rooms';
+import { gameRoomName } from './sockets/rooms';
 import {
   emitTo,
   gameNameByPlayerId,
@@ -49,7 +49,7 @@ import {
   setSocketRoom,
   socketIdByPlayerId,
   userIdByPlayerId,
-} from './socketRooms';
+} from './sockets/socketRooms';
 import { nodeWorkerPort } from './workers/nodeWorkerPort';
 
 function listVisibleGames(): LiveGameRow[] {

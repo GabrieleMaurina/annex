@@ -8,8 +8,8 @@ import {
   useNavigate,
   useParams,
 } from 'react-router-dom';
-import BurgerMenu from './common/BurgerMenu';
-import SettingsMenu from './common/SettingsMenu';
+import BurgerMenu from './common/menus/BurgerMenu';
+import SettingsMenu from './common/menus/SettingsMenu';
 import { connector } from './connector';
 import {
   registerGeneratedMap,
@@ -22,18 +22,18 @@ import type { Account, Ack, IdentifyResult, MapWrap } from './lib/types';
 import MapEditor from './maps/MapEditor';
 import Maps from './maps/Maps';
 import MyMaps from './maps/MyMaps';
-import AccountPage from './pages/Account';
-import EmailConfirmation from './pages/EmailConfirmation';
-import Friends from './pages/Friends';
 import Game from './pages/Game';
 import Games from './pages/Games';
 import Home from './pages/Home';
-import Login from './pages/Login';
-import Messages from './pages/Messages';
-import PasswordReset from './pages/PasswordReset';
-import PlayerProfile from './pages/PlayerProfile';
-import Players from './pages/Players';
 import ReplayPage from './pages/ReplayPage';
+import AccountPage from './pages/account/Account';
+import EmailConfirmation from './pages/account/EmailConfirmation';
+import Login from './pages/account/Login';
+import PasswordReset from './pages/account/PasswordReset';
+import Friends from './pages/social/Friends';
+import Messages from './pages/social/Messages';
+import PlayerProfile from './pages/social/PlayerProfile';
+import Players from './pages/social/Players';
 
 function EmailConfirmationRoute({
   navigate,
@@ -73,6 +73,7 @@ function gamePath(name: string): string {
 function App() {
   const [account, setAccount] = useState<Account | null>(null);
   const [joinError, setJoinError] = useState('');
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [needsPassword, setNeedsPassword] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
   const [kickedMessage, setKickedMessage] = useState('');
@@ -316,7 +317,12 @@ function App() {
 
   return (
     <>
-      {!inGame && <SettingsMenu shareUrl={window.location.href} />}
+      {!inGame && (
+        <SettingsMenu
+          shareUrl={window.location.href}
+          onOpenChange={setSettingsMenuOpen}
+        />
+      )}
       {!inGame && !onReplayMap && !onMapEditor && (
         <div
           className="position-fixed top-0 end-0 m-3"
@@ -440,6 +446,7 @@ function App() {
             <ReplayPage
               navigate={navigate}
               onViewChange={(view) => setReplayMapOpen(view === 'replay')}
+              settingsMenuOpen={settingsMenuOpen}
             />
           }
         />

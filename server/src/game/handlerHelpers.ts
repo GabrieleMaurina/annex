@@ -1,5 +1,5 @@
 import { Socket } from 'socket.io';
-import { playerIdBySocketId } from '../socketRooms';
+import { playerIdBySocketId } from '../sockets/socketRooms';
 import { isObject } from '../validate';
 
 export type GameResponse =

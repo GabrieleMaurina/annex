@@ -4,7 +4,7 @@ import type { ResultRow } from '../common/ResultsTable';
 import ResultsTable from '../common/ResultsTable';
 import { playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
-import SettingsPanel from '../lobby/SettingsPanel';
+import SettingsPanel from '../lobby/settings/SettingsPanel';
 
 function formatDuration(ms: number): string {
   const totalMinutes = Math.max(0, Math.round(ms / 60000));

@@ -1,6 +1,6 @@
 import { upcomingSetValues } from '../../game/progression/cards';
 import { grudgeAgainst } from '../features/grudge';
-import { SideProgress, modeGoalFor } from '../features/modeGoals';
+import { SideProgress, modeGoalFor } from '../features/mode/modeGoals';
 import { stalematePressure } from '../features/pressure';
 import { antiLeaderActive } from '../features/standing';
 import { modeScore } from '../goals/modeScore';

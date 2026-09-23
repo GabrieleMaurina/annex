@@ -6,7 +6,7 @@ import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
 import { attackWinProbability, defenceDiceFor } from '../features/combat';
-import { modeGoalFor } from '../features/modeGoals';
+import { modeGoalFor } from '../features/mode/modeGoals';
 import {
   PASSIVE_RELEASE_PRESSURE,
   frustrationLevel,

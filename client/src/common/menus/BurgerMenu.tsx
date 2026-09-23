@@ -1,0 +1,213 @@
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { Badge, Button } from 'react-bootstrap';
+import { useLocation } from 'react-router-dom';
+import { connector } from '../../connector';
+import { isTypingTarget } from '../../game/GameMap/helpers';
+import {
+  getMessagesSnapshot,
+  setMessagesEnabled,
+  subscribeMessages,
+  totalUnread,
+} from '../../lib/messages';
+import { getPlayerName, subscribePlayerName } from '../../lib/player';
+import { rankForElo } from '../../lib/ranks';
+import type { Account } from '../../lib/types';
+import { useWhiteIcon } from '../icon';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../panelStyle';
+import ShortcutsPanel from './shortcuts/ShortcutsPanel';
+
+const LINKS: { label: string; path: string }[] = [
+  { label: 'Home', path: '/' },
+  { label: 'Games', path: '/games/replay' },
+  { label: 'Maps', path: '/maps' },
+  { label: 'Players', path: '/players' },
+  { label: 'Friends', path: '/friends' },
+  { label: 'Messages', path: '/messages' },
+];
+
+const LOGGED_IN_ONLY = ['/friends', '/messages'];
+
+interface Props {
+  navigate: (path: string) => void;
+  account?: Account | null;
+  onSessionChange?: () => void;
+  hideLogout?: boolean;
+}
+
+function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
+  const [open, setOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const whiteMenuIcon = useWhiteIcon('/icons/menu.svg');
+  const { pathname } = useLocation();
+  const name = useSyncExternalStore(subscribePlayerName, getPlayerName);
+  const messages = useSyncExternalStore(subscribeMessages, getMessagesSnapshot);
+  const unread = totalUnread(messages);
+
+  useEffect(() => {
+    setMessagesEnabled(!!account);
+  }, [account]);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target))
+        return;
+      if (e.key.toLowerCase() === 'm') setOpen((prev) => !prev);
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent) {
+      if (!panelRef.current?.contains(e.target as Node)) close();
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') close();
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open, close]);
+
+  function go(path: string) {
+    close();
+    navigate(path);
+  }
+
+  function logOut() {
+    connector.logout((res) => {
+      close();
+      if (res.ok) {
+        onSessionChange?.();
+        navigate('/');
+      }
+    });
+  }
+
+  const showAuth = account !== undefined;
+  const links = account
+    ? LINKS
+    : LINKS.filter((link) => !LOGGED_IN_ONLY.includes(link.path));
+
+  return (
+    <div className="position-relative text-end">
+      {!open && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="d-flex align-items-center justify-content-center"
+          style={{ width: 28, height: 28, padding: 0 }}
+          onClick={() => setOpen(true)}
+        >
+          <img
+            src={whiteMenuIcon ?? '/icons/menu.svg'}
+            width={16}
+            height={16}
+            alt="Menu"
+          />
+        </Button>
+      )}
+      {!open && unread > 0 && (
+        <Badge
+          bg="danger"
+          className="position-absolute top-0 end-0 translate-middle"
+          style={{ zIndex: 11 }}
+        >
+          {unread}
+        </Badge>
+      )}
+
+      {open && (
+        <div
+          ref={panelRef}
+          className={`${PANEL_BG_CLASS} ${PANEL_CLASS} position-absolute end-0 mt-2 d-flex flex-column gap-2`}
+          style={{ width: 200, zIndex: 10 }}
+        >
+          {name &&
+            (account ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="p-0 text-decoration-none fw-semibold text-truncate d-flex align-items-center justify-content-center gap-1"
+                disabled={pathname === '/account'}
+                onClick={() => go('/account')}
+              >
+                <img
+                  src={`/ranks/${rankForElo(account.elo).image}.svg`}
+                  width={20}
+                  height={20}
+                  alt={rankForElo(account.elo).name}
+                />
+                {name}
+              </Button>
+            ) : (
+              <div className="text-center fw-semibold text-truncate">
+                {name}
+              </div>
+            ))}
+          {links.map((link) => (
+            <Button
+              key={link.path}
+              variant="secondary"
+              size="sm"
+              disabled={pathname === link.path}
+              onClick={() => go(link.path)}
+            >
+              {link.label}
+              {link.path === '/messages' && unread > 0 && (
+                <Badge bg="danger" className="ms-2">
+                  {unread}
+                </Badge>
+              )}
+            </Button>
+          ))}
+          {showAuth &&
+            (account ? (
+              !hideLogout && (
+                <Button variant="secondary" size="sm" onClick={logOut}>
+                  Log out
+                </Button>
+              )
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={pathname === '/login'}
+                onClick={() => go('/login')}
+              >
+                Log in
+              </Button>
+            ))}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              close();
+              setShortcutsOpen(true);
+            }}
+          >
+            Shortcuts
+          </Button>
+        </div>
+      )}
+      {shortcutsOpen && (
+        <ShortcutsPanel onClose={() => setShortcutsOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+export default BurgerMenu;

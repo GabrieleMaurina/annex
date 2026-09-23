@@ -4,7 +4,7 @@ import {
   modeGoalFor,
   sideOf,
   sideProgress,
-} from '../features/modeGoals';
+} from '../features/mode/modeGoals';
 import {
   PlanContext,
   SimState,

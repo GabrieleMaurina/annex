@@ -2,7 +2,7 @@ import {
   continentBreakCandidates,
   continentCompletionCandidates,
 } from '../features/continents';
-import { modeGoalFor } from '../features/modeGoals';
+import { modeGoalFor } from '../features/mode/modeGoals';
 import { navalOpportunities, seaBridgeTargets } from '../features/navy';
 import {
   PASSIVE_RELEASE_PRESSURE,

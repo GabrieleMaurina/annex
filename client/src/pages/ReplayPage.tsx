@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Spinner } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
 import { connector } from '../connector';
-import GameReplayView from '../game/GameReplayView';
 import { registerGeneratedMap } from '../game/mapData';
-import { foldStoredReplay } from '../game/replay';
+import GameReplayView from '../game/replay/GameReplayView';
+import { foldStoredReplay } from '../game/replay/replay';
 import type { GameState, ReplayTerritory, StoredGame } from '../lib/types';
 
 interface Props {
   navigate: (path: string) => void;
   onViewChange?: (view: 'results' | 'replay') => void;
+  settingsMenuOpen: boolean;
 }
 
 function countsByOwner(territories: ReplayTerritory[]) {
@@ -157,7 +158,7 @@ function buildGameState(
   };
 }
 
-function ReplayPage({ navigate, onViewChange }: Props) {
+function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
   const { id = '' } = useParams();
   const [resolved, setResolved] = useState<{
     doc: StoredGame;
@@ -232,6 +233,7 @@ function ReplayPage({ navigate, onViewChange }: Props) {
       logs={[]}
       navigate={navigate}
       onViewChange={onViewChange}
+      settingsMenuOpen={settingsMenuOpen}
       chatLog={folded.chat}
       emojiLog={folded.emoji}
     />

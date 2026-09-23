@@ -4,12 +4,11 @@ import { findMapIdsByName, getMapNamesByIds } from './maps/replayMaps';
 import { ensureCollection, getCollection } from './mongo';
 import {
   FILL_VALUES,
-  findUserByUsername,
   GAME_ENUMS,
   GENERATION_TYPES,
-  getUsernamesByIds,
   MAP_SIZES,
-} from './users';
+} from './users/preferences';
+import { findUserByUsername, getUsernamesByIds } from './users/users';
 
 const NAME = 'games';
 

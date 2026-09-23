@@ -1,8 +1,8 @@
 import { buildWrappedPathSegments, type ForcedWraps } from '../mapMath';
 import { drawFortifyPath } from './arrow';
 import { drawEntrench } from './entrench';
-import { drawExplosion } from './explosion';
-import { drawNuke } from './nuke';
+import { drawExplosion } from './nukes/explosion';
+import { drawNuke } from './nukes/nuke';
 import {
   drawLabel,
   DURATIONS,
@@ -70,8 +70,8 @@ export {
 } from './dice';
 export { ENTRENCHED_OCTAGON_SCALE, traceOctagon } from './entrench';
 export { drawFogCloud } from './fog';
+export { drawRadiationCloud } from './nukes/radiation';
 export { drawPortal } from './portal';
-export { drawRadiationCloud } from './radiation';
 export {
   areAnimationsDisabled,
   CARD_SET_FLASH_DURATION,

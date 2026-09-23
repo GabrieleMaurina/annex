@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { useDragNumber } from '../../../common/useDragNumber';
+import { useNumberInput } from '../../../common/inputs/useNumberInput';
 import { playerColor } from '../../../lib/palette';
 import type { BlitzOutcome } from '../../../lib/types';
 import { attackOptionStyle, formatProbability } from './attackOptionStyle';
@@ -58,7 +58,7 @@ function AttackSeaPanel({
   const blitzProbability = blitzWinProbabilities[blitzShips - 1] ?? 0;
   const blitzOutcome = blitzOutcomes[blitzShips - 1];
 
-  const regularDragNumber = useDragNumber({
+  const regularNumberInput = useNumberInput({
     value: regularShips,
     min: 1,
     max: maxRegularShips,
@@ -66,8 +66,9 @@ function AttackSeaPanel({
       onSelectRegular();
       onRegularShipsChange(ships);
     },
+    inputRef,
   });
-  const blitzDragNumber = useDragNumber({
+  const blitzNumberInput = useNumberInput({
     value: blitzShips,
     min: 1,
     max: maxBlitzShips,
@@ -75,6 +76,7 @@ function AttackSeaPanel({
       onSelectBlitz();
       onBlitzShipsChange(ships);
     },
+    inputRef: blitzInputRef,
   });
 
   return (
@@ -106,7 +108,6 @@ function AttackSeaPanel({
             <div className="d-flex align-items-center gap-1">
               <span>Ships</span>
               <Form.Control
-                ref={inputRef}
                 type="number"
                 size="sm"
                 min={1}
@@ -122,8 +123,8 @@ function AttackSeaPanel({
                     ),
                   );
                 }}
-                {...regularDragNumber}
-                style={{ ...regularDragNumber.style, width: 60 }}
+                {...regularNumberInput}
+                style={{ ...regularNumberInput.style, width: 60 }}
               />
             </div>
           </div>
@@ -135,7 +136,6 @@ function AttackSeaPanel({
               <div className="d-flex align-items-center gap-1">
                 <span>Blitz</span>
                 <Form.Control
-                  ref={blitzInputRef}
                   type="number"
                   size="sm"
                   min={1}
@@ -151,8 +151,8 @@ function AttackSeaPanel({
                       ),
                     );
                   }}
-                  {...blitzDragNumber}
-                  style={{ ...blitzDragNumber.style, width: 60 }}
+                  {...blitzNumberInput}
+                  style={{ ...blitzNumberInput.style, width: 60 }}
                 />
                 <span className="small">
                   {blitzOutcome

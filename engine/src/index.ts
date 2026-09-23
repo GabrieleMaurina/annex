@@ -41,8 +41,8 @@ import {
   attackMove,
   attackSelectEnd,
   attackSelectStart,
+  quickAttack,
 } from './territory/attack';
-import { selectCapital } from './territory/capital';
 import { playCardSet, requestCards } from './territory/cards';
 import { deploy, selectTerritory } from './territory/deploy';
 import { entrench } from './territory/entrench';
@@ -58,6 +58,9 @@ import {
   deployAntiNukeAction,
   launchNukeAction,
 } from './territory/nukes';
+import { selectCapital } from './territory/placement/capital';
+import { claimTerritory } from './territory/placement/territory';
+import { placeTroop } from './territory/placement/troop';
 import { requestReplay } from './territory/replay';
 import {
   attackSea,
@@ -66,9 +69,7 @@ import {
 } from './territory/sea/attackSea';
 import { buyShips } from './territory/sea/buyShips';
 import { sail, sailSelectEnd, sailSelectStart } from './territory/sea/sail';
-import { claimTerritory } from './territory/territory';
 import { toxin } from './territory/toxins';
-import { placeTroop } from './territory/troop';
 
 import {
   offerAlliance,
@@ -205,6 +206,7 @@ export function createEngine(
     attackSelectEnd,
     attack,
     attackMove,
+    quickAttack,
 
     requestReplay,
     exportGame,

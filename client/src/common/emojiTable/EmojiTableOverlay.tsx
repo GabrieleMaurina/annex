@@ -9,7 +9,7 @@ import type { EmojiValue, GameState } from '../../lib/types';
 import { useWhiteIcon } from '../icon';
 import { isPlayerMuted, toggleMutePlayer } from '../mutedPlayers';
 import { PANEL_BG_CLASS } from '../panelStyle';
-import Tip from '../Tip';
+import Tip from '../tooltips/Tip';
 import type { TableEmojiPop } from './useTableEmojiReactions';
 
 const PICKABLE_EMOJIS = EMOJIS.filter((emoji) => emoji !== ATTACK_EMOJI);

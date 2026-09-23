@@ -13,7 +13,7 @@ import {
   gameNameByPlayerId,
   playerIdBySocketId,
   setSocketRoom,
-} from '../../socketRooms';
+} from '../../sockets/socketRooms';
 import { isObject } from '../../validate';
 
 type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };

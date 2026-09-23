@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { anonNameFor } from '../anonName';
+import { anonNameFor } from '../auth/anonName';
 import {
   DEFAULT_CLIENT_SETTINGS,
   DEFAULT_GAME_SETTINGS,
   DEFAULT_HOME_FILTERS,
-} from '../auth';
+} from '../auth/auth';
 import { identityOf } from './middleware';
 
 export function sessionRouter(

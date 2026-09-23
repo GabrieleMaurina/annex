@@ -21,7 +21,7 @@ import {
   type ForcedWraps,
 } from '../../mapMath';
 import { isPortalHop } from '../../portals';
-import type { ConquestArrow } from '../../replay';
+import type { ConquestArrow } from '../../replay/replay';
 import type { RailEdge } from '../../supplyLines';
 import { drawSupplyLines } from '../../supplyLines';
 import {

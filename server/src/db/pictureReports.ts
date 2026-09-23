@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { ensureCollection, getCollection } from './mongo';
-import { getUserPicture, markPictureDangerous } from './users';
+import { getUserPicture, markPictureDangerous } from './users/users';
 
 const NAME = 'picture_reports';
 const REPORT_THRESHOLD = 3;

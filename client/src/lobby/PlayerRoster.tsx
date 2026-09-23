@@ -1,8 +1,8 @@
 import { Badge, Button, Form, Table } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
+import PlayerNameEditor from '../common/inputs/PlayerNameEditor';
 import { isPlayerMuted } from '../common/mutedPlayers';
-import PlayerNameEditor from '../common/PlayerNameEditor';
-import Tip from '../common/Tip';
+import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import { contrastTextColor, playerColor } from '../lib/palette';

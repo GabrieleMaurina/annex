@@ -5,7 +5,7 @@ import {
   findUserById,
   getElosByIds,
   getUsernamesByIds,
-} from './users';
+} from './users/users';
 
 const NAME = 'friendships';
 

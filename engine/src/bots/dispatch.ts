@@ -5,7 +5,6 @@ import {
   attackSelectEnd,
   attackSelectStart,
 } from '../territory/attack';
-import { selectCapital } from '../territory/capital';
 import { playCardSet } from '../territory/cards';
 import { deploy } from '../territory/deploy';
 import { entrench } from '../territory/entrench';
@@ -21,6 +20,9 @@ import {
   deployAntiNukeAction,
   launchNukeAction,
 } from '../territory/nukes';
+import { selectCapital } from '../territory/placement/capital';
+import { claimTerritory } from '../territory/placement/territory';
+import { placeTroop } from '../territory/placement/troop';
 import {
   attackSea,
   attackSeaSelectDefender,
@@ -28,8 +30,6 @@ import {
 } from '../territory/sea/attackSea';
 import { buyShips } from '../territory/sea/buyShips';
 import { sail, sailSelectEnd, sailSelectStart } from '../territory/sea/sail';
-import { claimTerritory } from '../territory/territory';
-import { placeTroop } from '../territory/troop';
 
 type Payload = Record<string, unknown>;
 

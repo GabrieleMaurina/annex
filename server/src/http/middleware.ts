@@ -1,13 +1,13 @@
 import { NextFunction, Request, Response } from 'express';
-import { randomToken, resolveSession, SessionInfo } from '../auth';
+import { randomToken, resolveSession, SessionInfo } from '../auth/auth';
 import {
   clientIp,
   isSecureRequest,
   isSessionToken,
   parseCookies,
   serializeSessionCookie,
-} from '../cookies';
-import { allowAuthAttempt } from '../rateLimit';
+} from '../auth/cookies';
+import { allowAuthAttempt } from '../auth/rateLimit';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5000';
 

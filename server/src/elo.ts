@@ -1,5 +1,5 @@
 import { DEFAULT_ELO, getElosByIds, setElos } from './db';
-import { userIdByPlayerId } from './socketRooms';
+import { userIdByPlayerId } from './sockets/socketRooms';
 
 const K = 32;
 const LOSS_DAMP_ELO = 1500;

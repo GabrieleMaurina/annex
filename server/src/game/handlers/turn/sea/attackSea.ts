@@ -1,6 +1,6 @@
 import { Engine } from 'engine';
 import { Socket } from 'socket.io';
-import { playerIdBySocketId } from '../../../../socketRooms';
+import { playerIdBySocketId } from '../../../../sockets/socketRooms';
 import { isObject } from '../../../../validate';
 import { registerGameAction } from '../../../handlerHelpers';
 

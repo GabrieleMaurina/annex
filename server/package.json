@@ -11,7 +11,8 @@
     "lint": "eslint src",
     "format": "prettier --write src",
     "types": "tsc --noEmit",
-    "check": "npm run format && npm run lint && npm run types",
+    "limits": "node ../scripts/checkLimits.js src",
+    "check": "npm run format && npm run lint && npm run types && npm run limits",
     "kill": "ts-node -P scripts/tsconfig.json scripts/kill-port.ts"
   },
   "keywords": [],

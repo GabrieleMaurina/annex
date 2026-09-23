@@ -11,7 +11,7 @@ import {
 } from '../../animations';
 import type { SeaTerritory, Territory } from '../../mapData';
 import { getAnchoredPanelPosition } from '../../mapMath';
-import type { ConquestArrow } from '../../replay';
+import type { ConquestArrow } from '../../replay/replay';
 import {
   computeSupplyConnectedTerritoryIds,
   computeSupplyLineEdges,

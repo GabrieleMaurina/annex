@@ -6,7 +6,7 @@ import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { BotView, isVisible, ownerOf, shipsAt } from '../view';
 import { attackWinProbability, defenceDiceFor } from './combat';
-import { isTeammate } from './mode';
+import { isTeammate } from './mode/mode';
 import { minWinProbability } from './pressure';
 
 export interface CoastalTerritory {

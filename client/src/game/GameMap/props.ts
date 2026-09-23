@@ -16,8 +16,8 @@ import type {
   TurnDuration,
   TurnPhase,
 } from '../../lib/types';
-import type { ReplayData } from '../replay';
-import type { LogEntry } from '../useGameLogs';
+import type { LogEntry } from '../logs/useGameLogs';
+import type { ReplayData } from '../replay/replay';
 
 export interface GameMapProps {
   game: GameState;

@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import { useEffect, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { useDragNumber } from '../../../common/useDragNumber';
+import { useNumberInput } from '../../../common/inputs/useNumberInput';
 import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome } from '../../../lib/types';
 import {
@@ -200,13 +200,14 @@ function AttackPanel({
   const blitzOutcome = blitzOutcomes[blitzTroops - 1];
   const maxRegularTroops = Math.min(maxBlitzTroops, 3);
 
-  const moveDragNumber = useDragNumber({
+  const moveNumberInput = useNumberInput({
     value: moveTroops,
     min: moveMinTroops,
     max: moveMaxTroops,
     onChange: onMoveTroopsChange,
+    inputRef: moveInputRef,
   });
-  const blitzDragNumber = useDragNumber({
+  const blitzNumberInput = useNumberInput({
     value: blitzTroops,
     min: 1,
     max: maxBlitzTroops,
@@ -214,6 +215,7 @@ function AttackPanel({
       onSelectBlitz();
       onBlitzTroopsChange(troops);
     },
+    inputRef: blitzInputRef,
   });
 
   return (
@@ -232,7 +234,6 @@ function AttackPanel({
         >
           <span>Move troops:</span>
           <Form.Control
-            ref={moveInputRef}
             type="number"
             size="sm"
             min={moveMinTroops}
@@ -249,8 +250,8 @@ function AttackPanel({
                 ),
               )
             }
-            {...moveDragNumber}
-            style={{ ...moveDragNumber.style, width: 70 }}
+            {...moveNumberInput}
+            style={{ ...moveNumberInput.style, width: 70 }}
           />
           <Button size="sm" onClick={onConfirmMove}>
             Confirm
@@ -288,7 +289,6 @@ function AttackPanel({
               <div className="d-flex align-items-center gap-1">
                 <span>Blitz</span>
                 <Form.Control
-                  ref={blitzInputRef}
                   type="number"
                   size="sm"
                   min={1}
@@ -304,8 +304,8 @@ function AttackPanel({
                       ),
                     );
                   }}
-                  {...blitzDragNumber}
-                  style={{ ...blitzDragNumber.style, width: 60 }}
+                  {...blitzNumberInput}
+                  style={{ ...blitzNumberInput.style, width: 60 }}
                 />
                 <span className="small">
                   {blitzOutcome

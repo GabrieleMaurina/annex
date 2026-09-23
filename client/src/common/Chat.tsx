@@ -2,6 +2,7 @@ import { containsProfanity } from 'engine';
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Form, ListGroup } from 'react-bootstrap';
 import { connector } from '../connector';
+import { isTypingTarget } from '../game/GameMap/helpers';
 import { playerColor } from '../lib/palette';
 import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
@@ -32,6 +33,16 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
     openRef.current = open;
     if (!open) summaryRef.current?.blur();
   }, [open]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target))
+        return;
+      if (e.key.toLowerCase() === 'c') setOpen(!openRef.current);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [setOpen]);
 
   useEffect(() => {
     function onMessage(message: ChatMessage) {

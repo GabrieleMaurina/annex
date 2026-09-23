@@ -10,7 +10,7 @@ import { connect } from './mongo';
 import { ensurePasswordResets } from './passwordResets';
 import { ensurePictureReports } from './pictureReports';
 import { ensureSessions } from './sessions';
-import { ensureUsers } from './users';
+import { ensureUsers } from './users/users';
 
 export function connectDb(): Promise<void> {
   return connect()
@@ -46,4 +46,5 @@ export * from './messages';
 export * from './passwordResets';
 export * from './pictureReports';
 export * from './sessions';
-export * from './users';
+export * from './users/preferences';
+export * from './users/users';

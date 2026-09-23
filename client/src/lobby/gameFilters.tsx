@@ -1,15 +1,15 @@
 import { Form } from 'react-bootstrap';
-import { Field } from '../common/filterControls';
+import { Field } from '../common/inputs/filterControls';
 import SearchMultiSelect, {
   type SearchSelectItem,
-} from '../common/SearchMultiSelect';
+} from '../common/inputs/SearchMultiSelect';
 import { connector } from '../connector';
 import type { Fill, GenerationType, MapSize } from '../lib/types';
 import {
   GAME_SETTING_SECTIONS,
   GAME_SETTINGS,
   GENERATED_MAP_VALUE,
-} from './gameSettings';
+} from './settings/gameSettings';
 
 const MAX_SELECTED_PLAYERS = 10;
 

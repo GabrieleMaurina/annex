@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { updateUserSettings } from '../../auth';
+import { updateUserSettings } from '../../auth/auth';
 import { isObject } from '../../validate';
 import { identityOf } from '../middleware';
 

@@ -1,6 +1,6 @@
 import { Engine } from 'engine';
 import { Socket } from 'socket.io';
-import { playerIdBySocketId } from '../../socketRooms';
+import { playerIdBySocketId } from '../../sockets/socketRooms';
 
 export function registerReplayHandlers(socket: Socket, engine: Engine) {
   socket.on('game:replay', (callback: (response: unknown) => void) => {

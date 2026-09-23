@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ObjectId } from 'mongodb';
-import { isValidPassword } from '../../auth';
+import { isValidPassword } from '../../auth/auth';
+import { hashPassword, verifyPassword } from '../../auth/password';
 import {
   deleteReportsForPicture,
   findUserById,
@@ -11,7 +12,6 @@ import {
   unsetUserPicture,
 } from '../../db';
 import { isImageAllowed } from '../../moderation';
-import { hashPassword, verifyPassword } from '../../password';
 import { isObject } from '../../validate';
 import { identityOf, rateLimited } from '../middleware';
 

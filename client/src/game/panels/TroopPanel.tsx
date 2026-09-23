@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { useDragNumber } from '../../common/useDragNumber';
+import { useNumberInput } from '../../common/inputs/useNumberInput';
 
 interface Props {
   label: string;
@@ -27,11 +27,12 @@ function TroopPanel({
   style,
   extra,
 }: Props) {
-  const dragNumber = useDragNumber({
+  const numberInput = useNumberInput({
     value: troops,
     min: minTroops,
     max: maxTroops,
     onChange,
+    inputRef,
   });
   return (
     <div
@@ -46,7 +47,6 @@ function TroopPanel({
       <div className="d-flex align-items-center gap-2">
         <span>{label}</span>
         <Form.Control
-          ref={inputRef}
           type="number"
           size="sm"
           min={minTroops}
@@ -60,8 +60,8 @@ function TroopPanel({
               ),
             )
           }
-          {...dragNumber}
-          style={{ ...dragNumber.style, width: 70 }}
+          {...numberInput}
+          style={{ ...numberInput.style, width: 70 }}
         />
         <Button size="sm" onClick={onConfirm}>
           {buttonLabel}

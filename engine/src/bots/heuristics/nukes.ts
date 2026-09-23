@@ -6,7 +6,7 @@ import {
 } from '../../game/nukes/nukes';
 import { getGameMap } from '../../maps/maps';
 import { BotPersonality, Game } from '../../types';
-import { assassinKillShot, threatTile } from '../features/modeGoals';
+import { assassinKillShot, threatTile } from '../features/mode/modeGoals';
 import { stalematePressure } from '../features/pressure';
 import type { PlanContext } from '../planning/context';
 import { isVisible } from '../view';

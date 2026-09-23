@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { NO_DUEL } from '../../src/bots/features/duel';
+import { NO_DUEL } from '../../src/bots/features/mode/duel';
 import { rollCandidates } from '../../src/bots/goals/duelObjectives';
 import {
   openStackWeight,

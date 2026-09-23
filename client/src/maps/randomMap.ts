@@ -1,4 +1,4 @@
-import type { GenerateMapInput } from './types';
+import type { GenerateMapInput } from '../lib/types';
 
 const SEED_LENGTH = 10;
 const RANDOM_SEED_ALPHABET =

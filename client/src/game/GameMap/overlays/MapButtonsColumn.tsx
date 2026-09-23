@@ -1,13 +1,13 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { Badge, Button } from 'react-bootstrap';
-import Tip from '../../../common/Tip';
+import Tip from '../../../common/tooltips/Tip';
 import type { Card, GameState, TurnPhase } from '../../../lib/types';
 import { comboKey, type EvaluatedCombo } from '../../logic/cards';
+import type { LogEntry } from '../../logs/useGameLogs';
 import CardsPanel, { CardFace } from '../../panels/CardsPanel';
 import GameSettingsPanel from '../../panels/GameSettingsPanel';
 import LogsPanel from '../../panels/LogsPanel';
 import NukesPanel from '../../panels/NukesPanel';
-import type { LogEntry } from '../../useGameLogs';
 
 export interface NukesColumnProps {
   open: boolean;

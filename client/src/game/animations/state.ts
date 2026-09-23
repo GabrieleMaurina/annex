@@ -1,5 +1,5 @@
 import { makeEntrenchParticles } from './entrench';
-import { makeExplosionParticles } from './explosion';
+import { makeExplosionParticles } from './nukes/explosion';
 
 export type AnimationType =
   'add' | 'remove' | 'explosion' | 'entrench' | 'starve' | 'arrow' | 'nuke';

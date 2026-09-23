@@ -59,7 +59,8 @@ export function attackFullPath(
     game.portalsEnabled,
   );
   if (neighbors.includes(endId)) return [startId, endId];
-  const targetOwnerId = game.territoryOwners.get(endId);
+  const ownerId = game.territoryOwners.get(endId);
+  const targetOwnerId = ownerId === playerId ? undefined : ownerId;
   const seaId = qualifyingBridgeSeaId(
     game,
     playerId,

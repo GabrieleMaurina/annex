@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { playerColor } from '../../../../lib/palette';
-import { formatLogEntriesWithFrames } from '../../../logFormat';
-import { replayPlayerCounts } from '../../../replay';
+import { formatLogEntriesWithFrames } from '../../../logs/logFormat';
+import { replayPlayerCounts } from '../../../replay/replay';
 import type { GameMapProps } from '../../props';
 import type { useGameSocketEvents } from '../useGameSocketEvents';
 

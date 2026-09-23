@@ -4,7 +4,7 @@ import { useWhiteIcon } from '../../common/icon';
 import PanelHeader from '../../common/PanelHeader';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor } from '../../lib/palette';
-import type { LogColorRange } from '../logFormat';
+import type { LogColorRange } from '../logs/logFormat';
 
 interface LogEntry {
   id: number;

@@ -481,6 +481,32 @@ export function attack(
   };
 }
 
+export function quickAttack(
+  playerId: number,
+  rawTerritoryId: unknown,
+): GameResponse {
+  const ctx = requirePlayingTurn(requireGame(playerId), 'attack');
+  if (!ctx.ok) return ctx;
+  const { game } = ctx;
+  if (game.blitz === 'Off') return { ok: false, error: 'blitz disabled' };
+  if (hasPendingConquest(game, playerId))
+    return { ok: false, error: 'pending conquest move' };
+
+  const selected = attackSelectEnd(playerId, rawTerritoryId);
+  if (!selected.ok) return selected;
+  const startId = game.attackStartTerritoryId!;
+  const attacked = attack(
+    playerId,
+    'blitz',
+    (game.territoryTroops.get(startId) ?? 0) - 1,
+  );
+  if (!attacked.ok) return attacked;
+  if (game.state !== 'playing' || !hasPendingConquest(game, playerId))
+    return { ok: true, game: attacked.game };
+
+  return attackMove(playerId, (game.territoryTroops.get(startId) ?? 0) - 1);
+}
+
 export function attackMove(playerId: number, rawTroops: unknown): GameResponse {
   const ctx = requirePlayingTurn(requireGame(playerId), 'attack');
   if (!ctx.ok) return ctx;

@@ -9,7 +9,7 @@ import {
 } from 'engine';
 import { Socket } from 'socket.io';
 import { getPlayerMapById } from '../../db';
-import { playerIdBySocketId } from '../../socketRooms';
+import { playerIdBySocketId } from '../../sockets/socketRooms';
 import { isObject } from '../../validate';
 
 type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };

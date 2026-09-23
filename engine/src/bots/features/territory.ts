@@ -2,7 +2,7 @@ import { withPortalEdges } from '../../game/world/portals';
 import { getGameMap } from '../../maps/maps';
 import { Game, Territory } from '../../types';
 import { BotView, isVisible, ownerOf } from '../view';
-import { isTeammate } from './mode';
+import { isTeammate } from './mode/mode';
 
 export function isHazardTerritory(
   game: Game,

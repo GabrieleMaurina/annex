@@ -1,15 +1,15 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useReducer, useState } from 'react';
 import { Button } from 'react-bootstrap';
-import BurgerMenu from '../common/BurgerMenu';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { useWhiteIcon } from '../common/icon';
-import Tip from '../common/Tip';
+import BurgerMenu from '../common/menus/BurgerMenu';
+import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
-import GameReplayView from '../game/GameReplayView';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
-import type { LogEntry } from '../game/useGameLogs';
+import type { LogEntry } from '../game/logs/useGameLogs';
+import GameReplayView from '../game/replay/GameReplayView';
 import type { Account, GameState, PlayerResultStats } from '../lib/types';
 
 interface Props {

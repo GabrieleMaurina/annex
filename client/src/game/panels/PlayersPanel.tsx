@@ -1,11 +1,11 @@
 import type { MutableRefObject, ReactNode } from 'react';
 import { useRef } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
-import Tip from '../../common/Tip';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useWhiteIcon } from '../../common/icon';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
+import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import { playSound } from '../../lib/sounds';

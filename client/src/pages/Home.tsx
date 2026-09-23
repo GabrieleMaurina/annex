@@ -7,16 +7,16 @@ import {
   Spinner,
   Table,
 } from 'react-bootstrap';
+import { useWhiteIcon } from '../common/icon';
 import {
   Field,
   FilterDetails,
   ListPager,
   RangeField,
   SortSelect,
-} from '../common/filterControls';
-import { useWhiteIcon } from '../common/icon';
-import type { SearchSelectItem } from '../common/SearchMultiSelect';
-import Tip from '../common/Tip';
+} from '../common/inputs/filterControls';
+import type { SearchSelectItem } from '../common/inputs/SearchMultiSelect';
+import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { GAME_STATE_COLORS, contrastTextColor } from '../lib/palette';
 import {
@@ -40,7 +40,7 @@ import {
   PlayerFilter,
   SettingFilterSections,
 } from '../lobby/gameFilters';
-import { GENERATED_MAP_VALUE } from '../lobby/gameSettings';
+import { GENERATED_MAP_VALUE } from '../lobby/settings/gameSettings';
 
 const MAX_GAME_NAME_LENGTH = 20;
 const POLL_MS = 5000;

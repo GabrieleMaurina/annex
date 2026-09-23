@@ -4,7 +4,7 @@ import {
   modeGoalFor,
   sideProgress,
   territoryCounts,
-} from '../features/modeGoals';
+} from '../features/mode/modeGoals';
 import { PlanContext, SimState } from '../planning/context';
 
 const OWN_PROGRESS = 40;

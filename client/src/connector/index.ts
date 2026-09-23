@@ -743,6 +743,10 @@ export const connector = {
     route('game:attackMove', data, cb);
   },
 
+  quickAttack(data: { territoryId: number }, cb: AckCallback): void {
+    route('game:quickAttack', data, cb);
+  },
+
   attackSeaSelectStart(
     data: { territoryId: number | null },
     cb: AckCallback,

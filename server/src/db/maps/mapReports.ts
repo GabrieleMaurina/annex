@@ -3,7 +3,7 @@ import { ensureCollection, getCollection } from '../mongo';
 import { getPlayerMapOwner, markPlayerMapDangerous } from './playerMaps';
 
 const NAME = 'map_reports';
-const REPORT_THRESHOLD = 3;
+const REPORT_THRESHOLD = 5;
 
 interface ReportDoc {
   mapId: ObjectId;

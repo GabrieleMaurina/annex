@@ -571,7 +571,7 @@ function MapEditor({ account }: { account: Account | null }) {
     setContinentCount(Math.max(1, sorted.bonuses.length));
     setCurrentContinentId(0);
     setGeneration(input);
-    if (isDefaultName(mapName)) setMapName(map.name);
+    setMapName(map.name);
     setImageSrc(map.imageSrc);
   }
 

@@ -3,7 +3,7 @@ import { ensureCollection, getCollection } from './mongo';
 import { getUserPicture, markPictureDangerous } from './users/users';
 
 const NAME = 'picture_reports';
-const REPORT_THRESHOLD = 3;
+const REPORT_THRESHOLD = 5;
 
 interface ReportDoc {
   pictureId: string;

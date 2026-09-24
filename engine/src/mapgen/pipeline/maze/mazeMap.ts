@@ -96,10 +96,14 @@ function partitionCellsMultiComponent(
   const territoryOfCell = new Int32Array(cellCount).fill(-1);
   let territoryCount = 0;
 
+  const navigableCellCount = cellPixelCount.filter((n) => n > 0).length;
   const largestComponentSize = Math.max(...components.map((c) => c.length));
   const minComponentCells = Math.min(
     largestComponentSize,
-    Math.max(2, Math.round((cellCount / targetCount) * MIN_COMPONENT_FRACTION)),
+    Math.max(
+      2,
+      Math.round((navigableCellCount / targetCount) * MIN_COMPONENT_FRACTION),
+    ),
   );
 
   const skipped: number[][] = [];
@@ -123,7 +127,7 @@ function partitionCellsMultiComponent(
       .filter((group) => group.length >= 2);
     const componentTarget = Math.max(
       1,
-      Math.round((targetCount * component.length) / cellCount),
+      Math.round((targetCount * component.length) / navigableCellCount),
     );
     const {
       territoryOfCell: localTerritoryOfCell,

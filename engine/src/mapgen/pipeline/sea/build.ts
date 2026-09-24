@@ -396,6 +396,7 @@ function pruneUselessSeaTerritories(
   seaAdjacency: Map<number, Set<number>>,
   landSeaAdjacency: Map<number, Set<number>>,
   landAdjacency: Map<number, Set<number>>,
+  landComponentOf: Map<number, number>,
   seaLabelGrid: Int16Array,
   maxLandNeighborsPerSea: number,
 ): {
@@ -412,8 +413,12 @@ function pruneUselessSeaTerritories(
     }
   }
 
+  const landsOf = (w: number): Set<number> =>
+    seaLandAdjacency.get(w) ?? new Set<number>();
   const isUseful = (w: number): boolean =>
-    hasUsefulPair([...(seaLandAdjacency.get(w) ?? [])], landAdjacency);
+    hasUsefulPair([...landsOf(w)], landAdjacency);
+  const spansLandmasses = (w: number): boolean =>
+    touchesMultipleLandmasses(landsOf(w), landComponentOf);
 
   const alive = new Set<number>();
   for (let w = 0; w < seaCount; w++) alive.add(w);
@@ -423,14 +428,22 @@ function pruneUselessSeaTerritories(
   while (changed) {
     changed = false;
     for (const w of [...alive]) {
-      if (isUseful(w)) continue;
+      if (spansLandmasses(w)) continue;
+      const useful = isUseful(w);
 
-      const wLands = seaLandAdjacency.get(w) ?? new Set<number>();
-      const target = [...(seaAdjacency.get(w) ?? [])].find((n) => {
-        if (!alive.has(n)) return false;
-        const nLands = seaLandAdjacency.get(n) ?? new Set<number>();
-        return new Set([...wLands, ...nLands]).size <= maxLandNeighborsPerSea;
-      });
+      const mergedLands = (n: number): Set<number> =>
+        new Set([...landsOf(w), ...landsOf(n)]);
+      const candidates = [...(seaAdjacency.get(w) ?? [])].filter(
+        (n) => alive.has(n) && mergedLands(n).size <= maxLandNeighborsPerSea,
+      );
+      const bridging = candidates.filter((n) =>
+        touchesMultipleLandmasses(mergedLands(n), landComponentOf),
+      );
+      const target =
+        bridging.find((n) => !spansLandmasses(n)) ??
+        bridging[0] ??
+        (useful ? undefined : candidates[0]);
+      if (useful && target === undefined) continue;
       if (target !== undefined) {
         for (const n of seaAdjacency.get(w) ?? []) {
           if (n === target) continue;
@@ -669,6 +682,7 @@ export function buildSeaTerritories(
     merged.seaAdjacency,
     merged.landSeaAdjacency,
     landAdjacency,
+    landComponentOf,
     seaLabelGrid,
     maxLandNeighborsPerSea,
   );

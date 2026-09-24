@@ -523,12 +523,22 @@ function Panel(props: Props) {
           </>
         ) : (
           <>
-            <div className="mb-2 fw-bold">
-              Total territories: {territories.filter((t) => !t.isSea).length}
-            </div>
-            <div className="mb-2">
-              Seas: {territories.filter((t) => t.isSea).length}
-            </div>
+            <Table size="sm" borderless className="mb-2 text-center">
+              <thead>
+                <tr>
+                  <th>Territories</th>
+                  <th>Seas</th>
+                  <th>Continents</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{territories.filter((t) => !t.isSea).length}</td>
+                  <td>{territories.filter((t) => t.isSea).length}</td>
+                  <td>{continentCount}</td>
+                </tr>
+              </tbody>
+            </Table>
             <Table size="sm" borderless className="mb-2 text-center">
               <thead>
                 <tr>

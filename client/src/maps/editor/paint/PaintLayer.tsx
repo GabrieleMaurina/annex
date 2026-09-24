@@ -180,6 +180,8 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
 ) {
   const surface = surfaceRef.current;
   const forcePanRef = useRef(false);
+  const pausedActionRef = useRef(false);
+  const ctrlHeldRef = useRef(false);
   const divRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const lastPointerRef = useRef<Point | null>(null);
@@ -319,6 +321,22 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey === ctrlHeldRef.current || forcePanRef.current) return;
+      ctrlHeldRef.current = e.ctrlKey;
+      applyCursor(resolveCursor());
+      updateOverlay();
+    }
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKey);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tool, color, size]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
       if (e.key !== 'Backspace' && e.key !== 'Delete') return;
       if (!shapeRef.current) return;
       const el = e.target as HTMLElement | null;
@@ -364,6 +382,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   }
 
   function resolveCursor(): string {
+    if (ctrlHeldRef.current) return 'grab';
     if (!BRUSH_TOOLS.includes(tool)) return 'crosshair';
     const scale = viewportRef.current.scaleX || 1;
     return brushCursor(tool === 'eraser' ? ERASER_COLOR : color, size * scale);
@@ -375,7 +394,12 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     const p = lastPointerRef.current;
     const scale = viewportRef.current.scaleX || 1;
     const diameter = size * scale;
-    if (!p || !BRUSH_TOOLS.includes(tool) || diameter <= MAX_CURSOR_DIAMETER) {
+    if (
+      !p ||
+      ctrlHeldRef.current ||
+      !BRUSH_TOOLS.includes(tool) ||
+      diameter <= MAX_CURSOR_DIAMETER
+    ) {
       el.style.display = 'none';
       return;
     }
@@ -625,7 +649,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     const drag = shapeDragRef.current;
     const s = shapeRef.current;
     if (!drag || !s) {
-      if (s) {
+      if (s && !ctrlHeldRef.current) {
         const h = hitHandle(s, p);
         applyCursor(
           h >= 0 ? HANDLE_CURSOR[h] : inside(s, p) ? 'move' : 'crosshair',
@@ -675,14 +699,18 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     renderShape();
   }
 
+  function startForcePan(e: React.PointerEvent) {
+    forcePanRef.current = true;
+    if (overlayRef.current) overlayRef.current.style.display = 'none';
+    applyCursor('grabbing');
+    onPanStart(e.clientX, e.clientY);
+  }
+
   function onPointerDown(e: React.PointerEvent) {
     if (e.button === 0 && e.ctrlKey) {
       e.preventDefault();
       divRef.current?.setPointerCapture(e.pointerId);
-      forcePanRef.current = true;
-      if (overlayRef.current) overlayRef.current.style.display = 'none';
-      applyCursor('grabbing');
-      onPanStart(e.clientX, e.clientY);
+      startForcePan(e);
       return;
     }
 
@@ -750,6 +778,16 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   }
 
   function onPointerMove(e: React.PointerEvent) {
+    if (!forcePanRef.current && e.ctrlKey && e.buttons & 1) {
+      pausedActionRef.current = true;
+      startForcePan(e);
+    } else if (pausedActionRef.current && !e.ctrlKey) {
+      pausedActionRef.current = false;
+      forcePanRef.current = false;
+      onPanEnd();
+      freehandRef.current.points.push(toImage(e));
+    }
+
     if (forcePanRef.current) {
       onPanMove(e.clientX, e.clientY);
       return;
@@ -758,7 +796,9 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     const p = toImage(e);
 
     lastPointerRef.current = { x: e.clientX, y: e.clientY };
-    if (tool !== 'rect' && tool !== 'ellipse') {
+    const ctrlChanged = e.ctrlKey !== ctrlHeldRef.current;
+    ctrlHeldRef.current = e.ctrlKey;
+    if (ctrlChanged || (tool !== 'rect' && tool !== 'ellipse')) {
       applyCursor(resolveCursor());
       updateOverlay();
     } else {
@@ -831,6 +871,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   }
 
   function onPointerCancel(): void {
+    pausedActionRef.current = false;
     if (forcePanRef.current) {
       forcePanRef.current = false;
       onPanEnd();
@@ -858,9 +899,11 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
 
     if (forcePanRef.current) {
       forcePanRef.current = false;
+      ctrlHeldRef.current = e.ctrlKey;
       onPanEnd();
       applyCursor(resolveCursor());
-      return;
+      if (!pausedActionRef.current) return;
+      pausedActionRef.current = false;
     }
 
     const p = toImage(e);

@@ -17,7 +17,7 @@ import GenerateMapModal from './editor/GenerateMapModal';
 import { isConnected } from './editor/graph';
 import MapCanvas, { type MapCanvasHandle } from './editor/MapCanvas';
 import type { EditorTerritory as Territory } from './editor/model/editorTypes';
-import { SEA_BRUSH, toEditorTerritories } from './editor/model/editorTypes';
+import { toEditorTerritories } from './editor/model/editorTypes';
 import PaintLayer, {
   type PaintLayerHandle,
   type Shape,
@@ -256,21 +256,6 @@ function MapEditor({ account }: { account: Account | null }) {
       if (!inPalette) addCustomColor(hex);
     },
     [addCustomColor],
-  );
-
-  const resort = useCallback(
-    (next: Territory[]): Map<number, number> => {
-      const sorted = sortTerritories(next, bonuses);
-      setTerritories(sorted.territories);
-      setBonuses(sorted.bonuses);
-      setCurrentContinentId((current) =>
-        current === SEA_BRUSH
-          ? current
-          : (sorted.continentIdMap.get(current) ?? current),
-      );
-      return sorted.idMap;
-    },
-    [bonuses],
   );
 
   const effectiveId = id ?? savedId;
@@ -732,7 +717,6 @@ function MapEditor({ account }: { account: Account | null }) {
         panOnly={mode === 'paint' && tool === null}
         hideImage={exclusive && mode === 'graph'}
         hideGraph={exclusive && mode === 'paint'}
-        resort={resort}
         onViewport={handleViewport}
       />
 

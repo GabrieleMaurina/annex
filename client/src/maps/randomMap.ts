@@ -1,3 +1,4 @@
+import { containsProfanity } from 'engine';
 import type { GenerateMapInput } from '../lib/types';
 
 const SEED_LENGTH = 10;
@@ -12,13 +13,16 @@ export const DEFAULT_MAP_GENERATION = {
 } as const;
 
 export function randomSeed(): string {
-  let result = '';
-  for (let i = 0; i < SEED_LENGTH; i++) {
-    result +=
-      RANDOM_SEED_ALPHABET[
-        Math.floor(Math.random() * RANDOM_SEED_ALPHABET.length)
-      ];
-  }
+  let result: string;
+  do {
+    result = '';
+    for (let i = 0; i < SEED_LENGTH; i++) {
+      result +=
+        RANDOM_SEED_ALPHABET[
+          Math.floor(Math.random() * RANDOM_SEED_ALPHABET.length)
+        ];
+    }
+  } while (containsProfanity(result));
   return result;
 }
 

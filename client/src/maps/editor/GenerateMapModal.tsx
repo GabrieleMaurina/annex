@@ -1,7 +1,10 @@
 import { containsProfanity } from 'engine';
 import { useState } from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
+import Help from '../../common/tooltips/Help';
 import type { Fill, GenerationType, MapSize } from '../../lib/types';
+import { SEAS_HELP } from '../../lobby/settings/settingsHelp';
+import { randomSeed } from '../randomMap';
 import {
   generateMap,
   type GeneratedEditorMap,
@@ -9,16 +12,7 @@ import {
 } from './generateMap';
 
 const MAX_SEED_LENGTH = 20;
-const SEED_ALPHABET =
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 const PRINTABLE_ASCII = /^[\x20-\x7e]+$/;
-
-function randomSeed(): string {
-  let s = '';
-  for (let i = 0; i < 10; i++)
-    s += SEED_ALPHABET[Math.floor(Math.random() * SEED_ALPHABET.length)];
-  return s;
-}
 
 function seedError(seed: string): string | null {
   if (
@@ -155,12 +149,15 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
             <option value="xlarge">Extra Large</option>
           </Form.Select>
         </Form.Group>
-        <Form.Check
-          type="checkbox"
-          label="Seas"
-          checked={seas}
-          onChange={(e) => setSeas(e.target.checked)}
-        />
+        <div className="d-flex align-items-center gap-2">
+          <Form.Check
+            type="checkbox"
+            label="Seas"
+            checked={seas}
+            onChange={(e) => setSeas(e.target.checked)}
+          />
+          <Help>{SEAS_HELP}</Help>
+        </div>
         {error && <div className="text-danger small">{error}</div>}
         <p className="text-muted small mb-0">
           Generating replaces the current territories and background image. You

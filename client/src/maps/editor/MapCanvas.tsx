@@ -49,7 +49,6 @@ interface Props {
   panOnly?: boolean;
   hideImage?: boolean;
   hideGraph?: boolean;
-  resort: (next: Territory[]) => Map<number, number>;
   onViewport?: (v: {
     offsetX: number;
     offsetY: number;
@@ -110,7 +109,6 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     panOnly,
     hideImage,
     hideGraph,
-    resort,
     onViewport,
   }: Props,
   ref,
@@ -126,11 +124,12 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   const lastTapAtRef = useRef(0);
   const lastTapPosRef = useRef<Point>({ x: 0, y: 0 });
   const lastAddedVertexRef = useRef<number | null>(null);
+  const lastVertexTapRef = useRef<{ id: number | null; at: number }>({
+    id: null,
+    at: 0,
+  });
   const longPressRef = useRef<number | null>(null);
   const cycleContinentAtRef = useRef<(pos: Point) => void>(() => {});
-  const applyResortRef = useRef<(next: Territory[]) => Map<number, number>>(
-    () => new Map(),
-  );
   const eraseRef = useRef<Point[] | null>(null);
   const forcePanRef = useRef<{ startPos: Point; startTransform: Point } | null>(
     null,
@@ -160,6 +159,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   const [isDragging, setIsDragging] = useState(false);
   const [mouseWorldPos, setMouseWorldPos] = useState<Point | null>(null);
   const [forceWrap, setForceWrap] = useState<WrapAxes>(NO_WRAP);
+  const [allowCrossover, setAllowCrossover] = useState(false);
   const [rejectedEdge, setRejectedEdge] = useState<[Point, Point][] | null>(
     null,
   );
@@ -358,24 +358,42 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     return () => document.removeEventListener('fullscreenchange', resetView);
   }, [resetView]);
 
-  const syncForceWrap = useCallback(
-    (e: { ctrlKey: boolean; shiftKey: boolean }) => {
+  const syncModifiers = useCallback(
+    (e: { ctrlKey: boolean; shiftKey: boolean; altKey: boolean }) => {
       const next = wrapAxesOf(e);
       setForceWrap((prev) =>
         prev.x === next.x && prev.y === next.y ? prev : next,
       );
+      setAllowCrossover(e.altKey);
     },
     [],
   );
 
   useEffect(() => {
-    window.addEventListener('keydown', syncForceWrap);
-    window.addEventListener('keyup', syncForceWrap);
+    window.addEventListener('keydown', syncModifiers);
+    window.addEventListener('keyup', syncModifiers);
     return () => {
-      window.removeEventListener('keydown', syncForceWrap);
-      window.removeEventListener('keyup', syncForceWrap);
+      window.removeEventListener('keydown', syncModifiers);
+      window.removeEventListener('keyup', syncModifiers);
     };
-  }, [syncForceWrap]);
+  }, [syncModifiers]);
+
+  const deleteVertex = useCallback(
+    (id: number) => {
+      const next = territoriesRef.current
+        .filter((t) => t.id !== id)
+        .map((t) => ({
+          ...t,
+          neighbors: t.neighbors.filter((n) => n !== id),
+          wraps: t.wraps.filter((w) => w.id !== id),
+        }));
+      setTerritories(next);
+      setSelectedVertexId(null);
+      setHoveredVertexId((hovered) => (hovered === id ? null : hovered));
+      if (lastAddedVertexRef.current === id) lastAddedVertexRef.current = null;
+    },
+    [setTerritories],
+  );
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -387,19 +405,11 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       if (e.key !== 'Backspace' && e.key !== 'Delete') return;
       if (selectedVertexId === null) return;
       e.preventDefault();
-      const id = selectedVertexId;
-      const next = territoriesRef.current
-        .filter((t) => t.id !== id)
-        .map((t) => ({
-          ...t,
-          neighbors: t.neighbors.filter((n) => n !== id),
-          wraps: t.wraps.filter((w) => w.id !== id),
-        }));
-      applyResortRef.current(next);
+      deleteVertex(selectedVertexId);
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedVertexId, setCollapsed]);
+  }, [selectedVertexId, setCollapsed, deleteVertex]);
 
   const applyZoom = useCallback(
     (pos: Point, factor: number) => {
@@ -509,6 +519,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         mouseWorldPos,
         dragging: dragRef.current !== null,
         forceWrap,
+        allowCrossover,
       });
     }
   });
@@ -547,18 +558,6 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     onPaintStrokeEnd?.();
   }
 
-  function applyResort(next: Territory[]): Map<number, number> {
-    const idMap = resort(next);
-    setSelectedVertexId((id) => (id === null ? null : (idMap.get(id) ?? null)));
-    setHoveredVertexId((id) => (id === null ? null : (idMap.get(id) ?? null)));
-    if (lastAddedVertexRef.current !== null) {
-      lastAddedVertexRef.current =
-        idMap.get(lastAddedVertexRef.current) ?? null;
-    }
-    return idMap;
-  }
-  applyResortRef.current = applyResort;
-
   function addVertexAt(pos: Point): number {
     const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = getViewport();
     const worldX = clamp((pos.x - offsetX) / scaleX, 0, imgW);
@@ -567,7 +566,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       ? Math.max(...territories.map((t) => t.id)) + 1
       : 0;
     const isSea = currentContinentId === SEA_BRUSH;
-    const next = [
+    setTerritories([
       ...territories,
       {
         id: nextId,
@@ -578,11 +577,9 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         wraps: [],
         isSea,
       },
-    ];
-    const idMap = applyResort(next);
-    const newId = idMap.get(nextId)!;
-    setHoveredVertexId(newId);
-    return newId;
+    ]);
+    setHoveredVertexId(nextId);
+    return nextId;
   }
 
   function handleVertexClick(
@@ -703,7 +700,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     const strayId = lastAddedVertexRef.current;
     lastAddedVertexRef.current = null;
     if (strayId !== null) {
-      applyResort(territories.filter((t) => t.id !== strayId));
+      setTerritories(territories.filter((t) => t.id !== strayId));
       setHoveredVertexId(null);
     }
     resetView();
@@ -741,12 +738,18 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       return;
     }
     if (!drag.moved) {
+      const now = Date.now();
+      const lastVertexTap = lastVertexTapRef.current;
+      const isDoubleTap =
+        lastVertexTap.id === drag.id && now - lastVertexTap.at < DOUBLE_TAP_MS;
+      lastVertexTapRef.current = isDoubleTap
+        ? { id: null, at: 0 }
+        : { id: drag.id, at: now };
       lastTapAtRef.current = 0;
       lastAddedVertexRef.current = null;
-      handleVertexClick(drag.id, forced, allowCrossover);
-      return;
+      if (isDoubleTap) deleteVertex(drag.id);
+      else handleVertexClick(drag.id, forced, allowCrossover);
     }
-    applyResort(territories);
   }
 
   function cycleContinentAt(pos: Point) {
@@ -806,7 +809,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     if (panOnlyRef.current) {
       return;
     }
-    syncForceWrap(e);
+    syncModifiers(e);
     const { scaleX, scaleY, offsetX, offsetY } = getViewport();
     setMouseWorldPos({
       x: (pos.x - offsetX) / scaleX,

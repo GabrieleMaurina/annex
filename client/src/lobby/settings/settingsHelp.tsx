@@ -59,6 +59,9 @@ export const MAP_HELP = 'Which territory layout the game is played on.';
 export const MAP_GEN_HELP =
   'Procedurally generate a new map instead of picking an existing one. The same seed and settings always produce the same map. Type picks the layout style (Terrain islands, a Dungeon maze, or a Temple maze), Size roughly determines the territory count, and Fill controls how much of the map is playable territory versus sea or inaccessible space.';
 
+export const SEAS_HELP =
+  'Splits the water into seas. Players can buy ships, which let them attack across water and attack other ships.';
+
 export const BLITZ_HELP = (
   <>
     How an all-out attack (&quot;blitz&quot;) resolves a battle instantly

@@ -3,6 +3,7 @@ import { forwardRef, useImperativeHandle, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../common/panelStyle';
+import Help from '../common/tooltips/Help';
 import { getGeneratedMapData } from '../game/mapData';
 import { getGameSettings } from '../lib/player';
 import type {
@@ -12,6 +13,7 @@ import type {
   MapSize,
 } from '../lib/types';
 import { DEFAULT_MAP_GENERATION, randomSeed } from '../maps/randomMap';
+import { SEAS_HELP } from './settings/settingsHelp';
 
 export interface MapGenerationPanelHandle {
   generate: () => void;
@@ -188,12 +190,15 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                 <option value="xlarge">Extra Large</option>
               </Form.Select>
             </div>
-            <Form.Check
-              type="checkbox"
-              label="Seas"
-              checked={genSeas}
-              onChange={(e) => setGenSeas(e.target.checked)}
-            />
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                type="checkbox"
+                label="Seas"
+                checked={genSeas}
+                onChange={(e) => setGenSeas(e.target.checked)}
+              />
+              <Help>{SEAS_HELP}</Help>
+            </div>
             <div>
               <Button
                 disabled={generating || !seedValid}

@@ -23,6 +23,7 @@ interface DrawGraphParams {
   mouseWorldPos: Point | null;
   dragging: boolean;
   forceWrap: WrapAxes;
+  allowCrossover: boolean;
 }
 
 function hexagonPath(
@@ -52,6 +53,7 @@ export function drawGraph({
   mouseWorldPos,
   dragging,
   forceWrap,
+  allowCrossover,
 }: DrawGraphParams) {
   const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = viewport;
   const toScreen = (p: Point): Point => ({
@@ -105,14 +107,16 @@ export function drawGraph({
     if (fromTerritory) {
       const excludeIds = new Set<number>([selectedVertexId]);
       if (hoveredVertexId !== null) excludeIds.add(hoveredVertexId);
-      const overlapping = segmentWouldCross(
-        territories,
-        viewport,
-        fromTerritory,
-        mouseWorldPos,
-        excludeIds,
-        forceWrap,
-      );
+      const overlapping =
+        !allowCrossover &&
+        segmentWouldCross(
+          territories,
+          viewport,
+          fromTerritory,
+          mouseWorldPos,
+          excludeIds,
+          forceWrap,
+        );
       ctx.strokeStyle = overlapping ? '#ff0000' : '#000000';
       ctx.lineWidth = 2 * zoom;
       for (const [a, b] of wrapEdgeSegments(

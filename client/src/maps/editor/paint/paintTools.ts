@@ -51,6 +51,19 @@ export const PALETTE_GROUPS: PaletteGroup[] = [
       TEMPLE_SEAM_COLOR,
     ],
   },
+  {
+    label: 'Rainbow',
+    colors: [
+      '#e8a3a3',
+      '#f0c09a',
+      '#eee0a0',
+      '#b5d9a4',
+      '#a3d6cf',
+      '#a6c4e6',
+      '#b3aee0',
+      '#d4a8d9',
+    ],
+  },
 ];
 
 export interface Point {

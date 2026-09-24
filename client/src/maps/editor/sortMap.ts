@@ -32,8 +32,6 @@ function sortByPosition<T>(
 export interface SortedTerritories {
   territories: Territory[];
   bonuses: number[];
-  continentIdMap: Map<number, number>;
-  idMap: Map<number, number>;
 }
 
 export function sortTerritories(
@@ -106,8 +104,6 @@ export function sortTerritories(
   return {
     territories: newTerritories,
     bonuses: newBonuses,
-    continentIdMap,
-    idMap,
   };
 }
 

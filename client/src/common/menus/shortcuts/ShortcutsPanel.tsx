@@ -53,6 +53,7 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
       ['Ctrl + Z', 'Undo'],
       ['Ctrl + Y / Ctrl + Shift + Z', 'Redo'],
       ['Delete / Backspace', 'Delete the selected territory or shape'],
+      ['Double-click / double-tap', 'Delete a territory'],
       ['Esc', 'Deselect, or collapse the panel'],
       ['Ctrl + click', 'Connect wrapping horizontally'],
       ['Shift + click', 'Connect wrapping vertically'],

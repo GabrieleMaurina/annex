@@ -91,6 +91,7 @@ export interface GameExport {
     fill: string;
     seas: boolean;
   } | null;
+  playerMapId: string | null;
   originalHostId: number;
   startedAt: number;
   endedAt: number;
@@ -322,6 +323,7 @@ export function exportGame(gameName: string): GameExport | null {
           seas: game.generatedMap.seas,
         }
       : null,
+    playerMapId: game.playerMap?.id ?? null,
     settings: {
       gameMode: game.gameMode,
       continentId: game.continentId,

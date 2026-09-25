@@ -24,8 +24,8 @@ import {
 
 const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
   complete: (w) => w.completeContinent,
-  break: (w) => w.breakContinent,
-  spoilContinent: (w) => w.breakContinent * 0.6,
+  break: (w) => w.breakContinent + w.aggression,
+  spoilContinent: (w) => (w.breakContinent + w.aggression) * 0.6,
   eliminate: (w) => w.eliminate,
   antiLeader: (w) => w.antiLeader,
   neutralizeThreat: (w) => w.defendFrontier,
@@ -42,6 +42,7 @@ const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
 };
 
 const DUEL_FINISHER_ELIMINATE_BONUS = 50;
+const DUEL_BREAK_URGENCY_BONUS = 15;
 
 function isDuelFinisher(ctx: PlanContext): boolean {
   if (!ctx.finisher) return false;
@@ -60,6 +61,8 @@ function personalityBonus(ctx: PlanContext, objectives: Objective[]): number {
       1.4 * KIND_WEIGHT[objective.kind](ctx.weights) * (index === 0 ? 1 : 0.5);
     if (duelFinisher && index === 0 && objective.kind === 'eliminate')
       bonus += DUEL_FINISHER_ELIMINATE_BONUS;
+    if (objective.kind === 'break')
+      bonus += DUEL_BREAK_URGENCY_BONUS * ctx.duel.breakUrgency;
   });
   return bonus;
 }
@@ -194,8 +197,12 @@ function confidentEnough(
   result: SimResult,
 ): boolean {
   if (candidate.stacks.length === 0) return true;
+  const urgency = candidate.objectives.some((o) => o.kind === 'break')
+    ? ctx.duel.breakUrgency
+    : 0;
   return (
-    result.successProbability * ctx.params.planningConfidence >= MIN_CONFIDENCE
+    result.successProbability * ctx.params.planningConfidence >=
+    MIN_CONFIDENCE / (1 + urgency)
   );
 }
 

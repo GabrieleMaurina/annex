@@ -53,7 +53,7 @@ function buildGameState(
     name: doc.name,
     mapName: doc.mapName,
     mapGeneration: doc.mapGeneration,
-    playerMapId: null,
+    playerMapId: doc.playerMapId ?? null,
     slots: s.slots,
     hostId: doc.originalHostId ?? -1,
     originalHostId: doc.originalHostId ?? -1,

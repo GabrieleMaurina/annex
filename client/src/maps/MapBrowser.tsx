@@ -176,7 +176,7 @@ function MapBrowser({
             <Field label="Search">
               <Form.Control
                 size="sm"
-                style={{ width: 180 }}
+                style={{ minWidth: 0 }}
                 placeholder="Name or author"
                 maxLength={60}
                 value={q}

@@ -359,6 +359,7 @@ const schema = {
             fill: { enum: FILL_VALUES },
           },
         },
+        playerMapId: { bsonType: ['string', 'null'] },
         settings,
         players: array(player),
         winnerIds: array(int),

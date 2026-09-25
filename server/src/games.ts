@@ -25,6 +25,7 @@ export function persistFinishedGame(
       return storeGame({
         name: bundle.name,
         mapGeneration: bundle.mapGeneration,
+        playerMapId: bundle.playerMapId,
         originalHostId: bundle.originalHostId,
         startedAt: bundle.startedAt,
         endedAt: bundle.endedAt,

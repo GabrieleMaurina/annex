@@ -13,4 +13,5 @@ export const takerWeights: Weights = {
   duelBreak: 0,
   duelStack: 0.5,
   duelRoll: 0.5,
+  aggression: 0,
 };

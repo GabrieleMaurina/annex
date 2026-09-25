@@ -332,6 +332,14 @@ export const connector = {
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
+  getMapLiked(id: string, cb: (liked: boolean | null) => void): void {
+    httpGet<{ ok: boolean; liked?: boolean }>(
+      '/player-maps/' + encodeURIComponent(id) + '/liked',
+    )
+      .then((res) => cb(res.ok ? !!res.liked : null))
+      .catch(() => cb(null));
+  },
+
   reportMap(id: string, cb: (res: AuthAck) => void): void {
     httpSend<AuthAck>(
       'POST',

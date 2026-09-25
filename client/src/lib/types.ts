@@ -603,6 +603,7 @@ export interface StoredGame {
   mapId: string;
   mapName: string;
   mapGeneration: GenerateMapInput | null;
+  playerMapId?: string | null;
   originalHostId: number;
   startedAt: number;
   endedAt: number;

@@ -91,6 +91,7 @@ const CONCENTRATION = 0.05;
 const OPEN_STACK = 0.03;
 const STACK_PRESSURE = 0.03;
 const DUEL_BREAK = 4;
+const NEARBY_BREAK = 1.2;
 const DUEL_PRESSURE = 2;
 const DUEL_STACK_MASS = 0.05;
 const BASE_ATTACK_RATIO = 1.05;
@@ -210,6 +211,21 @@ function opponentHeldBonus(ctx: PlanContext, state: SimState): number {
   );
 }
 
+function nearbyHeldBonus(ctx: PlanContext, state: SimState): number {
+  if (ctx.weights.aggression <= 0) return 0;
+  let total = 0;
+  for (const [continentId, territoryIds] of ctx.continentTerritories) {
+    const ownerId = state.owners.get(territoryIds[0]);
+    if (ownerId === undefined || isFriendly(ctx, ownerId)) continue;
+    if (!territoryIds.every((id) => state.owners.get(id) === ownerId)) continue;
+    const touchesBot = territoryIds.some((id) =>
+      neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId),
+    );
+    if (touchesBot) total += bonusOf(ctx, continentId);
+  }
+  return total;
+}
+
 function capitalRisk(ctx: PlanContext, state: SimState): number {
   let penalty = 0;
   for (const id of ctx.game.capitalTerritoryIds) {
@@ -267,7 +283,11 @@ function scoreState(
       (ctx.weights.defense + DUEL_PRESSURE * ctx.duel.stacking) *
       stacks.pressure) /
     scale;
-  score -= DUEL_BREAK * ctx.duel.breaking * opponentHeldBonus(ctx, state);
+  score -=
+    DUEL_BREAK *
+    (ctx.duel.breaking + ctx.duel.breakUrgency) *
+    opponentHeldBonus(ctx, state);
+  score -= NEARBY_BREAK * ctx.weights.aggression * nearbyHeldBonus(ctx, state);
   score -= (DUEL_STACK_MASS * ctx.duel.rolling * stacks.mass) / scale;
   score -= CAPITAL_RISK * capitalRisk(ctx, state);
   if (leader && leader.playerId !== ctx.botId)
@@ -281,7 +301,7 @@ function scoreState(
     score += CARD * cardValue(ctx);
   score -= (TROOP_LOSS * state.troopsLost) / scale;
   score += eliminationBonus(ctx, state);
-  score += (DAMAGE * damageDealt(state)) / scale;
+  score += (DAMAGE * (1 + ctx.weights.aggression) * damageDealt(state)) / scale;
   score += standingScore(ctx, state);
   score += modeScore(ctx, state, cachedProgress);
   return score;

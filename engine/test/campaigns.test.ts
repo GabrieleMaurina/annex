@@ -489,6 +489,7 @@ test('neutralizeThreat: preempt the stack that would sweep our border', () => {
     },
     troops: { 1: 3, 2: 16, 3: 15, 4: 5, 5: 5, 6: 14, 7: 14, 8: 14 },
     troopsToDeploy: 6,
+    personality: 'vengeful',
   };
   expectKind(spec, 'neutralizeThreat');
 });

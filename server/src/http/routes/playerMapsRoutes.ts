@@ -15,9 +15,11 @@ import {
   getPlayerMapById,
   getPlayerMapImage,
   getPlayerMapOwner,
+  likedMapIds,
   likeMap,
   listPlayerMapNames,
   listPlayerMaps,
+  playerMapExists,
   PlayerMapSort,
   PlayerMapsQuery,
   reportMap,
@@ -330,6 +332,25 @@ playerMapsRouter.post('/player-maps/:id/like', (req, res) => {
   }
   likeMap(session.userId, req.params.id)
     .then(() => res.json({ ok: true }))
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+playerMapsRouter.get('/player-maps/:id/liked', (req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  playerMapExists(req.params.id)
+    .then((exists) => {
+      if (!exists) {
+        res.json({ ok: false, error: 'map not found' });
+        return;
+      }
+      return likedMapIds(session.userId, [req.params.id]).then((ids) =>
+        res.json({ ok: true, liked: ids.length > 0 }),
+      );
+    })
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });
 

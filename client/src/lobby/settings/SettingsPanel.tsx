@@ -20,6 +20,7 @@ import MapBrowser from '../../maps/MapBrowser';
 import MapGenerationPanel, {
   type MapGenerationPanelHandle,
 } from '../MapGenerationPanel';
+import MapLikeButton from '../MapLikeButton';
 import GameSettingsFields from './GameSettingsFields';
 import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
 
@@ -391,6 +392,7 @@ function SettingsPanel({
                 </span>
               </Tip>
             )}
+            {game.playerMapId && <MapLikeButton mapId={game.playerMapId} />}
           </div>
         </div>
 

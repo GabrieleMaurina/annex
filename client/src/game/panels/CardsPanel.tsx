@@ -142,65 +142,74 @@ function CardsPanel({
   }
 
   return (
-    <div className={`${PANEL_BG_CLASS} ${PANEL_CLASS}`} style={{ width: 268 }}>
+    <div
+      className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex flex-column`}
+      style={{ width: 268, maxHeight: 'calc(100vh - 2rem)' }}
+    >
       <PanelHeader title={title ?? 'Your Cards'} onClose={onClose} />
-      {hand.length === 0 ? (
-        <div className="text-muted small">No cards yet</div>
-      ) : (
-        <div className="d-flex flex-wrap gap-2">
-          {sortForDisplay(hand).map((c, i) => (
-            <CardFace
-              key={i}
-              card={c}
-              owned={
-                c.territoryId !== null && ownedTerritoryIds.has(c.territoryId)
-              }
-              selected={selectedCombo?.cards.includes(c) ?? false}
-            />
-          ))}
-        </div>
-      )}
-      {upcomingSetValues.length > 0 && (
-        <>
-          <div className="fw-bold lh-1 mb-2 mt-2">Next Sets</div>
-          <div className="d-flex gap-2 mb-2">
-            {upcomingSetValues.map((value, i) => (
-              <Badge key={i} bg={i === 0 ? 'primary' : 'secondary'}>
-                +{value}
-              </Badge>
+      <div
+        className="no-scrollbar"
+        style={{ overflowY: 'auto', minHeight: 0 }}
+        onWheel={(e) => e.stopPropagation()}
+      >
+        {hand.length === 0 ? (
+          <div className="text-muted small">No cards yet</div>
+        ) : (
+          <div className="d-flex flex-wrap gap-2">
+            {sortForDisplay(hand).map((c, i) => (
+              <CardFace
+                key={i}
+                card={c}
+                owned={
+                  c.territoryId !== null && ownedTerritoryIds.has(c.territoryId)
+                }
+                selected={selectedCombo?.cards.includes(c) ?? false}
+              />
             ))}
           </div>
-        </>
-      )}
-      {combos.length > 0 && (
-        <>
-          <div className="fw-bold lh-1 mb-2 mt-2">Available Sets</div>
-          <div
-            style={{ maxHeight: '40vh', overflowY: 'auto' }}
-            className="mb-2 no-scrollbar"
-            onWheel={handleWheel}
-          >
-            <ListGroup>
-              {combos.map((combo) => (
-                <ComboRow
-                  key={comboKey(combo)}
-                  combo={combo}
-                  selected={combo === selectedCombo}
-                  onClick={() => onSelectCombo(combo)}
-                />
+        )}
+        {upcomingSetValues.length > 0 && (
+          <>
+            <div className="fw-bold lh-1 mb-2 mt-2">Next Sets</div>
+            <div className="d-flex gap-2 mb-2">
+              {upcomingSetValues.map((value, i) => (
+                <Badge key={i} bg={i === 0 ? 'primary' : 'secondary'}>
+                  +{value}
+                </Badge>
               ))}
-            </ListGroup>
-          </div>
-          <Button
-            size="sm"
-            className="w-100"
-            disabled={!canPlay || !selectedCombo}
-            onClick={() => selectedCombo && onPlaySet(selectedCombo)}
-          >
-            Play Set
-          </Button>
-        </>
-      )}
+            </div>
+          </>
+        )}
+        {combos.length > 0 && (
+          <>
+            <div className="fw-bold lh-1 mb-2 mt-2">Available Sets</div>
+            <div
+              style={{ maxHeight: '40vh', overflowY: 'auto' }}
+              className="mb-2 no-scrollbar"
+              onWheel={handleWheel}
+            >
+              <ListGroup>
+                {combos.map((combo) => (
+                  <ComboRow
+                    key={comboKey(combo)}
+                    combo={combo}
+                    selected={combo === selectedCombo}
+                    onClick={() => onSelectCombo(combo)}
+                  />
+                ))}
+              </ListGroup>
+            </div>
+            <Button
+              size="sm"
+              className="w-100"
+              disabled={!canPlay || !selectedCombo}
+              onClick={() => selectedCombo && onPlaySet(selectedCombo)}
+            >
+              Play Set
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

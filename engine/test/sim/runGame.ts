@@ -31,6 +31,7 @@ import {
   randomGameSettings,
   randomMapParams,
   randomRoster,
+  versusRoster,
 } from './randomize';
 
 let callbacksInstalled = false;
@@ -48,6 +49,8 @@ const MAX_REPEATED_FAILURE = 5;
 const GAME_DEADLINE_MS = 300_000;
 const SAMPLE_EVERY_ROUNDS = 25;
 const BOARD_EVERY_ROUNDS = 100;
+
+export type Planner = typeof planBotTurn;
 
 export interface TurnLogEntry {
   round: number;
@@ -94,11 +97,14 @@ export interface SimGameResult {
 export function runSimGame(
   gameNumber: number,
   roundCap: number,
+  baselinePlanner?: Planner,
 ): SimGameResult {
   ensureCallbacks();
   const rng = mulberry32(Math.floor(Math.random() * 0xffffffff));
   const name = `sim-${gameNumber}`;
-  const roster = randomRoster(rng, ROSTER_SIZE);
+  const roster = baselinePlanner
+    ? versusRoster(rng, ROSTER_SIZE)
+    : randomRoster(rng, ROSTER_SIZE);
 
   const host = createBotPlayer('Bot 1', roster[0]);
   createGame(host.id, { name }, true);
@@ -140,7 +146,7 @@ export function runSimGame(
 
   startGame(host.id);
 
-  let cache: TurnPlanCache | null = null;
+  const caches = new Map<Planner, TurnPlanCache>();
   const turns: TurnLogEntry[] = [];
   const planMsSamples: PlanMsSample[] = [];
   let dispatchFailures = 0;
@@ -171,6 +177,8 @@ export function runSimGame(
     }
     const playerId = game.playerIds[game.turnPlayerIndex];
     const identity = identityById.get(playerId)!;
+    const planner =
+      identity.contestant === 'baseline' ? baselinePlanner! : planBotTurn;
     const phaseAtStart = game.turnPhase;
     const actions: LoggedAction[] = [];
     let planMs = 0;
@@ -189,9 +197,14 @@ export function runSimGame(
       const beforeSig = `${game.turnPhase}:${game.troopsToDeploy}:${game.attackConquestMinTroops}:${game.territoryOwners.size}`;
       const isDeploy = game.turnPhase === 'deploy';
       const started = process.hrtime.bigint();
-      const res = planBotTurn(game, playerId, identity, cache);
+      const res = planner(
+        game,
+        playerId,
+        identity,
+        caches.get(planner) ?? null,
+      );
       const elapsed = Number(process.hrtime.bigint() - started) / 1e6;
-      cache = res.plan;
+      caches.set(planner, res.plan);
       if (isDeploy && planMs === 0) {
         planMs = elapsed;
         objectives = res.plan.objectives.map((o) => o.kind).join('+') || 'none';

@@ -68,9 +68,12 @@ const GAME_MODES: GameMode[] = [
 const BLITZ_VALUES: Blitz[] = ['Balanced', 'True', 'Fair', 'Off'];
 const PLACEMENT_VALUES: Placement[] = ['Random', 'Random', 'Semi', 'Custom'];
 
+export type Contestant = 'current' | 'baseline';
+
 export interface BotIdentity {
   difficulty: BotDifficulty;
   personality: BotPersonality;
+  contestant?: Contestant;
 }
 
 function pick<T>(rng: () => number, xs: readonly T[]): T {
@@ -91,6 +94,17 @@ export function randomRoster(rng: () => number, size: number): BotIdentity[] {
     difficulty: pick(rng, DIFFICULTIES),
     personality: pick(rng, PERSONALITIES),
   }));
+}
+
+export function versusRoster(rng: () => number, size: number): BotIdentity[] {
+  const roster = randomRoster(rng, size - 2);
+  for (const contestant of ['current', 'baseline'] as const)
+    roster.splice(Math.floor(rng() * (roster.length + 1)), 0, {
+      difficulty: 'hard',
+      personality: 'balanced',
+      contestant,
+    });
+  return roster;
 }
 
 export function randomMapParams(

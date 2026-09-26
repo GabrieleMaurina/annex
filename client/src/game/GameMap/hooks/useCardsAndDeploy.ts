@@ -144,7 +144,7 @@ export function useCardsAndDeploy({
     return () => {
       connector.off('game:cards', onCards);
     };
-  }, []);
+  }, [selfId]);
 
   useEffect(() => {
     function onCardSetPlayed(payload: {

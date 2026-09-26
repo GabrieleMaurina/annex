@@ -41,9 +41,7 @@ export function useNukeControls({
   const nukeReady =
     canUseNuke && (game.arsenal.nukes > 0 || game.arsenal.antiNukes > 0);
   const nukeTargeting =
-    canUseNuke && nukesOpen && armedNuke?.turnId === nukeTurnId
-      ? armedNuke.mode
-      : null;
+    canUseNuke && armedNuke?.turnId === nukeTurnId ? armedNuke.mode : null;
   const setNukeTargeting = useCallback(
     (mode: 'launch' | 'antiNuke' | null) =>
       setArmedNuke(mode === null ? null : { mode, turnId: nukeTurnId }),

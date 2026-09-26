@@ -157,8 +157,13 @@ export function continueHandoff(): void {
   engine.requestState(currentActorId);
 }
 
-function turnPlayerId(state: GameState): number | undefined {
-  return state.players[state.turnPlayerIndex]?.id;
+function handoffTarget(state: GameState): number | undefined {
+  const alive = state.players.filter(
+    (p) => localPlayerIds.includes(p.id) && !p.eliminated && !p.surrendered,
+  );
+  if (alive.length === 1) return alive[0].id;
+  const next = state.players[state.turnPlayerIndex]?.id;
+  return next !== undefined && localPlayerIds.includes(next) ? next : undefined;
 }
 
 function forward(event: string) {
@@ -170,12 +175,11 @@ function forward(event: string) {
     ) {
       const state = payload as GameState;
       lastState = state;
-      const next = turnPlayerId(state);
+      const next = handoffTarget(state);
       if (
         state.state === 'playing' &&
         next !== undefined &&
-        next !== currentActorId &&
-        localPlayerIds.includes(next)
+        next !== currentActorId
       ) {
         beginHandoff(next, bufferedTurnStarted);
         bufferedTurnStarted = null;

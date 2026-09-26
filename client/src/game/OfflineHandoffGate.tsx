@@ -64,8 +64,14 @@ function OfflineHandoffGate({ game }: { game: GameState }) {
     );
   }
 
+  const aliveHumans = game.players.filter(
+    (p) => !p.isBot && !p.eliminated && !p.surrendered,
+  );
   const current =
-    connector.isOffline() && game.state === 'playing' && game.fogOfWar === 'on'
+    connector.isOffline() &&
+    game.state === 'playing' &&
+    game.fogOfWar === 'on' &&
+    aliveHumans.length >= 2
       ? game.players[game.turnPlayerIndex]
       : undefined;
 

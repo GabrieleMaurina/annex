@@ -126,6 +126,12 @@ const toxinTerritory = object(['id', 'permanent', 'roundsRemaining'], {
   roundsRemaining: int,
 });
 
+const seaShipsDelta = object(['seaTerritoryId', 'playerId', 'ships'], {
+  seaTerritoryId: int,
+  playerId: int,
+  ships: int,
+});
+
 const card = object(['territoryId', 'symbol'], {
   territoryId: { bsonType: ['number', 'null'] },
   symbol: { bsonType: ['string', 'null'] },
@@ -175,6 +181,7 @@ const actionFrame = object(
     'toxinTerritories',
     'radiationTerritories',
     'radiationUpcoming',
+    'seaShipsDelta',
     'hands',
     'playerStates',
     'animation',
@@ -188,6 +195,7 @@ const actionFrame = object(
     toxinTerritories: array(toxinTerritory),
     radiationTerritories: array(int),
     radiationUpcoming: array(int),
+    seaShipsDelta: array(seaShipsDelta),
     hands: array(hand),
     playerStates: array(playerState),
     animation,
@@ -350,13 +358,14 @@ const schema = {
         endedAt: int,
         mapGeneration: {
           bsonType: ['object', 'null'],
-          required: ['seed', 'size', 'type', 'fill'],
+          required: ['seed', 'size', 'type', 'fill', 'seas'],
           additionalProperties: false,
           properties: {
             seed: string,
             size: { enum: MAP_SIZES },
             type: { enum: GENERATION_TYPES },
             fill: { enum: FILL_VALUES },
+            seas: bool,
           },
         },
         playerMapId: { bsonType: ['string', 'null'] },

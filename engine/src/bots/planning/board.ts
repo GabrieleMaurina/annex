@@ -42,6 +42,23 @@ function addEnemyRoundTroops(ctx: PlanContext, s: SimState): void {
     s.troops.set(id, troopsIn(s, id) + ctx.game.roundNumber + 1);
 }
 
+function botFocus(
+  ctx: PlanContext,
+  s: SimState,
+  territoryId: number,
+  ownerId: number,
+): number {
+  let bot = 0;
+  let others = 0;
+  for (const n of neighborsOf(ctx, territoryId)) {
+    const neighborOwner = s.owners.get(n);
+    if (neighborOwner === undefined || neighborOwner === ownerId) continue;
+    if (neighborOwner === ctx.botId) bot++;
+    else others++;
+  }
+  return bot + others > 0 ? bot / (bot + others) : 0;
+}
+
 export function applyEnemyResponse(
   ctx: PlanContext,
   state: SimState,
@@ -60,8 +77,10 @@ export function applyEnemyResponse(
     const ownerId = s.owners.get(start);
     if (ownerId === undefined || isFriendly(ctx, ownerId)) continue;
     let from = start;
+    let attackers = Math.floor(
+      (troopsIn(s, start) - 1) * botFocus(ctx, s, start, ownerId),
+    );
     for (let sweep = 0; sweep < ENEMY_SWEEP_LIMIT; sweep++) {
-      const attackers = troopsIn(s, from) - 1;
       if (attackers < 2) break;
       let target: number | null = null;
       let targetTroops = Infinity;
@@ -75,10 +94,11 @@ export function applyEnemyResponse(
       }
       if (target === null || attackers <= targetTroops * attackRatio + 1) break;
       const survivors = Math.max(1, Math.round(attackers - targetTroops * 0.9));
-      s.troops.set(from, 1);
+      s.troops.set(from, troopsIn(s, from) - attackers);
       s.owners.set(target, ownerId);
       s.troops.set(target, survivors);
       from = target;
+      attackers = survivors - 1;
     }
   }
   return s;

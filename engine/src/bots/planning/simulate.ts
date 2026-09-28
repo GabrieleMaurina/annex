@@ -62,6 +62,7 @@ const CHAIN_FLOOR = 0.08;
 const EXACT_COMBAT_CAP = 60;
 const FEASIBILITY_RATIO = 0.55;
 const ROLL_DEFEAT_SURVIVAL = 0.5;
+const RISKY_WIN = 0.7;
 const MAX_FORTIFY_SOURCES = 5;
 
 interface RollAttempt {
@@ -367,6 +368,38 @@ function blendRollScore(
   );
 }
 
+function firstStepWin(
+  ctx: PlanContext,
+  state: SimState,
+  stack: StackPlan,
+): number {
+  const target = stack.route[0];
+  if (target === undefined || state.owners.get(target) === ctx.botId) return 1;
+  return stepOutcome(
+    ctx,
+    troopsIn(state, stack.startId) - 1,
+    troopsIn(state, target),
+    defenceDiceAt(ctx, target),
+  ).winProbability;
+}
+
+function riskiestStack(
+  ctx: PlanContext,
+  state: SimState,
+  stacks: StackPlan[],
+): StackPlan | undefined {
+  let riskiest: StackPlan | undefined;
+  let lowest = RISKY_WIN;
+  for (const stack of stacks) {
+    const win = firstStepWin(ctx, state, stack);
+    if (win < lowest) {
+      lowest = win;
+      riskiest = stack;
+    }
+  }
+  return riskiest;
+}
+
 export function simulateTurn(
   ctx: PlanContext,
   candidate: Candidate,
@@ -375,11 +408,12 @@ export function simulateTurn(
   const state = snapshotState(ctx);
   applyDeployments(state, candidate.deployments);
 
-  const rollStack = candidate.stacks.find(
-    (stack) =>
-      candidate.objectives[stack.objectiveIndex].kind === 'roll' ||
-      isStackFight(ctx, state, stack.startId, stack.route[0]),
-  );
+  const rollStack =
+    candidate.stacks.find(
+      (stack) =>
+        candidate.objectives[stack.objectiveIndex].kind === 'roll' ||
+        isStackFight(ctx, state, stack.startId, stack.route[0]),
+    ) ?? riskiestStack(ctx, state, candidate.stacks);
   const roll: RollAttempt | null = rollStack
     ? {
         stack: rollStack,

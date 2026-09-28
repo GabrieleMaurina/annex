@@ -3,6 +3,7 @@ import { DIFFICULTIES, PERSONALITIES } from './randomize';
 
 export interface Bucket {
   points: number;
+  squares: number;
   count: number;
 }
 export type BucketEntry = [string, Bucket];
@@ -16,8 +17,9 @@ export function mergeBuckets(all: BucketEntry[][]): BucketMap {
   const merged: BucketMap = new Map();
   for (const entries of all)
     for (const [k, b] of entries) {
-      const cur = merged.get(k) ?? { points: 0, count: 0 };
+      const cur = merged.get(k) ?? { points: 0, squares: 0, count: 0 };
       cur.points += b.points;
+      cur.squares += b.squares;
       cur.count += b.count;
       merged.set(k, cur);
     }
@@ -40,6 +42,41 @@ export function average(bucket: Bucket | undefined): number {
   return bucket && bucket.count > 0 ? bucket.points / bucket.count : 0;
 }
 
+const CONFIDENCE_Z = 1.96;
+
+function varianceOfMean(bucket: Bucket): number {
+  if (bucket.count < 2) return Infinity;
+  const mean = average(bucket);
+  const variance =
+    (bucket.squares - bucket.count * mean * mean) / (bucket.count - 1);
+  return Math.max(0, variance) / bucket.count;
+}
+
+export function margin(bucket: Bucket): number {
+  return CONFIDENCE_Z * Math.sqrt(varianceOfMean(bucket));
+}
+
+function gapMargin(a: Bucket, b: Bucket): number {
+  return CONFIDENCE_Z * Math.sqrt(varianceOfMean(a) + varianceOfMean(b));
+}
+
+function signed(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}`;
+}
+
+function comparison(
+  higher: Bucket,
+  lower: Bucket,
+): Omit<StatFinding, 'message'> {
+  const gap = average(higher) - average(lower);
+  const gapError = gapMargin(higher, lower);
+  return { ok: gap > 0, gap, margin: gapError };
+}
+
+function gapText(finding: Omit<StatFinding, 'message'>): string {
+  return ` | gap ${signed(finding.gap)} ± ${finding.margin.toFixed(2)}`;
+}
+
 export function percentile(values: number[], p: number): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -52,6 +89,8 @@ export function maxValue(values: number[]): number {
 
 export interface StatFinding {
   ok: boolean;
+  gap: number;
+  margin: number;
   message: string;
 }
 
@@ -64,12 +103,14 @@ export function checkDifficultyOrdering(buckets: BucketMap): StatFinding[] {
       if (!lower || !higher) continue;
       const lowerAvg = average(lower);
       const higherAvg = average(higher);
+      const result = comparison(higher, lower);
       findings.push({
-        ok: higherAvg > lowerAvg,
+        ...result,
         message:
           `${personality} ${DIFFICULTIES[i]} (${higherAvg.toFixed(2)} avg pts, n=${higher.count}) ` +
           `must score more than ${personality} ${DIFFICULTIES[i - 1]} ` +
-          `(${lowerAvg.toFixed(2)} avg pts, n=${lower.count})`,
+          `(${lowerAvg.toFixed(2)} avg pts, n=${lower.count})` +
+          gapText(result),
       });
     }
   }
@@ -87,12 +128,14 @@ export function checkBalancedSuperiority(buckets: BucketMap): StatFinding[] {
       const other = buckets.get(key(personality, difficulty));
       if (!other) continue;
       const otherAvg = average(other);
+      const result = comparison(balanced, other);
       findings.push({
-        ok: balancedAvg > otherAvg,
+        ...result,
         message:
           `balanced ${difficulty} (${balancedAvg.toFixed(2)} avg pts, n=${balanced.count}) ` +
           `must score more than ${personality} ${difficulty} ` +
-          `(${otherAvg.toFixed(2)} avg pts, n=${other.count})`,
+          `(${otherAvg.toFixed(2)} avg pts, n=${other.count})` +
+          gapText(result),
       });
     }
   }
@@ -157,6 +200,12 @@ export function buildSummaryData(input: ReportInput): SummaryData {
   };
 }
 
+function certaintyLine(findings: StatFinding[]): string {
+  const failed = findings.filter((f) => !f.ok);
+  const clear = failed.filter((f) => -f.gap > f.margin).length;
+  return `  ${failed.length} failed: ${clear} clearly (gap beyond margin), ${failed.length - clear} within noise`;
+}
+
 export function formatReport(input: ReportInput): string {
   const lines: string[] = [];
   lines.push('== bot AI simulation report ==');
@@ -173,7 +222,9 @@ export function formatReport(input: ReportInput): string {
     for (const difficulty of DIFFICULTIES) {
       const bucket = input.buckets.get(key(personality, difficulty));
       row.push(
-        bucket ? `${average(bucket).toFixed(2)} (n=${bucket.count})` : 'n/a',
+        bucket
+          ? `${average(bucket).toFixed(2)} ±${margin(bucket).toFixed(2)} (n=${bucket.count})`
+          : 'n/a',
       );
     }
     lines.push(row.join('\t'));
@@ -190,6 +241,7 @@ export function formatReport(input: ReportInput): string {
   );
   for (const f of input.difficultyFindings)
     lines.push(`  [${f.ok ? 'ok' : 'FAIL'}] ${f.message}`);
+  lines.push(certaintyLine(input.difficultyFindings));
   if (input.difficultyFindings.length === 0)
     lines.push(
       '  (skipped: no games recorded yet for any personality/difficulty pair)',
@@ -200,6 +252,7 @@ export function formatReport(input: ReportInput): string {
   );
   for (const f of input.balancedFindings)
     lines.push(`  [${f.ok ? 'ok' : 'FAIL'}] ${f.message}`);
+  lines.push(certaintyLine(input.balancedFindings));
   if (input.balancedFindings.length === 0)
     lines.push(
       '  (skipped: no games recorded yet for balanced at any difficulty)',

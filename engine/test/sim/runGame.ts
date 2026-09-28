@@ -100,7 +100,12 @@ export function runSimGame(
   baselinePlanner?: Planner,
 ): SimGameResult {
   ensureCallbacks();
-  const rng = mulberry32(Math.floor(Math.random() * 0xffffffff));
+  const seed = process.env.SIM_SEED;
+  const rng = mulberry32(
+    seed !== undefined
+      ? (Number(seed) * 100003 + gameNumber) >>> 0
+      : Math.floor(Math.random() * 0xffffffff),
+  );
   const name = `sim-${gameNumber}`;
   const roster = baselinePlanner
     ? versusRoster(rng, ROSTER_SIZE)

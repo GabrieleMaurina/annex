@@ -59,8 +59,9 @@ function main(baselinePlanner?: Planner): void {
       const k =
         ranked.identity.contestant ??
         key(ranked.identity.personality, ranked.identity.difficulty);
-      const bucket = points.get(k) ?? { points: 0, count: 0 };
+      const bucket = points.get(k) ?? { points: 0, squares: 0, count: 0 };
       bucket.points += ranked.points;
+      bucket.squares += ranked.points * ranked.points;
       bucket.count += 1;
       points.set(k, bucket);
     }

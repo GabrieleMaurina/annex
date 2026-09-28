@@ -14,4 +14,5 @@ export const defensiveWeights: Weights = {
   duelStack: 0,
   duelRoll: 0,
   aggression: 0,
+  keepStack: 0,
 };

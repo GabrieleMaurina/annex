@@ -24,7 +24,7 @@ import {
   simulateTurn,
 } from '../../src/bots/planning/simulate';
 import { emptyPlan } from '../../src/bots/planning/turnPlan';
-import { BotDifficulty, BotPersonality } from '../../src/types';
+import { BotDifficulty, BotPersonality, Game } from '../../src/types';
 import { ScenarioSpec, buildGame, planScenario } from '../testkit';
 
 function stackBoard(
@@ -656,39 +656,44 @@ test('an attack that would open a big closed enemy stack is passed over', () => 
   assert.equal(chosenEnd(40), 2);
 });
 
-test('a live attack that would seal off the bot own stack is passed over', () => {
-  const chosenStart = (bigStackTroops: number) => {
-    const spec = stackBoard(
-      [
-        [0, 1],
-        [5, 6],
-      ],
-      { 0: 1, 1: 2, 5: 1, 6: 2 },
-      { 0: bigStackTroops, 1: 3, 5: 5, 6: 3 },
+function sealChoiceStart(bigStackTroops: number, cards: Game['cards']): number {
+  const spec = stackBoard(
+    [
+      [0, 1],
+      [5, 6],
+    ],
+    { 0: 1, 1: 2, 5: 1, 6: 2 },
+    { 0: bigStackTroops, 1: 3, 5: 5, 6: 3 },
+  );
+  const { game, botId } = buildGame({ ...spec, cards });
+  game.turnPhase = 'attack';
+  game.troopsToDeploy = 0;
+  const plan = emptyPlan(game.roundNumber, botId);
+  plan.antiNukeDeployed = true;
+  plan.nukeLaunched = true;
+  const original = Math.random;
+  Math.random = () => 0.5;
+  try {
+    const { actions } = planBotTurn(
+      game,
+      botId,
+      { difficulty: 'hard', personality: 'balanced' },
+      plan,
     );
-    const { game, botId } = buildGame(spec);
-    game.turnPhase = 'attack';
-    game.troopsToDeploy = 0;
-    const plan = emptyPlan(game.roundNumber, botId);
-    plan.antiNukeDeployed = true;
-    plan.nukeLaunched = true;
-    const original = Math.random;
-    Math.random = () => 0.5;
-    try {
-      const { actions } = planBotTurn(
-        game,
-        botId,
-        { difficulty: 'hard', personality: 'balanced' },
-        plan,
-      );
-      const start = actions.find((a) => a.event === 'game:attackSelectStart');
-      return (start?.payload as { territoryId: number }).territoryId;
-    } finally {
-      Math.random = original;
-    }
-  };
-  assert.equal(chosenStart(30), 5);
-  assert.equal(chosenStart(10), 0);
+    const start = actions.find((a) => a.event === 'game:attackSelectStart');
+    return (start?.payload as { territoryId: number }).territoryId;
+  } finally {
+    Math.random = original;
+  }
+}
+
+test('a live attack that would seal off the bot own stack is passed over', () => {
+  assert.equal(sealChoiceStart(30, 'Constant'), 5);
+  assert.equal(sealChoiceStart(10, 'Constant'), 0);
+});
+
+test('balanced keeps its main stack when an extra attack earns nothing', () => {
+  assert.equal(sealChoiceStart(10, 'Off'), 5);
 });
 
 test('in a duel destroying an enemy stack is worth more than outside one', () => {

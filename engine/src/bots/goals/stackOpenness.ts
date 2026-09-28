@@ -19,11 +19,16 @@ const FULL_REACH = 4;
 const POWER_EXPONENT = 1.15;
 const STRUCTURAL = Infinity;
 const DUEL_OPEN_BOOST = 3;
+const CONSOLIDATION = 2;
 
 export function openStackWeight(ctx: PlanContext): number {
   return (
     Math.max(0, 1 + ctx.weights.stack) + DUEL_OPEN_BOOST * ctx.duel.stacking
   );
+}
+
+export function keepStackWeight(ctx: PlanContext): number {
+  return Math.max(0, ctx.weights.keepStack) * ctx.params.planningConfidence;
 }
 
 function sameSide(ctx: PlanContext, a: number, b: number): boolean {
@@ -200,8 +205,11 @@ export function conquestEndShare(
   toId: number,
   attackers: number,
 ): number {
-  const fromReach = reachTotal(stackReach(ctx, state, fromId, attackers));
-  const toReach = reachTotal(stackReach(ctx, state, toId, attackers));
+  const sharpness = 1 + CONSOLIDATION * keepStackWeight(ctx);
+  const fromReach =
+    reachTotal(stackReach(ctx, state, fromId, attackers)) ** sharpness;
+  const toReach =
+    reachTotal(stackReach(ctx, state, toId, attackers)) ** sharpness;
   const total = fromReach + toReach;
   return total > 0 ? toReach / total : 1;
 }

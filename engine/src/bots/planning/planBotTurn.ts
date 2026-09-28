@@ -13,8 +13,10 @@ import {
   stalematePressure,
   stalemateRamp,
 } from '../features/pressure';
+import { breaksMainStack } from '../goals/keepStack';
 import {
   conquestEndShare,
+  keepStackWeight,
   openStackWeight,
   openedEnemyStackPower,
   ownStackClosure,
@@ -88,6 +90,7 @@ const OVERWHELMING_RATIO = 10;
 const FINISHER_OVERWHELMING_RATIO = 2;
 const OPENED_STACK_PENALTY = 0.3;
 const OWN_STACK_CLOSURE_PENALTY = 0.3;
+const MAIN_STACK_PENALTY = 0.5;
 const HOLD_GARRISON_SHARE = 0.6;
 const MAX_FALLBACK_ATTACKS_PER_TURN = 16;
 const MAX_OVERWHELMING_ATTACKS_PER_TURN = 40;
@@ -400,7 +403,10 @@ function planAttack(
       openStackWeight(ctx) *
       OWN_STACK_CLOSURE_PENALTY *
       ownStackClosure(ctx, boardNow, startId, endId);
-    return opened + closed;
+    const spent = breaksMainStack(ctx, boardNow, startId, endId)
+      ? MAIN_STACK_PENALTY * keepStackWeight(ctx)
+      : 0;
+    return opened + closed + spent;
   };
   const passive =
     ctx.personality === 'defensive' &&

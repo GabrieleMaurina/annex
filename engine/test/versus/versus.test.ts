@@ -16,6 +16,7 @@ const skip =
 
 const ENGINE_DIR = path.join(__dirname, '..', '..');
 const MIN_SCORE_RATIO = 0.95;
+const CONFIDENCE_Z = 1.96;
 
 function extractBaseline(sha: string): string {
   const baseDir = path.join(ENGINE_DIR, '.baseline', sha);
@@ -37,6 +38,13 @@ function verifyResults(results: WorkerDoneMessage[], sha: string): void {
   const baseline = buckets.get('baseline');
   const currentAvg = average(current);
   const baselineAvg = average(baseline);
+  const diffs = results.flatMap((r) => r.versusDiffs);
+  const meanDiff = diffs.reduce((s, d) => s + d, 0) / diffs.length;
+  const variance =
+    diffs.reduce((s, d) => s + (d - meanDiff) ** 2, 0) /
+    Math.max(1, diffs.length - 1);
+  const margin = CONFIDENCE_Z * Math.sqrt(variance / diffs.length);
+  const ahead = diffs.filter((d) => d > 0).length / diffs.length;
 
   console.log(`== balanced hard: current vs ${BASE} (${sha.slice(0, 7)}) ==`);
   console.log(
@@ -47,6 +55,12 @@ function verifyResults(results: WorkerDoneMessage[], sha: string): void {
   );
   console.log(
     `  current scores ${((100 * currentAvg) / baselineAvg).toFixed(1)}% of baseline`,
+  );
+  console.log(
+    `  current - baseline ${meanDiff >= 0 ? '+' : ''}${meanDiff.toFixed(2)} ± ${margin.toFixed(2)} pts (95% confidence, n=${diffs.length})`,
+  );
+  console.log(
+    `  current finished ahead of baseline in ${(100 * ahead).toFixed(1)}% of games`,
   );
 
   assertNoFailures(results);

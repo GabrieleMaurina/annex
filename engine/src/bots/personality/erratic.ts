@@ -28,6 +28,7 @@ function randomWeights(): Weights {
     duelStack: Math.random() * 3,
     duelRoll: Math.random() * 3,
     aggression: Math.random(),
+    keepStack: Math.random(),
   };
 }
 

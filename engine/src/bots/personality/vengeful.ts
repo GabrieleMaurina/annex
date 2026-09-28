@@ -14,4 +14,5 @@ export const vengefulWeights: Weights = {
   duelStack: 1,
   duelRoll: 1.5,
   aggression: 0,
+  keepStack: 0,
 };

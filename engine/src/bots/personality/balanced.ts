@@ -21,4 +21,5 @@ export const balancedWeights: Weights = {
   duelStack: 3,
   duelRoll: 3,
   aggression: 1,
+  keepStack: 1,
 };

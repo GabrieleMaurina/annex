@@ -20,6 +20,7 @@ export interface WorkerProgressMessage {
 export interface WorkerDoneMessage {
   type: 'done';
   points: BucketEntry[];
+  versusDiffs: number[];
   planMs: [string, number[]][];
   dispatchFailures: number;
   finished: number;
@@ -38,6 +39,7 @@ function main(baselinePlanner?: Planner): void {
   const counter = new Int32Array(input.counter);
   const points = new Map<string, Bucket>();
   const planMs = new Map<string, number[]>();
+  const versusDiffs: number[] = [];
   let dispatchFailures = 0;
   let settingsFailures = 0;
   let finished = 0;
@@ -62,6 +64,12 @@ function main(baselinePlanner?: Planner): void {
       bucket.count += 1;
       points.set(k, bucket);
     }
+    const pointsOf = (contestant: string) =>
+      result.points.find((r) => r.identity.contestant === contestant)?.points;
+    const current = pointsOf('current');
+    const baseline = pointsOf('baseline');
+    if (current !== undefined && baseline !== undefined)
+      versusDiffs.push(current - baseline);
     for (const sample of result.planMsSamples) {
       const k = key(sample.identity.personality, sample.identity.difficulty);
       const arr = planMs.get(k) ?? [];
@@ -78,6 +86,7 @@ function main(baselinePlanner?: Planner): void {
   parentPort?.postMessage({
     type: 'done',
     points: [...points.entries()],
+    versusDiffs,
     planMs: [...planMs.entries()],
     dispatchFailures,
     finished,

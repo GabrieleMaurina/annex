@@ -14,6 +14,9 @@ const TROOP_STRENGTH = 0.5;
 const BONUS_STRENGTH = 3;
 const TRIAD_SIDES = 3;
 const MULTI_MIN_SIDES = 4;
+const RUNAWAY_ONSET = 1.5;
+const RUNAWAY_FULL = 2.5;
+const RUNAWAY_PREFERENCE = 0.6;
 
 export function playerStrengths(
   owners: Map<number, number>,
@@ -51,6 +54,20 @@ function weaknessBalance(mean: number, strength: number): number {
 function regimeFor(sideCount: number): StandingRegime {
   if (sideCount >= MULTI_MIN_SIDES) return 'multi';
   return sideCount === TRIAD_SIDES ? 'triad' : 'duel';
+}
+
+function runawayLeader(
+  sideStrength: Map<number, number>,
+  friendSides: Set<number>,
+): { side: number; share: number } | null {
+  const ranked = [...sideStrength].sort((a, b) => b[1] - a[1]);
+  if (ranked.length < 2 || friendSides.has(ranked[0][0])) return null;
+  const ratio = ranked[0][1] / Math.max(1, ranked[1][1]);
+  const share = Math.min(
+    1,
+    (ratio - RUNAWAY_ONSET) / (RUNAWAY_FULL - RUNAWAY_ONSET),
+  );
+  return share > 0 ? { side: ranked[0][0], share } : null;
 }
 
 function targetStance(
@@ -138,6 +155,18 @@ export function buildStanding(
     if (strength === undefined || friendSides.has(side)) continue;
     standing.preference.set(id, stance * weaknessBalance(mean, strength));
   }
+  const runaway =
+    regime === 'multi' ? runawayLeader(sideStrength, friendSides) : null;
+  if (runaway)
+    for (const id of alivePlayers)
+      if (sideOf(id) === runaway.side)
+        standing.preference.set(
+          id,
+          Math.max(
+            standing.preference.get(id) ?? 0,
+            RUNAWAY_PREFERENCE * runaway.share,
+          ),
+        );
   return standing;
 }
 

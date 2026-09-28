@@ -12,6 +12,7 @@ export interface Weights {
   duelStack: number;
   duelRoll: number;
   aggression: number;
+  keepStack: number;
 }
 
 export interface DifficultyParams {

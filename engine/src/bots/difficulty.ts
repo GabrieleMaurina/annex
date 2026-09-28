@@ -3,20 +3,20 @@ import { DifficultyParams } from './types';
 
 const PARAMS: Record<Exclude<BotDifficulty, 'idle'>, DifficultyParams> = {
   easy: {
-    noise: 0.7,
-    planningConfidence: 0.3,
+    noise: 0.77,
+    planningConfidence: 0.27,
     maxPlanDepth: 3,
     optimizeFortify: false,
     maxCampaigns: 1,
-    duelSkill: 0.3,
+    duelSkill: 0.27,
   },
   medium: {
-    noise: 0.35,
-    planningConfidence: 0.65,
+    noise: 0.37,
+    planningConfidence: 0.62,
     maxPlanDepth: 7,
     optimizeFortify: true,
     maxCampaigns: 2,
-    duelSkill: 0.65,
+    duelSkill: 0.62,
   },
   hard: {
     noise: 0.1,

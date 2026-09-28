@@ -14,6 +14,7 @@ export const killerWeights: Weights = {
   duelStack: 3,
   duelRoll: 3,
   aggression: 1,
+  keepStack: 0.5,
 };
 
 export const killerWeaknessThreshold = 0.35;

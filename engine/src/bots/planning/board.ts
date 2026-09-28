@@ -4,7 +4,11 @@ import { SideProgress, modeGoalFor } from '../features/mode/modeGoals';
 import { stalematePressure } from '../features/pressure';
 import { antiLeaderActive } from '../features/standing';
 import { modeScore } from '../goals/modeScore';
-import { openStackWeight, stackScores } from '../goals/stackOpenness';
+import {
+  keepStackWeight,
+  openStackWeight,
+  stackScores,
+} from '../goals/stackOpenness';
 import { standingScore } from '../goals/standingScore';
 import {
   PlanContext,
@@ -88,6 +92,8 @@ const FRONTIER_RISK = 0.5;
 const INTERIOR_WASTE = 0.12;
 const EXPOSURE = 0.35;
 const CONCENTRATION = 0.05;
+const KEEP_STACK = 0.3;
+export const KEEP_STACK_TARGET = 12;
 const OPEN_STACK = 0.03;
 const STACK_PRESSURE = 0.03;
 const DUEL_BREAK = 4;
@@ -106,7 +112,7 @@ const DAMAGE = 0.15;
 const CARD_VALUE_CAP = 40;
 const TROOP_SCALE_BASE = 20;
 
-function troopScale(state: SimState): number {
+export function troopScale(state: SimState): number {
   let total = 0;
   for (const troops of state.troops.values()) total += troops;
   return Math.max(1, total / Math.max(1, state.troops.size) / TROOP_SCALE_BASE);
@@ -179,21 +185,23 @@ function denial(ctx: PlanContext, state: SimState): number {
 function riskAndWaste(
   ctx: PlanContext,
   state: SimState,
-): { risk: number; waste: number; concentration: number } {
+): { risk: number; waste: number; concentration: number; largest: number } {
   let risk = 0;
   let waste = 0;
   let concentration = 0;
+  let largest = 0;
   for (const id of ownedIds(state, ctx.botId)) {
     const troops = troopsIn(state, id);
     if (isBotBorder(ctx, state, id)) {
       const threat = strongestThreatAt(ctx, state, id);
       risk += Math.max(0, threat - troops);
       concentration += Math.pow(Math.max(1, troops), 1.15);
+      largest = Math.max(largest, troops);
     } else if (!ctx.game.capitalTerritoryIds.has(id)) {
       waste += Math.max(0, troops - 1);
     }
   }
-  return { risk, waste, concentration };
+  return { risk, waste, concentration, largest };
 }
 
 function exposure(ctx: PlanContext, state: SimState): number {
@@ -262,7 +270,7 @@ function scoreState(
   state: SimState,
   cachedProgress?: SideProgress,
 ): number {
-  const { risk, waste, concentration } = riskAndWaste(ctx, state);
+  const { risk, waste, concentration, largest } = riskAndWaste(ctx, state);
   const leader = antiLeaderActive(ctx.standing)
     ? strongestOpponent(ctx, state)
     : null;
@@ -276,6 +284,11 @@ function scoreState(
   score -= (INTERIOR_WASTE * waste) / scale;
   score -= ctx.weights.defense * EXPOSURE * exposure(ctx, state);
   score += (CONCENTRATION * concentration) / scale;
+  score +=
+    (KEEP_STACK *
+      keepStackWeight(ctx) *
+      Math.min(largest, KEEP_STACK_TARGET * scale)) /
+    scale;
   const stacks = stackScores(ctx, state);
   score += (OPEN_STACK * openStackWeight(ctx) * stacks.open) / scale;
   score -=

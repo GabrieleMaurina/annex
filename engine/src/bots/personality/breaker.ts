@@ -14,4 +14,5 @@ export const breakerWeights: Weights = {
   duelStack: 1.5,
   duelRoll: 1,
   aggression: 1,
+  keepStack: 0.4,
 };

@@ -230,17 +230,8 @@ function canDeployTo(
   game: Game,
   territoryId: number,
 ): boolean {
-  return (
-    troopRoom(game, territoryId) >= 1 && isSupplied(ctx, game, territoryId)
-  );
-}
-
-function isSupplied(
-  ctx: PlanContext,
-  game: Game,
-  territoryId: number,
-): boolean {
   if (game.territoryOwners.get(territoryId) !== ctx.botId) return false;
+  if (troopRoom(game, territoryId) < 1) return false;
   if (game.supplyLines !== 'on') return true;
   return connectedFortifyTerritories(
     game,
@@ -277,14 +268,7 @@ function nextDeployment(
       (a, b) =>
         (game.territoryTroops.get(b) ?? 0) - (game.territoryTroops.get(a) ?? 0),
     )[0];
-  if (connected === undefined) {
-    const overflow = [...game.territoryOwners.keys()].find((id) =>
-      isSupplied(ctx, game, id),
-    );
-    return overflow === undefined
-      ? null
-      : { territoryId: overflow, troops: game.troopsToDeploy };
-  }
+  if (connected === undefined) return null;
   return {
     territoryId: connected,
     troops: Math.min(game.troopsToDeploy, troopRoom(game, connected)),

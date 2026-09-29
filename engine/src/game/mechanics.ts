@@ -225,10 +225,52 @@ export function supplyHubTerritoryIds(game: Game, playerId: number): number[] {
 export interface TroopDeposit {
   territoryId: number;
   troops: number;
-  spent: number;
 }
 
 export const MAX_TERRITORY_TROOPS = 1_000_000;
+
+export function deployableTroops(
+  troopsToDeploy: number,
+  territoryTroops: number,
+): number {
+  return Math.max(
+    0,
+    Math.min(troopsToDeploy, MAX_TERRITORY_TROOPS - territoryTroops),
+  );
+}
+
+export function deployTargetIds(game: Game, playerId: number): number[] {
+  const owned = ownedTerritoryIds(game, playerId);
+  if (game.supplyLines !== 'on') return owned;
+  const supplied = connectedFortifyTerritories(
+    game,
+    playerId,
+    supplyHubTerritoryIds(game, playerId),
+  );
+  return owned.filter((id) => supplied.has(id));
+}
+
+export function deployCapacity(game: Game, playerId: number): number {
+  return deployTargetIds(game, playerId).reduce(
+    (sum, id) =>
+      sum +
+      Math.max(0, MAX_TERRITORY_TROOPS - (game.territoryTroops.get(id) ?? 0)),
+    0,
+  );
+}
+
+export function awardDeployTroops(
+  game: Game,
+  playerId: number,
+  troops: number,
+): number {
+  const awarded = Math.max(
+    0,
+    Math.min(troops, deployCapacity(game, playerId) - game.troopsToDeploy),
+  );
+  game.troopsToDeploy += awarded;
+  return awarded;
+}
 
 export function addTroopsCapped(
   game: Game,
@@ -254,6 +296,11 @@ export function depositTroopsOnOwnedTerritory(
   if (troops < 1 || troops > game.troopsToDeploy)
     return { error: 'invalid troops' };
   if (
+    (game.territoryTroops.get(territoryId) ?? 0) + troops >
+    MAX_TERRITORY_TROOPS
+  )
+    return { error: 'territory troop cap exceeded' };
+  if (
     game.supplyLines === 'on' &&
     !connectedFortifyTerritories(
       game,
@@ -263,16 +310,14 @@ export function depositTroopsOnOwnedTerritory(
   )
     return { error: 'territory not connected to supply hub' };
 
-  const added = addTroopsCapped(game, territoryId, troops);
-  recordReplayFrame(game, {
-    type: 'deploy',
+  game.territoryTroops.set(
     territoryId,
-    troops: added,
-    playerId,
-  });
+    (game.territoryTroops.get(territoryId) ?? 0) + troops,
+  );
+  recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
   game.troopsToDeploy -= troops;
   game.selectedTerritoryId = null;
-  return { territoryId, troops: added, spent: troops };
+  return { territoryId, troops };
 }
 
 export interface DeployTroopsBreakdown {

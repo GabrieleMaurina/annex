@@ -1,5 +1,5 @@
 import { callbacks } from '../callbacks';
-import { addTroopsCapped } from '../game/mechanics';
+import { addTroopsCapped, awardDeployTroops } from '../game/mechanics';
 import {
   counterKey,
   evaluateCardSelection,
@@ -53,11 +53,11 @@ export function playCardSet(playerId: number, rawCards: unknown): GameResponse {
   returnCardsToDeck(game.deck, evaluated.cards);
   sendPlayerCards(game, playerId);
 
-  game.troopsToDeploy += evaluated.baseValue;
   const bonusDeposits = evaluated.territoryBonusIds.map((territoryId) => ({
     territoryId,
     troops: addTroopsCapped(game, territoryId, 2),
   }));
+  const awarded = awardDeployTroops(game, playerId, evaluated.baseValue);
   for (const { territoryId, troops } of bonusDeposits) {
     recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
   }
@@ -75,7 +75,8 @@ export function playCardSet(playerId: number, rawCards: unknown): GameResponse {
 
   const cardSetPlayedPayload = {
     playerId,
-    troops: evaluated.totalValue,
+    troops:
+      awarded + bonusDeposits.reduce((sum, deposit) => sum + deposit.troops, 0),
     cards: evaluated.cards,
     territoryBonusCount: evaluated.territoryBonusIds.length,
   };

@@ -30,7 +30,7 @@ export function placeTroop(
   if ('error' in result) return { ok: false, error: result.error };
 
   const pool = game.placementTroopPools.get(playerId) ?? 0;
-  game.placementTroopPools.set(playerId, pool - result.spent);
+  game.placementTroopPools.set(playerId, pool - result.troops);
   fogFilterEmit(game, 'game:deployed', callbacks.onDeployed, (viewerId) => {
     const visible = visibleTerritoryIdsOrAll(game, viewerId);
     if (visible !== null && !visible.has(result.territoryId)) return null;

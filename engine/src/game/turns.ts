@@ -13,8 +13,11 @@ import {
 import { attackFullPath } from './combat/seaBridge';
 import { checkGameEnd } from './end';
 import {
+  MAX_TERRITORY_TROOPS,
   addTroopsCapped,
+  awardDeployTroops,
   calculateDeployTroopsBreakdown,
+  deployTargetIds,
   ownedTerritoryIds,
   ownsAnyTerritory,
   turnOrderBonus,
@@ -127,19 +130,33 @@ function dropTroopsRandomly(
   deposits: Map<number, number>,
   countsAsGained: boolean,
 ) {
-  const territoryIds = ownedTerritoryIds(game, playerId);
-  if (territoryIds.length === 0) return;
-
-  if (countsAsGained) bumpStat(game, playerId, 'troopsGained', amount);
-  const tally = new Map<number, number>();
-  while (amount > 0) {
-    const territoryId =
-      territoryIds[Math.floor(Math.random() * territoryIds.length)];
-    tally.set(territoryId, (tally.get(territoryId) ?? 0) + 1);
-    amount--;
+  const room = new Map<number, number>();
+  for (const id of deployTargetIds(game, playerId)) {
+    const free = MAX_TERRITORY_TROOPS - (game.territoryTroops.get(id) ?? 0);
+    if (free > 0) room.set(id, free);
   }
-  for (const [territoryId, requested] of tally) {
-    const troops = addTroopsCapped(game, territoryId, requested);
+  const open = [...room.keys()];
+  const tally = new Map<number, number>();
+  let placed = 0;
+  while (placed < amount && open.length > 0) {
+    const index = Math.floor(Math.random() * open.length);
+    const territoryId = open[index];
+    tally.set(territoryId, (tally.get(territoryId) ?? 0) + 1);
+    placed++;
+    const left = room.get(territoryId)! - 1;
+    room.set(territoryId, left);
+    if (left === 0) {
+      open[index] = open[open.length - 1];
+      open.pop();
+    }
+  }
+
+  if (countsAsGained) bumpStat(game, playerId, 'troopsGained', placed);
+  for (const [territoryId, troops] of tally) {
+    game.territoryTroops.set(
+      territoryId,
+      (game.territoryTroops.get(territoryId) ?? 0) + troops,
+    );
     deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + troops);
     recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
   }
@@ -422,12 +439,14 @@ export function beginNextSpecialPhase(game: Game) {
 function startDeployPhase(game: Game, playerId: number) {
   game.deployCardMandate = (game.playerCards.get(playerId)?.length ?? 0) >= 5;
   const breakdown = calculateDeployTroopsBreakdown(game, playerId);
-  game.troopsToDeploy =
+  const earned =
     breakdown.territories +
     breakdown.bonuses +
     breakdown.capitals +
     breakdown.roundTroops +
     breakdown.bounties;
+  game.troopsToDeploy = 0;
+  const awarded = awardDeployTroops(game, playerId, earned);
   const turnStartedPayload = {
     playerId,
     roundNumber: game.roundNumber,
@@ -436,6 +455,7 @@ function startDeployPhase(game: Game, playerId: number) {
     troopsFromCapitals: breakdown.capitals,
     troopsFromRoundTroops: breakdown.roundTroops,
     troopsFromBounties: breakdown.bounties,
+    troopsWithheld: earned - awarded,
   };
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
     callbacks.onTurnStarted(viewerId, turnStartedPayload);

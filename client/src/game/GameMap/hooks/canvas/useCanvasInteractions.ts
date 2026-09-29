@@ -1,4 +1,4 @@
-import { MAX_TERRITORY_TROOPS } from 'engine';
+import { deployableTroops } from 'engine';
 import { useCallback, useRef, useState } from 'react';
 import { connector } from '../../../../connector';
 import type { Ack } from '../../../../lib/types';
@@ -756,10 +756,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       if (deploySeaTerritoryId !== null) cancelDeploySea();
       quickDeploy(
         vertex.id,
-        Math.min(
-          troopsToDeploy,
-          MAX_TERRITORY_TROOPS - (ownerById.get(vertex.id)?.troops ?? 0),
-        ),
+        deployableTroops(troopsToDeploy, ownerById.get(vertex.id)?.troops ?? 0),
       );
       return;
     }

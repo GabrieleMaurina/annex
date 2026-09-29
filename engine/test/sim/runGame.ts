@@ -16,6 +16,14 @@ import { createBotPlayer, playersById } from '../../src/session/players';
 import { games } from '../../src/session/store';
 import { ActionLogEntry, LoggedAction, compressActions } from './actionLog';
 import {
+  BehaviorEntry,
+  BehaviorStats,
+  emptyBehavior,
+  recordAttack,
+  recordTurnEnd,
+  runawayLeader,
+} from './behavior';
+import {
   BoardSnapshot,
   MapGeometry,
   RoundSample,
@@ -91,6 +99,7 @@ export interface SimGameResult {
   samples: RoundSample[];
   planMsSamples: PlanMsSample[];
   points: RankedBot[];
+  behavior: BehaviorEntry[];
   turns: TurnLogEntry[];
 }
 
@@ -163,6 +172,7 @@ export function runSimGame(
   let nextBoardRound = BOARD_EVERY_ROUNDS;
   let conquestTotal = 0;
   let lastConquestRound = 0;
+  const behavior = new Map<string, BehaviorStats>();
 
   while (game.state === 'playing' && game.roundNumber < roundCap) {
     if (Date.now() - gameStartedAt > GAME_DEADLINE_MS) {
@@ -185,6 +195,13 @@ export function runSimGame(
     const planner =
       identity.contestant === 'baseline' ? baselinePlanner! : planBotTurn;
     const phaseAtStart = game.turnPhase;
+    const realTurn = phaseAtStart === 'deploy';
+    const behaviorKey =
+      identity.contestant ?? `${identity.personality}:${identity.difficulty}`;
+    const stats = behavior.get(behaviorKey) ?? emptyBehavior();
+    behavior.set(behaviorKey, stats);
+    const leaderId = realTurn ? runawayLeader(game, playerId) : null;
+    let lastTargetId: number | null = null;
     const actions: LoggedAction[] = [];
     let planMs = 0;
     let objectives = '';
@@ -216,6 +233,13 @@ export function runSimGame(
       }
 
       for (const action of res.actions) {
+        if (action.event === 'game:attackSelectEnd') {
+          const targetId = (action.payload as { territoryId: number })
+            .territoryId;
+          if (targetId !== lastTargetId)
+            recordAttack(stats, game, leaderId, targetId);
+          lastTargetId = targetId;
+        }
         const outcome = dispatchBotAction(
           playerId,
           action.event,
@@ -256,6 +280,7 @@ export function runSimGame(
       forceEndTurnImpl(game, true);
       clearTurnTimer(name);
     }
+    if (realTurn) recordTurnEnd(stats, game, playerId);
 
     const conquests = totalConquests(game, botIds);
     if (conquests > conquestTotal) {
@@ -314,6 +339,7 @@ export function runSimGame(
     samples,
     planMsSamples,
     points,
+    behavior: [...behavior.entries()],
     turns,
   };
 }

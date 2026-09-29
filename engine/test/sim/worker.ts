@@ -1,6 +1,7 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import * as path from 'path';
 import { BotDifficulty, BotPersonality } from '../../src/types';
+import { BehaviorEntry, mergeBehavior } from './behavior';
 import { writeGameLog } from './logStore';
 import { Bucket, BucketEntry } from './report';
 import { Planner, runSimGame } from './runGame';
@@ -21,6 +22,7 @@ export interface WorkerDoneMessage {
   type: 'done';
   points: BucketEntry[];
   versusDiffs: number[];
+  behavior: BehaviorEntry[];
   planMs: [string, number[]][];
   dispatchFailures: number;
   finished: number;
@@ -40,6 +42,7 @@ function main(baselinePlanner?: Planner): void {
   const points = new Map<string, Bucket>();
   const planMs = new Map<string, number[]>();
   const versusDiffs: number[] = [];
+  const behaviors: BehaviorEntry[][] = [];
   let dispatchFailures = 0;
   let settingsFailures = 0;
   let finished = 0;
@@ -71,6 +74,7 @@ function main(baselinePlanner?: Planner): void {
     const baseline = pointsOf('baseline');
     if (current !== undefined && baseline !== undefined)
       versusDiffs.push(current - baseline);
+    behaviors.push(result.behavior);
     for (const sample of result.planMsSamples) {
       const k = key(sample.identity.personality, sample.identity.difficulty);
       const arr = planMs.get(k) ?? [];
@@ -88,6 +92,7 @@ function main(baselinePlanner?: Planner): void {
     type: 'done',
     points: [...points.entries()],
     versusDiffs,
+    behavior: [...mergeBehavior(behaviors).entries()],
     planMs: [...planMs.entries()],
     dispatchFailures,
     finished,

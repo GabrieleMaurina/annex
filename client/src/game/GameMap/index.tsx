@@ -1,4 +1,4 @@
-import { MAX_TERRITORY_TROOPS } from 'engine';
+import { deployableTroops } from 'engine';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { useWhiteIcon } from '../../common/icon';
 import { connector } from '../../connector';
@@ -425,10 +425,9 @@ function GameMap({
 
   const deployMaxTroops = Math.max(
     0,
-    Math.min(
+    deployableTroops(
       troopsToDeploy,
-      MAX_TERRITORY_TROOPS -
-        (ownerById.get(selectedTerritoryId ?? -1)?.troops ?? 0),
+      ownerById.get(selectedTerritoryId ?? -1)?.troops ?? 0,
     ),
   );
   const deployTroopsPanelOpen =

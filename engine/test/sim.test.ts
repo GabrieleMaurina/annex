@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { formatBehavior, mergeBehavior } from './sim/behavior';
 import { writeSummary } from './sim/logStore';
 import { assertNoFailures, gamesFromEnv, runSimulation } from './sim/pool';
+import { DIFFICULTIES, PERSONALITIES } from './sim/randomize';
 import {
   buildSummaryData,
   checkBalancedSuperiority,
@@ -55,6 +57,14 @@ function verifyResults(results: WorkerDoneMessage[], logDir: string): void {
   };
 
   console.log(formatReport(reportInput));
+  console.log(
+    formatBehavior(
+      mergeBehavior(results.map((r) => r.behavior)),
+      PERSONALITIES.flatMap((personality) =>
+        DIFFICULTIES.map((difficulty) => `${personality}:${difficulty}`),
+      ),
+    ),
+  );
   writeSummary(logDir, buildSummaryData(reportInput));
 
   assertNoFailures(results);

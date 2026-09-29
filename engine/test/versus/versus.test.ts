@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as path from 'path';
+import { formatBehavior, mergeBehavior } from '../sim/behavior';
 import { assertNoFailures, gamesFromEnv, runSimulation } from '../sim/pool';
 import { versusDifficulty } from '../sim/randomize';
 import { average, mergeBuckets } from '../sim/report';
@@ -64,6 +65,12 @@ function verifyResults(results: WorkerDoneMessage[], sha: string): void {
   );
   console.log(
     `  current finished ahead of baseline in ${(100 * ahead).toFixed(1)}% of games`,
+  );
+  console.log(
+    formatBehavior(mergeBehavior(results.map((r) => r.behavior)), [
+      'current',
+      'baseline',
+    ]),
   );
 
   assertNoFailures(results);

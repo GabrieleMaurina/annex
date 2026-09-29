@@ -202,6 +202,11 @@ export function createLogFormatter() {
         source('troopsFromCapitals', 'capitals');
         source('troopsFromRoundTroops', 'round troops');
         source('troopsFromBounties', 'bounties');
+        if (n('troopsWithheld') > 0)
+          push(
+            color,
+            `${name} could not receive ${n('troopsWithheld')} troops (territory troop limit)`,
+          );
         break;
       }
       case 'game:capitalPlacementStarted':

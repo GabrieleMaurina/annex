@@ -236,7 +236,12 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   const visibleSet = visibleTerritoryIds
     ? new Set([
         ...visibleTerritoryIds,
-        ...(frozenVisibleTerritoryIdsRef.current ?? []),
+        ...[...(frozenVisibleTerritoryIdsRef.current ?? [])].filter(
+          (id) =>
+            !territoryById.has(id) ||
+            ownerById.has(id) ||
+            frozenTerritoryDataRef.current.has(id),
+        ),
       ])
     : null;
   const fadeForPair = (

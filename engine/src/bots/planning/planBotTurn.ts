@@ -53,6 +53,7 @@ import {
   PlanContext,
   SimState,
   buildContext,
+  isStrategist,
   planDepth,
   snapshotState,
 } from './context';
@@ -94,6 +95,7 @@ const MAIN_STACK_PENALTY = 0.5;
 const HOLD_GARRISON_SHARE = 0.6;
 const MAX_FALLBACK_ATTACKS_PER_TURN = 16;
 const MAX_OVERWHELMING_ATTACKS_PER_TURN = 40;
+export const MAX_REPLANS = 3;
 
 function result(actions: BotAction[], plan: TurnPlan): PlanBotTurnResult {
   return { actions, plan };
@@ -228,8 +230,17 @@ function canDeployTo(
   game: Game,
   territoryId: number,
 ): boolean {
+  return (
+    troopRoom(game, territoryId) >= 1 && isSupplied(ctx, game, territoryId)
+  );
+}
+
+function isSupplied(
+  ctx: PlanContext,
+  game: Game,
+  territoryId: number,
+): boolean {
   if (game.territoryOwners.get(territoryId) !== ctx.botId) return false;
-  if (troopRoom(game, territoryId) < 1) return false;
   if (game.supplyLines !== 'on') return true;
   return connectedFortifyTerritories(
     game,
@@ -266,7 +277,14 @@ function nextDeployment(
       (a, b) =>
         (game.territoryTroops.get(b) ?? 0) - (game.territoryTroops.get(a) ?? 0),
     )[0];
-  if (connected === undefined) return null;
+  if (connected === undefined) {
+    const overflow = [...game.territoryOwners.keys()].find((id) =>
+      isSupplied(ctx, game, id),
+    );
+    return overflow === undefined
+      ? null
+      : { territoryId: overflow, troops: game.troopsToDeploy };
+  }
   return {
     territoryId: connected,
     troops: Math.min(game.troopsToDeploy, troopRoom(game, connected)),
@@ -377,6 +395,20 @@ function planAttack(
       continue;
     }
     break;
+  }
+
+  if (isStrategist(ctx) && (plan.replans ?? 0) < MAX_REPLANS) {
+    plan.replans = (plan.replans ?? 0) + 1;
+    const fresh = buildTurnPlan(ctx, 0, false);
+    if (fresh.attackSteps.length > 0) {
+      plan.objectives = fresh.objectives;
+      plan.attackSteps = [
+        ...plan.attackSteps.slice(0, plan.step),
+        ...fresh.attackSteps,
+      ];
+      plan.fortify = fresh.fortify;
+      return planAttack(ctx, game, plan);
+    }
   }
 
   plan.step = plan.attackSteps.length;

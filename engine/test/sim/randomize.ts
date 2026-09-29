@@ -96,11 +96,16 @@ export function randomRoster(rng: () => number, size: number): BotIdentity[] {
   }));
 }
 
+export function versusDifficulty(): BotDifficulty {
+  const value = process.env.VERSUS_DIFFICULTY as BotDifficulty | undefined;
+  return value && DIFFICULTIES.includes(value) ? value : 'hard';
+}
+
 export function versusRoster(rng: () => number, size: number): BotIdentity[] {
   const roster = randomRoster(rng, size - 2);
   for (const contestant of ['current', 'baseline'] as const)
     roster.splice(Math.floor(rng() * (roster.length + 1)), 0, {
-      difficulty: 'hard',
+      difficulty: versusDifficulty(),
       personality: 'balanced',
       contestant,
     });

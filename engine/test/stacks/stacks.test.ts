@@ -18,7 +18,7 @@ import {
   cloneState,
   snapshotState,
 } from '../../src/bots/planning/context';
-import { planBotTurn } from '../../src/bots/planning/planBotTurn';
+import { MAX_REPLANS, planBotTurn } from '../../src/bots/planning/planBotTurn';
 import {
   openStackDeployments,
   simulateTurn,
@@ -671,6 +671,7 @@ function sealChoiceStart(bigStackTroops: number, cards: Game['cards']): number {
   const plan = emptyPlan(game.roundNumber, botId);
   plan.antiNukeDeployed = true;
   plan.nukeLaunched = true;
+  plan.replans = MAX_REPLANS;
   const original = Math.random;
   Math.random = () => 0.5;
   try {

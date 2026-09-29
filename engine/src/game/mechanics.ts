@@ -225,6 +225,7 @@ export function supplyHubTerritoryIds(game: Game, playerId: number): number[] {
 export interface TroopDeposit {
   territoryId: number;
   troops: number;
+  spent: number;
 }
 
 export const MAX_TERRITORY_TROOPS = 1_000_000;
@@ -253,11 +254,6 @@ export function depositTroopsOnOwnedTerritory(
   if (troops < 1 || troops > game.troopsToDeploy)
     return { error: 'invalid troops' };
   if (
-    (game.territoryTroops.get(territoryId) ?? 0) + troops >
-    MAX_TERRITORY_TROOPS
-  )
-    return { error: 'territory troop cap exceeded' };
-  if (
     game.supplyLines === 'on' &&
     !connectedFortifyTerritories(
       game,
@@ -267,14 +263,16 @@ export function depositTroopsOnOwnedTerritory(
   )
     return { error: 'territory not connected to supply hub' };
 
-  game.territoryTroops.set(
+  const added = addTroopsCapped(game, territoryId, troops);
+  recordReplayFrame(game, {
+    type: 'deploy',
     territoryId,
-    (game.territoryTroops.get(territoryId) ?? 0) + troops,
-  );
-  recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
+    troops: added,
+    playerId,
+  });
   game.troopsToDeploy -= troops;
   game.selectedTerritoryId = null;
-  return { territoryId, troops };
+  return { territoryId, troops: added, spent: troops };
 }
 
 export interface DeployTroopsBreakdown {

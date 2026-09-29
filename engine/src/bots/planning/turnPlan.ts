@@ -68,6 +68,7 @@ export interface TurnPlan {
   roundNumber: number;
   playerId: number;
   nukeLaunched?: boolean;
+  replans?: number;
   antiNukeDeployed?: boolean;
   topology?: MapTopology;
 }

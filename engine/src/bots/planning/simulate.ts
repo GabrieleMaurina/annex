@@ -5,6 +5,7 @@ import {
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { expectedOutcome } from '../features/combat';
 import { modeGoalFor, sideProgress } from '../features/mode/modeGoals';
+import { RISKY_STEP_WIN, StepRisk, expectedScore } from '../goals/failureRisk';
 import {
   bestStackingBorder,
   conquestEndShare,
@@ -22,6 +23,7 @@ import {
   hostileNeighborsOf,
   isBotBorder,
   isFriendly,
+  isStrategist,
   neighborsOf,
   ownedIds,
   planDepth,
@@ -120,6 +122,7 @@ export function walkStack(
   state: SimState,
   stack: StackPlan,
   steps: AttackStep[],
+  risks?: StepRisk[],
 ): number {
   let cur = stack.startId;
   let objectiveProb = 1;
@@ -151,6 +154,16 @@ export function walkStack(
       objectiveIndex: stack.objectiveIndex,
       minWinProb: Math.max(0.3, outcome.winProbability - 0.3),
     });
+    if (risks && outcome.winProbability < RISKY_STEP_WIN)
+      risks.push({
+        before: cloneState(state),
+        fromId: cur,
+        toId: next,
+        attackers,
+        defenders,
+        reach: objectiveProb,
+        win: outcome.winProbability,
+      });
     objectiveProb *= outcome.winProbability;
 
     const defenderId = state.owners.get(next);
@@ -408,12 +421,15 @@ export function simulateTurn(
   const state = snapshotState(ctx);
   applyDeployments(state, candidate.deployments);
 
-  const rollStack =
-    candidate.stacks.find(
-      (stack) =>
-        candidate.objectives[stack.objectiveIndex].kind === 'roll' ||
-        isStackFight(ctx, state, stack.startId, stack.route[0]),
-    ) ?? riskiestStack(ctx, state, candidate.stacks);
+  const strategist = isStrategist(ctx);
+  const risks: StepRisk[] = [];
+  const rollStack = strategist
+    ? undefined
+    : (candidate.stacks.find(
+        (stack) =>
+          candidate.objectives[stack.objectiveIndex].kind === 'roll' ||
+          isStackFight(ctx, state, stack.startId, stack.route[0]),
+      ) ?? riskiestStack(ctx, state, candidate.stacks));
   const roll: RollAttempt | null = rollStack
     ? {
         stack: rollStack,
@@ -427,7 +443,13 @@ export function simulateTurn(
   let successProbability = 1;
   let rollProbability = 1;
   for (const stack of candidate.stacks) {
-    const probability = walkStack(ctx, state, stack, attackSteps);
+    const probability = walkStack(
+      ctx,
+      state,
+      stack,
+      attackSteps,
+      strategist ? risks : undefined,
+    );
     successProbability *= probability;
     if (stack === rollStack) rollProbability = probability;
   }
@@ -462,8 +484,9 @@ export function simulateTurn(
     );
   }
 
-  const score =
-    roll && defeat
+  const score = strategist
+    ? expectedScore(ctx, risks, fortify.score)
+    : roll && defeat
       ? blendRollScore(ctx, roll, defeat, rollProbability, fortify.score)
       : fortify.score;
 

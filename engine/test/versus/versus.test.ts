@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as path from 'path';
 import { assertNoFailures, gamesFromEnv, runSimulation } from '../sim/pool';
+import { versusDifficulty } from '../sim/randomize';
 import { average, mergeBuckets } from '../sim/report';
 import { WorkerDoneMessage } from '../sim/worker';
 
@@ -12,7 +13,7 @@ const BASE = process.env.BASE ?? 'HEAD';
 const skip =
   TOTAL_GAMES > 0
     ? false
-    : 'set VERSUS=<number of games> to compare balanced hard against BASE=<commit> (default HEAD), e.g. VERSUS=200';
+    : 'set VERSUS=<number of games> to compare balanced VERSUS_DIFFICULTY (default hard) against BASE=<commit> (default HEAD), e.g. VERSUS=200';
 
 const ENGINE_DIR = path.join(__dirname, '..', '..');
 const MIN_SCORE_RATIO = 0.95;
@@ -46,7 +47,9 @@ function verifyResults(results: WorkerDoneMessage[], sha: string): void {
   const margin = CONFIDENCE_Z * Math.sqrt(variance / diffs.length);
   const ahead = diffs.filter((d) => d > 0).length / diffs.length;
 
-  console.log(`== balanced hard: current vs ${BASE} (${sha.slice(0, 7)}) ==`);
+  console.log(
+    `== balanced ${versusDifficulty()}: current vs ${BASE} (${sha.slice(0, 7)}) ==`,
+  );
   console.log(
     `  current  ${currentAvg.toFixed(2)} avg pts (n=${current?.count ?? 0})`,
   );
@@ -66,12 +69,12 @@ function verifyResults(results: WorkerDoneMessage[], sha: string): void {
   assertNoFailures(results);
   assert.ok(
     currentAvg >= baselineAvg * MIN_SCORE_RATIO,
-    `current balanced hard (${currentAvg.toFixed(2)} avg pts) scores more than ` +
+    `current balanced ${versusDifficulty()} (${currentAvg.toFixed(2)} avg pts) scores more than ` +
       `${Math.round(100 * (1 - MIN_SCORE_RATIO))}% below ${BASE} (${baselineAvg.toFixed(2)} avg pts)`,
   );
 }
 
-test('balanced hard versus previous version', { skip }, () => {
+test('balanced versus previous version', { skip }, () => {
   const sha = execSync(`git rev-parse ${BASE}`, { encoding: 'utf8' }).trim();
   return runSimulation('versus', TOTAL_GAMES, extractBaseline(sha), (results) =>
     verifyResults(results, sha),

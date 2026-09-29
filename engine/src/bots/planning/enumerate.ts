@@ -209,9 +209,10 @@ function confidentEnough(
 export function buildTurnPlan(
   ctx: PlanContext,
   troopsToDeploy: number,
+  allowCards = true,
 ): TurnPlan {
   const state = snapshotState(ctx);
-  const cardSet = chooseCardSet(ctx.game, ctx.botId);
+  const cardSet = allowCards ? chooseCardSet(ctx.game, ctx.botId) : null;
   const budget = troopsToDeploy + (cardSet ? estimateCardBonus(ctx) : 0);
   const jitter = ctx.params.noise * 4;
 
@@ -334,7 +335,9 @@ export function buildTurnPlan(
       cardSet,
     );
 
-  const needsCard = ctx.personality !== 'defensive' || ctx.game.cards !== 'Off';
+  const needsCard =
+    !ctx.game.conqueredThisTurn &&
+    (ctx.personality !== 'defensive' || ctx.game.cards !== 'Off');
   if (needsCard && bestPlan.objectives[0]?.kind === 'defensive') {
     const cardEntry = scored.find(
       (e) =>

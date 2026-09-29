@@ -9,6 +9,7 @@ const PARAMS: Record<Exclude<BotDifficulty, 'idle'>, DifficultyParams> = {
     optimizeFortify: false,
     maxCampaigns: 1,
     duelSkill: 0.27,
+    adaptivePlanning: false,
   },
   medium: {
     noise: 0.37,
@@ -17,6 +18,7 @@ const PARAMS: Record<Exclude<BotDifficulty, 'idle'>, DifficultyParams> = {
     optimizeFortify: true,
     maxCampaigns: 2,
     duelSkill: 0.62,
+    adaptivePlanning: true,
   },
   hard: {
     noise: 0.1,
@@ -25,6 +27,7 @@ const PARAMS: Record<Exclude<BotDifficulty, 'idle'>, DifficultyParams> = {
     optimizeFortify: true,
     maxCampaigns: 3,
     duelSkill: 1,
+    adaptivePlanning: true,
   },
 };
 
@@ -37,6 +40,7 @@ export function difficultyParams(difficulty: BotDifficulty): DifficultyParams {
       optimizeFortify: false,
       maxCampaigns: 1,
       duelSkill: 0,
+      adaptivePlanning: false,
     };
   return PARAMS[difficulty];
 }

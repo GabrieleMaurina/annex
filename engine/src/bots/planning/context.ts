@@ -226,6 +226,10 @@ export function buildContext(
   };
 }
 
+export function isStrategist(ctx: PlanContext): boolean {
+  return ctx.personality === 'balanced' && ctx.params.adaptivePlanning;
+}
+
 export function neighborsOf(ctx: PlanContext, territoryId: number): number[] {
   return ctx.neighbors.get(territoryId) ?? [];
 }
@@ -273,7 +277,7 @@ export function snapshotState(ctx: PlanContext): SimState {
     troops,
     damageByPlayer: new Map(),
     conquestsByPlayer: new Map(),
-    conquered: false,
+    conquered: ctx.game.conqueredThisTurn,
     troopsLost: 0,
   };
 }

@@ -22,4 +22,5 @@ export interface DifficultyParams {
   optimizeFortify: boolean;
   maxCampaigns: number;
   duelSkill: number;
+  adaptivePlanning: boolean;
 }

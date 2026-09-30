@@ -219,7 +219,7 @@ function Game({
 
   if (!game) {
     return (
-      <div className="position-fixed top-0 start-0 m-3 d-flex align-items-center">
+      <div className="position-fixed top-0 start-50 translate-middle-x mt-3 d-flex align-items-center">
         <Spinner size="sm" className="me-2" />
         Loading...
       </div>

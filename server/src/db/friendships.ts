@@ -1,8 +1,10 @@
 import { ObjectId } from 'mongodb';
+import { UNKNOWN_COUNTRY } from '../countries';
 import { ensureCollection, getCollection } from './mongo';
 import {
   DEFAULT_ELO,
   findUserById,
+  getCountriesByIds,
   getElosByIds,
   getUsernamesByIds,
 } from './users/users';
@@ -21,6 +23,7 @@ export interface FriendSummary {
   id: string;
   username: string;
   elo: number;
+  country: string;
 }
 
 export interface FriendsOverview {
@@ -78,27 +81,30 @@ export function getFriendsOverview(userId: string): Promise<FriendsOverview> {
       const otherOf = (doc: FriendshipDoc) =>
         (doc.userA.equals(me) ? doc.userB : doc.userA).toString();
       const ids = docs.map(otherOf);
-      return Promise.all([getUsernamesByIds(ids), getElosByIds(ids)]).then(
-        ([names, elos]) => {
-          const summary = (id: string): FriendSummary => ({
-            id,
-            username: names.get(id) ?? '?',
-            elo: elos.get(id) ?? DEFAULT_ELO,
-          });
-          const overview: FriendsOverview = {
-            friends: [],
-            incoming: [],
-            outgoing: [],
-          };
-          for (const doc of docs) {
-            const person = summary(otherOf(doc));
-            if (doc.status === 'accepted') overview.friends.push(person);
-            else if (doc.requesterId.equals(me)) overview.outgoing.push(person);
-            else overview.incoming.push(person);
-          }
-          return overview;
-        },
-      );
+      return Promise.all([
+        getUsernamesByIds(ids),
+        getElosByIds(ids),
+        getCountriesByIds(ids),
+      ]).then(([names, elos, countries]) => {
+        const summary = (id: string): FriendSummary => ({
+          id,
+          username: names.get(id) ?? '?',
+          elo: elos.get(id) ?? DEFAULT_ELO,
+          country: countries.get(id) ?? UNKNOWN_COUNTRY,
+        });
+        const overview: FriendsOverview = {
+          friends: [],
+          incoming: [],
+          outgoing: [],
+        };
+        for (const doc of docs) {
+          const person = summary(otherOf(doc));
+          if (doc.status === 'accepted') overview.friends.push(person);
+          else if (doc.requesterId.equals(me)) overview.outgoing.push(person);
+          else overview.incoming.push(person);
+        }
+        return overview;
+      });
     });
 }
 

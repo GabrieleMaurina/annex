@@ -1,6 +1,8 @@
 import { Badge, Table } from 'react-bootstrap';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
+import Flag from './badges/Flag';
+import RankIcon from './badges/RankIcon';
 import { useWhiteIcon } from './icon';
 import { isPlayerMuted } from './mutedPlayers';
 import Tip from './tooltips/Tip';
@@ -149,6 +151,8 @@ function ResultsTable({
                     ref={nameRef?.(p.id)}
                     className="d-inline-flex align-items-center gap-1"
                   >
+                    <RankIcon elo={p.elo} />
+                    <Flag country={p.country} />
                     <span className="text-truncate" style={{ minWidth: 0 }}>
                       {p.id === selfId && showYouLabel ? 'You' : p.name}
                     </span>

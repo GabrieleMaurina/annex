@@ -8,7 +8,11 @@ import {
   GENERATION_TYPES,
   MAP_SIZES,
 } from './users/preferences';
-import { findUserByUsername, getUsernamesByIds } from './users/users';
+import {
+  findUserByUsername,
+  getCountriesByIds,
+  getUsernamesByIds,
+} from './users/users';
 
 const NAME = 'games';
 
@@ -465,7 +469,10 @@ function resolveNames(
   ]).then(([mapNameById, nameByUserId]) => ({ mapNameById, nameByUserId }));
 }
 
-export type ResolvedGamePlayer = Omit<GamePlayerDoc, 'name'> & { name: string };
+export type ResolvedGamePlayer = Omit<GamePlayerDoc, 'name'> & {
+  name: string;
+  country: string | null;
+};
 export type ResolvedGameDoc = Omit<GameDoc, 'players'> & {
   id: string;
   mapName: string;
@@ -479,13 +486,20 @@ export function getGameById(id: string): Promise<ResolvedGameDoc | null> {
     .then((doc) => {
       if (!doc) return null;
       const { _id, ...rest } = doc;
-      return resolveNames([rest]).then(({ mapNameById, nameByUserId }) => ({
+      const userIds = rest.players
+        .map((p) => p.userId)
+        .filter((userId): userId is string => userId !== null);
+      return Promise.all([
+        resolveNames([rest]),
+        getCountriesByIds(userIds),
+      ]).then(([{ mapNameById, nameByUserId }, countryByUserId]) => ({
         ...rest,
         id: _id.toString(),
         mapName: mapNameById.get(rest.mapId) ?? '?',
         players: rest.players.map((p) => ({
           ...p,
           name: playerDisplayName(p, nameByUserId),
+          country: p.userId ? (countryByUserId.get(p.userId) ?? null) : null,
         })),
       }));
     });

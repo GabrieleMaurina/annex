@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Container, Form, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import Flag from '../../common/badges/Flag';
+import RankIcon from '../../common/badges/RankIcon';
 import {
   Field,
   FilterDetails,
@@ -51,7 +53,8 @@ function PlayerRowView({
     <tr role="button" style={{ cursor: 'pointer' }} onClick={onOpen}>
       <td>
         <div className="d-flex align-items-center gap-2">
-          <img src={`/ranks/${rank.image}.svg`} width={24} height={24} alt="" />
+          <RankIcon elo={row.elo} size={24} />
+          <Flag country={row.country} />
           {row.username}
         </div>
       </td>

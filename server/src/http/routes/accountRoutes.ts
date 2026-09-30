@@ -2,11 +2,13 @@ import { Router } from 'express';
 import { ObjectId } from 'mongodb';
 import { isValidPassword } from '../../auth/auth';
 import { hashPassword, verifyPassword } from '../../auth/password';
+import { isSelectableCountry } from '../../countries';
 import {
   deleteReportsForPicture,
   findUserById,
   getUserPicture,
   reportPicture,
+  setCountry,
   setPassword,
   setUserPicture,
   unsetUserPicture,
@@ -47,6 +49,7 @@ accountRouter.get('/account', (_req, res) => {
         ok: true,
         username: user.username,
         email: user.email,
+        country: user.country,
         picture:
           picture && !picture.dangerous
             ? `data:${picture.mime};base64,${picture.data}`
@@ -98,6 +101,22 @@ accountRouter.post('/account/password', (req, res) => {
         },
       );
     })
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+accountRouter.post('/account/country', (req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  const country = bodyOf(req).country;
+  if (!isSelectableCountry(country)) {
+    res.json({ ok: false, error: 'invalid country' });
+    return;
+  }
+  setCountry(session.userId, country)
+    .then(() => res.json({ ok: true }))
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });
 

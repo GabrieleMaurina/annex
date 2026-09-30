@@ -17,6 +17,8 @@ import {
   Row,
 } from 'react-bootstrap';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import Flag from '../../common/badges/Flag';
+import RankIcon from '../../common/badges/RankIcon';
 import { formatError } from '../../common/formatError';
 import { connector } from '../../connector';
 import {
@@ -27,7 +29,6 @@ import {
   subscribeMessages,
   unreadCount,
 } from '../../lib/messages';
-import { rankForElo } from '../../lib/ranks';
 import { playSound } from '../../lib/sounds';
 import type {
   Account,
@@ -45,22 +46,12 @@ interface Partner {
   userId: string;
   username: string;
   elo: number;
+  country: string | null;
 }
 
-interface ActiveConversation extends Conversation {
+interface ActiveConversation extends Omit<Conversation, 'country'> {
+  country: string | null;
   blocked: boolean;
-}
-
-function RankIcon({ elo }: { elo: number }) {
-  const rank = rankForElo(elo);
-  return (
-    <img
-      src={`/ranks/${rank.image}.svg`}
-      width={20}
-      height={20}
-      alt={rank.name}
-    />
-  );
 }
 
 function formatTime(ms: number): string {
@@ -93,6 +84,7 @@ function Messages({ account }: Props) {
           userId: profile.id,
           username: profile.username,
           elo: profile.elo,
+          country: profile.country,
         });
     });
   }, [to]);
@@ -119,6 +111,7 @@ function Messages({ account }: Props) {
       userId: partner.userId,
       username: existing?.username ?? partner.username,
       elo: existing?.elo ?? partner.elo,
+      country: existing?.country ?? partner.country,
       messages: existing?.messages ?? [],
       blocked: overview.blocked.some((b) => b.userId === partner.userId),
     };
@@ -205,6 +198,7 @@ function Messages({ account }: Props) {
                         userId: r.id,
                         username: r.username,
                         elo: 0,
+                        country: null,
                       })
                     }
                   >
@@ -232,11 +226,13 @@ function Messages({ account }: Props) {
                         userId: c.userId,
                         username: c.username,
                         elo: c.elo,
+                        country: c.country,
                       })
                     }
                   >
                     <div className="d-flex align-items-center gap-2">
                       <RankIcon elo={c.elo} />
+                      <Flag country={c.country} />
                       <span className="flex-grow-1 text-truncate">
                         {c.username}
                       </span>
@@ -266,6 +262,7 @@ function Messages({ account }: Props) {
                     className="d-flex align-items-center gap-2"
                   >
                     <RankIcon elo={b.elo} />
+                    <Flag country={b.country} />
                     <span className="flex-grow-1 text-truncate">
                       {b.username}
                     </span>
@@ -294,6 +291,7 @@ function Messages({ account }: Props) {
             <>
               <div className="d-flex align-items-center gap-2 mb-3">
                 <RankIcon elo={conversation.elo} />
+                <Flag country={conversation.country} />
                 <Button
                   variant="link"
                   className="p-0 text-decoration-none fs-5"

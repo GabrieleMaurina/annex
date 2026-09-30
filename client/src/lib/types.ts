@@ -9,6 +9,7 @@ export interface ClientSettings {
 export interface Account {
   username: string;
   elo: number;
+  country: string;
 }
 
 export type AccountResult =
@@ -16,6 +17,7 @@ export type AccountResult =
       ok: true;
       username: string;
       email: string;
+      country: string;
       picture: string | null;
       pictureDangerous: boolean;
     }
@@ -285,6 +287,8 @@ export interface GameState {
     id: number;
     userId?: string | null;
     name: string;
+    country: string | null;
+    elo: number | null;
     team: number;
     color: number;
     territoryCount: number | null;
@@ -302,8 +306,18 @@ export interface GameState {
     botDifficulty: BotDifficulty | 'random' | null;
     botPersonality: BotPersonality | 'random' | null;
   }[];
-  spectators: { id: number; name: string }[];
-  bannedPlayers: { id: number; name: string }[];
+  spectators: {
+    id: number;
+    name: string;
+    country: string | null;
+    elo: number | null;
+  }[];
+  bannedPlayers: {
+    id: number;
+    name: string;
+    country: string | null;
+    elo: number | null;
+  }[];
   territories: {
     id: number;
     ownerId: number;
@@ -616,6 +630,7 @@ export interface StoredGame {
     playerId: number;
     userId: string | null;
     name: string;
+    country: string | null;
     isBot: boolean;
     botDifficulty: BotDifficulty | null;
     botPersonality: BotPersonality | null;
@@ -737,6 +752,7 @@ export interface PlayerRow {
   id: string;
   username: string;
   elo: number;
+  country: string;
   gamesPlayed: number;
 }
 
@@ -763,6 +779,7 @@ export interface PlayerProfile {
   id: string;
   username: string;
   elo: number;
+  country: string;
   gamesPlayed: number;
   wins: number;
   averagePlacing: number | null;
@@ -775,6 +792,7 @@ export interface Friend {
   id: string;
   username: string;
   elo: number;
+  country: string;
 }
 
 export interface FriendsOverview {
@@ -793,6 +811,7 @@ export interface Conversation {
   userId: string;
   username: string;
   elo: number;
+  country: string;
   messages: ConversationMessage[];
 }
 
@@ -800,6 +819,7 @@ export interface BlockedPlayer {
   userId: string;
   username: string;
   elo: number;
+  country: string;
 }
 
 export interface MessagesOverview {

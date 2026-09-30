@@ -1,4 +1,6 @@
 import { Button, Table } from 'react-bootstrap';
+import Flag from '../common/badges/Flag';
+import RankIcon from '../common/badges/RankIcon';
 import type { GameState } from '../lib/types';
 
 interface Props {
@@ -27,7 +29,13 @@ function SpectatorList({ spectators, isHost, banId }: Props) {
           {spectators.map((s, i) => (
             <tr key={s.id}>
               <td className="align-middle text-nowrap px-3">{i + 1}</td>
-              <td className="align-middle">{s.name}</td>
+              <td className="align-middle">
+                <span className="d-inline-flex align-items-center gap-2">
+                  <RankIcon elo={s.elo} />
+                  <Flag country={s.country} />
+                  {s.name}
+                </span>
+              </td>
               {isHost && (
                 <td className="text-nowrap align-middle">
                   <Button

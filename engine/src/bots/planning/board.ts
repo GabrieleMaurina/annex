@@ -209,18 +209,23 @@ function riskAndWaste(
   let risk = 0;
   let waste = 0;
   let concentration = 0;
-  let largest = 0;
+  let largestBorder = 0;
+  let largestAny = 0;
+  let hasBorder = false;
   for (const id of ownedIds(state, ctx.botId)) {
     const troops = troopsIn(state, id);
+    largestAny = Math.max(largestAny, troops);
     if (isBotBorder(ctx, state, id)) {
+      hasBorder = true;
       const threat = strongestThreatAt(ctx, state, id);
       risk += Math.max(0, threat - troops);
       concentration += Math.pow(Math.max(1, troops), 1.15);
-      largest = Math.max(largest, troops);
+      largestBorder = Math.max(largestBorder, troops);
     } else if (!ctx.game.capitalTerritoryIds.has(id)) {
       waste += Math.max(0, troops - 1);
     }
   }
+  const largest = hasBorder ? largestBorder : largestAny;
   return { risk, waste, concentration, largest };
 }
 

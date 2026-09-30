@@ -1,4 +1,6 @@
 import { Badge, Button, Form, Table } from 'react-bootstrap';
+import Flag from '../common/badges/Flag';
+import RankIcon from '../common/badges/RankIcon';
 import { useWhiteIcon } from '../common/icon';
 import PlayerNameEditor from '../common/inputs/PlayerNameEditor';
 import { isPlayerMuted } from '../common/mutedPlayers';
@@ -141,6 +143,8 @@ function PlayerRoster({
                         }}
                         className="d-inline-flex align-items-center gap-2 flex-wrap"
                       >
+                        <RankIcon elo={p.elo} />
+                        <Flag country={p.country} />
                         {p.id === selfId && !connector.isOffline() ? (
                           'You'
                         ) : setLocalPlayerName && i >= 1 && !p.isBot ? (

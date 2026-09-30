@@ -1,4 +1,5 @@
 import { Binary, ObjectId, WithId } from 'mongodb';
+import { COUNTRY_CODES } from '../../countries';
 import { ensureCollection, getCollection } from '../mongo';
 import {
   ClientSettings,
@@ -22,6 +23,7 @@ export interface User {
   passwordHash: string;
   emailValidated: boolean;
   elo: number;
+  country: string;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
@@ -42,6 +44,7 @@ interface UserDoc {
   password: string;
   validated_email: boolean;
   elo: number;
+  country: string;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
@@ -83,6 +86,7 @@ const schema = {
         'password',
         'validated_email',
         'elo',
+        'country',
         'clientSettings',
         'gameSettings',
         'homeFilters',
@@ -92,6 +96,7 @@ const schema = {
       properties: {
         _id: {},
         elo: { bsonType: 'number' },
+        country: { enum: COUNTRY_CODES },
         picture: {
           bsonType: ['object', 'null'],
           required: ['id', 'data', 'mime', 'dangerous'],
@@ -155,6 +160,7 @@ function toUser(doc: WithId<UserDoc>): User {
     passwordHash: doc.password,
     emailValidated: doc.validated_email,
     elo: doc.elo,
+    country: doc.country,
     clientSettings: sanitizeClientSettings(doc.clientSettings),
     gameSettings: sanitizeGameSettings(doc.gameSettings),
     homeFilters: sanitizeHomeFilters(doc.homeFilters),
@@ -244,6 +250,7 @@ export function insertUser(data: {
   username: string;
   email: string;
   passwordHash: string;
+  country: string;
 }): Promise<{ id: string } | { duplicate: true }> {
   return collection()
     .insertOne({
@@ -254,6 +261,7 @@ export function insertUser(data: {
       password: data.passwordHash,
       validated_email: false,
       elo: DEFAULT_ELO,
+      country: data.country,
       clientSettings: { ...DEFAULT_CLIENT_SETTINGS },
       gameSettings: { ...DEFAULT_GAME_SETTINGS },
       homeFilters: { ...DEFAULT_HOME_FILTERS },
@@ -284,6 +292,12 @@ export function setPassword(
       { _id: new ObjectId(userId) },
       { $set: { password: passwordHash } },
     )
+    .then(() => undefined);
+}
+
+export function setCountry(userId: string, country: string): Promise<void> {
+  return collection()
+    .updateOne({ _id: new ObjectId(userId) }, { $set: { country } })
     .then(() => undefined);
 }
 
@@ -344,6 +358,19 @@ export function getElosByIds(ids: string[]): Promise<Map<string, number>> {
     )
     .toArray()
     .then((docs) => new Map(docs.map((doc) => [doc._id.toString(), doc.elo])));
+}
+
+export function getCountriesByIds(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return Promise.resolve(new Map());
+  return collection()
+    .find(
+      { _id: { $in: ids.map((id) => new ObjectId(id)) } },
+      { projection: { country: 1 } },
+    )
+    .toArray()
+    .then(
+      (docs) => new Map(docs.map((doc) => [doc._id.toString(), doc.country])),
+    );
 }
 
 export function setElos(
@@ -443,6 +470,7 @@ export interface PlayerRow {
   id: string;
   username: string;
   elo: number;
+  country: string;
   gamesPlayed: number;
 }
 
@@ -469,6 +497,7 @@ export interface PlayerProfile {
   id: string;
   username: string;
   elo: number;
+  country: string;
   gamesPlayed: number;
   wins: number;
   averagePlacing: number | null;
@@ -489,7 +518,7 @@ export function listPlayers(query: PlayersQuery): Promise<PlayersPage> {
   }
 
   return collection()
-    .find(filter, { projection: { username: 1, elo: 1 } })
+    .find(filter, { projection: { username: 1, elo: 1, country: 1 } })
     .toArray()
     .then((docs) =>
       computeGameStats(docs.map((doc) => doc._id.toString())).then(
@@ -501,6 +530,7 @@ export function listPlayers(query: PlayersQuery): Promise<PlayersPage> {
               id,
               username: doc.username,
               elo: doc.elo,
+              country: doc.country,
               gamesPlayed: stats?.gamesPlayed ?? 0,
             };
           });
@@ -551,6 +581,7 @@ export function getPlayerProfile(
           id,
           username: doc.username,
           elo,
+          country: doc.country,
           gamesPlayed: stats?.gamesPlayed ?? 0,
           wins: stats?.wins ?? 0,
           averagePlacing: averagePlacing(stats),

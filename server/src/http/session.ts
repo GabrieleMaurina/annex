@@ -15,7 +15,11 @@ export function sessionRouter(
     const { token, session } = identityOf(res);
     res.json({
       account: session
-        ? { username: session.username, elo: session.elo }
+        ? {
+            username: session.username,
+            elo: session.elo,
+            country: session.country,
+          }
         : null,
       name: session ? session.username : anonNameFor(token),
       gameName: playerGame(token, session ? session.userId : null),

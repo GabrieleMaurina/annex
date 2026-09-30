@@ -15,7 +15,7 @@ const PROTECTED_SHARE = 0.5;
 function keepSize(ctx: PlanContext, state: SimState): number {
   return (
     KEEP_STACK_TARGET *
-    keepStackWeight(ctx) *
+    Math.min(1, keepStackWeight(ctx)) *
     troopScale(state) *
     (1 - stalematePressure(ctx.game))
   );

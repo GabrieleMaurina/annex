@@ -48,6 +48,8 @@ export interface GeneratedGameMap {
 export interface Player {
   id: number;
   name: string;
+  country: string | null;
+  elo: number | null;
   gameName: string | null;
   connected: boolean;
   isBot: boolean;

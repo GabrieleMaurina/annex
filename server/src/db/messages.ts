@@ -1,9 +1,11 @@
 import { containsProfanity } from 'engine';
 import { ObjectId } from 'mongodb';
+import { UNKNOWN_COUNTRY } from '../countries';
 import { ensureCollection, getCollection } from './mongo';
 import {
   DEFAULT_ELO,
   findUserById,
+  getCountriesByIds,
   getElosByIds,
   getUsernamesByIds,
 } from './users/users';
@@ -39,6 +41,7 @@ export interface Conversation {
   userId: string;
   username: string;
   elo: number;
+  country: string;
   messages: ConversationMessage[];
 }
 
@@ -46,6 +49,7 @@ export interface BlockedPlayer {
   userId: string;
   username: string;
   elo: number;
+  country: string;
 }
 
 export interface MessagesOverview {
@@ -148,31 +152,36 @@ export function getMessagesOverview(userId: string): Promise<MessagesOverview> {
       return { conversations: [], blocked: [] } satisfies MessagesOverview;
 
     const idList = [...ids];
-    return Promise.all([getUsernamesByIds(idList), getElosByIds(idList)]).then(
-      ([names, elos]) => {
-        const name = (id: string) => names.get(id) ?? '?';
-        const elo = (id: string) => elos.get(id) ?? DEFAULT_ELO;
+    return Promise.all([
+      getUsernamesByIds(idList),
+      getElosByIds(idList),
+      getCountriesByIds(idList),
+    ]).then(([names, elos, countries]) => {
+      const name = (id: string) => names.get(id) ?? '?';
+      const elo = (id: string) => elos.get(id) ?? DEFAULT_ELO;
+      const country = (id: string) => countries.get(id) ?? UNKNOWN_COUNTRY;
 
-        const conversations: Conversation[] = [...threads.entries()]
-          .map(([id, list]) => ({
-            userId: id,
-            username: name(id),
-            elo: elo(id),
-            messages: list,
-          }))
-          .sort(
-            (a, b) => (lastAt.get(b.userId) ?? 0) - (lastAt.get(a.userId) ?? 0),
-          );
-
-        const blocked: BlockedPlayer[] = [...blockedIds].map((id) => ({
+      const conversations: Conversation[] = [...threads.entries()]
+        .map(([id, list]) => ({
           userId: id,
           username: name(id),
           elo: elo(id),
-        }));
+          country: country(id),
+          messages: list,
+        }))
+        .sort(
+          (a, b) => (lastAt.get(b.userId) ?? 0) - (lastAt.get(a.userId) ?? 0),
+        );
 
-        return { conversations, blocked };
-      },
-    );
+      const blocked: BlockedPlayer[] = [...blockedIds].map((id) => ({
+        userId: id,
+        username: name(id),
+        elo: elo(id),
+        country: country(id),
+      }));
+
+      return { conversations, blocked };
+    });
   });
 }
 

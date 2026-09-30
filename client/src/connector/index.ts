@@ -456,7 +456,12 @@ export const connector = {
   },
 
   register(
-    data: { username: string; email: string; password: string },
+    data: {
+      username: string;
+      email: string;
+      password: string;
+      country: string;
+    },
     cb: (res: AuthAck) => void,
   ): void {
     httpSend<AuthAck>('POST', '/auth/register', data)
@@ -514,6 +519,12 @@ export const connector = {
     cb: (res: AuthAck) => void,
   ): void {
     httpSend<AuthAck>('POST', '/account/password', data)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  setCountry(country: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/account/country', { country })
       .then(cb)
       .catch(() => cb({ ok: false, error: 'server error' }));
   },

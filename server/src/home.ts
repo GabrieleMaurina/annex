@@ -34,10 +34,15 @@ function resolveIdentity(engine: Engine, rawToken: string): Promise<Identity> {
     if (session) {
       let playerId = playerIdByUserId.get(session.userId);
       if (playerId === undefined) {
-        playerId = engine.addPlayer(session.username).id;
+        playerId = engine.addPlayer(
+          session.username,
+          session.country,
+          session.elo,
+        ).id;
         playerIdByUserId.set(session.userId, playerId);
       } else {
         engine.setName(playerId, session.username);
+        engine.setBadges(playerId, session.country, session.elo);
       }
       return { playerId, token, userId: session.userId };
     }

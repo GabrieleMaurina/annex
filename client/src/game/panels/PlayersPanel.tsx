@@ -1,6 +1,8 @@
 import type { MutableRefObject, ReactNode } from 'react';
 import { useRef } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
+import Flag from '../../common/badges/Flag';
+import RankIcon from '../../common/badges/RankIcon';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useWhiteIcon } from '../../common/icon';
 import { isPlayerMuted } from '../../common/mutedPlayers';
@@ -433,6 +435,8 @@ function PlayersPanel({
                   )}
                   <td className="align-middle" style={rowStyle}>
                     <div className="d-flex align-items-center gap-1">
+                      <RankIcon elo={p.elo} />
+                      <Flag country={p.country} />
                       <span className="text-truncate" style={{ minWidth: 0 }}>
                         {p.id === selfId ? 'You' : p.name}
                       </span>
@@ -577,7 +581,12 @@ function PlayersPanel({
             <div className="fw-bold mt-2 mb-1">Spectators</div>
             <ListGroup variant="flush">
               {spectators.map((s) => (
-                <ListGroup.Item key={s.id} className="py-1">
+                <ListGroup.Item
+                  key={s.id}
+                  className="py-1 d-flex align-items-center gap-1"
+                >
+                  <RankIcon elo={s.elo} />
+                  <Flag country={s.country} />
                   {s.name}
                 </ListGroup.Item>
               ))}

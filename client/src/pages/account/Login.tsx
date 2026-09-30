@@ -1,6 +1,8 @@
 import { containsProfanity } from 'engine';
 import { useState } from 'react';
 import { Alert, Button, Container, Form, InputGroup } from 'react-bootstrap';
+import { guessCountry } from '../../common/badges/countries';
+import CountrySelect from '../../common/badges/CountrySelect';
 import { formatError } from '../../common/formatError';
 import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
@@ -22,6 +24,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [country, setCountry] = useState(guessCountry);
   const [revealPassword, setRevealPassword] = useState(false);
   const [stayLoggedIn, setStayLoggedIn] = useState(true);
   const [error, setError] = useState('');
@@ -69,9 +72,13 @@ function Login({ account, onSessionChange, navigate }: Props) {
       setError(problem);
       return;
     }
+    if (!country) {
+      setError('select your country');
+      return;
+    }
     setBusy(true);
     setError('');
-    connector.register({ username, email, password }, (res) => {
+    connector.register({ username, email, password, country }, (res) => {
       setBusy(false);
       if (!res.ok) {
         setError(res.error);
@@ -235,6 +242,9 @@ function Login({ account, onSessionChange, navigate }: Props) {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
+                )}
+                {mode === 'register' && (
+                  <CountrySelect value={country} onChange={setCountry} />
                 )}
               </>
             )}

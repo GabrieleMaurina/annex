@@ -8,6 +8,7 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { Navigate } from 'react-router-dom';
+import CountrySelect from '../../common/badges/CountrySelect';
 import { formatError } from '../../common/formatError';
 import ImageCropper from '../../common/inputs/ImageCropper';
 import { connector } from '../../connector';
@@ -16,10 +17,12 @@ import type { Account, AccountResult } from '../../lib/types';
 
 interface Props {
   account: Account;
+  onCountryChange: () => void;
 }
 
-function AccountPage({ account }: Props) {
+function AccountPage({ account, onCountryChange }: Props) {
   const [details, setDetails] = useState<AccountResult | null>(null);
+  const [countryError, setCountryError] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [pictureMessage, setPictureMessage] = useState('');
   const [pictureError, setPictureError] = useState(false);
@@ -59,6 +62,18 @@ function AccountPage({ account }: Props) {
       setPictureError(!res.ok);
       setPictureMessage(res.ok ? 'profile picture removed' : res.error);
       if (res.ok) connector.getAccount(setDetails);
+    });
+  }
+
+  function changeCountry(country: string) {
+    setCountryError('');
+    connector.setCountry(country, (res) => {
+      if (!res.ok) {
+        setCountryError(res.error);
+        return;
+      }
+      connector.getAccount(setDetails);
+      onCountryChange();
     });
   }
 
@@ -104,7 +119,7 @@ function AccountPage({ account }: Props) {
 
   if (!details.ok) return <Navigate to="/" replace />;
 
-  const { picture, pictureDangerous: dangerous, email } = details;
+  const { picture, pictureDangerous: dangerous, email, country } = details;
 
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
@@ -118,6 +133,17 @@ function AccountPage({ account }: Props) {
           <div>
             <div className="small text-muted">Email</div>
             <div className="fs-5">{email}</div>
+          </div>
+          <div className="d-flex flex-column gap-1">
+            <div className="small text-muted">Country</div>
+            <div style={{ maxWidth: '32ch' }}>
+              <CountrySelect value={country} onChange={changeCountry} />
+            </div>
+            {countryError && (
+              <Alert variant="danger" className="py-1 px-2 mb-0 small">
+                {formatError(countryError)}
+              </Alert>
+            )}
           </div>
         </div>
 

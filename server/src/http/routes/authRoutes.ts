@@ -43,6 +43,7 @@ export function authRouter(inLiveGame: InLiveGame): Router {
       username: data.username,
       email: data.email,
       password: data.password,
+      country: data.country,
     })
       .then((result) => res.json(result))
       .catch(() => res.json({ ok: false, error: 'server error' }));

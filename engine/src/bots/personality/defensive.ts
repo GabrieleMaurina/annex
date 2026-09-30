@@ -1,8 +1,8 @@
 import { Weights } from '../types';
 
 export const defensiveWeights: Weights = {
-  completeContinent: 0.3,
-  breakContinent: 0.3,
+  completeContinent: 2.5,
+  breakContinent: 0,
   eliminate: 0.3,
   stack: -1,
   grudge: 0.2,
@@ -10,7 +10,7 @@ export const defensiveWeights: Weights = {
   antiLeader: 0.3,
   defense: 3,
   holdChokepoint: 1.5,
-  duelBreak: 0.5,
+  duelBreak: 0,
   duelStack: 0,
   duelRoll: 0,
   aggression: 0,

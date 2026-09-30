@@ -5,6 +5,7 @@ import {
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { expectedOutcome } from '../features/combat';
 import { modeGoalFor, sideProgress } from '../features/mode/modeGoals';
+import { defensiveHome } from '../goals/defensiveHome';
 import { RISKY_STEP_WIN, StepRisk, expectedScore } from '../goals/failureRisk';
 import {
   bestStackingBorder,
@@ -563,9 +564,14 @@ export function defensiveDeployments(
   budget: number,
 ): Deployment[] {
   if (budget <= 0) return [];
-  const maxBorders = ctx.personality === 'defensive' ? Infinity : 3;
-  const borders = ownedIds(state, ctx.botId)
-    .filter((id) => isBotBorder(ctx, state, id) && supplyConnected(ctx, id))
+  const defensive = ctx.personality === 'defensive';
+  const maxBorders = defensive ? Infinity : 3;
+  const allBorders = ownedIds(state, ctx.botId).filter(
+    (id) => isBotBorder(ctx, state, id) && supplyConnected(ctx, id),
+  );
+  const home = defensive ? defensiveHome(ctx).ids : null;
+  const homeBorders = home ? allBorders.filter((id) => home.has(id)) : [];
+  const borders = (homeBorders.length > 0 ? homeBorders : allBorders)
     .map((id) => ({
       id,
       deficit: Math.max(

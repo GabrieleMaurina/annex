@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button, Container, Spinner, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
+import Flag from '../../common/badges/Flag';
+import RankIcon from '../../common/badges/RankIcon';
 import EloChart from '../../common/charts/EloChart';
 import { formatError } from '../../common/formatError';
 import FriendshipButton from '../../common/FriendshipButton';
@@ -19,9 +21,11 @@ import type {
   GameHistoryRow,
   GamesPage,
   GameSummary,
+  PlayerMapRow,
   PlayerProfile,
 } from '../../lib/types';
 import MapBrowser from '../../maps/MapBrowser';
+import MapPreviewModal from '../../maps/MapPreviewModal';
 
 const PAGE_SIZE = 20;
 
@@ -92,6 +96,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
     null,
   );
   const [reportMessage, setReportMessage] = useState('');
+  const [mapPreview, setMapPreview] = useState<PlayerMapRow | null>(null);
 
   useEffect(() => {
     if (!username) return;
@@ -217,7 +222,10 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
 
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
-      <h1 className="text-center mb-2">{profile.username}</h1>
+      <h1 className="d-flex justify-content-center align-items-center gap-2 mb-2">
+        <Flag country={profile.country} height={30} />
+        {profile.username}
+      </h1>
 
       <div className="d-flex flex-column align-items-center gap-1 mb-4">
         {profile.picture ? (
@@ -280,7 +288,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
 
       <div className="d-flex flex-wrap justify-content-evenly gap-5 mb-4 w-100">
         <div className="d-flex align-items-center gap-2">
-          <img src={`/ranks/${rank.image}.svg`} width={40} height={40} alt="" />
+          <RankIcon elo={profile.elo} size={40} />
           <span className="fs-5">{rank.name}</span>
         </div>
         <div className="text-center">
@@ -423,6 +431,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
                 account={account}
                 mode="browse"
                 authorId={profileId}
+                onRowClick={setMapPreview}
               />
             </div>
           )}
@@ -432,6 +441,12 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
           )}
         </>
       )}
+
+      <MapPreviewModal
+        account={account}
+        preview={mapPreview}
+        onHide={() => setMapPreview(null)}
+      />
     </Container>
   );
 }

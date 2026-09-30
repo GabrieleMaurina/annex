@@ -362,7 +362,7 @@ function App() {
           path="/account"
           element={
             !sessionReady ? null : account ? (
-              <AccountPage account={account} />
+              <AccountPage account={account} onCountryChange={refreshSession} />
             ) : (
               <Navigate to="/" replace />
             )

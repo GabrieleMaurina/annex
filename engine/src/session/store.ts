@@ -507,6 +507,17 @@ export function setName(playerId: number, name: string): void {
   if (player) player.name = name;
 }
 
+export function setBadges(
+  playerId: number,
+  country: string | null,
+  elo: number | null,
+): void {
+  const player = playersById.get(playerId);
+  if (!player) return;
+  player.country = country;
+  player.elo = elo;
+}
+
 export function disconnect(playerId: number): void {
   const player = playersById.get(playerId);
   if (!player) return;

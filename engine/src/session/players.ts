@@ -17,10 +17,16 @@ export function randomPlayerName(): string {
   return `Player${Math.floor(Math.random() * 9000) + 1000}`;
 }
 
-export function addPlayer(name: string | undefined): Player {
+export function addPlayer(
+  name: string | undefined,
+  country: string | null,
+  elo: number | null,
+): Player {
   const player: Player = {
     id: nextPlayerId++,
     name: name ?? randomPlayerName(),
+    country,
+    elo,
     gameName: null,
     connected: true,
     isBot: false,
@@ -34,6 +40,8 @@ export function createBotPlayer(name: string, botProfile: BotProfile): Player {
   const player: Player = {
     id,
     name,
+    country: null,
+    elo: null,
     gameName: null,
     connected: true,
     isBot: true,

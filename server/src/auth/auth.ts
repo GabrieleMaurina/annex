@@ -1,9 +1,8 @@
 import { createHash, randomBytes } from 'crypto';
 import { containsProfanity } from 'engine';
+import { isSelectableCountry } from '../countries';
 import {
   ClientSettings,
-  GameSettings,
-  HomeFilters,
   consumeEmailConfirmation,
   consumePasswordReset,
   createEmailConfirmation,
@@ -13,6 +12,8 @@ import {
   findUserByEmail,
   findUserById,
   findUserByUsername,
+  GameSettings,
+  HomeFilters,
   insertUser,
   markEmailValidated,
   saveSettings,
@@ -37,6 +38,7 @@ export interface SessionInfo {
   userId: string;
   username: string;
   elo: number;
+  country: string;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
@@ -139,14 +141,17 @@ export function registerAccount(data: {
   username: unknown;
   email: unknown;
   password: unknown;
+  country: unknown;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { username, email, password } = data;
+  const { username, email, password, country } = data;
   if (!isValidUsername(username))
     return Promise.resolve({ ok: false, error: 'invalid username' });
   if (!isValidEmail(email))
     return Promise.resolve({ ok: false, error: 'invalid email' });
   if (!isValidPassword(password))
     return Promise.resolve({ ok: false, error: 'invalid password' });
+  if (!isSelectableCountry(country))
+    return Promise.resolve({ ok: false, error: 'invalid country' });
 
   return findUserByUsername(username).then((byUsername) => {
     if (byUsername)
@@ -159,7 +164,14 @@ export function registerAccount(data: {
           `<p>Someone tried to create an Annex account with this email address, but one already exists. If this was you, just log in. If it wasn't, you can ignore this email.</p>`,
         ).then(() => ({ ok: true as const }));
       return hashPassword(password)
-        .then((passwordHash) => insertUser({ username, email, passwordHash }))
+        .then((passwordHash) =>
+          insertUser({
+            username,
+            email,
+            passwordHash,
+            country,
+          }),
+        )
         .then((res) => {
           if ('duplicate' in res)
             return { ok: false as const, error: 'username already taken' };
@@ -251,6 +263,7 @@ export function resolveSession(token: string): Promise<SessionInfo | null> {
             userId: user.id,
             username: user.username,
             elo: user.elo,
+            country: user.country,
             clientSettings: user.clientSettings,
             gameSettings: user.gameSettings,
             homeFilters: user.homeFilters,

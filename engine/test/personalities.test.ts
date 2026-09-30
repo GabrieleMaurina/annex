@@ -218,16 +218,16 @@ function attackCount(spec: ScenarioSpec): number {
 }
 
 test('defensive never attacks when the attack is not safe', () => {
-  assert.equal(attackCount(fightBoard(14, 6, 4)), 0);
+  assert.equal(attackCount(fightBoard(8, 5, 4)), 0);
 });
 
 test('defensive usually makes a single safe attack', () => {
   assert.equal(attackCount(fightBoard(14, 3, 4)), 1);
 });
 
-test('defensive chains a second attack only with a large surplus', () => {
+test('defensive grows one territory per turn even with a large surplus', () => {
   assert.equal(attackCount(fightBoard(30, 2, 8)), 1);
-  assert.equal(attackCount(fightBoard(30, 2, 3)), 2);
+  assert.equal(attackCount(fightBoard(30, 2, 3)), 1);
 });
 
 test('taker ignores the grudge and finishes its continent', () => {

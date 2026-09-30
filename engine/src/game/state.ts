@@ -22,7 +22,12 @@ function toSummaries(ids: number[]) {
   return ids
     .map((id) => playersById.get(id))
     .filter((player): player is Player => !!player)
-    .map((player) => ({ id: player.id, name: player.name }));
+    .map((player) => ({
+      id: player.id,
+      name: player.name,
+      country: player.country,
+      elo: player.elo,
+    }));
 }
 
 export function territoryStats(game: Game) {

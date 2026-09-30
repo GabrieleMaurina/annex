@@ -7,6 +7,7 @@ import {
   playerGameName,
   playerGameState,
   resyncPlayer,
+  setBadges,
   setBotTurnHook,
   setName,
 } from './session/store';
@@ -146,11 +147,12 @@ export function createEngine(
   setBotTurnHook(scheduleBotTurnIfNeeded);
 
   return {
-    addPlayer(name?: string): { id: number } {
-      return { id: addEnginePlayer(name).id };
+    addPlayer(name?: string, country?: string, elo?: number): { id: number } {
+      return { id: addEnginePlayer(name, country ?? null, elo ?? null).id };
     },
     resyncPlayer,
     setName,
+    setBadges,
     disconnect,
     listGameSummaries,
     playerGameName,

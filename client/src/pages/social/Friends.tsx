@@ -10,9 +10,10 @@ import {
   Row,
 } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import Flag from '../../common/badges/Flag';
+import RankIcon from '../../common/badges/RankIcon';
 import { formatError } from '../../common/formatError';
 import { connector } from '../../connector';
-import { rankForElo } from '../../lib/ranks';
 import type {
   Account,
   Friend,
@@ -27,18 +28,6 @@ interface Props {
 type FriendAck = { ok: true } | { ok: false; error: string };
 type FriendAction = (userId: string, cb: (res: FriendAck) => void) => void;
 
-function RankIcon({ elo }: { elo: number }) {
-  const rank = rankForElo(elo);
-  return (
-    <img
-      src={`/ranks/${rank.image}.svg`}
-      width={24}
-      height={24}
-      alt={rank.name}
-    />
-  );
-}
-
 function PersonRow({
   person,
   onOpen,
@@ -50,7 +39,8 @@ function PersonRow({
 }) {
   return (
     <ListGroup.Item className="d-flex align-items-center gap-2">
-      <RankIcon elo={person.elo} />
+      <RankIcon elo={person.elo} size={24} />
+      <Flag country={person.country} />
       <Button
         variant="link"
         className="p-0 text-decoration-none flex-grow-1 text-start"

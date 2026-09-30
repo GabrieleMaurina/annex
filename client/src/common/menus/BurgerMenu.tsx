@@ -16,8 +16,9 @@ import {
   totalUnread,
 } from '../../lib/messages';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
-import { rankForElo } from '../../lib/ranks';
 import type { Account } from '../../lib/types';
+import Flag from '../badges/Flag';
+import RankIcon from '../badges/RankIcon';
 import { useWhiteIcon } from '../icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../panelStyle';
 import ShortcutsPanel from './shortcuts/ShortcutsPanel';
@@ -145,12 +146,8 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
                 disabled={pathname === '/account'}
                 onClick={() => go('/account')}
               >
-                <img
-                  src={`/ranks/${rankForElo(account.elo).image}.svg`}
-                  width={20}
-                  height={20}
-                  alt={rankForElo(account.elo).name}
-                />
+                <RankIcon elo={account.elo} />
+                <Flag country={account.country} />
                 {name}
               </Button>
             ) : (

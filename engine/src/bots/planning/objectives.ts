@@ -9,6 +9,7 @@ import {
   stalematePressure,
 } from '../features/pressure';
 import { antiLeaderActive } from '../features/standing';
+import { Home, defensiveHome } from '../goals/defensiveHome';
 import { duelBreakCandidates, rollCandidates } from '../goals/duelObjectives';
 import { modeCandidates } from '../goals/modeObjectives';
 import { preyCandidates } from '../goals/preyObjectives';
@@ -22,6 +23,7 @@ import {
   defenceDiceAt,
   frontierStacks,
   hostileNeighborsOf,
+  isBotBorder,
   isEnemyTerritory,
   isFriendly,
   neighborsOf,
@@ -29,6 +31,7 @@ import {
   ownedClusters,
   ownedIds,
   rankedOpponents,
+  strongestThreatAt,
   troopsIn,
 } from './context';
 import { routeStack } from './route';
@@ -175,13 +178,16 @@ function cardCandidates(
   ctx: PlanContext,
   state: SimState,
   budget: number,
+  starts?: Set<number>,
 ): Candidate[] {
   let bestTarget: number | null = null;
   let bestFrom: number | null = null;
   let bestDefenders = Infinity;
   for (const from of ownedIds(state, ctx.botId)) {
+    if (starts && !starts.has(from)) continue;
     if (troopsIn(state, from) < 3 || !supplyConnected(ctx, from)) continue;
     for (const to of hostileNeighborsOf(ctx, state, from)) {
+      if (starts && !favorableAttack(state, from, to, budget)) continue;
       const defenders = troopsIn(state, to);
       if (defenders < bestDefenders) {
         bestDefenders = defenders;
@@ -364,6 +370,75 @@ function siegeStaging(ctx: PlanContext, state: SimState): number | null {
   return bridgehead?.sourceTerritoryId ?? null;
 }
 
+const FAVORABLE_ATTACK_RATIO = 1.6;
+
+function favorableAttack(
+  state: SimState,
+  from: number,
+  to: number,
+  budget: number,
+): boolean {
+  return (
+    troopsIn(state, from) - 1 + budget >=
+    FAVORABLE_ATTACK_RATIO * troopsIn(state, to) + 2
+  );
+}
+
+function homeCandidates(
+  ctx: PlanContext,
+  state: SimState,
+  budget: number,
+  home: Home,
+): Candidate[] {
+  if (home.continentId === null) return [];
+  const targets = (ctx.continentTerritories.get(home.continentId) ?? [])
+    .filter(
+      (id) =>
+        isEnemyTerritory(ctx, state, id) &&
+        neighborsOf(ctx, id).some(
+          (n) =>
+            state.owners.get(n) === ctx.botId &&
+            supplyConnected(ctx, n) &&
+            favorableAttack(state, n, id, budget),
+        ),
+    )
+    .sort((a, b) => troopsIn(state, a) - troopsIn(state, b));
+  const groups =
+    targets.length > 1 ? [targets.slice(0, 1), targets.slice(0, 2)] : [targets];
+  return groups
+    .filter((mustVisit) => mustVisit.length > 0)
+    .flatMap((mustVisit) =>
+      stackCandidates(
+        ctx,
+        state,
+        objective({
+          kind: 'complete',
+          continentId: home.continentId,
+          mustVisit,
+        }),
+        budget,
+      ),
+    );
+}
+
+function homeFortifyHint(
+  ctx: PlanContext,
+  state: SimState,
+  home: Home,
+): number | undefined {
+  let best: number | undefined;
+  let bestDeficit = -Infinity;
+  for (const id of home.ids) {
+    if (!isBotBorder(ctx, state, id)) continue;
+    const deficit = strongestThreatAt(ctx, state, id) - troopsIn(state, id);
+    if (deficit > bestDeficit) {
+      bestDeficit = deficit;
+      best = id;
+    }
+  }
+  return best;
+}
+
 function defensiveCandidates(
   ctx: PlanContext,
   state: SimState,
@@ -379,6 +454,10 @@ function defensiveCandidates(
         objectives,
         deployments: defensiveDeployments(ctx, state, budget),
         stacks: [],
+        fortifyHint:
+          ctx.personality === 'defensive'
+            ? homeFortifyHint(ctx, state, defensiveHome(ctx))
+            : undefined,
       },
       ...(stacking.length > 0
         ? [{ objectives, deployments: stacking, stacks: [] }]
@@ -634,12 +713,16 @@ export function gatherCandidates(
   state: SimState,
   budget: number,
 ): Candidate[] {
-  if (ctx.personality === 'defensive')
+  if (ctx.personality === 'defensive') {
+    const home = defensiveHome(ctx);
     return [
+      ...homeCandidates(ctx, state, budget, home),
       ...holdChokepointCandidates(ctx, state, budget),
       ...safeCardCandidates(ctx, state, budget),
+      ...cardCandidates(ctx, state, budget, home.ids),
       ...defensiveCandidates(ctx, state, budget),
     ];
+  }
   return [
     ...completeCandidates(ctx, state, budget),
     ...breakCandidates(ctx, state, budget),

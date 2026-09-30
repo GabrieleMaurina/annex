@@ -123,6 +123,8 @@ function buildGameState(
         id: p.playerId,
         userId: p.userId,
         name: p.name,
+        country: p.country,
+        elo: p.userId ? p.elo : null,
         team: p.team,
         color: p.color,
         territoryCount: counts.get(p.playerId)?.territories ?? 0,
@@ -212,7 +214,7 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
 
   if (!resolved || !doc || doc.id !== id || !folded) {
     return (
-      <div className="position-fixed top-0 start-0 m-3 d-flex align-items-center">
+      <div className="position-fixed top-0 start-50 translate-middle-x mt-3 d-flex align-items-center">
         <Spinner size="sm" className="me-2" />
         Loading replay...
       </div>

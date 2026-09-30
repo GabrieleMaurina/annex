@@ -311,6 +311,8 @@ function installGame(game: Game, players: number[], profile: BotProfile): void {
     playersById.set(id, {
       id,
       name: `p${id}`,
+      country: null,
+      elo: null,
       gameName: game.name,
       connected: true,
       isBot: true,

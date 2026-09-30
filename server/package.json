@@ -23,6 +23,7 @@
     "argon2": "^0.44.0",
     "engine": "*",
     "express": "^5.2.1",
+    "flag-icons": "^7.5.0",
     "mongodb": "^6.20.0",
     "nodemailer": "^9.0.6",
     "obscenity": "^0.4.6",

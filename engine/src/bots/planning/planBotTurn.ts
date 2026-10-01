@@ -2,6 +2,7 @@ import {
   MAX_TERRITORY_TROOPS,
   supplyHubTerritoryIds,
 } from '../../game/mechanics';
+import { upcomingSetValues } from '../../game/progression/cards';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
@@ -95,7 +96,10 @@ const MAIN_STACK_PENALTY = 0.5;
 const HOLD_GARRISON_SHARE = 0.6;
 const MAX_FALLBACK_ATTACKS_PER_TURN = 16;
 const MAX_OVERWHELMING_ATTACKS_PER_TURN = 40;
-export const MAX_REPLANS = 3;
+export const MAX_REPLANS = 8;
+const PASSIVE_FALLBACK_ATTACKS = 1;
+const PASSIVE_SKILL_ATTACKS = 2;
+const PASSIVE_MIN_WIN = 0.8;
 
 function result(actions: BotAction[], plan: TurnPlan): PlanBotTurnResult {
   return { actions, plan };
@@ -120,10 +124,26 @@ function resolvePlan(
   cached: TurnPlanCache | null,
 ): TurnPlan {
   if (isPlanFresh(cached, game, botId)) return cached;
-  return buildTurnPlan(
-    ctx,
-    game.turnPhase === 'deploy' ? game.troopsToDeploy : 0,
+  const troops = game.turnPhase === 'deploy' ? game.troopsToDeploy : 0;
+  const plan = buildTurnPlan(ctx, troops);
+  if (!plan.cardSet || !canHoldCards(ctx)) return plan;
+  const held = buildTurnPlan(ctx, troops, false);
+  return held.score + holdGain(ctx) >= plan.score ? held : plan;
+}
+
+const MAX_HELD_CARDS = 4;
+
+function canHoldCards(ctx: PlanContext): boolean {
+  return (
+    isStrategist(ctx) &&
+    (ctx.game.cards === 'Linear' || ctx.game.cards === 'Exponential') &&
+    (ctx.game.playerCards.get(ctx.botId)?.length ?? 0) <= MAX_HELD_CARDS
   );
+}
+
+function holdGain(ctx: PlanContext): number {
+  const [now, next] = upcomingSetValues(ctx.game, ctx.botId, 2);
+  return Math.max(0, (next ?? now ?? 0) - (now ?? 0));
 }
 
 export function planBotTurn(
@@ -401,7 +421,15 @@ function planAttack(
     MAX_FALLBACK_ATTACKS_PER_TURN,
     Math.ceil(planDepth(ctx) / 3) + Math.round(frustration * planDepth(ctx)),
   );
-  const capped = plan.attacksIssued >= plan.attackSteps.length + fallbackBudget;
+  const passive =
+    ctx.personality === 'defensive' &&
+    stalematePressure(game) < PASSIVE_RELEASE_PRESSURE;
+  const capped = passive
+    ? plan.attacksIssued + plan.overwhelmingAttacksIssued >=
+      plan.attackSteps.length +
+        PASSIVE_FALLBACK_ATTACKS +
+        Math.floor(PASSIVE_SKILL_ATTACKS * ctx.params.planningConfidence)
+    : plan.attacksIssued >= plan.attackSteps.length + fallbackBudget;
   const desperate = Math.random() < stalemateRamp(game);
   const sacrifice = desperate ? chooseLosingAttack(ctx, frustration) : null;
   let boardNow: SimState | null = null;
@@ -424,11 +452,26 @@ function planAttack(
       : 0;
     return opened + closed + spent;
   };
-  const passive =
-    ctx.personality === 'defensive' &&
-    stalematePressure(game) < PASSIVE_RELEASE_PRESSURE;
+  const passiveRisk = (startId: number, endId: number) =>
+    attackWinProbability(
+      game,
+      (game.territoryTroops.get(startId) ?? 0) - 1,
+      game.territoryTroops.get(endId) ?? 0,
+      defenceDiceFor(game, endId),
+    ) < PASSIVE_MIN_WIN
+      ? Infinity
+      : stackRisk(startId, endId);
   const attack = passive
-    ? sacrifice
+    ? (sacrifice ??
+      chooseAttack(
+        game,
+        ctx.view,
+        ctx.botId,
+        ctx.weights,
+        ctx.params.noise,
+        ctx.standing,
+        passiveRisk,
+      ))
     : (sacrifice ??
       chooseAttack(
         game,
@@ -446,7 +489,7 @@ function planAttack(
   const overwhelmingCapped =
     plan.overwhelmingAttacksIssued >= MAX_OVERWHELMING_ATTACKS_PER_TURN;
   if (!continuing) {
-    if (overwhelming) {
+    if (overwhelming && !passive) {
       if (overwhelmingCapped) return result([NEXT_PHASE], plan);
     } else if (capped) return result([NEXT_PHASE], plan);
   }

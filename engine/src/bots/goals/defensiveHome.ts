@@ -42,9 +42,17 @@ function continentScore(
 
 function computeHome(ctx: PlanContext): Home {
   const state = snapshotState(ctx);
+  const held = new Set<number>();
   let bestId: number | null = null;
   let bestScore = 0;
   for (const [continentId, territoryIds] of ctx.continentTerritories) {
+    if (
+      bonusOf(ctx, continentId) > 0 &&
+      territoryIds.every((id) => state.owners.get(id) === ctx.botId)
+    ) {
+      for (const id of territoryIds) held.add(id);
+      continue;
+    }
     const score = continentScore(ctx, state, continentId, territoryIds);
     if (score > bestScore) {
       bestScore = score;
@@ -52,9 +60,12 @@ function computeHome(ctx: PlanContext): Home {
     }
   }
   if (bestId === null)
-    return { continentId: null, ids: new Set(mainCluster(ctx, state)) };
+    return {
+      continentId: null,
+      ids: held.size > 0 ? held : new Set(mainCluster(ctx, state)),
+    };
   const continent = new Set(ctx.continentTerritories.get(bestId) ?? []);
-  const ids = new Set<number>();
+  const ids = new Set<number>(held);
   for (const [id, ownerId] of state.owners) {
     if (ownerId !== ctx.botId) continue;
     if (continent.has(id) || neighborsOf(ctx, id).some((n) => continent.has(n)))

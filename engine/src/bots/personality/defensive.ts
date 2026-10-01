@@ -8,7 +8,7 @@ export const defensiveWeights: Weights = {
   grudge: 0.2,
   defendFrontier: 3,
   antiLeader: 0.3,
-  defense: 3,
+  defense: 1.5,
   holdChokepoint: 1.5,
   duelBreak: 0,
   duelStack: 0,

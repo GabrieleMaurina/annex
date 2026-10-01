@@ -391,34 +391,34 @@ function homeCandidates(
   home: Home,
 ): Candidate[] {
   if (home.continentId === null) return [];
-  const targets = (ctx.continentTerritories.get(home.continentId) ?? [])
-    .filter(
-      (id) =>
-        isEnemyTerritory(ctx, state, id) &&
-        neighborsOf(ctx, id).some(
-          (n) =>
-            state.owners.get(n) === ctx.botId &&
-            supplyConnected(ctx, n) &&
-            favorableAttack(state, n, id, budget),
-        ),
-    )
+  const enemies = (ctx.continentTerritories.get(home.continentId) ?? [])
+    .filter((id) => isEnemyTerritory(ctx, state, id))
     .sort((a, b) => troopsIn(state, a) - troopsIn(state, b));
-  const groups =
-    targets.length > 1 ? [targets.slice(0, 1), targets.slice(0, 2)] : [targets];
-  return groups
-    .filter((mustVisit) => mustVisit.length > 0)
-    .flatMap((mustVisit) =>
-      stackCandidates(
-        ctx,
-        state,
-        objective({
-          kind: 'complete',
-          continentId: home.continentId,
-          mustVisit,
-        }),
-        budget,
-      ),
-    );
+  const seed = enemies.find((id) =>
+    neighborsOf(ctx, id).some(
+      (n) =>
+        state.owners.get(n) === ctx.botId &&
+        supplyConnected(ctx, n) &&
+        favorableAttack(state, n, id, budget),
+    ),
+  );
+  if (seed === undefined) return [];
+  const followUps = enemies.filter((id) => id !== seed);
+  const groups = [0, 1, 2]
+    .filter((extra) => extra <= followUps.length)
+    .map((extra) => [seed, ...followUps.slice(0, extra)]);
+  return groups.flatMap((mustVisit) =>
+    stackCandidates(
+      ctx,
+      state,
+      objective({
+        kind: 'complete',
+        continentId: home.continentId,
+        mustVisit,
+      }),
+      budget,
+    ),
+  );
 }
 
 function homeFortifyHint(
@@ -717,6 +717,11 @@ export function gatherCandidates(
     const home = defensiveHome(ctx);
     return [
       ...homeCandidates(ctx, state, budget, home),
+      ...completeCandidates(ctx, state, budget),
+      ...modeCandidates(ctx, state, budget, false),
+      ...neutralizeThreatCandidates(ctx, state, budget),
+      ...mergeCandidates(ctx, state, budget),
+      ...shrinkBorderCandidates(ctx, state, budget),
       ...holdChokepointCandidates(ctx, state, budget),
       ...safeCardCandidates(ctx, state, budget),
       ...cardCandidates(ctx, state, budget, home.ids),

@@ -14,6 +14,9 @@ export interface BehaviorStats {
   concentration: number;
   runawayAttacks: number;
   leaderAttacks: number;
+  territoryTurns: number;
+  attacksReceived: number;
+  bonusTurns: number;
 }
 
 export type BehaviorEntry = [string, BehaviorStats];
@@ -26,6 +29,9 @@ export function emptyBehavior(): BehaviorStats {
     concentration: 0,
     runawayAttacks: 0,
     leaderAttacks: 0,
+    territoryTurns: 0,
+    attacksReceived: 0,
+    bonusTurns: 0,
   };
 }
 
@@ -88,6 +94,16 @@ export function recordTurnEnd(
   }
   if (owned < 2) return;
   stats.turns++;
+  stats.territoryTurns += owned;
+  const bonuses = getGameMap(game).bonuses;
+  for (const [continentId, ids] of continentTerritories(game))
+    if (
+      (bonuses[continentId] ?? 0) > 0 &&
+      ids.every((id) => game.territoryOwners.get(id) === playerId)
+    ) {
+      stats.bonusTurns++;
+      break;
+    }
   if (largest >= SMALL_STACK) stats.smallStackTurns++;
   if (largest >= LARGE_STACK) stats.largeStackTurns++;
   stats.concentration += largest / total;
@@ -125,6 +141,8 @@ export function formatBehavior(
       'concentration',
       'runaway attacks',
       'on leader',
+      'hit per 100 held',
+      'holds bonus',
     ].join('\t'),
   ];
   for (const key of keys) {
@@ -139,6 +157,10 @@ export function formatBehavior(
         percent(stats.concentration, stats.turns),
         stats.runawayAttacks,
         percent(stats.leaderAttacks, stats.runawayAttacks),
+        stats.territoryTurns > 0
+          ? ((100 * stats.attacksReceived) / stats.territoryTurns).toFixed(2)
+          : 'n/a',
+        percent(stats.bonusTurns, stats.turns),
       ].join('\t'),
     );
   }

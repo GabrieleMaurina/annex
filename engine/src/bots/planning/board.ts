@@ -18,6 +18,7 @@ import {
   heldContinentBonus,
   isBotBorder,
   isFriendly,
+  isStrategist,
   neighborsOf,
   opponentIds,
   ownedClusters,
@@ -40,6 +41,24 @@ function addEnemyRoundTroops(ctx: PlanContext, s: SimState): void {
   }
   for (const id of strongest.values())
     s.troops.set(id, troopsIn(s, id) + ctx.game.roundNumber + 1);
+}
+
+function botIsWeakestTarget(
+  ctx: PlanContext,
+  s: SimState,
+  territoryId: number,
+  ownerId: number,
+): boolean {
+  let weakestBot = Infinity;
+  let weakestOther = Infinity;
+  for (const n of neighborsOf(ctx, territoryId)) {
+    const neighborOwner = s.owners.get(n);
+    if (neighborOwner === undefined || neighborOwner === ownerId) continue;
+    if (neighborOwner === ctx.botId)
+      weakestBot = Math.min(weakestBot, troopsIn(s, n));
+    else weakestOther = Math.min(weakestOther, troopsIn(s, n));
+  }
+  return weakestBot <= weakestOther;
 }
 
 function botFocus(
@@ -78,7 +97,10 @@ export function applyEnemyResponse(
     if (ownerId === undefined || isFriendly(ctx, ownerId)) continue;
     let from = start;
     let attackers = Math.floor(
-      (troopsIn(s, start) - 1) * botFocus(ctx, s, start, ownerId),
+      (troopsIn(s, start) - 1) *
+        (isStrategist(ctx)
+          ? Number(botIsWeakestTarget(ctx, s, start, ownerId))
+          : botFocus(ctx, s, start, ownerId)),
     );
     for (let sweep = 0; sweep < ENEMY_SWEEP_LIMIT; sweep++) {
       if (attackers < 2) break;
@@ -130,6 +152,10 @@ const TROOP_LOSS = 0.25;
 const ELIMINATION = 9;
 const DAMAGE = 0.15;
 const CARD_VALUE_CAP = 40;
+const RESPONSE_WEIGHT = 0.75;
+const STRATEGIST_RESPONSE_WEIGHT = 0.5;
+const CAPTURED_CARD = 1.5;
+const CARDS_PER_SET = 3;
 const TROOP_SCALE_BASE = 20;
 
 export function troopScale(state: SimState): number {
@@ -154,9 +180,16 @@ function eliminationBonus(ctx: PlanContext, state: SimState): number {
     }
     bonus += ELIMINATION * killWeight;
     if (ctx.game.bounties === 'on') bonus += 8;
-    bonus += (ctx.game.playerCards.get(opponentId)?.length ?? 0) * 1.5;
+    bonus +=
+      (ctx.game.playerCards.get(opponentId)?.length ?? 0) *
+      capturedCardValue(ctx);
   }
   return bonus;
+}
+
+function capturedCardValue(ctx: PlanContext): number {
+  if (!isStrategist(ctx)) return CAPTURED_CARD;
+  return Math.max(CAPTURED_CARD, (CARD * cardValue(ctx)) / CARDS_PER_SET);
 }
 
 function incomeEstimate(
@@ -352,5 +385,8 @@ export function evaluateBoard(
 ): number {
   const raw = scoreState(ctx, state, cachedProgress);
   const afterResponse = scoreState(ctx, applyEnemyResponse(ctx, state));
-  return 0.25 * raw + 0.75 * afterResponse;
+  const responseWeight = isStrategist(ctx)
+    ? STRATEGIST_RESPONSE_WEIGHT
+    : RESPONSE_WEIGHT;
+  return (1 - responseWeight) * raw + responseWeight * afterResponse;
 }

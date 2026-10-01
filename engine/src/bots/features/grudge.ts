@@ -8,19 +8,24 @@ interface AttackedLogPayload {
   defendingTerritoryId?: number;
 }
 
-export function grudgeAgainst(
-  game: Game,
-  botId: number,
-  targetPlayerId: number,
-): number {
+interface GrudgeCache {
+  length: number;
+  byAttacker: Map<number, number>;
+}
+
+const grudgeCaches = new WeakMap<object, GrudgeCache>();
+
+function grudges(game: Game, botId: number): Map<number, number> {
   const entries = game.logs.get(botId) ?? [];
-  let grudge = 0;
+  const cached = grudgeCaches.get(entries);
+  if (cached && cached.length === entries.length) return cached.byAttacker;
+  const byAttacker = new Map<number, number>();
   let index = 0;
   for (const entry of entries) {
     index++;
     if (entry.type !== 'game:attacked') continue;
     const payload = entry.payload as AttackedLogPayload;
-    if (payload.attackerId !== targetPlayerId || payload.defenderId !== botId)
+    if (payload.attackerId === undefined || payload.defenderId !== botId)
       continue;
 
     const recencyWeight = 0.5 + 0.5 * (index / entries.length);
@@ -33,9 +38,21 @@ export function grudgeAgainst(
       )
         impact += 5;
     }
-    grudge += impact * recencyWeight;
+    byAttacker.set(
+      payload.attackerId,
+      (byAttacker.get(payload.attackerId) ?? 0) + impact * recencyWeight,
+    );
   }
-  return grudge;
+  grudgeCaches.set(entries, { length: entries.length, byAttacker });
+  return byAttacker;
+}
+
+export function grudgeAgainst(
+  game: Game,
+  botId: number,
+  targetPlayerId: number,
+): number {
+  return grudges(game, botId).get(targetPlayerId) ?? 0;
 }
 
 export function strongestGrudgeTarget(

@@ -13,6 +13,42 @@ export function defenceDiceFor(game: Game, territoryId: number): number {
 }
 
 const BOT_COMBAT_CAP = 60;
+const MEMO_LIMIT = 50_000;
+const winMemo = new Map<string, number>();
+const statsMemo = new Map<string, ReturnType<typeof battleStatistics>>();
+
+function memoized<T>(memo: Map<string, T>, key: string, compute: () => T): T {
+  const cached = memo.get(key);
+  if (cached !== undefined) return cached;
+  if (memo.size >= MEMO_LIMIT) memo.clear();
+  const value = compute();
+  memo.set(key, value);
+  return value;
+}
+
+function cachedWinProb(
+  attackingTroops: number,
+  defendingTroops: number,
+  defendingDice: number,
+): number {
+  return memoized(
+    winMemo,
+    `${attackingTroops},${defendingTroops},${defendingDice}`,
+    () => trueWinProb(attackingTroops, defendingTroops, defendingDice),
+  );
+}
+
+function cachedStatistics(
+  attackingTroops: number,
+  defendingTroops: number,
+  defendingDice: number,
+): ReturnType<typeof battleStatistics> {
+  return memoized(
+    statsMemo,
+    `${attackingTroops},${defendingTroops},${defendingDice}`,
+    () => battleStatistics(attackingTroops, defendingTroops, defendingDice),
+  );
+}
 
 export function attackWinProbability(
   game: Game,
@@ -28,7 +64,7 @@ export function attackWinProbability(
     1,
     BOT_COMBAT_CAP / Math.max(attackingTroops, defendingTroops),
   );
-  const trueProb = trueWinProb(
+  const trueProb = cachedWinProb(
     Math.max(1, Math.round(attackingTroops * scale)),
     Math.max(1, Math.round(defendingTroops * scale)),
     defendingDice,
@@ -50,7 +86,7 @@ export function estimatedConquestCost(
   const defendingDice = defenceDiceFor(game, territoryId);
   const attackingTroopsCeiling =
     defendingTroops * CONQUEST_TROOPS_MULTIPLIER + CONQUEST_TROOPS_MARGIN;
-  const stats = battleStatistics(
+  const stats = cachedStatistics(
     attackingTroopsCeiling,
     defendingTroops,
     defendingDice,
@@ -81,7 +117,7 @@ export function expectedOutcome(
       attackerSurvivorsMean: win ? attackingTroops - outcome.attackLosses : 0,
     };
   }
-  const stats = battleStatistics(
+  const stats = cachedStatistics(
     attackingTroops,
     defendingTroops,
     defendingDice,

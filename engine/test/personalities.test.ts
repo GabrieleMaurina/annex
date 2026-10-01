@@ -221,13 +221,14 @@ test('defensive never attacks when the attack is not safe', () => {
   assert.equal(attackCount(fightBoard(8, 5, 4)), 0);
 });
 
-test('defensive usually makes a single safe attack', () => {
-  assert.equal(attackCount(fightBoard(14, 3, 4)), 1);
+test('defensive pushes into its home bonus while the odds are favorable', () => {
+  const plan = planScenario(withPersonality(fightBoard(14, 3, 4), 'defensive'));
+  assert.equal(primaryKind(plan), 'complete');
+  assert.equal(plan.attackSteps[0]?.endId, 2);
 });
 
-test('defensive grows one territory per turn even with a large surplus', () => {
-  assert.equal(attackCount(fightBoard(30, 2, 8)), 1);
-  assert.equal(attackCount(fightBoard(30, 2, 3)), 1);
+test('defensive completes its home bonus with overwhelming force', () => {
+  assert.equal(attackCount(fightBoard(30, 2, 3)), 6);
 });
 
 test('taker ignores the grudge and finishes its continent', () => {

@@ -169,6 +169,27 @@ function orderTargets(
 
 const MAX_ROUTE_TARGETS = 16;
 
+const legCaches = new WeakMap<SimState, Map<number, Map<number, Leg>>>();
+
+function cachedLegs(
+  ctx: PlanContext,
+  state: SimState,
+  fromId: number,
+  costCache: Map<number, number>,
+): Map<number, Leg> {
+  let byStart = legCaches.get(state);
+  if (!byStart) {
+    byStart = new Map();
+    legCaches.set(state, byStart);
+  }
+  let legs = byStart.get(fromId);
+  if (!legs) {
+    legs = shortestLegs(ctx, state, fromId, costCache);
+    byStart.set(fromId, legs);
+  }
+  return legs;
+}
+
 export function routeStack(
   ctx: PlanContext,
   state: SimState,
@@ -191,9 +212,9 @@ export function routeStack(
 
   const costCache = new Map<number, number>();
   const legsByNode = new Map<number, Map<number, Leg>>();
-  legsByNode.set(startId, shortestLegs(ctx, state, startId, costCache));
+  legsByNode.set(startId, cachedLegs(ctx, state, startId, costCache));
   for (const target of targets)
-    legsByNode.set(target, shortestLegs(ctx, state, target, costCache));
+    legsByNode.set(target, cachedLegs(ctx, state, target, costCache));
 
   const order = orderTargets(startId, targets, anchorId, legsByNode);
   if (order === null) {

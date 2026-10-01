@@ -237,6 +237,7 @@ export function modeCandidates(
   ctx: PlanContext,
   state: SimState,
   budget: number,
+  deny = true,
 ): Candidate[] {
   const goal = modeGoalFor(ctx);
   if (!goal.active) return [];
@@ -244,7 +245,7 @@ export function modeCandidates(
   return [
     ...assassinCandidates(ctx, state, budget, goal),
     ...holdCandidates(ctx, state, budget, goal),
-    ...denyCandidates(ctx, state, budget, goal, threats),
+    ...(deny ? denyCandidates(ctx, state, budget, goal, threats) : []),
     ...expandCandidates(ctx, state, budget, goal),
     ...garrisonCandidates(ctx, state, budget, goal),
   ];

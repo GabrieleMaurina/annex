@@ -236,8 +236,21 @@ export function runSimGame(
         if (action.event === 'game:attackSelectEnd') {
           const targetId = (action.payload as { territoryId: number })
             .territoryId;
-          if (targetId !== lastTargetId)
+          if (targetId !== lastTargetId) {
             recordAttack(stats, game, leaderId, targetId);
+            const defender = identityById.get(
+              game.territoryOwners.get(targetId) ?? Number.NaN,
+            );
+            if (defender) {
+              const defenderKey =
+                defender.contestant ??
+                `${defender.personality}:${defender.difficulty}`;
+              const defenderStats =
+                behavior.get(defenderKey) ?? emptyBehavior();
+              behavior.set(defenderKey, defenderStats);
+              defenderStats.attacksReceived++;
+            }
+          }
           lastTargetId = targetId;
         }
         const outcome = dispatchBotAction(

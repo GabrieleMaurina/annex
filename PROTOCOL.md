@@ -166,6 +166,8 @@ A private game (visibility, a server-only attribute; see "Password and visibilit
   allianceStates: { playerId: number; state: 'allied' | 'requestSent' | 'requestReceived' | 'none'; cooldownUntil?: number }[];
   territoryTroopsCap: number; // 'territory' mode's per-territory troop cap
   totalTroopsCap: number; // 'total' mode's cap on this map (territory count-based)
+  leaderTerritoryCount: number | null; // 'Supremacy 3/4' and 'Supremacy 2/3' only (null otherwise): highest territory count among non-surrendered players, anonymous and never hidden by fog of war
+  territoriesToWin: number | null; // 'Supremacy 3/4' and 'Supremacy 2/3' only (null otherwise): territories needed to win, a fraction of the map's territories excluding radiated and permanently toxined ones (nuked, emptied and temporarily toxined ones still count)
   turnDuration: 60 | 90 | 120 | 150 | 180 | 300; // seconds
   roundNumber: number;
   turnPlayerIndex: number;

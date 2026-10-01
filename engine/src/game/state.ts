@@ -2,6 +2,7 @@ import { getGameMap } from '../maps/maps';
 import { playersById } from '../session/players';
 import { AllianceViewState, Game, Player } from '../types';
 import { attackFullPath } from './combat/seaBridge';
+import { supremacyTerritoriesToWin } from './mechanics';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats } from './progression/stats';
 import { fortifyFullPath, sailFullPath } from './world/connectivity';
@@ -169,6 +170,7 @@ function sailPathAsRun(game: Game): number[][] {
 export function gameState(game: Game) {
   const stats = territoryStats(game);
   const turnPlayerId = game.playerIds[game.turnPlayerIndex];
+  const territoriesToWin = supremacyTerritoriesToWin(game);
   return {
     name: game.name,
     mapName: game.mapName,
@@ -225,6 +227,16 @@ export function gameState(game: Game) {
     roundTroops: game.roundTroops,
     territoryTroopsCap: TERRITORY_CAP,
     totalTroopsCap: totalTroopsCap(game),
+    leaderTerritoryCount:
+      territoriesToWin === null
+        ? null
+        : Math.max(
+            0,
+            ...game.playerIds
+              .filter((id) => !game.surrenderedIds.has(id))
+              .map((id) => stats.get(id)?.territoryCount ?? 0),
+          ),
+    territoriesToWin,
     roundNumber: game.roundNumber,
     turnPlayerIndex: game.turnPlayerIndex,
     turnPhase: game.turnPhase,

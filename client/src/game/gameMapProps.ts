@@ -32,6 +32,8 @@ type DerivedKeys =
   | 'allianceStates'
   | 'territoryTroopsCap'
   | 'totalTroopsCap'
+  | 'leaderTerritoryCount'
+  | 'territoriesToWin'
   | 'troopsToDeploy'
   | 'turnStartedAt'
   | 'paused'
@@ -89,6 +91,8 @@ export function gameMapDataProps(
     allianceStates: game.allianceStates,
     territoryTroopsCap: game.territoryTroopsCap,
     totalTroopsCap: game.totalTroopsCap,
+    leaderTerritoryCount: game.leaderTerritoryCount,
+    territoriesToWin: game.territoriesToWin,
     troopsToDeploy: game.troopsToDeploy,
     turnStartedAt: game.turnStartedAt,
     paused: game.paused,

@@ -73,6 +73,8 @@ interface Props {
   cards: CardsMode;
   territoryTroopsCap: number;
   totalTroopsCap: number;
+  leaderTerritoryCount: number | null;
+  territoriesToWin: number | null;
   toxins: Toxins;
   toxinsCost: number;
   mission: Mission | null;
@@ -113,6 +115,8 @@ function PlayersPanel({
   cards,
   territoryTroopsCap,
   totalTroopsCap,
+  leaderTerritoryCount,
+  territoriesToWin,
   toxins,
   toxinsCost,
   mission,
@@ -160,7 +164,12 @@ function PlayersPanel({
   };
   const showAllianceColumn = alliances === 'on' && !isSpectator && !gameEnded;
   const totalCapitals = players.reduce((sum, p) => sum + p.capitalCount, 0);
-  const leaderCapitals = Math.max(0, ...players.map((p) => p.capitalCount));
+  const contenders = players.filter((p) => !p.eliminated && !p.surrendered);
+  const leaderCapitals = Math.max(0, ...contenders.map((p) => p.capitalCount));
+  const territoryCounts = contenders.map((p) => p.territoryCount);
+  const leaderTerritories = territoryCounts.every((count) => count !== null)
+    ? Math.max(0, ...territoryCounts.map((count) => count ?? 0))
+    : leaderTerritoryCount;
 
   const panelRef = useRef<HTMLDivElement>(null);
   useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
@@ -266,6 +275,11 @@ function PlayersPanel({
       {isCapitals && (
         <div className="text-center small mb-2">
           Leader {leaderCapitals}/{totalCapitals}
+        </div>
+      )}
+      {leaderTerritoryCount !== null && (
+        <div className="text-center small mb-2">
+          Leader {leaderTerritories}/{territoriesToWin}
         </div>
       )}
       <div

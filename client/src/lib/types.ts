@@ -257,6 +257,8 @@ export interface GameState {
   roundTroops: RoundTroops;
   territoryTroopsCap: number;
   totalTroopsCap: number;
+  leaderTerritoryCount: number | null;
+  territoriesToWin: number | null;
   roundNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;

@@ -3,7 +3,7 @@ import { callbacks } from '../callbacks';
 import { playersById } from '../session/players';
 import { broadcastGameResults, broadcastHomeGames } from '../session/store';
 import { Game } from '../types';
-import { ownsAnyTerritory } from './mechanics';
+import { ownsAnyTerritory, supremacyTerritoriesToWin } from './mechanics';
 import { missionAccomplished } from './progression/missions';
 import {
   bumpStat,
@@ -183,8 +183,7 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
     game.gameMode === 'Supremacy 3/4' ||
     game.gameMode === 'Supremacy 2/3'
   ) {
-    const fraction = game.gameMode === 'Supremacy 3/4' ? 3 / 4 : 2 / 3;
-    const threshold = Math.ceil(game.territoryOwners.size * fraction);
+    const threshold = supremacyTerritoriesToWin(game)!;
     const winner = activePlayers.find(
       (id) => countTerritories(game, id) >= threshold,
     );

@@ -52,6 +52,8 @@ export interface GameMapProps {
   allianceStates: GameState['allianceStates'];
   territoryTroopsCap: number;
   totalTroopsCap: number;
+  leaderTerritoryCount: number | null;
+  territoriesToWin: number | null;
   troopsToDeploy: number;
   turnStartedAt: number;
   paused: boolean;

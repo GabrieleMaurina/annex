@@ -1,3 +1,4 @@
+import { supremacyTerritoriesToWin } from '../../../game/mechanics';
 import { findKillerId } from '../../../game/progression/stats';
 import {
   PlanContext,
@@ -91,8 +92,8 @@ function neutralGoal(ctx: PlanContext): ModeGoal {
   };
 }
 
-function setRace(goal: ModeGoal, fraction: number): void {
-  goal.threshold = Math.ceil(goal.total * fraction);
+function setRace(goal: ModeGoal, threshold: number): void {
+  goal.threshold = threshold;
   goal.threatThreshold = goal.threshold;
   goal.expand = true;
   goal.killWeight = SURVIVOR_KILL_WEIGHT;
@@ -171,10 +172,8 @@ function buildModeGoal(ctx: PlanContext): ModeGoal {
       goal.expand = true;
       break;
     case 'Supremacy 3/4':
-      setRace(goal, 3 / 4);
-      break;
     case 'Supremacy 2/3':
-      setRace(goal, 2 / 3);
+      setRace(goal, supremacyTerritoriesToWin(game)!);
       break;
     case 'Capitals':
       if (game.capitalTerritoryIds.size >= 2)

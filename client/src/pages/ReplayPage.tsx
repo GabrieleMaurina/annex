@@ -44,11 +44,18 @@ function resultsWithElo(doc: StoredGame) {
 function buildGameState(
   doc: StoredGame,
   finalTerritories: ReplayTerritory[],
+  availableTerritoryCount: number,
 ): GameState {
   const counts = countsByOwner(finalTerritories);
   const resultById = new Map(doc.results.map((r) => [r.playerId, r]));
   const capitals = new Set(doc.capitalTerritoryIds ?? []);
   const s = doc.settings;
+  const supremacyFraction =
+    s.gameMode === 'Supremacy 3/4'
+      ? 3 / 4
+      : s.gameMode === 'Supremacy 2/3'
+        ? 2 / 3
+        : null;
   return {
     name: doc.name,
     mapName: doc.mapName,
@@ -89,6 +96,19 @@ function buildGameState(
     roundTroops: s.roundTroops,
     territoryTroopsCap: 30,
     totalTroopsCap: 9999,
+    leaderTerritoryCount:
+      supremacyFraction === null
+        ? null
+        : Math.max(
+            0,
+            ...doc.players
+              .filter((p) => !resultById.get(p.playerId)?.surrendered)
+              .map((p) => counts.get(p.playerId)?.territories ?? 0),
+          ),
+    territoriesToWin:
+      supremacyFraction === null
+        ? null
+        : Math.ceil(availableTerritoryCount * supremacyFraction),
     roundNumber: doc.roundNumber,
     turnPlayerIndex: 0,
     turnPhase: 'deploy',
@@ -165,6 +185,7 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
   const [resolved, setResolved] = useState<{
     doc: StoredGame;
     mapRenderName: string;
+    mapTerritoryCount: number;
   } | null>(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -188,7 +209,11 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
           });
         }
         setNotFound(false);
-        setResolved({ doc: game, mapRenderName: game.mapId });
+        setResolved({
+          doc: game,
+          mapRenderName: game.mapId,
+          mapTerritoryCount: map?.territories.length ?? 0,
+        });
       });
     });
     return () => {
@@ -221,9 +246,13 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
     );
   }
 
-  const finalTerritories =
-    folded.data.frames.at(-1)?.territories ?? folded.data.initial;
-  const game = buildGameState(doc, finalTerritories);
+  const finalFrame = folded.data.frames.at(-1);
+  const finalTerritories = finalFrame?.territories ?? folded.data.initial;
+  const availableTerritoryCount =
+    resolved.mapTerritoryCount -
+    (finalFrame?.radiationTerritories ?? folded.data.initialRadiation).length -
+    (finalFrame?.toxinTerritories ?? []).filter((t) => t.permanent).length;
+  const game = buildGameState(doc, finalTerritories, availableTerritoryCount);
 
   return (
     <GameReplayView

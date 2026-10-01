@@ -76,6 +76,8 @@ function GameMap({
   allianceStates,
   territoryTroopsCap,
   totalTroopsCap,
+  leaderTerritoryCount,
+  territoriesToWin,
   troopsToDeploy,
   turnStartedAt,
   paused,
@@ -812,6 +814,8 @@ function GameMap({
         cards={cards}
         territoryTroopsCap={territoryTroopsCap}
         totalTroopsCap={totalTroopsCap}
+        leaderTerritoryCount={leaderTerritoryCount}
+        territoriesToWin={territoriesToWin}
         toxins={toxins}
         toxinsCost={turnFlow.toxinsCostValue}
         mission={mission}

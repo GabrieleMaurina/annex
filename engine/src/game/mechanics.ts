@@ -17,6 +17,24 @@ export function maxTeam(game: Game) {
   return Math.max(0, game.playerIds.length - 1);
 }
 
+export function supremacyTerritoriesToWin(game: Game): number | null {
+  const fraction =
+    game.gameMode === 'Supremacy 3/4'
+      ? 3 / 4
+      : game.gameMode === 'Supremacy 2/3'
+        ? 2 / 3
+        : null;
+  if (fraction === null) return null;
+  const permanentToxinCount = [...game.territoryToxins.values()].filter(
+    (toxin) => toxin.permanent,
+  ).length;
+  const availableCount =
+    getGameMap(game).territories.length -
+    game.radiationTerritoryIds.size -
+    permanentToxinCount;
+  return Math.ceil(availableCount * fraction);
+}
+
 export function ownsAnyTerritory(game: Game, playerId: number): boolean {
   for (const ownerId of game.territoryOwners.values()) {
     if (ownerId === playerId) return true;

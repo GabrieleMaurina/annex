@@ -24,6 +24,9 @@ export default defineConfig({
       manifest: {
         name: 'Annex',
         short_name: 'Annex',
+        description:
+          'Free online multiplayer strategy war game. Conquer territories, hold continents and outplay friends or AI bots.',
+        categories: ['games', 'entertainment'],
         start_url: '/',
         display: 'standalone',
         orientation: 'landscape',

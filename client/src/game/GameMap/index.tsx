@@ -25,6 +25,7 @@ import {
   useAnimationActiveFlags,
   useAutoAdvancePhase,
   useLiveGameRefs,
+  useLockViewportZoom,
   usePanelStyles,
   useResetTroopInputOnSelection,
   useSupplyLineOverlay,
@@ -144,17 +145,7 @@ function GameMap({
     [territories, seaTerritories, wraps],
   );
 
-  useEffect(() => {
-    const meta = document.querySelector('meta[name="viewport"]');
-    const original = meta?.getAttribute('content') ?? null;
-    meta?.setAttribute(
-      'content',
-      'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
-    );
-    return () => {
-      if (meta && original !== null) meta.setAttribute('content', original);
-    };
-  }, []);
+  useLockViewportZoom();
 
   const vertexDiametersPerLongestSide = 50;
   const VERTEX_RADIUS =

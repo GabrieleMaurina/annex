@@ -70,6 +70,36 @@ function gamePath(name: string): string {
   return `/games/live/${encodeURIComponent(name)}`;
 }
 
+const PAGE_TITLES: [RegExp, string][] = [
+  [/^\/login$/, 'Login'],
+  [/^\/account$/, 'Account'],
+  [/^\/email_confirmation\//, 'Email Confirmation'],
+  [/^\/password_reset\//, 'Password Reset'],
+  [/^\/friends$/, 'Friends'],
+  [/^\/messages$/, 'Messages'],
+  [/^\/maps$/, 'Maps'],
+  [/^\/maps\/mine$/, 'My Maps'],
+  [/^\/maps\/editor/, 'Map Editor'],
+  [/^\/players$/, 'Players'],
+  [/^\/games\/replay$/, 'Games'],
+  [/^\/games\/replay\//, 'Replay'],
+  [/^\/games\/offline$/, 'Offline Game'],
+];
+
+function titleFromPath(pathname: string, room: string): string {
+  const profile = pathname.match(/^\/players\/([^/]+)$/);
+  if (profile) {
+    try {
+      return `${decodeURIComponent(profile[1])} - Annex`;
+    } catch {
+      return 'Player - Annex';
+    }
+  }
+  if (pathname.startsWith('/games/live/')) return `${room} - Annex`;
+  const page = PAGE_TITLES.find(([pattern]) => pattern.test(pathname));
+  return page ? `${page[1]} - Annex` : 'Annex - Multiplayer Strategy War Game';
+}
+
 function App() {
   const [account, setAccount] = useState<Account | null>(null);
   const [joinError, setJoinError] = useState('');
@@ -121,6 +151,10 @@ function App() {
   useEffect(() => {
     refreshSession();
   }, [refreshSession]);
+
+  useEffect(() => {
+    document.title = titleFromPath(pathname, room);
+  }, [pathname, room]);
 
   useEffect(() => {
     connector.setMode(isOffline);

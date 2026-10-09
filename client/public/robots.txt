@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /account
+Disallow: /login
+Disallow: /friends
+Disallow: /messages
+Disallow: /email_confirmation/
+Disallow: /password_reset/
+Disallow: /maps/mine
+Disallow: /maps/editor
+Disallow: /games/live/
+Disallow: /games/offline
+
+Sitemap: https://annexgame.com/sitemap.xml

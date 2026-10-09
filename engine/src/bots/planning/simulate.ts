@@ -3,8 +3,10 @@ import {
   supplyHubTerritoryIds,
 } from '../../game/mechanics';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
+import { cashForcedSets } from '../features/cardOutlook';
 import { expectedOutcome } from '../features/combat';
 import { modeGoalFor, sideProgress } from '../features/mode/modeGoals';
+import { consolidation, spreading } from '../features/stackStyle';
 import { defensiveHome } from '../goals/defensiveHome';
 import { RISKY_STEP_WIN, StepRisk, expectedScore } from '../goals/failureRisk';
 import {
@@ -30,6 +32,7 @@ import {
   planDepth,
   snapshotState,
   strongestThreatAt,
+  timesCards,
   troopsIn,
 } from './context';
 import { partitionTargets, routeStack } from './route';
@@ -67,6 +70,8 @@ const FEASIBILITY_RATIO = 0.55;
 const ROLL_DEFEAT_SURVIVAL = 0.5;
 const RISKY_WIN = 0.7;
 const MAX_FORTIFY_SOURCES = 5;
+const DEFENDED_BORDERS = 3;
+const SPREAD_BORDERS = 3;
 
 interface RollAttempt {
   stack: StackPlan;
@@ -116,6 +121,21 @@ function settleConquest(
   const moved = 1 + Math.round((survivors - 1) * share);
   state.troops.set(toId, moved);
   state.troops.set(fromId, troopsIn(state, fromId) + survivors - moved);
+}
+
+function capturedCardTroops(
+  ctx: PlanContext,
+  state: SimState,
+  defenderId: number | undefined,
+): number {
+  if (!timesCards(ctx) || defenderId === undefined) return 0;
+  if (!ctx.preTurnOpponents.has(defenderId)) return 0;
+  const captured = ctx.game.playerCards.get(defenderId)?.length ?? 0;
+  if (captured === 0) return 0;
+  for (const ownerId of state.owners.values())
+    if (ownerId === defenderId) return 0;
+  state.cards += captured;
+  return cashForcedSets(ctx.game, ctx.botId, state);
 }
 
 export function walkStack(
@@ -183,7 +203,10 @@ export function walkStack(
     const survivors = Math.max(1, Math.round(outcome.attackerSurvivorsMean));
     state.troops.set(cur, 1);
     state.owners.set(next, ctx.botId);
-    state.troops.set(next, survivors);
+    state.troops.set(
+      next,
+      survivors + capturedCardTroops(ctx, state, defenderId),
+    );
     state.conquered = true;
     lastConquest = { fromId: cur, toId: next };
     cur = next;
@@ -270,7 +293,7 @@ function siegeMove(
   return null;
 }
 
-function bestFortify(
+export function bestFortify(
   ctx: PlanContext,
   state: SimState,
   hint: number | undefined,
@@ -297,7 +320,15 @@ function bestFortify(
           (id) => !borderTargets.includes(id),
         )
       : [];
-  const allTargets = [...borderTargets, ...openTargets];
+  const mainStack =
+    consolidation(ctx.stackFocus) > 0 ? mainStackOf(ctx, state) : null;
+  const allTargets = [
+    ...new Set([
+      ...borderTargets,
+      ...openTargets,
+      ...(mainStack !== null ? [mainStack] : []),
+    ]),
+  ];
   const targets =
     hint !== undefined && state.owners.get(hint) === ctx.botId
       ? [hint, ...allTargets.filter((id) => id !== hint)]
@@ -565,7 +596,9 @@ export function defensiveDeployments(
 ): Deployment[] {
   if (budget <= 0) return [];
   const defensive = ctx.personality === 'defensive';
-  const maxBorders = defensive ? Infinity : 3;
+  const maxBorders = defensive
+    ? Infinity
+    : DEFENDED_BORDERS + Math.round(SPREAD_BORDERS * spreading(ctx.stackFocus));
   const allBorders = ownedIds(state, ctx.botId).filter(
     (id) => isBotBorder(ctx, state, id) && supplyConnected(ctx, id),
   );
@@ -618,6 +651,25 @@ export function openStackDeployments(
   return target === null ? [] : [{ territoryId: target, troops: budget }];
 }
 
+export function mainStackOf(ctx: PlanContext, state: SimState): number | null {
+  let best: number | null = null;
+  for (const id of ownedIds(state, ctx.botId)) {
+    if (best === null || troopsIn(state, id) > troopsIn(state, best)) best = id;
+  }
+  return best;
+}
+
+export function mainStackDeployments(
+  ctx: PlanContext,
+  state: SimState,
+  budget: number,
+): Deployment[] {
+  if (budget <= 0 || consolidation(ctx.stackFocus) <= 0) return [];
+  const main = mainStackOf(ctx, state);
+  if (main === null || !supplyConnected(ctx, main)) return [];
+  return [{ territoryId: main, troops: budget }];
+}
+
 export function multiDeployments(
   ctx: PlanContext,
   state: SimState,
@@ -641,7 +693,8 @@ export function multiDeployments(
   if (reserve > 0) {
     const stagingIds = new Set(stagings.map((s) => s.id));
     let placed = 0;
-    for (const d of defensiveDeployments(ctx, state, reserve)) {
+    const defended = Math.round(reserve * (1 - consolidation(ctx.stackFocus)));
+    for (const d of defensiveDeployments(ctx, state, defended)) {
       if (stagingIds.has(d.territoryId)) continue;
       deployments.push(d);
       placed += d.troops;

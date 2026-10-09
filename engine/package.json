@@ -8,7 +8,7 @@
     "lint": "eslint src test",
     "format": "prettier --write src test",
     "types": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "test": "node --require ts-node/register --test \"test/*.test.ts\" \"test/stacks/*.test.ts\" \"test/winConditions/*.test.ts\" \"test/versus/*.test.ts\"",
+    "test": "node --require ts-node/register --test \"test/*.test.ts\" \"test/stacks/*.test.ts\" \"test/cards/*.test.ts\" \"test/winConditions/*.test.ts\" \"test/versus/*.test.ts\"",
     "botsim": "ts-node test/botSim.ts",
     "limits": "node ../scripts/checkLimits.js src test",
     "check": "npm run format && npm run lint && npm run types && npm run limits"

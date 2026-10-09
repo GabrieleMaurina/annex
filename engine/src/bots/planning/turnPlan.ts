@@ -55,6 +55,8 @@ export interface TurnPlan {
   objectives: Objective[];
   cardSet: (number | null)[] | null;
   cardSetPlayed: boolean;
+  cardsHeld?: boolean;
+  stackFocus?: number;
   deployments: Deployment[];
   attackSteps: AttackStep[];
   fortify: FortifyMove | null;

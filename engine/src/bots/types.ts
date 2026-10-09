@@ -23,4 +23,5 @@ export interface DifficultyParams {
   maxCampaigns: number;
   duelSkill: number;
   adaptivePlanning: boolean;
+  cardTiming: boolean;
 }

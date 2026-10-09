@@ -2,6 +2,7 @@ import { upcomingSetValues } from '../../game/progression/cards';
 import { grudgeAgainst } from '../features/grudge';
 import { SideProgress, modeGoalFor } from '../features/mode/modeGoals';
 import { stalematePressure } from '../features/pressure';
+import { consolidation, spreading } from '../features/stackStyle';
 import { antiLeaderActive } from '../features/standing';
 import { modeScore } from '../goals/modeScore';
 import {
@@ -25,6 +26,7 @@ import {
   ownedIds,
   strongestOpponent,
   strongestThreatAt,
+  timesCards,
   troopsIn,
 } from './context';
 
@@ -135,6 +137,9 @@ const INTERIOR_WASTE = 0.12;
 const EXPOSURE = 0.35;
 const CONCENTRATION = 0.05;
 const KEEP_STACK = 0.3;
+const SPREAD_RISK = 0.5;
+const STACK_RISK_RELIEF = 0.6;
+const SCATTER = 0.3;
 export const KEEP_STACK_TARGET = 12;
 const OPEN_STACK = 0.03;
 const STACK_PRESSURE = 0.03;
@@ -180,15 +185,18 @@ function eliminationBonus(ctx: PlanContext, state: SimState): number {
     }
     bonus += ELIMINATION * killWeight;
     if (ctx.game.bounties === 'on') bonus += 8;
-    bonus +=
-      (ctx.game.playerCards.get(opponentId)?.length ?? 0) *
-      capturedCardValue(ctx);
+    if (!timesCards(ctx))
+      bonus +=
+        (ctx.game.playerCards.get(opponentId)?.length ?? 0) * CAPTURED_CARD;
   }
+  if (timesCards(ctx))
+    bonus +=
+      (state.cards - (ctx.game.playerCards.get(ctx.botId)?.length ?? 0)) *
+      capturedCardValue(ctx);
   return bonus;
 }
 
 function capturedCardValue(ctx: PlanContext): number {
-  if (!isStrategist(ctx)) return CAPTURED_CARD;
   return Math.max(CAPTURED_CARD, (CARD * cardValue(ctx)) / CARDS_PER_SET);
 }
 
@@ -238,16 +246,24 @@ function denial(ctx: PlanContext, state: SimState): number {
 function riskAndWaste(
   ctx: PlanContext,
   state: SimState,
-): { risk: number; waste: number; concentration: number; largest: number } {
+): {
+  risk: number;
+  waste: number;
+  concentration: number;
+  largest: number;
+  scattered: number;
+} {
   let risk = 0;
   let waste = 0;
   let concentration = 0;
   let largestBorder = 0;
   let largestAny = 0;
+  let excess = 0;
   let hasBorder = false;
   for (const id of ownedIds(state, ctx.botId)) {
     const troops = troopsIn(state, id);
     largestAny = Math.max(largestAny, troops);
+    excess += Math.max(0, troops - 1);
     if (isBotBorder(ctx, state, id)) {
       hasBorder = true;
       const threat = strongestThreatAt(ctx, state, id);
@@ -259,7 +275,8 @@ function riskAndWaste(
     }
   }
   const largest = hasBorder ? largestBorder : largestAny;
-  return { risk, waste, concentration, largest };
+  const scattered = excess - Math.max(0, largestAny - 1);
+  return { risk, waste, concentration, largest, scattered };
 }
 
 function exposure(ctx: PlanContext, state: SimState): number {
@@ -328,7 +345,13 @@ function scoreState(
   state: SimState,
   cachedProgress?: SideProgress,
 ): number {
-  const { risk, waste, concentration, largest } = riskAndWaste(ctx, state);
+  const { risk, waste, concentration, largest, scattered } = riskAndWaste(
+    ctx,
+    state,
+  );
+  const gathering = consolidation(ctx.stackFocus);
+  const riskFactor =
+    1 + SPREAD_RISK * spreading(ctx.stackFocus) - STACK_RISK_RELIEF * gathering;
   const leader = antiLeaderActive(ctx.standing)
     ? strongestOpponent(ctx, state)
     : null;
@@ -338,8 +361,9 @@ function scoreState(
   score += HELD_BONUS * heldContinentBonus(ctx, state, ctx.botId);
   score += CONTINENT_PROGRESS * continentProgress(ctx, state);
   score += denial(ctx, state);
-  score -= (ctx.weights.defense * FRONTIER_RISK * risk) / scale;
+  score -= (ctx.weights.defense * FRONTIER_RISK * riskFactor * risk) / scale;
   score -= (INTERIOR_WASTE * waste) / scale;
+  score -= (SCATTER * gathering * scattered) / scale;
   score -= ctx.weights.defense * EXPOSURE * exposure(ctx, state);
   score += (CONCENTRATION * concentration) / scale;
   score +=

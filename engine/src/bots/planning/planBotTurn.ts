@@ -2,10 +2,14 @@ import {
   MAX_TERRITORY_TROOPS,
   supplyHubTerritoryIds,
 } from '../../game/mechanics';
-import { upcomingSetValues } from '../../game/progression/cards';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
+import {
+  canHoldSet,
+  currentSetValue,
+  holdingGain,
+} from '../features/cardOutlook';
 import { attackWinProbability, defenceDiceFor } from '../features/combat';
 import { modeGoalFor } from '../features/mode/modeGoals';
 import {
@@ -14,6 +18,7 @@ import {
   stalematePressure,
   stalemateRamp,
 } from '../features/pressure';
+import { consolidation } from '../features/stackStyle';
 import { breaksMainStack } from '../goals/keepStack';
 import {
   conquestEndShare,
@@ -55,10 +60,15 @@ import {
   SimState,
   buildContext,
   isStrategist,
+  ownedIds,
   planDepth,
   snapshotState,
+  strongestThreatAt,
+  timesCards,
+  troopsIn,
 } from './context';
 import { buildTurnPlan, repairPlan } from './enumerate';
+import { bestFortify } from './simulate';
 import {
   AttackStep,
   FortifyMove,
@@ -124,26 +134,53 @@ function resolvePlan(
   cached: TurnPlanCache | null,
 ): TurnPlan {
   if (isPlanFresh(cached, game, botId)) return cached;
-  const troops = game.turnPhase === 'deploy' ? game.troopsToDeploy : 0;
-  const plan = buildTurnPlan(ctx, troops);
-  if (!plan.cardSet || !canHoldCards(ctx)) return plan;
-  const held = buildTurnPlan(ctx, troops, false);
-  return held.score + holdGain(ctx) >= plan.score ? held : plan;
+  const plan = choosePlan(ctx, game, botId);
+  plan.stackFocus = ctx.stackFocus;
+  return plan;
 }
 
-const MAX_HELD_CARDS = 4;
+function choosePlan(ctx: PlanContext, game: Game, botId: number): TurnPlan {
+  const troops = game.turnPhase === 'deploy' ? game.troopsToDeploy : 0;
+  const plan = buildTurnPlan(ctx, troops);
+  if (!plan.cardSet || !canHoldCards(ctx) || !holdPays(ctx)) return plan;
+  const held = buildTurnPlan(ctx, troops, false);
+  if (held.score + HELD_TROOP_VALUE * holdingGain(game, botId) < plan.score)
+    return plan;
+  held.cardsHeld = true;
+  return held;
+}
+
+const HELD_TROOP_VALUE = 0.45;
+const HOLD_MARGIN = 1;
 
 function canHoldCards(ctx: PlanContext): boolean {
+  return timesCards(ctx) && canHoldSet(ctx.game, ctx.botId) && !endangered(ctx);
+}
+
+const SAFE_TERRITORIES = 4;
+
+function endangered(ctx: PlanContext): boolean {
+  const state = snapshotState(ctx);
+  const owned = ownedIds(state, ctx.botId);
+  if (owned.length < SAFE_TERRITORIES) return true;
+  const army = owned.reduce((sum, id) => sum + troopsIn(state, id), 0);
+  return owned.some((id) => strongestThreatAt(ctx, state, id) >= army);
+}
+
+function holdPays(ctx: PlanContext): boolean {
   return (
-    isStrategist(ctx) &&
-    (ctx.game.cards === 'Linear' || ctx.game.cards === 'Exponential') &&
-    (ctx.game.playerCards.get(ctx.botId)?.length ?? 0) <= MAX_HELD_CARDS
+    holdingGain(ctx.game, ctx.botId) >=
+    currentSetValue(ctx.game, ctx.botId) + HOLD_MARGIN
   );
 }
 
-function holdGain(ctx: PlanContext): number {
-  const [now, next] = upcomingSetValues(ctx.game, ctx.botId, 2);
-  return Math.max(0, (next ?? now ?? 0) - (now ?? 0));
+function extraCardSet(
+  ctx: PlanContext,
+  game: Game,
+  plan: TurnPlan,
+): (number | null)[] | null {
+  const holding = canHoldCards(ctx) && (plan.cardsHeld || holdPays(ctx));
+  return holding ? null : chooseCardSet(game, ctx.botId);
 }
 
 export function planBotTurn(
@@ -232,7 +269,7 @@ function planDeploy(
       return result([{ event: 'game:deploy', payload: deployment }], plan);
   }
 
-  const forcedSet = chooseCardSet(game, ctx.botId);
+  const forcedSet = extraCardSet(ctx, game, plan);
   if (forcedSet)
     return result(
       [{ event: 'game:playCardSet', payload: { cards: forcedSet } }],
@@ -276,6 +313,12 @@ function nextDeployment(
     );
     if (troops >= 1) return { territoryId: entry.territoryId, troops };
   }
+  const front = timesCards(ctx) ? attackFront(ctx, game, plan) : null;
+  if (front !== null)
+    return {
+      territoryId: front,
+      troops: Math.min(game.troopsToDeploy, troopRoom(game, front)),
+    };
   const fallback = chooseDeploy(game, ctx.view, ctx.botId, ctx.weights);
   if (fallback && canDeployTo(ctx, game, fallback.territoryId))
     return {
@@ -293,6 +336,20 @@ function nextDeployment(
     territoryId: connected,
     troops: Math.min(game.troopsToDeploy, troopRoom(game, connected)),
   };
+}
+
+function attackFront(
+  ctx: PlanContext,
+  game: Game,
+  plan: TurnPlan,
+): number | null {
+  const candidates = [
+    plan.attackSteps[plan.step]?.startId,
+    plan.attackSteps[plan.step - 1]?.endId,
+  ];
+  for (const id of candidates)
+    if (id !== undefined && canDeployTo(ctx, game, id)) return id;
+  return null;
 }
 
 function planAttack(
@@ -622,8 +679,12 @@ function planFortify(
   game: Game,
   plan: TurnPlan,
 ): PlanBotTurnResult {
-  if (plan.fortify && fortifyValid(ctx, game, plan.fortify)) {
-    const move = plan.fortify;
+  const gathering = consolidation(ctx.stackFocus) > 0;
+  const planned = gathering
+    ? bestFortify(ctx, snapshotState(ctx), undefined, false, true).move
+    : plan.fortify;
+  if (planned && fortifyValid(ctx, game, planned)) {
+    const move = planned;
     const troops = cappedFortifyTroops(game, move);
     if (troops >= 1)
       return result(
@@ -642,7 +703,9 @@ function planFortify(
       );
   }
 
-  const choice = chooseFortify(game, ctx.view, ctx.botId, ctx.weights);
+  const choice = gathering
+    ? null
+    : chooseFortify(game, ctx.view, ctx.botId, ctx.weights);
   if (!choice) return result([NEXT_PHASE], plan);
   const choiceTroops = cappedFortifyTroops(game, choice);
   if (choiceTroops < 1) return result([NEXT_PHASE], plan);

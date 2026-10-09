@@ -7,6 +7,10 @@ import { defenceDiceFor } from '../features/combat';
 import { finisherMode } from '../features/finisher';
 import { DuelFocus, duelFocus } from '../features/mode/duel';
 import { shippedSeaIdsOf } from '../features/navy';
+import {
+  neighborStackFocus,
+  NEUTRAL_STACK_FOCUS,
+} from '../features/stackStyle';
 import { buildStanding, playerStrengths, Standing } from '../features/standing';
 import { getWeights } from '../personality/registry';
 import { DifficultyParams, Weights } from '../types';
@@ -31,6 +35,7 @@ export interface PlanContext {
   standing: Standing;
   duel: DuelFocus;
   finisher: boolean;
+  stackFocus: number;
 }
 
 const FINISHER_DEPTH = 40;
@@ -204,6 +209,20 @@ export function buildContext(
     weights,
     params,
   );
+  const adaptive =
+    botProfile.personality === 'balanced' && params.adaptivePlanning;
+  const stackFocus = !adaptive
+    ? NEUTRAL_STACK_FOCUS
+    : isPlanFresh(cachedPlan, game, botId) &&
+        cachedPlan.stackFocus !== undefined
+      ? cachedPlan.stackFocus
+      : neighborStackFocus(
+          game,
+          focus.view,
+          botId,
+          focus.friendlyIds,
+          topology.neighbors,
+        );
 
   return {
     game,
@@ -223,11 +242,16 @@ export function buildContext(
     standing: focus.standing,
     duel: focus.duel,
     finisher: focus.finisher,
+    stackFocus,
   };
 }
 
 export function isStrategist(ctx: PlanContext): boolean {
   return ctx.personality === 'balanced' && ctx.params.adaptivePlanning;
+}
+
+export function timesCards(ctx: PlanContext): boolean {
+  return isStrategist(ctx) || ctx.params.cardTiming;
 }
 
 export function neighborsOf(ctx: PlanContext, territoryId: number): number[] {
@@ -261,6 +285,8 @@ export interface SimState {
   conquestsByPlayer: Map<number, number>;
   conquered: boolean;
   troopsLost: number;
+  cards: number;
+  setsCashed: number;
 }
 
 export function snapshotState(ctx: PlanContext): SimState {
@@ -279,6 +305,8 @@ export function snapshotState(ctx: PlanContext): SimState {
     conquestsByPlayer: new Map(),
     conquered: ctx.game.conqueredThisTurn,
     troopsLost: 0,
+    cards: ctx.game.playerCards.get(ctx.botId)?.length ?? 0,
+    setsCashed: 0,
   };
 }
 
@@ -290,6 +318,8 @@ export function cloneState(state: SimState): SimState {
     conquestsByPlayer: new Map(state.conquestsByPlayer),
     conquered: state.conquered,
     troopsLost: state.troopsLost,
+    cards: state.cards,
+    setsCashed: state.setsCashed,
   };
 }
 

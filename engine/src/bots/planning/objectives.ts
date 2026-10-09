@@ -38,6 +38,7 @@ import { routeStack } from './route';
 import {
   Candidate,
   defensiveDeployments,
+  mainStackDeployments,
   offensiveDeployments,
   openStackDeployments,
   pickStaging,
@@ -449,6 +450,7 @@ function defensiveCandidates(
     stalematePressure(ctx.game) > 0 ? siegeStaging(ctx, state) : null;
   if (staging === null) {
     const stacking = openStackDeployments(ctx, state, budget);
+    const gathering = mainStackDeployments(ctx, state, budget);
     return [
       {
         objectives,
@@ -461,6 +463,16 @@ function defensiveCandidates(
       },
       ...(stacking.length > 0
         ? [{ objectives, deployments: stacking, stacks: [] }]
+        : []),
+      ...(gathering.length > 0
+        ? [
+            {
+              objectives,
+              deployments: gathering,
+              stacks: [],
+              fortifyHint: gathering[0].territoryId,
+            },
+          ]
         : []),
     ];
   }

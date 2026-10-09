@@ -1,3 +1,4 @@
+import { consolidation, spreading } from '../features/stackStyle';
 import {
   PlanContext,
   SimState,
@@ -20,6 +21,7 @@ const POWER_EXPONENT = 1.15;
 const STRUCTURAL = Infinity;
 const DUEL_OPEN_BOOST = 3;
 const CONSOLIDATION = 2;
+const KEEP_STACK_SHIFT = 0.5;
 
 export function openStackWeight(ctx: PlanContext): number {
   return (
@@ -28,7 +30,13 @@ export function openStackWeight(ctx: PlanContext): number {
 }
 
 export function keepStackWeight(ctx: PlanContext): number {
-  return Math.max(0, ctx.weights.keepStack) * ctx.params.planningConfidence;
+  return (
+    Math.max(0, ctx.weights.keepStack) *
+    ctx.params.planningConfidence *
+    (1 +
+      KEEP_STACK_SHIFT *
+        (consolidation(ctx.stackFocus) - spreading(ctx.stackFocus)))
+  );
 }
 
 function sameSide(ctx: PlanContext, a: number, b: number): boolean {

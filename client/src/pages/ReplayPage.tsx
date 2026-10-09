@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Spinner } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
 import { connector } from '../connector';
 import { registerGeneratedMap } from '../game/mapData';
 import GameReplayView from '../game/replay/GameReplayView';
 import { foldStoredReplay } from '../game/replay/replay';
+import ReplayLoading from '../game/replay/ReplayLoading';
 import type { GameState, ReplayTerritory, StoredGame } from '../lib/types';
 
 interface Props {
@@ -239,14 +240,7 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
     );
   }
 
-  if (!resolved || !doc || doc.id !== id || !folded) {
-    return (
-      <div className="position-fixed top-0 start-50 translate-middle-x mt-3 d-flex align-items-center">
-        <Spinner size="sm" className="me-2" />
-        Loading replay...
-      </div>
-    );
-  }
+  if (!resolved || !doc || doc.id !== id || !folded) return <ReplayLoading />;
 
   const finalFrame = folded.data.frames.at(-1);
   const finalTerritories = finalFrame?.territories ?? folded.data.initial;
@@ -262,13 +256,10 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
       results={resultsWithElo(doc)}
       selfId={null}
       mapRenderName={resolved.mapRenderName}
-      replayData={folded.data}
-      logs={[]}
+      replay={folded}
       navigate={navigate}
       onViewChange={onViewChange}
       settingsMenuOpen={settingsMenuOpen}
-      chatLog={folded.chat}
-      emojiLog={folded.emoji}
     />
   );
 }

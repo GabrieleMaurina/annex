@@ -544,10 +544,8 @@ export interface ReplayFrame {
 export type ReplayAck =
   | {
       ok: true;
-      initial: ReplayTerritory[];
-      initialRadiation: number[];
-      frames: ReplayFrame[];
-      log: ReplayLogEntry[];
+      replay: StoredGame['replay'];
+      serverLog: ReplayLogEntry[];
     }
   | { ok: false; error: string };
 

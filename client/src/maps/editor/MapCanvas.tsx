@@ -496,6 +496,14 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
 
     onViewport?.({ offsetX, offsetY, scaleX, scaleY });
 
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(
+      offsetX - 10 * zoom,
+      offsetY - 10 * zoom,
+      imgW * scaleX + 20 * zoom,
+      imgH * scaleY + 20 * zoom,
+    );
+
     if (paintCanvas && !hideImage) {
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(

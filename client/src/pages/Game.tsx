@@ -365,7 +365,6 @@ function Game({
           selfId={selfId}
           account={account}
           navigate={navigate}
-          logs={logs}
           setChatOpen={setChatOpen}
           settingsMenuOpen={settingsMenuOpen}
           onPanelOpenChange={setGamePanelOpen}

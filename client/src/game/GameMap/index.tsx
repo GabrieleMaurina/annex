@@ -189,7 +189,6 @@ function GameMap({
     startAnimationLoop,
     replay,
   } = useGameSocketEvents({
-    showReplay,
     replayData,
     fortification,
     portalTerritoryIds,

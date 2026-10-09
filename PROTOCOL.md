@@ -88,7 +88,7 @@ There are two distinct ways a seat becomes bot-controlled:
 ```
 A private game (visibility, a server-only attribute; see "Password and visibility" under `GameState` and the `game:meta` event below) is never included here at all: the server omits it from the list entirely rather than sending it with any field blanked out. A private game is still joinable via `game:join` by anyone who knows its name (e.g. a direct link). `hasPassword` is whether the game currently has a password set, so a client can show a lock indicator without ever learning the password itself; the server fills it in here (it isn't an engine field). `hasBots` is whether the game currently seats at least one bot (`players[].isBot`), so the home list can be filtered on it.
 
-**ReplayFrame** (used in `game:replay`'s ack)
+**ReplayFrame** (the evolving state each `'action'` entry of a stored replay carries; see `game:replay` and the `games` collection below)
 ```ts
 {
   territories: { id: number; ownerId: number; troops: number; entrenchedTurns: number }[];
@@ -1074,14 +1074,14 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
 
 ### `game:replay`
 - **When sent:** a client wants to show the end-of-game map replay, e.g. when the player clicks "View Map" from the end screen.
-- **Purpose:** fetch the full history of territory ownership/troop changes for an `ended` game, as a list of `ReplayFrame`s (see above), so the client can play back the whole game on the map. Recorded live throughout `'playing'` (one frame per deployment, fortify, and attack, in order) and only returned once the game has actually ended.
+- **Purpose:** fetch the full history of an `ended` game, so the client can play back the whole game on the map. Recorded live throughout `'playing'` (one frame per deployment, fortify, and attack, in order) and only returned once the game has actually ended. The response is exactly the `replay` and `serverLog` fields of the document the game is stored as (see the `games` collection below), built by the same code, so the end screen and the standalone replay page (`GET /games/replay/:id`) fold and play back the same data, chat and emojis included.
 - **Content:** none
 - **Ack:**
   ```ts
-  | { ok: true; initial: { id: number; ownerId: number; troops: number }[]; initialRadiation: number[]; frames: ReplayFrame[]; log: { afterFrame: number; type: string; payload: unknown }[] }
+  | { ok: true; replay: { initialTerritories: { id: number; ownerId: number; troops: number; entrenchedTurns: number }[]; initialRadiation: number[]; frames: { kind: 'action' | 'turn' | 'chat' | 'emoji'; ... }[] }; serverLog: { afterFrame: number; type: string; payload: unknown }[] }
   | { ok: false; error: string }
   ```
-  `initial` is the territory snapshot right after `game:start` dealt them out, before any turn was played, the replay's starting point, index `0`; `initialRadiation` is that same starting point's `radiationTerritoryIds` (see the `radiations` paragraph above), needed since, unlike `toxinTerritories`, radiation doesn't start empty; `frames[i]` is the state after the `(i + 1)`th change. `log` is the all-seeing server log (same event types `game:logs` replays, fog never redacts them), each entry tagged with `afterFrame` — the frame index it became true at — so the replay's log panel can reveal lines in step with the map (`entry` shown once the playback index reaches `afterFrame`). Errors: `not in a game`, `game not found`, `game not ended`.
+  `replay.initialTerritories` is the territory snapshot right after `game:start` dealt them out, before any turn was played, the replay's starting point, index `0`; `replay.initialRadiation` is that same starting point's `radiationTerritoryIds` (see the `radiations` paragraph above), needed since, unlike `toxinTerritories`, radiation doesn't start empty; `replay.frames` is the single ordered stream of `'action'`, `'turn'`, `'chat'` and `'emoji'` entries described under the `games` collection below, which the client folds back into full `ReplayFrame` snapshots. `serverLog` is the all-seeing server log (same event types `game:logs` replays, fog never redacts them), each entry tagged with `afterFrame`, the `'action'` index it became true at, so the replay's log panel can reveal lines in step with the map. Errors: `not in a game`, `game not found`, `game not ended`.
 
 ### `game:chat`
 - **When sent:** a player or spectator sends a chat message.

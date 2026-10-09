@@ -31,7 +31,6 @@ import { useSeaSocketEvents } from './sea/useSeaSocketEvents';
 import { useAnimationPathHelpers } from './useAnimationPathHelpers';
 
 export function useGameSocketEvents({
-  showReplay,
   replayData,
   fortification,
   portalTerritoryIds,
@@ -49,7 +48,6 @@ export function useGameSocketEvents({
   setRadiationTerritoryIds,
   setRadiationUpcomingTerritoryIds,
 }: {
-  showReplay: boolean;
   replayData?: ReplayData | null;
   fortification: Fortification;
   portalTerritoryIds: number[];
@@ -521,12 +519,7 @@ export function useGameSocketEvents({
     ],
   );
 
-  const replay = useReplay(
-    replayData
-      ? { kind: 'static', data: replayData }
-      : { kind: 'live', enabled: showReplay },
-    playFrameAnimation,
-  );
+  const replay = useReplay(replayData ?? null, playFrameAnimation);
 
   useEffect(() => {
     function playAddEffect(

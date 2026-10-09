@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { connector } from '../../connector';
+import { playSound } from '../../lib/sounds';
 import type {
   GameState,
-  ReplayAck,
   ReplayAnimation,
   ReplayFrame,
   ReplayHand,
@@ -34,10 +33,6 @@ export interface ReplayData {
   frames: ReplayFrame[];
   log: ReplayLogEntry[];
 }
-
-export type ReplaySource =
-  | { kind: 'live'; enabled: boolean }
-  | { kind: 'static'; data: ReplayData | null };
 
 export interface ReplayTurnMarker {
   afterFrame: number;
@@ -230,35 +225,50 @@ function conquestArrowAt(
   return null;
 }
 
+function playFrameSounds(replay: ReplayData, index: number) {
+  const frame = replay.frames[index];
+  const previous = index > 0 ? replay.frames[index - 1] : null;
+  const animation = frame.animation;
+  const previousTerritories = previous?.territories ?? replay.initial;
+  if (
+    animation.type === 'deploy' &&
+    !previousTerritories.some((t) => t.id === animation.territoryId)
+  )
+    playSound('select');
+  const previousRadiation =
+    previous?.radiationTerritories ?? replay.initialRadiation;
+  if (frame.radiationTerritories.some((id) => !previousRadiation.includes(id)))
+    playSound('radiation');
+  if (index === replay.frames.length - 1) {
+    playSound('end');
+    return;
+  }
+  const previouslyEliminated = new Set(
+    (previous?.playerStates ?? [])
+      .filter((s) => s.eliminated)
+      .map((s) => s.playerId),
+  );
+  const newlyEliminated = frame.playerStates.some(
+    (s) => s.eliminated && !previouslyEliminated.has(s.playerId),
+  );
+  const phaseChanged =
+    previous !== null &&
+    (previous.turnPhase !== frame.turnPhase ||
+      (frame.turnPhase === 'deploy' && previous.playerId !== frame.playerId));
+  if (newlyEliminated) playSound('bell');
+  if (phaseChanged) playSound('phase');
+}
+
 export function useReplay(
-  source: ReplaySource,
+  replay: ReplayData | null,
   onEnterFrame: (
     animation: ReplayAnimation,
     partOfConquestPair: boolean,
   ) => void,
 ) {
-  const staticData = source.kind === 'static' ? source.data : null;
-  const liveEnabled = source.kind === 'live' && source.enabled;
-
-  const [liveReplay, setLiveReplay] = useState<ReplayData | null>(null);
-  const replay = staticData ?? liveReplay;
-  const [index, setIndex] = useState(() => staticData?.frames.length ?? 0);
+  const [index, setIndex] = useState(() => replay?.frames.length ?? 0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
-
-  useEffect(() => {
-    if (staticData || !liveEnabled) return;
-    connector.replay((res: ReplayAck) => {
-      if (!res.ok) return;
-      setLiveReplay({
-        initial: res.initial,
-        initialRadiation: res.initialRadiation,
-        frames: res.frames,
-        log: res.log ?? [],
-      });
-      setIndex(res.frames.length);
-    });
-  }, [staticData, liveEnabled]);
 
   const totalFrames = replay?.frames.length ?? 0;
 
@@ -269,6 +279,7 @@ export function useReplay(
       replay.frames[index].animation,
       conquestArrowAt(replay, next) !== null,
     );
+    playFrameSounds(replay, index);
     setIndex(next);
     if (next >= totalFrames) setPlaying(false);
   }, [replay, index, totalFrames, onEnterFrame]);

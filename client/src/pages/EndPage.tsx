@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useReducer, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
@@ -8,8 +8,9 @@ import BurgerMenu from '../common/menus/BurgerMenu';
 import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
-import type { LogEntry } from '../game/logs/useGameLogs';
 import GameReplayView from '../game/replay/GameReplayView';
+import type { FoldedReplay } from '../game/replay/replay';
+import { foldStoredReplay } from '../game/replay/replay';
 import type { Account, GameState, PlayerResultStats } from '../lib/types';
 
 interface Props {
@@ -18,7 +19,6 @@ interface Props {
   selfId: number | null;
   account: Account | null;
   navigate: (path: string) => void;
-  logs: LogEntry[];
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   settingsMenuOpen: boolean;
   onPanelOpenChange: (open: boolean) => void;
@@ -31,13 +31,14 @@ function EndPage({
   selfId,
   account,
   navigate,
-  logs,
   setChatOpen,
   settingsMenuOpen,
   onPanelOpenChange,
   onViewChange,
 }: Props) {
   const [view, setView] = useState<'results' | 'replay'>('results');
+  const [replay, setReplay] = useState<FoldedReplay | null>(null);
+  const [replayFailed, setReplayFailed] = useState(false);
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const {
     emojiPickerFor,
@@ -55,6 +56,14 @@ function EndPage({
     userId: results?.get(p.id)?.userId ?? p.userId,
   }));
 
+  useEffect(() => {
+    if (view !== 'replay' || replay || replayFailed) return;
+    connector.replay((res) => {
+      if (res.ok) setReplay(foldStoredReplay(res.replay, res.serverLog));
+      else setReplayFailed(true);
+    });
+  }, [view, replay, replayFailed]);
+
   return (
     <>
       {view === 'results' && (
@@ -70,7 +79,8 @@ function EndPage({
         results={results}
         selfId={selfId}
         mapRenderName={game.mapName}
-        logs={logs}
+        replay={replay}
+        replayFailed={replayFailed}
         navigate={navigate}
         setChatOpen={setChatOpen}
         settingsMenuOpen={settingsMenuOpen}

@@ -278,6 +278,14 @@ function buildFrames(game: Game): ReplayEntry[] {
   return entries;
 }
 
+export function buildReplay(game: Game) {
+  return {
+    initialTerritories: game.replayInitial,
+    initialRadiation: game.replayInitialRadiation,
+    frames: buildFrames(game),
+  };
+}
+
 function buildResults(game: Game): GameResultExport[] {
   const stats = territoryStats(game);
   return game.finalRanking.map((playerId, rank) => {
@@ -376,10 +384,6 @@ export function exportGame(gameName: string): GameExport | null {
     capitalTerritoryIds: [...game.capitalTerritoryIds],
     results,
     serverLog: game.replayLog,
-    replay: {
-      initialTerritories: game.replayInitial,
-      initialRadiation: game.replayInitialRadiation,
-      frames: buildFrames(game),
-    },
+    replay: buildReplay(game),
   };
 }

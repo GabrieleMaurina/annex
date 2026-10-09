@@ -1,22 +1,24 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
+import { isPlayerMuted } from '../../common/mutedPlayers';
 import type { ResultRow } from '../../common/ResultsTable';
 import { contrastTextColor, playerColor } from '../../lib/palette';
+import { playSound } from '../../lib/sounds';
 import type { GameState } from '../../lib/types';
 import GameEndResults from '../GameEndResults';
 import GameMap from '../GameMap';
 import { gameMapDataProps, noopGameMapHandlers } from '../gameMapProps';
-import type { LogEntry } from '../logs/useGameLogs';
-import type { ReplayChatMessage, ReplayData, ReplayEmoji } from './replay';
+import type { FoldedReplay } from './replay';
+import ReplayLoading from './ReplayLoading';
 
 interface Props {
   game: GameState;
   results: Map<number, ResultRow> | null;
   selfId: number | null;
   mapRenderName: string;
-  replayData?: ReplayData | null;
-  logs: LogEntry[];
+  replay: FoldedReplay | null;
+  replayFailed?: boolean;
   navigate: (path: string) => void;
   showYouLabel?: boolean;
   rowClickable?: (player: GameState['players'][number]) => boolean;
@@ -25,8 +27,6 @@ interface Props {
   onRowClick?: (playerId: number) => void;
   belowTable?: ReactNode;
   overlay?: ReactNode;
-  chatLog?: ReplayChatMessage[];
-  emojiLog?: ReplayEmoji[];
   setChatOpen?: Dispatch<SetStateAction<boolean>>;
   settingsMenuOpen?: boolean;
   onPanelOpenChange?: (open: boolean) => void;
@@ -39,8 +39,8 @@ function GameReplayView({
   results,
   selfId,
   mapRenderName,
-  replayData,
-  logs,
+  replay,
+  replayFailed,
   navigate,
   showYouLabel,
   rowClickable,
@@ -49,8 +49,6 @@ function GameReplayView({
   onRowClick,
   belowTable,
   overlay,
-  chatLog,
-  emojiLog,
   setChatOpen,
   settingsMenuOpen,
   onPanelOpenChange,
@@ -59,10 +57,24 @@ function GameReplayView({
 }: Props) {
   const [view, setView] = useState<'results' | 'replay'>('results');
   const [replayIndex, setReplayIndex] = useState(0);
+  const previousReplayIndexRef = useRef<number | null>(null);
 
   useEffect(() => {
     onViewChange?.(view);
   }, [view, onViewChange]);
+
+  useEffect(() => {
+    const previous = previousReplayIndexRef.current;
+    const stepped = previous !== null && replayIndex === previous + 1;
+    previousReplayIndexRef.current = replayIndex;
+    if (
+      stepped &&
+      (replay?.emoji ?? []).some(
+        (e) => e.afterFrame === replayIndex && !isPlayerMuted(e.senderId),
+      )
+    )
+      playSound('emoji');
+  }, [replayIndex, replay]);
 
   if (view === 'results') {
     return (
@@ -71,7 +83,10 @@ function GameReplayView({
         results={results}
         selfId={selfId}
         navigate={navigate}
-        onWatchReplay={() => setView('replay')}
+        onWatchReplay={() => {
+          previousReplayIndexRef.current = null;
+          setView('replay');
+        }}
         showYouLabel={showYouLabel}
         rowClickable={rowClickable}
         rowRef={rowRef}
@@ -84,12 +99,20 @@ function GameReplayView({
     );
   }
 
+  if (!replay)
+    return replayFailed ? (
+      <div className="d-flex flex-column align-items-center gap-3 py-5">
+        <p>Replay unavailable.</p>
+        <Button onClick={() => setView('results')}>Results</Button>
+      </div>
+    ) : (
+      <ReplayLoading />
+    );
+
   const nameById = new Map(game.players.map((p) => [p.id, p.name]));
   const colorById = new Map(game.players.map((p) => [p.id, p.color]));
-  const shownChat = (chatLog ?? []).filter((m) => m.afterFrame <= replayIndex);
-  const shownEmoji = (emojiLog ?? []).filter(
-    (e) => e.afterFrame <= replayIndex,
-  );
+  const shownChat = replay.chat.filter((m) => m.afterFrame <= replayIndex);
+  const shownEmoji = replay.emoji.filter((e) => e.afterFrame <= replayIndex);
 
   return (
     <>
@@ -105,9 +128,9 @@ function GameReplayView({
         results={results}
         gameEnded
         showReplay
-        replayData={replayData}
+        replayData={replay.data}
         onReplayIndexChange={setReplayIndex}
-        logs={logs}
+        logs={[]}
         settingsMenuOpen={settingsMenuOpen ?? false}
         navigate={navigate}
       />

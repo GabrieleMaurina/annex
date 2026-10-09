@@ -182,6 +182,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     imgDims,
   );
 
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(
+    offsetX - 10 * zoom,
+    offsetY - 10 * zoom,
+    imgW * scaleX + 20 * zoom,
+    imgH * scaleY + 20 * zoom,
+  );
+
   if (imageRef.current) {
     ctx.imageSmoothingEnabled = scaleX * dpr < 1;
     ctx.drawImage(

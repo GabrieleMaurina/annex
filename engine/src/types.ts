@@ -81,36 +81,37 @@ export interface Card {
   symbol: CardSymbol | null;
 }
 
-export type Blitz = 'Balanced' | 'True' | 'Fair' | 'Off';
+export type Blitz = 'balanced' | 'true' | 'fair' | 'off';
 export type DefenceDice = 2 | 3;
 export type CardsMode =
-  | 'Constant'
-  | 'Linear'
-  | 'Exponential'
-  | 'Linear Per Player'
-  | 'Exponential Per Player'
-  | 'Off';
+  | 'constant'
+  | 'linear'
+  | 'exponential'
+  | 'linear per player'
+  | 'exponential per player'
+  | 'off';
 export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
-  | 'Supremacy'
-  | 'Supremacy 3/4'
-  | 'Supremacy 2/3'
-  | 'Capitals'
-  | 'Team Deathmatch'
-  | 'Continent'
-  | '5-Round'
-  | '10-Round'
-  | 'Assassin'
-  | 'Mission'
-  | 'Player Kills'
-  | 'Troop Kills';
-export type Placement = 'Random' | 'Semi' | 'Custom';
-export type Fortification = 'Connected' | 'Neighboring' | 'Unrestricted';
+  | 'supremacy'
+  | 'supremacy 3/4'
+  | 'supremacy 2/3'
+  | 'capitals'
+  | 'team deathmatch'
+  | 'continent'
+  | '5-round'
+  | '10-round'
+  | 'assassin'
+  | 'mission'
+  | 'player kills'
+  | 'troop kills';
+export type Placement = 'random' | 'semi' | 'custom';
+export type Fortification = 'connected' | 'neighboring' | 'unrestricted';
 export type Entrenchments = 'off' | 'on';
 export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
 export type Radiations = 'off' | 'static' | 'dynamic' | 'expanding';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
+export type Continents = 'off' | 'on';
 export type RoundTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
@@ -322,6 +323,7 @@ export interface Game {
   blitz: Blitz;
   bounties: Bounties;
   cards: CardsMode;
+  continents: Continents;
   defenceDice: DefenceDice;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';
@@ -329,6 +331,7 @@ export interface Game {
   fogOfWar: FogOfWar;
   fortification: Fortification;
   gameMode: GameMode;
+  initialTroops: number;
   continentId: number | null;
   placement: Placement;
   portals: Portals;

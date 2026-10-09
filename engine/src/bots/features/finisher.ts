@@ -6,7 +6,7 @@ const SURGE_RATIO = 2;
 const SURGE_START_ROUND = 50;
 
 function rivalUnitCount(game: Game, rivals: number[]): number {
-  if (game.gameMode !== 'Team Deathmatch') return rivals.length;
+  if (game.gameMode !== 'team deathmatch') return rivals.length;
   return new Set(rivals.map((id) => game.playerTeams.get(id) ?? id)).size;
 }
 

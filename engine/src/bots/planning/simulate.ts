@@ -225,9 +225,9 @@ function reachableOwned(
   state: SimState,
   fromId: number,
 ): Set<number> {
-  if (ctx.game.fortification === 'Unrestricted')
+  if (ctx.game.fortification === 'unrestricted')
     return new Set(ownedIds(state, ctx.botId));
-  if (ctx.game.fortification === 'Neighboring')
+  if (ctx.game.fortification === 'neighboring')
     return new Set(
       neighborsOf(ctx, fromId).filter((n) => state.owners.get(n) === ctx.botId),
     );
@@ -279,7 +279,7 @@ function siegeMove(
   for (const source of sources) {
     if (troopsIn(state, source) <= bridgeheadTroops) break;
     const target =
-      ctx.game.fortification === 'Neighboring'
+      ctx.game.fortification === 'neighboring'
         ? stepToward(ctx, state, source, bridgehead)
         : bridgehead;
     if (target === null || !reachableOwned(ctx, state, source).has(target))

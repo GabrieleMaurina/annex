@@ -70,7 +70,7 @@ export function playCardSet(playerId: number, rawCards: unknown): GameResponse {
     'troopsGained',
     bonusDeposits.reduce((sum, deposit) => sum + deposit.troops, 0),
   );
-  if (game.cards === 'Exponential' || game.cards === 'Exponential Per Player')
+  if (game.cards === 'exponential' || game.cards === 'exponential per player')
     game.cardsLastSetValue.set(key, evaluated.baseValue);
 
   const cardSetPlayedPayload = {

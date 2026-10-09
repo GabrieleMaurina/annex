@@ -73,12 +73,12 @@ function computeBlitzWinProbabilities(
   defendingDice: number,
 ): number[] {
   const maxBlitz = attackingTroops - 1;
-  if (game.blitz === 'Off') return new Array<number>(maxBlitz).fill(0);
-  if (game.blitz === 'Fair')
+  if (game.blitz === 'off') return new Array<number>(maxBlitz).fill(0);
+  if (game.blitz === 'fair')
     return trueWinProbs(maxBlitz, defendingTroops, defendingDice).map((p) =>
       p >= 0.5 ? 1 : 0,
     );
-  const blitzWinProbs = game.blitz === 'True' ? trueWinProbs : balancedWinProbs;
+  const blitzWinProbs = game.blitz === 'true' ? trueWinProbs : balancedWinProbs;
   return blitzWinProbs(maxBlitz, defendingTroops, defendingDice);
 }
 
@@ -88,7 +88,7 @@ function computeBlitzOutcomes(
   defendingTroops: number,
   defendingDice: number,
 ): BlitzOutcome[] | undefined {
-  if (game.blitz !== 'Fair') return undefined;
+  if (game.blitz !== 'fair') return undefined;
   return fairBlitzOutcomes(attackingTroops - 1, defendingTroops, defendingDice);
 }
 
@@ -262,7 +262,7 @@ export function attack(
   if (!isAttackType(rawType))
     return { ok: false, error: 'invalid attack type' };
   const type = rawType;
-  if (type === 'blitz' && game.blitz === 'Off')
+  if (type === 'blitz' && game.blitz === 'off')
     return { ok: false, error: 'blitz disabled' };
 
   const startId = game.attackStartTerritoryId;
@@ -293,9 +293,9 @@ export function attack(
     defenderDice = result.defenceDice;
   } else {
     const blitz =
-      game.blitz === 'True'
+      game.blitz === 'true'
         ? trueBlitz
-        : game.blitz === 'Fair'
+        : game.blitz === 'fair'
           ? fairBlitz
           : balancedBlitz;
     const result = blitz(troops, defendingTroops, defendingDice);
@@ -488,7 +488,7 @@ export function quickAttack(
   const ctx = requirePlayingTurn(requireGame(playerId), 'attack');
   if (!ctx.ok) return ctx;
   const { game } = ctx;
-  if (game.blitz === 'Off') return { ok: false, error: 'blitz disabled' };
+  if (game.blitz === 'off') return { ok: false, error: 'blitz disabled' };
   if (hasPendingConquest(game, playerId))
     return { ok: false, error: 'pending conquest move' };
 

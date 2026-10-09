@@ -55,6 +55,7 @@ export function useCanvasKeyboard({
   openPanel,
   setOpenPanel,
   cardsOpen,
+  bonusesEnabled,
   cardsEnabled,
   nukesEnabled,
   settingsMenuOpen,
@@ -387,7 +388,7 @@ export function useCanvasKeyboard({
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         const key = e.key.toLowerCase();
         if (key === 'p') setPanelCollapsed((prev) => !prev);
-        else if (key === 'b') togglePanel('bonuses');
+        else if (key === 'b' && bonusesEnabled) togglePanel('bonuses');
         else if (key === 'l') togglePanel('logs');
         else if (key === 's') togglePanel('settings');
         else if (key === 'n' && nukesEnabled) togglePanel('nukes');
@@ -449,6 +450,7 @@ export function useCanvasKeyboard({
     stepTroopPanel,
     cycleAttackOption,
     cardsOpen,
+    bonusesEnabled,
     cardsEnabled,
     nukesEnabled,
     settingsMenuOpen,

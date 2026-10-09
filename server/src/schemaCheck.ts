@@ -44,6 +44,14 @@ function typeValid(value: unknown, node: Node): boolean {
   return matchesType(value, bsonTypes(node));
 }
 
+function caseInsensitiveEnumMatch(value: unknown, node: Node): unknown {
+  if (!Array.isArray(node.enum) || typeof value !== 'string') return undefined;
+  const lower = value.toLowerCase();
+  return node.enum.find(
+    (entry) => typeof entry === 'string' && entry.toLowerCase() === lower,
+  );
+}
+
 function clampToConstraints(
   value: unknown,
   node: Node,
@@ -144,6 +152,13 @@ function reconcile(
 ): unknown {
   if (node.oneOf || node.anyOf || node.allOf) return value;
   if (!typeValid(value, node)) {
+    const match = caseInsensitiveEnumMatch(value, node);
+    if (match !== undefined) {
+      changes.push(
+        `${path || '(root)'}: ${preview(value)} renamed to ${preview(match)}`,
+      );
+      return match;
+    }
     changes.push(`${path || '(root)'}: ${preview(value)} reset to default`);
     return schemaDefault(node);
   }

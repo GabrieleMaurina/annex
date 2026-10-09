@@ -4,6 +4,7 @@ import { Toast, ToastContainer } from 'react-bootstrap';
 export interface GameToast {
   id: number;
   message: string;
+  delay?: number;
 }
 
 export default function GameToasts({
@@ -35,7 +36,7 @@ export default function GameToasts({
           key={t.id}
           onClose={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
           autohide
-          delay={5000}
+          delay={t.delay ?? 5000}
           className="mx-auto"
           style={{ width: 'fit-content', maxWidth: 'none' }}
         >

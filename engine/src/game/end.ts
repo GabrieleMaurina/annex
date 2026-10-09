@@ -44,14 +44,14 @@ export function endAbandonedGame(game: Game): void {
 }
 
 function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
-  if (game.gameMode === 'Team Deathmatch') {
+  if (game.gameMode === 'team deathmatch') {
     return game.playerIds.filter(
       (id) =>
         (game.playerTeams.get(id) ?? 0) ===
           (game.playerTeams.get(winner) ?? 0) && !game.surrenderedIds.has(id),
     );
   }
-  if (game.gameMode === 'Player Kills' || game.gameMode === 'Troop Kills') {
+  if (game.gameMode === 'player kills' || game.gameMode === 'troop kills') {
     return [computeKillsWinner(game)];
   }
   return [winner];
@@ -143,14 +143,14 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
   let winnerIds: number[];
   if (activePlayers.length === 1) {
     winnerIds = soleSurvivorWinnerIds(game, activePlayers[0]);
-  } else if (game.gameMode === 'Team Deathmatch') {
+  } else if (game.gameMode === 'team deathmatch') {
     const teams = new Set(owners.map((id) => game.playerTeams.get(id) ?? 0));
     if (teams.size !== 1) return null;
     const winningTeam = [...teams][0];
     winnerIds = game.playerIds.filter(
       (id) => (game.playerTeams.get(id) ?? 0) === winningTeam,
     );
-  } else if (game.gameMode === 'Capitals') {
+  } else if (game.gameMode === 'capitals') {
     if (owners.length === 1) {
       winnerIds = owners;
     } else {
@@ -164,7 +164,7 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
       if (game.roundNumber < EARLY_WIN_GATE_ROUND_NUMBER) return null;
       winnerIds = [winnerId];
     }
-  } else if (game.gameMode === 'Continent') {
+  } else if (game.gameMode === 'continent') {
     const ids = continentTerritoryIds(game, game.continentId!).filter(
       (id) =>
         !game.territoryToxins.has(id) && !game.radiationTerritoryIds.has(id),
@@ -180,8 +180,8 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
     if (game.roundNumber < EARLY_WIN_GATE_ROUND_NUMBER) return null;
     winnerIds = [continentWinnerId];
   } else if (
-    game.gameMode === 'Supremacy 3/4' ||
-    game.gameMode === 'Supremacy 2/3'
+    game.gameMode === 'supremacy 3/4' ||
+    game.gameMode === 'supremacy 2/3'
   ) {
     const threshold = supremacyTerritoriesToWin(game)!;
     const winner = activePlayers.find(
@@ -189,15 +189,15 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
     );
     if (winner === undefined) return null;
     winnerIds = [winner];
-  } else if (game.gameMode === '5-Round' || game.gameMode === '10-Round') {
-    const roundLimit = game.gameMode === '5-Round' ? 5 : 10;
+  } else if (game.gameMode === '5-round' || game.gameMode === '10-round') {
+    const roundLimit = game.gameMode === '5-round' ? 5 : 10;
     if (game.roundNumber < roundLimit) return null;
     winnerIds = [
       [...activePlayers].sort((a, b) =>
         compareByTerritoriesFirst(game, a, b),
       )[0],
     ];
-  } else if (game.gameMode === 'Assassin' || game.gameMode === 'Mission') {
+  } else if (game.gameMode === 'assassin' || game.gameMode === 'mission') {
     const winner = activePlayers.find((id) => {
       const mission = game.playerMissions.get(id);
       return mission !== undefined && missionAccomplished(game, id, mission);

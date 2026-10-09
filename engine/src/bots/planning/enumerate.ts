@@ -337,7 +337,7 @@ export function buildTurnPlan(
 
   const needsCard =
     !ctx.game.conqueredThisTurn &&
-    (ctx.personality !== 'defensive' || ctx.game.cards !== 'Off');
+    (ctx.personality !== 'defensive' || ctx.game.cards !== 'off');
   if (needsCard && bestPlan.objectives[0]?.kind === 'defensive') {
     const cardEntry = scored.find(
       (e) =>

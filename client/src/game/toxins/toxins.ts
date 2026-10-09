@@ -10,7 +10,7 @@ export function toxinsCost(
   nextSetBaseValues: GameState['nextSetBaseValues'],
 ): number {
   if (toxinsSetting === 'off') return Infinity;
-  if (cards === 'Constant' || cards === 'Off')
+  if (cards === 'constant' || cards === 'off')
     return toxinsSetting === 'temporary' ? 5 : 10;
   return Math.ceil(
     nextSetBaseValues.mixed * (toxinsSetting === 'temporary' ? 0.25 : 0.5),

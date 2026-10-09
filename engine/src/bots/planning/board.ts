@@ -207,7 +207,7 @@ function incomeEstimate(
 ): number {
   const owned = ownedIds(state, playerId).length;
   const capitals =
-    ctx.game.gameMode === 'Capitals'
+    ctx.game.gameMode === 'capitals'
       ? [...ctx.game.capitalTerritoryIds].filter(
           (id) => state.owners.get(id) === playerId,
         ).length * 2
@@ -392,7 +392,7 @@ function scoreState(
       ctx.standing.gangUp *
       leader.strength;
   score += ctx.weights.grudge * GRUDGE * grudgeSatisfaction(ctx, state);
-  if (state.conquered && ctx.game.cards !== 'Off')
+  if (state.conquered && ctx.game.cards !== 'off')
     score += CARD * cardValue(ctx);
   score -= (TROOP_LOSS * state.troopsLost) / scale;
   score += eliminationBonus(ctx, state);

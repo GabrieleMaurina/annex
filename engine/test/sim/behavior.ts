@@ -47,7 +47,7 @@ function continentTerritories(game: Game): Map<number, number[]> {
 }
 
 export function runawayLeader(game: Game, playerId: number): number | null {
-  if (game.gameMode === 'Team Deathmatch') return null;
+  if (game.gameMode === 'team deathmatch') return null;
   const dead = new Set(game.deathOrder);
   const alive = game.playerIds.filter((id) => !dead.has(id));
   if (alive.length < MULTI_MIN_PLAYERS) return null;

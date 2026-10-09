@@ -44,7 +44,7 @@ function stackBoard(
     troops,
     troopsToDeploy: 10,
     difficulty: 'hard',
-    cards: 'Off',
+    cards: 'off',
   };
 }
 
@@ -371,7 +371,7 @@ function twoBonusBoard(players: number[]): ScenarioSpec {
     },
     troops: { 0: 1, 1: 1, 2: 30, 3: 4, 4: 4, 5: 4, 6: 4, 7: 4, 8: 4, 9: 4 },
     troopsToDeploy: 12,
-    cards: 'Off',
+    cards: 'off',
   };
 }
 
@@ -461,7 +461,7 @@ const matchedStacks: ScenarioSpec = {
   owners: { 0: 1, 1: 1, 2: 2, 3: 2 },
   troops: { 0: 20, 1: 3, 2: 20, 3: 3 },
   troopsToDeploy: 4,
-  cards: 'Off',
+  cards: 'off',
 };
 
 test('in a duel matched stacks get rolled, but only by bots that fight stacks', () => {
@@ -689,12 +689,12 @@ function sealChoiceStart(bigStackTroops: number, cards: Game['cards']): number {
 }
 
 test('a live attack that would seal off the bot own stack is passed over', () => {
-  assert.equal(sealChoiceStart(30, 'Constant'), 5);
-  assert.equal(sealChoiceStart(10, 'Constant'), 0);
+  assert.equal(sealChoiceStart(30, 'constant'), 5);
+  assert.equal(sealChoiceStart(10, 'constant'), 0);
 });
 
 test('balanced keeps its main stack when an extra attack earns nothing', () => {
-  assert.equal(sealChoiceStart(10, 'Off'), 5);
+  assert.equal(sealChoiceStart(10, 'off'), 5);
 });
 
 test('in a duel destroying an enemy stack is worth more than outside one', () => {

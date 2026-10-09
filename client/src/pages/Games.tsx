@@ -27,7 +27,7 @@ import {
   PlayerFilter,
   SettingFilterSections,
 } from '../lobby/gameFilters';
-import { GENERATED_MAP_VALUE } from '../lobby/settings/gameSettings';
+import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
 
 const PAGE_SIZE = 20;
 
@@ -98,7 +98,7 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
       <td>{endedAt.toLocaleTimeString()}</td>
       <td>{row.name}</td>
       <td>{row.mapName}</td>
-      <td>{row.gameMode}</td>
+      <td>{titleCase(row.gameMode)}</td>
       <td>
         <div className="d-flex flex-wrap gap-1">
           {row.players.map((p, i) => (
@@ -387,7 +387,7 @@ function Games({ account }: Props) {
                 <option value="">Any</option>
                 {GAME_MODES.map((m) => (
                   <option key={m} value={m}>
-                    {m}
+                    {titleCase(m)}
                   </option>
                 ))}
               </Form.Select>

@@ -16,12 +16,14 @@ import type {
   GameState,
   GenerateMapInput,
 } from '../../lib/types';
+import { GAME_MODES } from '../../lib/types';
 import MapBrowser from '../../maps/MapBrowser';
 import MapGenerationPanel, {
   type MapGenerationPanelHandle,
 } from '../MapGenerationPanel';
 import MapLikeButton from '../MapLikeButton';
 import GameSettingsFields from './GameSettingsFields';
+import { titleCase } from './gameSettings';
 import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
 
 const LABEL_STYLE = { minWidth: 130, flexShrink: 0 };
@@ -64,18 +66,20 @@ interface Props {
 
 const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   alliances: 'off',
-  blitz: 'Balanced',
+  blitz: 'balanced',
   bounties: 'off',
-  cards: 'Constant',
+  cards: 'constant',
+  continents: 'on',
   defenceDice: 2,
   disconnectBotDifficulty: 'random',
   disconnectBotPersonality: 'random',
   entrenchments: 'off',
   fogOfWar: 'off',
-  fortification: 'Connected',
-  gameMode: 'Supremacy',
+  fortification: 'connected',
+  gameMode: 'supremacy',
+  initialTroops: 3,
   password: null,
-  placement: 'Random',
+  placement: 'random',
   portals: 'off',
   radiations: 'off',
   nukes: 'off',
@@ -271,21 +275,14 @@ function SettingsPanel({
                   applySettings({ gameMode: e.target.value as GameMode })
                 }
               >
-                <option value="Supremacy">Supremacy</option>
-                <option value="Supremacy 3/4">Supremacy 3/4</option>
-                <option value="Supremacy 2/3">Supremacy 2/3</option>
-                <option value="Capitals">Capitals</option>
-                <option value="Team Deathmatch">Team Deathmatch</option>
-                <option value="Continent">Continent</option>
-                <option value="5-Round">5-Round</option>
-                <option value="10-Round">10-Round</option>
-                <option value="Assassin">Assassin</option>
-                <option value="Mission">Mission</option>
-                <option value="Player Kills">Player Kills</option>
-                <option value="Troop Kills">Troop Kills</option>
+                {GAME_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {titleCase(m)}
+                  </option>
+                ))}
               </Form.Select>
             ) : (
-              <span>{game.gameMode}</span>
+              <span>{titleCase(game.gameMode)}</span>
             )}
           </div>
 

@@ -57,7 +57,6 @@ const PHASE_ORDER: TurnPhase[] = [
 export const PLACEMENT_PHASE_DURATION = 10;
 export const CAPITAL_PHASE_DURATION = 60;
 const TROOP_PHASE_TURN_MAX = 3;
-const TROOP_PHASE_PER_TERRITORY_POOL = 2;
 
 const turnTimers = new Map<string, NodeJS.Timeout>();
 
@@ -209,7 +208,7 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
     const key = counterKey(game, playerId);
     game.cardSetsPlayed.set(key, (game.cardSetsPlayed.get(key) ?? 0) + 1);
     bumpStat(game, playerId, 'setsPlayed');
-    if (game.cards === 'Exponential' || game.cards === 'Exponential Per Player')
+    if (game.cards === 'exponential' || game.cards === 'exponential per player')
       game.cardsLastSetValue.set(key, best.baseValue);
 
     let bonusGained = 0;
@@ -354,11 +353,16 @@ export function startTroopPhase(game: Game) {
     const count = territoryCounts.get(id) ?? 0;
     game.placementTroopPools.set(
       id,
-      count * TROOP_PHASE_PER_TERRITORY_POOL + turnOrderBonus(i),
+      count * (game.initialTroops - 1) + turnOrderBonus(i),
     );
   });
+  const startIndex = nextTroopIndexFrom(game, -1);
+  if (startIndex === null) {
+    game.placementTroopPools = new Map();
+    beginNextSpecialPhase(game);
+    return;
+  }
   game.turnPhase = 'troop';
-  const startIndex = nextTroopIndexFrom(game, -1) ?? 0;
   game.turnPlayerIndex = startIndex;
   game.troopsToDeploy = Math.min(
     TROOP_PHASE_TURN_MAX,
@@ -717,7 +721,7 @@ export function advanceToNextPlayer(game: Game) {
   const endingPlayerId = game.playerIds[game.turnPlayerIndex];
   bumpStat(game, endingPlayerId, 'turnsPlayed');
 
-  if (game.conqueredThisTurn && game.cards !== 'Off') {
+  if (game.conqueredThisTurn && game.cards !== 'off') {
     const card = popRandomCard(game.deck);
     if (card) {
       game.playerCards.get(endingPlayerId)?.push(card);

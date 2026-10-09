@@ -15,6 +15,7 @@ import {
   Blitz,
   Bounties,
   CardsMode,
+  Continents,
   DefenceDice,
   Entrenchments,
   FogOfWar,
@@ -34,45 +35,46 @@ import { isInteger } from '../util/validate';
 import { validateGameName } from './create';
 
 const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
-const BLITZ_VALUES: Blitz[] = ['Balanced', 'True', 'Fair', 'Off'];
+const BLITZ_VALUES: Blitz[] = ['balanced', 'true', 'fair', 'off'];
 const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
 const CARDS_VALUES: CardsMode[] = [
-  'Constant',
-  'Linear',
-  'Exponential',
-  'Linear Per Player',
-  'Exponential Per Player',
-  'Off',
+  'constant',
+  'linear',
+  'exponential',
+  'linear per player',
+  'exponential per player',
+  'off',
 ];
 const PROGRESSIVE_CARDS_VALUES: CardsMode[] = [
-  'Linear',
-  'Exponential',
-  'Linear Per Player',
-  'Exponential Per Player',
+  'linear',
+  'exponential',
+  'linear per player',
+  'exponential per player',
 ];
+const CONTINENTS_VALUES: Continents[] = ['off', 'on'];
 const DEFENCE_DICE_VALUES: DefenceDice[] = [2, 3];
 const ENTRENCHMENTS_VALUES: Entrenchments[] = ['off', 'on'];
 const FOG_OF_WAR_VALUES: FogOfWar[] = ['off', 'on'];
 const FORTIFICATION_VALUES: Fortification[] = [
-  'Connected',
-  'Neighboring',
-  'Unrestricted',
+  'connected',
+  'neighboring',
+  'unrestricted',
 ];
 const GAME_MODE_VALUES: GameMode[] = [
-  'Supremacy',
-  'Supremacy 3/4',
-  'Supremacy 2/3',
-  'Capitals',
-  'Team Deathmatch',
-  'Continent',
-  '5-Round',
-  '10-Round',
-  'Assassin',
-  'Mission',
-  'Player Kills',
-  'Troop Kills',
+  'supremacy',
+  'supremacy 3/4',
+  'supremacy 2/3',
+  'capitals',
+  'team deathmatch',
+  'continent',
+  '5-round',
+  '10-round',
+  'assassin',
+  'mission',
+  'player kills',
+  'troop kills',
 ];
-const PLACEMENT_VALUES: Placement[] = ['Random', 'Semi', 'Custom'];
+const PLACEMENT_VALUES: Placement[] = ['random', 'semi', 'custom'];
 const PORTALS_VALUES: Portals[] = ['off', 'static', 'dynamic'];
 const RADIATIONS_VALUES: Radiations[] = [
   'off',
@@ -120,7 +122,7 @@ export function updateSettings(
       return { ok: false, error: 'invalid alliances' };
     const effectiveGameMode =
       settings.gameMode !== undefined ? settings.gameMode : game.gameMode;
-    if (settings.alliances === 'on' && effectiveGameMode === 'Team Deathmatch')
+    if (settings.alliances === 'on' && effectiveGameMode === 'team deathmatch')
       return { ok: false, error: 'invalid alliances' };
     game.alliances = settings.alliances as Alliances;
   }
@@ -161,7 +163,7 @@ export function updateSettings(
     if (!(BLITZ_VALUES as unknown[]).includes(settings.blitz))
       return { ok: false, error: 'invalid blitz' };
     if (
-      settings.blitz === 'Off' &&
+      settings.blitz === 'off' &&
       !isBlitzOffAllowed(
         settings.roundTroops ?? game.roundTroops,
         settings.cards ?? game.cards,
@@ -181,6 +183,12 @@ export function updateSettings(
     if (!(CARDS_VALUES as unknown[]).includes(settings.cards))
       return { ok: false, error: 'invalid cards' };
     game.cards = settings.cards as CardsMode;
+  }
+
+  if (settings.continents !== undefined) {
+    if (!(CONTINENTS_VALUES as unknown[]).includes(settings.continents))
+      return { ok: false, error: 'invalid continents' };
+    game.continents = settings.continents as Continents;
   }
 
   if (settings.defenceDice !== undefined) {
@@ -226,7 +234,17 @@ export function updateSettings(
     if (!(GAME_MODE_VALUES as unknown[]).includes(settings.gameMode))
       return { ok: false, error: 'invalid game mode' };
     game.gameMode = settings.gameMode as GameMode;
-    if (game.gameMode === 'Team Deathmatch') game.alliances = 'off';
+    if (game.gameMode === 'team deathmatch') game.alliances = 'off';
+  }
+
+  if (settings.initialTroops !== undefined) {
+    if (
+      !isInteger(settings.initialTroops) ||
+      settings.initialTroops < 1 ||
+      settings.initialTroops > 100
+    )
+      return { ok: false, error: 'invalid initial troops' };
+    game.initialTroops = settings.initialTroops;
   }
 
   if (settings.name !== undefined) {
@@ -347,8 +365,8 @@ export function updateSettings(
     game.roundTroops = settings.roundTroops as RoundTroops;
   }
 
-  if (game.blitz === 'Off' && !isBlitzOffAllowed(game.roundTroops, game.cards))
-    game.blitz = 'Balanced';
+  if (game.blitz === 'off' && !isBlitzOffAllowed(game.roundTroops, game.cards))
+    game.blitz = 'balanced';
 
   broadcastHomeGames();
   return respondGameState(game, player.id);

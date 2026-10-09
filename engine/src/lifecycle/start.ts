@@ -43,11 +43,11 @@ export function startGame(playerId: number): GameResponse {
     game.playerIds.filter((id) => !playersById.get(id)?.isBot).length < 2
   )
     return { ok: false, error: 'not enough human players' };
-  if (game.gameMode === 'Team Deathmatch' && teamCount(game) < 2)
+  if (game.gameMode === 'team deathmatch' && teamCount(game) < 2)
     return { ok: false, error: 'not enough teams' };
-  if (game.gameMode === 'Team Deathmatch' && game.alliances === 'on')
+  if (game.gameMode === 'team deathmatch' && game.alliances === 'on')
     return { ok: false, error: 'alliances not allowed in team deathmatch' };
-  if (game.blitz === 'Off' && !isBlitzOffAllowed(game.roundTroops, game.cards))
+  if (game.blitz === 'off' && !isBlitzOffAllowed(game.roundTroops, game.cards))
     return { ok: false, error: 'blitz off not allowed with these settings' };
 
   for (const ownerId of game.substituteFor.values()) {
@@ -56,7 +56,7 @@ export function startGame(playerId: number): GameResponse {
   }
   game.substituteFor.clear();
 
-  if (game.gameMode === 'Team Deathmatch') {
+  if (game.gameMode === 'team deathmatch') {
     compactTeams(game);
     game.playerIds = interleaveTeams(game);
   } else {
@@ -66,14 +66,14 @@ export function startGame(playerId: number): GameResponse {
   game.replayInitialRadiation = [...game.radiationTerritoryIds];
   initializePortals(game);
   initializeContinent(game);
-  if (game.placement === 'Random') {
+  if (game.placement === 'random') {
     assignTerritories(game);
-  } else if (game.placement === 'Semi') {
+  } else if (game.placement === 'semi') {
     assignTerritoryOwners(game);
   }
-  if (game.gameMode === 'Assassin') {
+  if (game.gameMode === 'assassin') {
     game.playerMissions = assignMissions(game, ['assassinate']);
-  } else if (game.gameMode === 'Mission') {
+  } else if (game.gameMode === 'mission') {
     game.playerMissions = assignMissions(game);
   } else {
     game.playerMissions = new Map();
@@ -97,7 +97,7 @@ export function startGame(playerId: number): GameResponse {
   game.stats = new Map(game.playerIds.map((id) => [id, emptyPlayerStats()]));
   game.deathOrder = [];
   game.teamDeathOrder = [];
-  if (game.placement !== 'Custom') {
+  if (game.placement !== 'custom') {
     for (const id of game.playerIds) {
       if (!ownsAnyTerritory(game, id)) game.deathOrder.push(id);
     }
@@ -106,9 +106,9 @@ export function startGame(playerId: number): GameResponse {
   game.state = 'playing';
   game.startedAt = Date.now();
   game.remainingSpecialPhases = [
-    ...(game.placement === 'Custom' ? (['territory'] as const) : []),
-    ...(game.placement !== 'Random' ? (['troop'] as const) : []),
-    ...(game.gameMode === 'Capitals' ? (['capital'] as const) : []),
+    ...(game.placement === 'custom' ? (['territory'] as const) : []),
+    ...(game.placement !== 'random' ? (['troop'] as const) : []),
+    ...(game.gameMode === 'capitals' ? (['capital'] as const) : []),
   ];
   beginNextSpecialPhase(game);
   broadcastHomeGames();

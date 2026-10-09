@@ -273,6 +273,8 @@ export const SETTINGS_ENUM_KEYS = [
   'gameMode',
   'blitz',
   'defenceDice',
+  'continents',
+  'initialTroops',
   'cards',
   'placement',
   'fortification',

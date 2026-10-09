@@ -93,7 +93,7 @@ test('capitals: the bot grabs a soft enemy capital', () => {
     },
     troops: { 3: 16, 4: 2, 5: 12, 6: 12, 7: 12, 8: 12 },
     troopsToDeploy: 6,
-    settings: { gameMode: 'Capitals' },
+    settings: { gameMode: 'capitals' },
     capitals: [1, 4, 10],
   };
   const plan = planScenario(spec);
@@ -357,7 +357,7 @@ test('assassin: the bot lines up a kill on a mid-sized opponent', () => {
     },
     troops: { 3: 20, 4: 2, 5: 2, 6: 2, 7: 20 },
     troopsToDeploy: 6,
-    settings: { gameMode: 'Assassin' },
+    settings: { gameMode: 'assassin' },
   };
   const plan = planScenario(spec);
   assert.ok(kinds(plan).includes('eliminate'), `kinds: ${kinds(plan)}`);

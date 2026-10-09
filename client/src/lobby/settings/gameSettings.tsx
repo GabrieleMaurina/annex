@@ -10,12 +10,14 @@ import {
   BLITZ_HELP,
   BOUNTIES_HELP,
   CARDS_HELP,
+  CONTINENTS_HELP,
   DEFENCE_DICE_HELP,
   DISCONNECT_BOT_DIFFICULTY_HELP,
   DISCONNECT_BOT_PERSONALITY_HELP,
   ENTRENCHMENTS_HELP,
   FOG_OF_WAR_HELP,
   FORTIFICATION_HELP,
+  INITIAL_TROOPS_HELP,
   NUKES_HELP,
   PLACEMENT_HELP,
   PORTALS_HELP,
@@ -67,7 +69,7 @@ export function isBlitzOffAllowed(game: {
 }): boolean {
   return (
     game.roundTroops === 'off' &&
-    (game.cards === 'Constant' || game.cards === 'Off')
+    (game.cards === 'constant' || game.cards === 'off')
   );
 }
 
@@ -82,35 +84,48 @@ function options(...values: string[]): GameSettingOption[] {
   return values.map((value) => ({ value, label: value }));
 }
 
+export function titleCase(value: string): string {
+  return value.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
 function caps(...values: string[]): GameSettingOption[] {
-  return values.map((value) => ({
-    value,
-    label: value.charAt(0).toUpperCase() + value.slice(1),
-  }));
+  return values.map((value) => ({ value, label: titleCase(value) }));
 }
 
 const TURN_DURATIONS = [60, 90, 120, 150, 180, 300];
+const INITIAL_TROOPS = Array.from({ length: 100 }, (_, i) => i + 1);
 
 export const GAME_SETTINGS: GameSettingDef[] = [
   {
     key: 'placement',
     label: 'Placement',
     section: 'Setup',
-    options: options('Random', 'Semi', 'Custom'),
+    options: caps('random', 'semi', 'custom'),
     help: PLACEMENT_HELP,
+  },
+  {
+    key: 'initialTroops',
+    label: 'Initial Troops',
+    section: 'Setup',
+    numeric: true,
+    options: INITIAL_TROOPS.map((troops) => ({
+      value: String(troops),
+      label: String(troops),
+    })),
+    help: INITIAL_TROOPS_HELP,
   },
   {
     key: 'fortification',
     label: 'Fortification',
     section: 'Setup',
-    options: options('Connected', 'Neighboring', 'Unrestricted'),
+    options: caps('connected', 'neighboring', 'unrestricted'),
     help: FORTIFICATION_HELP,
   },
   {
     key: 'blitz',
     label: 'Blitz',
     section: 'Combat',
-    options: options('Balanced', 'True', 'Fair', 'Off'),
+    options: caps('balanced', 'true', 'fair', 'off'),
     help: BLITZ_HELP,
   },
   {
@@ -129,16 +144,23 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     help: ENTRENCHMENTS_HELP,
   },
   {
+    key: 'continents',
+    label: 'Continents',
+    section: 'Reinforcements',
+    options: onOff(),
+    help: CONTINENTS_HELP,
+  },
+  {
     key: 'cards',
     label: 'Cards',
     section: 'Reinforcements',
-    options: options(
-      'Constant',
-      'Linear',
-      'Exponential',
-      'Linear Per Player',
-      'Exponential Per Player',
-      'Off',
+    options: caps(
+      'constant',
+      'linear',
+      'exponential',
+      'linear per player',
+      'exponential per player',
+      'off',
     ),
     help: CARDS_HELP,
   },

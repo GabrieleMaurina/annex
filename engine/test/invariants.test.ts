@@ -30,7 +30,7 @@ const PERSONALITIES: BotPersonality[] = [
   'defensive',
   'erratic',
 ];
-const FORTIFICATIONS = ['Connected', 'Neighboring', 'Unrestricted'] as const;
+const FORTIFICATIONS = ['connected', 'neighboring', 'unrestricted'] as const;
 
 function randomBoard(seed: number): ScenarioSpec {
   const rng = mulberry32(seed);
@@ -108,7 +108,7 @@ function randomBoard(seed: number): ScenarioSpec {
   }
   if (rng() < 0.25) spec.settings!.fogOfWar = 'on';
   if (rng() < 0.15) {
-    spec.settings!.gameMode = 'Capitals';
+    spec.settings!.gameMode = 'capitals';
     spec.capitals = [1, 5, 9].filter((id) => id < territoryCount);
   }
   if (rng() < 0.15) spec.settings!.supplyLines = 'on';

@@ -51,7 +51,7 @@ function GameSettingsFields({
 
   const disabledKeys = new Set<string>();
   if (game.defenceDice !== 2) disabledKeys.add('entrenchments');
-  if (game.gameMode === 'Team Deathmatch') disabledKeys.add('alliances');
+  if (game.gameMode === 'team deathmatch') disabledKeys.add('alliances');
   const blitzOffAllowed = isBlitzOffAllowed(game);
 
   function field(def: GameSettingDef) {
@@ -89,7 +89,7 @@ function GameSettingsFields({
                 key={o.value}
                 value={o.value}
                 disabled={
-                  def.key === 'blitz' && o.value === 'Off' && !blitzOffAllowed
+                  def.key === 'blitz' && o.value === 'off' && !blitzOffAllowed
                 }
               >
                 {o.label}

@@ -19,9 +19,9 @@ export function maxTeam(game: Game) {
 
 export function supremacyTerritoriesToWin(game: Game): number | null {
   const fraction =
-    game.gameMode === 'Supremacy 3/4'
+    game.gameMode === 'supremacy 3/4'
       ? 3 / 4
-      : game.gameMode === 'Supremacy 2/3'
+      : game.gameMode === 'supremacy 2/3'
         ? 2 / 3
         : null;
   if (fraction === null) return null;
@@ -183,7 +183,8 @@ export function assignTerritories(game: Game) {
   const groups = assignTerritoryOwners(game);
   game.playerIds.forEach((_, i) => {
     const owned = groups[i];
-    let remainingTroops = owned.length * 2 + turnOrderBonus(i);
+    let remainingTroops =
+      owned.length * (game.initialTroops - 1) + turnOrderBonus(i);
     while (remainingTroops > 0) {
       const territoryId = owned[Math.floor(Math.random() * owned.length)];
       game.territoryTroops.set(
@@ -374,11 +375,12 @@ export function calculateDeployTroopsBreakdown(
       .filter((ownerId) => ownerId !== undefined);
     const controlsContinent =
       owners.length > 0 && owners.every((ownerId) => ownerId === playerId);
-    if (controlsContinent) bonuses += map.bonuses[continentId] ?? 0;
+    if (controlsContinent && game.continents === 'on')
+      bonuses += map.bonuses[continentId] ?? 0;
   }
 
   let capitals = 0;
-  if (game.gameMode === 'Capitals') {
+  if (game.gameMode === 'capitals') {
     const capitalsControlled = [...game.capitalTerritoryIds].filter(
       (id) => game.territoryOwners.get(id) === playerId,
     ).length;

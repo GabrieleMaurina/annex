@@ -20,8 +20,8 @@ function isReachable(
   startId: number,
   endId: number,
 ): boolean {
-  if (game.fortification === 'Unrestricted') return true;
-  if (game.fortification === 'Neighboring')
+  if (game.fortification === 'unrestricted') return true;
+  if (game.fortification === 'neighboring')
     return neighborsOf(game, startId).includes(endId);
   return connectedFortifyTerritories(game, botId, [startId]).has(endId);
 }

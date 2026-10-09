@@ -100,6 +100,19 @@ export const DEFENCE_DICE_HELP = (
   </>
 );
 
+export const CONTINENTS_HELP = (
+  <>
+    Whether holding a whole continent pays off in troops.
+    <ul className="mb-0 ps-3">
+      <li>Off: no continent bonuses, and the bonuses panel is hidden.</li>
+      <li>
+        On: holding every territory of a continent gives its bonus troops at the
+        start of each of your turns.
+      </li>
+    </ul>
+  </>
+);
+
 export const CARDS_HELP = (
   <>
     How much a set of 3 territory cards is worth in troops when played.
@@ -150,6 +163,13 @@ export const PLACEMENT_HELP = (
         territories for everyone, players who never get one are eliminated.
       </li>
     </ul>
+  </>
+);
+
+export const INITIAL_TROOPS_HELP = (
+  <>
+    Average number of starting troops per territory. Each player starts with
+    this many troops for every territory they own, at least 1 on each.
   </>
 );
 

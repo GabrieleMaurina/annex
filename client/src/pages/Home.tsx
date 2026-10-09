@@ -40,7 +40,7 @@ import {
   PlayerFilter,
   SettingFilterSections,
 } from '../lobby/gameFilters';
-import { GENERATED_MAP_VALUE } from '../lobby/settings/gameSettings';
+import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
 
 const MAX_GAME_NAME_LENGTH = 20;
 const POLL_MS = 5000;
@@ -410,7 +410,7 @@ function Home({
                     <option value="">Any</option>
                     {GAME_MODES.map((m) => (
                       <option key={m} value={m}>
-                        {m}
+                        {titleCase(m)}
                       </option>
                     ))}
                   </Form.Select>

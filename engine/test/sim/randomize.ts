@@ -39,34 +39,34 @@ export const PERSONALITIES: BotPersonality[] = [
 ];
 
 const FORTIFICATIONS: Fortification[] = [
-  'Connected',
-  'Neighboring',
-  'Unrestricted',
+  'connected',
+  'neighboring',
+  'unrestricted',
 ];
 const CARDS_MODES: CardsMode[] = [
-  'Constant',
-  'Linear',
-  'Exponential',
-  'Linear Per Player',
-  'Exponential Per Player',
-  'Off',
+  'constant',
+  'linear',
+  'exponential',
+  'linear per player',
+  'exponential per player',
+  'off',
 ];
 const GAME_MODES: GameMode[] = [
-  'Supremacy',
-  'Supremacy 3/4',
-  'Supremacy 2/3',
-  'Capitals',
-  'Team Deathmatch',
-  'Continent',
-  '5-Round',
-  '10-Round',
-  'Assassin',
-  'Mission',
-  'Player Kills',
-  'Troop Kills',
+  'supremacy',
+  'supremacy 3/4',
+  'supremacy 2/3',
+  'capitals',
+  'team deathmatch',
+  'continent',
+  '5-round',
+  '10-round',
+  'assassin',
+  'mission',
+  'player kills',
+  'troop kills',
 ];
-const BLITZ_VALUES: Blitz[] = ['Balanced', 'True', 'Fair', 'Off'];
-const PLACEMENT_VALUES: Placement[] = ['Random', 'Random', 'Semi', 'Custom'];
+const BLITZ_VALUES: Blitz[] = ['balanced', 'true', 'fair', 'off'];
+const PLACEMENT_VALUES: Placement[] = ['random', 'random', 'semi', 'custom'];
 
 export type Contestant = 'current' | 'baseline';
 
@@ -136,11 +136,11 @@ export function randomGameSettings(
 ): RandomSettings {
   const gameMode = pick(rng, GAME_MODES);
   const defenceDice = rng() < 0.5 ? 2 : 3;
-  const alliancesAllowed = gameMode !== 'Team Deathmatch';
+  const alliancesAllowed = gameMode !== 'team deathmatch';
   const cards = pick(rng, CARDS_MODES);
   const roundTroops = rng() < 0.3 ? 'on' : 'off';
   const blitzOffAllowed =
-    roundTroops === 'off' && (cards === 'Constant' || cards === 'Off');
+    roundTroops === 'off' && (cards === 'constant' || cards === 'off');
 
   const settings: Record<string, unknown> = {
     gameMode,
@@ -149,7 +149,7 @@ export function randomGameSettings(
     cards,
     blitz: pick(
       rng,
-      blitzOffAllowed ? BLITZ_VALUES : BLITZ_VALUES.filter((b) => b !== 'Off'),
+      blitzOffAllowed ? BLITZ_VALUES : BLITZ_VALUES.filter((b) => b !== 'off'),
     ),
     placement: pick(rng, PLACEMENT_VALUES),
     fogOfWar: rng() < 0.3 ? 'on' : 'off',
@@ -171,13 +171,15 @@ export function randomGameSettings(
     ] as const),
     toxins: weightedOff(rng, 0.25, ['temporary', 'permanent'] as const),
     alliances: alliancesAllowed && rng() < 0.25 ? 'on' : 'off',
+    continents: rng() < 0.25 ? 'off' : 'on',
   };
 
   let teams: number[] | null = null;
-  if (gameMode === 'Team Deathmatch') {
+  if (gameMode === 'team deathmatch') {
     const teamCount = pick(rng, [2, 2, 3] as const);
     teams = Array.from({ length: botCount }, (_, i) => i % teamCount);
   }
+  settings.initialTroops = rng() < 0.9 ? 3 : 1 + Math.floor(rng() * 100);
 
   return { settings, teams };
 }

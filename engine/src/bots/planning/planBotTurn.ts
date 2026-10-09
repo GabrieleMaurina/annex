@@ -383,7 +383,7 @@ function planAttack(
   const candidateShipAttack = chooseShipAttack(game, ctx.botId);
   const continuingShipAttack =
     candidateShipAttack !== null &&
-    game.blitz === 'Off' &&
+    game.blitz === 'off' &&
     game.attackSeaTerritoryId === candidateShipAttack.seaTerritoryId &&
     game.attackSeaDefenderId === candidateShipAttack.defenderId;
   const shipAttack =
@@ -432,7 +432,7 @@ function planAttack(
     if (status === 'ok') {
       const attackers = (game.territoryTroops.get(step.startId) ?? 0) - 1;
       if (!isContinuation(game, step.startId, step.endId)) plan.attacksIssued++;
-      if (game.blitz !== 'Off') plan.step++;
+      if (game.blitz !== 'off') plan.step++;
       return result(
         [
           {
@@ -576,7 +576,7 @@ function continuesFromConquest(
   plan: TurnPlan,
 ): boolean {
   if (ctx.personality === 'defensive') return false;
-  const firstUpcoming = game.blitz === 'Off' ? plan.step + 1 : plan.step;
+  const firstUpcoming = game.blitz === 'off' ? plan.step + 1 : plan.step;
   return plan.attackSteps
     .slice(firstUpcoming)
     .some((step) => step.startId === game.attackEndTerritoryId);
@@ -600,7 +600,7 @@ function conquestShare(ctx: PlanContext, game: Game): number {
 
 function isContinuation(game: Game, startId: number, endId: number): boolean {
   return (
-    game.blitz === 'Off' &&
+    game.blitz === 'off' &&
     game.attackStartTerritoryId === startId &&
     game.attackEndTerritoryId === endId
   );
@@ -733,8 +733,8 @@ function fortifyValid(
   if (game.territoryOwners.get(move.startId) !== ctx.botId) return false;
   if (game.territoryOwners.get(move.endId) !== ctx.botId) return false;
   if ((game.territoryTroops.get(move.startId) ?? 0) < 2) return false;
-  if (game.fortification === 'Unrestricted') return true;
-  if (game.fortification === 'Neighboring')
+  if (game.fortification === 'unrestricted') return true;
+  if (game.fortification === 'neighboring')
     return (ctx.neighbors.get(move.startId) ?? []).includes(move.endId);
   return connectedFortifyTerritories(game, ctx.botId, [move.startId]).has(
     move.endId,

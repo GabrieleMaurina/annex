@@ -59,7 +59,7 @@ export interface SideProgress {
 
 function neutralGoal(ctx: PlanContext): ModeGoal {
   const { game, botId } = ctx;
-  const teams = game.gameMode === 'Team Deathmatch' ? game.playerTeams : null;
+  const teams = game.gameMode === 'team deathmatch' ? game.playerTeams : null;
   let total = 0;
   for (const territory of ctx.map.territories)
     if (
@@ -158,28 +158,28 @@ function buildModeGoal(ctx: PlanContext): ModeGoal {
   const { game } = ctx;
   const goal = neutralGoal(ctx);
   switch (game.gameMode) {
-    case 'Supremacy':
+    case 'supremacy':
       goal.threshold = goal.total;
       goal.threatThreshold = goal.total;
       goal.ownWeight = PASSIVE_WEIGHT;
       goal.threatWeight = PASSIVE_WEIGHT;
       break;
-    case 'Team Deathmatch':
+    case 'team deathmatch':
       goal.threshold = goal.total;
       goal.threatThreshold = goal.total;
       goal.ownWeight = PASSIVE_WEIGHT;
       goal.threatWeight = PASSIVE_WEIGHT;
       goal.expand = true;
       break;
-    case 'Supremacy 3/4':
-    case 'Supremacy 2/3':
+    case 'supremacy 3/4':
+    case 'supremacy 2/3':
       setRace(goal, supremacyTerritoriesToWin(game)!);
       break;
-    case 'Capitals':
+    case 'capitals':
       if (game.capitalTerritoryIds.size >= 2)
         setHold(goal, [...game.capitalTerritoryIds]);
       break;
-    case 'Continent':
+    case 'continent':
       if (game.continentId !== null)
         setHold(
           goal,
@@ -188,24 +188,24 @@ function buildModeGoal(ctx: PlanContext): ModeGoal {
           ),
         );
       break;
-    case '5-Round':
+    case '5-round':
       setRounds(ctx, goal, 5);
       break;
-    case '10-Round':
+    case '10-round':
       setRounds(ctx, goal, 10);
       break;
-    case 'Assassin':
+    case 'assassin':
       setMission(ctx, goal);
       if (goal.assassinId === null) goal.eliminateThreshold = 1;
       break;
-    case 'Mission':
+    case 'mission':
       setMission(ctx, goal);
       break;
-    case 'Player Kills':
+    case 'player kills':
       goal.killWeight = PLAYER_KILLS_WEIGHT;
       goal.eliminateThreshold = PLAYER_KILLS_ELIMINATE_THRESHOLD;
       break;
-    case 'Troop Kills':
+    case 'troop kills':
       goal.damageBonus = TROOP_KILLS_DAMAGE;
       goal.lossRefund = TROOP_KILLS_LOSS_REFUND;
       break;

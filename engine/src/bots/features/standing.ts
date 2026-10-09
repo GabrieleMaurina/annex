@@ -95,7 +95,7 @@ export function buildStanding(
   continentTerritories: Map<number, number[]>,
   bonuses: number[],
 ): Standing {
-  const teamMode = game.gameMode === 'Team Deathmatch';
+  const teamMode = game.gameMode === 'team deathmatch';
   const sideOf = (playerId: number) =>
     teamMode ? (game.playerTeams.get(playerId) ?? 0) : playerId;
   const dead = new Set(game.deathOrder);

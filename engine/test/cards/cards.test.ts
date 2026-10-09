@@ -116,14 +116,14 @@ test('rivals are expected to trade by hand size, forced from five cards', () => 
 
 test('constant: a mixed set is played at once', () => {
   assert.equal(
-    firstEvent(calmBoard('Constant', { 1: hand([S, H, T]) })),
+    firstEvent(calmBoard('constant', { 1: hand([S, H, T]) })),
     'game:playCardSet',
   );
 });
 
 test('constant: a soldier triple is cashed and the wild kept for a strong set', () => {
   const { game, botId } = buildGame(
-    calmBoard('Constant', { 1: hand([S, S, S, null]) }),
+    calmBoard('constant', { 1: hand([S, S, S, null]) }),
   );
   const { actions } = deterministic(() =>
     planBotTurn(
@@ -141,28 +141,28 @@ test('constant: a soldier triple is cashed and the wild kept for a strong set', 
 
 test('constant: a mixed set barely more likely next turn is not worth waiting for', () => {
   assert.equal(
-    firstEvent(calmBoard('Constant', { 1: hand([S, S, S, H]) })),
+    firstEvent(calmBoard('constant', { 1: hand([S, S, S, H]) })),
     'game:playCardSet',
   );
 });
 
 test('constant: a tank triple is worth more now than a gamble on a mixed set', () => {
   assert.equal(
-    firstEvent(calmBoard('Constant', { 1: hand([T, T, T, H]) })),
+    firstEvent(calmBoard('constant', { 1: hand([T, T, T, H]) })),
     'game:playCardSet',
   );
 });
 
 test('constant: five cards are always traded', () => {
   assert.equal(
-    firstEvent(calmBoard('Constant', { 1: hand([S, S, S, H, H]) })),
+    firstEvent(calmBoard('constant', { 1: hand([S, S, S, H, H]) })),
     'game:playCardSet',
   );
 });
 
 test('escalating: a set is held while rivals are about to cash theirs', () => {
   const spec = calmBoard(
-    'Exponential',
+    'exponential',
     { 1: hand([S, S, S]), ...RIVALS_CASHING },
     { cardsLastSetValue: new Map([[0, 10]]) },
   );
@@ -172,7 +172,7 @@ test('escalating: a set is held while rivals are about to cash theirs', () => {
 
 test('every personality times its cards on hard, none below hard except balanced', () => {
   const spec = calmBoard(
-    'Exponential',
+    'exponential',
     { 1: hand([S, S, S]), ...RIVALS_CASHING },
     { cardsLastSetValue: new Map([[0, 10]]) },
   );
@@ -194,7 +194,7 @@ test('every personality times its cards on hard, none below hard except balanced
 
 test('escalating: a bot down to its last few territories cashes instead of holding', () => {
   const spec = calmBoard(
-    'Exponential',
+    'exponential',
     { 1: hand([S, S, S]), ...RIVALS_CASHING },
     { cardsLastSetValue: new Map([[0, 10]]) },
   );
@@ -204,7 +204,7 @@ test('escalating: a bot down to its last few territories cashes instead of holdi
 
 test('exponential: a big set waits even when only one rival might cash first', () => {
   const spec = calmBoard(
-    'Exponential',
+    'exponential',
     { 1: hand([S, S, S]), 2: hand([S, H, T], 200) },
     { cardsLastSetValue: new Map([[0, 30]]) },
   );
@@ -217,7 +217,7 @@ test('escalating: a set is played when no rival will raise its value', () => {
   assert.equal(
     firstEvent(
       calmBoard(
-        'Exponential',
+        'exponential',
         { 1: hand([S, S, S]) },
         { cardsLastSetValue: new Map([[0, 10]]) },
       ),
@@ -229,7 +229,7 @@ test('escalating: a set is played when no rival will raise its value', () => {
 test('per player: rivals trading never raise the bot set, so it plays now', () => {
   assert.equal(
     firstEvent(
-      calmBoard('Exponential Per Player', {
+      calmBoard('exponential per player', {
         1: hand([S, S, S]),
         ...RIVALS_CASHING,
       }),
@@ -241,7 +241,7 @@ test('per player: rivals trading never raise the bot set, so it plays now', () =
 test('escalating: holding is worth more the more rivals are about to trade', () => {
   const gainWith = (hands: Record<number, Card[]>) => {
     const { game, botId } = buildGame(
-      calmBoard('Linear', { 1: hand([S, S, S]), ...hands }),
+      calmBoard('linear', { 1: hand([S, S, S]), ...hands }),
     );
     return holdingGain(game, botId);
   };
@@ -268,7 +268,7 @@ test('troops that eliminate a rival now are not held back', () => {
     troops: { 2: 4, 3: 14, 4: 30 },
     troopsToDeploy: 3,
     difficulty: 'hard',
-    cards: 'Exponential',
+    cards: 'exponential',
     settings: {
       playerCards: new Map([
         [1, hand([S, S, S])],
@@ -300,7 +300,7 @@ function captureBoard(rivalCards: Card[]): ScenarioSpec {
     troops: { 0: 20, 1: 2, 2: 12, 3: 12, 4: 12, 5: 12, 6: 12 },
     troopsToDeploy: 3,
     difficulty: 'hard',
-    cards: 'Exponential',
+    cards: 'exponential',
     settings: {
       playerCards: new Map([
         [1, hand([S, S, H])],

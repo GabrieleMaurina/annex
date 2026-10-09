@@ -46,7 +46,7 @@ export function recordElimination(
     }
   }
 
-  if (game.gameMode === 'Team Deathmatch') {
+  if (game.gameMode === 'team deathmatch') {
     const team = game.playerTeams.get(defenderId) ?? 0;
     const teamAlive = [...game.territoryOwners.values()].some(
       (id) => (game.playerTeams.get(id) ?? 0) === team,
@@ -135,7 +135,7 @@ function compareByTroopKillsFirst(game: Game, a: number, b: number): number {
 
 function killsComparator(game: Game): (a: number, b: number) => number {
   const compare =
-    game.gameMode === 'Troop Kills'
+    game.gameMode === 'troop kills'
       ? compareByTroopKillsFirst
       : compareByPlayerKillsFirst;
   return (a, b) => compare(game, a, b);
@@ -183,8 +183,8 @@ function computeTeamRanking(game: Game): number[] {
 }
 
 export function computeFinalRanking(game: Game): number[] {
-  if (game.gameMode === 'Team Deathmatch') return computeTeamRanking(game);
-  if (game.gameMode === 'Player Kills' || game.gameMode === 'Troop Kills') {
+  if (game.gameMode === 'team deathmatch') return computeTeamRanking(game);
+  if (game.gameMode === 'player kills' || game.gameMode === 'troop kills') {
     const comparator = killsComparator(game);
     const contenders = game.playerIds
       .filter((id) => !game.surrenderedIds.has(id))
@@ -196,7 +196,7 @@ export function computeFinalRanking(game: Game): number[] {
   }
 
   const tiebreak =
-    game.gameMode === '5-Round' || game.gameMode === '10-Round'
+    game.gameMode === '5-round' || game.gameMode === '10-round'
       ? compareByTerritoriesFirst
       : compareBySurvivorTiebreak;
 

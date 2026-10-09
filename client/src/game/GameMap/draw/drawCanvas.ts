@@ -329,7 +329,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.restore();
   }
 
-  if (gameMode === 'Continent' && continentId !== null) {
+  if (gameMode === 'continent' && continentId !== null) {
     const targetTerritories = territories.filter(
       (t) => t.continentId === continentId,
     );

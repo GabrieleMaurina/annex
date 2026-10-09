@@ -66,7 +66,7 @@ function grid(enemyTroops: Record<number, number>): ScenarioSpec {
     troops: { 2: 12, 5: 12, ...enemyTroops },
     troopsToDeploy: 6,
     difficulty: 'hard',
-    cards: 'Off',
+    cards: 'off',
   };
 }
 
@@ -202,7 +202,7 @@ test('next to spreaders the bot guards more of its borders', () => {
     players: [1, 2],
     owners,
     troops,
-    cards: 'Off',
+    cards: 'off',
   });
   const guarded = (stackFocus: number) =>
     defensiveDeployments({ ...ctx, stackFocus }, snapshotState(ctx), 12).length;

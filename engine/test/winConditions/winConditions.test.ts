@@ -47,7 +47,7 @@ test('Supremacy 3/4: the bot crosses the territory threshold', () => {
     owners: { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 3, 7: 3 },
     troops: { 4: 20, 5: 1 },
     troopsToDeploy: 6,
-    settings: { gameMode: 'Supremacy 3/4' },
+    settings: { gameMode: 'supremacy 3/4' },
   });
 });
 
@@ -62,7 +62,7 @@ test('Supremacy 2/3: the bot crosses the territory threshold', () => {
     owners: { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 3, 7: 3, 8: 3 },
     troops: { 4: 20, 5: 1 },
     troopsToDeploy: 6,
-    settings: { gameMode: 'Supremacy 2/3' },
+    settings: { gameMode: 'supremacy 2/3' },
   });
 });
 
@@ -81,7 +81,7 @@ test('Capitals: the bot sweeps every capital in one turn', () => {
     troops: { 0: 30, 1: 1, 2: 1, 3: 1, 4: 1 },
     troopsToDeploy: 6,
     capitals: [0, 1, 2],
-    settings: { gameMode: 'Capitals' },
+    settings: { gameMode: 'capitals' },
   });
 });
 
@@ -122,7 +122,7 @@ test('Continent: the bot completes the target continent', () => {
     owners: { 0: 1, 1: 1, 2: 2, 3: 3, 4: 3 },
     troops: { 1: 20, 2: 1 },
     troopsToDeploy: 6,
-    settings: { gameMode: 'Continent', continentId: 0 },
+    settings: { gameMode: 'continent', continentId: 0 },
   });
 });
 
@@ -148,7 +148,7 @@ test('5-Round: the bot grabs the tile that puts it in the lead', () => {
     },
     troops: { 3: 20, 4: 1 },
     troopsToDeploy: 6,
-    settings: { gameMode: '5-Round', roundNumber: 5 },
+    settings: { gameMode: '5-round', roundNumber: 5 },
   });
 });
 
@@ -174,7 +174,7 @@ test('10-Round: the bot grabs the tile that puts it in the lead', () => {
     },
     troops: { 3: 20, 4: 1 },
     troopsToDeploy: 6,
-    settings: { gameMode: '10-Round', roundNumber: 10 },
+    settings: { gameMode: '10-round', roundNumber: 10 },
   });
 });
 
@@ -190,7 +190,7 @@ test('Assassin: eliminating the assigned target wins the game outright', () => {
     troops: { 1: 20, 2: 1 },
     troopsToDeploy: 6,
     settings: {
-      gameMode: 'Assassin',
+      gameMode: 'assassin',
       playerMissions: new Map([[1, { type: 'assassinate', targetId: 2 }]]),
     },
   });
@@ -216,7 +216,7 @@ test('Mission: the bot completes its assigned continent mission', () => {
     troops: { 1: 20, 2: 1 },
     troopsToDeploy: 6,
     settings: {
-      gameMode: 'Mission',
+      gameMode: 'mission',
       playerMissions: new Map([[1, { type: 'continents', continentIds: [0] }]]),
     },
   });
@@ -233,7 +233,7 @@ test('Player Kills: the bot takes the only elimination available', () => {
     owners: { 0: 1, 1: 1, 2: 1, 3: 2 },
     troops: { 2: 20, 3: 1 },
     troopsToDeploy: 6,
-    settings: { gameMode: 'Player Kills' },
+    settings: { gameMode: 'player kills' },
   });
 });
 
@@ -249,7 +249,7 @@ test('Troop Kills: the bot takes the only elimination available', () => {
     troops: { 2: 20, 3: 1 },
     troopsToDeploy: 6,
     settings: {
-      gameMode: 'Troop Kills',
+      gameMode: 'troop kills',
       stats: new Map([
         [1, { ...emptyPlayerStats(), troopsKilled: 50 }],
         [2, emptyPlayerStats()],

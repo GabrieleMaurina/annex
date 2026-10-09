@@ -52,7 +52,7 @@ function ownerTerritoryCounts(game: Game): Map<number, number> {
 }
 
 function isHighValuePlayer(game: Game, botId: number): boolean {
-  if (game.gameMode === 'Capitals') {
+  if (game.gameMode === 'capitals') {
     for (const id of game.capitalTerritoryIds)
       if (game.territoryOwners.get(id) === botId) return true;
   }
@@ -142,7 +142,7 @@ export function chooseNukeLaunch(
   const denial = threatTile(ctx);
   if (denial !== null) return { territoryId: denial };
 
-  if (game.gameMode === 'Capitals') {
+  if (game.gameMode === 'capitals') {
     const capitals = enemyTiles
       .filter(
         (tile) => game.capitalTerritoryIds.has(tile.id) && tile.troops >= 3,

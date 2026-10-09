@@ -27,7 +27,7 @@ export function attackOrder(
   game: Game,
   troops: number,
 ): { type: 'regular' | 'blitz'; troops: number } {
-  if (game.blitz === 'Off')
+  if (game.blitz === 'off')
     return {
       type: 'regular',
       troops: Math.min(troops, REGULAR_ATTACK_MAX_TROOPS),

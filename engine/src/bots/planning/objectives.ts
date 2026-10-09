@@ -676,6 +676,7 @@ function spoilContinentCandidates(
   state: SimState,
   budget: number,
 ): Candidate[] {
+  if (ctx.game.continents === 'off') return [];
   const candidates: Candidate[] = [];
   for (const [continentId, territoryIds] of ctx.continentTerritories) {
     const counts = new Map<number, number>();

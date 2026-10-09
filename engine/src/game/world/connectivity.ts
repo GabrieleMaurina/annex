@@ -105,7 +105,7 @@ export function fortifyFullPath(
   startId: number,
   endId: number,
 ): number[] {
-  if (game.fortification === 'Unrestricted') return [startId, endId];
+  if (game.fortification === 'unrestricted') return [startId, endId];
   const map = getGameMap(game);
   const seaIds = new Set(map.seaTerritories.map((t) => t.id));
   const neighborsById = new Map(

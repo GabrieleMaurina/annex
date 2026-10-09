@@ -51,9 +51,9 @@ function buildGameState(
   const capitals = new Set(doc.capitalTerritoryIds ?? []);
   const s = doc.settings;
   const supremacyFraction =
-    s.gameMode === 'Supremacy 3/4'
+    s.gameMode === 'supremacy 3/4'
       ? 3 / 4
-      : s.gameMode === 'Supremacy 2/3'
+      : s.gameMode === 'supremacy 2/3'
         ? 2 / 3
         : null;
   return {
@@ -70,6 +70,7 @@ function buildGameState(
     blitz: s.blitz,
     bounties: s.bounties,
     cards: s.cards,
+    continents: s.continents,
     defenceDice: s.defenceDice,
     disconnectBotDifficulty: s.disconnectBotDifficulty,
     disconnectBotPersonality: s.disconnectBotPersonality,
@@ -77,6 +78,7 @@ function buildGameState(
     fogOfWar: s.fogOfWar,
     fortification: s.fortification,
     gameMode: s.gameMode,
+    initialTroops: s.initialTroops,
     continentId: s.continentId,
     placement: s.placement,
     portals: s.portals,

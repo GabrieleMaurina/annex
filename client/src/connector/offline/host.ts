@@ -55,6 +55,7 @@ export function seedOffline(state: GameState): void {
       blitz: state.blitz,
       bounties: state.bounties,
       cards: state.cards,
+      continents: state.continents,
       defenceDice: state.defenceDice,
       disconnectBotDifficulty: state.disconnectBotDifficulty,
       disconnectBotPersonality: state.disconnectBotPersonality,
@@ -62,6 +63,7 @@ export function seedOffline(state: GameState): void {
       fogOfWar: state.fogOfWar,
       fortification: state.fortification,
       gameMode: state.gameMode,
+      initialTroops: state.initialTroops,
       placement: state.placement,
       portals: state.portals,
       radiations: state.radiations,
@@ -76,7 +78,7 @@ export function seedOffline(state: GameState): void {
     playerMapId: state.playerMapId,
     slots: state.slots,
     teams:
-      state.gameMode === 'Team Deathmatch'
+      state.gameMode === 'team deathmatch'
         ? [host?.team ?? 0, ...bots.map((b) => b.team)]
         : null,
     bots: bots.map((b) => ({

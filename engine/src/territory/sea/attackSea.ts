@@ -48,15 +48,15 @@ function computeSeaBlitzWinProbabilities(
   defendingShips: number,
   defendingDice: number,
 ): number[] {
-  if (game.blitz === 'Off') return new Array<number>(attackingShips).fill(0);
-  if (game.blitz === 'Fair')
+  if (game.blitz === 'off') return new Array<number>(attackingShips).fill(0);
+  if (game.blitz === 'fair')
     return trueWinProbs(
       attackingShips,
       defendingShips,
       defendingDice,
       false,
     ).map((p) => (p >= 0.5 ? 1 : 0));
-  const blitzWinProbs = game.blitz === 'True' ? trueWinProbs : balancedWinProbs;
+  const blitzWinProbs = game.blitz === 'true' ? trueWinProbs : balancedWinProbs;
   return blitzWinProbs(attackingShips, defendingShips, defendingDice, false);
 }
 
@@ -66,7 +66,7 @@ function computeSeaBlitzOutcomes(
   defendingShips: number,
   defendingDice: number,
 ): BlitzOutcome[] | undefined {
-  if (game.blitz !== 'Fair') return undefined;
+  if (game.blitz !== 'fair') return undefined;
   return fairBlitzOutcomes(
     attackingShips,
     defendingShips,
@@ -171,7 +171,7 @@ export function attackSea(
   if (!isAttackType(rawType))
     return { ok: false, error: 'invalid attack type' };
   const type = rawType;
-  if (type === 'blitz' && game.blitz === 'Off')
+  if (type === 'blitz' && game.blitz === 'off')
     return { ok: false, error: 'blitz disabled' };
 
   const seaTerritoryId = game.attackSeaTerritoryId;
@@ -201,9 +201,9 @@ export function attackSea(
     defenderDice = result.defenceDice;
   } else {
     const blitz =
-      game.blitz === 'True'
+      game.blitz === 'true'
         ? trueBlitz
-        : game.blitz === 'Fair'
+        : game.blitz === 'fair'
           ? fairBlitz
           : balancedBlitz;
     const result = blitz(ships, defendingShips, defendingDice, false);
@@ -299,7 +299,7 @@ export function quickAttackSea(
   const ctx = requireAttackSeaTurn(playerId);
   if (!ctx.ok) return ctx;
   const { game } = ctx;
-  if (game.blitz === 'Off') return { ok: false, error: 'blitz disabled' };
+  if (game.blitz === 'off') return { ok: false, error: 'blitz disabled' };
 
   const selected = attackSeaSelectStart(playerId, rawTerritoryId);
   if (!selected.ok) return selected;

@@ -11,4 +11,4 @@ Disallow: /maps/editor
 Disallow: /games/live/
 Disallow: /games/offline
 
-Sitemap: https://annexgame.com/sitemap.xml
+Sitemap: https://www.annexgame.com/sitemap.xml

@@ -28,7 +28,7 @@ function exponentialValue(last: number): number {
 const GLOBAL_COUNTER_KEY = 0;
 
 function isPerPlayer(mode: Game['cards']): boolean {
-  return mode === 'Linear Per Player' || mode === 'Exponential Per Player';
+  return mode === 'linear per player' || mode === 'exponential per player';
 }
 
 export function counterKey(game: Game, playerId: number): number {
@@ -72,11 +72,11 @@ export function nextSetBaseValues(
   game: Game,
   playerId: number,
 ): Record<SetKind, number> {
-  if (game.cards === 'Constant' || game.cards === 'Off')
+  if (game.cards === 'constant' || game.cards === 'off')
     return { ...CONSTANT_VALUES };
   const key = counterKey(game, playerId);
   const value =
-    game.cards === 'Linear' || game.cards === 'Linear Per Player'
+    game.cards === 'linear' || game.cards === 'linear per player'
       ? linearValue((game.cardSetsPlayed.get(key) ?? 0) + 1)
       : exponentialValue(game.cardsLastSetValue.get(key) ?? 0);
   return { soldier: value, humvee: value, tank: value, mixed: value };
@@ -87,9 +87,9 @@ export function upcomingSetValues(
   playerId: number,
   count: number,
 ): number[] {
-  if (game.cards === 'Constant' || game.cards === 'Off') return [];
+  if (game.cards === 'constant' || game.cards === 'off') return [];
   const key = counterKey(game, playerId);
-  if (game.cards === 'Linear' || game.cards === 'Linear Per Player') {
+  if (game.cards === 'linear' || game.cards === 'linear per player') {
     return Array.from({ length: count }, (_, i) =>
       linearValue((game.cardSetsPlayed.get(key) ?? 0) + 1 + i),
     );

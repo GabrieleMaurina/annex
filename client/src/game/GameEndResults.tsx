@@ -46,7 +46,7 @@ function GameEndResults({
 }: Props) {
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
   const won = selfId !== null && game.winnerIds.includes(selfId);
-  const isTeamDeathmatch = game.gameMode === 'Team Deathmatch';
+  const isTeamDeathmatch = game.gameMode === 'team deathmatch';
   const duration =
     game.startedAt !== null && game.endedAt !== null
       ? formatDuration(game.endedAt - game.startedAt)
@@ -80,7 +80,7 @@ function GameEndResults({
         results={results}
         originalHostId={game.originalHostId}
         roundNumber={game.roundNumber}
-        isCapitals={game.gameMode === 'Capitals'}
+        isCapitals={game.gameMode === 'capitals'}
         selfId={selfId}
         showYouLabel={showYouLabel ?? selfId !== null}
         rowClickable={rowClickable}

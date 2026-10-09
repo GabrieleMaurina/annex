@@ -101,6 +101,8 @@ export interface GameExport {
     slots: number;
     blitz: string;
     defenceDice: number;
+    continents: string;
+    initialTroops: number;
     cards: string;
     placement: string;
     fortification: string;
@@ -330,6 +332,8 @@ export function exportGame(gameName: string): GameExport | null {
       slots: game.slots,
       blitz: game.blitz,
       defenceDice: game.defenceDice,
+      continents: game.continents,
+      initialTroops: game.initialTroops,
       cards: game.cards,
       placement: game.placement,
       fortification: game.fortification,

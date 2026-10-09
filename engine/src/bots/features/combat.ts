@@ -69,8 +69,8 @@ export function attackWinProbability(
     Math.max(1, Math.round(defendingTroops * scale)),
     defendingDice,
   );
-  if (game.blitz === 'Fair') return trueProb >= 0.5 ? 1 : 0;
-  if (game.blitz === 'Balanced') return distortProbability(trueProb);
+  if (game.blitz === 'fair') return trueProb >= 0.5 ? 1 : 0;
+  if (game.blitz === 'balanced') return distortProbability(trueProb);
   return trueProb;
 }
 
@@ -109,7 +109,7 @@ export function expectedOutcome(
     return { winProbability: 0, attackerSurvivorsMean: 0 };
   if (defendingTroops <= 0)
     return { winProbability: 1, attackerSurvivorsMean: attackingTroops };
-  if (game.blitz === 'Fair') {
+  if (game.blitz === 'fair') {
     const outcome = fairBlitz(attackingTroops, defendingTroops, defendingDice);
     const win = outcome.defenceLosses >= defendingTroops;
     return {
@@ -124,7 +124,7 @@ export function expectedOutcome(
   );
   return {
     winProbability:
-      game.blitz === 'Balanced'
+      game.blitz === 'balanced'
         ? distortProbability(stats.winProbability)
         : stats.winProbability,
     attackerSurvivorsMean: stats.attackerMeanAtInput,

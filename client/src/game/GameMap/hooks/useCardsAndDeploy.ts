@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../../../connector';
 import type { Ack, Card, GameState } from '../../../lib/types';
@@ -9,6 +9,8 @@ import {
   enumerateCombos,
   type EvaluatedCombo,
 } from '../../logic/cards';
+import type { GameToast } from '../overlays/GameToasts';
+import { BOT_TOAST_DELAY_MS } from './view/useTurnToasts';
 
 export function useCardsAndDeploy({
   turnPhase,
@@ -20,6 +22,7 @@ export function useCardsAndDeploy({
   nextSetBaseValues,
   selfId,
   playersRef,
+  botSpeed,
   cardsOpen,
   setOpenPanel,
   setToasts,
@@ -34,16 +37,12 @@ export function useCardsAndDeploy({
   nextSetBaseValues: GameState['nextSetBaseValues'];
   selfId: number | null;
   playersRef: RefObject<GameState['players']>;
+  botSpeed: GameState['botSpeed'];
   cardsOpen: boolean;
   setOpenPanel: (
     panel: 'cards' | 'bonuses' | 'logs' | 'settings' | null,
   ) => void;
-  setToasts: (
-    update: (prev: { id: number; message: string }[]) => {
-      id: number;
-      message: string;
-    }[],
-  ) => void;
+  setToasts: Dispatch<SetStateAction<GameToast[]>>;
   setGame: (game: GameState) => void;
 }) {
   const [hand, setHand] = useState<Card[]>([]);
@@ -159,14 +158,15 @@ export function useCardsAndDeploy({
       }, CARD_SET_FLASH_DURATION);
 
       if (payload.playerId !== selfId) {
-        const name =
-          playersRef.current.find((p) => p.id === payload.playerId)?.name ??
-          'A player';
+        const player = playersRef.current.find(
+          (p) => p.id === payload.playerId,
+        );
         setToasts((prev) => [
           ...prev,
           {
             id: Date.now(),
-            message: `${name} received ${payload.troops} troops from a set`,
+            message: `${player?.name ?? 'A player'} received ${payload.troops} troops from a set`,
+            delay: player?.isBot ? BOT_TOAST_DELAY_MS[botSpeed] : undefined,
           },
         ]);
       }
@@ -175,7 +175,7 @@ export function useCardsAndDeploy({
     return () => {
       connector.off('game:cardSetPlayed', onCardSetPlayed);
     };
-  }, [selfId, playersRef, setToasts]);
+  }, [selfId, playersRef, botSpeed, setToasts]);
 
   return {
     hand,

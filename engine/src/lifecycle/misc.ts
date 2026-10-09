@@ -134,9 +134,9 @@ export function surrender(playerId: number): GameResponse {
   game.surrenderedIds.add(player.id);
   if (!game.deathOrder.includes(player.id)) game.deathOrder.push(player.id);
   const stats = game.stats.get(player.id)!;
-  if (game.gameMode === 'Player Kills')
+  if (game.gameMode === 'player kills')
     game.frozenKillCount.set(player.id, stats.playersKilled.length);
-  else if (game.gameMode === 'Troop Kills')
+  else if (game.gameMode === 'troop kills')
     game.frozenKillCount.set(player.id, stats.troopsKilled);
   startTakeover(game, player);
   checkGameEnd(game);

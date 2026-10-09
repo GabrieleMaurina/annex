@@ -56,7 +56,7 @@ export function handleGameEnded(payload: {
   if (!participants || participants.size === 0) return noElos;
   if (payload.roundNumber < 1) return noElos;
 
-  const isTeam = payload.gameMode === 'Team Deathmatch';
+  const isTeam = payload.gameMode === 'team deathmatch';
   const ranked = payload.ranking
     .map((entry, rank) => ({
       rank,

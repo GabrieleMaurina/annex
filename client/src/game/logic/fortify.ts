@@ -93,9 +93,9 @@ export function getFortifyStartCandidates(
   for (const t of territories) {
     const owner = ownerById.get(t.id);
     if (!owner || owner.ownerId !== selfId || owner.troops < 2) continue;
-    if (fortification === 'Unrestricted') {
+    if (fortification === 'unrestricted') {
       if (ownedCount > 1) candidates.add(t.id);
-    } else if (fortification === 'Connected') {
+    } else if (fortification === 'connected') {
       const reachable = connectedFortifyReachable(
         neighborsById,
         seaIds,
@@ -136,7 +136,7 @@ export function getFortifyEndCandidates(
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
 ): Set<number> {
-  if (fortification === 'Unrestricted') {
+  if (fortification === 'unrestricted') {
     return new Set(
       territories
         .filter(
@@ -146,7 +146,7 @@ export function getFortifyEndCandidates(
     );
   }
   const territoryById = new Map(territories.map((t) => [t.id, t]));
-  if (fortification === 'Neighboring') {
+  if (fortification === 'neighboring') {
     const neighbors = withPortalEdges(
       territoryById.get(startId)?.neighbors ?? [],
       startId,
@@ -188,7 +188,7 @@ export function getFortifyPath(
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
 ): number[] {
-  if (fortification === 'Unrestricted') return [startId, endId];
+  if (fortification === 'unrestricted') return [startId, endId];
   const seaIds = new Set(seaTerritories.map((t) => t.id));
   const neighborsById = new Map(
     [...territories, ...seaTerritories].map((t) => [t.id, t.neighbors]),

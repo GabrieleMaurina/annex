@@ -104,6 +104,7 @@ export type CanvasInteractionsParams = {
     panel: 'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null,
   ) => void;
   cardsOpen: boolean;
+  bonusesEnabled: boolean;
   cardsEnabled: boolean;
   nukesEnabled: boolean;
   settingsMenuOpen: boolean;

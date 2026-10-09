@@ -61,12 +61,12 @@ const PERSONALITIES: BotPersonality[] = [
 
 const SETTING_VARIANTS: Record<string, unknown>[] = [
   {},
-  { fortification: 'Neighboring' },
-  { fortification: 'Unrestricted' },
-  { cards: 'Exponential' },
+  { fortification: 'neighboring' },
+  { fortification: 'unrestricted' },
+  { cards: 'exponential' },
   { fogOfWar: 'on' },
-  { entrenchments: 'on', cards: 'Linear' },
-  { gameMode: 'Capitals' },
+  { entrenchments: 'on', cards: 'linear' },
+  { gameMode: 'capitals' },
   { supplyLines: 'on' },
 ];
 

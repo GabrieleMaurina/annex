@@ -5,7 +5,7 @@ import { wouldSplitMap as wouldSplitMapShared } from '../world/connectivity';
 
 export function toxinsCost(game: Game, playerId: number): number {
   if (game.toxins === 'off') return Infinity;
-  if (game.cards === 'Constant' || game.cards === 'Off')
+  if (game.cards === 'constant' || game.cards === 'off')
     return game.toxins === 'temporary' ? 5 : 10;
   const base = nextSetBaseValues(game, playerId).mixed;
   return Math.ceil(base * (game.toxins === 'temporary' ? 0.25 : 0.5));

@@ -24,6 +24,7 @@ import type {
   PlayerMapRow,
   PlayerProfile,
 } from '../../lib/types';
+import { titleCase } from '../../lobby/settings/gameSettings';
 import MapBrowser from '../../maps/MapBrowser';
 import MapPreviewModal from '../../maps/MapPreviewModal';
 
@@ -44,7 +45,7 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
       <td>{endedAt.toLocaleTimeString()}</td>
       <td>{row.name}</td>
       <td>{row.mapName}</td>
-      <td>{row.gameMode}</td>
+      <td>{titleCase(row.gameMode)}</td>
       <td>
         <div className="d-flex flex-wrap gap-1">
           {row.players.map((p, i) => (

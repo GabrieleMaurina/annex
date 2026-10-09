@@ -23,6 +23,7 @@ import type {
   Toxins,
   TurnPhase,
 } from '../../lib/types';
+import { titleCase } from '../../lobby/settings/gameSettings';
 import { ALLIANCE_CELL_LABELS, ALLIANCE_ICONS } from '../logic/alliance';
 import {
   EMOJI_POP_DURATION,
@@ -216,7 +217,7 @@ function PlayersPanel({
           (isCapitals ? 40 : 0) +
           (bounties === 'on' ? 40 : 0) +
           (showAllianceColumn ? 24 : 0) -
-          (cards === 'Off' ? 34 : 0),
+          (cards === 'off' ? 34 : 0),
         maxHeight: 'calc(100vh - 2rem)',
       }}
     >
@@ -242,7 +243,7 @@ function PlayersPanel({
         style={{ cursor: 'pointer' }}
       >
         <div className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold">
-          <span>{gameMode}</span>
+          <span>{titleCase(gameMode)}</span>
           {mission && (
             <Tip text={<>Your mission: {formatMission(mission, players)}</>}>
               <img
@@ -359,7 +360,7 @@ function PlayersPanel({
                   />
                 </Tip>
               </th>
-              {cards !== 'Off' && (
+              {cards !== 'off' && (
                 <th className="text-center" style={{ width: 34 }}>
                   <Tip text="Cards">
                     <img
@@ -550,7 +551,7 @@ function PlayersPanel({
                   <td className="align-middle text-center" style={rowStyle}>
                     {p.eliminated ? '-' : (p.troopCount ?? '?')}
                   </td>
-                  {cards !== 'Off' && (
+                  {cards !== 'off' && (
                     <td className="align-middle text-center" style={rowStyle}>
                       {p.eliminated ? '-' : p.cardCount}
                     </td>

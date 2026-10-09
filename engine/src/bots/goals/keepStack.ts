@@ -44,7 +44,7 @@ function earnsSomething(
   state: SimState,
   endId: number,
 ): boolean {
-  if (ctx.game.cards !== 'Off' && !ctx.game.conqueredThisTurn) return true;
+  if (ctx.game.cards !== 'off' && !ctx.game.conqueredThisTurn) return true;
   const ownerId = state.owners.get(endId);
   if (ownerId !== undefined && ctx.preTurnOpponents.get(ownerId) === 1)
     return true;

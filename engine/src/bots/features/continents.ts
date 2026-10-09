@@ -26,6 +26,7 @@ export function continentCompletionCandidates(
   view: BotView,
   botId: number,
 ): ContinentCompletionCandidate[] {
+  if (game.continents === 'off') return [];
   const map = getGameMap(game);
   const candidates: ContinentCompletionCandidate[] = [];
   for (const [continentId, territoryIds] of continentGroups(game)) {
@@ -68,6 +69,7 @@ export function continentBreakCandidates(
   view: BotView,
   botId: number,
 ): ContinentBreakCandidate[] {
+  if (game.continents === 'off') return [];
   const map = getGameMap(game);
   const candidates: ContinentBreakCandidate[] = [];
   for (const [continentId, territoryIds] of continentGroups(game)) {

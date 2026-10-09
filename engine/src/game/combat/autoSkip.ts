@@ -51,7 +51,7 @@ export function hasAnyFortify(game: Game, playerId: number): boolean {
   const territoryById = new Map(map.territories.map((t) => [t.id, t]));
   return ownedTerritoryIds(game, playerId).some((id) => {
     if ((game.territoryTroops.get(id) ?? 0) < 2) return false;
-    if (game.fortification === 'Connected')
+    if (game.fortification === 'connected')
       return hasConnectedFortifyDestination(game, playerId, id);
     return withPortalEdges(
       territoryById.get(id)?.neighbors ?? [],

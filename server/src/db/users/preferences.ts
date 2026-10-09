@@ -20,6 +20,8 @@ export interface GameSettings {
   gameMode: string;
   blitz: string;
   defenceDice: number;
+  continents: string;
+  initialTroops: number;
   cards: string;
   placement: string;
   fortification: string;
@@ -65,31 +67,33 @@ export const GENERATION_TYPES = ['terrain', 'dungeon', 'temple'];
 
 export const GAME_ENUMS: Record<string, unknown[]> = {
   gameMode: [
-    'Supremacy',
-    'Supremacy 3/4',
-    'Supremacy 2/3',
-    'Capitals',
-    'Team Deathmatch',
-    'Continent',
-    '5-Round',
-    '10-Round',
-    'Assassin',
-    'Mission',
-    'Player Kills',
-    'Troop Kills',
+    'supremacy',
+    'supremacy 3/4',
+    'supremacy 2/3',
+    'capitals',
+    'team deathmatch',
+    'continent',
+    '5-round',
+    '10-round',
+    'assassin',
+    'mission',
+    'player kills',
+    'troop kills',
   ],
-  blitz: ['Balanced', 'True', 'Fair', 'Off'],
+  blitz: ['balanced', 'true', 'fair', 'off'],
   defenceDice: [2, 3],
+  continents: ['on', 'off'],
+  initialTroops: [3, 1, 2, ...Array.from({ length: 97 }, (_, i) => i + 4)],
   cards: [
-    'Constant',
-    'Linear',
-    'Exponential',
-    'Linear Per Player',
-    'Exponential Per Player',
-    'Off',
+    'constant',
+    'linear',
+    'exponential',
+    'linear per player',
+    'exponential per player',
+    'off',
   ],
-  placement: ['Random', 'Semi', 'Custom'],
-  fortification: ['Connected', 'Neighboring', 'Unrestricted'],
+  placement: ['random', 'semi', 'custom'],
+  fortification: ['connected', 'neighboring', 'unrestricted'],
   entrenchments: ['off', 'on'],
   toxins: ['off', 'temporary', 'permanent'],
   portals: ['off', 'static', 'dynamic'],
@@ -161,12 +165,14 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   slots: 2,
   bots: [],
   localPlayers: [],
-  gameMode: 'Supremacy',
-  blitz: 'Balanced',
+  gameMode: 'supremacy',
+  blitz: 'balanced',
   defenceDice: 2,
-  cards: 'Constant',
-  placement: 'Random',
-  fortification: 'Connected',
+  continents: 'on',
+  initialTroops: 3,
+  cards: 'constant',
+  placement: 'random',
+  fortification: 'connected',
   entrenchments: 'off',
   toxins: 'off',
   portals: 'off',
@@ -436,8 +442,8 @@ export function sanitizeGameSettings(raw: unknown): GameSettings {
     if (GAME_ENUMS[key].includes(r[key])) target[key] = r[key];
   }
   if (
-    out.blitz === 'Off' &&
-    (out.roundTroops === 'on' || !['Constant', 'Off'].includes(out.cards))
+    out.blitz === 'off' &&
+    (out.roundTroops === 'on' || !['constant', 'off'].includes(out.cards))
   )
     out.blitz = DEFAULT_GAME_SETTINGS.blitz;
   return out;

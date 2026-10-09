@@ -48,6 +48,7 @@ type OwnParamKeys =
   | 'openPanel'
   | 'setOpenPanel'
   | 'cardsOpen'
+  | 'bonusesEnabled'
   | 'cardsEnabled'
   | 'nukesEnabled'
   | 'settingsMenuOpen'

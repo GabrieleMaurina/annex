@@ -22,11 +22,11 @@ interface Outlook {
 }
 
 function isEscalating(game: Game): boolean {
-  return game.cards !== 'Constant' && game.cards !== 'Off';
+  return game.cards !== 'constant' && game.cards !== 'off';
 }
 
 function isShared(game: Game): boolean {
-  return game.cards === 'Linear' || game.cards === 'Exponential';
+  return game.cards === 'linear' || game.cards === 'exponential';
 }
 
 function handOf(game: Game, playerId: number): Card[] {
@@ -57,7 +57,7 @@ function outlookFor(game: Game, botId: number): Outlook {
     rivalTrades,
     wildOdds: 2 / (game.territoryOwners.size + 2),
     discount:
-      game.cards === 'Exponential' ? EXPONENTIAL_TURN_DISCOUNT : TURN_DISCOUNT,
+      game.cards === 'exponential' ? EXPONENTIAL_TURN_DISCOUNT : TURN_DISCOUNT,
   };
 }
 
@@ -158,7 +158,7 @@ export function cashForcedSets(
 export function canHoldSet(game: Game, botId: number): boolean {
   const hand = handOf(game, botId);
   return (
-    game.cards !== 'Off' &&
+    game.cards !== 'off' &&
     hand.length < FORCED_HAND &&
     pickBestSet(game, hand, botId) !== null
   );

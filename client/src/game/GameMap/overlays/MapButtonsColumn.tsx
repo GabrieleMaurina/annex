@@ -131,7 +131,7 @@ export default function MapButtonsColumn({
         ref={buttonColumnRef}
         className="d-flex flex-column align-items-start gap-3"
       >
-        {(!anyPanelOpen || bonusesOpen) && (
+        {game.continents !== 'off' && (!anyPanelOpen || bonusesOpen) && (
           <Tip text="Bonuses">
             <Button
               ref={bonusesButtonRef}
@@ -152,7 +152,7 @@ export default function MapButtonsColumn({
             </Button>
           </Tip>
         )}
-        {game.cards === 'Off' ? null : cardsOpen ? (
+        {game.cards === 'off' ? null : cardsOpen ? (
           <div ref={cardsPanelRef}>
             <CardsPanel
               hand={hand}

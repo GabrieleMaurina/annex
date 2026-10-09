@@ -1,5 +1,12 @@
 import { useState } from 'react';
+import type { BotSpeed } from '../../../../lib/types';
 import type { GameMapProps } from '../../props';
+
+export const BOT_TOAST_DELAY_MS: Record<BotSpeed, number | undefined> = {
+  slow: undefined,
+  medium: 2500,
+  fast: 1000,
+};
 
 export function useTurnToasts({
   turnPhase,
@@ -8,6 +15,7 @@ export function useTurnToasts({
   troopsToDeploy,
   isCapitals,
   players,
+  botSpeed,
   isMyTurn,
   hasSetToPlay,
   addToasts,
@@ -19,10 +27,11 @@ export function useTurnToasts({
   | 'troopsToDeploy'
   | 'isCapitals'
   | 'players'
+  | 'botSpeed'
 > & {
   isMyTurn: boolean;
   hasSetToPlay: boolean;
-  addToasts: (messages: string[]) => void;
+  addToasts: (messages: string[], delay?: number) => void;
 }) {
   const [processedDeployPhaseKey, setProcessedDeployPhaseKey] = useState<
     string | null
@@ -40,12 +49,15 @@ export function useTurnToasts({
     currentTurnPlayer
   ) {
     setProcessedDeployPhaseKey(deployPhaseKey);
-    addToasts([
-      `${currentTurnPlayer.name} received ${troopsToDeploy} troops at the start of their turn`,
-      ...(isMyTurn && hasSetToPlay
-        ? ['You have a card set available to play!']
-        : []),
-    ]);
+    addToasts(
+      [
+        `${currentTurnPlayer.name} received ${troopsToDeploy} troops at the start of their turn`,
+        ...(isMyTurn && hasSetToPlay
+          ? ['You have a card set available to play!']
+          : []),
+      ],
+      currentTurnPlayer.isBot ? BOT_TOAST_DELAY_MS[botSpeed] : undefined,
+    );
   }
 
   if (isCapitals && !capitalModeAnnounced && roundNumber >= 2) {

@@ -15,7 +15,7 @@ export function continentTerritoryIds(
 }
 
 export function initializeContinent(game: Game) {
-  if (game.gameMode !== 'Continent') {
+  if (game.gameMode !== 'continent') {
     game.continentId = null;
     return;
   }

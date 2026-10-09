@@ -112,18 +112,20 @@ function baseGame(name: string): Game {
     allianceRequests: new Map(),
     allianceCooldowns: new Map(),
     allianceInitiators: new Map(),
-    blitz: 'Balanced',
+    blitz: 'balanced',
     bounties: 'off',
-    cards: 'Constant',
+    cards: 'constant',
+    continents: 'on',
     defenceDice: 2,
     disconnectBotDifficulty: 'random',
     disconnectBotPersonality: 'random',
     entrenchments: 'off',
     fogOfWar: 'off',
-    fortification: 'Connected',
-    gameMode: 'Supremacy',
+    fortification: 'connected',
+    gameMode: 'supremacy',
+    initialTroops: 3,
     continentId: null,
-    placement: 'Random',
+    placement: 'random',
     portals: 'off',
     portalTerritoryIds: [],
     portalsEnabled: false,
@@ -210,7 +212,7 @@ export function buildGame(spec: ScenarioSpec): {
   loadMaps([map]);
 
   const game = baseGame(name);
-  game.cards = spec.cards ?? 'Constant';
+  game.cards = spec.cards ?? 'constant';
   game.playerIds = [...spec.players];
   const botId = spec.botId ?? spec.players[0];
   game.turnPlayerIndex = game.playerIds.indexOf(botId);
@@ -220,7 +222,7 @@ export function buildGame(spec: ScenarioSpec): {
     game.logs.set(id, []);
     game.stats.set(id, emptyPlayerStats());
   }
-  if (spec.teams) game.gameMode = 'Team Deathmatch';
+  if (spec.teams) game.gameMode = 'team deathmatch';
   for (const [a, b] of spec.allies ?? []) {
     game.alliances = 'on';
     game.allianceIds.add(pairKey(a, b));

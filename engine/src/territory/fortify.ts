@@ -37,9 +37,9 @@ function isFortifyStartCandidate(
   territoryId: number,
 ): boolean {
   if ((game.territoryTroops.get(territoryId) ?? 0) < 2) return false;
-  if (game.fortification === 'Unrestricted')
+  if (game.fortification === 'unrestricted')
     return ownsOtherTerritory(game, playerId, territoryId);
-  if (game.fortification === 'Connected')
+  if (game.fortification === 'connected')
     return hasConnectedFortifyDestination(game, playerId, territoryId);
   const map = getGameMap(game);
   const territory = map.territories.find((t) => t.id === territoryId);
@@ -58,8 +58,8 @@ function isValidFortifyEnd(
   startId: number,
   endId: number,
 ): boolean {
-  if (game.fortification === 'Unrestricted') return true;
-  if (game.fortification === 'Neighboring') {
+  if (game.fortification === 'unrestricted') return true;
+  if (game.fortification === 'neighboring') {
     const map = getGameMap(game);
     const territory = map.territories.find((t) => t.id === startId);
     const neighbors = withPortalEdges(

@@ -168,10 +168,10 @@ function GameMap({
 
   const [toasts, setToasts] = useState<GameToast[]>([]);
   const addToasts = useCallback(
-    (messages: string[]) =>
+    (messages: string[], delay?: number) =>
       setToasts((prev) => [
         ...prev,
-        ...messages.map((message, i) => ({ id: Date.now() + i, message })),
+        ...messages.map((m, i) => ({ id: Date.now() + i, message: m, delay })),
       ]),
     [],
   );
@@ -288,7 +288,7 @@ function GameMap({
     turnPhase,
     isMyTurn,
     paused,
-    blitzEnabled: game.blitz !== 'Off',
+    blitzEnabled: game.blitz !== 'off',
     setGame,
   });
 
@@ -410,6 +410,7 @@ function GameMap({
     nextSetBaseValues,
     selfId,
     playersRef,
+    botSpeed,
     cardsOpen: cardsOpen,
     setOpenPanel: setOpenPanel,
     setToasts,
@@ -510,7 +511,7 @@ function GameMap({
     fortifyEndTerritoryId,
     attackStartTerritoryId,
     attackEndTerritoryId,
-    blitzEnabled: game.blitz !== 'Off',
+    blitzEnabled: game.blitz !== 'off',
     nukeTargeting,
     setNukeTargeting,
     antiNukeTerritoryIds: game.antiNukeTerritoryIds,
@@ -521,7 +522,8 @@ function GameMap({
     openPanel,
     setOpenPanel,
     cardsOpen,
-    cardsEnabled: game.cards !== 'Off',
+    bonusesEnabled: game.continents !== 'off',
+    cardsEnabled: game.cards !== 'off',
     nukesEnabled: nukes !== null,
     settingsMenuOpen,
     deployPanelOpen: deployTroopsPanelOpen,
@@ -568,6 +570,7 @@ function GameMap({
     troopsToDeploy,
     isCapitals,
     players,
+    botSpeed,
     isMyTurn,
     hasSetToPlay: cardsFlow.hasSetToPlay,
     addToasts,
@@ -934,7 +937,7 @@ function GameMap({
         attackPanelOpen={attackFlow.attackPanelOpen}
         attackPanelStyle={attackPanelStyle}
         attackDisplay={attackDisplay}
-        blitzEnabled={game.blitz !== 'Off'}
+        blitzEnabled={game.blitz !== 'off'}
         blitzInputRef={attackFlow.blitzInputRef}
         attackDiceRoll={attackFlow.attackDiceRoll}
         setAttackDiceRoll={attackFlow.setAttackDiceRoll}

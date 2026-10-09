@@ -13,7 +13,7 @@ export function areAllied(game: Game, a: number, b: number): boolean {
 
 function isTeammate(game: Game, a: number, b: number): boolean {
   return (
-    game.gameMode === 'Team Deathmatch' &&
+    game.gameMode === 'team deathmatch' &&
     a !== b &&
     (game.playerTeams.get(a) ?? 0) === (game.playerTeams.get(b) ?? 0)
   );
@@ -37,7 +37,7 @@ export function emojiTargetAllowed(
   senderId: number,
   targetId: number,
 ): boolean {
-  if (game.gameMode !== 'Team Deathmatch' && game.alliances !== 'on')
+  if (game.gameMode !== 'team deathmatch' && game.alliances !== 'on')
     return true;
   return alliedIds(game, senderId).has(targetId);
 }

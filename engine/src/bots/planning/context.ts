@@ -192,7 +192,11 @@ export function buildContext(
   botProfile: BotProfile,
   cachedPlan: TurnPlan | null,
 ): PlanContext {
-  const map = getGameMap(game);
+  const gameMap = getGameMap(game);
+  const map =
+    game.continents === 'on'
+      ? gameMap
+      : { ...gameMap, bonuses: gameMap.bonuses.map(() => 0) };
   const topology =
     isPlanFresh(cachedPlan, game, botId) && cachedPlan.topology
       ? cachedPlan.topology

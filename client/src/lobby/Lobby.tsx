@@ -95,7 +95,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
   }
 
   const isHost = game.hostId === selfId;
-  const isTeamDeathmatch = game.gameMode === 'Team Deathmatch';
+  const isTeamDeathmatch = game.gameMode === 'team deathmatch';
   const maxTeams = game.players.length;
   const teamCount = new Set(game.players.map((p) => p.team)).size;
   const hasMap = !!game.mapGeneration || !!game.playerMapId;
@@ -104,7 +104,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     game.players.length >= 2 &&
     (!isTeamDeathmatch || teamCount >= 2) &&
     !(isTeamDeathmatch && game.alliances === 'on') &&
-    (game.blitz !== 'Off' || isBlitzOffAllowed(game));
+    (game.blitz !== 'off' || isBlitzOffAllowed(game));
 
   function banId(id: number) {
     bannedIdsRef.current = [...bannedIdsRef.current, id];
@@ -226,6 +226,8 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
         gameMode: state.gameMode,
         blitz: state.blitz,
         defenceDice: state.defenceDice,
+        continents: state.continents,
+        initialTroops: state.initialTroops,
         cards: state.cards,
         placement: state.placement,
         fortification: state.fortification,

@@ -296,6 +296,7 @@ export interface GameState {
   attackSeaTerritoryId: number | null;
   attackSeaDefenderId: number | null;
   winnerIds: number[];
+  earlyWin: boolean;
   finalRanking: number[];
   nextSetBaseValues: Record<SetKind, number>;
   upcomingSetValues: number[];

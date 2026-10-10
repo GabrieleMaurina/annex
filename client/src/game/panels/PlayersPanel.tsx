@@ -98,6 +98,8 @@ interface Props {
   onTogglePause: () => void;
   onCycleBotSpeed: () => void;
   onSurrender: () => void;
+  earlyWin: boolean;
+  onEndGame: () => void;
   roundNumber: number;
   turnPhase: TurnPhase;
   turnPlayerId: number | null;
@@ -141,6 +143,8 @@ function PlayersPanel({
   onTogglePause,
   onCycleBotSpeed,
   onSurrender,
+  earlyWin,
+  onEndGame,
   roundNumber,
   turnPhase,
   turnPlayerId,
@@ -705,7 +709,17 @@ function PlayersPanel({
           <div
             className={`d-flex mt-2 ${canSurrender && canLeave ? 'justify-content-between' : 'justify-content-end'}`}
           >
-            {canSurrender && (
+            {canSurrender && earlyWin && (
+              <Tip
+                text="Your victory is locked in. End the game now or keep conquering for fun"
+                placement="bottom"
+              >
+                <Button variant="success" size="sm" onClick={onEndGame}>
+                  End game
+                </Button>
+              </Tip>
+            )}
+            {canSurrender && !earlyWin && (
               <Tip text="Surrender the game" placement="bottom">
                 <Button
                   variant="danger"

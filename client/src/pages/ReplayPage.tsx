@@ -142,6 +142,7 @@ function buildGameState(
     attackSeaTerritoryId: null,
     attackSeaDefenderId: null,
     winnerIds: doc.winnerIds,
+    earlyWin: false,
     finalRanking: [...doc.results]
       .sort((a, b) => a.rank - b.rank)
       .map((r) => r.playerId),

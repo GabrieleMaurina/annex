@@ -433,6 +433,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
     case 'game:surrender':
       cb?.(engine.surrender(id));
       return;
+    case 'game:endGame':
+      cb?.(engine.endGame(id));
+      return;
     case 'game:chat':
       engine.sendChat(id, d.message as string);
       return;

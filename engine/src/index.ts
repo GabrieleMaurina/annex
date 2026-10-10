@@ -27,6 +27,7 @@ import { generateMap, selectPlayerMap } from './lifecycle/mapgen';
 import {
   cycleBotSpeed,
   cycleColor,
+  endGame,
   mapForGame,
   nextPhase,
   pauseGame,
@@ -179,6 +180,7 @@ export function createEngine(
     pauseGame,
     cycleBotSpeed,
     surrender,
+    endGame,
     sendChat,
 
     generateMap,

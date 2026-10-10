@@ -1,5 +1,7 @@
 import { callbacks } from '../callbacks';
+import { surrenderPlayer } from '../lifecycle/misc';
 import { getGameMap } from '../maps/maps';
+import { playersById } from '../session/players';
 import { broadcastGameState, sendPlayerCards } from '../session/store';
 import { Game, TurnPhase } from '../types';
 import {
@@ -58,6 +60,7 @@ const PHASE_ORDER: TurnPhase[] = [
 export const PLACEMENT_PHASE_DURATION = 10;
 export const CAPITAL_PHASE_DURATION = 60;
 const TROOP_PHASE_TURN_MAX = 3;
+const MAX_DISCONNECTED_TURNS = 2;
 
 const turnTimers = new Map<string, NodeJS.Timeout>();
 
@@ -718,6 +721,15 @@ function decrementEntrenchmentForPlayer(game: Game, playerId: number) {
   }
 }
 
+function surrenderIfLongDisconnected(game: Game, playerId: number) {
+  const player = playersById.get(playerId);
+  if (game.offline || !player || player.connected) return;
+  if (game.surrenderedIds.has(playerId)) return;
+  const turns = (game.disconnectedTurns.get(playerId) ?? 0) + 1;
+  game.disconnectedTurns.set(playerId, turns);
+  if (turns > MAX_DISCONNECTED_TURNS) surrenderPlayer(game, player);
+}
+
 export function advanceToNextPlayer(game: Game) {
   const endingPlayerId = game.playerIds[game.turnPlayerIndex];
   bumpStat(game, endingPlayerId, 'turnsPlayed');
@@ -761,6 +773,7 @@ export function advanceToNextPlayer(game: Game) {
     }
   }
 
+  surrenderIfLongDisconnected(game, game.playerIds[nextIndex]);
   awardTurnPoints(game, game.playerIds[nextIndex]);
   checkGameEnd(game, true);
   if (game.state === 'ended') return;
@@ -880,6 +893,7 @@ export function startTurns(game: Game) {
   game.attackSeaTerritoryId = null;
   game.attackSeaDefenderId = null;
   game.conqueredThisTurn = false;
+  surrenderIfLongDisconnected(game, game.playerIds[0]);
   startDeployPhase(game, game.playerIds[0]);
   scheduleTurnTimer(game);
 }

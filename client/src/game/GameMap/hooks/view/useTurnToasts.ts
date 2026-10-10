@@ -18,6 +18,8 @@ export function useTurnToasts({
   botSpeed,
   isMyTurn,
   hasSetToPlay,
+  earlyWin,
+  selfId,
   addToasts,
 }: Pick<
   GameMapProps,
@@ -31,12 +33,15 @@ export function useTurnToasts({
 > & {
   isMyTurn: boolean;
   hasSetToPlay: boolean;
+  earlyWin: boolean;
+  selfId: number | null;
   addToasts: (messages: string[], delay?: number) => void;
 }) {
   const [processedDeployPhaseKey, setProcessedDeployPhaseKey] = useState<
     string | null
   >(null);
   const [capitalModeAnnounced, setCapitalModeAnnounced] = useState(false);
+  const [earlyWinAnnounced, setEarlyWinAnnounced] = useState(false);
   const currentTurnPlayer = players[turnPlayerIndex];
 
   const deployPhaseKey =
@@ -63,5 +68,15 @@ export function useTurnToasts({
   if (isCapitals && !capitalModeAnnounced && roundNumber >= 2) {
     setCapitalModeAnnounced(true);
     addToasts(['Capitals mode activated']);
+  }
+
+  if (earlyWin && !earlyWinAnnounced) {
+    setEarlyWinAnnounced(true);
+    const winner = players.find((p) => !p.eliminated && !p.surrendered);
+    addToasts([
+      winner?.id === selfId
+        ? 'You won! Victory locked in. Keep conquering or press End game'
+        : `${winner?.name ?? 'The last player'} won and is still conquering`,
+    ]);
   }
 }

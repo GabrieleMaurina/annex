@@ -602,6 +602,10 @@ export const connector = {
     route('game:surrender', undefined, cb);
   },
 
+  endGame(cb: AckCallback): void {
+    route('game:endGame', undefined, cb);
+  },
+
   chat(data: { message: string }): void {
     route('game:chat', data);
   },

@@ -1,6 +1,5 @@
 import { revealBotProfiles } from '../bots/reveal';
 import { callbacks } from '../callbacks';
-import { playersById } from '../session/players';
 import { broadcastGameResults, broadcastHomeGames } from '../session/store';
 import { Game } from '../types';
 import { ownsAnyTerritory, supremacyTerritoriesToWin } from './mechanics';
@@ -42,7 +41,7 @@ export function endAbandonedGame(game: Game): void {
   game.state = 'ended';
   game.endedAt = Date.now();
   revealBotProfiles(game);
-  game.finalRanking = computeFinalRanking(game);
+  if (!game.earlyWin) game.finalRanking = computeFinalRanking(game);
   emitGameEnded(game);
 }
 
@@ -75,11 +74,14 @@ function isPlayerEliminated(game: Game, id: number): boolean {
   return game.deathOrder.includes(id);
 }
 
+function isLobbyBot(id: number): boolean {
+  return id < 0;
+}
+
 function noHumanPlayersLeft(game: Game) {
   if (game.offline) return false;
   return game.playerIds.every(
-    (id) =>
-      isPlayerEliminated(game, id) || (playersById.get(id)?.isBot ?? true),
+    (id) => isPlayerEliminated(game, id) || isLobbyBot(id),
   );
 }
 
@@ -108,16 +110,53 @@ function abandonedByHumansWinnerIds(game: Game): number[] | null {
   return soleSurvivorWinnerIds(game, leader);
 }
 
+function isOpponent(game: Game, ownerId: number, survivorId: number): boolean {
+  if (game.gameMode !== 'team deathmatch') return ownerId !== survivorId;
+  return game.playerTeams.get(ownerId) !== game.playerTeams.get(survivorId);
+}
+
+function continuingHumanSurvivorId(game: Game): number | null {
+  const alive = game.playerIds.filter(
+    (id) => !isPlayerEliminated(game, id) && ownsAnyTerritory(game, id),
+  );
+  if (alive.length !== 1 || isLobbyBot(alive[0])) return null;
+  const opponentOwnsTerritory = [...game.territoryOwners.values()].some(
+    (ownerId) => isOpponent(game, ownerId, alive[0]),
+  );
+  return opponentOwnsTerritory ? alive[0] : null;
+}
+
+function lockEarlyWin(game: Game, winnerIds: number[]): void {
+  game.earlyWin = true;
+  game.winnerIds = winnerIds;
+  game.finalRanking = computeFinalRanking(game);
+}
+
+function resolveWinnerIds(game: Game): number[] | null {
+  const survivorId = continuingHumanSurvivorId(game);
+  if (game.earlyWin) return survivorId === null ? game.winnerIds : null;
+  const winnerIds = computeGameEndWinnerIds(game);
+  if (winnerIds === null) return abandonedByHumansWinnerIds(game);
+  if (survivorId === null || !winnerIds.includes(survivorId)) return winnerIds;
+  lockEarlyWin(game, winnerIds);
+  return null;
+}
+
 export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   if (game.state === 'ended') return;
 
-  const winnerIds =
-    computeGameEndWinnerIds(game) ?? abandonedByHumansWinnerIds(game);
-  if (winnerIds === null) return;
+  const winnerIds = resolveWinnerIds(game);
+  if (winnerIds !== null) finishGame(game, winnerIds, turnAlreadyEnded);
+}
 
+export function finishGame(
+  game: Game,
+  winnerIds: number[],
+  turnAlreadyEnded = false,
+): void {
   game.state = 'ended';
   game.endedAt = Date.now();
-  game.winnerIds = winnerIds;
+  if (!game.earlyWin) game.winnerIds = winnerIds;
   refreshLastReplayPlayerStates(game);
   revealBotProfiles(game);
   if (!turnAlreadyEnded) {
@@ -133,7 +172,7 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
   clearTurnTimer(game.name);
-  game.finalRanking = computeFinalRanking(game);
+  if (!game.earlyWin) game.finalRanking = computeFinalRanking(game);
   emitGameEnded(game);
   broadcastHomeGames();
   broadcastGameResults(game);

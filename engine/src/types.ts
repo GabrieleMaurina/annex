@@ -371,6 +371,7 @@ export interface Game {
   pausedAt: number | null;
   botSpeed: BotSpeed;
   humansAbandonedAt: number | null;
+  earlyWin: boolean;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
@@ -397,6 +398,7 @@ export interface Game {
   substituteFor: Map<number, number>;
   lobbyDeparted: Map<number, { team: number; color: number }>;
   surrenderedIds: Set<number>;
+  disconnectedTurns: Map<number, number>;
   winnerIds: number[];
   deck: Card[];
   playerCards: Map<number, Card[]>;

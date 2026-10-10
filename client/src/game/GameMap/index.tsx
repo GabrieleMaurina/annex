@@ -577,6 +577,8 @@ function GameMap({
     botSpeed,
     isMyTurn,
     hasSetToPlay: cardsFlow.hasSetToPlay,
+    earlyWin: game.earlyWin && !gameEnded,
+    selfId,
     addToasts,
   });
 
@@ -700,11 +702,12 @@ function GameMap({
   const combos = showReplay ? [] : cardsFlow.combos;
   const hasSetToPlay = showReplay ? false : cardsFlow.hasSetToPlay;
 
-  const surrender = useCallback(() => {
-    connector.surrender((res: Ack) => {
+  const applyAck = useCallback(
+    (res: Ack) => {
       if (res.ok) setGame(res.game);
-    });
-  }, [setGame]);
+    },
+    [setGame],
+  );
 
   return (
     <div className="position-fixed top-0 bottom-0 start-0 end-0 overflow-hidden">
@@ -817,7 +820,9 @@ function GameMap({
         botSpeed={botSpeed}
         onTogglePause={onTogglePause}
         onCycleBotSpeed={onCycleBotSpeed}
-        onSurrender={surrender}
+        onSurrender={() => connector.surrender(applyAck)}
+        earlyWin={game.earlyWin}
+        onEndGame={() => connector.endGame(applyAck)}
         gameEnded={gameEnded}
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}

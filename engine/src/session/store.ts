@@ -469,6 +469,7 @@ export function resyncPlayer(
     ? games.get(player.gameName)
     : undefined;
   if (!gameBeforeResync?.surrenderedIds.has(player.id)) endTakeover(player);
+  gameBeforeResync?.disconnectedTurns.delete(player.id);
 
   if (room !== (player.gameName ?? HOME_ROOM)) leaveGame(player, true);
 

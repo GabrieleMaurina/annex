@@ -1,6 +1,6 @@
 import { startTakeover } from '../bots/takeover';
 import { nextBotSpeed } from '../bots/thinkTime';
-import { checkGameEnd } from '../game/end';
+import { checkGameEnd, finishGame } from '../game/end';
 import { recomputeHost } from '../game/host';
 import {
   cycleColor as cycleColorImpl,
@@ -22,6 +22,7 @@ import {
   sendGameResults,
   sendGameState,
 } from '../session/store';
+import { Game, Player } from '../types';
 
 export function mapForGame(gameName: string): ArchivedMap | null {
   const game = games.get(gameName);
@@ -131,6 +132,32 @@ export function surrender(playerId: number): GameResponse {
   if (game.surrenderedIds.has(player.id))
     return { ok: false, error: 'already eliminated' };
 
+  surrenderPlayer(game, player);
+  checkGameEnd(game);
+  recomputeHost(game);
+  destroyIfInactive(game);
+  broadcastHomeGames();
+
+  return respondGameState(game, player.id);
+}
+
+export function endGame(playerId: number): GameResponse {
+  const player = playersById.get(playerId);
+  if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
+
+  const game = games.get(player.gameName);
+  if (!game) return { ok: false, error: 'game not found' };
+  if (game.state !== 'playing') return { ok: false, error: 'game not started' };
+  if (!game.playerIds.includes(player.id))
+    return { ok: false, error: 'not a player' };
+  if (!game.earlyWin || game.deathOrder.includes(player.id))
+    return { ok: false, error: 'game not won' };
+
+  finishGame(game, game.winnerIds);
+  return respondGameState(game, player.id);
+}
+
+export function surrenderPlayer(game: Game, player: Player): void {
   game.surrenderedIds.add(player.id);
   if (!game.deathOrder.includes(player.id)) game.deathOrder.push(player.id);
   const stats = game.stats.get(player.id)!;
@@ -139,10 +166,4 @@ export function surrender(playerId: number): GameResponse {
   else if (game.gameMode === 'troop kills')
     game.frozenKillCount.set(player.id, stats.troopsKilled);
   startTakeover(game, player);
-  checkGameEnd(game);
-  recomputeHost(game);
-  destroyIfInactive(game);
-  broadcastHomeGames();
-
-  return respondGameState(game, player.id);
 }

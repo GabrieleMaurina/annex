@@ -158,6 +158,14 @@ export function registerGameHandlers(
     callback(engine.surrender(playerId));
   });
 
+  socket.on('game:endGame', (callback: (response: GameResponse) => void) => {
+    if (typeof callback !== 'function') return;
+    const playerId = playerIdBySocketId.get(socket.id);
+    if (playerId === undefined)
+      return callback({ ok: false, error: 'not in a game' });
+    callback(engine.endGame(playerId));
+  });
+
   socket.on('game:chat', (data: unknown) => {
     const playerId = playerIdBySocketId.get(socket.id);
     if (playerId === undefined) return;

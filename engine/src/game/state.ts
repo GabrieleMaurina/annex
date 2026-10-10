@@ -280,6 +280,7 @@ export function gameState(game: Game) {
     attackSeaTerritoryId: game.attackSeaTerritoryId,
     attackSeaDefenderId: game.attackSeaDefenderId,
     winnerIds: game.winnerIds,
+    earlyWin: game.earlyWin,
     nextSetBaseValues: nextSetBaseValues(game, turnPlayerId),
     upcomingSetValues: upcomingSetValues(game, turnPlayerId, 3),
     finalRanking: game.finalRanking,

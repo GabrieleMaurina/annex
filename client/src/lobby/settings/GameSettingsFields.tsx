@@ -1,3 +1,4 @@
+import { isBlitzOffAllowed, MAX_DICE } from 'engine';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
@@ -12,7 +13,6 @@ import {
   GAME_SETTING_SECTIONS,
   GAME_SETTINGS,
   type GameSettingDef,
-  isBlitzOffAllowed,
 } from './gameSettings';
 import { PASSWORD_HELP, VISIBILITY_HELP } from './settingsHelp';
 
@@ -50,7 +50,7 @@ function GameSettingsFields({
   const [passwordInput, setPasswordInput] = useState('');
 
   const disabledKeys = new Set<string>();
-  if (game.defenceDice !== 2) disabledKeys.add('entrenchments');
+  if (game.defenceDice >= MAX_DICE) disabledKeys.add('entrenchments');
   if (game.gameMode === 'team deathmatch') disabledKeys.add('alliances');
   const blitzOffAllowed = isBlitzOffAllowed(game);
 
@@ -89,7 +89,11 @@ function GameSettingsFields({
                 key={o.value}
                 value={o.value}
                 disabled={
-                  def.key === 'blitz' && o.value === 'off' && !blitzOffAllowed
+                  (def.key === 'blitz' &&
+                    o.value === 'off' &&
+                    !blitzOffAllowed) ||
+                  (def.key === 'defenceDice' &&
+                    Number(o.value) > game.attackDice)
                 }
               >
                 {o.label}
@@ -106,7 +110,11 @@ function GameSettingsFields({
   return (
     <>
       {GAME_SETTING_SECTIONS.map((section, index) => {
-        const defs = GAME_SETTINGS.filter((d) => d.section === section);
+        const defs = GAME_SETTINGS.filter(
+          (d) =>
+            d.section === section &&
+            (!d.modes || d.modes.includes(game.gameMode)),
+        );
         const last = index === GAME_SETTING_SECTIONS.length - 1;
         return (
           <div

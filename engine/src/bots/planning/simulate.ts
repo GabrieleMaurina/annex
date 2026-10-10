@@ -7,6 +7,7 @@ import { cashForcedSets } from '../features/cardOutlook';
 import { expectedOutcome } from '../features/combat';
 import { modeGoalFor, sideProgress } from '../features/mode/modeGoals';
 import { consolidation, spreading } from '../features/stackStyle';
+import { isKeyTerritory } from '../features/territory';
 import { defensiveHome } from '../goals/defensiveHome';
 import { RISKY_STEP_WIN, StepRisk, expectedScore } from '../goals/failureRisk';
 import {
@@ -71,6 +72,7 @@ const ROLL_DEFEAT_SURVIVAL = 0.5;
 const RISKY_WIN = 0.7;
 const MAX_FORTIFY_SOURCES = 5;
 const DEFENDED_BORDERS = 3;
+const KEY_TERRITORY_DEFICIT_WEIGHT = 3;
 const SPREAD_BORDERS = 3;
 
 interface RollAttempt {
@@ -607,10 +609,9 @@ export function defensiveDeployments(
   const borders = (homeBorders.length > 0 ? homeBorders : allBorders)
     .map((id) => ({
       id,
-      deficit: Math.max(
-        1,
-        strongestThreatAt(ctx, state, id) - troopsIn(state, id),
-      ),
+      deficit:
+        Math.max(1, strongestThreatAt(ctx, state, id) - troopsIn(state, id)) *
+        (isKeyTerritory(ctx.game, id) ? KEY_TERRITORY_DEFICIT_WEIGHT : 1),
     }))
     .sort((a, b) => b.deficit - a.deficit)
     .slice(0, maxBorders);

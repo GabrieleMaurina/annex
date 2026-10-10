@@ -3,6 +3,7 @@ import { Game } from '../../types';
 import { ownedTerritoryIds } from '../mechanics';
 import {
   isFreeConquestTarget,
+  isPermanentToxinOnHill,
   toxinsCost,
   wouldSplitMap,
 } from '../toxins/toxins';
@@ -41,6 +42,7 @@ export function hasAnyToxin(game: Game, playerId: number): boolean {
   const cost = toxinsCost(game, playerId);
   return owned.some((id) => {
     if (game.capitalTerritoryIds.has(id)) return false;
+    if (isPermanentToxinOnHill(game, id)) return false;
     if ((game.territoryTroops.get(id) ?? 0) < cost) return false;
     return !wouldSplitMap(game, id);
   });

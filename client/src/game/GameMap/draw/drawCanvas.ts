@@ -30,6 +30,13 @@ import {
   getScales,
   getScreenOffset,
   hexagonPath,
+  HILL_BASE,
+  HILL_FILL,
+  HILL_HALF_WIDTH,
+  HILL_HEIGHT,
+  HILL_SNOW,
+  HILL_SNOW_FILL,
+  HILL_STROKE,
   SEA_COLOR,
   SEA_SIZE_MULTIPLIER,
   STATE_STYLE,
@@ -60,6 +67,7 @@ export interface DrawCanvasParams {
   bonusesOpen: boolean;
   gameMode: GameMode;
   continentId: number | null;
+  hillTerritoryIds: number[];
   players: GameState['players'];
   displayedToxinTerritories: GameState['toxinTerritories'];
   radiationById: Set<number>;
@@ -119,6 +127,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     bonusesOpen,
     gameMode,
     continentId,
+    hillTerritoryIds,
     players,
     displayedToxinTerritories,
     radiationById,
@@ -352,6 +361,42 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ctx.restore();
     }
   }
+
+  ctx.save();
+  for (const id of hillTerritoryIds) {
+    const t = territoryById.get(id);
+    if (!t) continue;
+    const p = toScreen(t);
+    const r = VERTEX_RADIUS * scaleX;
+    const apex = { x: p.x, y: p.y - r * HILL_HEIGHT };
+    const left = { x: p.x - r * HILL_HALF_WIDTH, y: p.y + r * HILL_BASE };
+    const right = { x: p.x + r * HILL_HALF_WIDTH, y: p.y + r * HILL_BASE };
+    ctx.beginPath();
+    ctx.moveTo(apex.x, apex.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.closePath();
+    ctx.fillStyle = HILL_FILL;
+    ctx.fill();
+    ctx.strokeStyle = HILL_STROKE;
+    ctx.lineWidth = 2 * zoom;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(apex.x, apex.y);
+    ctx.lineTo(
+      apex.x + (right.x - apex.x) * HILL_SNOW,
+      apex.y + (right.y - apex.y) * HILL_SNOW,
+    );
+    ctx.lineTo(
+      apex.x + (left.x - apex.x) * HILL_SNOW,
+      apex.y + (left.y - apex.y) * HILL_SNOW,
+    );
+    ctx.closePath();
+    ctx.fillStyle = HILL_SNOW_FILL;
+    ctx.fill();
+  }
+  ctx.restore();
 
   const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
   const portalTerritoryIdSet = new Set(portalTerritoryIds);

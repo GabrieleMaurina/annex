@@ -8,6 +8,7 @@ import { getGameMap } from '../../maps/maps';
 import { BotPersonality, Game } from '../../types';
 import { assassinKillShot, threatTile } from '../features/mode/modeGoals';
 import { stalematePressure } from '../features/pressure';
+import { isKeyTerritory } from '../features/territory';
 import type { PlanContext } from '../planning/context';
 import { isVisible } from '../view';
 
@@ -52,10 +53,8 @@ function ownerTerritoryCounts(game: Game): Map<number, number> {
 }
 
 function isHighValuePlayer(game: Game, botId: number): boolean {
-  if (game.gameMode === 'capitals') {
-    for (const id of game.capitalTerritoryIds)
-      if (game.territoryOwners.get(id) === botId) return true;
-  }
+  for (const [id, ownerId] of game.territoryOwners)
+    if (ownerId === botId && isKeyTerritory(game, id)) return true;
   const counts = ownerTerritoryCounts(game);
   const mine = counts.get(botId) ?? 0;
   let stronger = 0;
@@ -142,14 +141,10 @@ export function chooseNukeLaunch(
   const denial = threatTile(ctx);
   if (denial !== null) return { territoryId: denial };
 
-  if (game.gameMode === 'capitals') {
-    const capitals = enemyTiles
-      .filter(
-        (tile) => game.capitalTerritoryIds.has(tile.id) && tile.troops >= 3,
-      )
-      .sort((a, b) => b.troops - a.troops);
-    if (capitals.length > 0) return { territoryId: capitals[0].id };
-  }
+  const keyTiles = enemyTiles
+    .filter((tile) => isKeyTerritory(game, tile.id) && tile.troops >= 3)
+    .sort((a, b) => b.troops - a.troops);
+  if (keyTiles.length > 0) return { territoryId: keyTiles[0].id };
 
   const strongest = enemyTiles.sort((a, b) => b.troops - a.troops)[0];
   if (strongest.troops >= PERSONALITY_MIN_STACK[ctx.personality])
@@ -172,8 +167,8 @@ export function chooseAntiNukeDeploy(
     .map(([id]) => id);
   if (owned.length === 0) return null;
 
-  const capitals = owned.filter((id) => game.capitalTerritoryIds.has(id));
-  const pool = capitals.length > 0 ? capitals : owned;
+  const keyTiles = owned.filter((id) => isKeyTerritory(game, id));
+  const pool = keyTiles.length > 0 ? keyTiles : owned;
   const best = pool.sort(
     (a, b) =>
       (game.territoryTroops.get(b) ?? 0) - (game.territoryTroops.get(a) ?? 0),

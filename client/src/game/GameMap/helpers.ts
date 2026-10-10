@@ -37,6 +37,13 @@ export const PLACEMENT_PHASE_DURATION = 10;
 export const CAPITAL_PHASE_DURATION = 60;
 
 export const UNCLAIMED_TERRITORY_COLOR = '#6c757d';
+export const HILL_FILL = '#8b5a2b';
+export const HILL_STROKE = '#3e2a14';
+export const HILL_SNOW_FILL = '#f1f3f5';
+export const HILL_HEIGHT = 2.6;
+export const HILL_HALF_WIDTH = 2.2;
+export const HILL_BASE = 1.2;
+export const HILL_SNOW = 0.3;
 export const ENTRENCHED_OCTAGON_FILL = '#495057';
 export const ENTRENCHED_OCTAGON_STROKE = '#212529';
 export const SEA_COLOR = '#0d6efd';
@@ -319,6 +326,7 @@ export function getTerritoryScreenPos(
 export function computeTooltipLabels(
   tooltipTerritoryId: number | null,
   portalTerritoryIds: number[],
+  hillTerritoryIds: number[],
   radiationById: Set<number>,
   visibleTerritoryById: Set<number> | null,
   ownerById: Map<number, { isCapital: boolean; entrenchedTurns: number }>,
@@ -328,6 +336,7 @@ export function computeTooltipLabels(
   if (tooltipTerritoryId === null) return tooltipLabels;
   if (portalTerritoryIds.includes(tooltipTerritoryId))
     tooltipLabels.push('Portal');
+  if (hillTerritoryIds.includes(tooltipTerritoryId)) tooltipLabels.push('Hill');
   if (radiationById.has(tooltipTerritoryId)) tooltipLabels.push('Radiation');
   if (
     visibleTerritoryById === null ||

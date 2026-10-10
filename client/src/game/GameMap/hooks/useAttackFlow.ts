@@ -46,6 +46,7 @@ export function useAttackFlow({
   isMyTurn,
   paused,
   blitzEnabled,
+  attackDice,
   setGame,
 }: {
   attackStartTerritoryId: number | null;
@@ -63,6 +64,7 @@ export function useAttackFlow({
   isMyTurn: boolean;
   paused: boolean;
   blitzEnabled: boolean;
+  attackDice: number;
   setGame: (game: GameState) => void;
 }) {
   const [attackWinProbabilities, setAttackWinProbabilities] = useState<
@@ -73,7 +75,7 @@ export function useAttackFlow({
   >(null);
   const [attackSelectedType, setAttackSelectedType] =
     useState<AttackType>('regular');
-  const [attackRegularTroops, setAttackRegularTroops] = useState<1 | 2 | 3>(1);
+  const [attackRegularTroops, setAttackRegularTroops] = useState(1);
   const [attackBlitzTroops, setAttackBlitzTroops] = useState(1);
   const blitzInputRef = useRef<HTMLInputElement>(null);
   const [attackMoveTroops, setAttackMoveTroops] = useState(1);
@@ -86,7 +88,7 @@ export function useAttackFlow({
     blitzWinProbabilities: number[];
     blitzOutcomes: BlitzOutcome[];
     selectedType: AttackType;
-    regularTroops: 1 | 2 | 3;
+    regularTroops: number;
     blitzTroops: number;
   } | null>(null);
   const attackOptionIndexRef = useRef(0);
@@ -120,12 +122,11 @@ export function useAttackFlow({
       setAttackRegularTroops(
         blitzEnabled
           ? 1
-          : (Math.min(3, Math.max(1, blitzWinProbabilities.length)) as
-              1 | 2 | 3),
+          : Math.min(attackDice, Math.max(1, blitzWinProbabilities.length)),
       );
       setAttackBlitzTroops(Math.max(1, blitzWinProbabilities.length));
     },
-    [blitzEnabled],
+    [blitzEnabled, attackDice],
   );
 
   const continueAttackSelection = useCallback(
@@ -133,13 +134,11 @@ export function useAttackFlow({
       setAttackWinProbabilities(blitzWinProbabilities);
       setAttackBlitzOutcomes(blitzOutcomes);
       const newMaxBlitz = blitzWinProbabilities.length;
-      const newMaxRegular = Math.min(newMaxBlitz, 3);
-      setAttackRegularTroops(
-        (prev) => Math.min(prev, newMaxRegular) as 1 | 2 | 3,
-      );
+      const newMaxRegular = Math.min(newMaxBlitz, attackDice);
+      setAttackRegularTroops((prev) => Math.min(prev, newMaxRegular));
       setAttackBlitzTroops((prev) => Math.min(prev, newMaxBlitz));
     },
-    [],
+    [attackDice],
   );
 
   const selectAttackEnd = useCallback(
@@ -349,7 +348,7 @@ export function useAttackFlow({
     attackStartTerritoryId !== null
       ? Math.max(1, (ownerById.get(attackStartTerritoryId)?.troops ?? 1) - 1)
       : 1;
-  const maxRegularTroops = Math.min(maxBlitzTroops, 3);
+  const maxRegularTroops = Math.min(maxBlitzTroops, attackDice);
 
   useEffect(() => {
     attackOptionIndexRef.current =
@@ -369,7 +368,7 @@ export function useAttackFlow({
         setAttackSelectedType('blitz');
       } else {
         setAttackSelectedType('regular');
-        setAttackRegularTroops((nextIndex + 1) as 1 | 2 | 3);
+        setAttackRegularTroops(nextIndex + 1);
       }
     },
     [maxRegularTroops, blitzEnabled],

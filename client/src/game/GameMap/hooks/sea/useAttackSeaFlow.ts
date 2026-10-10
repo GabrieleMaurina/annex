@@ -48,6 +48,7 @@ export function useAttackSeaFlow({
   turnPhase,
   isMyTurn,
   paused,
+  attackDice,
   setGame,
 }: {
   attackSeaTerritoryId: number | null;
@@ -58,6 +59,7 @@ export function useAttackSeaFlow({
   turnPhase: GameState['turnPhase'];
   isMyTurn: boolean;
   paused: boolean;
+  attackDice: number;
   setGame: (game: GameState) => void;
 }) {
   const [attackSeaRegularShips, setAttackSeaRegularShips] = useState(1);
@@ -88,7 +90,7 @@ export function useAttackSeaFlow({
       ? getSeaDefenders(seas, attackSeaTerritoryId, selfId)
       : [];
   const attackSeaOwnShips = shipsAt(seas, attackSeaTerritoryId, selfId);
-  const attackSeaMaxRegularShips = Math.min(3, attackSeaOwnShips);
+  const attackSeaMaxRegularShips = Math.min(attackDice, attackSeaOwnShips);
   const attackSeaMaxBlitzShips = attackSeaOwnShips;
   const attackSeaDefenderValid =
     attackSeaDefenderId === null ||

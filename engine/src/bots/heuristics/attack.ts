@@ -1,5 +1,6 @@
+import { defenceDiceFor } from '../../game/combat/dice';
 import { Game } from '../../types';
-import { attackWinProbability, defenceDiceFor } from '../features/combat';
+import { attackWinProbability } from '../features/combat';
 import {
   continentBreakCandidates,
   continentCompletionCandidates,
@@ -21,8 +22,6 @@ export interface AttackChoice {
   type: 'regular' | 'blitz';
 }
 
-const REGULAR_ATTACK_MAX_TROOPS = 3;
-
 export function attackOrder(
   game: Game,
   troops: number,
@@ -30,7 +29,7 @@ export function attackOrder(
   if (game.blitz === 'off')
     return {
       type: 'regular',
-      troops: Math.min(troops, REGULAR_ATTACK_MAX_TROOPS),
+      troops: Math.min(troops, game.attackDice),
     };
   return { type: 'blitz', troops };
 }

@@ -85,7 +85,7 @@ export interface BlitzOutcome {
   attackLosses: number;
   defenceLosses: number;
 }
-export type DefenceDice = 2 | 3;
+export type DiceTies = 'defence' | 'attack' | 'tie';
 export type CardsMode =
   | 'constant'
   | 'linear'
@@ -106,7 +106,9 @@ export type GameMode =
   | 'assassin'
   | 'mission'
   | 'player kills'
-  | 'troop kills';
+  | 'troop kills'
+  | 'king of the hill'
+  | 'empire';
 export const GAME_MODES: GameMode[] = [
   'supremacy',
   'supremacy 3/4',
@@ -120,6 +122,8 @@ export const GAME_MODES: GameMode[] = [
   'mission',
   'player kills',
   'troop kills',
+  'king of the hill',
+  'empire',
 ];
 
 export type Placement = 'random' | 'semi' | 'custom';
@@ -233,7 +237,9 @@ export interface GameState {
   bounties: Bounties;
   cards: CardsMode;
   continents: Continents;
-  defenceDice: DefenceDice;
+  defenceDice: number;
+  attackDice: number;
+  diceTies: DiceTies;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';
   entrenchments: Entrenchments;
@@ -241,6 +247,11 @@ export interface GameState {
   fortification: Fortification;
   gameMode: GameMode;
   initialTroops: number;
+  minTroops: number;
+  troopsPerTerritory: number;
+  maxPoints: number;
+  hills: number;
+  hillTerritoryIds: number[];
   continentId: number | null;
   placement: Placement;
   portals: Portals;
@@ -299,6 +310,7 @@ export interface GameState {
     territoryCount: number | null;
     troopCount: number | null;
     capitalCount: number;
+    points: number;
     troopsRemaining: number;
     cardCount: number;
     connected: boolean;
@@ -363,7 +375,9 @@ export interface GameSettingsInput {
   bounties?: Bounties;
   cards?: CardsMode;
   continents?: Continents;
-  defenceDice?: DefenceDice;
+  defenceDice?: number;
+  attackDice?: number;
+  diceTies?: DiceTies;
   disconnectBotDifficulty?: BotDifficulty | 'random';
   disconnectBotPersonality?: BotPersonality | 'random';
   entrenchments?: Entrenchments;
@@ -371,6 +385,10 @@ export interface GameSettingsInput {
   fortification?: Fortification;
   gameMode?: GameMode;
   initialTroops?: number;
+  minTroops?: number;
+  troopsPerTerritory?: number;
+  maxPoints?: number;
+  hills?: number;
   nukes?: Nukes;
   mapName?: string;
   name?: string;
@@ -396,6 +414,8 @@ export type GameRulesSettings = Pick<
   | 'cards'
   | 'continents'
   | 'defenceDice'
+  | 'attackDice'
+  | 'diceTies'
   | 'disconnectBotDifficulty'
   | 'disconnectBotPersonality'
   | 'entrenchments'
@@ -403,6 +423,10 @@ export type GameRulesSettings = Pick<
   | 'fortification'
   | 'gameMode'
   | 'initialTroops'
+  | 'minTroops'
+  | 'troopsPerTerritory'
+  | 'maxPoints'
+  | 'hills'
   | 'nukes'
   | 'mapName'
   | 'placement'
@@ -516,6 +540,7 @@ export interface ReplayPlayerState {
   eliminated: boolean;
   surrendered: boolean;
   killedPlayerIds: number[];
+  points?: number;
   nukes: number;
   antiNukes: number;
   nukeProjects: NukeProject[];
@@ -581,6 +606,7 @@ export interface StoredGameResult {
   eliminated: boolean;
   surrendered: boolean;
   playersKilled: number[];
+  points?: number;
   troopsGained: number;
   troopsKilled: number;
   troopsLost: number;
@@ -598,9 +624,15 @@ export interface StoredGameSettings {
   continentId: number | null;
   slots: number;
   blitz: Blitz;
-  defenceDice: DefenceDice;
+  defenceDice: number;
+  attackDice: number;
+  diceTies: DiceTies;
   continents: Continents;
   initialTroops: number;
+  minTroops: number;
+  troopsPerTerritory: number;
+  maxPoints: number;
+  hills: number;
   cards: CardsMode;
   placement: Placement;
   fortification: Fortification;
@@ -634,6 +666,7 @@ export interface StoredGame {
   playerCount: number;
   winnerIds: number[];
   capitalTerritoryIds: number[];
+  hillTerritoryIds?: number[];
   settings: StoredGameSettings;
   players: {
     playerId: number;

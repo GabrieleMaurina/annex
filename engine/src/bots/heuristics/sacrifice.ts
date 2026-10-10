@@ -1,10 +1,17 @@
-import { defenceDiceFor } from '../features/combat';
+import { defenceDiceFor, gameDiceRules } from '../../game/combat/dice';
+import { Game } from '../../types';
+import { lossRatio } from '../features/combat';
 import { seaBridgeTargets } from '../features/navy';
 import { targetPreference } from '../features/standing';
-import { frontierTerritories, hostileNeighbors } from '../features/territory';
+import {
+  frontierTerritories,
+  hostileNeighbors,
+  isKeyTerritory,
+} from '../features/territory';
 import {
   PlanContext,
   bonusOf,
+  holdsContinent,
   isFriendly,
   ownedChokepoints,
   ownedIds,
@@ -26,53 +33,22 @@ const PROTECTED_GARRISON = 1.3;
 const FOLLOW_UP_SCORE = 1.5;
 const CONTESTED_SCORE = 0.5;
 const PREFERENCE_SCORE = 0.5;
-const DICE_SIDES = 6;
-const ATTACKER_DICE = 3;
 const FIXED_POINT_PASSES = 3;
 
-const killsPerLossCache = new Map<number, number>();
-
-function rollsOf(index: number, dice: number): number[] {
-  const rolls: number[] = [];
-  let rest = index;
-  for (let i = 0; i < dice; i++) {
-    rolls.push(rest % DICE_SIDES);
-    rest = Math.floor(rest / DICE_SIDES);
-  }
-  return rolls.sort((a, b) => b - a);
-}
-
-function killsPerLoss(defenceDice: number): number {
-  const cached = killsPerLossCache.get(defenceDice);
-  if (cached !== undefined) return cached;
-  const pairs = Math.min(ATTACKER_DICE, defenceDice);
-  let attackLosses = 0;
-  let defenceLosses = 0;
-  for (let a = 0; a < DICE_SIDES ** ATTACKER_DICE; a++) {
-    const attack = rollsOf(a, ATTACKER_DICE);
-    for (let d = 0; d < DICE_SIDES ** defenceDice; d++) {
-      const defence = rollsOf(d, defenceDice);
-      for (let i = 0; i < pairs; i++) {
-        if (attack[i] > defence[i]) defenceLosses++;
-        else attackLosses++;
-      }
-    }
-  }
-  const ratio = defenceLosses / attackLosses;
-  killsPerLossCache.set(defenceDice, ratio);
-  return ratio;
+function killsPerLoss(game: Game, defenceDice: number): number {
+  return 1 / lossRatio(gameDiceRules(game, defenceDice));
 }
 
 function protectedTerritories(ctx: PlanContext): Set<number> {
   const state = snapshotState(ctx);
   const ids = new Set<number>();
   for (const id of ownedIds(state, ctx.botId)) {
-    if (ctx.game.capitalTerritoryIds.has(id)) ids.add(id);
+    if (isKeyTerritory(ctx.game, id)) ids.add(id);
   }
   for (const id of ownedChokepoints(ctx, state)) ids.add(id);
   for (const [continentId, territoryIds] of ctx.continentTerritories) {
     if (bonusOf(ctx, continentId) <= 0) continue;
-    if (territoryIds.every((id) => state.owners.get(id) === ctx.botId))
+    if (holdsContinent(ctx, state, territoryIds, ctx.botId))
       for (const id of territoryIds) ids.add(id);
   }
   return ids;
@@ -173,7 +149,7 @@ function evaluatePair(
   const ownerId = ownerOf(game, view, endId)!;
   const defenders = troopsAt(game, view, endId);
   if (defenders < 2) return null;
-  const efficiency = killsPerLoss(defenceDiceFor(game, endId));
+  const efficiency = killsPerLoss(game, defenceDiceFor(game, endId));
   if (efficiency < FRUSTRATED_MIN_EFFICIENCY) return null;
 
   const preference = targetPreference(ctx.standing, ownerId);
@@ -191,7 +167,7 @@ function evaluatePair(
   if (!contested && !scan.frustrated && strongestOther === 0) return null;
 
   const startTroops = scan.stackTroops.get(startId) ?? 0;
-  const startEfficiency = killsPerLoss(defenceDiceFor(game, startId));
+  const startEfficiency = killsPerLoss(game, defenceDiceFor(game, startId));
   const garrisonFactor = scan.guard().has(startId)
     ? PROTECTED_GARRISON * (1 - scan.frustration)
     : 1 - GARRISON_RELAX * scan.frustration;

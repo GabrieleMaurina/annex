@@ -50,6 +50,16 @@ export const GAME_MODE_HELP = (
         Troop Kills: play until only one player is left standing; whoever
         destroyed the most enemy troops wins, even if it wasn&apos;t them.
       </li>
+      <li>
+        King of the Hill: a few random territories are hills. At the start of
+        each of your turns (from round 2 on), you score 1 point per hill you
+        hold. First to Max Points wins.
+      </li>
+      <li>
+        Empire: at the start of each of your turns (from round 2 on), you score
+        1 point per territory you hold plus the bonus of every continent you
+        hold (only with Continents on). First to Max Points wins.
+      </li>
     </ul>
   </>
 );
@@ -77,26 +87,62 @@ export const BLITZ_HELP = (
       </li>
       <li>
         Fair: no dice at all. The outcome is fixed in advance from the troop
-        counts and defence dice, set to the average of a True blitz, so the same
-        attack always costs the same.
+        counts and dice settings, set to the average of a True blitz, so the
+        same attack always costs the same.
       </li>
       <li>
         Off: all-out attacks are disabled, on land and at sea. Every battle is
-        fought exchange by exchange. Not available with Round Troops on or with
-        any Cards mode other than Constant and Off.
+        fought exchange by exchange. Not available with Round Troops on, with
+        any Cards mode other than Constant and Off, with Troops Per Territory 1
+        or higher, or with Initial Troops or Min Troops above 10.
       </li>
     </ul>
   </>
 );
 
+export const ATTACK_DICE_HELP = (
+  <>
+    The most dice an attacker rolls per attack exchange, one per attacking troop
+    or ship. Also the most troops a regular (non-blitz) attack can send. More
+    dice means better odds for the attacker. Lowering it below Defence Dice
+    lowers Defence Dice to match.
+  </>
+);
+
 export const DEFENCE_DICE_HELP = (
   <>
-    How many dice a defending territory rolls per attack exchange (capped by its
-    own troop count). More dice means better odds for the defender.
+    The most dice a defender rolls per attack exchange (capped by its own troop
+    or ship count). More dice means better odds for the defender. Can&apos;t be
+    higher than Attack Dice. Capitals and entrenched territories roll 1 extra
+    die, up to 10.
+  </>
+);
+
+export const DICE_TIES_HELP = (
+  <>
+    Who wins when an attacker die and a defender die show the same number, on
+    land and at sea.
     <ul className="mb-0 ps-3">
-      <li>2: defenders roll at most 2 dice.</li>
-      <li>3: defenders roll at most 3 dice (stronger defense).</li>
+      <li>Defence: the attacker loses a troop.</li>
+      <li>Attack: the defender loses a troop.</li>
+      <li>Tie: nobody loses a troop.</li>
     </ul>
+  </>
+);
+
+export const TROOPS_PER_TERRITORY_HELP = (
+  <>
+    How many troops each territory you own gives you at the start of each of
+    your turns, rounded down. For example, 1/3 gives 1 troop for every 3
+    territories, and 2 gives 2 troops for every territory.
+  </>
+);
+
+export const MIN_TROOPS_HELP = (
+  <>
+    The fewest troops your territories give you at the start of each of your
+    turns, no matter how few territories you own. Continent, card, and other
+    bonuses are added on top.
   </>
 );
 
@@ -163,6 +209,21 @@ export const PLACEMENT_HELP = (
         territories for everyone, players who never get one are eliminated.
       </li>
     </ul>
+  </>
+);
+
+export const MAX_POINTS_HELP = (
+  <>
+    Points needed to win in King of the Hill and Empire. The first player to
+    reach it at the start of their turn wins. Defaults to 20 in King of the Hill
+    and 500 in Empire.
+  </>
+);
+
+export const HILLS_HELP = (
+  <>
+    How many random territories are hills in King of the Hill. Each hill you
+    hold scores 1 point at the start of each of your turns.
   </>
 );
 
@@ -238,14 +299,14 @@ export const ENTRENCHMENTS_HELP = (
   <>
     Adds an extra phase after fortifying where you can spend troops straight off
     a territory to entrench it: 1 troop buys 1 turn of entrenchment, and an
-    entrenched territory always defends with 3 dice. Entrenchment decreases by 1
-    at the start of your next turn, and is lost if the territory is conquered.
-    Capitals can&apos;t be entrenched.
+    entrenched territory defends with 1 more die than Defence Dice, up to 10.
+    Entrenchment decreases by 1 at the start of your next turn, and is lost if
+    the territory is conquered. Capitals can&apos;t be entrenched.
     <ul className="mb-0 ps-3">
       <li>Off: no entrench phase.</li>
       <li>
-        On: only available when Defence Dice is 2 (otherwise entrenchment would
-        be redundant, since defenders already always roll 3).
+        On: only available when Defence Dice is below 10 (otherwise entrenchment
+        would be redundant, since defenders can&apos;t roll more than 10).
       </li>
     </ul>
   </>
@@ -268,7 +329,8 @@ export const TOXINS_HELP = (
       </li>
       <li>
         Permanent: costs 10 troops (Constant cards) or 50% of the next card
-        set&apos;s value, and never clears for the rest of the game.
+        set&apos;s value, and never clears for the rest of the game. Never
+        allowed on a King of the Hill hill.
       </li>
     </ul>
   </>
@@ -298,7 +360,7 @@ export const RADIATIONS_HELP = (
       <li>
         Expanding: a single territory is irradiated at the start, and every 2
         rounds it permanently grows to engulf one more neighboring territory,
-        shown one round in advance.
+        shown one round in advance. It never engulfs a King of the Hill hill.
       </li>
     </ul>
   </>

@@ -60,6 +60,7 @@ function snapshotPlayerStates(game: Game): ReplayPlayerState[] {
       eliminated: game.deathOrder.includes(playerId),
       surrendered: game.surrenderedIds.has(playerId),
       killedPlayerIds: [...(game.stats.get(playerId)?.playersKilled ?? [])],
+      points: game.points.get(playerId) ?? 0,
       nukes: arsenal.nukes,
       antiNukes: arsenal.antiNukes,
       nukeProjects: (game.nukeProjects.get(playerId) ?? []).map((p) => ({
@@ -67,6 +68,11 @@ function snapshotPlayerStates(game: Game): ReplayPlayerState[] {
       })),
     };
   });
+}
+
+export function refreshLastReplayPlayerStates(game: Game) {
+  const lastFrame = game.replayFrames[game.replayFrames.length - 1];
+  if (lastFrame) lastFrame.playerStates = snapshotPlayerStates(game);
 }
 
 export function recordReplayFrame(game: Game, animation: ReplayAnimation) {

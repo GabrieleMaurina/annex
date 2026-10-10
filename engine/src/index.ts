@@ -90,6 +90,7 @@ import { sendEmoji } from './social/emoji';
 
 export { runBotWorker } from './bots/planning/worker';
 export { EngineCallbacks } from './callbacks';
+export { MAX_DICE } from './game/combat/dice';
 export {
   GameExport,
   GameResultExport,
@@ -102,7 +103,15 @@ export {
   NUKE_INSTALLMENT,
   NUKE_INSTALLMENTS,
 } from './game/nukes/nukes';
+export {
+  defaultMaxPoints,
+  isPointsMode,
+  MAX_HILLS,
+  MAX_POINTS_VALUES,
+  MIN_HILLS,
+} from './game/progression/points';
 export { GameSummary } from './game/state';
+export { isBlitzOffAllowed } from './lifecycle/settings';
 export {
   Fill,
   FILL_VALUES,

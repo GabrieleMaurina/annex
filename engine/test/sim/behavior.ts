@@ -56,6 +56,7 @@ export function runawayLeader(game: Game, playerId: number): number | null {
     game.territoryTroops,
     continentTerritories(game),
     getGameMap(game).bonuses,
+    game.troopsPerTerritory,
   );
   const [leader, second] = alive
     .map((id) => ({ id, strength: strengths.get(id) ?? 0 }))

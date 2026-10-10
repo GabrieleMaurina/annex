@@ -2,6 +2,7 @@ import {
   PlanContext,
   SimState,
   bonusOf,
+  holdsContinent,
   isEnemyTerritory,
   mainCluster,
   neighborsOf,
@@ -48,7 +49,7 @@ function computeHome(ctx: PlanContext): Home {
   for (const [continentId, territoryIds] of ctx.continentTerritories) {
     if (
       bonusOf(ctx, continentId) > 0 &&
-      territoryIds.every((id) => state.owners.get(id) === ctx.botId)
+      holdsContinent(ctx, state, territoryIds, ctx.botId)
     ) {
       for (const id of territoryIds) held.add(id);
       continue;

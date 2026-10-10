@@ -1,3 +1,4 @@
+import { isPointsMode } from 'engine';
 import type { MutableRefObject, ReactNode } from 'react';
 import { useRef } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
@@ -55,7 +56,17 @@ function formatMission(
   return (
     <>
       Eliminate{' '}
-      <span style={{ color: target ? playerColor(target.color) : undefined }}>
+      <span
+        className={target ? 'badge' : undefined}
+        style={
+          target
+            ? {
+                backgroundColor: playerColor(target.color),
+                color: contrastTextColor(playerColor(target.color)),
+              }
+            : undefined
+        }
+      >
         {target?.name ?? 'your target'}
       </span>
       . If someone beats you to it, control 75%+ of the territories instead.
@@ -76,6 +87,7 @@ interface Props {
   totalTroopsCap: number;
   leaderTerritoryCount: number | null;
   territoriesToWin: number | null;
+  maxPoints: number;
   toxins: Toxins;
   toxinsCost: number;
   mission: Mission | null;
@@ -118,6 +130,7 @@ function PlayersPanel({
   totalTroopsCap,
   leaderTerritoryCount,
   territoriesToWin,
+  maxPoints,
   toxins,
   toxinsCost,
   mission,
@@ -167,6 +180,8 @@ function PlayersPanel({
   const totalCapitals = players.reduce((sum, p) => sum + p.capitalCount, 0);
   const contenders = players.filter((p) => !p.eliminated && !p.surrendered);
   const leaderCapitals = Math.max(0, ...contenders.map((p) => p.capitalCount));
+  const showPoints = isPointsMode(gameMode);
+  const leaderPoints = Math.max(0, ...contenders.map((p) => p.points));
   const territoryCounts = contenders.map((p) => p.territoryCount);
   const leaderTerritories = territoryCounts.every((count) => count !== null)
     ? Math.max(0, ...territoryCounts.map((count) => count ?? 0))
@@ -180,6 +195,7 @@ function PlayersPanel({
   const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
   const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
   const whiteCapitalIcon = useWhiteIcon('/icons/capital.svg');
+  const whitePointsIcon = useWhiteIcon('/icons/points.svg');
   const whiteBountyIcon = useWhiteIcon('/icons/bounty.svg');
   const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
@@ -215,6 +231,7 @@ function PlayersPanel({
           270 +
           (isTeamDeathmatch ? 40 : 0) +
           (isCapitals ? 40 : 0) +
+          (showPoints ? 40 : 0) +
           (bounties === 'on' ? 40 : 0) +
           (showAllianceColumn ? 24 : 0) -
           (cards === 'off' ? 34 : 0),
@@ -278,6 +295,11 @@ function PlayersPanel({
           Leader {leaderCapitals}/{totalCapitals}
         </div>
       )}
+      {showPoints && (
+        <div className="text-center small mb-2">
+          Leader {leaderPoints}/{maxPoints}
+        </div>
+      )}
       {leaderTerritoryCount !== null && (
         <div className="text-center small mb-2">
           Leader {leaderTerritories}/{territoriesToWin}
@@ -331,6 +353,19 @@ function PlayersPanel({
                       width={14}
                       height={14}
                       alt="Capitals"
+                      className="align-middle"
+                    />
+                  </Tip>
+                </th>
+              )}
+              {showPoints && (
+                <th className="text-center" style={{ width: 34 }}>
+                  <Tip text="Points">
+                    <img
+                      src={whitePointsIcon ?? '/icons/points.svg'}
+                      width={14}
+                      height={14}
+                      alt="Points"
                       className="align-middle"
                     />
                   </Tip>
@@ -541,6 +576,11 @@ function PlayersPanel({
                   {isCapitals && (
                     <td className="align-middle text-center" style={rowStyle}>
                       {p.eliminated ? '-' : p.capitalCount}
+                    </td>
+                  )}
+                  {showPoints && (
+                    <td className="align-middle text-center" style={rowStyle}>
+                      {p.points}
                     </td>
                   )}
                   {bounties === 'on' && (

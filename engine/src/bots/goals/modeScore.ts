@@ -2,10 +2,11 @@ import {
   ModeGoal,
   SideProgress,
   modeGoalFor,
+  pointsGains,
   sideProgress,
   territoryCounts,
 } from '../features/mode/modeGoals';
-import { PlanContext, SimState } from '../planning/context';
+import { PlanContext, SimState, isFriendly } from '../planning/context';
 
 const OWN_PROGRESS = 40;
 const WIN = 80;
@@ -17,6 +18,8 @@ const ROUND_SPREAD = 0.03;
 const ASSASSIN_WIN = 70;
 const ASSASSIN_PROGRESS = 25;
 const SELF_ELIMINATION = 30;
+const POINTS_RATE = 120;
+const RIVAL_POINTS_SHARE = 0.5;
 
 function curve(progress: number, onset: number): number {
   const x = Math.min(1, Math.max(0, (progress - onset) / (1 - onset)));
@@ -49,6 +52,18 @@ function roundRace(ctx: PlanContext, goal: ModeGoal, state: SimState): number {
   const urgency =
     ROUND_BASE + ROUND_GAIN * (1 - goal.turnsLeft / goal.roundLimit);
   return urgency * (rivalsBeaten + leads);
+}
+
+function pointsRace(ctx: PlanContext, goal: ModeGoal, state: SimState): number {
+  let own = 0;
+  let bestRival = 0;
+  for (const [ownerId, gain] of pointsGains(ctx, state)) {
+    if (ownerId === ctx.botId) own = gain;
+    else if (!isFriendly(ctx, ownerId)) bestRival = Math.max(bestRival, gain);
+  }
+  return (
+    (POINTS_RATE * (own - RIVAL_POINTS_SHARE * bestRival)) / goal.maxPoints
+  );
 }
 
 function assassinScore(
@@ -87,5 +102,6 @@ export function modeScore(
     score -= THREAT * goal.threatWeight * curve(threat.progress, THREAT_ONSET);
   if (goal.roundLimit > 0) score += roundRace(ctx, goal, state);
   if (goal.assassinId !== null) score += assassinScore(ctx, goal, state);
+  if (goal.maxPoints > 0) score += pointsRace(ctx, goal, state);
   return score;
 }

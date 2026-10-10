@@ -1,11 +1,12 @@
 import { alliedIds } from '../../game/alliances';
+import { defenceDiceFor } from '../../game/combat/dice';
 import { supplyHubTerritoryIds } from '../../game/mechanics';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { BotView, isVisible, ownerOf, shipsAt } from '../view';
-import { attackWinProbability, defenceDiceFor } from './combat';
+import { attackWinProbability } from './combat';
 import { isTeammate } from './mode/mode';
 import { minWinProbability } from './pressure';
 

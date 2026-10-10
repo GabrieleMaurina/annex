@@ -34,6 +34,7 @@ export function persistFinishedGame(
         roundNumber: bundle.roundNumber,
         playerCount: bundle.playerCount,
         capitalTerritoryIds: bundle.capitalTerritoryIds,
+        hillTerritoryIds: bundle.hillTerritoryIds,
         results: bundle.results,
         serverLog: bundle.serverLog,
         replay: bundle.replay,

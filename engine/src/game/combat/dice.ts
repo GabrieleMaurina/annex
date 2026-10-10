@@ -1,3 +1,26 @@
+import { DiceTies, Game } from '../../types';
+
+export const MAX_DICE = 10;
+
+export interface DiceRules {
+  attack: number;
+  defence: number;
+  ties: DiceTies;
+}
+
+export function defenceDiceFor(game: Game, territoryId: number): number {
+  if (
+    game.capitalTerritoryIds.has(territoryId) ||
+    (game.territoryEntrenchment.get(territoryId) ?? 0) > 0
+  )
+    return Math.min(MAX_DICE, game.defenceDice + 1);
+  return game.defenceDice;
+}
+
+export function gameDiceRules(game: Game, defence: number): DiceRules {
+  return { attack: game.attackDice, defence, ties: game.diceTies };
+}
+
 export function roll(): number {
   return Math.floor(Math.random() * 6) + 1;
 }
@@ -5,6 +28,7 @@ export function roll(): number {
 export function attack(
   attackingTroops: number,
   defendingTroops: number,
+  ties: DiceTies,
 ): {
   attackDice: number[];
   defenceDice: number[];
@@ -23,91 +47,130 @@ export function attack(
   const pairs = Math.min(attackDice.length, defenceDice.length);
   for (let i = 0; i < pairs; i++) {
     if (attackDice[i] > defenceDice[i]) defenceLosses++;
-    else attackLosses++;
+    else if (attackDice[i] < defenceDice[i]) attackLosses++;
+    else if (ties === 'defence') attackLosses++;
+    else if (ties === 'attack') defenceLosses++;
   }
 
   return { attackDice, defenceDice, attackLosses, defenceLosses };
 }
 
-export function attackSea(
-  attackingShips: number,
-  defendingShips: number,
-): {
-  attackDice: number[];
-  defenceDice: number[];
+interface PlacementState {
+  placedAttackDice: number;
+  placedDefenceDice: number;
   attackLosses: number;
   defenceLosses: number;
-} {
-  const attackDice = Array.from({ length: attackingShips }, roll).sort(
-    (a, b) => b - a,
-  );
-  const defenceDice = Array.from({ length: defendingShips }, roll).sort(
-    (a, b) => b - a,
-  );
-
-  let attackLosses = 0;
-  let defenceLosses = 0;
-  const pairs = Math.min(attackDice.length, defenceDice.length);
-  for (let i = 0; i < pairs; i++) {
-    if (attackDice[i] > defenceDice[i]) defenceLosses++;
-    else if (attackDice[i] < defenceDice[i]) attackLosses++;
-  }
-
-  return { attackDice, defenceDice, attackLosses, defenceLosses };
+  probability: number;
 }
 
-function allDiceRolls(diceCount: number): number[][] {
-  let rolls: number[][] = [[]];
-  for (let i = 0; i < diceCount; i++) {
-    const next: number[][] = [];
-    for (const roll of rolls) {
-      for (let value = 1; value <= 6; value++) next.push([...roll, value]);
-    }
-    rolls = next;
+function binomialProbabilities(trials: number, p: number): number[] {
+  const probabilities: number[] = [];
+  let coefficient = 1;
+  for (let k = 0; k <= trials; k++) {
+    probabilities.push(coefficient * p ** k * (1 - p) ** (trials - k));
+    coefficient = (coefficient * (trials - k)) / (k + 1);
   }
-  return rolls.map((roll) => roll.sort((a, b) => b - a));
+  return probabilities;
+}
+
+function placeFace(
+  state: PlacementState,
+  newAttackDice: number,
+  newDefenceDice: number,
+  pairs: number,
+  ties: DiceTies,
+): { attackLosses: number; defenceLosses: number } {
+  const { placedAttackDice, placedDefenceDice } = state;
+  let { attackLosses, defenceLosses } = state;
+  const end = Math.min(
+    placedAttackDice + newAttackDice,
+    placedDefenceDice + newDefenceDice,
+    pairs,
+  );
+  for (let i = Math.min(placedAttackDice, placedDefenceDice); i < end; i++) {
+    if (i < placedAttackDice) defenceLosses++;
+    else if (i < placedDefenceDice) attackLosses++;
+    else if (ties === 'defence') attackLosses++;
+    else if (ties === 'attack') defenceLosses++;
+  }
+  return { attackLosses, defenceLosses };
 }
 
 function computeLossDistribution(
   attackerDiceCount: number,
   defenderDiceCount: number,
-  tieFavorsDefender: boolean,
+  ties: DiceTies,
 ): { attackLosses: number; defenceLosses: number; probability: number }[] {
-  const attackerRolls = allDiceRolls(attackerDiceCount);
-  const defenderRolls = allDiceRolls(defenderDiceCount);
   const pairs = Math.min(attackerDiceCount, defenderDiceCount);
-  const counts = new Map<
-    string,
-    { attackLosses: number; defenceLosses: number; count: number }
-  >();
-  let decisiveRolls = 0;
+  let states: PlacementState[] = [
+    {
+      placedAttackDice: 0,
+      placedDefenceDice: 0,
+      attackLosses: 0,
+      defenceLosses: 0,
+      probability: 1,
+    },
+  ];
 
-  for (const attackDice of attackerRolls) {
-    for (const defenceDice of defenderRolls) {
-      let attackLosses = 0;
-      let defenceLosses = 0;
-      for (let i = 0; i < pairs; i++) {
-        if (attackDice[i] > defenceDice[i]) defenceLosses++;
-        else if (attackDice[i] < defenceDice[i]) attackLosses++;
-        else if (tieFavorsDefender) attackLosses++;
-      }
-      if (attackLosses === 0 && defenceLosses === 0) continue;
-      decisiveRolls++;
-      const key = `${attackLosses},${defenceLosses}`;
-      const existing = counts.get(key);
-      if (existing) existing.count++;
-      else counts.set(key, { attackLosses, defenceLosses, count: 1 });
+  for (let face = 6; face >= 1; face--) {
+    const next = new Map<string, PlacementState>();
+    for (const state of states) {
+      const attackOdds = binomialProbabilities(
+        attackerDiceCount - state.placedAttackDice,
+        1 / face,
+      );
+      const defenceOdds = binomialProbabilities(
+        defenderDiceCount - state.placedDefenceDice,
+        1 / face,
+      );
+      attackOdds.forEach((attackProbability, newAttackDice) => {
+        defenceOdds.forEach((defenceProbability, newDefenceDice) => {
+          const probability =
+            state.probability * attackProbability * defenceProbability;
+          if (probability === 0) return;
+          const losses = placeFace(
+            state,
+            newAttackDice,
+            newDefenceDice,
+            pairs,
+            ties,
+          );
+          const placedAttackDice = state.placedAttackDice + newAttackDice;
+          const placedDefenceDice = state.placedDefenceDice + newDefenceDice;
+          const key = `${placedAttackDice},${placedDefenceDice},${losses.attackLosses},${losses.defenceLosses}`;
+          const existing = next.get(key);
+          if (existing) existing.probability += probability;
+          else
+            next.set(key, {
+              placedAttackDice,
+              placedDefenceDice,
+              ...losses,
+              probability,
+            });
+        });
+      });
     }
+    states = [...next.values()];
   }
 
-  return Array.from(
-    counts.values(),
-    ({ attackLosses, defenceLosses, count }) => ({
-      attackLosses,
-      defenceLosses,
-      probability: count / decisiveRolls,
-    }),
-  );
+  const outcomes = new Map<
+    string,
+    { attackLosses: number; defenceLosses: number; probability: number }
+  >();
+  let decisiveProbability = 0;
+  for (const { attackLosses, defenceLosses, probability } of states) {
+    if (attackLosses === 0 && defenceLosses === 0) continue;
+    decisiveProbability += probability;
+    const key = `${attackLosses},${defenceLosses}`;
+    const existing = outcomes.get(key);
+    if (existing) existing.probability += probability;
+    else outcomes.set(key, { attackLosses, defenceLosses, probability });
+  }
+
+  return Array.from(outcomes.values(), (outcome) => ({
+    ...outcome,
+    probability: outcome.probability / decisiveProbability,
+  }));
 }
 
 const lossDistributionCache = new Map<
@@ -118,19 +181,36 @@ const lossDistributionCache = new Map<
 function lossDistribution(
   attackerDiceCount: number,
   defenderDiceCount: number,
-  tieFavorsDefender: boolean,
+  ties: DiceTies,
 ): ReturnType<typeof computeLossDistribution> {
-  const key = `${attackerDiceCount},${defenderDiceCount},${tieFavorsDefender}`;
+  const key = `${attackerDiceCount},${defenderDiceCount},${ties}`;
   let cached = lossDistributionCache.get(key);
   if (!cached) {
     cached = computeLossDistribution(
       attackerDiceCount,
       defenderDiceCount,
-      tieFavorsDefender,
+      ties,
     );
     lossDistributionCache.set(key, cached);
   }
   return cached;
+}
+
+export function expectedRoundLosses(dice: DiceRules): {
+  attackLosses: number;
+  defenceLosses: number;
+} {
+  let attackLosses = 0;
+  let defenceLosses = 0;
+  for (const outcome of lossDistribution(
+    dice.attack,
+    dice.defence,
+    dice.ties,
+  )) {
+    attackLosses += outcome.probability * outcome.attackLosses;
+    defenceLosses += outcome.probability * outcome.defenceLosses;
+  }
+  return { attackLosses, defenceLosses };
 }
 
 const EXACT_COMBAT_CAP = 200;
@@ -153,8 +233,7 @@ function scaledTroops(
 function winProbTable(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender: boolean,
+  dice: DiceRules,
 ): number[][] {
   const table: number[][] = Array.from({ length: attackingTroops + 1 }, () =>
     new Array(defendingTroops + 1).fill(0),
@@ -163,13 +242,13 @@ function winProbTable(
 
   for (let a = 1; a <= attackingTroops; a++) {
     for (let d = 1; d <= defendingTroops; d++) {
-      const attackerDiceCount = Math.min(a, 3);
-      const defenderDiceCount = Math.min(d, defendingDice);
+      const attackerDiceCount = Math.min(a, dice.attack);
+      const defenderDiceCount = Math.min(d, dice.defence);
       let probability = 0;
       for (const outcome of lossDistribution(
         attackerDiceCount,
         defenderDiceCount,
-        tieFavorsDefender,
+        dice.ties,
       )) {
         probability +=
           outcome.probability *
@@ -185,27 +264,22 @@ function winProbTable(
 export function trueWinProb(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender = true,
+  dice: DiceRules,
 ): number {
   const scaled = scaledTroops(
     attackingTroops,
     defendingTroops,
     EXACT_COMBAT_CAP,
   );
-  return winProbTable(
-    scaled.attackingTroops,
-    scaled.defendingTroops,
-    defendingDice,
-    tieFavorsDefender,
-  )[scaled.attackingTroops][scaled.defendingTroops];
+  return winProbTable(scaled.attackingTroops, scaled.defendingTroops, dice)[
+    scaled.attackingTroops
+  ][scaled.defendingTroops];
 }
 
 export function trueWinProbs(
   maxAttackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender = true,
+  dice: DiceRules,
 ): number[] {
   const scaled = scaledTroops(
     maxAttackingTroops,
@@ -215,8 +289,7 @@ export function trueWinProbs(
   const table = winProbTable(
     scaled.attackingTroops,
     scaled.defendingTroops,
-    defendingDice,
-    tieFavorsDefender,
+    dice,
   );
   if (scaled.scale === 1)
     return table.slice(1).map((row) => row[defendingTroops]);
@@ -232,31 +305,21 @@ export function trueWinProbs(
 export function balancedWinProb(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender = true,
+  dice: DiceRules,
 ): number {
   return distortProbability(
-    trueWinProb(
-      attackingTroops,
-      defendingTroops,
-      defendingDice,
-      tieFavorsDefender,
-    ),
+    trueWinProb(attackingTroops, defendingTroops, dice),
   );
 }
 
 export function balancedWinProbs(
   maxAttackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender = true,
+  dice: DiceRules,
 ): number[] {
-  return trueWinProbs(
-    maxAttackingTroops,
-    defendingTroops,
-    defendingDice,
-    tieFavorsDefender,
-  ).map(distortProbability);
+  return trueWinProbs(maxAttackingTroops, defendingTroops, dice).map(
+    distortProbability,
+  );
 }
 
 const winGuaranteedProbability = 0.85;
@@ -283,8 +346,7 @@ interface BattleStatistics {
 function buildBattleTables(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender: boolean,
+  dice: DiceRules,
 ): BattleTables {
   const makeTable = () =>
     Array.from({ length: attackingTroops + 1 }, () =>
@@ -308,8 +370,8 @@ function buildBattleTables(
 
   for (let a = 1; a <= attackingTroops; a++) {
     for (let d = 1; d <= defendingTroops; d++) {
-      const attackerDiceCount = Math.min(a, 3);
-      const defenderDiceCount = Math.min(d, defendingDice);
+      const attackerDiceCount = Math.min(a, dice.attack);
+      const defenderDiceCount = Math.min(d, dice.defence);
       let winProbability = 0;
       let attackerSum = 0;
       let attackerSumSquares = 0;
@@ -318,7 +380,7 @@ function buildBattleTables(
       for (const outcome of lossDistribution(
         attackerDiceCount,
         defenderDiceCount,
-        tieFavorsDefender,
+        dice.ties,
       )) {
         const na = a - outcome.attackLosses;
         const nd = d - outcome.defenceLosses;
@@ -427,8 +489,7 @@ function rescaleStatistics(
 export function battleStatistics(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender = true,
+  dice: DiceRules,
 ): BattleStatistics {
   const scaled = scaledTroops(
     attackingTroops,
@@ -438,8 +499,7 @@ export function battleStatistics(
   const tables = buildBattleTables(
     scaled.attackingTroops,
     scaled.defendingTroops,
-    defendingDice,
-    tieFavorsDefender,
+    dice,
   );
   const stats = extractBattleStatistics(
     tables,
@@ -485,15 +545,9 @@ function sampleRemainingTroops(
 export function balancedBlitz(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender = true,
+  dice: DiceRules,
 ): { attackLosses: number; defenceLosses: number } {
-  const stats = battleStatistics(
-    attackingTroops,
-    defendingTroops,
-    defendingDice,
-    tieFavorsDefender,
-  );
+  const stats = battleStatistics(attackingTroops, defendingTroops, dice);
   const balancedProbability = distortProbability(stats.winProbability);
 
   if (Math.random() < balancedProbability) {
@@ -522,17 +576,16 @@ export function balancedBlitz(
 export function trueBlitz(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender = true,
+  dice: DiceRules,
 ): { attackLosses: number; defenceLosses: number } {
-  const roll = tieFavorsDefender ? attack : attackSea;
   let remainingAttackers = attackingTroops;
   let remainingDefenders = defendingTroops;
 
   while (remainingAttackers > 0 && remainingDefenders > 0) {
-    const result = roll(
-      Math.min(remainingAttackers, 3),
-      Math.min(remainingDefenders, defendingDice),
+    const result = attack(
+      Math.min(remainingAttackers, dice.attack),
+      Math.min(remainingDefenders, dice.defence),
+      dice.ties,
     );
     remainingAttackers -= result.attackLosses;
     remainingDefenders -= result.defenceLosses;
@@ -577,23 +630,16 @@ function fairBlitzFromStats(
 export function fairBlitz(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender = true,
+  dice: DiceRules,
 ): { attackLosses: number; defenceLosses: number } {
-  const stats = battleStatistics(
-    attackingTroops,
-    defendingTroops,
-    defendingDice,
-    tieFavorsDefender,
-  );
+  const stats = battleStatistics(attackingTroops, defendingTroops, dice);
   return fairBlitzFromStats(attackingTroops, defendingTroops, stats);
 }
 
 export function fairBlitzOutcomes(
   maxAttackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
-  tieFavorsDefender = true,
+  dice: DiceRules,
 ): { attackLosses: number; defenceLosses: number }[] {
   if (maxAttackingTroops <= 0) return [];
   const scaled = scaledTroops(
@@ -604,8 +650,7 @@ export function fairBlitzOutcomes(
   const tables = buildBattleTables(
     scaled.attackingTroops,
     scaled.defendingTroops,
-    defendingDice,
-    tieFavorsDefender,
+    dice,
   );
   return Array.from({ length: maxAttackingTroops }, (_, i) => {
     const attackingTroops = i + 1;

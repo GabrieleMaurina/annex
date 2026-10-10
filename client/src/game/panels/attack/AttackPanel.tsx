@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useNumberInput } from '../../../common/inputs/useNumberInput';
 import { playSound } from '../../../lib/sounds';
-import type { BlitzOutcome } from '../../../lib/types';
+import type { BlitzOutcome, DiceTies } from '../../../lib/types';
 import {
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
@@ -25,12 +25,14 @@ interface Props {
   blitzOutcomes: BlitzOutcome[];
   maxBlitzTroops: number;
   selectedType: AttackType;
-  regularTroops: 1 | 2 | 3;
+  regularTroops: number;
   blitzTroops: number;
   blitzEnabled: boolean;
+  attackDice: number;
+  diceTies: DiceTies;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   diceRoll: DiceRoll | null;
-  onSelectRegular: (troops: 1 | 2 | 3) => void;
+  onSelectRegular: (troops: number) => void;
   onSelectBlitz: () => void;
   onBlitzTroopsChange: (troops: number) => void;
   onBlitzTroopsWheel: (delta: number) => void;
@@ -81,9 +83,11 @@ function Die({
 
 export function DiceRollDisplay({
   diceRoll,
+  diceTies,
   withDivider,
 }: {
   diceRoll: DiceRoll;
+  diceTies: DiceTies;
   withDivider: boolean;
 }) {
   const pairs = Math.min(
@@ -124,7 +128,12 @@ export function DiceRollDisplay({
     i: number,
   ): 'win' | 'lose' | undefined {
     if (!settled || i >= pairs) return undefined;
-    const attackerWins = diceRoll.attackerDice[i] > diceRoll.defenderDice[i];
+    const attackerDie = diceRoll.attackerDice[i];
+    const defenderDie = diceRoll.defenderDice[i];
+    if (attackerDie === defenderDie && diceTies === 'tie') return undefined;
+    const attackerWins =
+      attackerDie > defenderDie ||
+      (attackerDie === defenderDie && diceTies === 'attack');
     return side === 'attacker'
       ? attackerWins
         ? 'win'
@@ -142,7 +151,7 @@ export function DiceRollDisplay({
         <span className="small" style={{ width: 64 }}>
           Attacker
         </span>
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-wrap gap-2">
           {Array.from({ length: diceCount }, (_, i) => (
             <Die
               key={i}
@@ -156,7 +165,7 @@ export function DiceRollDisplay({
         <span className="small" style={{ width: 64 }}>
           Defender
         </span>
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-wrap gap-2">
           {Array.from({ length: diceCount }, (_, i) => (
             <Die
               key={i}
@@ -178,6 +187,8 @@ function AttackPanel({
   regularTroops,
   blitzTroops,
   blitzEnabled,
+  attackDice,
+  diceTies,
   blitzInputRef,
   diceRoll,
   onSelectRegular,
@@ -198,7 +209,7 @@ function AttackPanel({
 }: Props) {
   const blitzProbability = blitzWinProbabilities[blitzTroops - 1] ?? 0;
   const blitzOutcome = blitzOutcomes[blitzTroops - 1];
-  const maxRegularTroops = Math.min(maxBlitzTroops, 3);
+  const maxRegularTroops = Math.min(maxBlitzTroops, attackDice);
 
   const moveNumberInput = useNumberInput({
     value: moveTroops,
@@ -259,11 +270,11 @@ function AttackPanel({
         </div>
       ) : (
         <div
-          className="d-flex align-items-center gap-2"
+          className="d-flex flex-wrap align-items-center gap-2"
           style={{ whiteSpace: 'nowrap' }}
         >
           {Array.from({ length: maxRegularTroops }, (_, i) => {
-            const troops = (i + 1) as 1 | 2 | 3;
+            const troops = i + 1;
             return (
               <div
                 key={troops}
@@ -324,6 +335,7 @@ function AttackPanel({
         <DiceRollDisplay
           key={diceRoll.id}
           diceRoll={diceRoll}
+          diceTies={diceTies}
           withDivider={!diceOnly}
         />
       )}

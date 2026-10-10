@@ -9,13 +9,13 @@ import {
   PlanContext,
   SimState,
   botBorderIds,
-  defenceDiceAt,
   hostileNeighborsOf,
   isFriendly,
   isHazard,
   neighborsOf,
   ownedIds,
   troopsIn,
+  troopsPerDefenderAt,
 } from '../planning/context';
 import {
   Candidate,
@@ -182,10 +182,7 @@ function expandCandidates(
   ))
     for (const n of hostileNeighborsOf(ctx, state, border))
       if (!costs.has(n))
-        costs.set(
-          n,
-          troopsIn(state, n) * (defenceDiceAt(ctx, n) === 3 ? 1.4 : 0.95),
-        );
+        costs.set(n, troopsIn(state, n) * troopsPerDefenderAt(ctx, n));
   const targets = [...costs.entries()]
     .sort((a, b) => a[1] - b[1])
     .slice(0, MAX_TARGETS)

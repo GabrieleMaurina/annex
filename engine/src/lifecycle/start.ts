@@ -9,6 +9,7 @@ import {
 } from '../game/mechanics';
 import { buildCardDeck } from '../game/progression/cards';
 import { assignMissions } from '../game/progression/missions';
+import { initializeHills } from '../game/progression/points';
 import { emptyPlayerStats } from '../game/progression/stats';
 import { initializeRadiation } from '../game/radiation/radiation';
 import { snapshotTerritories } from '../game/replay';
@@ -47,7 +48,7 @@ export function startGame(playerId: number): GameResponse {
     return { ok: false, error: 'not enough teams' };
   if (game.gameMode === 'team deathmatch' && game.alliances === 'on')
     return { ok: false, error: 'alliances not allowed in team deathmatch' };
-  if (game.blitz === 'off' && !isBlitzOffAllowed(game.roundTroops, game.cards))
+  if (game.blitz === 'off' && !isBlitzOffAllowed(game))
     return { ok: false, error: 'blitz off not allowed with these settings' };
 
   for (const ownerId of game.substituteFor.values()) {
@@ -66,6 +67,7 @@ export function startGame(playerId: number): GameResponse {
   game.replayInitialRadiation = [...game.radiationTerritoryIds];
   initializePortals(game);
   initializeContinent(game);
+  initializeHills(game);
   if (game.placement === 'random') {
     assignTerritories(game);
   } else if (game.placement === 'semi') {
@@ -95,6 +97,7 @@ export function startGame(playerId: number): GameResponse {
   game.cardSetsPlayed = new Map();
   game.cardsLastSetValue = new Map();
   game.stats = new Map(game.playerIds.map((id) => [id, emptyPlayerStats()]));
+  game.points = new Map(game.playerIds.map((id) => [id, 0]));
   game.deathOrder = [];
   game.teamDeathOrder = [];
   if (game.placement !== 'custom') {

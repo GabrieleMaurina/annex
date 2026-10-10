@@ -1,21 +1,52 @@
 import {
+  DiceRules,
   battleStatistics,
+  defenceDiceFor,
   distortProbability,
+  expectedRoundLosses,
   fairBlitz,
+  gameDiceRules,
   trueWinProb,
 } from '../../game/combat/dice';
 import { Game } from '../../types';
 
-export function defenceDiceFor(game: Game, territoryId: number): number {
-  if (game.capitalTerritoryIds.has(territoryId)) return 3;
-  if ((game.territoryEntrenchment.get(territoryId) ?? 0) > 0) return 3;
-  return game.defenceDice;
+const BASE_DICE: DiceRules = { attack: 3, defence: 2, ties: 'defence' };
+const BASE_FORTIFIED_DICE: DiceRules = {
+  attack: 3,
+  defence: 3,
+  ties: 'defence',
+};
+const BASE_TROOPS_PER_DEFENDER = 0.95;
+const BASE_FORTIFIED_TROOPS_PER_DEFENDER = 1.4;
+
+export function lossRatio(dice: DiceRules): number {
+  const { attackLosses, defenceLosses } = expectedRoundLosses(dice);
+  return attackLosses / defenceLosses;
+}
+
+const BASE_LOSS_RATIO = lossRatio(BASE_DICE);
+const BASE_FORTIFIED_LOSS_RATIO = lossRatio(BASE_FORTIFIED_DICE);
+
+export function troopsPerDefender(game: Game, defendingDice: number): number {
+  const fortification =
+    (lossRatio(gameDiceRules(game, defendingDice)) - BASE_LOSS_RATIO) /
+    (BASE_FORTIFIED_LOSS_RATIO - BASE_LOSS_RATIO);
+  return (
+    BASE_TROOPS_PER_DEFENDER +
+    fortification *
+      (BASE_FORTIFIED_TROOPS_PER_DEFENDER - BASE_TROOPS_PER_DEFENDER)
+  );
+}
+
+function diceKey(dice: DiceRules): string {
+  return `${dice.attack},${dice.defence},${dice.ties}`;
 }
 
 const BOT_COMBAT_CAP = 60;
 const MEMO_LIMIT = 50_000;
 const winMemo = new Map<string, number>();
 const statsMemo = new Map<string, ReturnType<typeof battleStatistics>>();
+const fairMemo = new Map<string, ReturnType<typeof fairBlitz>>();
 
 function memoized<T>(memo: Map<string, T>, key: string, compute: () => T): T {
   const cached = memo.get(key);
@@ -29,24 +60,36 @@ function memoized<T>(memo: Map<string, T>, key: string, compute: () => T): T {
 function cachedWinProb(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
+  dice: DiceRules,
 ): number {
   return memoized(
     winMemo,
-    `${attackingTroops},${defendingTroops},${defendingDice}`,
-    () => trueWinProb(attackingTroops, defendingTroops, defendingDice),
+    `${attackingTroops},${defendingTroops},${diceKey(dice)}`,
+    () => trueWinProb(attackingTroops, defendingTroops, dice),
   );
 }
 
 function cachedStatistics(
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
+  dice: DiceRules,
 ): ReturnType<typeof battleStatistics> {
   return memoized(
     statsMemo,
-    `${attackingTroops},${defendingTroops},${defendingDice}`,
-    () => battleStatistics(attackingTroops, defendingTroops, defendingDice),
+    `${attackingTroops},${defendingTroops},${diceKey(dice)}`,
+    () => battleStatistics(attackingTroops, defendingTroops, dice),
+  );
+}
+
+function cachedFairBlitz(
+  attackingTroops: number,
+  defendingTroops: number,
+  dice: DiceRules,
+): ReturnType<typeof fairBlitz> {
+  return memoized(
+    fairMemo,
+    `${attackingTroops},${defendingTroops},${diceKey(dice)}`,
+    () => fairBlitz(attackingTroops, defendingTroops, dice),
   );
 }
 
@@ -67,7 +110,7 @@ export function attackWinProbability(
   const trueProb = cachedWinProb(
     Math.max(1, Math.round(attackingTroops * scale)),
     Math.max(1, Math.round(defendingTroops * scale)),
-    defendingDice,
+    gameDiceRules(game, defendingDice),
   );
   if (game.blitz === 'fair') return trueProb >= 0.5 ? 1 : 0;
   if (game.blitz === 'balanced') return distortProbability(trueProb);
@@ -89,7 +132,7 @@ export function estimatedConquestCost(
   const stats = cachedStatistics(
     attackingTroopsCeiling,
     defendingTroops,
-    defendingDice,
+    gameDiceRules(game, defendingDice),
   );
   return Math.max(0, stats.attackerTroopsNeeded - stats.attackerMean);
 }
@@ -110,7 +153,11 @@ export function expectedOutcome(
   if (defendingTroops <= 0)
     return { winProbability: 1, attackerSurvivorsMean: attackingTroops };
   if (game.blitz === 'fair') {
-    const outcome = fairBlitz(attackingTroops, defendingTroops, defendingDice);
+    const outcome = cachedFairBlitz(
+      attackingTroops,
+      defendingTroops,
+      gameDiceRules(game, defendingDice),
+    );
     const win = outcome.defenceLosses >= defendingTroops;
     return {
       winProbability: win ? 1 : 0,
@@ -120,7 +167,7 @@ export function expectedOutcome(
   const stats = cachedStatistics(
     attackingTroops,
     defendingTroops,
-    defendingDice,
+    gameDiceRules(game, defendingDice),
   );
   return {
     winProbability:

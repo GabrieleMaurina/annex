@@ -97,6 +97,7 @@ export function useDisplayedGame({
                 eliminated: state.eliminated,
                 surrendered: state.surrendered,
                 playersKilled: state.killedPlayerIds,
+                points: state.points ?? 0,
               }
             : {}),
         };

@@ -11,6 +11,15 @@ export function toxinsCost(game: Game, playerId: number): number {
   return Math.ceil(base * (game.toxins === 'temporary' ? 0.25 : 0.5));
 }
 
+export function isPermanentToxinOnHill(
+  game: Game,
+  territoryId: number,
+): boolean {
+  return (
+    game.toxins === 'permanent' && game.hillTerritoryIds.includes(territoryId)
+  );
+}
+
 export function isFreeConquestTarget(game: Game, territoryId: number): boolean {
   return (
     !game.territoryOwners.has(territoryId) &&

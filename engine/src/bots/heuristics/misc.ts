@@ -4,6 +4,7 @@ import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import {
   isFrontier,
+  isKeyTerritory,
   neighborsOf,
   ownedTerritoryIds,
 } from '../features/territory';
@@ -68,12 +69,17 @@ export function chooseEntrench(
   weights: Weights,
 ): { territoryId: number; troops: number } | null {
   if (weights.defendFrontier < 1) return null;
-  const owned = ownedTerritoryIds(game, botId).filter(
-    (id) =>
-      !game.capitalTerritoryIds.has(id) &&
-      (game.territoryTroops.get(id) ?? 0) >= 3 &&
-      isFrontier(game, view, botId, id),
-  );
+  const owned = ownedTerritoryIds(game, botId)
+    .filter(
+      (id) =>
+        !game.capitalTerritoryIds.has(id) &&
+        (game.territoryTroops.get(id) ?? 0) >= 3 &&
+        isFrontier(game, view, botId, id),
+    )
+    .sort(
+      (a, b) =>
+        Number(isKeyTerritory(game, b)) - Number(isKeyTerritory(game, a)),
+    );
   if (owned.length === 0) return null;
   const territoryId = owned[0];
   const troops = Math.min(

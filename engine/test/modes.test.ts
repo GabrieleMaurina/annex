@@ -442,3 +442,101 @@ test('teams: a continent shared with a teammate is not a completion target', () 
     'planned to complete a continent held partly by a teammate',
   );
 });
+
+test('king of the hill: the bot heads for the hill over a softer tile', () => {
+  const plan = planScenario({
+    map: {
+      continents: [[0, 1, 2, 3, 4, 5, 6, 7]],
+      edges: [...line(0, 1, 2, 3), [3, 4], [4, 5], [3, 6], [6, 7]],
+      bonuses: [0],
+    },
+    players: [1, 2, 3],
+    owners: { 0: 1, 1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3, 7: 3 },
+    troops: { 3: 10, 4: 1, 5: 1, 6: 3, 7: 3 },
+    troopsToDeploy: 3,
+    settings: {
+      gameMode: 'king of the hill',
+      maxPoints: 20,
+      hillTerritoryIds: [7],
+      points: new Map([
+        [1, 0],
+        [2, 0],
+        [3, 0],
+      ]),
+    },
+  });
+  assert.ok(
+    plan.attackSteps.some((s) => s.endId === 7),
+    `expected an attack on the hill t7, steps: ${JSON.stringify(
+      plan.attackSteps.map((s) => [s.startId, s.endId]),
+    )}`,
+  );
+});
+
+test('king of the hill: the threatened hill gets the most reinforcements', () => {
+  const plan = planScenario({
+    map: {
+      continents: [[0, 1, 2, 3, 4]],
+      edges: [
+        [0, 1],
+        [0, 2],
+        [1, 3],
+        [2, 4],
+      ],
+      bonuses: [0],
+    },
+    players: [1, 2, 3],
+    owners: { 0: 1, 1: 1, 2: 1, 3: 2, 4: 3 },
+    troops: { 0: 1, 1: 2, 2: 2, 3: 12, 4: 12 },
+    troopsToDeploy: 6,
+    settings: {
+      gameMode: 'king of the hill',
+      maxPoints: 20,
+      hillTerritoryIds: [2],
+      points: new Map([
+        [1, 10],
+        [2, 0],
+        [3, 0],
+      ]),
+    },
+  });
+  const onHill = plan.deployments
+    .filter((d) => d.territoryId === 2)
+    .reduce((sum, d) => sum + d.troops, 0);
+  const elsewhere = plan.deployments
+    .filter((d) => d.territoryId !== 2)
+    .reduce((sum, d) => sum + d.troops, 0);
+  assert.ok(
+    onHill > elsewhere,
+    `expected the hill t2 to get most troops, deployments: ${JSON.stringify(plan.deployments)}`,
+  );
+});
+
+test('empire: the bot attacks the rival about to reach max points over a softer tile', () => {
+  const plan = planScenario({
+    map: {
+      continents: [[0, 1, 2, 3, 4, 5, 6, 7]],
+      edges: [...line(0, 1, 2, 3, 4, 5), [3, 6], [6, 7]],
+      bonuses: [0],
+    },
+    players: [1, 2, 3],
+    owners: { 0: 1, 1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3, 7: 3 },
+    troops: { 3: 12, 4: 3, 5: 3, 6: 1, 7: 1 },
+    troopsToDeploy: 3,
+    settings: {
+      gameMode: 'empire',
+      maxPoints: 500,
+      points: new Map([
+        [1, 100],
+        [2, 497],
+        [3, 50],
+      ]),
+    },
+  });
+  assert.ok(
+    plan.attackSteps.some((s) => s.endId === 4 || s.endId === 5),
+    `expected an attack on the points leader, steps: ${JSON.stringify(
+      plan.attackSteps.map((s) => [s.startId, s.endId]),
+    )}`,
+  );
+});

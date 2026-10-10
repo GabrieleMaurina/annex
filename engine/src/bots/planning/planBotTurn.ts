@@ -1,3 +1,4 @@
+import { defenceDiceFor } from '../../game/combat/dice';
 import {
   MAX_TERRITORY_TROOPS,
   supplyHubTerritoryIds,
@@ -10,7 +11,7 @@ import {
   currentSetValue,
   holdingGain,
 } from '../features/cardOutlook';
-import { attackWinProbability, defenceDiceFor } from '../features/combat';
+import { attackWinProbability } from '../features/combat';
 import { modeGoalFor } from '../features/mode/modeGoals';
 import {
   PASSIVE_RELEASE_PRESSURE,

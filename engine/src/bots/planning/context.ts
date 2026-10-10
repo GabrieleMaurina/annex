@@ -1,9 +1,10 @@
 import { alliedIds } from '../../game/alliances';
+import { defenceDiceFor } from '../../game/combat/dice';
 import { withPortalEdges } from '../../game/world/portals';
 import { getGameMap } from '../../maps/maps';
 import { BotPersonality, BotProfile, Game, GameMap } from '../../types';
 import { difficultyParams } from '../difficulty';
-import { defenceDiceFor } from '../features/combat';
+import { troopsPerDefender } from '../features/combat';
 import { finisherMode } from '../features/finisher';
 import { DuelFocus, duelFocus } from '../features/mode/duel';
 import { shippedSeaIdsOf } from '../features/navy';
@@ -282,6 +283,13 @@ export function defenceDiceAt(ctx: PlanContext, territoryId: number): number {
   return defenceDiceFor(ctx.game, territoryId);
 }
 
+export function troopsPerDefenderAt(
+  ctx: PlanContext,
+  territoryId: number,
+): number {
+  return troopsPerDefender(ctx.game, defenceDiceAt(ctx, territoryId));
+}
+
 export interface SimState {
   owners: Map<number, number>;
   troops: Map<number, number>;
@@ -420,6 +428,21 @@ export function ownedClusters(ctx: PlanContext, state: SimState): number[][] {
   return clusters;
 }
 
+export function holdsContinent(
+  ctx: PlanContext,
+  state: SimState,
+  territoryIds: number[],
+  playerId: number,
+): boolean {
+  return (
+    territoryIds.every(
+      (id) =>
+        state.owners.get(id) === playerId ||
+        (!state.owners.has(id) && isVisible(ctx.view, id)),
+    ) && territoryIds.some((id) => state.owners.get(id) === playerId)
+  );
+}
+
 export function heldContinentBonus(
   ctx: PlanContext,
   state: SimState,
@@ -427,7 +450,7 @@ export function heldContinentBonus(
 ): number {
   let total = 0;
   for (const [continentId, territoryIds] of ctx.continentTerritories) {
-    if (territoryIds.every((id) => state.owners.get(id) === playerId))
+    if (holdsContinent(ctx, state, territoryIds, playerId))
       total += bonusOf(ctx, continentId);
   }
   return total;
@@ -451,6 +474,7 @@ function strengthsByPlayer(
     state.troops,
     ctx.continentTerritories,
     ctx.map.bonuses,
+    ctx.game.troopsPerTerritory,
   );
   return new Map(playerIds.map((id) => [id, all.get(id) ?? 0]));
 }

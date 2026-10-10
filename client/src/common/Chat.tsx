@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Form, ListGroup } from 'react-bootstrap';
 import { connector } from '../connector';
 import { isTypingTarget } from '../game/GameMap/helpers';
-import { playerColor } from '../lib/palette';
+import { contrastTextColor, playerColor } from '../lib/palette';
 import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
 import { useDismissOnOutsideClick } from './dismiss/useDismissOnOutsideClick';
@@ -121,15 +121,19 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
               return (
                 <ListGroup.Item key={i} className="py-1">
                   <strong
+                    className={color !== undefined ? 'badge' : undefined}
                     style={
                       color !== undefined
-                        ? { color: playerColor(color) }
+                        ? {
+                            backgroundColor: playerColor(color),
+                            color: contrastTextColor(playerColor(color)),
+                          }
                         : undefined
                     }
                   >
-                    {nameById.get(m.id) ?? m.name}:
-                  </strong>{' '}
-                  {m.message}
+                    {nameById.get(m.id) ?? m.name}
+                  </strong>
+                  : {m.message}
                 </ListGroup.Item>
               );
             })}

@@ -5,13 +5,16 @@ import { broadcastGameResults, broadcastHomeGames } from '../session/store';
 import { Game } from '../types';
 import { ownsAnyTerritory, supremacyTerritoriesToWin } from './mechanics';
 import { missionAccomplished } from './progression/missions';
+import { isPointsMode, pointsWinner } from './progression/points';
 import {
   bumpStat,
+  compareByPointsFirst,
   compareByTerritoriesFirst,
   computeFinalRanking,
   computeKillsWinner,
   countTerritories,
 } from './progression/stats';
+import { refreshLastReplayPlayerStates } from './replay';
 import { clearTurnTimer } from './turns';
 import { continentTerritoryIds } from './world/continent';
 
@@ -98,9 +101,10 @@ function abandonedByHumansWinnerIds(game: Game): number[] | null {
     (id) => !isPlayerEliminated(game, id),
   );
   if (activeIds.length === 0) return null;
-  const leader = [...activeIds].sort((a, b) =>
-    compareByTerritoriesFirst(game, a, b),
-  )[0];
+  const compare = isPointsMode(game.gameMode)
+    ? compareByPointsFirst
+    : compareByTerritoriesFirst;
+  const leader = [...activeIds].sort((a, b) => compare(game, a, b))[0];
   return soleSurvivorWinnerIds(game, leader);
 }
 
@@ -114,6 +118,7 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   game.state = 'ended';
   game.endedAt = Date.now();
   game.winnerIds = winnerIds;
+  refreshLastReplayPlayerStates(game);
   revealBotProfiles(game);
   if (!turnAlreadyEnded) {
     const currentPlayerId = game.playerIds[game.turnPlayerIndex];
@@ -197,6 +202,11 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
         compareByTerritoriesFirst(game, a, b),
       )[0],
     ];
+  } else if (isPointsMode(game.gameMode)) {
+    const winner =
+      owners.length === 1 ? owners[0] : pointsWinner(game, activePlayers);
+    if (winner === undefined) return null;
+    winnerIds = [winner];
   } else if (game.gameMode === 'assassin' || game.gameMode === 'mission') {
     const winner = activePlayers.find((id) => {
       const mission = game.playerMissions.get(id);

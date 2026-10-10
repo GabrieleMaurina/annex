@@ -257,3 +257,70 @@ test('Troop Kills: the bot takes the only elimination available', () => {
     },
   });
 });
+
+function pointsRace(
+  gameMode: 'king of the hill' | 'empire',
+  spec: Pick<ScenarioSpec, 'map' | 'owners' | 'troops'>,
+  points: [number, number],
+  maxPoints: number,
+): ScenarioSpec {
+  return {
+    ...spec,
+    players: [1, 2],
+    troopsToDeploy: 3,
+    settings: {
+      gameMode,
+      maxPoints,
+      hillTerritoryIds: gameMode === 'king of the hill' ? [3] : [],
+      points: new Map([
+        [1, points[0]],
+        [2, points[1]],
+      ]),
+    },
+  };
+}
+
+const HILL_MAP = {
+  map: {
+    continents: [[0, 1, 2, 3, 4, 5]],
+    edges: line(0, 1, 2, 3, 4, 5),
+    bonuses: [0],
+  },
+  owners: { 0: 1, 1: 1, 2: 1, 3: 2, 4: 2, 5: 2 },
+};
+
+test('King of the Hill: the bot takes the hill before the leader scores the winning point', () => {
+  const replay = replayBotTurn(
+    pointsRace(
+      'king of the hill',
+      { ...HILL_MAP, troops: { 2: 20, 3: 3, 4: 30, 5: 30 } },
+      [0, 19],
+      20,
+    ),
+  );
+  assert.equal(replay.game.territoryOwners.get(3), 1, 'hill not taken');
+  assert.equal(replay.game.state, 'playing');
+  assert.equal(replay.game.points.get(2), 19);
+});
+
+test('Empire: the bot cuts the leader below the winning total', () => {
+  const replay = replayBotTurn(
+    pointsRace(
+      'empire',
+      {
+        map: {
+          continents: [[0, 1, 2, 3, 4]],
+          edges: line(0, 1, 2, 3, 4),
+          bonuses: [0],
+        },
+        owners: { 0: 1, 1: 1, 2: 1, 3: 2, 4: 2 },
+        troops: { 2: 20, 3: 1, 4: 30 },
+      },
+      [0, 498],
+      500,
+    ),
+  );
+  assert.equal(replay.game.territoryOwners.get(3), 1, 'leader tile not taken');
+  assert.equal(replay.game.state, 'playing');
+  assert.equal(replay.game.points.get(2), 499);
+});

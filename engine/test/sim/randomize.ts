@@ -1,3 +1,13 @@
+import { MAX_DICE } from '../../src/game/combat/dice';
+import {
+  defaultMaxPoints,
+  MAX_HILLS,
+  MAX_POINTS_VALUES,
+} from '../../src/game/progression/points';
+import {
+  isBlitzOffAllowed,
+  TROOPS_PER_TERRITORY_VALUES,
+} from '../../src/lifecycle/settings';
 import {
   Fill,
   FILL_VALUES,
@@ -64,6 +74,8 @@ const GAME_MODES: GameMode[] = [
   'mission',
   'player kills',
   'troop kills',
+  'king of the hill',
+  'empire',
 ];
 const BLITZ_VALUES: Blitz[] = ['balanced', 'true', 'fair', 'off'];
 const PLACEMENT_VALUES: Placement[] = ['random', 'random', 'semi', 'custom'];
@@ -135,16 +147,37 @@ export function randomGameSettings(
   botCount: number,
 ): RandomSettings {
   const gameMode = pick(rng, GAME_MODES);
-  const defenceDice = rng() < 0.5 ? 2 : 3;
+  const defaultDice = rng() < 0.9;
+  const attackDice = defaultDice ? 3 : 1 + Math.floor(rng() * MAX_DICE);
+  const defenceDice = defaultDice
+    ? rng() < 0.5
+      ? 2
+      : 3
+    : 1 + Math.floor(rng() * attackDice);
   const alliancesAllowed = gameMode !== 'team deathmatch';
   const cards = pick(rng, CARDS_MODES);
   const roundTroops = rng() < 0.3 ? 'on' : 'off';
-  const blitzOffAllowed =
-    roundTroops === 'off' && (cards === 'constant' || cards === 'off');
+  const initialTroops = rng() < 0.9 ? 3 : 1 + Math.floor(rng() * 100);
+  const defaultIncome = rng() < 0.9;
+  const troopsPerTerritory = defaultIncome
+    ? 1 / 3
+    : pick(rng, TROOPS_PER_TERRITORY_VALUES);
+  const minTroops = defaultIncome ? 3 : Math.floor(rng() * 101);
+  const blitzOffAllowed = isBlitzOffAllowed({
+    roundTroops,
+    cards,
+    troopsPerTerritory,
+    initialTroops,
+    minTroops,
+  });
 
   const settings: Record<string, unknown> = {
     gameMode,
     defenceDice,
+    attackDice,
+    diceTies: defaultDice
+      ? 'defence'
+      : pick(rng, ['defence', 'attack', 'tie'] as const),
     fortification: pick(rng, FORTIFICATIONS),
     cards,
     blitz: pick(
@@ -153,7 +186,7 @@ export function randomGameSettings(
     ),
     placement: pick(rng, PLACEMENT_VALUES),
     fogOfWar: rng() < 0.3 ? 'on' : 'off',
-    entrenchments: defenceDice === 2 && rng() < 0.3 ? 'on' : 'off',
+    entrenchments: defenceDice < MAX_DICE && rng() < 0.3 ? 'on' : 'off',
     supplyLines: rng() < 0.3 ? 'on' : 'off',
     roundTroops,
     bounties: rng() < 0.3 ? 'on' : 'off',
@@ -179,7 +212,16 @@ export function randomGameSettings(
     const teamCount = pick(rng, [2, 2, 3] as const);
     teams = Array.from({ length: botCount }, (_, i) => i % teamCount);
   }
-  settings.initialTroops = rng() < 0.9 ? 3 : 1 + Math.floor(rng() * 100);
+  settings.initialTroops = initialTroops;
+  settings.minTroops = minTroops;
+  settings.troopsPerTerritory = troopsPerTerritory;
+  const pointsDefault = defaultMaxPoints(gameMode);
+  if (pointsDefault !== undefined) {
+    settings.maxPoints =
+      rng() < 0.9 ? pointsDefault : pick(rng, MAX_POINTS_VALUES);
+  }
+  if (gameMode === 'king of the hill')
+    settings.hills = rng() < 0.9 ? 3 : 1 + Math.floor(rng() * MAX_HILLS);
 
   return { settings, teams };
 }

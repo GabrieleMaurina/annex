@@ -49,6 +49,7 @@ interface Props {
   originalHostId: number;
   roundNumber: number;
   isCapitals: boolean;
+  isPointsMode: boolean;
   selfId: number | null;
   showYouLabel?: boolean;
   rowRef?: (playerId: number) => (el: HTMLTableRowElement | null) => void;
@@ -66,6 +67,7 @@ function ResultsTable({
   originalHostId,
   roundNumber,
   isCapitals,
+  isPointsMode,
   selfId,
   showYouLabel = false,
   rowRef,
@@ -96,6 +98,7 @@ function ResultsTable({
             <th>#</th>
             <th className="text-start">Player</th>
             {showElo && <th>Elo</th>}
+            {isPointsMode && <th>Points</th>}
             <th>Turns</th>
             <th>Players Killed</th>
             <th>Troops Gained</th>
@@ -217,6 +220,7 @@ function ResultsTable({
                   </div>
                 </td>
                 {showElo && <td style={rowStyle}>{formatElo(stats)}</td>}
+                {isPointsMode && <td style={rowStyle}>{p.points}</td>}
                 <td style={rowStyle}>
                   {stats.turnsPlayed}/{roundNumber + 1}
                 </td>

@@ -5,9 +5,11 @@ import {
   SimState,
   bonusOf,
   botBorderIds,
-  defenceDiceAt,
+  holdsContinent,
   troopsIn,
+  troopsPerDefenderAt,
 } from '../planning/context';
+import { isVisible } from '../view';
 import { keepStackWeight } from './stackOpenness';
 
 const PROTECTED_SHARE = 0.5;
@@ -32,10 +34,12 @@ function completesOrBreaksContinent(
   const territoryIds = ctx.continentTerritories.get(continentId) ?? [];
   return (
     territoryIds.every(
-      (id) => id === endId || state.owners.get(id) === ctx.botId,
+      (id) =>
+        id === endId ||
+        state.owners.get(id) === ctx.botId ||
+        (!state.owners.has(id) && isVisible(ctx.view, id)),
     ) ||
-    (ownerId !== undefined &&
-      territoryIds.every((id) => state.owners.get(id) === ownerId))
+    (ownerId !== undefined && holdsContinent(ctx, state, territoryIds, ownerId))
   );
 }
 
@@ -63,7 +67,6 @@ export function breaksMainStack(
   if (keep <= 0 || troops < keep * PROTECTED_SHARE) return false;
   if (botBorderIds(ctx, state).some((id) => troopsIn(state, id) > troops))
     return false;
-  const losses =
-    troopsIn(state, endId) * (defenceDiceAt(ctx, endId) === 3 ? 1.4 : 0.95);
+  const losses = troopsIn(state, endId) * troopsPerDefenderAt(ctx, endId);
   return troops - losses < keep && !earnsSomething(ctx, state, endId);
 }

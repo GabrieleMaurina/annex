@@ -23,7 +23,7 @@ import MapGenerationPanel, {
 } from '../MapGenerationPanel';
 import MapLikeButton from '../MapLikeButton';
 import GameSettingsFields from './GameSettingsFields';
-import { titleCase } from './gameSettings';
+import { randomGameSettings, titleCase } from './gameSettings';
 import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
 
 const LABEL_STYLE = { minWidth: 130, flexShrink: 0 };
@@ -71,6 +71,8 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   cards: 'constant',
   continents: 'on',
   defenceDice: 2,
+  attackDice: 3,
+  diceTies: 'defence',
   disconnectBotDifficulty: 'random',
   disconnectBotPersonality: 'random',
   entrenchments: 'off',
@@ -78,6 +80,10 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   fortification: 'connected',
   gameMode: 'supremacy',
   initialTroops: 3,
+  minTroops: 3,
+  troopsPerTerritory: 1 / 3,
+  maxPoints: 20,
+  hills: 3,
   password: null,
   placement: 'random',
   portals: 'off',
@@ -243,12 +249,18 @@ function SettingsPanel({
         applySettings={applySettings}
       />
       {isHost && (
-        <div className="mt-3">
+        <div className="mt-3 d-flex gap-2">
           <Button
             variant="secondary"
             onClick={() => applySettings({ ...DEFAULT_SETTINGS })}
           >
             Reset
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => applySettings(randomGameSettings(DEFAULT_SETTINGS))}
+          >
+            Randomize
           </Button>
         </div>
       )}

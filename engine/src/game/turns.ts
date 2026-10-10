@@ -29,6 +29,7 @@ import {
   popRandomCard,
   returnCardsToDeck,
 } from './progression/cards';
+import { awardTurnPoints } from './progression/points';
 import { bumpStat } from './progression/stats';
 import { updateRadiationForNewRound } from './radiation/radiation';
 import { recordReplayFrame } from './replay';
@@ -760,6 +761,7 @@ export function advanceToNextPlayer(game: Game) {
     }
   }
 
+  awardTurnPoints(game, game.playerIds[nextIndex]);
   checkGameEnd(game, true);
   if (game.state === 'ended') return;
 

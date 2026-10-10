@@ -1,8 +1,9 @@
+import { isPointsMode } from 'engine';
 import type { ReactNode } from 'react';
 import { Button, Container } from 'react-bootstrap';
 import type { ResultRow } from '../common/ResultsTable';
 import ResultsTable from '../common/ResultsTable';
-import { playerColor } from '../lib/palette';
+import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/settings/SettingsPanel';
 
@@ -62,11 +63,17 @@ function GameEndResults({
             {winners.map((w) => w.name).join(', ')}
           </p>
         ) : (
-          <p
-            className="fs-4 mb-0"
-            style={{ color: playerColor(winners[0]?.color ?? 0) }}
-          >
-            {winners[0]?.name} wins!
+          <p className="fs-4 mb-0">
+            <span
+              className="badge"
+              style={{
+                backgroundColor: playerColor(winners[0]?.color ?? 0),
+                color: contrastTextColor(playerColor(winners[0]?.color ?? 0)),
+              }}
+            >
+              {winners[0]?.name}
+            </span>{' '}
+            wins!
           </p>
         )}
         {duration && (
@@ -81,6 +88,7 @@ function GameEndResults({
         originalHostId={game.originalHostId}
         roundNumber={game.roundNumber}
         isCapitals={game.gameMode === 'capitals'}
+        isPointsMode={isPointsMode(game.gameMode)}
         selfId={selfId}
         showYouLabel={showYouLabel ?? selfId !== null}
         rowClickable={rowClickable}

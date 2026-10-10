@@ -1,3 +1,5 @@
+import { isBlitzOffAllowed, MAX_DICE } from 'engine';
+
 export interface ClientSettings {
   muted: boolean;
   volume: number;
@@ -20,8 +22,14 @@ export interface GameSettings {
   gameMode: string;
   blitz: string;
   defenceDice: number;
+  attackDice: number;
+  diceTies: string;
   continents: string;
   initialTroops: number;
+  minTroops: number;
+  troopsPerTerritory: number;
+  maxPoints: number;
+  hills: number;
   cards: string;
   placement: string;
   fortification: string;
@@ -79,11 +87,28 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'mission',
     'player kills',
     'troop kills',
+    'king of the hill',
+    'empire',
   ],
   blitz: ['balanced', 'true', 'fair', 'off'],
-  defenceDice: [2, 3],
+  defenceDice: [2, 1, ...Array.from({ length: 8 }, (_, i) => i + 3)],
+  attackDice: [3, 1, 2, ...Array.from({ length: 7 }, (_, i) => i + 4)],
+  diceTies: ['defence', 'attack', 'tie'],
   continents: ['on', 'off'],
   initialTroops: [3, 1, 2, ...Array.from({ length: 97 }, (_, i) => i + 4)],
+  minTroops: [3, 0, 1, 2, ...Array.from({ length: 97 }, (_, i) => i + 4)],
+  troopsPerTerritory: [
+    1 / 3,
+    1 / 5,
+    1 / 4,
+    1 / 2,
+    ...Array.from({ length: 100 }, (_, i) => i + 1),
+  ],
+  maxPoints: [
+    ...Array.from({ length: 17 }, (_, i) => 20 + i * 5),
+    ...Array.from({ length: 38 }, (_, i) => 150 + i * 50),
+  ],
+  hills: [3, 1, 2, ...Array.from({ length: 17 }, (_, i) => i + 4)],
   cards: [
     'constant',
     'linear',
@@ -168,8 +193,14 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   gameMode: 'supremacy',
   blitz: 'balanced',
   defenceDice: 2,
+  attackDice: 3,
+  diceTies: 'defence',
   continents: 'on',
   initialTroops: 3,
+  minTroops: 3,
+  troopsPerTerritory: 1 / 3,
+  maxPoints: 20,
+  hills: 3,
   cards: 'constant',
   placement: 'random',
   fortification: 'connected',
@@ -441,11 +472,10 @@ export function sanitizeGameSettings(raw: unknown): GameSettings {
   for (const key of Object.keys(GAME_ENUMS)) {
     if (GAME_ENUMS[key].includes(r[key])) target[key] = r[key];
   }
-  if (
-    out.blitz === 'off' &&
-    (out.roundTroops === 'on' || !['constant', 'off'].includes(out.cards))
-  )
+  if (out.blitz === 'off' && !isBlitzOffAllowed(out))
     out.blitz = DEFAULT_GAME_SETTINGS.blitz;
+  if (out.defenceDice > out.attackDice) out.defenceDice = out.attackDice;
+  if (out.defenceDice >= MAX_DICE) out.entrenchments = 'off';
   return out;
 }
 

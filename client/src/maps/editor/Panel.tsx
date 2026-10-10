@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Alert, Button, ButtonGroup, Form, Table } from 'react-bootstrap';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useNumberInput } from '../../common/inputs/useNumberInput';
+import { contrastTextColor } from '../../lib/palette';
 import {
   NO_CONTINENT,
   type EditorTerritory as Territory,
@@ -539,7 +540,11 @@ function Panel(props: Props) {
                 </tr>
               </tbody>
             </Table>
-            <Table size="sm" borderless className="mb-2 text-center">
+            <Table
+              size="sm"
+              borderless
+              className="mb-2 text-center align-middle"
+            >
               <thead>
                 <tr>
                   <th>#</th>
@@ -553,7 +558,12 @@ function Panel(props: Props) {
                   <tr
                     key={i}
                     style={
-                      { '--bs-table-bg': continentColor(i) } as CSSProperties
+                      {
+                        '--bs-table-bg': continentColor(i),
+                        '--bs-table-color': contrastTextColor(
+                          continentColor(i),
+                        ),
+                      } as CSSProperties
                     }
                   >
                     <td>{i + 1}</td>

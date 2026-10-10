@@ -20,7 +20,6 @@ import {
   botBorderIds,
   cloneState,
   conquerablePath,
-  defenceDiceAt,
   frontierStacks,
   hostileNeighborsOf,
   isBotBorder,
@@ -33,6 +32,7 @@ import {
   rankedOpponents,
   strongestThreatAt,
   troopsIn,
+  troopsPerDefenderAt,
 } from './context';
 import { routeStack } from './route';
 import {
@@ -198,7 +198,7 @@ function cardCandidates(
     }
   }
   if (bestTarget === null || bestFrom === null) return [];
-  const perDefender = defenceDiceAt(ctx, bestTarget) === 3 ? 1.4 : 0.95;
+  const perDefender = troopsPerDefenderAt(ctx, bestTarget);
   const cost = 1 + bestDefenders * perDefender;
   return [
     {

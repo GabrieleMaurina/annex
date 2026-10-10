@@ -1,11 +1,11 @@
 import {
   PlanContext,
   SimState,
-  defenceDiceAt,
   isFriendly,
   isHazard,
   neighborsOf,
   troopsIn,
+  troopsPerDefenderAt,
 } from './context';
 
 export interface RouteResult {
@@ -20,7 +20,7 @@ function conquerCost(
   territoryId: number,
 ): number {
   const defenders = troopsIn(state, territoryId);
-  const perDefender = defenceDiceAt(ctx, territoryId) === 3 ? 1.4 : 0.95;
+  const perDefender = troopsPerDefenderAt(ctx, territoryId);
   return 1 + defenders * perDefender;
 }
 

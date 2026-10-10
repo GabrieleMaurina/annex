@@ -5,7 +5,8 @@ import {
   balancedWinProbs,
   fairBlitz,
   fairBlitzOutcomes,
-  attackSea as rollSeaAttack,
+  gameDiceRules,
+  attack as rollAttack,
   trueBlitz,
   trueWinProbs,
 } from '../../game/combat/dice';
@@ -49,15 +50,13 @@ function computeSeaBlitzWinProbabilities(
   defendingDice: number,
 ): number[] {
   if (game.blitz === 'off') return new Array<number>(attackingShips).fill(0);
+  const dice = gameDiceRules(game, defendingDice);
   if (game.blitz === 'fair')
-    return trueWinProbs(
-      attackingShips,
-      defendingShips,
-      defendingDice,
-      false,
-    ).map((p) => (p >= 0.5 ? 1 : 0));
+    return trueWinProbs(attackingShips, defendingShips, dice).map((p) =>
+      p >= 0.5 ? 1 : 0,
+    );
   const blitzWinProbs = game.blitz === 'true' ? trueWinProbs : balancedWinProbs;
-  return blitzWinProbs(attackingShips, defendingShips, defendingDice, false);
+  return blitzWinProbs(attackingShips, defendingShips, dice);
 }
 
 function computeSeaBlitzOutcomes(
@@ -70,8 +69,7 @@ function computeSeaBlitzOutcomes(
   return fairBlitzOutcomes(
     attackingShips,
     defendingShips,
-    defendingDice,
-    false,
+    gameDiceRules(game, defendingDice),
   );
 }
 
@@ -180,7 +178,9 @@ export function attackSea(
   const attackingShips = shipsByPlayer.get(playerId) ?? 0;
   const defendingShips = shipsByPlayer.get(defenderId) ?? 0;
   const maxShips =
-    type === 'regular' ? Math.min(attackingShips, 3) : attackingShips;
+    type === 'regular'
+      ? Math.min(attackingShips, game.attackDice)
+      : attackingShips;
 
   if (!isInteger(rawShips)) return { ok: false, error: 'invalid ships' };
   const ships = rawShips;
@@ -194,7 +194,7 @@ export function attackSea(
   let attackerDice: number[] = [];
   let defenderDice: number[] = [];
   if (type === 'regular') {
-    const result = rollSeaAttack(ships, defendingDice);
+    const result = rollAttack(ships, defendingDice, game.diceTies);
     attackLosses = result.attackLosses;
     defenceLosses = result.defenceLosses;
     attackerDice = result.attackDice;
@@ -206,7 +206,11 @@ export function attackSea(
         : game.blitz === 'fair'
           ? fairBlitz
           : balancedBlitz;
-    const result = blitz(ships, defendingShips, defendingDice, false);
+    const result = blitz(
+      ships,
+      defendingShips,
+      gameDiceRules(game, defendingDice),
+    );
     attackLosses = result.attackLosses;
     defenceLosses = result.defenceLosses;
   }

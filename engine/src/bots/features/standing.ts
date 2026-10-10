@@ -23,6 +23,7 @@ export function playerStrengths(
   troops: Map<number, number>,
   continentTerritories: Map<number, number[]>,
   bonuses: number[],
+  troopsPerTerritory: number,
   visible: Set<number> | null = null,
 ): Map<number, number> {
   const strengths = new Map<number, number>();
@@ -35,7 +36,11 @@ export function playerStrengths(
 
   for (const [id, ownerId] of owners) {
     if (visible !== null && !visible.has(id)) continue;
-    add(ownerId, 1 + TROOP_STRENGTH * (troops.get(id) ?? 0));
+    add(
+      ownerId,
+      BONUS_STRENGTH * troopsPerTerritory +
+        TROOP_STRENGTH * (troops.get(id) ?? 0),
+    );
   }
   for (const [continentId, ids] of continentTerritories) {
     const first = ownerAt(ids[0]);
@@ -109,6 +114,7 @@ export function buildStanding(
     game.territoryTroops,
     continentTerritories,
     bonuses,
+    game.troopsPerTerritory,
     view.visibleIds,
   );
   const sideStrength = new Map<number, number>();

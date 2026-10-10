@@ -1,3 +1,4 @@
+import { isBlitzOffAllowed } from 'engine';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
@@ -24,7 +25,6 @@ import type {
 import BannedList from './BannedList';
 import Header from './Header';
 import PlayerRoster from './PlayerRoster';
-import { isBlitzOffAllowed } from './settings/gameSettings';
 import SettingsPanel from './settings/SettingsPanel';
 import SpectatorList from './SpectatorList';
 
@@ -226,8 +226,14 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
         gameMode: state.gameMode,
         blitz: state.blitz,
         defenceDice: state.defenceDice,
+        attackDice: state.attackDice,
+        diceTies: state.diceTies,
         continents: state.continents,
         initialTroops: state.initialTroops,
+        minTroops: state.minTroops,
+        troopsPerTerritory: state.troopsPerTerritory,
+        maxPoints: state.maxPoints,
+        hills: state.hills,
         cards: state.cards,
         placement: state.placement,
         fortification: state.fortification,

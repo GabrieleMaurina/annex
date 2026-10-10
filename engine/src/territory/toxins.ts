@@ -2,7 +2,11 @@ import { callbacks } from '../callbacks';
 import { hasAnyToxin } from '../game/combat/autoSkip';
 import { countTerritories } from '../game/progression/stats';
 import { recordReplayFrame } from '../game/replay';
-import { toxinsCost, wouldSplitMap } from '../game/toxins/toxins';
+import {
+  isPermanentToxinOnHill,
+  toxinsCost,
+  wouldSplitMap,
+} from '../game/toxins/toxins';
 import { advanceTurnPhase } from '../game/turns';
 import { fogFilterEmit } from '../game/world/fog';
 import { removePortalTerritory } from '../game/world/portals';
@@ -31,6 +35,8 @@ export function toxin(playerId: number, rawTerritoryId: unknown): GameResponse {
     return { ok: false, error: 'territory not owned' };
   if (game.capitalTerritoryIds.has(territoryId))
     return { ok: false, error: 'capital cannot be toxined' };
+  if (isPermanentToxinOnHill(game, territoryId))
+    return { ok: false, error: 'hill cannot be permanently toxined' };
   if (countTerritories(game, playerId) <= 1)
     return { ok: false, error: 'cannot toxin your last territory' };
 

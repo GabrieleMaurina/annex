@@ -26,6 +26,7 @@ export function useTurnActionFlows({
   paused,
   selectedTerritoryId,
   toxins,
+  hillTerritoryIds,
   cards,
   nextSetBaseValues,
   blockedById,
@@ -47,6 +48,7 @@ export function useTurnActionFlows({
   paused: boolean;
   selectedTerritoryId: number | null;
   toxins: GameState['toxins'];
+  hillTerritoryIds: number[];
   cards: GameState['cards'];
   nextSetBaseValues: GameState['nextSetBaseValues'];
   blockedById: Set<number>;
@@ -188,6 +190,8 @@ export function useTurnActionFlows({
         portalsEnabled,
       )
     : new Set<number>();
+  if (toxins === 'permanent')
+    for (const id of hillTerritoryIds) toxinsCandidates.delete(id);
 
   const submitToxins = useCallback(() => {
     if (selectedTerritoryId === null) return;

@@ -2,6 +2,7 @@ import type { CSSProperties, Dispatch, RefObject, SetStateAction } from 'react';
 import { playerColor } from '../../../lib/palette';
 import type {
   BlitzOutcome,
+  DiceTies,
   GameState,
   TurnDuration,
   TurnPhase,
@@ -73,6 +74,8 @@ export default function TurnActionPanels({
   attackPanelStyle,
   attackDisplay,
   blitzEnabled,
+  attackDice,
+  diceTies,
   blitzInputRef,
   attackDiceRoll,
   setAttackDiceRoll,
@@ -171,15 +174,17 @@ export default function TurnActionPanels({
     blitzWinProbabilities: number[];
     blitzOutcomes: BlitzOutcome[];
     selectedType: AttackType;
-    regularTroops: 1 | 2 | 3;
+    regularTroops: number;
     blitzTroops: number;
   };
   blitzEnabled: boolean;
+  attackDice: number;
+  diceTies: DiceTies;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   attackDiceRoll: DiceRoll | null;
   setAttackDiceRoll: Dispatch<SetStateAction<DiceRoll | null>>;
   setAttackSelectedType: Dispatch<SetStateAction<AttackType>>;
-  setAttackRegularTroops: Dispatch<SetStateAction<1 | 2 | 3>>;
+  setAttackRegularTroops: Dispatch<SetStateAction<number>>;
   setAttackBlitzTroops: Dispatch<SetStateAction<number>>;
   maxBlitzTroops: number;
   attackRevealing: boolean;
@@ -330,6 +335,8 @@ export default function TurnActionPanels({
           regularTroops={attackDisplay.regularTroops}
           blitzTroops={attackDisplay.blitzTroops}
           blitzEnabled={blitzEnabled}
+          attackDice={attackDice}
+          diceTies={diceTies}
           blitzInputRef={blitzInputRef}
           diceRoll={attackDiceRoll}
           onSelectRegular={(troops) => {
@@ -381,6 +388,7 @@ export default function TurnActionPanels({
           regularShips={attackSeaRegularShips}
           blitzShips={attackSeaBlitzShips}
           blitzEnabled={blitzEnabled}
+          diceTies={diceTies}
           inputRef={attackSeaInputRef}
           blitzInputRef={attackSeaBlitzInputRef}
           onSelectRegular={() => setAttackSeaSelectedType('regular')}

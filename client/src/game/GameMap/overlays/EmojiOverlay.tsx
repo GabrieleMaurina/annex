@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import { isPlayerMuted, toggleMutePlayer } from '../../../common/mutedPlayers';
 import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import Tip from '../../../common/tooltips/Tip';
+import { contrastTextColor } from '../../../lib/palette';
 import type { EmojiValue, GameState } from '../../../lib/types';
 import {
   ATTACK_EMOJI,
@@ -220,8 +221,14 @@ export default function EmojiOverlay({
               )}
               {pop.attackText && (
                 <strong
-                  className="text-truncate"
-                  style={{ color: pop.attackColor, fontSize: 14 }}
+                  className={`text-truncate${pop.attackColor ? ' badge' : ''}`}
+                  style={{
+                    backgroundColor: pop.attackColor,
+                    color: pop.attackColor
+                      ? contrastTextColor(pop.attackColor)
+                      : undefined,
+                    fontSize: 14,
+                  }}
                 >
                   {pop.attackText}
                 </strong>

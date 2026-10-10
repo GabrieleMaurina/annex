@@ -41,6 +41,7 @@ import CardSetFlash from './overlays/CardSetFlash';
 import EmojiOverlay from './overlays/EmojiOverlay';
 import GameToasts, { type GameToast } from './overlays/GameToasts';
 import MapButtonsColumn from './overlays/MapButtonsColumn';
+import TerritoryTooltip from './overlays/TerritoryTooltip';
 import TurnActionPanels from './overlays/TurnActionPanels';
 import type { GameMapProps } from './props';
 
@@ -288,6 +289,7 @@ function GameMap({
     isMyTurn,
     paused,
     blitzEnabled: game.blitz !== 'off',
+    attackDice: game.attackDice,
     setGame,
   });
 
@@ -312,6 +314,7 @@ function GameMap({
     turnPhase,
     isMyTurn,
     paused,
+    attackDice: game.attackDice,
     setGame,
   });
 
@@ -331,6 +334,7 @@ function GameMap({
     paused,
     selectedTerritoryId,
     toxins,
+    hillTerritoryIds: game.hillTerritoryIds,
     cards,
     nextSetBaseValues,
     blockedById: unusableTerritoryById,
@@ -540,6 +544,7 @@ function GameMap({
   const tooltipLabels = computeTooltipLabels(
     interactions.tooltipTerritoryId,
     portalTerritoryIds,
+    game.hillTerritoryIds,
     radiationById,
     visibleTerritoryById,
     ownerById,
@@ -653,6 +658,7 @@ function GameMap({
       bonusesOpen: bonusesOpen,
       gameMode,
       continentId,
+      hillTerritoryIds: game.hillTerritoryIds,
       players,
       displayedToxinTerritories,
       radiationById,
@@ -727,22 +733,11 @@ function GameMap({
                 : 'grab',
         }}
       />
-      {tooltipScreenPos && tooltipLabels.length > 0 && (
-        <div
-          className="position-absolute px-2 py-1 rounded text-white small"
-          style={{
-            left: tooltipScreenPos.x,
-            top: tooltipScreenPos.y - zoomedRadius - 8,
-            transform: 'translate(-50%, -100%)',
-            background: 'rgba(0, 0, 0, 0.85)',
-            whiteSpace: 'nowrap',
-            pointerEvents: 'none',
-            zIndex: 3,
-          }}
-        >
-          {tooltipLabels.join(' · ')}
-        </div>
-      )}
+      <TerritoryTooltip
+        position={tooltipScreenPos}
+        labels={tooltipLabels}
+        offset={zoomedRadius}
+      />
       <MapButtonsColumn
         cardsButtonsTop={cardsButtonsTop}
         buttonColumnRef={buttonColumnRef}
@@ -809,6 +804,7 @@ function GameMap({
         totalTroopsCap={totalTroopsCap}
         leaderTerritoryCount={leaderTerritoryCount}
         territoriesToWin={territoriesToWin}
+        maxPoints={game.maxPoints}
         toxins={toxins}
         toxinsCost={turnFlow.toxinsCostValue}
         mission={mission}
@@ -937,6 +933,8 @@ function GameMap({
         attackPanelStyle={attackPanelStyle}
         attackDisplay={attackDisplay}
         blitzEnabled={game.blitz !== 'off'}
+        attackDice={game.attackDice}
+        diceTies={game.diceTies}
         blitzInputRef={attackFlow.blitzInputRef}
         attackDiceRoll={attackFlow.attackDiceRoll}
         setAttackDiceRoll={attackFlow.setAttackDiceRoll}

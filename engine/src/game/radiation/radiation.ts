@@ -54,6 +54,11 @@ function isValidRadiationTarget(
   if (isSeaTerritory(game, candidateId)) return false;
   if (working.has(candidateId)) return false;
   if (game.capitalTerritoryIds.has(candidateId)) return false;
+  if (
+    game.radiations === 'expanding' &&
+    game.hillTerritoryIds.includes(candidateId)
+  )
+    return false;
   if (game.radiations === 'dynamic' && game.territoryToxins.has(candidateId))
     return false;
   const holes = new Set([...working, ...game.territoryToxins.keys()]);

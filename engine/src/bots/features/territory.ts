@@ -4,6 +4,13 @@ import { Game, Territory } from '../../types';
 import { BotView, isVisible, ownerOf } from '../view';
 import { isTeammate } from './mode/mode';
 
+export function isKeyTerritory(game: Game, territoryId: number): boolean {
+  return (
+    game.capitalTerritoryIds.has(territoryId) ||
+    game.hillTerritoryIds.includes(territoryId)
+  );
+}
+
 export function isHazardTerritory(
   game: Game,
   view: BotView,

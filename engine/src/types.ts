@@ -82,7 +82,7 @@ export interface Card {
 }
 
 export type Blitz = 'balanced' | 'true' | 'fair' | 'off';
-export type DefenceDice = 2 | 3;
+export type DiceTies = 'defence' | 'attack' | 'tie';
 export type CardsMode =
   | 'constant'
   | 'linear'
@@ -103,7 +103,9 @@ export type GameMode =
   | 'assassin'
   | 'mission'
   | 'player kills'
-  | 'troop kills';
+  | 'troop kills'
+  | 'king of the hill'
+  | 'empire';
 export type Placement = 'random' | 'semi' | 'custom';
 export type Fortification = 'connected' | 'neighboring' | 'unrestricted';
 export type Entrenchments = 'off' | 'on';
@@ -227,6 +229,7 @@ export interface ReplayPlayerState {
   eliminated: boolean;
   surrendered: boolean;
   killedPlayerIds: number[];
+  points: number;
   nukes: number;
   antiNukes: number;
   nukeProjects: NukeProject[];
@@ -324,7 +327,9 @@ export interface Game {
   bounties: Bounties;
   cards: CardsMode;
   continents: Continents;
-  defenceDice: DefenceDice;
+  defenceDice: number;
+  attackDice: number;
+  diceTies: DiceTies;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';
   entrenchments: Entrenchments;
@@ -332,6 +337,12 @@ export interface Game {
   fortification: Fortification;
   gameMode: GameMode;
   initialTroops: number;
+  minTroops: number;
+  troopsPerTerritory: number;
+  maxPoints: number;
+  hills: number;
+  hillTerritoryIds: number[];
+  points: Map<number, number>;
   continentId: number | null;
   placement: Placement;
   portals: Portals;

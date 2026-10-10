@@ -1,5 +1,6 @@
 import { Game, PlayerStats } from '../../types';
 import { ownsAnyTerritory } from '../mechanics';
+import { isPointsMode } from './points';
 
 export function emptyPlayerStats(): PlayerStats {
   return {
@@ -107,6 +108,15 @@ export function compareByTerritoriesFirst(
   return sb.troopsGained - sa.troopsGained;
 }
 
+export function compareByPointsFirst(game: Game, a: number, b: number): number {
+  const pointsA = game.points.get(a) ?? 0;
+  const pointsB = game.points.get(b) ?? 0;
+  if (pointsA !== pointsB) return pointsB - pointsA;
+  const deathCmp = compareByDeathOrder(game, a, b);
+  if (deathCmp !== 0) return deathCmp;
+  return compareBySurvivorTiebreak(game, a, b);
+}
+
 function compareByDeathOrder(game: Game, a: number, b: number): number {
   const rank = (id: number) => {
     const index = game.deathOrder.indexOf(id);
@@ -193,6 +203,16 @@ export function computeFinalRanking(game: Game): number[] {
       .filter((id) => game.surrenderedIds.has(id))
       .sort(comparator);
     return [...contenders, ...surrendered];
+  }
+
+  if (isPointsMode(game.gameMode)) {
+    const compare = (a: number, b: number) => compareByPointsFirst(game, a, b);
+    const others = game.playerIds.filter((id) => !game.winnerIds.includes(id));
+    return [
+      ...game.winnerIds,
+      ...others.filter((id) => !game.surrenderedIds.has(id)).sort(compare),
+      ...others.filter((id) => game.surrenderedIds.has(id)).sort(compare),
+    ];
   }
 
   const tiebreak =

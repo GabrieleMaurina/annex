@@ -1,8 +1,8 @@
 import type { RefObject } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useNumberInput } from '../../../common/inputs/useNumberInput';
-import { playerColor } from '../../../lib/palette';
-import type { BlitzOutcome } from '../../../lib/types';
+import { contrastTextColor, playerColor } from '../../../lib/palette';
+import type { BlitzOutcome, DiceTies } from '../../../lib/types';
 import { attackOptionStyle, formatProbability } from './attackOptionStyle';
 import { DiceRollDisplay, type AttackType, type DiceRoll } from './AttackPanel';
 
@@ -18,6 +18,7 @@ interface Props {
   regularShips: number;
   blitzShips: number;
   blitzEnabled: boolean;
+  diceTies: DiceTies;
   inputRef: RefObject<HTMLInputElement | null>;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   onSelectRegular: () => void;
@@ -43,6 +44,7 @@ function AttackSeaPanel({
   regularShips,
   blitzShips,
   blitzEnabled,
+  diceTies,
   inputRef,
   blitzInputRef,
   onSelectRegular,
@@ -92,7 +94,11 @@ function AttackSeaPanel({
             <Button
               key={d.playerId}
               size="sm"
-              style={{ backgroundColor: playerColor(d.color), border: 'none' }}
+              style={{
+                backgroundColor: playerColor(d.color),
+                color: contrastTextColor(playerColor(d.color)),
+                border: 'none',
+              }}
               onClick={() => onSelectDefender(d.playerId)}
             >
               {d.ships}
@@ -171,6 +177,7 @@ function AttackSeaPanel({
         <DiceRollDisplay
           key={diceRoll.id}
           diceRoll={diceRoll}
+          diceTies={diceTies}
           withDivider={!diceOnly}
         />
       )}

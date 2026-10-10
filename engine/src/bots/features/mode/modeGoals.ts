@@ -3,6 +3,7 @@ import { findKillerId } from '../../../game/progression/stats';
 import {
   PlanContext,
   SimState,
+  heldContinentBonus,
   isFriendly,
   isHazard,
   ownedIds,
@@ -44,6 +45,7 @@ export interface ModeGoal {
   eliminateThreshold: number;
   damageBonus: number;
   lossRefund: number;
+  maxPoints: number;
 }
 
 export interface Threat {
@@ -89,6 +91,7 @@ function neutralGoal(ctx: PlanContext): ModeGoal {
     eliminateThreshold: 0,
     damageBonus: 0,
     lossRefund: 0,
+    maxPoints: 0,
   };
 }
 
@@ -128,6 +131,17 @@ function setAssassin(ctx: PlanContext, goal: ModeGoal, targetId: number): void {
   if (visibleCount === 0) return;
   goal.assassinId = targetId;
   goal.assassinBase = visibleCount;
+}
+
+function setPoints(ctx: PlanContext, goal: ModeGoal): void {
+  goal.maxPoints = ctx.game.maxPoints;
+  goal.killWeight = SURVIVOR_KILL_WEIGHT;
+  if (ctx.game.gameMode === 'king of the hill')
+    setHold(
+      goal,
+      ctx.game.hillTerritoryIds.filter((id) => !isHazard(ctx, id)),
+    );
+  else goal.expand = true;
 }
 
 function setMission(ctx: PlanContext, goal: ModeGoal): void {
@@ -209,13 +223,18 @@ function buildModeGoal(ctx: PlanContext): ModeGoal {
       goal.damageBonus = TROOP_KILLS_DAMAGE;
       goal.lossRefund = TROOP_KILLS_LOSS_REFUND;
       break;
+    case 'king of the hill':
+    case 'empire':
+      setPoints(ctx, goal);
+      break;
   }
   goal.active =
     goal.threshold > 0 ||
     goal.threatThreshold > 0 ||
     goal.holdIds.length > 0 ||
     goal.roundLimit > 0 ||
-    goal.assassinId !== null;
+    goal.assassinId !== null ||
+    goal.maxPoints > 0;
   return goal;
 }
 
@@ -276,12 +295,60 @@ function collect(
   }
 }
 
+export function pointsGains(
+  ctx: PlanContext,
+  state: SimState,
+): Map<number, number> {
+  const gains = new Map<number, number>();
+  if (ctx.game.gameMode === 'king of the hill') {
+    for (const id of ctx.game.hillTerritoryIds) {
+      const ownerId = state.owners.get(id);
+      if (ownerId !== undefined && !ctx.game.surrenderedIds.has(ownerId))
+        gains.set(ownerId, (gains.get(ownerId) ?? 0) + 1);
+    }
+    return gains;
+  }
+  for (const ownerId of state.owners.values())
+    if (!ctx.game.surrenderedIds.has(ownerId))
+      gains.set(ownerId, (gains.get(ownerId) ?? 0) + 1);
+  for (const ownerId of gains.keys())
+    gains.set(
+      ownerId,
+      gains.get(ownerId)! + heldContinentBonus(ctx, state, ownerId),
+    );
+  return gains;
+}
+
+function projectedPoints(
+  ctx: PlanContext,
+  state: SimState,
+): Map<number, number> {
+  const projected = new Map<number, number>();
+  for (const ownerId of state.owners.values())
+    if (!ctx.game.surrenderedIds.has(ownerId))
+      projected.set(ownerId, ctx.game.points.get(ownerId) ?? 0);
+  for (const [ownerId, gain] of pointsGains(ctx, state))
+    projected.set(ownerId, (projected.get(ownerId) ?? 0) + gain);
+  return projected;
+}
+
 export function sideProgress(
   ctx: PlanContext,
   goal: ModeGoal,
   state: SimState,
 ): SideProgress {
   const result: SideProgress = { own: [], threats: [] };
+  if (goal.maxPoints > 0) {
+    collect(
+      goal,
+      projectedPoints(ctx, state),
+      goal.maxPoints,
+      goal.maxPoints,
+      ctx.game.hillTerritoryIds.length > 0,
+      result,
+    );
+    return result;
+  }
   if (goal.threshold > 0 || goal.threatThreshold > 0)
     collect(
       goal,

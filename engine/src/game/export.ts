@@ -69,6 +69,7 @@ export interface GameResultExport {
   eliminated: boolean;
   surrendered: boolean;
   playersKilled: number[];
+  points: number;
   troopsGained: number;
   troopsKilled: number;
   troopsLost: number;
@@ -101,8 +102,14 @@ export interface GameExport {
     slots: number;
     blitz: string;
     defenceDice: number;
+    attackDice: number;
+    diceTies: string;
     continents: string;
     initialTroops: number;
+    minTroops: number;
+    troopsPerTerritory: number;
+    maxPoints: number;
+    hills: number;
     cards: string;
     placement: string;
     fortification: string;
@@ -137,6 +144,7 @@ export interface GameExport {
   roundNumber: number;
   playerCount: number;
   capitalTerritoryIds: number[];
+  hillTerritoryIds: number[];
   results: GameResultExport[];
   serverLog: ReplayLogEntry[];
   replay: {
@@ -298,6 +306,7 @@ function buildResults(game: Game): GameResultExport[] {
       eliminated: isEliminated(game, territoryCount),
       surrendered: game.surrenderedIds.has(playerId),
       playersKilled: s?.playersKilled ?? [],
+      points: game.points.get(playerId) ?? 0,
       troopsGained: s?.troopsGained ?? 0,
       troopsKilled: s?.troopsKilled ?? 0,
       troopsLost: s?.troopsLost ?? 0,
@@ -340,8 +349,14 @@ export function exportGame(gameName: string): GameExport | null {
       slots: game.slots,
       blitz: game.blitz,
       defenceDice: game.defenceDice,
+      attackDice: game.attackDice,
+      diceTies: game.diceTies,
       continents: game.continents,
       initialTroops: game.initialTroops,
+      minTroops: game.minTroops,
+      troopsPerTerritory: game.troopsPerTerritory,
+      maxPoints: game.maxPoints,
+      hills: game.hills,
       cards: game.cards,
       placement: game.placement,
       fortification: game.fortification,
@@ -382,6 +397,7 @@ export function exportGame(gameName: string): GameExport | null {
     startedAt: game.startedAt,
     endedAt: game.endedAt,
     capitalTerritoryIds: [...game.capitalTerritoryIds],
+    hillTerritoryIds: [...game.hillTerritoryIds],
     results,
     serverLog: game.replayLog,
     replay: buildReplay(game),

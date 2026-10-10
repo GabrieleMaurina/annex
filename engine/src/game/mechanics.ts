@@ -347,6 +347,13 @@ export interface DeployTroopsBreakdown {
   bounties: number;
 }
 
+export function territoryIncome(game: Game, territoryCount: number): number {
+  return Math.max(
+    game.minTroops,
+    Math.floor(territoryCount * game.troopsPerTerritory),
+  );
+}
+
 export function calculateDeployTroopsBreakdown(
   game: Game,
   playerId: number,
@@ -355,7 +362,7 @@ export function calculateDeployTroopsBreakdown(
   const territoryCount = [...game.territoryOwners.values()].filter(
     (ownerId) => ownerId === playerId,
   ).length;
-  const territories = Math.max(3, Math.floor(territoryCount / 3));
+  const territories = territoryIncome(game, territoryCount);
 
   const continents = new Map<number, number[]>();
   for (const territory of map.territories) {

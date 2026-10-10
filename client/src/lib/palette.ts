@@ -7,7 +7,9 @@ export const PLAYER_COLORS = [
   '#FDD835',
   '#8E44AD',
   '#FB8C00',
-  '#E91E63',
+  '#303030',
+  '#E0E0E0',
+  '#FF69B4',
   '#00D4E8',
   '#795548',
   '#7CB342',
@@ -19,8 +21,6 @@ export const PLAYER_COLORS = [
   '#B71C1C',
   '#827717',
   '#6A1B9A',
-  '#A44A2A',
-  '#00897B',
 ];
 
 export function playerColor(colorIndex: number): string {

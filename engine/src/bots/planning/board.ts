@@ -1,9 +1,11 @@
+import { territoryIncome } from '../../game/mechanics';
 import { upcomingSetValues } from '../../game/progression/cards';
 import { grudgeAgainst } from '../features/grudge';
 import { SideProgress, modeGoalFor } from '../features/mode/modeGoals';
 import { stalematePressure } from '../features/pressure';
 import { consolidation, spreading } from '../features/stackStyle';
 import { antiLeaderActive } from '../features/standing';
+import { isKeyTerritory } from '../features/territory';
 import { modeScore } from '../goals/modeScore';
 import {
   keepStackWeight,
@@ -17,6 +19,7 @@ import {
   bonusOf,
   cloneState,
   heldContinentBonus,
+  holdsContinent,
   isBotBorder,
   isFriendly,
   isStrategist,
@@ -149,7 +152,7 @@ const DUEL_PRESSURE = 2;
 const DUEL_STACK_MASS = 0.05;
 const BASE_ATTACK_RATIO = 1.05;
 const DUEL_ATTACK_EDGE = 0.15;
-const CAPITAL_RISK = 2;
+const KEY_TERRITORY_RISK = 2;
 const ANTI_LEADER = 0.15;
 const GRUDGE = 0.1;
 const CARD = 0.5;
@@ -213,7 +216,7 @@ function incomeEstimate(
         ).length * 2
       : 0;
   return (
-    (Math.max(3, Math.floor(owned / 3)) + capitals) *
+    (territoryIncome(ctx.game, owned) + capitals) *
     modeGoalFor(ctx).incomeFactor
   );
 }
@@ -224,7 +227,8 @@ function continentProgress(ctx: PlanContext, state: SimState): number {
     const owned = territoryIds.filter(
       (id) => state.owners.get(id) === ctx.botId,
     ).length;
-    if (owned === 0 || owned === territoryIds.length) continue;
+    if (owned === 0 || holdsContinent(ctx, state, territoryIds, ctx.botId))
+      continue;
     const ratio = owned / territoryIds.length;
     score += bonusOf(ctx, continentId) * ratio * ratio;
   }
@@ -237,7 +241,8 @@ function denial(ctx: PlanContext, state: SimState): number {
     const botOwns = territoryIds.filter(
       (id) => state.owners.get(id) === ctx.botId,
     ).length;
-    if (botOwns === 0 || botOwns === territoryIds.length) continue;
+    if (botOwns === 0 || holdsContinent(ctx, state, territoryIds, ctx.botId))
+      continue;
     score += DENIAL * bonusOf(ctx, continentId);
   }
   return score;
@@ -270,7 +275,7 @@ function riskAndWaste(
       risk += Math.max(0, threat - troops);
       concentration += Math.pow(Math.max(1, troops), 1.15);
       largestBorder = Math.max(largestBorder, troops);
-    } else if (!ctx.game.capitalTerritoryIds.has(id)) {
+    } else if (!isKeyTerritory(ctx.game, id)) {
       waste += Math.max(0, troops - 1);
     }
   }
@@ -298,9 +303,11 @@ function nearbyHeldBonus(ctx: PlanContext, state: SimState): number {
   if (ctx.weights.aggression <= 0) return 0;
   let total = 0;
   for (const [continentId, territoryIds] of ctx.continentTerritories) {
-    const ownerId = state.owners.get(territoryIds[0]);
+    const ownedId = territoryIds.find((id) => state.owners.has(id));
+    const ownerId =
+      ownedId === undefined ? undefined : state.owners.get(ownedId);
     if (ownerId === undefined || isFriendly(ctx, ownerId)) continue;
-    if (!territoryIds.every((id) => state.owners.get(id) === ownerId)) continue;
+    if (!holdsContinent(ctx, state, territoryIds, ownerId)) continue;
     const touchesBot = territoryIds.some((id) =>
       neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId),
     );
@@ -309,9 +316,12 @@ function nearbyHeldBonus(ctx: PlanContext, state: SimState): number {
   return total;
 }
 
-function capitalRisk(ctx: PlanContext, state: SimState): number {
+function keyTerritoryRisk(ctx: PlanContext, state: SimState): number {
   let penalty = 0;
-  for (const id of ctx.game.capitalTerritoryIds) {
+  for (const id of [
+    ...ctx.game.capitalTerritoryIds,
+    ...ctx.game.hillTerritoryIds,
+  ]) {
     if (state.owners.get(id) !== ctx.botId) continue;
     const threat = strongestThreatAt(ctx, state, id);
     penalty += Math.max(0, threat * 1.2 - troopsIn(state, id));
@@ -384,7 +394,7 @@ function scoreState(
     opponentHeldBonus(ctx, state);
   score -= NEARBY_BREAK * ctx.weights.aggression * nearbyHeldBonus(ctx, state);
   score -= (DUEL_STACK_MASS * ctx.duel.rolling * stacks.mass) / scale;
-  score -= CAPITAL_RISK * capitalRisk(ctx, state);
+  score -= KEY_TERRITORY_RISK * keyTerritoryRisk(ctx, state);
   if (leader && leader.playerId !== ctx.botId)
     score -=
       ctx.weights.antiLeader *

@@ -141,7 +141,6 @@ function ResultsTable({
                 key={p.id}
                 ref={rowRef?.(p.id)}
                 role={rowClick ? 'button' : undefined}
-                data-no-click-sound
                 onClick={rowClick}
                 style={{
                   outline: p.id === selfId ? '2px solid #fff' : undefined,

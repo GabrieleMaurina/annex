@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../../../connector';
-import { playSound } from '../../../lib/sounds';
+import { playSound, useToggleSound } from '../../../lib/sounds';
 import type {
   AllianceDeclinedPayload,
   AllianceFormedPayload,
@@ -25,29 +25,35 @@ export function useAllianceUI({
   ) => void;
 }) {
   const [alliancePopupFor, setAlliancePopupFor] = useState<number | null>(null);
+  useToggleSound(alliancePopupFor);
   const allianceCellRefs = useRef(new Map<number, HTMLElement>());
   const alliancePopupRef = useRef<HTMLDivElement>(null);
   const [allianceCooldownIds, setAllianceCooldownIds] = useState<Set<number>>(
     new Set(),
   );
 
-  function allianceStateWith(playerId: number) {
-    return allianceStates.find((a) => a.playerId === playerId)?.state ?? 'none';
-  }
+  const allianceStateWith = useCallback(
+    (playerId: number) =>
+      allianceStates.find((a) => a.playerId === playerId)?.state ?? 'none',
+    [allianceStates],
+  );
 
-  function handleAllianceCellClick(playerId: number) {
-    const state = allianceStateWith(playerId);
-    if (state === 'none') {
-      if (allianceCooldownIds.has(playerId)) return;
-      setAlliancePopupFor(null);
-      connector.offerAlliance({ targetPlayerId: playerId });
-    } else if (state === 'requestSent') {
-      setAlliancePopupFor(null);
-      connector.revokeAllianceRequest({ targetPlayerId: playerId });
-    } else {
-      setAlliancePopupFor((prev) => (prev === playerId ? null : playerId));
-    }
-  }
+  const handleAllianceCellClick = useCallback(
+    (playerId: number) => {
+      const state = allianceStateWith(playerId);
+      if (state === 'none') {
+        if (allianceCooldownIds.has(playerId)) return;
+        setAlliancePopupFor(null);
+        connector.offerAlliance({ targetPlayerId: playerId });
+      } else if (state === 'requestSent') {
+        setAlliancePopupFor(null);
+        connector.revokeAllianceRequest({ targetPlayerId: playerId });
+      } else {
+        setAlliancePopupFor((prev) => (prev === playerId ? null : playerId));
+      }
+    },
+    [allianceStateWith, allianceCooldownIds],
+  );
 
   function respondAllianceRequest(fromPlayerId: number, accept: boolean) {
     setAlliancePopupFor(null);

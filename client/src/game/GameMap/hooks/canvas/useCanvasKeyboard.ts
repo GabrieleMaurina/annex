@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { connector } from '../../../../connector';
+import { playSound } from '../../../../lib/sounds';
 import type { Ack } from '../../../../lib/types';
 import { isTypingTarget } from '../../helpers';
 import type { CanvasInteractionsParams } from './types';
@@ -173,10 +174,12 @@ export function useCanvasKeyboard({
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         if (pendingAttackEmoji) {
+          playSound('click');
           setPendingAttackEmoji(null);
           return;
         }
         if (emojiPickerFor !== null) {
+          playSound('click');
           setEmojiPickerFor(null);
           return;
         }
@@ -185,6 +188,7 @@ export function useCanvasKeyboard({
           return;
         }
         if (nukeTargeting) {
+          playSound('click');
           setNukeTargeting(null);
           return;
         }
@@ -223,10 +227,12 @@ export function useCanvasKeyboard({
           return;
         }
         if (isMyTurn && turnPhase === 'attack' && attackSeaDiceOnly) {
+          playSound('click');
           setAttackSeaDiceRoll(null);
           return;
         }
         if (isMyTurn && turnPhase === 'attack' && attackDiceOnly) {
+          playSound('click');
           setAttackDiceRoll(null);
           return;
         }
@@ -235,10 +241,12 @@ export function useCanvasKeyboard({
           turnPhase === 'deploy' &&
           deploySeaTerritoryId !== null
         ) {
+          playSound('click');
           cancelDeploySea();
           return;
         }
         if (isMyTurn && selectedTerritoryId !== null) {
+          playSound('click');
           selectTerritory(null);
           return;
         }
@@ -360,6 +368,7 @@ export function useCanvasKeyboard({
         stepTroopPanel(arrowDelta)
       ) {
         e.preventDefault();
+        playSound('click');
         return;
       }
       if (
@@ -372,6 +381,7 @@ export function useCanvasKeyboard({
         e.preventDefault();
         const direction =
           e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : -1;
+        playSound('click');
         cycleAttackOption(direction);
         return;
       }
@@ -479,8 +489,12 @@ export function useCanvasKeyboard({
   useEffect(() => {
     function onWheel(e: WheelEvent) {
       e.preventDefault();
-      if (stepTroopPanel(e.deltaY < 0 ? 1 : -1)) return;
+      if (stepTroopPanel(e.deltaY < 0 ? 1 : -1)) {
+        playSound('click');
+        return;
+      }
       if (attackPanelOpen && !attackShowPendingConquest && !attackDiceOnly) {
+        playSound('click');
         cycleAttackOption(e.deltaY < 0 ? -1 : 1);
         return;
       }

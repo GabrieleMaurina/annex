@@ -3,6 +3,7 @@ import { Button, Container, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
+import { useToggleSound } from '../lib/sounds';
 import type { Account, PlayerMapRow } from '../lib/types';
 import MapBrowser from './MapBrowser';
 import { mapImageUrl } from './mapUrl';
@@ -10,6 +11,7 @@ import { mapImageUrl } from './mapUrl';
 function MyMaps({ account }: { account: Account | null }) {
   const navigate = useNavigate();
   const [confirmRow, setConfirmRow] = useState<PlayerMapRow | null>(null);
+  useToggleSound(confirmRow !== null);
   const [deleting, setDeleting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 

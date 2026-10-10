@@ -6,7 +6,6 @@ import type { Ack } from '../../lib/types';
 import { buildForcedWraps } from '../mapMath';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
-import { drawGameMapCanvas } from './draw/drawCanvas';
 import {
   computeTooltipLabels,
   getScales,
@@ -26,7 +25,6 @@ import {
   useAutoAdvancePhase,
   useLiveGameRefs,
   useLockViewportZoom,
-  usePanelStyles,
   useResetTroopInputOnSelection,
   useSupplyLineOverlay,
 } from './hooks/useMiscUiState';
@@ -135,8 +133,7 @@ function GameMap({
     seaTerritories,
     bonuses,
     wraps,
-    transform,
-    setTransform,
+    camera,
     imgDims,
     size,
   } = useMapView(mapName, game.playerMapId);
@@ -162,7 +159,7 @@ function GameMap({
     playersRef,
     selfIdRef,
     getTerritoryScreenPosRef,
-    vertexScreenRadiusRef,
+    getVertexScreenRadiusRef,
     autoAdvanceKeyRef,
     cardImagesRef,
   } = useLiveGameRefs();
@@ -187,6 +184,7 @@ function GameMap({
     toxinPlacedAtRef,
     radiationPlacedAtRef,
     tankFireId,
+    drawParamsRef,
     startAnimationLoop,
     replay,
   } = useGameSocketEvents({
@@ -268,9 +266,10 @@ function GameMap({
     playersRef.current = players;
     selfIdRef.current = selfId;
     getTerritoryScreenPosRef.current = (t) =>
-      getTerritoryScreenPos(t, size, transform, imgDims);
-    vertexScreenRadiusRef.current =
-      VERTEX_RADIUS * getScales(size.w, size.h, transform.zoom, imgDims).scaleX;
+      getTerritoryScreenPos(t, size, camera.get(), imgDims);
+    getVertexScreenRadiusRef.current = () =>
+      VERTEX_RADIUS *
+      getScales(size.w, size.h, camera.get().zoom, imgDims).scaleX;
   });
 
   const attackFlow = useAttackFlow({
@@ -444,7 +443,7 @@ function GameMap({
     selfIdRef,
     canvasRef,
     getTerritoryScreenPosRef,
-    vertexScreenRadiusRef,
+    getVertexScreenRadiusRef,
   });
 
   const allianceUI = useAllianceUI({ allianceStates, playersRef, setToasts });
@@ -495,8 +494,7 @@ function GameMap({
     sailEndTerritoryId,
     attackSeaTerritoryId,
     attackSeaDefenderId,
-    transform,
-    setTransform,
+    camera,
     imgDims,
     VERTEX_RADIUS,
     gameEnded,
@@ -544,7 +542,6 @@ function GameMap({
   const tooltipLabels = computeTooltipLabels(
     interactions.tooltipTerritoryId,
     portalTerritoryIds,
-    game.hillTerritoryIds,
     radiationById,
     visibleTerritoryById,
     ownerById,
@@ -611,23 +608,12 @@ function GameMap({
     startAnimationLoop,
   });
 
-  const {
-    zoomedRadius,
-    tooltipScreenPos,
-    deployPanelStyle,
-    fortifyPanelStyle,
-    attackPanelStyle,
-    sailPanelStyle,
-    attackSeaPanelStyle,
-    deploySeaPanelStyle,
-  } = usePanelStyles({
+  const panelAnchors = {
     territories,
     seaTerritories,
     size,
-    transform,
     imgDims,
     VERTEX_RADIUS,
-    tooltipTerritoryId: interactions.tooltipTerritoryId,
     selectedTerritoryId,
     fortifyEndTerritoryId,
     attackEndTerritoryId,
@@ -636,14 +622,19 @@ function GameMap({
     attackSeaTerritoryId,
     attackSeaDiceRollTerritoryId: attackSeaFlow.attackSeaDiceRoll?.territoryId,
     deploySeaTerritoryId: deploySeaFlow.deploySeaTerritoryId,
-  });
+  };
+
+  useEffect(
+    () => camera.subscribe(startAnimationLoop),
+    [camera, startAnimationLoop],
+  );
 
   useEffect(() => {
-    drawGameMapCanvas({
+    drawParamsRef.current = {
       canvasRef,
       size,
       imgDims,
-      transform,
+      camera,
       imageRef,
       supplyLineEdgesByPlayer,
       territories,
@@ -694,7 +685,8 @@ function GameMap({
       cardImagesRef,
       bonuses,
       forcedWraps,
-    });
+    };
+    startAnimationLoop();
   });
 
   const attackDisplay = attackFlow.attackDisplay;
@@ -708,6 +700,11 @@ function GameMap({
     },
     [setGame],
   );
+  const surrender = useCallback(
+    () => connector.surrender(applyAck),
+    [applyAck],
+  );
+  const endGame = useCallback(() => connector.endGame(applyAck), [applyAck]);
 
   return (
     <div className="position-fixed top-0 bottom-0 start-0 end-0 overflow-hidden">
@@ -737,9 +734,14 @@ function GameMap({
         }}
       />
       <TerritoryTooltip
-        position={tooltipScreenPos}
+        camera={camera}
+        territory={territories.find(
+          (t) => t.id === interactions.tooltipTerritoryId,
+        )}
         labels={tooltipLabels}
-        offset={zoomedRadius}
+        size={size}
+        imgDims={imgDims}
+        VERTEX_RADIUS={VERTEX_RADIUS}
       />
       <MapButtonsColumn
         cardsButtonsTop={cardsButtonsTop}
@@ -820,9 +822,9 @@ function GameMap({
         botSpeed={botSpeed}
         onTogglePause={onTogglePause}
         onCycleBotSpeed={onCycleBotSpeed}
-        onSurrender={() => connector.surrender(applyAck)}
+        onSurrender={surrender}
         earlyWin={game.earlyWin}
-        onEndGame={() => connector.endGame(applyAck)}
+        onEndGame={endGame}
         gameEnded={gameEnded}
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}
@@ -881,6 +883,8 @@ function GameMap({
         />
       )}
       <TurnActionPanels
+        camera={camera}
+        anchors={panelAnchors}
         currentTurnPlayer={currentTurnPlayer}
         gameEnded={gameEnded}
         turnPhase={turnPhase}
@@ -895,15 +899,11 @@ function GameMap({
         nextPhaseEndsTurn={nextPhaseEndsTurn}
         tankFireId={tankFireId}
         deployPanelOpen={deployTroopsPanelOpen}
-        deployPanelStyle={deployPanelStyle}
         deployTroops={cardsFlow.deployTroops}
         deployInputRef={cardsFlow.deployInputRef}
         setDeployTroops={cardsFlow.setDeployTroops}
         submitDeploy={cardsFlow.submitDeploy}
         deploySeaPanelOpen={deploySeaFlow.deploySeaPanelOpen}
-        deploySeaPanelStyle={
-          deploySeaFlow.comboActive ? deployPanelStyle : deploySeaPanelStyle
-        }
         deploySeaComboActive={deploySeaFlow.comboActive}
         deploySeaShips={deploySeaFlow.deploySeaShips}
         deploySeaMaxShips={deploySeaFlow.deploySeaMaxShips}
@@ -911,14 +911,12 @@ function GameMap({
         setDeploySeaShips={deploySeaFlow.setDeploySeaShips}
         submitDeploySea={deploySeaFlow.submitDeploySea}
         sailPanelOpen={sailFlow.sailPanelOpen}
-        sailPanelStyle={sailPanelStyle}
         sailShips={sailFlow.sailShips}
         sailMaxShips={sailFlow.sailMaxShips}
         sailInputRef={sailFlow.sailInputRef}
         setSailShips={sailFlow.setSailShips}
         submitSail={sailFlow.submitSail}
         fortifyPanelOpen={turnFlow.fortifyPanelOpen}
-        fortifyPanelStyle={fortifyPanelStyle}
         fortifyTroops={turnFlow.fortifyTroops}
         fortifyMaxTroops={turnFlow.fortifyMaxTroops}
         fortifyInputRef={turnFlow.fortifyInputRef}
@@ -935,7 +933,6 @@ function GameMap({
         toxinsWastedTroops={turnFlow.toxinsWastedTroops}
         submitToxins={turnFlow.submitToxins}
         attackPanelOpen={attackFlow.attackPanelOpen}
-        attackPanelStyle={attackPanelStyle}
         attackDisplay={attackDisplay}
         blitzEnabled={game.blitz !== 'off'}
         attackDice={game.attackDice}
@@ -958,7 +955,6 @@ function GameMap({
         submitAttackMove={attackFlow.submitAttackMove}
         submitAttack={attackFlow.submitAttack}
         attackSeaPanelOpen={attackSeaFlow.attackSeaPanelOpen}
-        attackSeaPanelStyle={attackSeaPanelStyle}
         attackSeaDefenders={attackSeaFlow.attackSeaDefenders}
         attackSeaDefenderId={attackSeaDefenderId}
         selectAttackSeaDefender={attackSeaFlow.selectAttackSeaDefender}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
 import { connector } from '../connector';
+import { useToggleSound } from '../lib/sounds';
 import type { Account, PlayerMapRow } from '../lib/types';
 import { mapImageUrl } from './mapUrl';
 
@@ -14,6 +15,7 @@ function MapPreviewModal({
   onHide: () => void;
 }) {
   const [reported, setReported] = useState(false);
+  useToggleSound(preview !== null);
 
   function report() {
     if (!preview) return;

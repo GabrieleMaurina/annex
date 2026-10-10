@@ -13,6 +13,7 @@ import { formatError } from '../../common/formatError';
 import ImageCropper from '../../common/inputs/ImageCropper';
 import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
+import { useToggleSound } from '../../lib/sounds';
 import type { Account, AccountResult } from '../../lib/types';
 
 interface Props {
@@ -24,6 +25,7 @@ function AccountPage({ account, onCountryChange }: Props) {
   const [details, setDetails] = useState<AccountResult | null>(null);
   const [countryError, setCountryError] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  useToggleSound(file !== null);
   const [pictureMessage, setPictureMessage] = useState('');
   const [pictureError, setPictureError] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -156,12 +158,14 @@ function AccountPage({ account, onCountryChange }: Props) {
               width={200}
               height={200}
               className="rounded"
+              role="button"
               style={{ cursor: 'pointer' }}
               onClick={() => fileInput.current?.click()}
             />
           ) : (
             <div
               className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50"
+              role="button"
               style={{ width: 200, height: 200, cursor: 'pointer' }}
               onClick={() => fileInput.current?.click()}
             >

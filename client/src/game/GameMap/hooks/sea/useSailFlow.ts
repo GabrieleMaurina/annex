@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { connector } from '../../../../connector';
+import { playSound } from '../../../../lib/sounds';
 import type { Ack, GameState } from '../../../../lib/types';
 import {
   getSailEndCandidates,
@@ -68,10 +69,10 @@ export function useSailFlow({
     [setGame],
   );
 
-  const cancelSail = useCallback(
-    () => selectSailStart(null),
-    [selectSailStart],
-  );
+  const cancelSail = useCallback(() => {
+    playSound('click');
+    selectSailStart(null);
+  }, [selectSailStart]);
 
   const selectSailEnd = useCallback(
     (territoryId: number) => {

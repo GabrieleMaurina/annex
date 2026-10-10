@@ -1,6 +1,7 @@
 import { deployableTroops } from 'engine';
 import { useCallback, useRef, useState } from 'react';
 import { connector } from '../../../../connector';
+import { playSound } from '../../../../lib/sounds';
 import type { Ack } from '../../../../lib/types';
 import { ATTACK_EMOJI } from '../../../logic/emoji';
 import {
@@ -61,8 +62,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     submitAttackSea,
     quickAttackSea,
     cancelAttackSea,
-    transform,
-    setTransform,
+    camera,
     imgDims,
     VERTEX_RADIUS,
     gameEnded,
@@ -128,7 +128,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
   const lastTapAtRef = useRef(0);
   const lastTapPosRef = useRef<Point>({ x: 0, y: 0 });
   const { zoomAround, startSettle, cancelSettle, resetView } =
-    useMapViewportAnimation(canvasRef, transform, imgDims, setTransform);
+    useMapViewportAnimation(canvasRef, camera, imgDims);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [tooltipTerritoryId, setTooltipTerritoryId] = useState<number | null>(
@@ -304,6 +304,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
 
   function hitVertex(pos: Point): { id: number } | null {
     const canvas = canvasRef.current!;
+    const transform = camera.get();
     const { scaleX, scaleY } = getScales(
       canvas.clientWidth,
       canvas.clientHeight,
@@ -339,9 +340,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
 
   function beginDrag(pos: Point) {
     cancelSettle();
+    const { offsetX, offsetY } = camera.get();
     dragRef.current = {
       startPos: pos,
-      startTransform: { x: transform.offsetX, y: transform.offsetY },
+      startTransform: { x: offsetX, y: offsetY },
       moved: false,
     };
   }
@@ -351,16 +353,18 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     if (!drag) return;
     const dx = pos.x - drag.startPos.x;
     const dy = pos.y - drag.startPos.y;
-    if (Math.hypot(dx, dy) > DRAG_THRESHOLD) drag.moved = true;
+    if (!drag.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+      drag.moved = true;
+      setHoveredId(null);
+      setTooltipTerritoryId(null);
+      setIsDragging(true);
+    }
     if (!drag.moved) return;
-    setTransform((t) => ({
+    camera.set((t) => ({
       ...t,
       offsetX: drag.startTransform.x + dx,
       offsetY: drag.startTransform.y + dy,
     }));
-    setHoveredId(null);
-    setTooltipTerritoryId(null);
-    setIsDragging(true);
   }
 
   function handleMouseDown(e: React.MouseEvent) {
@@ -394,7 +398,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       ) < DOUBLE_TAP_DIST;
     lastTapAtRef.current = isDouble ? 0 : now;
     lastTapPosRef.current = pos;
-    if (isDouble) resetView();
+    if (isDouble) {
+      playSound('click');
+      resetView();
+    }
     return isDouble;
   }
 
@@ -407,6 +414,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
           type: 'territory',
           territoryId: vertex.id,
         });
+      else playSound('click');
       setPendingAttackEmoji(null);
       return;
     }
@@ -427,6 +435,8 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
               { id: Date.now(), message: res.error },
             ]);
         });
+      } else {
+        playSound('click');
       }
       setNukeTargeting(null);
       return;
@@ -539,8 +549,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         if (attackStartTerritoryId !== null) {
           if (vertex?.id !== attackStartTerritoryId) cancelAttack();
         } else if (attackSeaDiceOnly) {
+          playSound('click');
           setAttackSeaDiceRoll(null);
         } else if (attackDiceRoll !== null) {
+          playSound('click');
           setAttackDiceRoll(null);
         }
         return;
@@ -555,8 +567,13 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
 
     if (turnPhase === 'entrench') {
       if (!vertex || !isInteractable(vertex)) {
-        if (selectedTerritoryId !== null && vertex?.id !== selectedTerritoryId)
+        if (
+          selectedTerritoryId !== null &&
+          vertex?.id !== selectedTerritoryId
+        ) {
+          playSound('click');
           selectTerritory(null);
+        }
         return;
       }
       if (selectedTerritoryId === vertex.id) {
@@ -569,8 +586,13 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
 
     if (turnPhase === 'toxins') {
       if (!vertex || !isInteractable(vertex)) {
-        if (selectedTerritoryId !== null && vertex?.id !== selectedTerritoryId)
+        if (
+          selectedTerritoryId !== null &&
+          vertex?.id !== selectedTerritoryId
+        ) {
+          playSound('click');
           selectTerritory(null);
+        }
         return;
       }
       if (selectedTerritoryId === vertex.id) {
@@ -582,10 +604,17 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     }
 
     if (!vertex || !isInteractable(vertex)) {
-      if (selectedTerritoryId !== null && vertex?.id !== selectedTerritoryId)
+      if (selectedTerritoryId !== null && vertex?.id !== selectedTerritoryId) {
+        playSound('click');
         selectTerritory(null);
-      if (deploySeaTerritoryId !== null && vertex?.id !== deploySeaTerritoryId)
+      }
+      if (
+        deploySeaTerritoryId !== null &&
+        vertex?.id !== deploySeaTerritoryId
+      ) {
+        playSound('click');
         cancelDeploySea();
+      }
       return;
     }
     if (turnPhase === 'deploy' && seaIdSet.has(vertex.id)) {
@@ -696,11 +725,13 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     e.preventDefault();
     if (isSyntheticMouseEvent()) return;
     if (pendingAttackEmoji) {
+      playSound('click');
       setPendingAttackEmoji(null);
       return;
     }
     if (gameEnded || !isMyTurn || paused) return;
     if (nukeTargeting) {
+      playSound('click');
       setNukeTargeting(null);
       return;
     }
@@ -738,8 +769,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       } else if (attackStartTerritoryId !== null) {
         cancelAttack();
       } else if (attackSeaDiceOnly) {
+        playSound('click');
         setAttackSeaDiceRoll(null);
       } else if (attackDiceRoll !== null) {
+        playSound('click');
         setAttackDiceRoll(null);
       }
       return;
@@ -761,10 +794,14 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       return;
     }
     if (deploySeaTerritoryId !== null) {
+      playSound('click');
       cancelDeploySea();
       return;
     }
-    if (selectedTerritoryId !== null) selectTerritory(null);
+    if (selectedTerritoryId !== null) {
+      playSound('click');
+      selectTerritory(null);
+    }
   }
 
   useCanvasKeyboard({ ...params, selectTerritory, zoomAround });

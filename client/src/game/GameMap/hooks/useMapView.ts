@@ -7,7 +7,7 @@ import {
   type SeaTerritory,
   type Territory,
 } from '../../mapData';
-import type { Transform } from '../helpers';
+import { createCamera, DEFAULT_TRANSFORM } from '../camera';
 
 export function useMapView(mapName: string, playerMapId?: string | null) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -16,11 +16,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
   const [seaTerritories, setSeaTerritories] = useState<SeaTerritory[]>([]);
   const [bonuses, setBonuses] = useState<number[]>([]);
   const [wraps, setWraps] = useState<MapWrap[]>([]);
-  const [transform, setTransform] = useState<Transform>({
-    zoom: 1,
-    offsetX: 0,
-    offsetY: 0,
-  });
+  const [camera] = useState(createCamera);
   const [imgDims, setImgDims] = useState({
     w: DEFAULT_IMAGE_WIDTH,
     h: DEFAULT_IMAGE_HEIGHT,
@@ -37,7 +33,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         setSeaTerritories(seaTerritories);
         setBonuses(bonuses);
         setWraps(wraps);
-        setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
+        camera.set({ ...DEFAULT_TRANSFORM });
         if (!imageSrc) {
           imageRef.current = null;
           setImgDims({ w: DEFAULT_IMAGE_WIDTH, h: DEFAULT_IMAGE_HEIGHT });
@@ -47,12 +43,12 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         img.onload = () => {
           imageRef.current = img;
           setImgDims({ w: img.naturalWidth, h: img.naturalHeight });
-          setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
+          camera.set({ ...DEFAULT_TRANSFORM });
         };
         img.src = imageSrc;
       },
     );
-  }, [mapName, playerMapId]);
+  }, [mapName, playerMapId, camera]);
 
   useEffect(() => {
     function onResize() {
@@ -69,8 +65,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     seaTerritories,
     bonuses,
     wraps,
-    transform,
-    setTransform,
+    camera,
     imgDims,
     size,
   };

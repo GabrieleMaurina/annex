@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../../../../connector';
+import { playSound } from '../../../../lib/sounds';
 import type { Ack, BlitzOutcome, GameState } from '../../../../lib/types';
 import { DICE_ROLL_STEP_DURATION, DICE_ROLL_STEPS } from '../../../animations';
 import {
@@ -128,10 +129,10 @@ export function useAttackSeaFlow({
     [setGame],
   );
 
-  const cancelAttackSea = useCallback(
-    () => selectAttackSeaStart(null),
-    [selectAttackSeaStart],
-  );
+  const cancelAttackSea = useCallback(() => {
+    playSound('click');
+    selectAttackSeaStart(null);
+  }, [selectAttackSeaStart]);
 
   const requestAttackSeaDefender = useCallback(
     (defenderId: number) => {

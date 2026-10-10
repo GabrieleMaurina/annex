@@ -109,10 +109,10 @@ export function useAttackFlow({
     [setGame],
   );
 
-  const cancelAttack = useCallback(
-    () => selectAttackStart(null),
-    [selectAttackStart],
-  );
+  const cancelAttack = useCallback(() => {
+    playSound('click');
+    selectAttackStart(null);
+  }, [selectAttackStart]);
 
   const applyAttackProbabilities = useCallback(
     (blitzWinProbabilities: number[], blitzOutcomes: BlitzOutcome[] | null) => {

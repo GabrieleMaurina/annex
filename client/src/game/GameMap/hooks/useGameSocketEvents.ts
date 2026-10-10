@@ -26,6 +26,8 @@ import { getFortifyPath } from '../../logic/fortify';
 import type { SeaTerritory, Territory } from '../../mapData';
 import type { ReplayData } from '../../replay/replay';
 import { useReplay } from '../../replay/replay';
+import type { DrawCanvasParams } from '../draw/drawCanvas';
+import { drawGameMapCanvas } from '../draw/drawCanvas';
 import type { Point } from '../helpers';
 import { useSeaSocketEvents } from './sea/useSeaSocketEvents';
 import { useAnimationPathHelpers } from './useAnimationPathHelpers';
@@ -72,8 +74,8 @@ export function useGameSocketEvents({
   setRadiationTerritoryIds: (territoryIds: number[]) => void;
   setRadiationUpcomingTerritoryIds: (territoryIds: number[]) => void;
 }) {
-  const [, forceRedraw] = useState(0);
-  const animationLoopActiveRef = useRef(false);
+  const drawParamsRef = useRef<DrawCanvasParams | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const frozenTroopsRef = useRef<Map<number, number>>(new Map());
   const frozenOwnerRef = useRef<Map<number, number>>(new Map());
   const attackRevealDeadlineRef = useRef<Map<number, number>>(new Map());
@@ -88,19 +90,25 @@ export function useGameSocketEvents({
   const [tankFireId, setTankFireId] = useState(0);
 
   const startAnimationLoop = useCallback(() => {
-    if (animationLoopActiveRef.current) return;
-    animationLoopActiveRef.current = true;
+    if (animationFrameRef.current !== null) return;
     function step() {
       pruneAnimations();
-      forceRedraw((n) => n + 1);
-      if (hasActiveAnimations()) {
-        requestAnimationFrame(step);
-      } else {
-        animationLoopActiveRef.current = false;
-      }
+      if (drawParamsRef.current) drawGameMapCanvas(drawParamsRef.current);
+      animationFrameRef.current = hasActiveAnimations()
+        ? requestAnimationFrame(step)
+        : null;
     }
-    requestAnimationFrame(step);
+    animationFrameRef.current = requestAnimationFrame(step);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (animationFrameRef.current !== null)
+        cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     return onAnimationsToggle(() => {
@@ -930,6 +938,7 @@ export function useGameSocketEvents({
     toxinPlacedAtRef,
     radiationPlacedAtRef,
     tankFireId,
+    drawParamsRef,
     startAnimationLoop,
     replay,
   };

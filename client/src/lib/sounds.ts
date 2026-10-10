@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 const SOUND_NAMES = [
   'click',
   'deploy',
@@ -19,6 +21,8 @@ const SOUND_NAMES = [
 const audioByName = new Map<string, HTMLAudioElement>();
 let muted = false;
 let volume = 1;
+const CLICK_DEDUPE_MS = 120;
+let lastClickAt = -Infinity;
 
 export function preloadSounds() {
   for (const name of SOUND_NAMES) {
@@ -33,8 +37,22 @@ export function playSound(name: string) {
   if (muted) return;
   const audio = audioByName.get(name);
   if (!audio) return;
+  if (name === 'click') {
+    const now = performance.now();
+    if (now - lastClickAt < CLICK_DEDUPE_MS) return;
+    lastClickAt = now;
+  }
   audio.currentTime = 0;
   audio.play().catch(() => {});
+}
+
+export function useToggleSound(value: unknown) {
+  const previousRef = useRef(value);
+  useEffect(() => {
+    if (previousRef.current === value) return;
+    previousRef.current = value;
+    playSound('click');
+  }, [value]);
 }
 
 export function isSoundMuted(): boolean {
@@ -62,7 +80,9 @@ export function setSoundVolume(value: number) {
 }
 
 const CLICK_SOUND_SELECTOR =
-  'button, a, input[type="checkbox"], input[type="radio"], select, [role="button"]';
+  'button, a, input[type="checkbox"], input[type="radio"], input[type="range"], input[type="color"], select, [role="button"]';
+const CHANGE_SOUND_SELECTOR =
+  'select, input[type="range"], input[type="color"]';
 
 export function initUiClickSounds() {
   document.addEventListener(
@@ -71,6 +91,27 @@ export function initUiClickSounds() {
       const target = e.target as HTMLElement | null;
       const el = target?.closest(CLICK_SOUND_SELECTOR);
       if (!el || el.closest('[data-no-click-sound]')) return;
+      playSound('click');
+    },
+    true,
+  );
+  document.addEventListener(
+    'change',
+    (e) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.matches(CHANGE_SOUND_SELECTOR)) return;
+      if (target.closest('[data-no-click-sound]')) return;
+      playSound('click');
+    },
+    true,
+  );
+  document.addEventListener(
+    'input',
+    (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLInputElement) || target.type !== 'number')
+        return;
+      if ((e as InputEvent).inputType) return;
       playSound('click');
     },
     true,

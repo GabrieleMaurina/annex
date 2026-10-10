@@ -1,11 +1,29 @@
+import type { Territory } from '../../mapData';
+import { useCameraTransform, type Camera } from '../camera';
+import { getScales, getTerritoryScreenPos } from '../helpers';
+
 interface Props {
-  position: { x: number; y: number } | null;
+  camera: Camera;
+  territory: Territory | undefined;
   labels: string[];
-  offset: number;
+  size: { w: number; h: number };
+  imgDims: { w: number; h: number };
+  VERTEX_RADIUS: number;
 }
 
-export default function TerritoryTooltip({ position, labels, offset }: Props) {
-  if (!position || labels.length === 0) return null;
+export default function TerritoryTooltip({
+  camera,
+  territory,
+  labels,
+  size,
+  imgDims,
+  VERTEX_RADIUS,
+}: Props) {
+  const transform = useCameraTransform(camera);
+  if (!territory || labels.length === 0) return null;
+  const position = getTerritoryScreenPos(territory, size, transform, imgDims);
+  const offset =
+    VERTEX_RADIUS * getScales(size.w, size.h, transform.zoom, imgDims).scaleX;
   return (
     <div
       className="position-absolute px-2 py-1 rounded text-white small"

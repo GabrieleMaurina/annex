@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useNumberInput } from '../../../common/inputs/useNumberInput';
 import { contrastTextColor, playerColor } from '../../../lib/palette';
+import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
 import { attackOptionStyle, formatProbability } from './attackOptionStyle';
 import { DiceRollDisplay, type AttackType, type DiceRoll } from './AttackPanel';
@@ -99,7 +100,10 @@ function AttackSeaPanel({
                 color: contrastTextColor(playerColor(d.color)),
                 border: 'none',
               }}
-              onClick={() => onSelectDefender(d.playerId)}
+              onClick={() => {
+                playSound('click');
+                onSelectDefender(d.playerId);
+              }}
             >
               {d.ships}
             </Button>
@@ -109,7 +113,10 @@ function AttackSeaPanel({
         <div className="d-flex align-items-center gap-2">
           <div
             style={attackOptionStyle(selectedType === 'regular')}
-            onClick={onSelectRegular}
+            onClick={() => {
+              playSound('click');
+              onSelectRegular();
+            }}
           >
             <div className="d-flex align-items-center gap-1">
               <span>Ships</span>
@@ -137,7 +144,10 @@ function AttackSeaPanel({
           {blitzEnabled && (
             <div
               style={attackOptionStyle(selectedType === 'blitz')}
-              onClick={onSelectBlitz}
+              onClick={() => {
+                playSound('click');
+                onSelectBlitz();
+              }}
             >
               <div className="d-flex align-items-center gap-1">
                 <span>Blitz</span>

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
+import { playSound } from '../../lib/sounds';
 
 const MAX_NAME_LENGTH = 10;
 
@@ -44,8 +45,10 @@ function PlayerNameEditor({ player, onNameChange }: Props) {
           onBlur={commit}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
+              playSound('click');
               e.currentTarget.blur();
             } else if (e.key === 'Escape') {
+              playSound('click');
               skipBlurRef.current = true;
               setName(player.name);
               setEditing(false);

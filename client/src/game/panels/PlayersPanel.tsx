@@ -1,6 +1,6 @@
 import { isPointsMode } from 'engine';
 import type { MutableRefObject, ReactNode } from 'react';
-import { useRef } from 'react';
+import { memo, useRef } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
@@ -755,4 +755,4 @@ function PlayersPanel({
   );
 }
 
-export default PlayersPanel;
+export default memo(PlayersPanel);

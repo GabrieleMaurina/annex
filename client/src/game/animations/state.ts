@@ -195,23 +195,23 @@ export function pruneAnimations() {
 }
 
 export function setContinuousAnimation(active: boolean) {
-  continuousAnimationActive = active && !disabled;
+  continuousAnimationActive = active;
 }
 
 export function setPortalsActive(active: boolean) {
-  portalsActive = active && !disabled;
+  portalsActive = active;
 }
 
 export function setToxinsActive(active: boolean) {
-  toxinsActive = active && !disabled;
+  toxinsActive = active;
 }
 
 export function setRadiationActive(active: boolean) {
-  radiationActive = active && !disabled;
+  radiationActive = active;
 }
 
 export function setFogActive(active: boolean) {
-  fogActive = active && !disabled;
+  fogActive = active;
 }
 
 export function hasActiveAnimations(): boolean {

@@ -15,6 +15,7 @@ import {
   playerColor,
 } from '../../lib/palette';
 import { rankForElo } from '../../lib/ranks';
+import { useToggleSound } from '../../lib/sounds';
 import type {
   Account,
   EloHistoryPoint,
@@ -96,6 +97,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   const [reportMenu, setReportMenu] = useState<{ x: number; y: number } | null>(
     null,
   );
+  useToggleSound(reportMenu !== null);
   const [reportMessage, setReportMessage] = useState('');
   const [mapPreview, setMapPreview] = useState<PlayerMapRow | null>(null);
 

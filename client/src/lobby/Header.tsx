@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
 import { useTitleIconFit } from '../common/useTitleIconFit';
+import { playSound } from '../lib/sounds';
 import type { GameSettingsInput, GameState } from '../lib/types';
 
 const MAX_GAME_NAME_LENGTH = 20;
@@ -48,7 +49,9 @@ function Header({ game, isHost, applySettings }: Props) {
               setEditingName(false);
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') e.currentTarget.blur();
+              if (e.key !== 'Enter') return;
+              playSound('click');
+              e.currentTarget.blur();
             }}
           />
         ) : (

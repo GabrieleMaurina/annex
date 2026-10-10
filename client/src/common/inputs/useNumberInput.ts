@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react';
+import { playSound } from '../../lib/sounds';
 
 const PIXELS_PER_STEP = 8;
 const DRAG_THRESHOLD = 4;
@@ -38,6 +39,7 @@ export function useNumberInput({
     );
     if (next === latest.value) return;
     latest.value = next;
+    playSound('click');
     latest.onChange(next);
   }, []);
 
@@ -96,7 +98,9 @@ export function useNumberInput({
       max,
       Math.max(min, drag.startValue + Math.round(dy / PIXELS_PER_STEP)),
     );
-    if (next !== value) onChange(next);
+    if (next === value) return;
+    playSound('click');
+    onChange(next);
   }
 
   function endDrag(e: React.PointerEvent<HTMLElement>) {

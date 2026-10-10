@@ -281,7 +281,10 @@ function AttackPanel({
                 style={attackOptionStyle(
                   selectedType === 'regular' && regularTroops === troops,
                 )}
-                onClick={() => onSelectRegular(troops)}
+                onClick={() => {
+                  playSound('click');
+                  onSelectRegular(troops);
+                }}
               >
                 <div>{troops}</div>
               </div>
@@ -290,10 +293,14 @@ function AttackPanel({
           {blitzEnabled && (
             <div
               style={attackOptionStyle(selectedType === 'blitz')}
-              onClick={onSelectBlitz}
+              onClick={() => {
+                playSound('click');
+                onSelectBlitz();
+              }}
               onWheel={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                playSound('click');
                 onBlitzTroopsWheel(e.deltaY < 0 ? 1 : -1);
               }}
             >

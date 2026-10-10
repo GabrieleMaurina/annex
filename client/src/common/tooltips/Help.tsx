@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { useToggleSound } from '../../lib/sounds';
 
 interface Props {
   children: ReactNode;
@@ -9,6 +10,7 @@ interface Props {
 function Help({ children }: Props) {
   const id = useId();
   const [pinned, setPinned] = useState(false);
+  useToggleSound(pinned);
   const [hovering, setHovering] = useState(false);
   const iconRef = useRef<HTMLSpanElement>(null);
 

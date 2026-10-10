@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import Help from '../../common/tooltips/Help';
+import { playSound } from '../../lib/sounds';
 import type {
   GameMeta,
   GameSettingsInput,
@@ -192,7 +193,9 @@ function GameSettingsFields({
                             setPasswordInput('');
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') e.currentTarget.blur();
+                            if (e.key !== 'Enter') return;
+                            playSound('click');
+                            e.currentTarget.blur();
                           }}
                         />
                         {gameMeta.hasPassword && (

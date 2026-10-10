@@ -147,7 +147,11 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
                 setText(e.target.value);
                 setHasProfanity(false);
               }}
-              onKeyDown={(e) => e.key === 'Enter' && send()}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                if (text.trim()) playSound('click');
+                send();
+              }}
               isInvalid={hasProfanity}
             />
             <Form.Control.Feedback type="invalid">

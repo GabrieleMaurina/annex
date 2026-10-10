@@ -16,7 +16,9 @@ import {
   totalUnread,
 } from '../../lib/messages';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
+import { useToggleSound } from '../../lib/sounds';
 import type { Account } from '../../lib/types';
+import { setLoginReturnPath } from '../../pages/account/loginReturn';
 import Flag from '../badges/Flag';
 import RankIcon from '../badges/RankIcon';
 import { useWhiteIcon } from '../icon';
@@ -43,7 +45,9 @@ interface Props {
 
 function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
   const [open, setOpen] = useState(false);
+  useToggleSound(open);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  useToggleSound(shortcutsOpen);
   const panelRef = useRef<HTMLDivElement>(null);
   const whiteMenuIcon = useWhiteIcon('/icons/menu.svg');
   const { pathname } = useLocation();
@@ -183,7 +187,15 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
                 variant="secondary"
                 size="sm"
                 disabled={pathname === '/login'}
-                onClick={() => go('/login')}
+                onClick={() => {
+                  const path = window.location.pathname;
+                  setLoginReturnPath(
+                    /^\/(email_confirmation|password_reset)\//.test(path)
+                      ? '/'
+                      : path + window.location.search,
+                  );
+                  go('/login');
+                }}
               >
                 Log in
               </Button>

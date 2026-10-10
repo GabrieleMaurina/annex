@@ -4,6 +4,7 @@ import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { formatError } from '../common/formatError';
 import { connector } from '../connector';
+import { playSound, useToggleSound } from '../lib/sounds';
 import type { Account, GenerateMapInput, MapSize } from '../lib/types';
 import {
   createBlankImage,
@@ -143,6 +144,7 @@ function MapEditor({ account }: { account: Account | null }) {
   const [generation, setGeneration] = useState<GenerateMapInput | null>(null);
   const [currentContinentId, setCurrentContinentId] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
+  useToggleSound(collapsed);
 
   const [mode, setMode] = useState<'graph' | 'paint'>('graph');
   const [exclusive, setExclusive] = useState(false);
@@ -178,6 +180,10 @@ function MapEditor({ account }: { account: Account | null }) {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  useToggleSound(libraryOpen);
+  useToggleSound(generateOpen);
+  useToggleSound(newOpen);
+  useToggleSound(leaveOpen);
   const [newSize, setNewSize] = useState<MapSize>('medium');
   const [dirty, setDirty] = useState(false);
   const pendingDirtyRef = useRef(false);
@@ -654,21 +660,28 @@ function MapEditor({ account }: { account: Account | null }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape' && mode === 'paint') {
-        if (tool) setTool(null);
-        else setCollapsed(true);
+        if (tool) {
+          playSound('click');
+          setTool(null);
+        } else {
+          setCollapsed(true);
+        }
         return;
       }
       if (!(e.ctrlKey || e.metaKey)) return;
       const key = e.key.toLowerCase();
       if (key === 's') {
         e.preventDefault();
+        playSound('click');
         handleSave();
       } else if (key === 'z') {
         e.preventDefault();
+        playSound('click');
         if (e.shiftKey) redo();
         else undo();
       } else if (key === 'y') {
         e.preventDefault();
+        playSound('click');
         redo();
       }
     }

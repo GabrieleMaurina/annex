@@ -303,8 +303,8 @@ const DOT_COLOR = '#0b2a6b';
 const DOT_WIDTH = 4;
 const DOT_SPACING = 8;
 
-function drawSleeper(
-  ctx: CanvasRenderingContext2D,
+function traceSleeper(
+  path: Path2D,
   center: Point,
   ux: number,
   uy: number,
@@ -313,30 +313,28 @@ function drawSleeper(
   halfLength: number,
   halfThickness: number,
 ) {
-  ctx.beginPath();
-  ctx.moveTo(
+  path.moveTo(
     center.x + px * halfLength - ux * halfThickness,
     center.y + py * halfLength - uy * halfThickness,
   );
-  ctx.lineTo(
+  path.lineTo(
     center.x + px * halfLength + ux * halfThickness,
     center.y + py * halfLength + uy * halfThickness,
   );
-  ctx.lineTo(
+  path.lineTo(
     center.x - px * halfLength + ux * halfThickness,
     center.y - py * halfLength + uy * halfThickness,
   );
-  ctx.lineTo(
+  path.lineTo(
     center.x - px * halfLength - ux * halfThickness,
     center.y - py * halfLength - uy * halfThickness,
   );
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+  path.closePath();
 }
 
-function drawRailwaySegment(
-  ctx: CanvasRenderingContext2D,
+function traceRailway(
+  sleepers: Path2D,
+  rails: Path2D,
   a: Point,
   b: Point,
   zoom: number,
@@ -355,15 +353,11 @@ function drawRailwaySegment(
   const sleeperHalfLength = SLEEPER_HALF_LENGTH * zoom;
   const sleeperHalfThickness = SLEEPER_HALF_THICKNESS * zoom;
 
-  ctx.save();
-  ctx.fillStyle = SLEEPER_COLOR;
-  ctx.strokeStyle = SLEEPER_STROKE;
-  ctx.lineWidth = Math.max(1, zoom);
   const sleeperCount = Math.max(1, Math.round(len / spacing));
   for (let i = 0; i <= sleeperCount; i++) {
     const t = i / sleeperCount;
-    drawSleeper(
-      ctx,
+    traceSleeper(
+      sleepers,
       { x: a.x + dx * t, y: a.y + dy * t },
       ux,
       uy,
@@ -374,38 +368,10 @@ function drawRailwaySegment(
     );
   }
 
-  for (const [color, width] of [
-    [RAIL_OUTLINE_COLOR, RAIL_WIDTH * zoom + zoom],
-    [RAIL_COLOR, RAIL_WIDTH * zoom],
-  ] as const) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    for (const side of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(a.x + px * offset * side, a.y + py * offset * side);
-      ctx.lineTo(b.x + px * offset * side, b.y + py * offset * side);
-      ctx.stroke();
-    }
+  for (const side of [-1, 1]) {
+    rails.moveTo(a.x + px * offset * side, a.y + py * offset * side);
+    rails.lineTo(b.x + px * offset * side, b.y + py * offset * side);
   }
-  ctx.restore();
-}
-
-function drawDottedSegment(
-  ctx: CanvasRenderingContext2D,
-  a: Point,
-  b: Point,
-  zoom: number,
-) {
-  ctx.save();
-  ctx.strokeStyle = DOT_COLOR;
-  ctx.lineWidth = DOT_WIDTH * zoom;
-  ctx.lineCap = 'round';
-  ctx.setLineDash([0, DOT_SPACING * zoom]);
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  ctx.lineTo(b.x, b.y);
-  ctx.stroke();
-  ctx.restore();
 }
 
 export function drawSupplyLines(
@@ -419,6 +385,9 @@ export function drawSupplyLines(
   zoom: number,
   forcedWraps: ForcedWraps,
 ) {
+  const sleepers = new Path2D();
+  const rails = new Path2D();
+  const dots = new Path2D();
   for (const edges of edgesByPlayer.values()) {
     for (const edge of edges) {
       const from = territoryById.get(edge.fromId);
@@ -432,9 +401,33 @@ export function drawSupplyLines(
         mapH,
         forcedWraps,
       );
-      for (const { a, b } of segments)
-        if (overSea) drawDottedSegment(ctx, a, b, zoom);
-        else drawRailwaySegment(ctx, a, b, zoom);
+      for (const { a, b } of segments) {
+        if (overSea) {
+          dots.moveTo(a.x, a.y);
+          dots.lineTo(b.x, b.y);
+        } else {
+          traceRailway(sleepers, rails, a, b, zoom);
+        }
+      }
     }
   }
+
+  ctx.save();
+  ctx.fillStyle = SLEEPER_COLOR;
+  ctx.strokeStyle = SLEEPER_STROKE;
+  ctx.lineWidth = Math.max(1, zoom);
+  ctx.fill(sleepers);
+  ctx.stroke(sleepers);
+  ctx.strokeStyle = RAIL_OUTLINE_COLOR;
+  ctx.lineWidth = RAIL_WIDTH * zoom + zoom;
+  ctx.stroke(rails);
+  ctx.strokeStyle = RAIL_COLOR;
+  ctx.lineWidth = RAIL_WIDTH * zoom;
+  ctx.stroke(rails);
+  ctx.strokeStyle = DOT_COLOR;
+  ctx.lineWidth = DOT_WIDTH * zoom;
+  ctx.lineCap = 'round';
+  ctx.setLineDash([0, DOT_SPACING * zoom]);
+  ctx.stroke(dots);
+  ctx.restore();
 }

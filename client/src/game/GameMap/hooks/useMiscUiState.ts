@@ -45,7 +45,7 @@ export function useLiveGameRefs() {
   const getTerritoryScreenPosRef = useRef<
     (t: Territory) => { x: number; y: number }
   >(() => ({ x: 0, y: 0 }));
-  const vertexScreenRadiusRef = useRef(0);
+  const getVertexScreenRadiusRef = useRef<() => number>(() => 0);
   const autoAdvanceKeyRef = useRef<string | null>(null);
   const cardImagesRef = useRef<Record<CardSymbol, HTMLImageElement>>({
     soldier: new Image(),
@@ -69,7 +69,7 @@ export function useLiveGameRefs() {
     playersRef,
     selfIdRef,
     getTerritoryScreenPosRef,
-    vertexScreenRadiusRef,
+    getVertexScreenRadiusRef,
     autoAdvanceKeyRef,
     cardImagesRef,
   };
@@ -99,30 +99,12 @@ function anchoredStyle(
   };
 }
 
-export function usePanelStyles({
-  territories,
-  seaTerritories,
-  size,
-  transform,
-  imgDims,
-  VERTEX_RADIUS,
-  tooltipTerritoryId,
-  selectedTerritoryId,
-  fortifyEndTerritoryId,
-  attackEndTerritoryId,
-  attackDiceRollTerritoryId,
-  sailEndTerritoryId,
-  attackSeaTerritoryId,
-  attackSeaDiceRollTerritoryId,
-  deploySeaTerritoryId,
-}: {
+export interface PanelAnchors {
   territories: Territory[];
   seaTerritories: { id: number; x: number; y: number }[];
   size: { w: number; h: number };
-  transform: Transform;
   imgDims: { w: number; h: number };
   VERTEX_RADIUS: number;
-  tooltipTerritoryId: number | null;
   selectedTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
   attackEndTerritoryId: number | null;
@@ -131,17 +113,28 @@ export function usePanelStyles({
   attackSeaTerritoryId: number | null;
   attackSeaDiceRollTerritoryId: number | undefined;
   deploySeaTerritoryId: number | null;
-}) {
+}
+
+export function usePanelStyles(
+  {
+    territories,
+    seaTerritories,
+    size,
+    imgDims,
+    VERTEX_RADIUS,
+    selectedTerritoryId,
+    fortifyEndTerritoryId,
+    attackEndTerritoryId,
+    attackDiceRollTerritoryId,
+    sailEndTerritoryId,
+    attackSeaTerritoryId,
+    attackSeaDiceRollTerritoryId,
+    deploySeaTerritoryId,
+  }: PanelAnchors,
+  transform: Transform,
+) {
   const zoomedRadius =
     VERTEX_RADIUS * getScales(size.w, size.h, transform.zoom, imgDims).scaleX;
-
-  const tooltipTerritory =
-    tooltipTerritoryId !== null
-      ? territories.find((t) => t.id === tooltipTerritoryId)
-      : undefined;
-  const tooltipScreenPos = tooltipTerritory
-    ? getTerritoryScreenPos(tooltipTerritory, size, transform, imgDims)
-    : null;
 
   const selectedTerritory =
     selectedTerritoryId !== null
@@ -238,8 +231,6 @@ export function usePanelStyles({
   );
 
   return {
-    zoomedRadius,
-    tooltipScreenPos,
     deployPanelStyle,
     fortifyPanelStyle,
     attackPanelStyle,

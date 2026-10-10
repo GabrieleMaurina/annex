@@ -24,6 +24,7 @@ import { isPortalHop } from '../../portals';
 import type { ConquestArrow } from '../../replay/replay';
 import type { RailEdge } from '../../supplyLines';
 import { drawSupplyLines } from '../../supplyLines';
+import type { Camera } from '../camera';
 import {
   ENTRENCHED_OCTAGON_FILL,
   ENTRENCHED_OCTAGON_STROKE,
@@ -34,8 +35,6 @@ import {
   HILL_FILL,
   HILL_HALF_WIDTH,
   HILL_HEIGHT,
-  HILL_SNOW,
-  HILL_SNOW_FILL,
   HILL_STROKE,
   SEA_COLOR,
   SEA_SIZE_MULTIPLIER,
@@ -43,14 +42,13 @@ import {
   strokeContinentOutline,
   UNCLAIMED_TERRITORY_COLOR,
   type Point,
-  type Transform,
 } from '../helpers';
 
 export interface DrawCanvasParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   size: { w: number; h: number };
   imgDims: { w: number; h: number };
-  transform: Transform;
+  camera: Camera;
   imageRef: RefObject<HTMLImageElement | null>;
   supplyLineEdgesByPlayer: Map<number, RailEdge[]>;
   territories: Territory[];
@@ -110,7 +108,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     canvasRef,
     size,
     imgDims,
-    transform,
+    camera,
     imageRef,
     supplyLineEdgesByPlayer,
     territories,
@@ -175,6 +173,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   ctx.fillStyle = '#212529';
   ctx.fillRect(0, 0, size.w, size.h);
 
+  const transform = camera.get();
   const { zoom } = transform;
   const { imgW, imgH, scaleX, scaleY } = getScales(
     size.w,
@@ -382,19 +381,6 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.lineWidth = 2 * zoom;
     ctx.lineJoin = 'round';
     ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(apex.x, apex.y);
-    ctx.lineTo(
-      apex.x + (right.x - apex.x) * HILL_SNOW,
-      apex.y + (right.y - apex.y) * HILL_SNOW,
-    );
-    ctx.lineTo(
-      apex.x + (left.x - apex.x) * HILL_SNOW,
-      apex.y + (left.y - apex.y) * HILL_SNOW,
-    );
-    ctx.closePath();
-    ctx.fillStyle = HILL_SNOW_FILL;
-    ctx.fill();
   }
   ctx.restore();
 

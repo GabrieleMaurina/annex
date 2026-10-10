@@ -385,6 +385,7 @@ function Messages({ account }: Props) {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
+                        if (draft.trim()) playSound('click');
                         send();
                       }
                     }}

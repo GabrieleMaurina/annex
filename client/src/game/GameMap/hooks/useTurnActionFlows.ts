@@ -1,6 +1,7 @@
 import { MAX_TERRITORY_TROOPS } from 'engine';
 import { useCallback, useRef, useState } from 'react';
 import { connector } from '../../../connector';
+import { playSound } from '../../../lib/sounds';
 import type { Ack, Fortification, GameState } from '../../../lib/types';
 import { getEntrenchCandidates } from '../../logic/entrench';
 import {
@@ -116,10 +117,10 @@ export function useTurnActionFlows({
     [setGame],
   );
 
-  const cancelFortify = useCallback(
-    () => selectFortifyStart(null),
-    [selectFortifyStart],
-  );
+  const cancelFortify = useCallback(() => {
+    playSound('click');
+    selectFortifyStart(null);
+  }, [selectFortifyStart]);
 
   const selectFortifyEnd = useCallback(
     (territoryId: number) => {

@@ -9,9 +9,9 @@ import { pushSettings } from '../../lib/player';
 import {
   getSoundVolume,
   isSoundMuted,
-  playSound,
   setSoundVolume,
   toggleSoundMuted,
+  useToggleSound,
 } from '../../lib/sounds';
 import { useWhiteIcon } from '../icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../panelStyle';
@@ -32,6 +32,7 @@ function SettingsMenu({
   lockScrollOnFullscreen,
 }: Props) {
   const [open, setOpen] = useState(false);
+  useToggleSound(open);
 
   useEffect(() => {
     onOpenChange?.(open);
@@ -147,7 +148,6 @@ function SettingsMenu({
           onClick={(e) => {
             if (e.target !== e.currentTarget) return;
             setOpen(false);
-            playSound('click');
           }}
         >
           <div className="d-flex gap-2" ref={buttonRowRef}>

@@ -4,7 +4,7 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
   {
     title: 'Menus',
     shortcuts: [
-      ['M', 'Navigation menu'],
+      ['M', 'Menu'],
       ['O', 'Client settings'],
       ['Esc', 'Close the open menu or popup'],
     ],
@@ -13,12 +13,12 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
     title: 'Panels',
     shortcuts: [
       ['C', 'Chat'],
-      ['B', 'Continent bonuses'],
-      ['T', 'Cards'],
+      ['B', 'Bonuses'],
+      ['T', 'Territory Cards'],
       ['L', 'Logs'],
       ['S', 'Game settings'],
       ['N', 'Nukes'],
-      ['P', 'Players panel'],
+      ['P', 'Players'],
     ],
   },
   {

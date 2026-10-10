@@ -1,4 +1,4 @@
-import type { Dispatch, RefObject, SetStateAction } from 'react';
+import type { RefObject } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import {
   clamp,
@@ -8,15 +8,15 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
 } from '../../../mapMath';
-import { easeOutCubic, type Transform } from '../../helpers';
+import { DEFAULT_TRANSFORM, type Camera } from '../../camera';
+import { easeOutCubic } from '../../helpers';
 
 const SETTLE_DURATION = 200;
 
 export function useMapViewportAnimation(
   canvasRef: RefObject<HTMLCanvasElement | null>,
-  transform: Transform,
+  camera: Camera,
   imgDims: { w: number; h: number },
-  setTransform: Dispatch<SetStateAction<Transform>>,
 ) {
   const settleRef = useRef<number | null>(null);
 
@@ -29,8 +29,8 @@ export function useMapViewportAnimation(
 
   const resetView = useCallback(() => {
     cancelSettle();
-    setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
-  }, [cancelSettle, setTransform]);
+    camera.set({ ...DEFAULT_TRANSFORM });
+  }, [cancelSettle, camera]);
 
   useEffect(
     () => () => {
@@ -55,7 +55,7 @@ export function useMapViewportAnimation(
       const canvasW = canvas.clientWidth;
       const canvasH = canvas.clientHeight;
       const { w: imgW, h: imgH } = imgDims;
-      setTransform((prev) => {
+      camera.set((prev) => {
         const { scaleX: oldSX, scaleY: oldSY } = getScales(
           canvasW,
           canvasH,
@@ -88,14 +88,14 @@ export function useMapViewportAnimation(
         return { zoom: newZoom, offsetX: x, offsetY: y };
       });
     },
-    [canvasRef, imgDims, setTransform, cancelSettle],
+    [canvasRef, imgDims, camera, cancelSettle],
   );
 
   function startSettle() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     cancelSettle();
-    const { zoom, offsetX, offsetY } = transform;
+    const { zoom, offsetX, offsetY } = camera.get();
     const settle = createSettleSampler(
       canvas.clientWidth,
       canvas.clientHeight,
@@ -108,7 +108,7 @@ export function useMapViewportAnimation(
     const { target } = settle;
     if (settle.settled) {
       if (offsetX !== target.x || offsetY !== target.y) {
-        setTransform((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
+        camera.set((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
       }
       return;
     }
@@ -116,12 +116,12 @@ export function useMapViewportAnimation(
     const animate = (now: number) => {
       const progress = Math.min((now - begin) / SETTLE_DURATION, 1);
       if (progress >= 1) {
-        setTransform((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
+        camera.set((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
         settleRef.current = null;
         return;
       }
       const next = settle.sample(easeOutCubic(progress));
-      setTransform((t) => ({ ...t, offsetX: next.x, offsetY: next.y }));
+      camera.set((t) => ({ ...t, offsetX: next.x, offsetY: next.y }));
       settleRef.current = requestAnimationFrame(animate);
     };
     settleRef.current = requestAnimationFrame(animate);

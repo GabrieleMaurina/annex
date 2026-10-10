@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isPlayerMuted } from '../../../common/mutedPlayers';
 import { connector } from '../../../connector';
 import { playerColor } from '../../../lib/palette';
@@ -32,7 +32,7 @@ export function useEmojiUI({
   selfIdRef,
   canvasRef,
   getTerritoryScreenPosRef,
-  vertexScreenRadiusRef,
+  getVertexScreenRadiusRef,
 }: {
   selfId: number | null;
   isTeamDeathmatch: boolean;
@@ -45,7 +45,7 @@ export function useEmojiUI({
   selfIdRef: RefObject<number | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   getTerritoryScreenPosRef: RefObject<(t: Territory) => Point>;
-  vertexScreenRadiusRef: RefObject<number>;
+  getVertexScreenRadiusRef: RefObject<() => number>;
 }) {
   const [emojiPickerFor, setEmojiPickerFor] = useState<number | null>(null);
   const [pendingAttackEmoji, setPendingAttackEmoji] = useState<{
@@ -68,36 +68,44 @@ export function useEmojiUI({
   const rowRefs = useRef(new Map<number, HTMLElement>());
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
-  function sendEmoji(
-    targetPlayerId: number,
-    emoji: EmojiValue,
-    attackTarget?: EmojiSentPayload['attackTarget'],
-  ) {
-    if (connector.isOffline()) return;
-    connector.sendEmoji({
-      targetPlayerId:
-        targetPlayerId === GLOBAL_TARGET_ID ? undefined : targetPlayerId,
-      emoji,
-      attackTarget,
-    });
-  }
-
-  function handlePlayerRowClick(playerId: number) {
-    if (pendingAttackEmoji) {
-      sendEmoji(pendingAttackEmoji.targetPlayerId, ATTACK_EMOJI, {
-        type: 'player',
-        playerId,
+  const sendEmoji = useCallback(
+    (
+      targetPlayerId: number,
+      emoji: EmojiValue,
+      attackTarget?: EmojiSentPayload['attackTarget'],
+    ) => {
+      if (connector.isOffline()) return;
+      connector.sendEmoji({
+        targetPlayerId:
+          targetPlayerId === GLOBAL_TARGET_ID ? undefined : targetPlayerId,
+        emoji,
+        attackTarget,
       });
-      setPendingAttackEmoji(null);
-      return;
-    }
-    if (playerId === selfId) return;
-    setEmojiPickerFor((prev) => (prev === playerId ? null : playerId));
-  }
+    },
+    [],
+  );
+
+  const handlePlayerRowClick = useCallback(
+    (playerId: number) => {
+      if (pendingAttackEmoji) {
+        sendEmoji(pendingAttackEmoji.targetPlayerId, ATTACK_EMOJI, {
+          type: 'player',
+          playerId,
+        });
+        setPendingAttackEmoji(null);
+        return;
+      }
+      if (playerId === selfId) return;
+      playSound('click');
+      setEmojiPickerFor((prev) => (prev === playerId ? null : playerId));
+    },
+    [pendingAttackEmoji, selfId, sendEmoji],
+  );
 
   function handleEmojiPick(targetPlayerId: number, emoji: EmojiValue) {
     setEmojiPickerFor(null);
     if (emoji === ATTACK_EMOJI) {
+      playSound('click');
       setPendingAttackEmoji({ targetPlayerId });
       return;
     }
@@ -112,6 +120,7 @@ export function useEmojiUI({
       for (const row of rowRefs.current.values()) {
         if (row.contains(target)) return;
       }
+      playSound('click');
       setEmojiPickerFor(null);
     }
     document.addEventListener('mousedown', handleOutside);
@@ -178,7 +187,7 @@ export function useEmojiUI({
         if (territory && canvasRect && rowRect) {
           const local = getTerritoryScreenPosRef.current(territory);
           const sideOffset =
-            vertexScreenRadiusRef.current + EMOJI_TERRITORY_SIDE_GAP;
+            getVertexScreenRadiusRef.current() + EMOJI_TERRITORY_SIDE_GAP;
           const to = {
             x: canvasRect.left + local.x + sideOffset,
             y: canvasRect.top + local.y,
@@ -237,7 +246,7 @@ export function useEmojiUI({
     territoriesRef,
     canvasRef,
     getTerritoryScreenPosRef,
-    vertexScreenRadiusRef,
+    getVertexScreenRadiusRef,
   ]);
 
   return {

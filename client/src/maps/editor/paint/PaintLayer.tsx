@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { playSound } from '../../../lib/sounds';
 import {
   drawCurve,
   drawFreehand,
@@ -348,6 +349,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       )
         return;
       e.preventDefault();
+      playSound('click');
       discardShape();
       onStrokeEnd();
     }
@@ -733,6 +735,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     divRef.current?.setPointerCapture(e.pointerId);
 
     if (tool === 'sampler') {
+      playSound('click');
       samplingRef.current = true;
       const hex = sampleColor(surface, p.x, p.y);
       if (hex) onPickColor(hex);
@@ -745,6 +748,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     }
 
     if (tool === 'fill') {
+      playSound('click');
       floodFill(surface, p.x, p.y, color);
       emit();
       onStrokeEnd();

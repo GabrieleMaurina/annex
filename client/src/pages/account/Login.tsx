@@ -8,6 +8,7 @@ import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
 import { getPlayerName } from '../../lib/player';
 import type { Account } from '../../lib/types';
+import { takeLoginReturnPath } from './loginReturn';
 
 type Mode = 'login' | 'register' | 'forgotPassword' | 'info';
 
@@ -49,7 +50,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
         return;
       }
       onSessionChange();
-      navigate('/');
+      navigate(takeLoginReturnPath());
     });
   }
 

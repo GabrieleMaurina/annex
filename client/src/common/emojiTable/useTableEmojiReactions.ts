@@ -75,6 +75,7 @@ export function useTableEmojiReactions(selfId: number | null) {
       for (const row of rowRefs.current.values()) {
         if (row.contains(target)) return;
       }
+      playSound('click');
       setEmojiPickerFor(null);
     }
     document.addEventListener('mousedown', handleOutside);

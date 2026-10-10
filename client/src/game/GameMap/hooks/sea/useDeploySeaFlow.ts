@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { connector } from '../../../../connector';
+import { playSound } from '../../../../lib/sounds';
 import type { Ack, GameState } from '../../../../lib/types';
 import type { SeaTerritory, Territory } from '../../../mapData';
 
@@ -91,6 +92,7 @@ export function useDeploySeaFlow({
   }
 
   const selectDeploySea = useCallback((seaTerritoryId: number) => {
+    playSound('select');
     setDeploySeaTerritoryId(seaTerritoryId);
   }, []);
 

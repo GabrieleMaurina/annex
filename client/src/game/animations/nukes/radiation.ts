@@ -31,7 +31,6 @@ const RADIATION_ALPHA_SCALE = 0.7;
 const RADIATION_UPCOMING_ALPHA_SCALE = 0.3;
 const RADIATION_PLACE_BURST_DURATION = 900;
 const RADIATION_PARTICLE_COUNT = 9;
-const RADIATION_GLOW_BLUR = 7;
 const RADIATION_TRAIL_SAMPLES = 3;
 const RADIATION_TRAIL_STEP_MS = 55;
 const RADIATION_TRAIL_WIDTH = 3;
@@ -122,8 +121,6 @@ function drawRadiationParticle(
   ctx.save();
   ctx.translate(particle.x, particle.y);
   ctx.rotate(particle.rotation);
-  ctx.shadowBlur = RADIATION_GLOW_BLUR * sizeScale;
-  ctx.shadowColor = color;
   regularPolygonPath(ctx, 0, 0, size, TOXIN_PARTICLE_SIDES);
   ctx.globalAlpha = Math.min(1, particle.alpha * alphaScale);
   ctx.fillStyle = color;

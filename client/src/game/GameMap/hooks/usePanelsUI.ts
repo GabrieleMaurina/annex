@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useToggleSound } from '../../../lib/sounds';
 import { DEFAULT_CARDS_BUTTONS_TOP, TOP_BUTTON_GAP } from '../helpers';
 
 export function usePanelsUI() {
@@ -28,6 +29,8 @@ export function usePanelsUI() {
     DEFAULT_CARDS_BUTTONS_TOP,
   );
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  useToggleSound(openPanel);
+  useToggleSound(panelCollapsed);
 
   useEffect(() => {
     const settingsEl = document.getElementById('settings-toggle');

@@ -8,7 +8,7 @@ import type {
 import type { EvaluatedCombo } from '../../../logic/cards';
 import type { SeaTerritory, Territory } from '../../../mapData';
 import type { DiceRoll } from '../../../panels/attack/AttackPanel';
-import type { Transform } from '../../helpers';
+import type { Camera } from '../../camera';
 
 export type CanvasInteractionsParams = {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -40,8 +40,7 @@ export type CanvasInteractionsParams = {
   submitAttackSea: () => void;
   quickAttackSea: (territoryId: number) => void;
   cancelAttackSea: () => void;
-  transform: Transform;
-  setTransform: Dispatch<SetStateAction<Transform>>;
+  camera: Camera;
   imgDims: { w: number; h: number };
   VERTEX_RADIUS: number;
   gameEnded: boolean;

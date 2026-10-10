@@ -7,7 +7,7 @@ import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { getGeneratedMapData, loadGameMap } from '../../game/mapData';
 import { isRegeneratingMap } from '../../lib/gameSetup';
-import { playSound } from '../../lib/sounds';
+import { playSound, useToggleSound } from '../../lib/sounds';
 import type {
   Account,
   GameMeta,
@@ -109,6 +109,7 @@ function SettingsPanel({
   collapsible = true,
 }: Props) {
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  useToggleSound(mapPickerOpen);
   const [mapThumbnails, setMapThumbnails] = useState<Record<string, string>>(
     {},
   );
@@ -117,6 +118,7 @@ function SettingsPanel({
   >({});
   const loadedMapNamesRef = useRef(new Set<string>());
   const [mapGenOpen, setMapGenOpen] = useState(false);
+  useToggleSound(mapGenOpen);
   const [mapRegenerating, setMapRegenerating] = useState(isRegeneratingMap);
   const [seedCopied, setSeedCopied] = useState(false);
   const mapGenRef = useRef<MapGenerationPanelHandle>(null);
@@ -308,6 +310,7 @@ function SettingsPanel({
             </Form.Label>
             {isHost ? (
               <Dropdown
+                onToggle={() => playSound('click')}
                 onSelect={(key) => {
                   if (!key) return;
                   if (key === GENERATE_MAP_OPTION) {

@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import type { WrapAxes } from '../../game/mapMath';
+import { playSound } from '../../lib/sounds';
 import { hitVertex, NO_WRAP, wrapAxesOf } from './canvas/canvasGeometry';
 import { drawGraph } from './canvas/drawGraph';
 import {
@@ -398,13 +399,18 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (selectedVertexId !== null) setSelectedVertexId(null);
-        else if (!disabledRef.current) setCollapsed(true);
+        if (selectedVertexId !== null) {
+          playSound('click');
+          setSelectedVertexId(null);
+        } else if (!disabledRef.current) {
+          setCollapsed(true);
+        }
         return;
       }
       if (e.key !== 'Backspace' && e.key !== 'Delete') return;
       if (selectedVertexId === null) return;
       e.preventDefault();
+      playSound('click');
       deleteVertex(selectedVertexId);
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -730,6 +736,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       return;
     }
     const hitId = drag.type === 'vertex' ? drag.id : null;
+    if (!drag.moved) playSound('click');
     if (!drag.moved && tryDoubleTapReset(pos, hitId)) return;
     if (drag.type === 'pan') {
       if (!drag.moved) {
@@ -761,6 +768,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   }
 
   function cycleContinentAt(pos: Point) {
+    playSound('click');
     const vertex = hitVertex(territories, getViewport(), pos);
     if (!vertex) {
       if (selectedVertexId !== null) {

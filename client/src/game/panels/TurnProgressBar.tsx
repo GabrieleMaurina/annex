@@ -39,13 +39,18 @@ function TurnProgressBar({
     >
       <style>{`
         @keyframes annexTurnProgress {
-          from { width: 0%; }
-          to { width: 100%; }
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
         }
       `}</style>
       <div
         ref={barRef}
-        style={{ height: '100%', width: '0%', backgroundColor: color }}
+        style={{
+          height: '100%',
+          transform: 'scaleX(0)',
+          transformOrigin: 'left',
+          backgroundColor: color,
+        }}
       />
     </div>
   );

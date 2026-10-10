@@ -1,4 +1,4 @@
-import type { CSSProperties, Dispatch, RefObject, SetStateAction } from 'react';
+import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { playerColor } from '../../../lib/palette';
 import type {
   BlitzOutcome,
@@ -16,9 +16,13 @@ import ConfirmPanel from '../../panels/ConfirmPanel';
 import TroopPanel from '../../panels/TroopPanel';
 import TurnPanel from '../../panels/TurnPanel';
 import TurnProgressBar from '../../panels/TurnProgressBar';
+import { useCameraTransform, type Camera } from '../camera';
 import { CAPITAL_PHASE_DURATION, PLACEMENT_PHASE_DURATION } from '../helpers';
+import { usePanelStyles, type PanelAnchors } from '../hooks/useMiscUiState';
 
 export default function TurnActionPanels({
+  camera,
+  anchors,
   currentTurnPlayer,
   gameEnded,
   turnPhase,
@@ -33,13 +37,11 @@ export default function TurnActionPanels({
   nextPhaseEndsTurn,
   tankFireId,
   deployPanelOpen,
-  deployPanelStyle,
   deployTroops,
   deployInputRef,
   setDeployTroops,
   submitDeploy,
   deploySeaPanelOpen,
-  deploySeaPanelStyle,
   deploySeaComboActive,
   deploySeaShips,
   deploySeaMaxShips,
@@ -47,14 +49,12 @@ export default function TurnActionPanels({
   setDeploySeaShips,
   submitDeploySea,
   sailPanelOpen,
-  sailPanelStyle,
   sailShips,
   sailMaxShips,
   sailInputRef,
   setSailShips,
   submitSail,
   fortifyPanelOpen,
-  fortifyPanelStyle,
   fortifyTroops,
   fortifyMaxTroops,
   fortifyInputRef,
@@ -71,7 +71,6 @@ export default function TurnActionPanels({
   toxinsWastedTroops,
   submitToxins,
   attackPanelOpen,
-  attackPanelStyle,
   attackDisplay,
   blitzEnabled,
   attackDice,
@@ -94,7 +93,6 @@ export default function TurnActionPanels({
   submitAttackMove,
   submitAttack,
   attackSeaPanelOpen,
-  attackSeaPanelStyle,
   attackSeaDefenders,
   attackSeaDefenderId,
   selectAttackSeaDefender,
@@ -116,6 +114,8 @@ export default function TurnActionPanels({
   submitAttackSea,
   players,
 }: {
+  camera: Camera;
+  anchors: PanelAnchors;
   currentTurnPlayer: GameState['players'][number] | undefined;
   gameEnded: boolean;
   turnPhase: TurnPhase;
@@ -130,13 +130,11 @@ export default function TurnActionPanels({
   nextPhaseEndsTurn: boolean;
   tankFireId: number;
   deployPanelOpen: boolean;
-  deployPanelStyle: CSSProperties | undefined;
   deployTroops: number;
   deployInputRef: RefObject<HTMLInputElement | null>;
   setDeployTroops: Dispatch<SetStateAction<number>>;
   submitDeploy: () => void;
   deploySeaPanelOpen: boolean;
-  deploySeaPanelStyle: CSSProperties | undefined;
   deploySeaComboActive: boolean;
   deploySeaShips: number;
   deploySeaMaxShips: number;
@@ -144,14 +142,12 @@ export default function TurnActionPanels({
   setDeploySeaShips: Dispatch<SetStateAction<number>>;
   submitDeploySea: () => void;
   sailPanelOpen: boolean;
-  sailPanelStyle: CSSProperties | undefined;
   sailShips: number;
   sailMaxShips: number;
   sailInputRef: RefObject<HTMLInputElement | null>;
   setSailShips: Dispatch<SetStateAction<number>>;
   submitSail: () => void;
   fortifyPanelOpen: boolean;
-  fortifyPanelStyle: CSSProperties | undefined;
   fortifyTroops: number;
   fortifyMaxTroops: number;
   fortifyInputRef: RefObject<HTMLInputElement | null>;
@@ -168,7 +164,6 @@ export default function TurnActionPanels({
   toxinsWastedTroops: number;
   submitToxins: () => void;
   attackPanelOpen: boolean;
-  attackPanelStyle: CSSProperties | undefined;
   attackDisplay: {
     maxBlitzTroops: number;
     blitzWinProbabilities: number[];
@@ -198,7 +193,6 @@ export default function TurnActionPanels({
   submitAttackMove: () => void;
   submitAttack: () => void;
   attackSeaPanelOpen: boolean;
-  attackSeaPanelStyle: CSSProperties | undefined;
   attackSeaDefenders: { playerId: number; ships: number }[];
   attackSeaDefenderId: number | null;
   selectAttackSeaDefender: (defenderId: number) => void;
@@ -220,6 +214,17 @@ export default function TurnActionPanels({
   submitAttackSea: () => void;
   players: GameState['players'];
 }) {
+  const {
+    deployPanelStyle,
+    fortifyPanelStyle,
+    attackPanelStyle,
+    sailPanelStyle,
+    attackSeaPanelStyle,
+    deploySeaPanelStyle: seaPanelStyle,
+  } = usePanelStyles(anchors, useCameraTransform(camera));
+  const deploySeaPanelStyle = deploySeaComboActive
+    ? deployPanelStyle
+    : seaPanelStyle;
   if (!currentTurnPlayer) return null;
   return (
     <>

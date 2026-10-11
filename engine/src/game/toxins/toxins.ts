@@ -1,7 +1,7 @@
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { nextSetBaseValues } from '../progression/cards';
-import { wouldSplitMap as wouldSplitMapShared } from '../world/connectivity';
+import { wouldSplitAttackMap } from '../world/connectivity';
 
 export function toxinsCost(game: Game, playerId: number): number {
   if (game.toxins === 'off') return Infinity;
@@ -35,7 +35,7 @@ export function wouldSplitMap(
 ): boolean {
   return [game.radiationTerritoryIds, game.radiationUpcomingTerritoryIds].some(
     (radiationIds) =>
-      wouldSplitMapShared(
+      wouldSplitAttackMap(
         game,
         new Set([...game.territoryToxins.keys(), ...radiationIds]),
         candidateTerritoryId,

@@ -31,21 +31,23 @@ export function wouldSplitMap(
   if (remaining.length === 0) return false;
 
   const seaIds = new Set(seaTerritories.map((t) => t.id));
-  const neighborsById = new Map(
-    [...territories, ...seaTerritories].map((t) => [t.id, t.neighbors]),
+  const shoresBySea = new Map(
+    seaTerritories.map((t) => [
+      t.id,
+      t.neighbors.filter((n) => !seaIds.has(n)),
+    ]),
   );
+  const neighborsById = new Map(territories.map((t) => [t.id, t.neighbors]));
   const visited = new Set<number>([remaining[0].id]);
   const stack = [remaining[0].id];
   while (stack.length > 0) {
     const id = stack.pop()!;
-    const neighbors = seaIds.has(id)
-      ? neighborsById.get(id)!
-      : withPortalEdges(
-          neighborsById.get(id)!,
-          id,
-          portalTerritoryIds,
-          portalsEnabled,
-        );
+    const neighbors = withPortalEdges(
+      neighborsById.get(id)!,
+      id,
+      portalTerritoryIds,
+      portalsEnabled,
+    ).flatMap((n) => shoresBySea.get(n) ?? [n]);
     for (const n of neighbors) {
       if (removed.has(n) || visited.has(n)) continue;
       visited.add(n);

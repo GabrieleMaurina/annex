@@ -1,3 +1,4 @@
+import { Game } from '../../types';
 import { Weights } from '../types';
 
 export const defensiveWeights: Weights = {
@@ -16,3 +17,17 @@ export const defensiveWeights: Weights = {
   aggression: 0,
   keepStack: 0,
 };
+
+export function defensiveBoldness(
+  game: Game,
+  botId: number,
+  friendlyIds: Set<number>,
+): number {
+  const dead = new Set(game.deathOrder);
+  const opponents = game.playerIds.filter(
+    (id) => id !== botId && !friendlyIds.has(id),
+  );
+  const alive = opponents.filter((id) => !dead.has(id)).length;
+  if (opponents.length <= 1) return 1;
+  return Math.min(1, Math.max(0, 1 - (alive - 1) / (opponents.length - 1)));
+}

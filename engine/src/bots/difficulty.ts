@@ -19,7 +19,7 @@ const PARAMS: Record<Exclude<BotDifficulty, 'idle'>, DifficultyParams> = {
     optimizeFortify: true,
     maxCampaigns: 2,
     duelSkill: 0.62,
-    adaptivePlanning: true,
+    adaptivePlanning: false,
     cardTiming: false,
   },
   hard: {

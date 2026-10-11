@@ -170,13 +170,18 @@ test('escalating: a set is held while rivals are about to cash theirs', () => {
   assert.equal(setsPlayedInTurn(spec), 0);
 });
 
-test('every personality times its cards on hard, none below hard except balanced', () => {
+test('every personality times its cards on hard, none below hard', () => {
   const spec = calmBoard(
     'exponential',
     { 1: hand([S, S, S]), ...RIVALS_CASHING },
     { cardsLastSetValue: new Map([[0, 10]]) },
   );
-  for (const personality of ['killer', 'taker', 'defensive'] as const) {
+  for (const personality of [
+    'killer',
+    'taker',
+    'defensive',
+    'balanced',
+  ] as const) {
     assert.notEqual(
       firstEvent(spec, { difficulty: 'hard', personality }),
       'game:playCardSet',
@@ -186,10 +191,6 @@ test('every personality times its cards on hard, none below hard except balanced
       'game:playCardSet',
     );
   }
-  assert.notEqual(
-    firstEvent(spec, { difficulty: 'medium', personality: 'balanced' }),
-    'game:playCardSet',
-  );
 });
 
 test('escalating: a bot down to its last few territories cashes instead of holding', () => {

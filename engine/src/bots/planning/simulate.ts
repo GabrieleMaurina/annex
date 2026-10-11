@@ -4,7 +4,7 @@ import {
 } from '../../game/mechanics';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { cashForcedSets } from '../features/cardOutlook';
-import { expectedOutcome } from '../features/combat';
+import { scaledOutcome } from '../features/combat';
 import { modeGoalFor, sideProgress } from '../features/mode/modeGoals';
 import { consolidation, spreading } from '../features/stackStyle';
 import { isKeyTerritory } from '../features/territory';
@@ -27,7 +27,6 @@ import {
   hostileNeighborsOf,
   isBotBorder,
   isFriendly,
-  isStrategist,
   neighborsOf,
   ownedIds,
   planDepth,
@@ -66,7 +65,6 @@ export interface SimResult {
 const STEP_FLOOR = 0.5;
 const HOPELESS_FLOOR = 0.3;
 const CHAIN_FLOOR = 0.08;
-const EXACT_COMBAT_CAP = 60;
 const FEASIBILITY_RATIO = 0.55;
 const ROLL_DEFEAT_SURVIVAL = 0.5;
 const RISKY_WIN = 0.7;
@@ -80,29 +78,6 @@ interface RollAttempt {
   ownerId: number | undefined;
   defenders: number;
   attackers: number;
-}
-
-function stepOutcome(
-  ctx: PlanContext,
-  attackers: number,
-  defenders: number,
-  dice: number,
-): { winProbability: number; attackerSurvivorsMean: number } {
-  if (attackers <= EXACT_COMBAT_CAP && defenders <= EXACT_COMBAT_CAP)
-    return expectedOutcome(ctx.game, attackers, defenders, dice);
-  const scale = EXACT_COMBAT_CAP / Math.max(attackers, defenders);
-  const scaledAttackers = Math.max(1, Math.round(attackers * scale));
-  const scaledDefenders = Math.max(1, Math.round(defenders * scale));
-  const outcome = expectedOutcome(
-    ctx.game,
-    scaledAttackers,
-    scaledDefenders,
-    dice,
-  );
-  return {
-    winProbability: outcome.winProbability,
-    attackerSurvivorsMean: Math.max(1, outcome.attackerSurvivorsMean / scale),
-  };
 }
 
 function applyDeployments(state: SimState, deployments: Deployment[]): void {
@@ -162,8 +137,8 @@ export function walkStack(
     const attackers = troopsIn(state, cur) - 1;
     if (attackers < 1) break;
     const defenders = troopsIn(state, next);
-    const outcome = stepOutcome(
-      ctx,
+    const outcome = scaledOutcome(
+      ctx.game,
       attackers,
       defenders,
       defenceDiceAt(ctx, next),
@@ -422,8 +397,8 @@ function firstStepWin(
 ): number {
   const target = stack.route[0];
   if (target === undefined || state.owners.get(target) === ctx.botId) return 1;
-  return stepOutcome(
-    ctx,
+  return scaledOutcome(
+    ctx.game,
     troopsIn(state, stack.startId) - 1,
     troopsIn(state, target),
     defenceDiceAt(ctx, target),
@@ -455,9 +430,9 @@ export function simulateTurn(
   const state = snapshotState(ctx);
   applyDeployments(state, candidate.deployments);
 
-  const strategist = isStrategist(ctx);
+  const riskAware = ctx.params.adaptivePlanning;
   const risks: StepRisk[] = [];
-  const rollStack = strategist
+  const rollStack = riskAware
     ? undefined
     : (candidate.stacks.find(
         (stack) =>
@@ -482,7 +457,7 @@ export function simulateTurn(
       state,
       stack,
       attackSteps,
-      strategist ? risks : undefined,
+      riskAware ? risks : undefined,
     );
     successProbability *= probability;
     if (stack === rollStack) rollProbability = probability;
@@ -518,7 +493,7 @@ export function simulateTurn(
     );
   }
 
-  const score = strategist
+  const score = riskAware
     ? expectedScore(ctx, risks, fortify.score)
     : roll && defeat
       ? blendRollScore(ctx, roll, defeat, rollProbability, fortify.score)

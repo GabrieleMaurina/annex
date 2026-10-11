@@ -1,46 +1,26 @@
 import { SeaTerritory, Territory } from '../../types';
 
-function landAdjacencyThroughSeas(
+function attackAdjacency(
   territories: Territory[],
   seaTerritories: SeaTerritory[],
 ): Int32Array[] {
   const idToIndex = new Map(territories.map((t, i) => [t.id, i]));
-  const seaNeighbors = new Map(seaTerritories.map((s) => [s.id, s.neighbors]));
-  const seaComponent = new Map<number, number>();
-  let componentCount = 0;
-  for (const sea of seaTerritories) {
-    if (seaComponent.has(sea.id)) continue;
-    const stack = [sea.id];
-    seaComponent.set(sea.id, componentCount);
-    while (stack.length > 0) {
-      for (const nb of seaNeighbors.get(stack.pop()!)!) {
-        if (!seaNeighbors.has(nb) || seaComponent.has(nb)) continue;
-        seaComponent.set(nb, componentCount);
-        stack.push(nb);
-      }
-    }
-    componentCount++;
-  }
-
-  const shores: Set<number>[] = Array.from(
-    { length: componentCount },
-    () => new Set(),
+  const shoresBySea = new Map(
+    seaTerritories.map((s) => [
+      s.id,
+      s.neighbors.flatMap((nb) => {
+        const landIndex = idToIndex.get(nb);
+        return landIndex === undefined ? [] : [landIndex];
+      }),
+    ]),
   );
-  territories.forEach((t, i) => {
-    for (const nb of t.neighbors) {
-      const component = seaComponent.get(nb);
-      if (component !== undefined) shores[component].add(i);
-    }
-  });
 
   return territories.map((t, i) => {
     const neighborIndices = new Set<number>();
     for (const nb of t.neighbors) {
       const landIndex = idToIndex.get(nb);
       if (landIndex !== undefined) neighborIndices.add(landIndex);
-      const component = seaComponent.get(nb);
-      if (component === undefined) continue;
-      for (const shoreIndex of shores[component])
+      for (const shoreIndex of shoresBySea.get(nb) ?? [])
         if (shoreIndex !== i) neighborIndices.add(shoreIndex);
     }
     return Int32Array.from(neighborIndices);
@@ -53,7 +33,7 @@ export function selectRadiationTerritories(
   n: number,
 ): number[] {
   const totalCount = territories.length;
-  const adjacency = landAdjacencyThroughSeas(territories, seaTerritories);
+  const adjacency = attackAdjacency(territories, seaTerritories);
 
   const continentOf = new Int32Array(territories.map((t) => t.continentId));
 

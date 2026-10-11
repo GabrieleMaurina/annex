@@ -189,6 +189,7 @@ function combine(
 }
 
 const MIN_CONFIDENCE = 0.15;
+const CARD_LOSS_TURNS = 2;
 const FORTIFY_REFINE_COUNT = 5;
 
 function confidentEnough(
@@ -339,10 +340,12 @@ export function buildTurnPlan(
     !ctx.game.conqueredThisTurn &&
     (ctx.personality !== 'defensive' || ctx.game.cards !== 'off');
   if (needsCard && bestPlan.objectives[0]?.kind === 'defensive') {
+    const lossLimit = CARD_LOSS_TURNS * ctx.income;
     const cardEntry = scored.find(
       (e) =>
         e.feasible &&
         e.candidate.objectives[0]?.kind === 'card' &&
+        e.result.projected.troopsLost <= lossLimit &&
         confidentEnough(ctx, e.candidate, e.result),
     );
     if (cardEntry)

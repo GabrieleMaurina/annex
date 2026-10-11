@@ -2,7 +2,7 @@ import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { withPortalEdges } from './portals';
 
-export function wouldSplitMap(
+export function wouldSplitAttackMap(
   game: Game,
   removedIds: Set<number>,
   candidateTerritoryId: number,
@@ -14,14 +14,26 @@ export function wouldSplitMap(
   if (remaining.length === 0) return false;
 
   const seaIds = new Set(map.seaTerritories.map((t) => t.id));
+  const shoresBySea = new Map(
+    map.seaTerritories.map((t) => [
+      t.id,
+      t.neighbors.filter((n) => !seaIds.has(n)),
+    ]),
+  );
   const neighborsById = new Map(
-    [...map.territories, ...map.seaTerritories].map((t) => [t.id, t.neighbors]),
+    map.territories.map((t) => [t.id, t.neighbors]),
   );
   const visited = new Set<number>([remaining[0].id]);
   const stack = [remaining[0].id];
   while (stack.length > 0) {
     const id = stack.pop()!;
-    for (const n of fortifyGraphNeighbors(game, seaIds, neighborsById, id)) {
+    const neighbors = withPortalEdges(
+      neighborsById.get(id) ?? [],
+      id,
+      game.portalTerritoryIds,
+      game.portalsEnabled,
+    ).flatMap((n) => shoresBySea.get(n) ?? [n]);
+    for (const n of neighbors) {
       if (removed.has(n) || visited.has(n)) continue;
       visited.add(n);
       stack.push(n);

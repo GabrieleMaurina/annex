@@ -1,5 +1,6 @@
 import { alliedIds } from '../../game/alliances';
 import { defenceDiceFor } from '../../game/combat/dice';
+import { calculateDeployTroopsBreakdown } from '../../game/mechanics';
 import { withPortalEdges } from '../../game/world/portals';
 import { getGameMap } from '../../maps/maps';
 import { BotPersonality, BotProfile, Game, GameMap } from '../../types';
@@ -37,6 +38,7 @@ export interface PlanContext {
   duel: DuelFocus;
   finisher: boolean;
   stackFocus: number;
+  income: number;
 }
 
 const FINISHER_DEPTH = 40;
@@ -187,6 +189,18 @@ function cachedFocus(
   return focus;
 }
 
+function incomeOf(game: Game, botId: number): number {
+  const breakdown = calculateDeployTroopsBreakdown(game, botId);
+  return Math.max(
+    1,
+    breakdown.territories +
+      breakdown.bonuses +
+      breakdown.capitals +
+      breakdown.roundTroops +
+      breakdown.bounties,
+  );
+}
+
 export function buildContext(
   game: Game,
   botId: number,
@@ -248,6 +262,7 @@ export function buildContext(
     duel: focus.duel,
     finisher: focus.finisher,
     stackFocus,
+    income: incomeOf(game, botId),
   };
 }
 

@@ -11,7 +11,7 @@ import {
   currentSetValue,
   holdingGain,
 } from '../features/cardOutlook';
-import { attackWinProbability } from '../features/combat';
+import { attackWinProbability, scaledOutcome } from '../features/combat';
 import { modeGoalFor } from '../features/mode/modeGoals';
 import {
   PASSIVE_RELEASE_PRESSURE,
@@ -56,6 +56,7 @@ import {
   chooseShipPurchase,
   chooseSupplyBridge,
 } from '../heuristics/ships';
+import { defensiveBoldness } from '../personality/defensive';
 import {
   PlanContext,
   SimState,
@@ -111,6 +112,11 @@ export const MAX_REPLANS = 8;
 const PASSIVE_FALLBACK_ATTACKS = 1;
 const PASSIVE_SKILL_ATTACKS = 2;
 const PASSIVE_MIN_WIN = 0.8;
+const BOLD_ATTACKS = 2;
+const BOLD_WIN_RELIEF = 0.1;
+const SURE_WIN = 0.8;
+const FALLBACK_LOSS_TURNS = 3;
+const FRUSTRATED_LOSS_TURNS = 20;
 
 function result(actions: BotAction[], plan: TurnPlan): PlanBotTurnResult {
   return { actions, plan };
@@ -194,7 +200,7 @@ export function planBotTurn(
   const stale = emptyPlan(-1, botId);
 
   if (phase === 'territory') {
-    const territoryId = chooseTerritoryClaim(game);
+    const territoryId = chooseTerritoryClaim(game, botId);
     return result(
       territoryId !== null
         ? [{ event: 'game:claimTerritory', payload: { territoryId } }]
@@ -482,11 +488,15 @@ function planAttack(
   const passive =
     ctx.personality === 'defensive' &&
     stalematePressure(game) < PASSIVE_RELEASE_PRESSURE;
+  const boldness = passive
+    ? defensiveBoldness(game, ctx.botId, ctx.friendlyIds)
+    : 0;
   const capped = passive
     ? plan.attacksIssued + plan.overwhelmingAttacksIssued >=
       plan.attackSteps.length +
         PASSIVE_FALLBACK_ATTACKS +
-        Math.floor(PASSIVE_SKILL_ATTACKS * ctx.params.planningConfidence)
+        Math.floor(PASSIVE_SKILL_ATTACKS * ctx.params.planningConfidence) +
+        Math.round(BOLD_ATTACKS * boldness)
     : plan.attacksIssued >= plan.attackSteps.length + fallbackBudget;
   const desperate = Math.random() < stalemateRamp(game);
   const sacrifice = desperate ? chooseLosingAttack(ctx, frustration) : null;
@@ -510,37 +520,49 @@ function planAttack(
       : 0;
     return opened + closed + spent;
   };
-  const passiveRisk = (startId: number, endId: number) =>
+  const winChance = (startId: number, endId: number) =>
     attackWinProbability(
       game,
       (game.territoryTroops.get(startId) ?? 0) - 1,
       game.territoryTroops.get(endId) ?? 0,
       defenceDiceFor(game, endId),
-    ) < PASSIVE_MIN_WIN
+    );
+  const passiveRisk = (startId: number, endId: number) =>
+    winChance(startId, endId) < PASSIVE_MIN_WIN - BOLD_WIN_RELIEF * boldness
       ? Infinity
       : stackRisk(startId, endId);
-  const attack = passive
-    ? (sacrifice ??
-      chooseAttack(
-        game,
-        ctx.view,
-        ctx.botId,
-        ctx.weights,
-        ctx.params.noise,
-        ctx.standing,
-        passiveRisk,
-      ))
+  const lossLimit =
+    ctx.income * (FALLBACK_LOSS_TURNS + FRUSTRATED_LOSS_TURNS * frustration);
+  const expectedLoss = (startId: number, endId: number) => {
+    const attackers = (game.territoryTroops.get(startId) ?? 0) - 1;
+    const outcome = scaledOutcome(
+      game,
+      attackers,
+      game.territoryTroops.get(endId) ?? 0,
+      defenceDiceFor(game, endId),
+    );
+    return attackers - outcome.winProbability * outcome.attackerSurvivorsMean;
+  };
+  const risk = passive ? passiveRisk : stackRisk;
+  const regular = chooseAttack(
+    game,
+    ctx.view,
+    ctx.botId,
+    ctx.weights,
+    ctx.params.noise,
+    ctx.standing,
+    (startId, endId) =>
+      expectedLoss(startId, endId) > lossLimit
+        ? Infinity
+        : risk(startId, endId),
+  );
+  const sure =
+    regular !== null && winChance(regular.startId, regular.endId) >= SURE_WIN;
+  const attack = sure
+    ? regular
     : (sacrifice ??
-      chooseAttack(
-        game,
-        ctx.view,
-        ctx.botId,
-        ctx.weights,
-        ctx.params.noise,
-        ctx.standing,
-        stackRisk,
-      ) ??
-      chooseLosingAttack(ctx, frustration));
+      regular ??
+      (passive ? null : chooseLosingAttack(ctx, frustration)));
   if (!attack) return result([NEXT_PHASE], plan);
   const overwhelming = isOverwhelming(ctx, game, attack);
   const continuing = isContinuation(game, attack.startId, attack.endId);

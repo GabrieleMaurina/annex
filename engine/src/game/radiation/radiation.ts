@@ -3,7 +3,7 @@ import { getGameMap } from '../../maps/maps';
 import { Game, Radiations } from '../../types';
 import { ownsAnyTerritory, shuffle } from '../mechanics';
 import { recordElimination } from '../progression/stats';
-import { wouldSplitMap } from '../world/connectivity';
+import { wouldSplitAttackMap } from '../world/connectivity';
 import { fogFilterEmit } from '../world/fog';
 import { removePortalTerritory } from '../world/portals';
 import { isSeaTerritory } from '../world/seaShips';
@@ -62,7 +62,7 @@ function isValidRadiationTarget(
   if (game.radiations === 'dynamic' && game.territoryToxins.has(candidateId))
     return false;
   const holes = new Set([...working, ...game.territoryToxins.keys()]);
-  return !wouldSplitMap(game, holes, candidateId);
+  return !wouldSplitAttackMap(game, holes, candidateId);
 }
 
 function computeDynamicTarget(game: Game): Set<number> {

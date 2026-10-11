@@ -8,7 +8,11 @@ import { Game } from '../../types';
 import { BotView, isVisible, ownerOf, shipsAt } from '../view';
 import { attackWinProbability } from './combat';
 import { isTeammate } from './mode/mode';
-import { minWinProbability } from './pressure';
+import {
+  PASSIVE_RELEASE_PRESSURE,
+  minWinProbability,
+  stalematePressure,
+} from './pressure';
 
 export interface CoastalTerritory {
   territoryId: number;
@@ -269,7 +273,12 @@ export function scoutSite(
   botId: number,
 ): ScoutSite | null {
   const visible = view.visibleIds;
-  if (visible === null || enemyVisible(game, view, botId)) return null;
+  if (visible === null) return null;
+  if (
+    stalematePressure(game) < PASSIVE_RELEASE_PRESSURE &&
+    enemyVisible(game, view, botId)
+  )
+    return null;
   const neighborsBySeaId = new Map(
     getGameMap(game).seaTerritories.map((t) => [t.id, t.neighbors]),
   );

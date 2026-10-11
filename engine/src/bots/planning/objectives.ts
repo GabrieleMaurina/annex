@@ -13,6 +13,7 @@ import { Home, defensiveHome } from '../goals/defensiveHome';
 import { duelBreakCandidates, rollCandidates } from '../goals/duelObjectives';
 import { modeCandidates } from '../goals/modeObjectives';
 import { preyCandidates } from '../goals/preyObjectives';
+import { defensiveBoldness } from '../personality/defensive';
 import { killerWeaknessThreshold } from '../personality/killer';
 import {
   PlanContext,
@@ -52,6 +53,7 @@ const MAX_ELIMINATE_TARGETS = 2;
 const MAX_ELIMINATE_MUST_VISIT = 20;
 const MAX_DUEL_ELIMINATE_MUST_VISIT = 40;
 const DUEL_PLAYER_COUNT = 2;
+const BOLD_ELIMINATION = 0.5;
 
 export function eliminateMustVisitLimit(
   ctx: PlanContext,
@@ -728,9 +730,13 @@ export function gatherCandidates(
 ): Candidate[] {
   if (ctx.personality === 'defensive') {
     const home = defensiveHome(ctx);
+    const bold =
+      defensiveBoldness(ctx.game, ctx.botId, ctx.friendlyIds) >=
+      BOLD_ELIMINATION;
     return [
       ...homeCandidates(ctx, state, budget, home),
       ...completeCandidates(ctx, state, budget),
+      ...(bold ? eliminateCandidates(ctx, state, budget) : []),
       ...modeCandidates(ctx, state, budget, false),
       ...neutralizeThreatCandidates(ctx, state, budget),
       ...mergeCandidates(ctx, state, budget),

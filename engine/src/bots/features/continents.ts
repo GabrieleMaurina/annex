@@ -1,6 +1,6 @@
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
-import { BotView, ownerOf } from '../view';
+import { BotView, ownerOf, troopsAt } from '../view';
 import { isTeammate } from './mode/mode';
 import { isHazardTerritory } from './territory';
 
@@ -93,7 +93,7 @@ export function continentBreakCandidates(
     let weakestId = held[0];
     let weakestTroops = Infinity;
     for (const id of held) {
-      const troops = game.territoryTroops.get(id) ?? 0;
+      const troops = troopsAt(game, view, id);
       if (troops < weakestTroops) {
         weakestTroops = troops;
         weakestId = id;

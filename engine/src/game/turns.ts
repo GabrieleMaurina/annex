@@ -43,6 +43,7 @@ import { addSeaShips, setSeaShips } from './world/seaShips';
 import { applyStarvation } from './world/starvation';
 import {
   pathRunsForViewer,
+  rememberVisibleTerritories,
   shipMoveFields,
   troopMoveFields,
   visibleTerritoryIdsOrAll,
@@ -732,6 +733,7 @@ function surrenderIfLongDisconnected(game: Game, playerId: number) {
 
 export function advanceToNextPlayer(game: Game) {
   const endingPlayerId = game.playerIds[game.turnPlayerIndex];
+  rememberVisibleTerritories(game);
   bumpStat(game, endingPlayerId, 'turnsPlayed');
 
   if (game.conqueredThisTurn && game.cards !== 'off') {

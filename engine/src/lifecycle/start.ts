@@ -98,6 +98,7 @@ export function startGame(playerId: number): GameResponse {
   game.cardsLastSetValue = new Map();
   game.stats = new Map(game.playerIds.map((id) => [id, emptyPlayerStats()]));
   game.points = new Map(game.playerIds.map((id) => [id, 0]));
+  game.fogMemory = new Map();
   game.deathOrder = [];
   game.teamDeathOrder = [];
   if (game.placement !== 'custom') {

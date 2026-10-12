@@ -1,12 +1,20 @@
 import { visibleTerritoryIdsOrAll } from '../game/world/visibility';
-import { Game } from '../types';
+import { Game, RememberedTerritory } from '../types';
 
 export interface BotView {
   visibleIds: Set<number> | null;
+  remembered: Map<number, RememberedTerritory>;
 }
 
 export function getBotView(game: Game, botId: number): BotView {
-  return { visibleIds: visibleTerritoryIdsOrAll(game, botId) };
+  const visibleIds = visibleTerritoryIdsOrAll(game, botId);
+  return {
+    visibleIds,
+    remembered:
+      visibleIds === null
+        ? new Map()
+        : (game.fogMemory.get(botId) ?? new Map()),
+  };
 }
 
 export function isVisible(view: BotView, territoryId: number): boolean {
@@ -18,7 +26,8 @@ export function ownerOf(
   view: BotView,
   territoryId: number,
 ): number | undefined {
-  if (!isVisible(view, territoryId)) return undefined;
+  if (!isVisible(view, territoryId))
+    return view.remembered.get(territoryId)?.ownerId;
   return game.territoryOwners.get(territoryId);
 }
 
@@ -27,7 +36,8 @@ export function troopsAt(
   view: BotView,
   territoryId: number,
 ): number {
-  if (!isVisible(view, territoryId)) return 0;
+  if (!isVisible(view, territoryId))
+    return view.remembered.get(territoryId)?.troops ?? 0;
   return game.territoryTroops.get(territoryId) ?? 0;
 }
 

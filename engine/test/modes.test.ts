@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { buildContext, snapshotState } from '../src/bots/planning/context';
 import { supplyHubTerritoryIds } from '../src/game/mechanics';
 import { connectedOwnedTerritories } from '../src/game/world/connectivity';
+import { rememberVisibleTerritories } from '../src/game/world/visibility';
 import { ScenarioSpec, buildGame, kinds, planScenario } from './testkit';
 
 function line(...ids: number[]): [number, number][] {
@@ -57,6 +59,79 @@ test('fog: an unseen death stack does not change the plan', () => {
     'unseen tiles leaked into the plan',
   );
   assert.equal(kinds(seen)[0], 'complete');
+});
+
+test('fog: a stack seen before it slipped out of sight is still remembered', () => {
+  const { game, botId } = buildGame({
+    map: { continents: [[0, 1, 2, 3]], edges: line(0, 1, 2, 3), bonuses: [0] },
+    players: [1, 2],
+    owners: { 0: 1, 1: 1, 2: 1, 3: 2 },
+    troops: { 3: 30 },
+    settings: { fogOfWar: 'on' },
+  });
+  const profile = { difficulty: 'hard', personality: 'balanced' } as const;
+  rememberVisibleTerritories(game);
+  game.territoryOwners.set(2, 2);
+
+  const remembered = snapshotState(buildContext(game, botId, profile, null));
+  assert.equal(remembered.owners.get(3), 2);
+  assert.equal(remembered.troops.get(3), 30);
+
+  game.fogMemory = new Map();
+  const forgotten = snapshotState(buildContext(game, botId, profile, null));
+  assert.equal(forgotten.owners.has(3), false);
+});
+
+test('fog: public bonus income reveals the hidden continent a rival holds', () => {
+  const { game, botId } = buildGame({
+    map: {
+      continents: [[0], [2, 3, 4], [5, 6]],
+      edges: [[0, 2], ...line(2, 3, 4, 5, 6)],
+      bonuses: [0, 4, 2],
+    },
+    players: [1, 2, 3],
+    owners: { 0: 1, 2: 2, 3: 2, 4: 2, 5: 3, 6: 3 },
+    troops: { 0: 5, 2: 3, 3: 8, 4: 8, 5: 2, 6: 2 },
+    settings: { fogOfWar: 'on' },
+  });
+  for (const [playerId, bonuses] of [
+    [2, 4],
+    [3, 2],
+  ])
+    game.logs.get(botId)!.push({
+      type: 'game:turnStarted',
+      payload: {
+        playerId,
+        troopsFromTerritories: 3,
+        troopsFromBonuses: bonuses,
+      },
+    });
+
+  const hard = snapshotState(
+    buildContext(
+      game,
+      botId,
+      { difficulty: 'hard', personality: 'balanced' },
+      null,
+    ),
+  );
+  assert.equal(hard.owners.get(3), 2);
+  assert.equal(hard.owners.get(4), 2);
+  assert.equal(
+    hard.owners.has(5),
+    false,
+    'a never seen continent is not guessed',
+  );
+
+  for (const profile of [
+    { difficulty: 'medium', personality: 'balanced' },
+    { difficulty: 'hard', personality: 'killer' },
+  ] as const)
+    assert.equal(
+      snapshotState(buildContext(game, botId, profile, null)).owners.has(3),
+      false,
+      `${profile.personality} ${profile.difficulty} only reads public income`,
+    );
 });
 
 test('capitals: the bot grabs a soft enemy capital', () => {
@@ -409,6 +484,26 @@ test('bounties: with a kill bounty the bot prioritises the elimination', () => {
   const plan = planScenario(spec);
   assert.equal(plan.objectives[0].kind, 'eliminate', `kinds: ${kinds(plan)}`);
   assert.ok(plan.objectives.some((o) => o.targetPlayerId === 3));
+});
+
+test('teams: the bot does not take the enemy tile that walls in a teammate stack', () => {
+  const plan = planScenario({
+    map: {
+      continents: [[0], [1], [2], [3], [4]],
+      edges: line(0, 1, 2, 3, 4),
+      bonuses: [0, 0, 0, 0, 0],
+    },
+    players: [1, 2, 3],
+    teams: { 1: 0, 3: 0, 2: 1 },
+    owners: { 0: 3, 1: 2, 2: 1, 3: 2, 4: 2 },
+    troops: { 0: 20, 1: 2, 2: 6, 3: 2, 4: 3 },
+    troopsToDeploy: 0,
+  });
+  assert.ok(plan.attackSteps.length > 0, 'the bot attacks');
+  assert.ok(
+    plan.attackSteps.every((step) => step.endId !== 1),
+    'the teammate keeps its only enemy neighbour',
+  );
 });
 
 test('teams: a continent shared with a teammate is not a completion target', () => {

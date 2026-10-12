@@ -123,6 +123,7 @@ export function createGame(
     territoryOwners: new Map(),
     territoryTroops: new Map(),
     territoryEntrenchment: new Map(),
+    fogMemory: new Map(),
     territoryToxins: new Map(),
     capitalTerritoryIds: new Set(),
     playerMissions: new Map(),

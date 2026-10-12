@@ -94,13 +94,13 @@ function cachedFairBlitz(
   );
 }
 
-export interface ScaledBattle {
+interface ScaledBattle {
   attackers: number;
   defenders: number;
   scale: number;
 }
 
-export function scaledBattle(
+function scaledBattle(
   attackingTroops: number,
   defendingTroops: number,
   dice: DiceRules,

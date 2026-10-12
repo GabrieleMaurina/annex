@@ -14,6 +14,7 @@ import {
   NEUTRAL_STACK_FOCUS,
 } from '../features/stackStyle';
 import { buildStanding, playerStrengths, Standing } from '../features/standing';
+import { publicIncomes, withPublicIntel } from '../intel';
 import { getWeights } from '../personality/registry';
 import { DifficultyParams, Weights } from '../types';
 import { BotView, getBotView, isVisible } from '../view';
@@ -42,6 +43,8 @@ export interface PlanContext {
 }
 
 const FINISHER_DEPTH = 40;
+const INCOME_INTEL = 1;
+const FULL_INTEL = 2;
 
 export function planDepth(ctx: PlanContext): number {
   return ctx.finisher
@@ -110,13 +113,23 @@ function ownedCountOf(game: Game, botId: number): number {
 function computeFocus(
   game: Game,
   botId: number,
+  personality: BotPersonality,
   continentTerritories: Map<number, number[]>,
   bonuses: number[],
   weights: Weights,
   params: DifficultyParams,
 ): Focus {
   const friendlyIds = alliedIds(game, botId);
-  const view = getBotView(game, botId);
+  const fogged = getBotView(game, botId);
+  const intel = params.intel - (personality === 'balanced' ? 0 : 1);
+  const incomes =
+    intel >= INCOME_INTEL && fogged.visibleIds !== null
+      ? publicIncomes(game, botId)
+      : null;
+  const view =
+    incomes && intel >= FULL_INTEL
+      ? withPublicIntel(game, fogged, incomes, continentTerritories, bonuses)
+      : fogged;
   const opponentTerritories = new Map<number, number>();
   const visibleOpponentTerritories = new Map<number, number>();
   for (const [id, ownerId] of game.territoryOwners) {
@@ -143,6 +156,7 @@ function computeFocus(
     friendlyIds,
     continentTerritories,
     bonuses,
+    incomes,
   );
   const duel = duelFocus(game, botId, friendlyIds, weights, params);
   const finisher =
@@ -153,6 +167,7 @@ function computeFocus(
 function cachedFocus(
   game: Game,
   botId: number,
+  personality: BotPersonality,
   continentTerritories: Map<number, number[]>,
   bonuses: number[],
   weights: Weights,
@@ -173,6 +188,7 @@ function cachedFocus(
   const focus = computeFocus(
     game,
     botId,
+    personality,
     continentTerritories,
     bonuses,
     weights,
@@ -223,6 +239,7 @@ export function buildContext(
   const focus = cachedFocus(
     game,
     botId,
+    botProfile.personality,
     topology.continentTerritories,
     map.bonuses,
     weights,
@@ -267,11 +284,11 @@ export function buildContext(
 }
 
 export function isStrategist(ctx: PlanContext): boolean {
-  return ctx.personality === 'balanced' && ctx.params.adaptivePlanning;
+  return ctx.personality === 'balanced' && ctx.params.strategist;
 }
 
 export function timesCards(ctx: PlanContext): boolean {
-  return isStrategist(ctx) || ctx.params.cardTiming;
+  return ctx.params.cardTiming;
 }
 
 export function neighborsOf(ctx: PlanContext, territoryId: number): number[] {
@@ -320,7 +337,13 @@ export function snapshotState(ctx: PlanContext): SimState {
   const owners = new Map<number, number>();
   const troops = new Map<number, number>();
   for (const territory of ctx.map.territories) {
-    if (!isVisible(ctx.view, territory.id)) continue;
+    if (!isVisible(ctx.view, territory.id)) {
+      const remembered = ctx.view.remembered.get(territory.id);
+      if (!remembered) continue;
+      owners.set(territory.id, remembered.ownerId);
+      troops.set(territory.id, remembered.troops);
+      continue;
+    }
     const ownerId = ctx.game.territoryOwners.get(territory.id);
     if (ownerId !== undefined) owners.set(territory.id, ownerId);
     troops.set(territory.id, ctx.game.territoryTroops.get(territory.id) ?? 0);

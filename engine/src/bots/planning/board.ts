@@ -21,6 +21,7 @@ import {
   heldContinentBonus,
   holdsContinent,
   isBotBorder,
+  isEnemyTerritory,
   isFriendly,
   isStrategist,
   neighborsOf,
@@ -138,6 +139,7 @@ const DENIAL = 0.3;
 const FRONTIER_RISK = 0.5;
 const INTERIOR_WASTE = 0.12;
 const EXPOSURE = 0.35;
+const TEAM_STRANDED = 0.2;
 const CONCENTRATION = 0.05;
 const KEEP_STACK = 0.3;
 const SPREAD_RISK = 0.5;
@@ -284,6 +286,43 @@ function riskAndWaste(
   return { risk, waste, concentration, largest, scattered };
 }
 
+function strandedTeammateTroops(ctx: PlanContext, state: SimState): number {
+  if (ctx.game.gameMode !== 'team deathmatch') return 0;
+  const seen = new Set<number>();
+  let stranded = 0;
+  for (const [start, ownerId] of state.owners) {
+    if (seen.has(start) || ownerId === ctx.botId || !isFriendly(ctx, ownerId))
+      continue;
+    const cluster = [start];
+    seen.add(start);
+    for (let i = 0; i < cluster.length; i++)
+      for (const n of neighborsOf(ctx, cluster[i]))
+        if (!seen.has(n) && state.owners.get(n) === ownerId) {
+          seen.add(n);
+          cluster.push(n);
+        }
+    const engaged = cluster.some((id) =>
+      neighborsOf(ctx, id).some((n) => isEnemyTerritory(ctx, state, n)),
+    );
+    if (engaged) continue;
+    for (const id of cluster) stranded += Math.max(0, troopsIn(state, id) - 1);
+  }
+  return stranded;
+}
+
+export function wallsInTeammate(
+  ctx: PlanContext,
+  state: SimState,
+  targetId: number,
+): boolean {
+  if (ctx.game.gameMode !== 'team deathmatch') return false;
+  const conquered = cloneState(state);
+  conquered.owners.set(targetId, ctx.botId);
+  return (
+    strandedTeammateTroops(ctx, conquered) > strandedTeammateTroops(ctx, state)
+  );
+}
+
 function exposure(ctx: PlanContext, state: SimState): number {
   const clusters = ownedClusters(ctx, state);
   if (clusters.length === 0) return 0;
@@ -375,6 +414,7 @@ function scoreState(
   score -= (INTERIOR_WASTE * waste) / scale;
   score -= (SCATTER * gathering * scattered) / scale;
   score -= ctx.weights.defense * EXPOSURE * exposure(ctx, state);
+  score -= (TEAM_STRANDED * strandedTeammateTroops(ctx, state)) / scale;
   score += (CONCENTRATION * concentration) / scale;
   score +=
     (KEEP_STACK *

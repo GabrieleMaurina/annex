@@ -5,6 +5,7 @@ import {
   chooseTerritoryClaim,
 } from '../../src/bots/heuristics/misc';
 import { defensiveBoldness } from '../../src/bots/personality/defensive';
+import { planBotTurn } from '../../src/bots/planning/planBotTurn';
 import { MapSpec, buildGame } from '../testkit';
 
 test('the capital guards the entrance of a bonus the bot holds', () => {
@@ -76,7 +77,31 @@ test('territory claims build toward a continent the bot already started', () => 
     owners: { 0: 1, 3: 2 },
     troops: {},
   });
-  assert.equal(chooseTerritoryClaim(game, botId), 1);
+  assert.ok([1, 2].includes(chooseTerritoryClaim(game, botId, 0) ?? -1));
+});
+
+test('the first claim stakes out a quiet area away from rival claims', () => {
+  const map: MapSpec = {
+    continents: [
+      [0, 1, 2],
+      [3, 4, 5],
+    ],
+    edges: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+    ],
+    bonuses: [3, 3],
+  };
+  const { game, botId } = buildGame({
+    map,
+    players: [1, 2],
+    owners: { 0: 2 },
+    troops: {},
+  });
+  assert.ok([3, 4, 5].includes(chooseTerritoryClaim(game, botId, 0) ?? -1));
 });
 
 test('defensive grows bolder only as its opponents fall', () => {
@@ -91,4 +116,62 @@ test('defensive grows bolder only as its opponents fall', () => {
   assert.equal(defensiveBoldness(game, botId, new Set()), 0.5);
   game.deathOrder = [2, 3, 4, 5];
   assert.equal(defensiveBoldness(game, botId, new Set()), 1);
+});
+
+test('initial troops go to the front and the home growth tile before the interior', () => {
+  const map: MapSpec = {
+    continents: [
+      [0, 1, 2],
+      [3, 4, 5],
+    ],
+    edges: [
+      [0, 1],
+      [1, 2],
+      [0, 3],
+      [3, 4],
+      [4, 5],
+    ],
+    bonuses: [4, 0],
+  };
+  const { game, botId } = buildGame({
+    map,
+    players: [1, 2],
+    owners: { 0: 1, 1: 1, 3: 1, 4: 1, 2: 2, 5: 2 },
+    troops: { 5: 6 },
+    troopsToDeploy: 3,
+    settings: {
+      turnPhase: 'troop',
+      roundNumber: 0,
+      placementTroopPools: new Map([
+        [1, 9],
+        [2, 0],
+      ]),
+    },
+  });
+  const placed = new Set<number>();
+  const originalRandom = Math.random;
+  Math.random = () => 0.5;
+  try {
+    for (let batch = 0; batch < 2; batch++) {
+      const { actions } = planBotTurn(
+        game,
+        botId,
+        { difficulty: 'hard', personality: 'balanced' },
+        null,
+      );
+      const { territoryId, troops } = actions[0].payload as {
+        territoryId: number;
+        troops: number;
+      };
+      placed.add(territoryId);
+      game.territoryTroops.set(
+        territoryId,
+        (game.territoryTroops.get(territoryId) ?? 0) + troops,
+      );
+      game.placementTroopPools.set(botId, 9 - 3 * (batch + 1));
+    }
+  } finally {
+    Math.random = originalRandom;
+  }
+  assert.deepEqual([...placed].sort(), [1, 4]);
 });

@@ -2,6 +2,7 @@ import { supplyHubTerritoryIds } from '../../game/mechanics';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
+import { isTeammate } from '../features/mode/mode';
 import {
   isFrontier,
   isKeyTerritory,
@@ -13,12 +14,10 @@ import { BotView } from '../view';
 
 const MAX_ENTRENCH_TROOPS = 5;
 
-const CLAIM_ADJACENCY = 0.5;
-const TIE_BREAK = 0.01;
-
 function continentsOf(game: Game): Map<number, number[]> {
   const continents = new Map<number, number[]>();
   for (const territory of getGameMap(game).territories) {
+    if (game.radiationTerritoryIds.has(territory.id)) continue;
     const list = continents.get(territory.continentId);
     if (list) list.push(territory.id);
     else continents.set(territory.continentId, [territory.id]);
@@ -31,46 +30,145 @@ function bonusOf(game: Game, continentId: number): number {
   return getGameMap(game).bonuses[continentId] ?? 0;
 }
 
+const CLAIM_ADJACENCY = 0.5;
+const RIVAL_DISTANCE_WEIGHT = 1;
+const RIVAL_DISTANCE_CAP = 3;
+const RIVAL_HELD_SHARE = 0.3;
+const ENTRY_WEIGHT = 0.5;
+const BLOCK_WEIGHT = 0.5;
+const TIE_BREAK = 0.01;
+
+interface ContinentClaims {
+  ids: number[];
+  entries: Set<number>;
+  own: number;
+  rivals: number;
+  strongestRival: number;
+  unclaimed: number;
+}
+
+function isRival(game: Game, botId: number, ownerId: number): boolean {
+  return ownerId !== botId && !isTeammate(game, botId, ownerId);
+}
+
+function continentClaims(
+  game: Game,
+  botId: number,
+  continents: Map<number, number[]>,
+): Map<number, ContinentClaims> {
+  const continentOf = new Map(
+    getGameMap(game).territories.map((t) => [t.id, t.continentId]),
+  );
+  const claims = new Map<number, ContinentClaims>();
+  for (const [continentId, ids] of continents) {
+    const byRival = new Map<number, number>();
+    let own = 0;
+    let unclaimed = 0;
+    for (const id of ids) {
+      const ownerId = game.territoryOwners.get(id);
+      if (ownerId === undefined) unclaimed++;
+      else if (ownerId === botId) own++;
+      else if (isRival(game, botId, ownerId))
+        byRival.set(ownerId, (byRival.get(ownerId) ?? 0) + 1);
+    }
+    const counts = [...byRival.values()];
+    claims.set(continentId, {
+      ids,
+      entries: new Set(
+        ids.filter((id) =>
+          neighborsOf(game, id).some((n) => continentOf.get(n) !== continentId),
+        ),
+      ),
+      own,
+      rivals: counts.reduce((sum, n) => sum + n, 0),
+      strongestRival: Math.max(0, ...counts),
+      unclaimed,
+    });
+  }
+  return claims;
+}
+
+function rivalDistances(
+  game: Game,
+  botId: number,
+  links: Map<number, number[]>,
+): Map<number, number> {
+  const distance = new Map<number, number>();
+  const queue: number[] = [];
+  for (const [id, ownerId] of game.territoryOwners)
+    if (isRival(game, botId, ownerId)) {
+      distance.set(id, 0);
+      queue.push(id);
+    }
+  for (let i = 0; i < queue.length; i++)
+    for (const n of links.get(queue[i]) ?? [])
+      if (!distance.has(n)) {
+        distance.set(n, distance.get(queue[i])! + 1);
+        queue.push(n);
+      }
+  return distance;
+}
+
 function claimValue(
   game: Game,
   botId: number,
   territoryId: number,
-  continentIds: number[],
   continentId: number,
+  claims: ContinentClaims,
+  rivalDistance: number,
 ): number {
-  const owned = continentIds.filter(
-    (id) => game.territoryOwners.get(id) === botId,
-  ).length;
-  const rivals = continentIds.filter(
-    (id) =>
-      game.territoryOwners.has(id) && game.territoryOwners.get(id) !== botId,
-  ).length;
-  const size = continentIds.length;
-  const pursuit =
-    (bonusOf(game, continentId) * (owned + 1) * (1 - rivals / size)) / size;
+  const size = claims.ids.length;
+  const bonus = bonusOf(game, continentId);
+  const perEntry = bonus / Math.max(1, claims.entries.size);
+  const progress = (claims.own + 1) / size;
+  const rivalHeld = claims.strongestRival > claims.own ? RIVAL_HELD_SHARE : 1;
+  const pursuit = perEntry * progress * rivalHeld * (1 - claims.rivals / size);
+  const entry =
+    claims.own > 0 && claims.entries.has(territoryId)
+      ? ENTRY_WEIGHT * perEntry * progress
+      : 0;
   const adjacent = neighborsOf(game, territoryId).filter(
     (n) => game.territoryOwners.get(n) === botId,
   ).length;
-  return pursuit + CLAIM_ADJACENCY * adjacent + Math.random() * TIE_BREAK;
+  const block =
+    bonus > 0 &&
+    adjacent > 0 &&
+    claims.unclaimed === 1 &&
+    claims.strongestRival === size - 1
+      ? BLOCK_WEIGHT * bonus
+      : 0;
+  const distance =
+    (RIVAL_DISTANCE_WEIGHT * Math.min(rivalDistance, RIVAL_DISTANCE_CAP)) /
+    RIVAL_DISTANCE_CAP;
+  return pursuit + entry + block + distance + CLAIM_ADJACENCY * adjacent;
 }
 
-export function chooseTerritoryClaim(game: Game, botId: number): number | null {
+export function chooseTerritoryClaim(
+  game: Game,
+  botId: number,
+  noise: number,
+): number | null {
   const unclaimed = getGameMap(game).territories.filter(
     (t) =>
       !game.territoryOwners.has(t.id) && !game.radiationTerritoryIds.has(t.id),
   );
   if (unclaimed.length === 0) return null;
-  const continents = continentsOf(game);
+  const claims = continentClaims(game, botId, continentsOf(game));
+  const distances = rivalDistances(game, botId, landLinks(game));
   let best: number | null = null;
   let bestValue = -Infinity;
   for (const territory of unclaimed) {
-    const value = claimValue(
-      game,
-      botId,
-      territory.id,
-      continents.get(territory.continentId) ?? [],
-      territory.continentId,
-    );
+    const value =
+      claimValue(
+        game,
+        botId,
+        territory.id,
+        territory.continentId,
+        claims.get(territory.continentId)!,
+        distances.get(territory.id) ?? RIVAL_DISTANCE_CAP,
+      ) +
+      (Math.random() - 0.5) * noise +
+      Math.random() * TIE_BREAK;
     if (value > bestValue) {
       bestValue = value;
       best = territory.id;

@@ -158,14 +158,10 @@ function seaTargetOwner(
   botId: number,
   territoryId: number,
 ): { skip: boolean; ownerId: number | undefined } {
+  if (!isVisible(view, territoryId)) return { skip: true, ownerId: undefined };
   const ownerId = ownerOf(game, view, territoryId);
   if (ownerId === undefined)
-    return {
-      skip:
-        !isVisible(view, territoryId) ||
-        !isFreeConquestTarget(game, territoryId),
-      ownerId,
-    };
+    return { skip: !isFreeConquestTarget(game, territoryId), ownerId };
   return {
     skip: ownerId === botId || isTeammate(game, botId, ownerId),
     ownerId,

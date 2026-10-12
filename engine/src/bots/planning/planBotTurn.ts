@@ -6,6 +6,7 @@ import {
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
+import { difficultyParams } from '../difficulty';
 import {
   canHoldSet,
   currentSetValue,
@@ -20,6 +21,7 @@ import {
   stalemateRamp,
 } from '../features/pressure';
 import { consolidation } from '../features/stackStyle';
+import { defensiveHome } from '../goals/defensiveHome';
 import { breaksMainStack } from '../goals/keepStack';
 import {
   conquestEndShare,
@@ -61,6 +63,8 @@ import {
   PlanContext,
   SimState,
   buildContext,
+  hostileNeighborsOf,
+  isBotBorder,
   isStrategist,
   ownedIds,
   planDepth,
@@ -115,6 +119,10 @@ const PASSIVE_MIN_WIN = 0.8;
 const BOLD_ATTACKS = 2;
 const BOLD_WIN_RELIEF = 0.1;
 const SURE_WIN = 0.8;
+const INTERIOR_DEPTH = 0.75;
+const ESCALATION_CAP = 1.5;
+const GROWTH_TILT = 1.3;
+const MAX_PLANNED_INITIAL_TROOPS = 10;
 const FALLBACK_LOSS_TURNS = 3;
 const FRUSTRATED_LOSS_TURNS = 20;
 
@@ -200,7 +208,11 @@ export function planBotTurn(
   const stale = emptyPlan(-1, botId);
 
   if (phase === 'territory') {
-    const territoryId = chooseTerritoryClaim(game, botId);
+    const territoryId = chooseTerritoryClaim(
+      game,
+      botId,
+      difficultyParams(botProfile.difficulty).noise,
+    );
     return result(
       territoryId !== null
         ? [{ event: 'game:claimTerritory', payload: { territoryId } }]
@@ -209,9 +221,13 @@ export function planBotTurn(
     );
   }
   if (phase === 'troop') {
-    const territoryId = chooseTroopPlacement(game, botId);
     const pool = game.placementTroopPools.get(botId) ?? 0;
     const troops = Math.min(3, game.troopsToDeploy, pool);
+    const planned =
+      troops >= 1 && game.initialTroops <= MAX_PLANNED_INITIAL_TROOPS
+        ? plannedPlacement(game, botId, botProfile, troops, pool)
+        : null;
+    const territoryId = planned ?? chooseTroopPlacement(game, botId);
     return result(
       territoryId !== null && troops >= 1
         ? [{ event: 'game:placeTroop', payload: { territoryId, troops } }]
@@ -244,6 +260,56 @@ export function planBotTurn(
   if (phase === 'fortify') return planFortify(ctx, game, plan);
   if (phase === 'entrench') return planEntrench(ctx, game, plan);
   return result([], plan);
+}
+
+function plannedPlacement(
+  game: Game,
+  botId: number,
+  botProfile: BotProfile,
+  troops: number,
+  pool: number,
+): number | null {
+  const ctx = buildContext(game, botId, botProfile, null);
+  const state = snapshotState(ctx);
+  for (const [playerId, remaining] of game.placementTroopPools) {
+    if (playerId === botId || remaining <= 0) continue;
+    const ids = ownedIds(state, playerId);
+    const share = Math.round(remaining / Math.max(1, ids.length));
+    for (const id of ids) state.troops.set(id, troopsIn(state, id) + share);
+  }
+  const owned = ownedIds(state, botId);
+  const evenLevel =
+    (owned.reduce((sum, id) => sum + troopsIn(state, id), 0) + pool) /
+    Math.max(1, owned.length);
+  const home = defensiveHome(ctx).continentId;
+  let best: number | null = null;
+  let bestGap = -Infinity;
+  for (const id of owned) {
+    if (!canDeployTo(ctx, game, id)) continue;
+    const border = isBotBorder(ctx, state, id);
+    const grows =
+      home !== null &&
+      ctx.territoryContinent.get(id) === home &&
+      hostileNeighborsOf(ctx, state, id).some(
+        (n) => troopsIn(state, n) < evenLevel,
+      );
+    const target =
+      (border
+        ? Math.min(
+            Math.max(strongestThreatAt(ctx, state, id), evenLevel),
+            ESCALATION_CAP * evenLevel,
+          )
+        : INTERIOR_DEPTH * evenLevel) * (grows ? GROWTH_TILT : 1);
+    const gap =
+      target -
+      troopsIn(state, id) +
+      (Math.random() - 0.5) * ctx.params.noise * troops;
+    if (gap > bestGap) {
+      bestGap = gap;
+      best = id;
+    }
+  }
+  return best;
 }
 
 function planDeploy(
@@ -465,7 +531,11 @@ function planAttack(
     break;
   }
 
-  if (isStrategist(ctx) && (plan.replans ?? 0) < MAX_REPLANS) {
+  if (
+    isStrategist(ctx) &&
+    ctx.params.adaptivePlanning &&
+    (plan.replans ?? 0) < MAX_REPLANS
+  ) {
     plan.replans = (plan.replans ?? 0) + 1;
     const fresh = buildTurnPlan(ctx, 0, false);
     if (fresh.attackSteps.length > 0) {

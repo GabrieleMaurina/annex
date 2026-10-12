@@ -15,6 +15,7 @@ import { modeCandidates } from '../goals/modeObjectives';
 import { preyCandidates } from '../goals/preyObjectives';
 import { defensiveBoldness } from '../personality/defensive';
 import { killerWeaknessThreshold } from '../personality/killer';
+import { wallsInTeammate } from './board';
 import {
   PlanContext,
   SimState,
@@ -186,16 +187,23 @@ function cardCandidates(
   let bestTarget: number | null = null;
   let bestFrom: number | null = null;
   let bestDefenders = Infinity;
+  let bestWalls = true;
   for (const from of ownedIds(state, ctx.botId)) {
     if (starts && !starts.has(from)) continue;
     if (troopsIn(state, from) < 3 || !supplyConnected(ctx, from)) continue;
     for (const to of hostileNeighborsOf(ctx, state, from)) {
       if (starts && !favorableAttack(state, from, to, budget)) continue;
       const defenders = troopsIn(state, to);
-      if (defenders < bestDefenders) {
+      if (defenders >= bestDefenders && !bestWalls) continue;
+      const walls = wallsInTeammate(ctx, state, to);
+      if (
+        (bestWalls && !walls) ||
+        (walls === bestWalls && defenders < bestDefenders)
+      ) {
         bestDefenders = defenders;
         bestTarget = to;
         bestFrom = from;
+        bestWalls = walls;
       }
     }
   }

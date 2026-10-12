@@ -54,6 +54,24 @@ export function isFogActive(
   return true;
 }
 
+export function rememberVisibleTerritories(game: Game): void {
+  if (game.fogOfWar !== 'on') return;
+  const stats = territoryStats(game);
+  const seaIds = new Set(getGameMap(game).seaTerritories.map((t) => t.id));
+  for (const playerId of game.playerIds) {
+    if (!isFogActive(game, playerId, stats)) continue;
+    const memory = game.fogMemory.get(playerId) ?? new Map();
+    for (const id of computeVisibleTerritoryIds(game, playerId)) {
+      if (seaIds.has(id)) continue;
+      const ownerId = game.territoryOwners.get(id);
+      if (ownerId === undefined || ownerId === playerId) memory.delete(id);
+      else
+        memory.set(id, { ownerId, troops: game.territoryTroops.get(id) ?? 0 });
+    }
+    game.fogMemory.set(playerId, memory);
+  }
+}
+
 export function visibleTerritoryIdsOrAll(
   game: Game,
   viewerId: number,

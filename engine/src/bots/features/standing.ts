@@ -1,5 +1,6 @@
 import { Game } from '../../types';
-import { BotView } from '../view';
+import { PublicIncome } from '../intel';
+import { BotView, ownerOf, troopsAt } from '../view';
 
 export type StandingRegime = 'duel' | 'triad' | 'multi';
 
@@ -47,6 +48,47 @@ export function playerStrengths(
     if (first === undefined) continue;
     if (ids.every((id) => ownerAt(id) === first))
       add(first, BONUS_STRENGTH * (bonuses[continentId] ?? 0));
+  }
+  return strengths;
+}
+
+function knownStrengths(
+  game: Game,
+  view: BotView,
+  incomes: Map<number, PublicIncome>,
+  continentTerritories: Map<number, number[]>,
+  bonuses: number[],
+): Map<number, number> {
+  const owners = new Map<number, number>();
+  const troops = new Map<number, number>();
+  for (const id of game.territoryOwners.keys()) {
+    const ownerId = ownerOf(game, view, id);
+    if (ownerId === undefined) continue;
+    owners.set(id, ownerId);
+    troops.set(id, troopsAt(game, view, id));
+  }
+  const strengths = playerStrengths(
+    owners,
+    troops,
+    continentTerritories,
+    bonuses,
+    game.troopsPerTerritory,
+  );
+  const knownCounts = new Map<number, number>();
+  for (const ownerId of owners.values())
+    knownCounts.set(ownerId, (knownCounts.get(ownerId) ?? 0) + 1);
+  for (const [playerId, income] of incomes) {
+    if (income.territories <= game.minTroops || game.troopsPerTerritory <= 0)
+      continue;
+    const hidden =
+      income.territories / game.troopsPerTerritory -
+      (knownCounts.get(playerId) ?? 0);
+    if (hidden > 0)
+      strengths.set(
+        playerId,
+        (strengths.get(playerId) ?? 0) +
+          BONUS_STRENGTH * game.troopsPerTerritory * hidden,
+      );
   }
   return strengths;
 }
@@ -99,6 +141,7 @@ export function buildStanding(
   friendlyIds: Set<number>,
   continentTerritories: Map<number, number[]>,
   bonuses: number[],
+  incomes: Map<number, PublicIncome> | null,
 ): Standing {
   const teamMode = game.gameMode === 'team deathmatch';
   const sideOf = (playerId: number) =>
@@ -109,14 +152,16 @@ export function buildStanding(
   const regime = regimeFor(aliveSides.size);
   const botSide = sideOf(botId);
 
-  const strengths = playerStrengths(
-    game.territoryOwners,
-    game.territoryTroops,
-    continentTerritories,
-    bonuses,
-    game.troopsPerTerritory,
-    view.visibleIds,
-  );
+  const strengths = incomes
+    ? knownStrengths(game, view, incomes, continentTerritories, bonuses)
+    : playerStrengths(
+        game.territoryOwners,
+        game.territoryTroops,
+        continentTerritories,
+        bonuses,
+        game.troopsPerTerritory,
+        view.visibleIds,
+      );
   const sideStrength = new Map<number, number>();
   for (const id of alivePlayers) {
     const strength = strengths.get(id);

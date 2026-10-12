@@ -305,6 +305,11 @@ export interface PlayerGameMap {
   imageSrc: string;
 }
 
+export interface RememberedTerritory {
+  ownerId: number;
+  troops: number;
+}
+
 export interface Game {
   name: string;
   mapName: string;
@@ -391,6 +396,7 @@ export interface Game {
   territoryOwners: Map<number, number>;
   territoryTroops: Map<number, number>;
   territoryEntrenchment: Map<number, number>;
+  fogMemory: Map<number, Map<number, RememberedTerritory>>;
   territoryToxins: Map<number, { permanent: boolean; roundsRemaining: number }>;
   capitalTerritoryIds: Set<number>;
   playerMissions: Map<number, Mission>;

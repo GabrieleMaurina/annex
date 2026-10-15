@@ -1,4 +1,4 @@
-import { Engine } from 'engine';
+import { Engine, fromClient, viewResponse } from 'engine';
 import { Server, Socket } from 'socket.io';
 import { recordGameParticipants } from '../../elo';
 import {
@@ -18,6 +18,24 @@ import { isObject } from '../../validate';
 
 type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };
 
+function settingsFromClient(
+  playerId: number,
+  settings: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const { bannedPlayerIds, playerTeam } = settings;
+  const bannedIds = Array.isArray(bannedPlayerIds)
+    ? bannedPlayerIds.map((id) => fromClient(playerId, id))
+    : bannedPlayerIds;
+  if (Array.isArray(bannedIds) && bannedIds.includes(undefined)) return null;
+  return {
+    ...settings,
+    bannedPlayerIds: bannedIds,
+    playerTeam: isObject(playerTeam)
+      ? { ...playerTeam, playerId: fromClient(playerId, playerTeam.playerId) }
+      : playerTeam,
+  };
+}
+
 export function registerGameHandlers(
   io: Server,
   socket: Socket,
@@ -36,7 +54,7 @@ export function registerGameHandlers(
         setSocketRoom(io, playerId, response.game.name);
         emitGameMeta(io, response.game.name, socket);
       }
-      callback(response);
+      callback(viewResponse(playerId, response));
     },
   );
 
@@ -62,7 +80,7 @@ export function registerGameHandlers(
         setSocketRoom(io, playerId, response.game.name);
         emitGameMeta(io, response.game.name, socket);
       }
-      callback(response);
+      callback(viewResponse(playerId, response));
     },
   );
 
@@ -88,7 +106,9 @@ export function registerGameHandlers(
       if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
 
-      const settings = isObject(data) ? data : {};
+      const settings = settingsFromClient(playerId, isObject(data) ? data : {});
+      if (!settings)
+        return callback({ ok: false, error: 'invalid banned players' });
       const metaUpdate = parseMetaSettings(settings);
       if ('error' in metaUpdate)
         return callback({ ok: false, error: metaUpdate.error });
@@ -98,7 +118,7 @@ export function registerGameHandlers(
         applyMetaUpdate(response.game.name, metaUpdate);
         emitGameMeta(io, response.game.name);
       }
-      callback(response);
+      callback(viewResponse(playerId, response));
     },
   );
 
@@ -112,7 +132,7 @@ export function registerGameHandlers(
       recordGameParticipants(
         response.game as { name: string; players: { id: number }[] },
       );
-    callback(response);
+    callback(viewResponse(playerId, response));
   });
 
   socket.on('game:cycleColor', (callback: (response: GameResponse) => void) => {
@@ -120,7 +140,7 @@ export function registerGameHandlers(
     const playerId = playerIdBySocketId.get(socket.id);
     if (playerId === undefined)
       return callback({ ok: false, error: 'not in a game' });
-    callback(engine.cycleColor(playerId));
+    callback(viewResponse(playerId, engine.cycleColor(playerId)));
   });
 
   socket.on('game:nextPhase', (callback: (response: GameResponse) => void) => {
@@ -128,7 +148,7 @@ export function registerGameHandlers(
     const playerId = playerIdBySocketId.get(socket.id);
     if (playerId === undefined)
       return callback({ ok: false, error: 'not in a game' });
-    callback(engine.nextPhase(playerId));
+    callback(viewResponse(playerId, engine.nextPhase(playerId)));
   });
 
   socket.on('game:pause', (callback: (response: GameResponse) => void) => {
@@ -136,7 +156,7 @@ export function registerGameHandlers(
     const playerId = playerIdBySocketId.get(socket.id);
     if (playerId === undefined)
       return callback({ ok: false, error: 'not in a game' });
-    callback(engine.pauseGame(playerId));
+    callback(viewResponse(playerId, engine.pauseGame(playerId)));
   });
 
   socket.on(
@@ -146,7 +166,7 @@ export function registerGameHandlers(
       const playerId = playerIdBySocketId.get(socket.id);
       if (playerId === undefined)
         return callback({ ok: false, error: 'not in a game' });
-      callback(engine.cycleBotSpeed(playerId));
+      callback(viewResponse(playerId, engine.cycleBotSpeed(playerId)));
     },
   );
 
@@ -155,7 +175,7 @@ export function registerGameHandlers(
     const playerId = playerIdBySocketId.get(socket.id);
     if (playerId === undefined)
       return callback({ ok: false, error: 'not in a game' });
-    callback(engine.surrender(playerId));
+    callback(viewResponse(playerId, engine.surrender(playerId)));
   });
 
   socket.on('game:endGame', (callback: (response: GameResponse) => void) => {
@@ -163,7 +183,7 @@ export function registerGameHandlers(
     const playerId = playerIdBySocketId.get(socket.id);
     if (playerId === undefined)
       return callback({ ok: false, error: 'not in a game' });
-    callback(engine.endGame(playerId));
+    callback(viewResponse(playerId, engine.endGame(playerId)));
   });
 
   socket.on('game:chat', (data: unknown) => {

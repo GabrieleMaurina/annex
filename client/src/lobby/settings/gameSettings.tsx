@@ -20,7 +20,9 @@ import {
 } from '../botOptions';
 import {
   ALLIANCES_HELP,
+  ANONYMOUS_HELP,
   ATTACK_DICE_HELP,
+  ATTACK_INCREMENT_HELP,
   BLITZ_HELP,
   BOUNTIES_HELP,
   CARDS_HELP,
@@ -80,6 +82,7 @@ export interface GameSettingDef {
 export function formatDuration(seconds: number): string {
   const min = Math.floor(seconds / 60);
   const sec = seconds % 60;
+  if (min === 0) return `${sec} sec`;
   return sec === 0 ? `${min} min` : `${min} min ${sec} sec`;
 }
 
@@ -102,7 +105,8 @@ function caps(...values: string[]): GameSettingOption[] {
   return values.map((value) => ({ value, label: titleCase(value) }));
 }
 
-const TURN_DURATIONS = [60, 90, 120, 150, 180, 300];
+const TURN_DURATIONS = [30, 60, 90, 120, 150, 180, 300];
+const ATTACK_INCREMENTS = Array.from({ length: 16 }, (_, i) => i);
 const INITIAL_TROOPS = Array.from({ length: 100 }, (_, i) => i + 1);
 const DICE = Array.from({ length: MAX_DICE }, (_, i) => i + 1);
 const HILLS = Array.from(
@@ -307,6 +311,13 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     help: ALLIANCES_HELP,
   },
   {
+    key: 'anonymous',
+    label: 'Anonymous',
+    section: 'Players',
+    options: onOff(),
+    help: ANONYMOUS_HELP,
+  },
+  {
     key: 'disconnectBotPersonality',
     label: 'Disconnect Personality',
     section: 'Bots',
@@ -336,6 +347,17 @@ export const GAME_SETTINGS: GameSettingDef[] = [
       label: formatDuration(seconds),
     })),
     help: TURN_DURATION_HELP,
+  },
+  {
+    key: 'attackIncrement',
+    label: 'Attack Increment',
+    section: 'Session',
+    numeric: true,
+    options: ATTACK_INCREMENTS.map((seconds) => ({
+      value: String(seconds),
+      label: formatDuration(seconds),
+    })),
+    help: ATTACK_INCREMENT_HELP,
   },
 ];
 
@@ -368,6 +390,7 @@ export function randomGameSettings(
   const gameMode = pick(GAME_MODES);
   const settings: Record<string, string | number> = { gameMode };
   for (const def of GAME_SETTINGS) {
+    if (def.key === 'anonymous') continue;
     const { value } = def.numeric
       ? pickNearDefault(
           def.options,

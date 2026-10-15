@@ -22,7 +22,11 @@ import { recordElimination } from '../game/progression/stats';
 import { recordReplayFrame } from '../game/replay';
 import { gameState } from '../game/state';
 import { isFreeConquestTarget } from '../game/toxins/toxins';
-import { advanceTurnPhase, rewindTurnTimerIfBelowHalf } from '../game/turns';
+import {
+  advanceTurnPhase,
+  extendTurnTimer,
+  topUpTurnTimerToHalf,
+} from '../game/turns';
 import { fogFilterEmit } from '../game/world/fog';
 import { withPortalEdges } from '../game/world/portals';
 import {
@@ -441,10 +445,14 @@ export function attack(
     };
   });
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
-    callbacks.onTankFired(viewerId, {
-      type,
-      hasDefender: defenderId !== undefined,
-    });
+    callbacks.onTankFired(
+      viewerId,
+      {
+        type,
+        hasDefender: defenderId !== undefined,
+      },
+      game.name,
+    );
   }
   if (autoConquestMove) {
     const move = autoConquestMove;
@@ -552,6 +560,7 @@ export function attackMove(playerId: number, rawTroops: unknown): GameResponse {
   game.attackStartTerritoryId = null;
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
+  extendTurnTimer(game, game.attackIncrement);
 
   const fullPath = attackFullPath(game, playerId, startId, endId);
   fogFilterEmit(
@@ -573,7 +582,7 @@ export function attackMove(playerId: number, rawTroops: unknown): GameResponse {
   if ((game.playerCards.get(playerId)?.length ?? 0) >= 5) {
     game.turnPhase = 'deploy';
     game.deployCardMandate = true;
-    rewindTurnTimerIfBelowHalf(game);
+    topUpTurnTimerToHalf(game);
   } else if (
     !hasAnyAttack(game, playerId) &&
     !hasReadyNuke(game, playerId) &&

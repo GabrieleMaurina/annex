@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import Help from '../../common/tooltips/Help';
+import { connector } from '../../connector';
 import { playSound } from '../../lib/sounds';
 import type {
   GameMeta,
@@ -114,7 +115,8 @@ function GameSettingsFields({
         const defs = GAME_SETTINGS.filter(
           (d) =>
             d.section === section &&
-            (!d.modes || d.modes.includes(game.gameMode)),
+            (!d.modes || d.modes.includes(game.gameMode)) &&
+            !(d.key === 'anonymous' && connector.isOffline()),
         );
         const last = index === GAME_SETTING_SECTIONS.length - 1;
         return (

@@ -33,11 +33,15 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
       ['Right-click', 'Fortify or sail everything to the target'],
       ['← ↓ / → ↑', 'Decrease / increase troops'],
       ['← ↑ / → ↓', 'Previous / next attack option'],
+      ['%', 'Toggle percentage for troops and ships over 100'],
     ],
   },
   {
     title: 'Number inputs',
-    shortcuts: [['← ↓ / → ↑', 'Decrease / increase']],
+    shortcuts: [
+      ['← ↓ / → ↑', 'Decrease / increase'],
+      ['Ctrl / Shift', 'Step by 5 / 10 (arrows, wheel, drag, spinner)'],
+    ],
   },
   {
     title: 'Chat and messages',

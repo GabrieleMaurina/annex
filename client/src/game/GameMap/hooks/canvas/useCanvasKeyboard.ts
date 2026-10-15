@@ -1,5 +1,14 @@
 import { useCallback, useEffect } from 'react';
+import {
+  modifierStep,
+  wheelDirection,
+} from '../../../../common/inputs/useNumberInput';
+import { stepTroops } from '../../../../common/inputs/useTroopsInput';
 import { connector } from '../../../../connector';
+import {
+  isTroopsPercentage,
+  saveTroopsPercentage,
+} from '../../../../lib/player';
 import { playSound } from '../../../../lib/sounds';
 import type { Ack } from '../../../../lib/types';
 import { isTypingTarget } from '../../helpers';
@@ -51,6 +60,7 @@ export function useCanvasKeyboard({
   alliancePopupFor,
   setAlliancePopupFor,
   setGame,
+  setToasts,
   setChatOpen,
   setPanelCollapsed,
   openPanel,
@@ -98,43 +108,36 @@ export function useCanvasKeyboard({
   zoomAround: ReturnType<typeof useMapViewportAnimation>['zoomAround'];
 }) {
   const stepTroopPanel = useCallback(
-    (delta: 1 | -1) => {
+    (delta: number) => {
       if (deployPanelOpen) {
-        setDeployTroops((prev) =>
-          Math.min(deployMaxTroops, Math.max(1, prev + delta)),
-        );
+        setDeployTroops((prev) => stepTroops(prev, delta, 1, deployMaxTroops));
         return true;
       }
       if (deploySeaPanelOpen) {
         setDeploySeaShips((prev) =>
-          Math.min(deploySeaMaxShips, Math.max(1, prev + delta)),
+          stepTroops(prev, delta, 1, deploySeaMaxShips),
         );
         return true;
       }
       if (sailPanelOpen) {
-        setSailShips((prev) =>
-          Math.min(sailMaxShips, Math.max(1, prev + delta)),
-        );
+        setSailShips((prev) => stepTroops(prev, delta, 1, sailMaxShips));
         return true;
       }
       if (fortifyPanelOpen) {
         setFortifyTroops((prev) =>
-          Math.min(fortifyMaxTroops, Math.max(1, prev + delta)),
+          stepTroops(prev, delta, 1, fortifyMaxTroops),
         );
         return true;
       }
       if (entrenchPanelOpen) {
         setEntrenchTroops((prev) =>
-          Math.min(entrenchMaxTroops, Math.max(1, prev + delta)),
+          stepTroops(prev, delta, 1, entrenchMaxTroops),
         );
         return true;
       }
       if (attackPanelOpen && attackShowPendingConquest) {
         setAttackMoveTroops((prev) =>
-          Math.min(
-            attackMoveMaxTroops,
-            Math.max(attackMoveMinTroops, prev + delta),
-          ),
+          stepTroops(prev, delta, attackMoveMinTroops, attackMoveMaxTroops),
         );
         return true;
       }
@@ -365,7 +368,7 @@ export function useCanvasKeyboard({
       if (
         isArrowKey &&
         !isTypingTarget(e.target) &&
-        stepTroopPanel(arrowDelta)
+        stepTroopPanel(arrowDelta * modifierStep(e))
       ) {
         e.preventDefault();
         playSound('click');
@@ -405,6 +408,17 @@ export function useCanvasKeyboard({
         else if (key === 't' && cardsEnabled && !settingsMenuOpen) {
           togglePanel('cards');
           setAwardedCards([]);
+        } else if (key === '%') {
+          const percentage = !isTroopsPercentage();
+          playSound('click');
+          saveTroopsPercentage(percentage);
+          setToasts((prev) => [
+            ...prev,
+            {
+              id: Date.now(),
+              message: `Troops percentage ${percentage ? 'on' : 'off'}`,
+            },
+          ]);
         }
       }
     }
@@ -469,6 +483,7 @@ export function useCanvasKeyboard({
     playCardSet,
     canAdvancePhase,
     setGame,
+    setToasts,
     setEmojiPickerFor,
     setAlliancePopupFor,
     setOpenPanel,
@@ -489,7 +504,7 @@ export function useCanvasKeyboard({
   useEffect(() => {
     function onWheel(e: WheelEvent) {
       e.preventDefault();
-      if (stepTroopPanel(e.deltaY < 0 ? 1 : -1)) {
+      if (stepTroopPanel(wheelDirection(e) * modifierStep(e))) {
         playSound('click');
         return;
       }

@@ -19,6 +19,7 @@ import {
 } from '../session/store';
 import {
   Alliances,
+  Anonymous,
   Blitz,
   Bounties,
   CardsMode,
@@ -27,6 +28,7 @@ import {
   Entrenchments,
   FogOfWar,
   Fortification,
+  Game,
   GameMode,
   Nukes,
   Placement,
@@ -42,6 +44,7 @@ import { isInteger } from '../util/validate';
 import { validateGameName } from './create';
 
 const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
+const ANONYMOUS_VALUES: Anonymous[] = ['off', 'on'];
 const BLITZ_VALUES: Blitz[] = ['balanced', 'true', 'fair', 'off'];
 const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
 const CARDS_VALUES: CardsMode[] = [
@@ -100,7 +103,7 @@ const STARVATION_VALUES: Starvation[] = [
 const SUPPLY_LINES_VALUES: SupplyLines[] = ['off', 'on'];
 const NUKES_VALUES: Nukes[] = ['off', 'on'];
 const TOXINS_VALUES: Toxins[] = ['off', 'temporary', 'permanent'];
-const TURN_DURATION_VALUES: TurnDuration[] = [60, 90, 120, 150, 180, 300];
+const TURN_DURATION_VALUES: TurnDuration[] = [30, 60, 90, 120, 150, 180, 300];
 const ROUND_TROOPS_VALUES: RoundTroops[] = ['off', 'on'];
 export const TROOPS_PER_TERRITORY_VALUES = [
   1 / 5,
@@ -128,6 +131,26 @@ export function isBlitzOffAllowed(settings: {
   );
 }
 
+function renameGame(game: Game, name: string) {
+  games.delete(game.name);
+  for (const id of [...game.playerIds, ...game.spectatorIds]) {
+    const member = playersById.get(id);
+    if (member) member.gameName = name;
+    callbacks.onRoomChanged(id, name);
+  }
+  game.name = name;
+  games.set(game.name, game);
+}
+
+function hideHostInGameName(game: Game, hostName: string) {
+  const match = /^Game with (.+?)(?: \(\d+\))?$/.exec(game.name);
+  if (!match || !hostName.startsWith(match[1])) return;
+  let name;
+  do name = `Game with ${Math.floor(Math.random() * 10000)}`;
+  while (games.has(name));
+  renameGame(game, name);
+}
+
 export function updateSettings(
   playerId: number,
   settings: Record<string, unknown>,
@@ -151,6 +174,21 @@ export function updateSettings(
     game.alliances = settings.alliances as Alliances;
   }
 
+  if (settings.anonymous !== undefined) {
+    if (!(ANONYMOUS_VALUES as unknown[]).includes(settings.anonymous))
+      return { ok: false, error: 'invalid anonymous' };
+    if (
+      settings.anonymous === 'on' &&
+      game.anonymous === 'off' &&
+      !game.offline
+    )
+      hideHostInGameName(
+        game,
+        playersById.get(game.originalHostId)?.name ?? '',
+      );
+    game.anonymous = settings.anonymous as Anonymous;
+  }
+
   if (settings.attackDice !== undefined) {
     if (
       !isInteger(settings.attackDice) ||
@@ -160,6 +198,16 @@ export function updateSettings(
       return { ok: false, error: 'invalid attack dice' };
     game.attackDice = settings.attackDice;
     if (game.defenceDice > game.attackDice) game.defenceDice = game.attackDice;
+  }
+
+  if (settings.attackIncrement !== undefined) {
+    if (
+      !isInteger(settings.attackIncrement) ||
+      settings.attackIncrement < 0 ||
+      settings.attackIncrement > 15
+    )
+      return { ok: false, error: 'invalid attack increment' };
+    game.attackIncrement = settings.attackIncrement;
   }
 
   if (settings.bannedPlayerIds !== undefined) {
@@ -333,15 +381,7 @@ export function updateSettings(
     if (trimmedName !== game.name) {
       if (games.has(trimmedName))
         return { ok: false, error: 'game name already in use' };
-
-      games.delete(game.name);
-      for (const id of [...game.playerIds, ...game.spectatorIds]) {
-        const member = playersById.get(id);
-        if (member) member.gameName = trimmedName;
-        callbacks.onRoomChanged(id, trimmedName);
-      }
-      game.name = trimmedName;
-      games.set(game.name, game);
+      renameGame(game, trimmedName);
     }
   }
 

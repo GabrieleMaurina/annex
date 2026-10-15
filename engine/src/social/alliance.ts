@@ -11,6 +11,7 @@ import {
   scheduleAllianceRequestExpiry,
   startAllianceCooldown,
 } from '../game/alliances';
+import { isAnonymousPlaying } from '../game/anonymous';
 import { recordLog, SERVER_VIEW_ID } from '../game/world/fog';
 import { playersById } from '../session/players';
 import { games, sendGameState } from '../session/store';
@@ -35,7 +36,8 @@ export function offerAlliance(playerId: number, targetPlayerId: number): void {
 
   if (targetPlayerId === player.id) return;
   if (!game.playerIds.includes(targetPlayerId)) return;
-  if (playersById.get(targetPlayerId)?.isBot) return;
+  if (playersById.get(targetPlayerId)?.isBot && !isAnonymousPlaying(game))
+    return;
   if (areAllied(game, player.id, targetPlayerId)) return;
   if (game.allianceRequests.has(pairKey(player.id, targetPlayerId))) return;
   if (allianceCooldownUntil(game, player.id, targetPlayerId) !== null) return;
@@ -58,7 +60,11 @@ export function offerAlliance(playerId: number, targetPlayerId: number): void {
     sendGameState(current, targetPlayerId);
   });
 
-  callbacks.onAllianceRequested(targetPlayerId, { fromId: player.id });
+  callbacks.onAllianceRequested(
+    targetPlayerId,
+    { fromId: player.id },
+    game.name,
+  );
   sendGameState(game, player.id);
   sendGameState(game, targetPlayerId);
 }
@@ -101,11 +107,15 @@ export function respondAllianceRequest(
       playerId: player.id,
       withId: fromPlayerId,
     });
-    callbacks.onAllianceFormed(player.id, { withId: fromPlayerId });
-    callbacks.onAllianceFormed(fromPlayerId, { withId: player.id });
+    callbacks.onAllianceFormed(player.id, { withId: fromPlayerId }, game.name);
+    callbacks.onAllianceFormed(fromPlayerId, { withId: player.id }, game.name);
   } else {
     startAllianceCooldown(game, fromPlayerId, player.id);
-    callbacks.onAllianceDeclined(fromPlayerId, { withId: player.id });
+    callbacks.onAllianceDeclined(
+      fromPlayerId,
+      { withId: player.id },
+      game.name,
+    );
   }
   sendGameState(game, player.id);
   sendGameState(game, fromPlayerId);
@@ -136,8 +146,16 @@ export function terminateAlliance(
     playerId: player.id,
     withId: targetPlayerId,
   });
-  callbacks.onAllianceTerminated(player.id, { withId: targetPlayerId });
-  callbacks.onAllianceTerminated(targetPlayerId, { withId: player.id });
+  callbacks.onAllianceTerminated(
+    player.id,
+    { withId: targetPlayerId },
+    game.name,
+  );
+  callbacks.onAllianceTerminated(
+    targetPlayerId,
+    { withId: player.id },
+    game.name,
+  );
   sendGameState(game, player.id);
   sendGameState(game, targetPlayerId);
 }

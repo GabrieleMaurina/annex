@@ -1,5 +1,6 @@
 import { startTakeover } from '../bots/takeover';
 import { nextBotSpeed } from '../bots/thinkTime';
+import { isAnonymous } from '../game/anonymous';
 import { checkGameEnd, finishGame } from '../game/end';
 import { recomputeHost } from '../game/host';
 import {
@@ -9,6 +10,7 @@ import {
 import {
   advanceTurnPhase,
   pauseTurnTimer,
+  pauseTurnTimerWithAutoResume,
   resumeTurnTimer,
 } from '../game/turns';
 import { ArchivedMap, getArchivedMap } from '../maps/maps';
@@ -99,7 +101,12 @@ export function pauseGame(playerId: number): GameResponse {
   if (game.state !== 'playing') return { ok: false, error: 'game not started' };
 
   if (game.paused) resumeTurnTimer(game);
-  else pauseTurnTimer(game);
+  else if (game.offline) pauseTurnTimer(game);
+  else {
+    if (game.pauseUsed) return { ok: false, error: 'pause already used' };
+    game.pauseUsed = true;
+    pauseTurnTimerWithAutoResume(game);
+  }
 
   return respondGameState(game, player.id);
 }
@@ -112,6 +119,7 @@ export function cycleBotSpeed(playerId: number): GameResponse {
   if (!game) return { ok: false, error: 'game not found' };
   if (game.hostId !== player.id) return { ok: false, error: 'not the host' };
   if (game.state !== 'playing') return { ok: false, error: 'game not started' };
+  if (isAnonymous(game)) return { ok: false, error: 'anonymous game' };
 
   game.botSpeed = nextBotSpeed(game.botSpeed);
 

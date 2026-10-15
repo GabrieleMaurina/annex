@@ -90,7 +90,7 @@ export type CardsMode =
   | 'linear per player'
   | 'exponential per player'
   | 'off';
-export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
+export type TurnDuration = 30 | 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
   | 'supremacy'
   | 'supremacy 3/4'
@@ -119,6 +119,7 @@ export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
+export type Anonymous = 'off' | 'on';
 export type Nukes = 'off' | 'on';
 
 export interface NukeProject {
@@ -324,6 +325,8 @@ export interface Game {
   startedAt: number | null;
   endedAt: number | null;
   alliances: Alliances;
+  anonymous: Anonymous;
+  aliases: Map<number, number>;
   allianceIds: Set<string>;
   allianceRequests: Map<string, AllianceRequest>;
   allianceCooldowns: Map<string, number>;
@@ -364,6 +367,7 @@ export interface Game {
   supplyLines: SupplyLines;
   toxins: Toxins;
   turnDuration: TurnDuration;
+  attackIncrement: number;
   roundTroops: RoundTroops;
   roundNumber: number;
   turnPlayerIndex: number;
@@ -372,8 +376,10 @@ export interface Game {
   remainingSpecialPhases: TurnPhase[];
   placementTroopPools: Map<number, number>;
   turnStartedAt: number;
+  turnExtension: number;
   paused: boolean;
   pausedAt: number | null;
+  pauseUsed: boolean;
   botSpeed: BotSpeed;
   humansAbandonedAt: number | null;
   earlyWin: boolean;

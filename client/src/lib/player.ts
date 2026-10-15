@@ -23,9 +23,11 @@ let gameSlots = 2;
 let gameBots: SavedBot[] = [];
 let gameLocalPlayers: string[] = [];
 let homeFilters: HomeFilters | undefined;
+let troopsPercentage = false;
 const restoredBotInputs = new Map<number, SavedBot>();
 
 const nameListeners = new Set<() => void>();
+const troopsPercentageListeners = new Set<() => void>();
 
 export function isLoggedIn(): boolean {
   return loggedIn;
@@ -48,11 +50,29 @@ export function subscribePlayerName(listener: () => void): () => void {
   };
 }
 
+export function isTroopsPercentage(): boolean {
+  return troopsPercentage;
+}
+
+function setTroopsPercentage(value: boolean): void {
+  if (value === troopsPercentage) return;
+  troopsPercentage = value;
+  troopsPercentageListeners.forEach((listener) => listener());
+}
+
+export function subscribeTroopsPercentage(listener: () => void): () => void {
+  troopsPercentageListeners.add(listener);
+  return () => {
+    troopsPercentageListeners.delete(listener);
+  };
+}
+
 function currentClientSettings(): ClientSettings {
   return {
     muted: isSoundMuted(),
     animationsDisabled: areAnimationsDisabled(),
     volume: getSoundVolume(),
+    troopsPercentage,
   };
 }
 
@@ -67,6 +87,7 @@ export function applyServerSettings(
     setSoundMuted(!!client.muted);
     setAnimationsDisabled(!!client.animationsDisabled);
     if (typeof client.volume === 'number') setSoundVolume(client.volume);
+    setTroopsPercentage(!!client.troopsPercentage);
   }
   if (game) {
     const { slots, bots, localPlayers, ...rest } = game;
@@ -145,5 +166,10 @@ export function saveGameSettings(
 
 export function saveHomeFilters(filters: HomeFilters) {
   homeFilters = { ...filters };
+  pushSettings();
+}
+
+export function saveTroopsPercentage(value: boolean) {
+  setTroopsPercentage(value);
   pushSettings();
 }

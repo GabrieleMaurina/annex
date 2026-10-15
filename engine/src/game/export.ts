@@ -123,8 +123,10 @@ export interface GameExport {
     supplyLines: string;
     fogOfWar: string;
     alliances: string;
+    anonymous: string;
     nukes: string;
     turnDuration: number;
+    attackIncrement: number;
     disconnectBotDifficulty: string;
     disconnectBotPersonality: string;
   };
@@ -370,8 +372,10 @@ export function exportGame(gameName: string): GameExport | null {
       supplyLines: game.supplyLines,
       fogOfWar: game.fogOfWar,
       alliances: game.alliances,
+      anonymous: game.anonymous,
       nukes: game.nukes,
       turnDuration: game.turnDuration,
+      attackIncrement: game.attackIncrement,
       disconnectBotDifficulty: game.disconnectBotDifficulty,
       disconnectBotPersonality: game.disconnectBotPersonality,
     },

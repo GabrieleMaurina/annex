@@ -1,6 +1,9 @@
 import type { GameSummary } from 'engine';
 
-export type LiveGameSummary = Omit<GameSummary, 'playerIds' | 'settings'> & {
+export type LiveGameSummary = Omit<
+  GameSummary,
+  'playerIds' | 'bannedIds' | 'settings'
+> & {
   hasPassword: boolean;
 };
 

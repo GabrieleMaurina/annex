@@ -4,6 +4,7 @@ export interface ClientSettings {
   muted: boolean;
   animationsDisabled: boolean;
   volume: number;
+  troopsPercentage: boolean;
 }
 
 export interface Account {
@@ -93,7 +94,7 @@ export type CardsMode =
   | 'linear per player'
   | 'exponential per player'
   | 'off';
-export type TurnDuration = 60 | 90 | 120 | 150 | 180 | 300;
+export type TurnDuration = 30 | 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
   | 'supremacy'
   | 'supremacy 3/4'
@@ -139,6 +140,7 @@ export type Bounties = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
+export type Anonymous = 'off' | 'on';
 export type Nukes = 'off' | 'on';
 
 export interface NukeProject {
@@ -219,6 +221,7 @@ export interface SavedBot {
 }
 
 export interface GameState {
+  selfId?: number;
   name: string;
   mapName: string;
   mapGeneration: GenerateMapInput | null;
@@ -228,6 +231,7 @@ export interface GameState {
   originalHostId: number;
   state: 'lobby' | 'playing' | 'ended';
   alliances: Alliances;
+  anonymous: Anonymous;
   allianceStates: {
     playerId: number;
     state: AllianceViewState;
@@ -268,6 +272,7 @@ export interface GameState {
   supplyLines: SupplyLines;
   toxins: Toxins;
   turnDuration: TurnDuration;
+  attackIncrement: number;
   roundTroops: RoundTroops;
   territoryTroopsCap: number;
   totalTroopsCap: number;
@@ -278,9 +283,12 @@ export interface GameState {
   turnPhase: TurnPhase;
   troopsToDeploy: number;
   turnStartedAt: number;
+  turnExtension: number;
   startedAt: number | null;
   endedAt: number | null;
   paused: boolean;
+  pauseUsed: boolean;
+  pausedAt: number | null;
   botSpeed: BotSpeed;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
@@ -371,6 +379,7 @@ export interface GameResults {
 
 export interface GameSettingsInput {
   alliances?: Alliances;
+  anonymous?: Anonymous;
   bannedPlayerIds?: number[];
   blitz?: Blitz;
   bounties?: Bounties;
@@ -403,6 +412,7 @@ export interface GameSettingsInput {
   supplyLines?: SupplyLines;
   toxins?: Toxins;
   turnDuration?: TurnDuration;
+  attackIncrement?: number;
   roundTroops?: RoundTroops;
   visibility?: Visibility;
 }
@@ -410,6 +420,7 @@ export interface GameSettingsInput {
 export type GameRulesSettings = Pick<
   GameSettingsInput,
   | 'alliances'
+  | 'anonymous'
   | 'blitz'
   | 'bounties'
   | 'cards'
@@ -437,6 +448,7 @@ export type GameRulesSettings = Pick<
   | 'supplyLines'
   | 'toxins'
   | 'turnDuration'
+  | 'attackIncrement'
   | 'roundTroops'
   | 'visibility'
 > & { mapGeneration?: GenerateMapInput; playerMapId?: string | null };
@@ -647,8 +659,10 @@ export interface StoredGameSettings {
   supplyLines: SupplyLines;
   fogOfWar: FogOfWar;
   alliances: Alliances;
+  anonymous: Anonymous;
   nukes: Nukes;
   turnDuration: TurnDuration;
+  attackIncrement: number;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';
 }

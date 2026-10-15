@@ -8,7 +8,7 @@ import {
   gameHistoryRouter,
   publicGamesRouter,
 } from './routes/gameHistoryRoutes';
-import { gamesRouter } from './routes/gamesRoutes';
+import { gamesRouter, randomGameRouter } from './routes/gamesRoutes';
 import { messagesRouter } from './routes/messagesRoutes';
 import { playerMapsRouter } from './routes/playerMapsRoutes';
 import { playersRouter } from './routes/playersRoutes';
@@ -19,6 +19,7 @@ export interface HttpDeps {
   listGames: () => LiveGameRow[];
   playerGame: (token: string, userId: string | null) => string | null;
   inLiveGame: (token: string, userId: string | null) => boolean;
+  randomGame: (token: string, userId: string | null) => string | null;
 }
 
 function errorHandler(
@@ -49,6 +50,7 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   api.use(playerMapsRouter);
   api.use(gameHistoryRouter);
   api.use(sessionRouter(deps.playerGame));
+  api.use(randomGameRouter(deps.randomGame));
   api.use(authRouter(deps.inLiveGame));
   api.use(settingsRouter);
   api.use(accountRouter);

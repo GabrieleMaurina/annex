@@ -81,7 +81,7 @@ export function playCardSet(playerId: number, rawCards: unknown): GameResponse {
     territoryBonusCount: evaluated.territoryBonusIds.length,
   };
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
-    callbacks.onCardSetPlayed(viewerId, cardSetPlayedPayload);
+    callbacks.onCardSetPlayed(viewerId, cardSetPlayedPayload, game.name);
   }
   recordLogForAll(game, 'game:cardSetPlayed', cardSetPlayedPayload);
   for (const { territoryId, troops } of bonusDeposits) {

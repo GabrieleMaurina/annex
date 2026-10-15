@@ -1,6 +1,7 @@
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { allianceStatesForViewer, alliedIds } from '../alliances';
+import { isAnonymousPlaying } from '../anonymous';
 import { gameState, isEliminated, territoryStats } from '../state';
 import { SERVER_VIEW_ID } from './fog';
 import { withPortalEdges } from './portals';
@@ -138,6 +139,8 @@ export function filterGameStateForViewer(
 ): ReturnType<typeof gameState> {
   const withAlliances = {
     ...base,
+    hostId:
+      isAnonymousPlaying(game) && viewerId !== base.hostId ? 0 : base.hostId,
     allianceStates: allianceStatesForViewer(game, viewerId),
     arsenal: { ...(game.arsenal.get(viewerId) ?? { nukes: 0, antiNukes: 0 }) },
     nukeProjects: (game.nukeProjects.get(viewerId) ?? []).map((p) => ({

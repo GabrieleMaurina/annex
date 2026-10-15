@@ -91,6 +91,14 @@ import { sendEmoji } from './social/emoji';
 
 export { runBotWorker } from './bots/planning/worker';
 export { EngineCallbacks } from './callbacks';
+export { EventKey, EventPayload } from './clientView/events';
+export {
+  fromClient,
+  ViewableResponse,
+  viewEvent,
+  viewReplay,
+  viewResponse,
+} from './clientView/responses';
 export { MAX_DICE } from './game/combat/dice';
 export {
   GameExport,
@@ -112,6 +120,7 @@ export {
   MIN_HILLS,
 } from './game/progression/points';
 export { GameSummary } from './game/state';
+export { ONLINE_PAUSE_SECONDS } from './game/turns';
 export { isBlitzOffAllowed } from './lifecycle/settings';
 export {
   Fill,

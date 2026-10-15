@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { useNumberInput } from '../../common/inputs/useNumberInput';
+import PercentageToggle from '../../common/inputs/PercentageToggle';
+import { useTroopsInput } from '../../common/inputs/useTroopsInput';
 
 interface Props {
   label: string;
@@ -27,7 +28,7 @@ function TroopPanel({
   style,
   extra,
 }: Props) {
-  const numberInput = useNumberInput({
+  const troopsInput = useTroopsInput({
     value: troops,
     min: minTroops,
     max: maxTroops,
@@ -49,23 +50,13 @@ function TroopPanel({
         <Form.Control
           type="number"
           size="sm"
-          min={minTroops}
-          max={maxTroops}
-          value={troops}
-          onChange={(e) =>
-            onChange(
-              Math.min(
-                maxTroops,
-                Math.max(minTroops, Number(e.target.value) || minTroops),
-              ),
-            )
-          }
-          {...numberInput}
-          style={{ ...numberInput.style, width: 70 }}
+          {...troopsInput}
+          style={{ ...troopsInput.style, width: 70 }}
         />
         <Button size="sm" onClick={onConfirm}>
           {buttonLabel}
         </Button>
+        <PercentageToggle max={maxTroops} />
       </div>
       {extra && <span className="small text-body-secondary">{extra}</span>}
     </div>

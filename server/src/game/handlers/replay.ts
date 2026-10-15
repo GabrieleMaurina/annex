@@ -1,4 +1,4 @@
-import { Engine } from 'engine';
+import { Engine, viewReplay } from 'engine';
 import { Socket } from 'socket.io';
 import { playerIdBySocketId } from '../../sockets/socketRooms';
 
@@ -8,6 +8,6 @@ export function registerReplayHandlers(socket: Socket, engine: Engine) {
     const playerId = playerIdBySocketId.get(socket.id);
     if (playerId === undefined)
       return callback({ ok: false, error: 'not in a game' });
-    callback(engine.requestReplay(playerId));
+    callback(viewReplay(playerId, engine.requestReplay(playerId)));
   });
 }

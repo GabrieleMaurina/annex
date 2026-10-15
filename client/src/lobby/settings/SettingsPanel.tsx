@@ -66,6 +66,7 @@ interface Props {
 
 const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   alliances: 'off',
+  anonymous: 'off',
   blitz: 'balanced',
   bounties: 'off',
   cards: 'constant',
@@ -93,6 +94,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   supplyLines: 'off',
   toxins: 'off',
   turnDuration: 120,
+  attackIncrement: 0,
   roundTroops: 'off',
   visibility: 'public',
 };
@@ -110,6 +112,7 @@ function SettingsPanel({
 }: Props) {
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
   useToggleSound(mapPickerOpen);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [mapThumbnails, setMapThumbnails] = useState<Record<string, string>>(
     {},
   );
@@ -243,28 +246,40 @@ function SettingsPanel({
   );
 
   const settingsBody = (
+    <GameSettingsFields
+      game={game}
+      gameMeta={gameMeta}
+      isHost={isHost}
+      applySettings={applySettings}
+    />
+  );
+
+  function settingsAction(label: string, onClick: () => void) {
+    return (
+      <Button
+        size="sm"
+        variant="outline-secondary"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClick();
+        }}
+      >
+        {label}
+      </Button>
+    );
+  }
+
+  const settingsActions = isHost && (
     <>
-      <GameSettingsFields
-        game={game}
-        gameMeta={gameMeta}
-        isHost={isHost}
-        applySettings={applySettings}
-      />
-      {isHost && (
-        <div className="mt-3 d-flex gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => applySettings({ ...DEFAULT_SETTINGS })}
-          >
-            Reset
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => applySettings(randomGameSettings(DEFAULT_SETTINGS))}
-          >
-            Randomize
-          </Button>
-        </div>
+      {settingsAction('Reset', () =>
+        applySettings({
+          ...DEFAULT_SETTINGS,
+          ...(connector.isOffline() ? { anonymous: undefined } : {}),
+        }),
+      )}
+      {settingsAction('Randomize', () =>
+        applySettings(randomGameSettings(DEFAULT_SETTINGS)),
       )}
     </>
   );
@@ -444,8 +459,21 @@ function SettingsPanel({
       )}
 
       {collapsible ? (
-        <details className="mb-1" onToggle={() => playSound('click')}>
-          <summary className="fw-bold py-2">Settings</summary>
+        <details
+          className="mb-1"
+          onToggle={(e) => {
+            playSound('click');
+            setSettingsOpen(e.currentTarget.open);
+          }}
+        >
+          <summary className="fw-bold py-2 position-relative">
+            Settings
+            {settingsOpen && (
+              <div className="position-absolute top-50 end-0 translate-middle-y d-flex gap-2">
+                {settingsActions}
+              </div>
+            )}
+          </summary>
           {settingsBody}
         </details>
       ) : (

@@ -1,7 +1,18 @@
 import type { RefObject } from 'react';
-import { useEffect, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { useNumberInput } from '../../../common/inputs/useNumberInput';
+import PercentageToggle from '../../../common/inputs/PercentageToggle';
+import {
+  modifierStep,
+  wheelDirection,
+} from '../../../common/inputs/useNumberInput';
+import { useTroopsInput } from '../../../common/inputs/useTroopsInput';
 import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
 import {
@@ -211,14 +222,14 @@ function AttackPanel({
   const blitzOutcome = blitzOutcomes[blitzTroops - 1];
   const maxRegularTroops = Math.min(maxBlitzTroops, attackDice);
 
-  const moveNumberInput = useNumberInput({
+  const moveTroopsInput = useTroopsInput({
     value: moveTroops,
     min: moveMinTroops,
     max: moveMaxTroops,
     onChange: onMoveTroopsChange,
     inputRef: moveInputRef,
   });
-  const blitzNumberInput = useNumberInput({
+  const blitzTroopsInput = useTroopsInput({
     value: blitzTroops,
     min: 1,
     max: maxBlitzTroops,
@@ -228,6 +239,25 @@ function AttackPanel({
     },
     inputRef: blitzInputRef,
   });
+  const blitzWheelRef = useRef(onBlitzTroopsWheel);
+
+  useLayoutEffect(() => {
+    blitzWheelRef.current = onBlitzTroopsWheel;
+  });
+
+  const blitzTileRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    function onWheel(e: WheelEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      playSound('click');
+      blitzWheelRef.current(wheelDirection(e) * modifierStep(e));
+    }
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, []);
 
   return (
     <div
@@ -247,26 +277,13 @@ function AttackPanel({
           <Form.Control
             type="number"
             size="sm"
-            min={moveMinTroops}
-            max={moveMaxTroops}
-            value={moveTroops}
-            onChange={(e) =>
-              onMoveTroopsChange(
-                Math.min(
-                  moveMaxTroops,
-                  Math.max(
-                    moveMinTroops,
-                    Number(e.target.value) || moveMinTroops,
-                  ),
-                ),
-              )
-            }
-            {...moveNumberInput}
-            style={{ ...moveNumberInput.style, width: 70 }}
+            {...moveTroopsInput}
+            style={{ ...moveTroopsInput.style, width: 70 }}
           />
           <Button size="sm" onClick={onConfirmMove}>
             Confirm
           </Button>
+          <PercentageToggle max={moveMaxTroops} />
         </div>
       ) : (
         <div
@@ -292,16 +309,11 @@ function AttackPanel({
           })}
           {blitzEnabled && (
             <div
+              ref={blitzTileRef}
               style={attackOptionStyle(selectedType === 'blitz')}
               onClick={() => {
                 playSound('click');
                 onSelectBlitz();
-              }}
-              onWheel={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                playSound('click');
-                onBlitzTroopsWheel(e.deltaY < 0 ? 1 : -1);
               }}
             >
               <div className="d-flex align-items-center gap-1">
@@ -309,21 +321,9 @@ function AttackPanel({
                 <Form.Control
                   type="number"
                   size="sm"
-                  min={1}
-                  max={maxBlitzTroops}
-                  value={blitzTroops}
                   onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    onSelectBlitz();
-                    onBlitzTroopsChange(
-                      Math.min(
-                        maxBlitzTroops,
-                        Math.max(1, Number(e.target.value) || 1),
-                      ),
-                    );
-                  }}
-                  {...blitzNumberInput}
-                  style={{ ...blitzNumberInput.style, width: 60 }}
+                  {...blitzTroopsInput}
+                  style={{ ...blitzTroopsInput.style, width: 60 }}
                 />
                 <span className="small">
                   {blitzOutcome
@@ -336,6 +336,7 @@ function AttackPanel({
           <Button size="sm" onClick={onConfirm} disabled={revealing}>
             Attack
           </Button>
+          {blitzEnabled && <PercentageToggle max={maxBlitzTroops} />}
         </div>
       )}
       {diceRoll && (

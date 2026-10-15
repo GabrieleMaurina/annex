@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { useNumberInput } from '../../../common/inputs/useNumberInput';
+import PercentageToggle from '../../../common/inputs/PercentageToggle';
+import { useTroopsInput } from '../../../common/inputs/useTroopsInput';
 import { contrastTextColor, playerColor } from '../../../lib/palette';
 import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
@@ -61,7 +62,7 @@ function AttackSeaPanel({
   const blitzProbability = blitzWinProbabilities[blitzShips - 1] ?? 0;
   const blitzOutcome = blitzOutcomes[blitzShips - 1];
 
-  const regularNumberInput = useNumberInput({
+  const regularShipsInput = useTroopsInput({
     value: regularShips,
     min: 1,
     max: maxRegularShips,
@@ -71,7 +72,7 @@ function AttackSeaPanel({
     },
     inputRef,
   });
-  const blitzNumberInput = useNumberInput({
+  const blitzShipsInput = useTroopsInput({
     value: blitzShips,
     min: 1,
     max: maxBlitzShips,
@@ -123,21 +124,9 @@ function AttackSeaPanel({
               <Form.Control
                 type="number"
                 size="sm"
-                min={1}
-                max={maxRegularShips}
-                value={regularShips}
                 onClick={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  onSelectRegular();
-                  onRegularShipsChange(
-                    Math.min(
-                      maxRegularShips,
-                      Math.max(1, Number(e.target.value) || 1),
-                    ),
-                  );
-                }}
-                {...regularNumberInput}
-                style={{ ...regularNumberInput.style, width: 60 }}
+                {...regularShipsInput}
+                style={{ ...regularShipsInput.style, width: 60 }}
               />
             </div>
           </div>
@@ -154,21 +143,9 @@ function AttackSeaPanel({
                 <Form.Control
                   type="number"
                   size="sm"
-                  min={1}
-                  max={maxBlitzShips}
-                  value={blitzShips}
                   onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    onSelectBlitz();
-                    onBlitzShipsChange(
-                      Math.min(
-                        maxBlitzShips,
-                        Math.max(1, Number(e.target.value) || 1),
-                      ),
-                    );
-                  }}
-                  {...blitzNumberInput}
-                  style={{ ...blitzNumberInput.style, width: 60 }}
+                  {...blitzShipsInput}
+                  style={{ ...blitzShipsInput.style, width: 60 }}
                 />
                 <span className="small">
                   {blitzOutcome
@@ -181,6 +158,7 @@ function AttackSeaPanel({
           <Button size="sm" onClick={onConfirm} disabled={revealing}>
             Attack
           </Button>
+          {blitzEnabled && <PercentageToggle max={maxBlitzShips} />}
         </div>
       )}
       {diceRoll && (

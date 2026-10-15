@@ -1,3 +1,4 @@
+import type { gameResultsStats, gameState } from './game/state';
 import {
   Card,
   EmojiAttackTarget,
@@ -8,11 +9,27 @@ import {
 
 export interface EngineCallbacks {
   onHomeGames(playerId: number, games: unknown[]): void;
-  onGameState(playerId: number, state: unknown): void;
-  onCards(playerId: number, payload: { cards: Card[] }): void;
-  onMission(playerId: number, payload: { mission: Mission }): void;
-  onLogs(playerId: number, payload: { entries: GameLogEvent[] }): void;
-  onResults(playerId: number, payload: { stats: unknown[] }): void;
+  onGameState(
+    playerId: number,
+    state: ReturnType<typeof gameState>,
+    gameName: string,
+  ): void;
+  onCards(playerId: number, payload: { cards: Card[] }, gameName: string): void;
+  onMission(
+    playerId: number,
+    payload: { mission: Mission },
+    gameName: string,
+  ): void;
+  onLogs(
+    playerId: number,
+    payload: { entries: GameLogEvent[] },
+    gameName: string,
+  ): void;
+  onResults(
+    playerId: number,
+    payload: { stats: ReturnType<typeof gameResultsStats> },
+    gameName: string,
+  ): void;
   onGameEnded?(payload: {
     gameName: string;
     gameMode: string;
@@ -27,11 +44,13 @@ export interface EngineCallbacks {
       cards: Card[];
       territoryBonusCount: number;
     },
+    gameName: string,
   ): void;
   onKicked(playerId: number, payload: { gameName: string }): void;
   onChatMessage(
     playerId: number,
     payload: { id: number; name: string; message: string },
+    gameName: string,
   ): void;
   onEmojiSent(
     playerId: number,
@@ -41,15 +60,33 @@ export interface EngineCallbacks {
       emoji: EmojiValue;
       attackTarget: EmojiAttackTarget | undefined;
     },
+    gameName: string,
   ): void;
-  onAllianceRequested(playerId: number, payload: { fromId: number }): void;
-  onAllianceFormed(playerId: number, payload: { withId: number }): void;
-  onAllianceDeclined(playerId: number, payload: { withId: number }): void;
-  onAllianceTerminated(playerId: number, payload: { withId: number }): void;
+  onAllianceRequested(
+    playerId: number,
+    payload: { fromId: number },
+    gameName: string,
+  ): void;
+  onAllianceFormed(
+    playerId: number,
+    payload: { withId: number },
+    gameName: string,
+  ): void;
+  onAllianceDeclined(
+    playerId: number,
+    payload: { withId: number },
+    gameName: string,
+  ): void;
+  onAllianceTerminated(
+    playerId: number,
+    payload: { withId: number },
+    gameName: string,
+  ): void;
   onCapitalPlacementStarted(playerId: number): void;
   onTerritoryClaimed(
     playerId: number,
     payload: { territoryId: number; playerId: number },
+    gameName: string,
   ): void;
   onTurnStarted(
     playerId: number,
@@ -61,11 +98,14 @@ export interface EngineCallbacks {
       troopsFromCapitals: number;
       troopsFromRoundTroops: number;
       troopsFromBounties: number;
+      troopsWithheld: number;
     },
+    gameName: string,
   ): void;
   onDeployed(
     playerId: number,
     payload: { territoryId: number; troops: number; playerId: number },
+    gameName: string,
   ): void;
   onDeployedMany(
     playerId: number,
@@ -73,6 +113,7 @@ export interface EngineCallbacks {
       deposits: { territoryId: number; troops: number }[];
       playerId: number;
     },
+    gameName: string,
   ): void;
   onFortified(
     playerId: number,
@@ -84,6 +125,7 @@ export interface EngineCallbacks {
       troopsRemoved?: number;
       troopsAdded?: number;
     },
+    gameName: string,
   ): void;
   onEntrenched(
     playerId: number,
@@ -93,6 +135,7 @@ export interface EngineCallbacks {
       turnsRemaining: number;
       playerId: number;
     },
+    gameName: string,
   ): void;
   onToxined(
     playerId: number,
@@ -102,11 +145,17 @@ export interface EngineCallbacks {
       roundsRemaining: number;
       playerId: number;
     },
+    gameName: string,
   ): void;
-  onToxinExpired(playerId: number, payload: { territoryIds: number[] }): void;
+  onToxinExpired(
+    playerId: number,
+    payload: { territoryIds: number[] },
+    gameName: string,
+  ): void;
   onRadiationUpcoming(
     playerId: number,
     payload: { territoryIds: number[] },
+    gameName: string,
   ): void;
   onRadiationChanged(
     playerId: number,
@@ -115,10 +164,12 @@ export interface EngineCallbacks {
       eliminatedPlayerIds: number[];
       newlyRadiatedIds: number[];
     },
+    gameName: string,
   ): void;
   onStarved(
     playerId: number,
     payload: { losses: { territoryId: number; troops: number }[] },
+    gameName: string,
   ): void;
   onNukeLaunched(
     playerId: number,
@@ -130,6 +181,7 @@ export interface EngineCallbacks {
       interceptFromTerritoryId: number | null;
       eliminatedPlayerIds: number[];
     },
+    gameName: string,
   ): void;
   onAttacked(
     playerId: number,
@@ -146,10 +198,12 @@ export interface EngineCallbacks {
       defenceLosses?: number;
       conquered?: boolean;
     },
+    gameName: string,
   ): void;
   onTankFired(
     playerId: number,
     payload: { type: 'regular' | 'blitz'; hasDefender: boolean },
+    gameName: string,
   ): void;
   onAttackMoved(
     playerId: number,
@@ -160,6 +214,7 @@ export interface EngineCallbacks {
       troopsRemoved?: number;
       troopsAdded?: number;
     },
+    gameName: string,
   ): void;
   onShipsBought(
     playerId: number,
@@ -170,6 +225,7 @@ export interface EngineCallbacks {
       fromPool: boolean;
       playerId: number;
     },
+    gameName: string,
   ): void;
   onSailed(
     playerId: number,
@@ -181,6 +237,7 @@ export interface EngineCallbacks {
       shipsRemoved?: number;
       shipsAdded?: number;
     },
+    gameName: string,
   ): void;
   onSeaAttacked(
     playerId: number,
@@ -194,8 +251,13 @@ export interface EngineCallbacks {
       defendingShips: number;
       defenceLosses: number;
     },
+    gameName: string,
   ): void;
-  onSelected(playerId: number, payload: { territoryId: number }): void;
+  onSelected(
+    playerId: number,
+    payload: { territoryId: number },
+    gameName: string,
+  ): void;
   onMapGenerated(
     playerId: number,
     payload: {
@@ -206,10 +268,15 @@ export interface EngineCallbacks {
       wraps: unknown[];
       imageSrc: string;
     },
+    gameName: string,
   ): void;
 
   onRoomChanged(playerId: number, gameName: string | null): void;
 }
+
+export type CallbackPayload<K extends keyof EngineCallbacks> = Parameters<
+  NonNullable<EngineCallbacks[K]>
+>[1];
 
 export let callbacks: EngineCallbacks;
 

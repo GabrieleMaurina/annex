@@ -4,6 +4,17 @@ import { playSound } from '../../lib/sounds';
 const PIXELS_PER_STEP = 8;
 const DRAG_THRESHOLD = 4;
 
+export function modifierStep(e: {
+  ctrlKey: boolean;
+  shiftKey: boolean;
+}): number {
+  return e.shiftKey ? 10 : e.ctrlKey ? 5 : 1;
+}
+
+export function wheelDirection(e: { deltaX: number; deltaY: number }): 1 | -1 {
+  return (e.deltaY || e.deltaX) < 0 ? 1 : -1;
+}
+
 interface Options {
   value: number;
   min: number;
@@ -22,16 +33,17 @@ export function useNumberInput({
   const dragRef = useRef<{
     pointerId: number;
     startY: number;
-    startValue: number;
+    steps: number;
     dragging: boolean;
   } | null>(null);
+  const pointerStepRef = useRef(1);
   const latestRef = useRef({ value, min, max, onChange });
 
   useLayoutEffect(() => {
     latestRef.current = { value, min, max, onChange };
   });
 
-  const step = useCallback((delta: 1 | -1) => {
+  const step = useCallback((delta: number) => {
     const latest = latestRef.current;
     const next = Math.min(
       latest.max,
@@ -50,7 +62,7 @@ export function useNumberInput({
       function onWheel(e: WheelEvent) {
         e.preventDefault();
         e.stopPropagation();
-        step(e.deltaY < 0 ? 1 : -1);
+        step(wheelDirection(e) * modifierStep(e));
       }
       el.addEventListener('wheel', onWheel, { passive: false });
       return () => {
@@ -71,14 +83,28 @@ export function useNumberInput({
     if (delta === 0) return;
     e.preventDefault();
     e.stopPropagation();
-    step(delta);
+    step(delta * modifierStep(e));
+  }
+
+  function onInput(e: React.FormEvent<HTMLElement>) {
+    if ((e.nativeEvent as InputEvent).inputType) return;
+    const input = e.currentTarget as HTMLInputElement;
+    const latest = latestRef.current;
+    const direction = Math.sign(Number(input.value) - latest.value);
+    if (direction === 0) return;
+    const next = Math.min(
+      latest.max,
+      Math.max(latest.min, latest.value + direction * pointerStepRef.current),
+    );
+    input.value = String(next);
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLElement>) {
+    pointerStepRef.current = modifierStep(e);
     dragRef.current = {
       pointerId: e.pointerId,
       startY: e.clientY,
-      startValue: value,
+      steps: 0,
       dragging: false,
     };
   }
@@ -94,13 +120,10 @@ export function useNumberInput({
       e.currentTarget.blur();
     }
     e.preventDefault();
-    const next = Math.min(
-      max,
-      Math.max(min, drag.startValue + Math.round(dy / PIXELS_PER_STEP)),
-    );
-    if (next === value) return;
-    playSound('click');
-    onChange(next);
+    const steps = Math.round(dy / PIXELS_PER_STEP);
+    if (steps === drag.steps) return;
+    step((steps - drag.steps) * modifierStep(e));
+    drag.steps = steps;
   }
 
   function endDrag(e: React.PointerEvent<HTMLElement>) {
@@ -114,6 +137,7 @@ export function useNumberInput({
   return {
     ref,
     onKeyDown,
+    onInput,
     onPointerDown,
     onPointerMove,
     onPointerUp: endDrag,

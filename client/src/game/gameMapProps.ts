@@ -36,7 +36,10 @@ type DerivedKeys =
   | 'territoriesToWin'
   | 'troopsToDeploy'
   | 'turnStartedAt'
+  | 'turnExtension'
   | 'paused'
+  | 'pauseUsed'
+  | 'pausedAt'
   | 'botSpeed'
   | 'hostId'
   | 'selectedTerritoryId'
@@ -95,7 +98,10 @@ export function gameMapDataProps(
     territoriesToWin: game.territoriesToWin,
     troopsToDeploy: game.troopsToDeploy,
     turnStartedAt: game.turnStartedAt,
+    turnExtension: game.turnExtension,
     paused: game.paused,
+    pauseUsed: game.pauseUsed,
+    pausedAt: game.pausedAt,
     botSpeed: game.botSpeed,
     hostId: game.hostId,
     selectedTerritoryId: game.selectedTerritoryId,

@@ -1,4 +1,4 @@
-import { isPointsMode } from 'engine';
+import { isPointsMode, ONLINE_PAUSE_SECONDS } from 'engine';
 import type { MutableRefObject, ReactNode } from 'react';
 import { memo, useRef } from 'react';
 import { Button, ListGroup, Table } from 'react-bootstrap';
@@ -94,6 +94,7 @@ interface Props {
   selfId: number | null;
   hostId: number;
   paused: boolean;
+  pauseUsed: boolean;
   botSpeed: BotSpeed;
   onTogglePause: () => void;
   onCycleBotSpeed: () => void;
@@ -139,6 +140,7 @@ function PlayersPanel({
   selfId,
   hostId,
   paused,
+  pauseUsed,
   botSpeed,
   onTogglePause,
   onCycleBotSpeed,
@@ -175,7 +177,9 @@ function PlayersPanel({
   const canLeave =
     isSpectator ||
     (!!self && (gameEnded || self.surrendered || self.eliminated));
-  const canPause = !gameEnded && (selfId === hostId || connector.isOffline());
+  const canControl = !gameEnded && (selfId === hostId || connector.isOffline());
+  const canPause =
+    canControl && (connector.isOffline() || paused || !pauseUsed);
   const hasLivingBot = players.some((p) => p.isBot && !p.eliminated);
   const botSpeedLabel: Record<BotSpeed, string> = {
     slow: 'Slow',
@@ -654,33 +658,39 @@ function PlayersPanel({
             </ListGroup>
           </>
         )}
-        {canPause && (
+        {(canPause || (canControl && hasLivingBot)) && (
           <div className="d-flex mt-2 gap-2 justify-content-end">
-            <Tip
-              text={
-                paused ? 'Resume game for everyone' : 'Pause game for everyone'
-              }
-              placement="bottom"
-            >
-              <Button
-                variant="secondary"
-                size="sm"
-                className="d-flex align-items-center gap-1"
-                onClick={onTogglePause}
+            {canPause && (
+              <Tip
+                text={
+                  paused
+                    ? 'Resume game for everyone'
+                    : connector.isOffline()
+                      ? 'Pause game for everyone'
+                      : `Pause game for everyone for up to ${ONLINE_PAUSE_SECONDS} seconds, once per game`
+                }
+                placement="bottom"
               >
-                <img
-                  src={
-                    paused
-                      ? (whitePlayIcon ?? '/icons/play.svg')
-                      : (whitePauseIcon ?? '/icons/pause.svg')
-                  }
-                  width={14}
-                  height={14}
-                  alt=""
-                />
-                {paused ? 'Resume' : 'Pause'}
-              </Button>
-            </Tip>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="d-flex align-items-center gap-1"
+                  onClick={onTogglePause}
+                >
+                  <img
+                    src={
+                      paused
+                        ? (whitePlayIcon ?? '/icons/play.svg')
+                        : (whitePauseIcon ?? '/icons/pause.svg')
+                    }
+                    width={14}
+                    height={14}
+                    alt=""
+                  />
+                  {paused ? 'Resume' : 'Pause'}
+                </Button>
+              </Tip>
+            )}
             {hasLivingBot && (
               <Tip text="Change bots speed" placement="bottom">
                 <Button

@@ -2,7 +2,7 @@ import { callbacks } from '../callbacks';
 import { surrenderPlayer } from '../lifecycle/misc';
 import { getGameMap } from '../maps/maps';
 import { playersById } from '../session/players';
-import { broadcastGameState, sendPlayerCards } from '../session/store';
+import { broadcastGameState, games, sendPlayerCards } from '../session/store';
 import { Game, TurnPhase } from '../types';
 import {
   hasAnyAttack,
@@ -60,10 +60,13 @@ const PHASE_ORDER: TurnPhase[] = [
 
 export const PLACEMENT_PHASE_DURATION = 10;
 export const CAPITAL_PHASE_DURATION = 60;
+export const ONLINE_PAUSE_SECONDS = 60;
+const MAX_EXTENDED_REMAINING_SECONDS = 180;
 const TROOP_PHASE_TURN_MAX = 3;
 const MAX_DISCONNECTED_TURNS = 2;
 
 const turnTimers = new Map<string, NodeJS.Timeout>();
+const autoResumeTimers = new Map<Game, NodeJS.Timeout>();
 
 export function clearTurnTimer(gameName: string) {
   const timer = turnTimers.get(gameName);
@@ -75,12 +78,13 @@ function turnDurationSeconds(game: Game): number {
   if (game.turnPhase === 'territory' || game.turnPhase === 'troop')
     return PLACEMENT_PHASE_DURATION;
   if (game.turnPhase === 'capital') return CAPITAL_PHASE_DURATION;
-  return game.turnDuration;
+  return game.turnDuration + game.turnExtension;
 }
 
 function scheduleTurnTimer(game: Game) {
   clearTurnTimer(game.name);
   game.turnStartedAt = Date.now();
+  game.turnExtension = 0;
   if (game.paused) {
     game.pausedAt = Date.now();
     return;
@@ -99,32 +103,60 @@ export function pauseTurnTimer(game: Game) {
   clearTurnTimer(game.name);
 }
 
+export function pauseTurnTimerWithAutoResume(game: Game) {
+  pauseTurnTimer(game);
+  const timer = setTimeout(() => {
+    autoResumeTimers.delete(game);
+    if (games.get(game.name) !== game || game.state !== 'playing') return;
+    resumeTurnTimer(game);
+    broadcastGameState(game);
+  }, ONLINE_PAUSE_SECONDS * 1000);
+  autoResumeTimers.set(game, timer);
+}
+
+function remainingTurnMs(game: Game): number {
+  return turnDurationSeconds(game) * 1000 - (Date.now() - game.turnStartedAt);
+}
+
 export function resumeTurnTimer(game: Game) {
   if (!game.paused) return;
+  clearTimeout(autoResumeTimers.get(game));
+  autoResumeTimers.delete(game);
   const pausedDuration = Date.now() - (game.pausedAt ?? Date.now());
   game.turnStartedAt += pausedDuration;
   game.paused = false;
   game.pausedAt = null;
 
   clearTurnTimer(game.name);
-  const remaining =
-    turnDurationSeconds(game) * 1000 - (Date.now() - game.turnStartedAt);
-  const timer = setTimeout(() => forceEndTurn(game), Math.max(0, remaining));
+  const timer = setTimeout(
+    () => forceEndTurn(game),
+    Math.max(0, remainingTurnMs(game)),
+  );
   turnTimers.set(game.name, timer);
 }
 
-export function rewindTurnTimerIfBelowHalf(game: Game) {
-  const half = (game.turnDuration * 1000) / 2;
-  const elapsed = Date.now() - game.turnStartedAt;
-  if (elapsed <= half) return;
+function extendRemainingTurnTo(game: Game, targetMs: number) {
+  const remaining = remainingTurnMs(game);
+  if (targetMs <= remaining) return;
 
   clearTurnTimer(game.name);
-  game.turnStartedAt = Date.now() - half;
-  const timer = setTimeout(
-    () => forceEndTurn(game),
-    game.turnDuration * 1000 - half,
-  );
+  game.turnExtension += (targetMs - remaining) / 1000;
+  const timer = setTimeout(() => forceEndTurn(game), targetMs);
   turnTimers.set(game.name, timer);
+}
+
+export function extendTurnTimer(game: Game, seconds: number) {
+  extendRemainingTurnTo(
+    game,
+    Math.min(
+      remainingTurnMs(game) + seconds * 1000,
+      MAX_EXTENDED_REMAINING_SECONDS * 1000,
+    ),
+  );
+}
+
+export function topUpTurnTimerToHalf(game: Game) {
+  extendRemainingTurnTo(game, (game.turnDuration * 1000) / 2);
 }
 
 function dropTroopsRandomly(
@@ -401,7 +433,11 @@ export function claimTerritory(
   game.territoryTroops.set(territoryId, 1);
   recordReplayFrame(game, { type: 'deploy', territoryId, troops: 1, playerId });
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
-    callbacks.onTerritoryClaimed(viewerId, { territoryId, playerId });
+    callbacks.onTerritoryClaimed(
+      viewerId,
+      { territoryId, playerId },
+      game.name,
+    );
   }
   recordLogForAll(game, 'game:territoryClaimed', { territoryId, playerId });
 }
@@ -467,7 +503,7 @@ function startDeployPhase(game: Game, playerId: number) {
     troopsWithheld: earned - awarded,
   };
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
-    callbacks.onTurnStarted(viewerId, turnStartedPayload);
+    callbacks.onTurnStarted(viewerId, turnStartedPayload, game.name);
   }
   recordLogForAll(game, 'game:turnStarted', turnStartedPayload);
   game.replayTurnMarkers.push({

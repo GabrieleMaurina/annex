@@ -248,7 +248,9 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
         supplyLines: state.supplyLines,
         fogOfWar: state.fogOfWar,
         alliances: state.alliances,
+        anonymous: state.anonymous,
         turnDuration: state.turnDuration,
+        attackIncrement: state.attackIncrement,
         disconnectBotDifficulty: state.disconnectBotDifficulty,
         disconnectBotPersonality: state.disconnectBotPersonality,
         ...(gameMeta ? { visibility: gameMeta.visibility } : {}),
@@ -279,7 +281,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
         return;
       }
       setSettingsError('');
-      persistSettings(res.game);
+      persistSettings(game);
       setGame(res.game);
     });
   }

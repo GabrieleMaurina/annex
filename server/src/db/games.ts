@@ -296,8 +296,10 @@ export const SETTINGS_ENUM_KEYS = [
   'supplyLines',
   'fogOfWar',
   'alliances',
+  'anonymous',
   'nukes',
   'turnDuration',
+  'attackIncrement',
   'disconnectBotDifficulty',
   'disconnectBotPersonality',
 ];

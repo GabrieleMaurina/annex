@@ -460,6 +460,22 @@ export const ALLIANCES_HELP = (
   </>
 );
 
+export const ANONYMOUS_HELP = (
+  <>
+    Whether players and spectators stay anonymous until the game ends.
+    <ul className="mb-0 ps-3">
+      <li>Off: names, ranks, and flags are shown as usual.</li>
+      <li>
+        On: names, ranks, and flags are hidden in the lobby and during the game;
+        each player is identified only by their color. Colors are shuffled when
+        the game starts. Everything is revealed once the game ends. Turning it
+        on renames a default &quot;Game with &lt;host&gt;&quot; game to
+        &quot;Game with &lt;number&gt;&quot;.
+      </li>
+    </ul>
+  </>
+);
+
 export const DISCONNECT_BOT_DIFFICULTY_HELP =
   'The difficulty a bot takes over with when a player disconnects mid-game. Random picks a fresh difficulty (including Idle) each time a takeover happens.';
 
@@ -468,6 +484,9 @@ export const DISCONNECT_BOT_PERSONALITY_HELP =
 
 export const TURN_DURATION_HELP =
   "How long each player's turn can last. If time runs out, the game finishes it for them: leftover troops are dropped on random territories, any pending move is resolved automatically, and the turn ends.";
+
+export const ATTACK_INCREMENT_HELP =
+  'Seconds added to the remaining time of your turn every time you conquer a territory, once your troops have moved in. This never extends the remaining time beyond 3 minutes.';
 
 export const PASSWORD_HELP =
   'If set, players must enter this password to join. Players already in the game are unaffected by changing it, and it is never sent to any client.';

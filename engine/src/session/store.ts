@@ -355,25 +355,33 @@ export function broadcastHomeGames() {
 
 export function broadcastMissions(game: Game) {
   for (const [playerId, mission] of game.playerMissions) {
-    callbacks.onMission(playerId, { mission });
+    callbacks.onMission(playerId, { mission }, game.name);
   }
 }
 
 export function sendPlayerMission(game: Game, playerId: number) {
   const mission = game.playerMissions.get(playerId);
-  if (mission) callbacks.onMission(playerId, { mission });
+  if (mission) callbacks.onMission(playerId, { mission }, game.name);
 }
 
 export function sendPlayerCards(game: Game, playerId: number) {
-  callbacks.onCards(playerId, { cards: game.playerCards.get(playerId) ?? [] });
+  callbacks.onCards(
+    playerId,
+    { cards: game.playerCards.get(playerId) ?? [] },
+    game.name,
+  );
 }
 
 export function sendPlayerLogs(game: Game, playerId: number) {
-  callbacks.onLogs(playerId, { entries: game.logs.get(playerId) ?? [] });
+  callbacks.onLogs(
+    playerId,
+    { entries: game.logs.get(playerId) ?? [] },
+    game.name,
+  );
 }
 
 export function sendGameResults(game: Game, playerId: number) {
-  callbacks.onResults(playerId, { stats: gameResultsStats(game) });
+  callbacks.onResults(playerId, { stats: gameResultsStats(game) }, game.name);
 }
 
 export function broadcastGameResults(game: Game) {
@@ -385,20 +393,25 @@ export function broadcastGameResults(game: Game) {
 export function sendGeneratedMapIfAny(game: Game, playerId: number) {
   const map = game.generatedMap ?? game.playerMap;
   if (!map) return;
-  callbacks.onMapGenerated(playerId, {
-    name: game.mapName,
-    territories: map.territories,
-    seaTerritories: map.seaTerritories,
-    bonuses: map.bonuses,
-    wraps: getGameMap(game).wraps,
-    imageSrc: map.imageSrc,
-  });
+  callbacks.onMapGenerated(
+    playerId,
+    {
+      name: game.mapName,
+      territories: map.territories,
+      seaTerritories: map.seaTerritories,
+      bonuses: map.bonuses,
+      wraps: getGameMap(game).wraps,
+      imageSrc: map.imageSrc,
+    },
+    game.name,
+  );
 }
 
 export function sendGameState(game: Game, playerId: number) {
   callbacks.onGameState(
     playerId,
     filterGameStateForViewer(gameState(game), game, playerId),
+    game.name,
   );
 }
 
@@ -408,6 +421,7 @@ export function broadcastGameState(game: Game) {
     callbacks.onGameState(
       viewerId,
       filterGameStateForViewer(base, game, viewerId),
+      game.name,
     );
   }
   botTurnHook?.(game);
@@ -420,6 +434,7 @@ export function broadcastGameStateExcept(game: Game, excludePlayerId: number) {
     callbacks.onGameState(
       viewerId,
       filterGameStateForViewer(base, game, viewerId),
+      game.name,
     );
   }
   botTurnHook?.(game);
@@ -427,7 +442,7 @@ export function broadcastGameStateExcept(game: Game, excludePlayerId: number) {
 
 export function broadcastSelected(game: Game, territoryId: number) {
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
-    callbacks.onSelected(viewerId, { territoryId });
+    callbacks.onSelected(viewerId, { territoryId }, game.name);
   }
 }
 

@@ -6,6 +6,7 @@ import {
   GenerationType,
   MAP_SIZE_VALUES,
   MapSize,
+  viewResponse,
 } from 'engine';
 import { Socket } from 'socket.io';
 import { getPlayerMapById } from '../../db';
@@ -43,7 +44,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               wraps: map.wraps,
               imageSrc: `data:${map.imageMime};base64,${map.image}`,
             },
-            callback,
+            (response) => callback(viewResponse(playerId, response)),
           );
         })
         .catch(() => callback({ ok: false, error: 'server error' }));
@@ -80,7 +81,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           fill: input.fill as Fill,
           seas: input.seas,
         },
-        callback,
+        (response) => callback(viewResponse(playerId, response)),
       );
     },
   );

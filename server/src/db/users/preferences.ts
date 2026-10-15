@@ -4,6 +4,7 @@ export interface ClientSettings {
   muted: boolean;
   volume: number;
   animationsDisabled: boolean;
+  troopsPercentage: boolean;
 }
 
 export interface GameSettings {
@@ -44,7 +45,9 @@ export interface GameSettings {
   supplyLines: string;
   fogOfWar: string;
   alliances: string;
+  anonymous: string;
   turnDuration: number;
+  attackIncrement: number;
   disconnectBotDifficulty: string;
   disconnectBotPersonality: string;
   visibility: string;
@@ -130,7 +133,9 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   supplyLines: ['off', 'on'],
   fogOfWar: ['off', 'on'],
   alliances: ['off', 'on'],
-  turnDuration: [60, 90, 120, 150, 180, 300],
+  anonymous: ['off', 'on'],
+  turnDuration: [120, 30, 60, 90, 150, 180, 300],
+  attackIncrement: Array.from({ length: 16 }, (_, i) => i),
   disconnectBotDifficulty: ['idle', 'easy', 'medium', 'hard', 'random'],
   disconnectBotPersonality: [
     'balanced',
@@ -181,6 +186,7 @@ export const DEFAULT_CLIENT_SETTINGS: ClientSettings = {
   muted: false,
   volume: 1,
   animationsDisabled: false,
+  troopsPercentage: false,
 };
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
@@ -215,7 +221,9 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   supplyLines: 'off',
   fogOfWar: 'off',
   alliances: 'off',
+  anonymous: 'off',
   turnDuration: 120,
+  attackIncrement: 0,
   disconnectBotDifficulty: 'random',
   disconnectBotPersonality: 'random',
   visibility: 'public',
@@ -243,12 +251,13 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
 export const preferencesSchemaProperties = {
   clientSettings: {
     bsonType: 'object',
-    required: ['muted', 'volume', 'animationsDisabled'],
+    required: ['muted', 'volume', 'animationsDisabled', 'troopsPercentage'],
     additionalProperties: false,
     properties: {
       muted: { bsonType: 'bool' },
       volume: { bsonType: 'number', minimum: 0, maximum: 1 },
       animationsDisabled: { bsonType: 'bool' },
+      troopsPercentage: { bsonType: 'bool' },
     },
   },
   gameSettings: {
@@ -397,6 +406,10 @@ export function sanitizeClientSettings(raw: unknown): ClientSettings {
       typeof r.animationsDisabled === 'boolean'
         ? r.animationsDisabled
         : DEFAULT_CLIENT_SETTINGS.animationsDisabled,
+    troopsPercentage:
+      typeof r.troopsPercentage === 'boolean'
+        ? r.troopsPercentage
+        : DEFAULT_CLIENT_SETTINGS.troopsPercentage,
   };
 }
 

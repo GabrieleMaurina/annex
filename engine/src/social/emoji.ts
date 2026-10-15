@@ -1,5 +1,6 @@
 import { callbacks } from '../callbacks';
 import { emojiTargetAllowed } from '../game/alliances';
+import { isAnonymousPlaying } from '../game/anonymous';
 import { getGameMap } from '../maps/maps';
 import { requireGame } from '../session/context';
 import { playersById } from '../session/players';
@@ -61,7 +62,7 @@ export function sendEmoji(
     if (
       !game.playerIds.includes(targetPlayerId) ||
       targetPlayerId === playerId ||
-      playersById.get(targetPlayerId)?.isBot ||
+      (playersById.get(targetPlayerId)?.isBot && !isAnonymousPlaying(game)) ||
       !emojiTargetAllowed(game, playerId, targetPlayerId)
     )
       return;
@@ -81,10 +82,11 @@ export function sendEmoji(
   const payload = { senderId: playerId, targetPlayerId, emoji, attackTarget };
 
   if (targetPlayerId === undefined) {
-    for (const id of game.playerIds) callbacks.onEmojiSent(id, payload);
+    for (const id of game.playerIds)
+      callbacks.onEmojiSent(id, payload, game.name);
   } else {
-    callbacks.onEmojiSent(playerId, payload);
-    callbacks.onEmojiSent(targetPlayerId, payload);
+    callbacks.onEmojiSent(playerId, payload, game.name);
+    callbacks.onEmojiSent(targetPlayerId, payload, game.name);
   }
 
   if (game.state === 'playing') {

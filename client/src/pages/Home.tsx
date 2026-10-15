@@ -44,6 +44,7 @@ import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
 
 const MAX_GAME_NAME_LENGTH = 20;
 const POLL_MS = 5000;
+const RANDOM_JOIN_RETRY_MS = 2000;
 const PAGE_SIZE = 20;
 
 const PLAYERS_MIN = 2;
@@ -160,6 +161,7 @@ function Home({
     initial.sort as SortOption,
   );
   const [page, setPage] = useState(1);
+  const [joiningRandom, setJoiningRandom] = useState(false);
 
   const playerIds = selectedPlayers.map((p) => p.id);
 
@@ -261,6 +263,24 @@ function Home({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, page, sortOption]);
 
+  useEffect(() => {
+    if (!joiningRandom) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function attempt() {
+      connector.findRandomGame((gameName) => {
+        if (cancelled) return;
+        if (gameName) navigate(gamePath(gameName));
+        else timer = setTimeout(attempt, RANDOM_JOIN_RETRY_MS);
+      });
+    }
+    attempt();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [joiningRandom, navigate]);
+
   function resetPage<T>(setter: (v: T) => void) {
     return (v: T) => {
       setter(v);
@@ -361,6 +381,17 @@ function Home({
         {!serverUnreachable && (
           <Button onClick={createGame}>Create Online</Button>
         )}
+        {!serverUnreachable &&
+          (joiningRandom ? (
+            <Button variant="secondary" onClick={() => setJoiningRandom(false)}>
+              <Spinner size="sm" className="me-2" />
+              Cancel
+            </Button>
+          ) : (
+            <Button onClick={() => setJoiningRandom(true)}>
+              Join Random Game
+            </Button>
+          ))}
         <Button variant="secondary" onClick={() => navigate('/games/offline')}>
           Create Offline
         </Button>

@@ -1,7 +1,5 @@
 import { Engine } from 'engine';
 import { Socket } from 'socket.io';
-import { playerIdBySocketId } from '../../../sockets/socketRooms';
-import { isObject } from '../../../validate';
 import { registerGameAction } from '../../handlerHelpers';
 
 export function registerAttackHandlers(socket: Socket, engine: Engine) {
@@ -9,30 +7,12 @@ export function registerAttackHandlers(socket: Socket, engine: Engine) {
     engine.attackSelectStart(playerId, data.territoryId),
   );
 
-  socket.on(
-    'game:attackSelectEnd',
-    (data: unknown, callback: (response: unknown) => void) => {
-      if (typeof callback !== 'function') return;
-      const playerId = playerIdBySocketId.get(socket.id);
-      if (playerId === undefined)
-        return callback({ ok: false, error: 'not in a game' });
-      const territoryId = isObject(data) ? data.territoryId : undefined;
-      callback(engine.attackSelectEnd(playerId, territoryId));
-    },
+  registerGameAction(socket, 'game:attackSelectEnd', (playerId, data) =>
+    engine.attackSelectEnd(playerId, data.territoryId),
   );
 
-  socket.on(
-    'game:attack',
-    (data: unknown, callback: (response: unknown) => void) => {
-      if (typeof callback !== 'function') return;
-      const playerId = playerIdBySocketId.get(socket.id);
-      if (playerId === undefined)
-        return callback({ ok: false, error: 'not in a game' });
-      const { type, troops } = isObject(data)
-        ? data
-        : ({} as Record<string, unknown>);
-      callback(engine.attack(playerId, type, troops));
-    },
+  registerGameAction(socket, 'game:attack', (playerId, data) =>
+    engine.attack(playerId, data.type, data.troops),
   );
 
   registerGameAction(socket, 'game:attackMove', (playerId, data) =>

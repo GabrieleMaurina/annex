@@ -1,6 +1,7 @@
 import { getGameMap } from '../maps/maps';
 import { playersById } from '../session/players';
 import { AllianceViewState, Game, Player } from '../types';
+import { anonymousName, isAnonymous, isAnonymousPlaying } from './anonymous';
 import { attackFullPath } from './combat/seaBridge';
 import { supremacyTerritoriesToWin } from './mechanics';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
@@ -19,16 +20,20 @@ function seaState(game: Game) {
 
 const EMPTY_STATS = emptyPlayerStats();
 
-function toSummaries(ids: number[]) {
+function toSummaries(game: Game, ids: number[]) {
   return ids
     .map((id) => playersById.get(id))
     .filter((player): player is Player => !!player)
-    .map((player) => ({
-      id: player.id,
-      name: player.name,
-      country: player.country,
-      elo: player.elo,
-    }));
+    .map((player) => {
+      const hidden =
+        isAnonymous(game) && (!player.isBot || isAnonymousPlaying(game));
+      return {
+        id: player.id,
+        name: hidden ? anonymousName(game, player.id) : player.name,
+        country: hidden ? null : player.country,
+        elo: game.state === 'ended' ? player.elo : null,
+      };
+    });
 }
 
 export function territoryStats(game: Game) {
@@ -69,10 +74,17 @@ export function gameSummary(game: Game) {
           fill: game.generatedMap.fill,
         }
       : null,
-    hostName: playersById.get(game.hostId)?.name ?? '',
-    playerIds: [...game.playerIds],
+    hostName: isAnonymousPlaying(game)
+      ? 'Anonymous'
+      : isAnonymous(game)
+        ? anonymousName(game, game.hostId)
+        : (playersById.get(game.hostId)?.name ?? ''),
+    playerIds: isAnonymous(game) ? [] : [...game.playerIds],
+    bannedIds: [...game.bannedIds],
     playerCount: game.playerIds.length,
-    hasBots: game.playerIds.some((id) => playersById.get(id)?.isBot ?? false),
+    hasBots: game.playerIds.some((id) =>
+      isAnonymousPlaying(game) ? id < 0 : (playersById.get(id)?.isBot ?? false),
+    ),
     slots: game.slots,
     state: game.state,
     spectatorCount: game.spectatorIds.length,
@@ -104,7 +116,9 @@ export function gameSummary(game: Game) {
       supplyLines: game.supplyLines,
       fogOfWar: game.fogOfWar,
       alliances: game.alliances,
+      anonymous: game.anonymous,
       turnDuration: game.turnDuration,
+      attackIncrement: game.attackIncrement,
       disconnectBotDifficulty: game.disconnectBotDifficulty,
       disconnectBotPersonality: game.disconnectBotPersonality,
     },
@@ -179,6 +193,7 @@ export function gameState(game: Game) {
   const stats = territoryStats(game);
   const turnPlayerId = game.playerIds[game.turnPlayerIndex];
   const territoriesToWin = supremacyTerritoriesToWin(game);
+  const anonymousPlaying = isAnonymousPlaying(game);
   return {
     name: game.name,
     mapName: game.mapName,
@@ -194,7 +209,7 @@ export function gameState(game: Game) {
     playerMapId: game.playerMap?.id ?? null,
     slots: game.slots,
     hostId: game.hostId,
-    originalHostId: game.originalHostId,
+    originalHostId: anonymousPlaying ? 0 : game.originalHostId,
     state: game.state,
     alliances: game.alliances,
     allianceStates: [] as {
@@ -202,6 +217,7 @@ export function gameState(game: Game) {
       state: AllianceViewState;
       cooldownUntil?: number;
     }[],
+    anonymous: game.anonymous,
     blitz: game.blitz,
     bounties: game.bounties,
     cards: game.cards,
@@ -241,6 +257,7 @@ export function gameState(game: Game) {
     supplyLines: game.supplyLines,
     toxins: game.toxins,
     turnDuration: game.turnDuration,
+    attackIncrement: game.attackIncrement,
     roundTroops: game.roundTroops,
     territoryTroopsCap: TERRITORY_CAP,
     totalTroopsCap: totalTroopsCap(game),
@@ -262,9 +279,12 @@ export function gameState(game: Game) {
       game.paused && game.pausedAt !== null
         ? game.turnStartedAt + (Date.now() - game.pausedAt)
         : game.turnStartedAt,
+    turnExtension: game.turnExtension,
     startedAt: game.startedAt,
     endedAt: game.endedAt,
     paused: game.paused,
+    pauseUsed: game.pauseUsed,
+    pausedAt: game.offline ? null : game.pausedAt,
     botSpeed: game.botSpeed,
     selectedTerritoryId: game.selectedTerritoryId,
     fortifyStartTerritoryId: game.fortifyStartTerritoryId,
@@ -284,7 +304,7 @@ export function gameState(game: Game) {
     nextSetBaseValues: nextSetBaseValues(game, turnPlayerId),
     upcomingSetValues: upcomingSetValues(game, turnPlayerId, 3),
     finalRanking: game.finalRanking,
-    players: toSummaries(game.playerIds).map((player) => {
+    players: toSummaries(game, game.playerIds).map((player) => {
       const territoryCount = stats.get(player.id)?.territoryCount ?? 0;
       const playerStats = game.stats.get(player.id) ?? EMPTY_STATS;
       const member = playersById.get(player.id);
@@ -301,27 +321,33 @@ export function gameState(game: Game) {
             ? (game.placementTroopPools.get(player.id) ?? 0)
             : 0,
         cardCount: game.playerCards.get(player.id)?.length ?? 0,
-        connected: !!member?.connected && member.gameName === game.name,
+        connected:
+          anonymousPlaying ||
+          (!!member?.connected && member.gameName === game.name),
         surrendered: game.surrenderedIds.has(player.id),
         eliminated: isEliminated(game, territoryCount),
         playersKilled: playerStats.playersKilled as number[] | null,
         troopsKilled: playerStats.troopsKilled as number | null,
         troopsLost: playerStats.troopsLost as number | null,
-        isBot: !!member?.isBot,
-        botDifficulty: member?.botProfile
-          ? member.botProfile.difficultyHidden
-            ? ('random' as const)
-            : member.botProfile.difficulty
-          : null,
-        botPersonality: member?.botProfile
-          ? member.botProfile.personalityHidden
-            ? ('random' as const)
-            : member.botProfile.personality
-          : null,
+        isBot: !!member?.isBot && !anonymousPlaying,
+        botDifficulty:
+          member?.botProfile && !anonymousPlaying
+            ? member.botProfile.difficultyHidden
+              ? ('random' as const)
+              : member.botProfile.difficulty
+            : null,
+        botPersonality:
+          member?.botProfile && !anonymousPlaying
+            ? member.botProfile.personalityHidden
+              ? ('random' as const)
+              : member.botProfile.personality
+            : null,
       };
     }),
-    spectators: toSummaries(game.spectatorIds),
-    bannedPlayers: toSummaries([...game.bannedIds]),
+    spectators: toSummaries(game, game.spectatorIds),
+    bannedPlayers: anonymousPlaying
+      ? []
+      : toSummaries(game, [...game.bannedIds]),
     territories: [...game.territoryOwners.entries()].map(([id, ownerId]) => ({
       id,
       ownerId,

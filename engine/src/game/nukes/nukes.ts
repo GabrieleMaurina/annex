@@ -194,7 +194,7 @@ export function launchNuke(
     eliminatedPlayerIds,
   };
   for (const viewerId of [...game.playerIds, ...game.spectatorIds])
-    callbacks.onNukeLaunched(viewerId, payload);
+    callbacks.onNukeLaunched(viewerId, payload, game.name);
   recordLogForAll(game, 'game:nukeLaunched', payload);
 
   return { ok: true, eliminatedPlayerIds };

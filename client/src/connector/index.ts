@@ -192,6 +192,12 @@ export const connector = {
       .catch(() => cb({ account: null, name: '' }));
   },
 
+  findRandomGame(cb: (gameName: string | null) => void): void {
+    httpGet<{ ok: boolean; gameName: string | null }>('/games/random')
+      .then((res) => cb(res.gameName))
+      .catch(() => cb(null));
+  },
+
   listGames(query: HomeGamesQuery, cb: (page: HomeGamesPage) => void): void {
     const params = new URLSearchParams();
     params.set('page', String(query.page));

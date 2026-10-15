@@ -56,7 +56,10 @@ export interface GameMapProps {
   territoriesToWin: number | null;
   troopsToDeploy: number;
   turnStartedAt: number;
+  turnExtension: number;
   paused: boolean;
+  pauseUsed: boolean;
+  pausedAt: number | null;
   botSpeed: BotSpeed;
   hostId: number;
   onTogglePause: () => void;

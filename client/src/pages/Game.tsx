@@ -35,7 +35,7 @@ interface Props {
 }
 
 function Game({
-  selfId,
+  selfId: identifiedSelfId,
   joinError,
   needsPassword,
   passwordError,
@@ -45,6 +45,7 @@ function Game({
   onRename,
 }: Props) {
   const [game, setGame] = useState<GameState | null>(null);
+  const selfId = game?.selfId ?? identifiedSelfId;
   const [gameMeta, setGameMeta] = useState<GameMeta | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
@@ -394,6 +395,9 @@ function Game({
       )}
       {!connector.isOffline() && (
         <Chat
+          key={
+            game.anonymous === 'on' && game.state !== 'lobby' ? 'anon' : 'open'
+          }
           nameById={nameById}
           colorById={colorById}
           transparent={showMap}

@@ -1,3 +1,4 @@
+import { isAnonymous } from '../game/anonymous';
 import {
   assignTerritories,
   assignTerritoryOwners,
@@ -62,6 +63,14 @@ export function startGame(playerId: number): GameResponse {
     game.playerIds = interleaveTeams(game);
   } else {
     game.playerIds = shuffle(game.playerIds);
+  }
+  if (isAnonymous(game)) {
+    const colors = shuffle(
+      game.playerIds.map((id) => game.playerColors.get(id) ?? 0),
+    );
+    game.playerIds.forEach((id, i) => game.playerColors.set(id, colors[i]));
+    game.spectatorIds = shuffle(game.spectatorIds);
+    game.aliases = new Map();
   }
   initializeRadiation(game);
   game.replayInitialRadiation = [...game.radiationTerritoryIds];

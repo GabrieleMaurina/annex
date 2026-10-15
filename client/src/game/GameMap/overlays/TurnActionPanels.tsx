@@ -1,4 +1,6 @@
+import { ONLINE_PAUSE_SECONDS } from 'engine';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
+import { stepTroops } from '../../../common/inputs/useTroopsInput';
 import { playerColor } from '../../../lib/palette';
 import type {
   BlitzOutcome,
@@ -28,7 +30,9 @@ export default function TurnActionPanels({
   turnPhase,
   turnDuration,
   paused,
+  pausedAt,
   turnStartedAt,
+  turnExtension,
   isMyTurn,
   troopsToDeploy,
   deployMaxTroops,
@@ -121,7 +125,9 @@ export default function TurnActionPanels({
   turnPhase: TurnPhase;
   turnDuration: TurnDuration;
   paused: boolean;
+  pausedAt: number | null;
   turnStartedAt: number;
+  turnExtension: number;
   isMyTurn: boolean;
   troopsToDeploy: number;
   deployMaxTroops: number;
@@ -230,18 +236,27 @@ export default function TurnActionPanels({
     <>
       {!gameEnded && (
         <>
-          <TurnProgressBar
-            turnStartedAt={turnStartedAt}
-            turnDuration={
-              turnPhase === 'territory' || turnPhase === 'troop'
-                ? PLACEMENT_PHASE_DURATION
-                : turnPhase === 'capital'
-                  ? CAPITAL_PHASE_DURATION
-                  : turnDuration
-            }
-            color={playerColor(currentTurnPlayer.color)}
-            paused={paused}
-          />
+          {paused && pausedAt !== null ? (
+            <TurnProgressBar
+              turnStartedAt={pausedAt}
+              turnDuration={ONLINE_PAUSE_SECONDS}
+              color="var(--bs-gray-500)"
+              paused={false}
+            />
+          ) : (
+            <TurnProgressBar
+              turnStartedAt={turnStartedAt}
+              turnDuration={
+                turnPhase === 'territory' || turnPhase === 'troop'
+                  ? PLACEMENT_PHASE_DURATION
+                  : turnPhase === 'capital'
+                    ? CAPITAL_PHASE_DURATION
+                    : turnDuration + turnExtension
+              }
+              color={playerColor(currentTurnPlayer.color)}
+              paused={paused}
+            />
+          )}
           <TurnPanel
             turnPhase={turnPhase}
             currentPlayerName={currentTurnPlayer.name}
@@ -361,7 +376,7 @@ export default function TurnActionPanels({
             setAttackDiceRoll(null);
             setAttackSelectedType('blitz');
             setAttackBlitzTroops((prev) =>
-              Math.min(maxBlitzTroops, Math.max(1, prev + delta)),
+              stepTroops(prev, delta, 1, maxBlitzTroops),
             );
           }}
           onConfirm={submitAttack}

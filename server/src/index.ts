@@ -1,4 +1,10 @@
-import { createEngine, EngineCallbacks } from 'engine';
+import {
+  createEngine,
+  EngineCallbacks,
+  EventKey,
+  EventPayload,
+  viewEvent,
+} from 'engine';
 import { createServer } from 'http';
 import os from 'os';
 import { Server } from 'socket.io';
@@ -68,6 +74,27 @@ function listVisibleGames(): LiveGameRow[] {
     }));
 }
 
+function emptySlots(game: LiveGameRow): number {
+  return game.slots - game.playerCount;
+}
+
+function randomGame(token: string, userId: string | null): string | null {
+  const playerId = playerIdForIdentity(token, userId);
+  const currentGame =
+    playerId === undefined ? null : engine.playerGameName(playerId);
+  const candidates = listVisibleGames()
+    .filter(
+      (game) =>
+        game.name !== currentGame &&
+        game.state === 'lobby' &&
+        !game.hasPassword &&
+        emptySlots(game) > 0 &&
+        (playerId === undefined || !game.bannedIds.includes(playerId)),
+    )
+    .sort((a, b) => emptySlots(a) - emptySlots(b) || a.createdAt - b.createdAt);
+  return candidates[0]?.name ?? null;
+}
+
 function resendResults(gameName: string): void {
   for (const [playerId, name] of gameNameByPlayerId) {
     if (name === gameName) engine.requestResults(playerId);
@@ -92,6 +119,7 @@ const app = createHttpApp({
   listGames: listVisibleGames,
   playerGame,
   inLiveGame,
+  randomGame,
 });
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -115,17 +143,25 @@ io.engine.on('initial_headers', (headers, req) => {
     );
 });
 
+function relay<K extends EventKey>(key: K, event: string) {
+  return (playerId: number, payload: EventPayload<K>, gameName: string) => {
+    const viewed = viewEvent(gameName, playerId, key, payload);
+    if (viewed) emitTo(io, playerId, event, viewed);
+  };
+}
+
 const callbacks: EngineCallbacks = {
   onHomeGames: () => {},
-  onGameState: (playerId, state) => emitTo(io, playerId, 'game:state', state),
-  onCards: (playerId, payload) => emitTo(io, playerId, 'game:cards', payload),
-  onMission: (playerId, payload) =>
-    emitTo(io, playerId, 'game:mission', payload),
-  onLogs: (playerId, payload) => emitTo(io, playerId, 'game:logs', payload),
-  onResults: (playerId, payload) => {
-    const elos = gameElos(gameNameByPlayerId.get(playerId) ?? '');
-    const stats = (payload.stats as { id: number }[]).map((s) => ({
-      ...s,
+  onGameState: relay('onGameState', 'game:state'),
+  onCards: relay('onCards', 'game:cards'),
+  onMission: relay('onMission', 'game:mission'),
+  onLogs: relay('onLogs', 'game:logs'),
+  onResults: (playerId, payload, gameName) => {
+    const viewed = viewEvent(gameName, playerId, 'onResults', payload);
+    if (!viewed) return;
+    const elos = gameElos(gameName);
+    const stats = payload.stats.map((s, index) => ({
+      ...viewed.stats[index],
       userId: userIdByPlayerId(s.id) ?? null,
       ...elos.get(s.id),
     }));
@@ -137,62 +173,39 @@ const callbacks: EngineCallbacks = {
     persistFinishedGame(engine, payload, participants, elos);
     elos.then(() => resendResults(payload.gameName));
   },
-  onCardSetPlayed: (playerId, payload) =>
-    emitTo(io, playerId, 'game:cardSetPlayed', payload),
+  onCardSetPlayed: relay('onCardSetPlayed', 'game:cardSetPlayed'),
   onKicked: (playerId, payload) => emitTo(io, playerId, 'game:kicked', payload),
-  onChatMessage: (playerId, payload) =>
-    emitTo(io, playerId, 'game:chatMessage', payload),
-  onEmojiSent: (playerId, payload) =>
-    emitTo(io, playerId, 'game:emojiSent', payload),
-  onAllianceRequested: (playerId, payload) =>
-    emitTo(io, playerId, 'game:allianceRequested', payload),
-  onAllianceFormed: (playerId, payload) =>
-    emitTo(io, playerId, 'game:allianceFormed', payload),
-  onAllianceDeclined: (playerId, payload) =>
-    emitTo(io, playerId, 'game:allianceDeclined', payload),
-  onAllianceTerminated: (playerId, payload) =>
-    emitTo(io, playerId, 'game:allianceTerminated', payload),
+  onChatMessage: relay('onChatMessage', 'game:chatMessage'),
+  onEmojiSent: relay('onEmojiSent', 'game:emojiSent'),
+  onAllianceRequested: relay('onAllianceRequested', 'game:allianceRequested'),
+  onAllianceFormed: relay('onAllianceFormed', 'game:allianceFormed'),
+  onAllianceDeclined: relay('onAllianceDeclined', 'game:allianceDeclined'),
+  onAllianceTerminated: relay(
+    'onAllianceTerminated',
+    'game:allianceTerminated',
+  ),
   onCapitalPlacementStarted: (playerId) =>
     emitTo(io, playerId, 'game:capitalPlacementStarted'),
-  onTerritoryClaimed: (playerId, payload) =>
-    emitTo(io, playerId, 'game:territoryClaimed', payload),
-  onTurnStarted: (playerId, payload) =>
-    emitTo(io, playerId, 'game:turnStarted', payload),
-  onDeployed: (playerId, payload) =>
-    emitTo(io, playerId, 'game:deployed', payload),
-  onDeployedMany: (playerId, payload) =>
-    emitTo(io, playerId, 'game:deployedMany', payload),
-  onFortified: (playerId, payload) =>
-    emitTo(io, playerId, 'game:fortified', payload),
-  onShipsBought: (playerId, payload) =>
-    emitTo(io, playerId, 'game:shipsBought', payload),
-  onSailed: (playerId, payload) => emitTo(io, playerId, 'game:sailed', payload),
-  onSeaAttacked: (playerId, payload) =>
-    emitTo(io, playerId, 'game:seaAttacked', payload),
-  onEntrenched: (playerId, payload) =>
-    emitTo(io, playerId, 'game:entrenched', payload),
-  onToxined: (playerId, payload) =>
-    emitTo(io, playerId, 'game:toxined', payload),
-  onToxinExpired: (playerId, payload) =>
-    emitTo(io, playerId, 'game:toxinExpired', payload),
-  onRadiationUpcoming: (playerId, payload) =>
-    emitTo(io, playerId, 'game:radiationUpcoming', payload),
-  onRadiationChanged: (playerId, payload) =>
-    emitTo(io, playerId, 'game:radiationChanged', payload),
-  onStarved: (playerId, payload) =>
-    emitTo(io, playerId, 'game:starved', payload),
-  onNukeLaunched: (playerId, payload) =>
-    emitTo(io, playerId, 'game:nukeLaunched', payload),
-  onAttacked: (playerId, payload) =>
-    emitTo(io, playerId, 'game:attacked', payload),
-  onTankFired: (playerId, payload) =>
-    emitTo(io, playerId, 'game:tankFired', payload),
-  onAttackMoved: (playerId, payload) =>
-    emitTo(io, playerId, 'game:attackMoved', payload),
-  onSelected: (playerId, payload) =>
-    emitTo(io, playerId, 'game:selected', payload),
-  onMapGenerated: (playerId, payload) =>
-    emitTo(io, playerId, 'game:mapGenerated', payload),
+  onTerritoryClaimed: relay('onTerritoryClaimed', 'game:territoryClaimed'),
+  onTurnStarted: relay('onTurnStarted', 'game:turnStarted'),
+  onDeployed: relay('onDeployed', 'game:deployed'),
+  onDeployedMany: relay('onDeployedMany', 'game:deployedMany'),
+  onFortified: relay('onFortified', 'game:fortified'),
+  onShipsBought: relay('onShipsBought', 'game:shipsBought'),
+  onSailed: relay('onSailed', 'game:sailed'),
+  onSeaAttacked: relay('onSeaAttacked', 'game:seaAttacked'),
+  onEntrenched: relay('onEntrenched', 'game:entrenched'),
+  onToxined: relay('onToxined', 'game:toxined'),
+  onToxinExpired: relay('onToxinExpired', 'game:toxinExpired'),
+  onRadiationUpcoming: relay('onRadiationUpcoming', 'game:radiationUpcoming'),
+  onRadiationChanged: relay('onRadiationChanged', 'game:radiationChanged'),
+  onStarved: relay('onStarved', 'game:starved'),
+  onNukeLaunched: relay('onNukeLaunched', 'game:nukeLaunched'),
+  onAttacked: relay('onAttacked', 'game:attacked'),
+  onTankFired: relay('onTankFired', 'game:tankFired'),
+  onAttackMoved: relay('onAttackMoved', 'game:attackMoved'),
+  onSelected: relay('onSelected', 'game:selected'),
+  onMapGenerated: relay('onMapGenerated', 'game:mapGenerated'),
   onRoomChanged: (playerId, gameName) => setSocketRoom(io, playerId, gameName),
 };
 

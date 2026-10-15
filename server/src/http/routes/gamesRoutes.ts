@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { FILL_VALUES, GAME_ENUMS, GENERATION_TYPES, MAP_SIZES } from '../../db';
 import { filterLiveGames, LiveGameRow, LiveGamesQuery } from '../liveGames';
+import { identityOf } from '../middleware';
 import {
   intParam,
   optIntParam,
@@ -70,6 +71,20 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
       sortDir: q.sortDir === 'asc' ? 'asc' : 'desc',
     };
     res.json(filterLiveGames(getGames(), query));
+  });
+  return router;
+}
+
+export function randomGameRouter(
+  randomGame: (token: string, userId: string | null) => string | null,
+): Router {
+  const router = Router();
+  router.get('/games/random', (_req, res) => {
+    const { token, session } = identityOf(res);
+    res.json({
+      ok: true,
+      gameName: randomGame(token, session ? session.userId : null),
+    });
   });
   return router;
 }

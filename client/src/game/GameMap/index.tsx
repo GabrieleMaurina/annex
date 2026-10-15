@@ -80,7 +80,10 @@ function GameMap({
   territoriesToWin,
   troopsToDeploy,
   turnStartedAt,
+  turnExtension,
   paused,
+  pauseUsed,
+  pausedAt,
   botSpeed,
   hostId,
   onTogglePause,
@@ -689,7 +692,6 @@ function GameMap({
     startAnimationLoop();
   });
 
-  const attackDisplay = attackFlow.attackDisplay;
   const hand = showReplay ? replayHandCards : cardsFlow.hand;
   const combos = showReplay ? [] : cardsFlow.combos;
   const hasSetToPlay = showReplay ? false : cardsFlow.hasSetToPlay;
@@ -819,6 +821,7 @@ function GameMap({
         turnPlayerId={panelTurnPlayerId}
         hostId={hostId}
         paused={paused}
+        pauseUsed={pauseUsed}
         botSpeed={botSpeed}
         onTogglePause={onTogglePause}
         onCycleBotSpeed={onCycleBotSpeed}
@@ -890,7 +893,9 @@ function GameMap({
         turnPhase={turnPhase}
         turnDuration={turnDuration}
         paused={paused}
+        pausedAt={pausedAt}
         turnStartedAt={turnStartedAt}
+        turnExtension={turnExtension}
         isMyTurn={isMyTurn}
         troopsToDeploy={troopsToDeploy}
         deployMaxTroops={deployMaxTroops}
@@ -933,7 +938,7 @@ function GameMap({
         toxinsWastedTroops={turnFlow.toxinsWastedTroops}
         submitToxins={turnFlow.submitToxins}
         attackPanelOpen={attackFlow.attackPanelOpen}
-        attackDisplay={attackDisplay}
+        attackDisplay={attackFlow.attackDisplay}
         blitzEnabled={game.blitz !== 'off'}
         attackDice={game.attackDice}
         diceTies={game.diceTies}

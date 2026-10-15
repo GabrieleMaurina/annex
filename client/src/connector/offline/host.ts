@@ -52,6 +52,7 @@ export function seedOffline(state: GameState): void {
   seed = {
     settings: {
       alliances: state.alliances,
+      anonymous: state.anonymous,
       blitz: state.blitz,
       bounties: state.bounties,
       cards: state.cards,
@@ -78,6 +79,7 @@ export function seedOffline(state: GameState): void {
       supplyLines: state.supplyLines,
       toxins: state.toxins,
       turnDuration: state.turnDuration,
+      attackIncrement: state.attackIncrement,
       roundTroops: state.roundTroops,
     },
     mapGeneration: state.mapGeneration,

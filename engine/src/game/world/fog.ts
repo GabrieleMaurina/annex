@@ -1,8 +1,44 @@
+import type { CallbackPayload } from '../../callbacks';
 import { Game } from '../../types';
 
 export const SERVER_VIEW_ID = 0;
 
-const LOGGED_EVENTS = new Set([
+export interface FogEventPayloads {
+  'game:deployed': CallbackPayload<'onDeployed'>;
+  'game:deployedMany': CallbackPayload<'onDeployedMany'>;
+  'game:fortified': CallbackPayload<'onFortified'>;
+  'game:attackMoved': CallbackPayload<'onAttackMoved'>;
+  'game:attacked': CallbackPayload<'onAttacked'>;
+  'game:entrenched': CallbackPayload<'onEntrenched'>;
+  'game:toxined': CallbackPayload<'onToxined'>;
+  'game:toxinExpired': CallbackPayload<'onToxinExpired'>;
+  'game:radiationUpcoming': CallbackPayload<'onRadiationUpcoming'>;
+  'game:radiationChanged': CallbackPayload<'onRadiationChanged'>;
+  'game:starved': CallbackPayload<'onStarved'>;
+  'game:sailed': CallbackPayload<'onSailed'>;
+  'game:shipsBought': CallbackPayload<'onShipsBought'>;
+  'game:seaAttacked': CallbackPayload<'onSeaAttacked'>;
+}
+
+export interface LogPayloads {
+  'game:deployed': CallbackPayload<'onDeployed'>;
+  'game:deployedMany': CallbackPayload<'onDeployedMany'>;
+  'game:fortified': CallbackPayload<'onFortified'>;
+  'game:attackMoved': CallbackPayload<'onAttackMoved'>;
+  'game:attacked': CallbackPayload<'onAttacked'>;
+  'game:entrenched': CallbackPayload<'onEntrenched'>;
+  'game:toxined': CallbackPayload<'onToxined'>;
+  'game:radiationChanged': CallbackPayload<'onRadiationChanged'>;
+  'game:nukeLaunched': CallbackPayload<'onNukeLaunched'>;
+  'game:cardSetPlayed': CallbackPayload<'onCardSetPlayed'>;
+  'game:turnStarted': CallbackPayload<'onTurnStarted'>;
+  'game:allianceFormed': { withId: number; playerId?: number };
+  'game:allianceTerminated': { withId: number; playerId?: number };
+  'game:capitalPlacementStarted': Record<string, never>;
+  'game:territoryClaimed': CallbackPayload<'onTerritoryClaimed'>;
+}
+
+const LOGGED_EVENTS: Set<string> = new Set<keyof LogPayloads>([
   'game:deployed',
   'game:fortified',
   'game:attackMoved',
@@ -20,7 +56,7 @@ const LOGGED_EVENTS = new Set([
   'game:territoryClaimed',
 ]);
 
-export function recordLog(
+function appendLog(
   game: Game,
   viewerId: number,
   type: string,
@@ -40,25 +76,38 @@ export function recordLog(
   else game.logs.set(viewerId, [{ type, payload }]);
 }
 
-export function recordLogForAll(
+export function recordLog<E extends keyof LogPayloads>(
   game: Game,
-  type: string,
-  payload: unknown,
+  viewerId: number,
+  type: E,
+  payload: LogPayloads[E],
+): void {
+  appendLog(game, viewerId, type, payload);
+}
+
+export function recordLogForAll<E extends keyof LogPayloads>(
+  game: Game,
+  type: E,
+  payload: LogPayloads[E],
 ): void {
   for (const viewerId of [
     ...game.playerIds,
     ...game.spectatorIds,
     SERVER_VIEW_ID,
   ]) {
-    recordLog(game, viewerId, type, payload);
+    appendLog(game, viewerId, type, payload);
   }
 }
 
-export function fogFilterEmit<T>(
+export function fogFilterEmit<E extends keyof FogEventPayloads>(
   game: Game,
-  eventName: string,
-  emit: (playerId: number, payload: T) => void,
-  buildPayload: (viewerId: number) => T | null,
+  eventName: E,
+  emit: (
+    playerId: number,
+    payload: FogEventPayloads[E],
+    gameName: string,
+  ) => void,
+  buildPayload: (viewerId: number) => FogEventPayloads[E] | null,
 ): void {
   for (const viewerId of [
     ...game.playerIds,
@@ -67,7 +116,7 @@ export function fogFilterEmit<T>(
   ]) {
     const payload = buildPayload(viewerId);
     if (payload === null) continue;
-    if (viewerId !== SERVER_VIEW_ID) emit(viewerId, payload);
-    recordLog(game, viewerId, eventName, payload);
+    if (viewerId !== SERVER_VIEW_ID) emit(viewerId, payload, game.name);
+    appendLog(game, viewerId, eventName, payload);
   }
 }

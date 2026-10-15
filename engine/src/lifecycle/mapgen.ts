@@ -61,14 +61,18 @@ export function generateMap(
     };
 
     for (const viewerId of [...current.playerIds, ...current.spectatorIds]) {
-      callbacks.onMapGenerated(viewerId, {
-        name: generated.name,
-        territories: generated.territories,
-        seaTerritories: generated.seaTerritories,
-        bonuses: generated.bonuses,
-        wraps: [],
-        imageSrc: generated.imageSrc,
-      });
+      callbacks.onMapGenerated(
+        viewerId,
+        {
+          name: generated.name,
+          territories: generated.territories,
+          seaTerritories: generated.seaTerritories,
+          bonuses: generated.bonuses,
+          wraps: [],
+          imageSrc: generated.imageSrc,
+        },
+        current.name,
+      );
     }
 
     respondWithGameState(current, hostId, callback);
@@ -103,14 +107,18 @@ export function selectPlayerMap(
   };
 
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
-    callbacks.onMapGenerated(viewerId, {
-      name: map.name,
-      territories: map.territories,
-      seaTerritories: map.seaTerritories,
-      bonuses: map.bonuses,
-      wraps: map.wraps,
-      imageSrc: map.imageSrc,
-    });
+    callbacks.onMapGenerated(
+      viewerId,
+      {
+        name: map.name,
+        territories: map.territories,
+        seaTerritories: map.seaTerritories,
+        bonuses: map.bonuses,
+        wraps: map.wraps,
+        imageSrc: map.imageSrc,
+      },
+      game.name,
+    );
   }
 
   respondWithGameState(game, player.id, callback);

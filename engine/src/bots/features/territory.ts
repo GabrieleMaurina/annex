@@ -11,6 +11,18 @@ export function isKeyTerritory(game: Game, territoryId: number): boolean {
   );
 }
 
+export function isCapitalOf(
+  game: Game,
+  botId: number,
+  territoryId: number,
+): boolean {
+  return (
+    game.gameMode === 'capitals' &&
+    game.capitalTerritoryIds.has(territoryId) &&
+    game.territoryOwners.get(territoryId) === botId
+  );
+}
+
 export function isHazardTerritory(
   game: Game,
   view: BotView,

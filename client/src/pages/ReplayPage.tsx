@@ -236,7 +236,14 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
   const doc = resolved?.doc ?? null;
 
   const folded = useMemo(
-    () => (doc ? foldStoredReplay(doc.replay, doc.serverLog) : null),
+    () =>
+      doc
+        ? foldStoredReplay(
+            doc.replay,
+            doc.serverLog,
+            doc.players.map((p) => p.playerId),
+          )
+        : null,
     [doc],
   );
 

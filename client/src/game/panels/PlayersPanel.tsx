@@ -172,7 +172,9 @@ function PlayersPanel({
     !!self &&
     !self.eliminated &&
     !self.surrendered;
-  const canLeave = isSpectator || (!!self && (gameEnded || self.surrendered));
+  const canLeave =
+    isSpectator ||
+    (!!self && (gameEnded || self.surrendered || self.eliminated));
   const canPause = !gameEnded && (selfId === hostId || connector.isOffline());
   const hasLivingBot = players.some((p) => p.isBot && !p.eliminated);
   const botSpeedLabel: Record<BotSpeed, string> = {

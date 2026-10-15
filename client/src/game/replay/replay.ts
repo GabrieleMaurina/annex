@@ -64,7 +64,9 @@ export interface FoldedReplay {
 export function foldStoredReplay(
   replay: StoredGame['replay'],
   serverLog: ReplayLogEntry[],
+  playerIds: number[],
 ): FoldedReplay {
+  const players = new Set(playerIds);
   const territoryById = new Map(
     replay.initialTerritories.map((t) => [t.id, { ...t }]),
   );
@@ -77,7 +79,7 @@ export function foldStoredReplay(
   for (const entry of replay.frames) {
     if (entry.kind === 'action') {
       for (const delta of entry.mapDelta) {
-        if (delta.ownerId === -1) territoryById.delete(delta.id);
+        if (!players.has(delta.ownerId)) territoryById.delete(delta.id);
         else territoryById.set(delta.id, { ...delta });
       }
       for (const shipDelta of entry.seaShipsDelta ?? []) {

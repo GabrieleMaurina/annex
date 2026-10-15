@@ -2,6 +2,7 @@ import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { Game } from '../../types';
 import {
   frontierTerritories,
+  isCapitalOf,
   neighborsOf,
   ownedTerritoryIds,
 } from '../features/territory';
@@ -40,8 +41,11 @@ export function chooseFortify(
   if (target === undefined) return null;
 
   const frontierSet = new Set(frontier);
-  const trapped = ownedTerritoryIds(game, botId)
-    .filter((id) => id !== target && !frontierSet.has(id))
+  const owned = ownedTerritoryIds(game, botId).filter(
+    (id) => id !== target && !isCapitalOf(game, botId, id),
+  );
+  const trapped = owned
+    .filter((id) => !frontierSet.has(id))
     .filter((id) => (game.territoryTroops.get(id) ?? 0) >= 2)
     .filter((id) => isReachable(game, botId, id, target))
     .sort(
@@ -53,7 +57,6 @@ export function chooseFortify(
     return { startId: trapped, endId: target, troops: trappedTroops - 1 };
   }
 
-  const owned = ownedTerritoryIds(game, botId).filter((id) => id !== target);
   const sourceCandidates = owned
     .filter((id) => (game.territoryTroops.get(id) ?? 0) >= 2)
     .filter((id) => isReachable(game, botId, id, target))

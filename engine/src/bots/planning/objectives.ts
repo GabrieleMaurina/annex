@@ -39,6 +39,7 @@ import {
 import { routeStack } from './route';
 import {
   Candidate,
+  capitalDeployments,
   defensiveDeployments,
   mainStackDeployments,
   offensiveDeployments,
@@ -461,6 +462,7 @@ function defensiveCandidates(
   if (staging === null) {
     const stacking = openStackDeployments(ctx, state, budget);
     const gathering = mainStackDeployments(ctx, state, budget);
+    const guarding = capitalDeployments(ctx, state, budget);
     return [
       {
         objectives,
@@ -481,6 +483,16 @@ function defensiveCandidates(
               deployments: gathering,
               stacks: [],
               fortifyHint: gathering[0].territoryId,
+            },
+          ]
+        : []),
+      ...(guarding.length > 0
+        ? [
+            {
+              objectives,
+              deployments: guarding,
+              stacks: [],
+              fortifyHint: guarding[0].territoryId,
             },
           ]
         : []),

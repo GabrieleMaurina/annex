@@ -1,6 +1,10 @@
 import { territoryIncome } from '../../game/mechanics';
 import { upcomingSetValues } from '../../game/progression/cards';
 import { grudgeAgainst } from '../features/grudge';
+import {
+  capitalShortfall,
+  heldRivalCapitals,
+} from '../features/mode/capitalGuard';
 import { SideProgress, modeGoalFor } from '../features/mode/modeGoals';
 import { stalematePressure } from '../features/pressure';
 import { consolidation, spreading } from '../features/stackStyle';
@@ -155,6 +159,9 @@ const DUEL_STACK_MASS = 0.05;
 const BASE_ATTACK_RATIO = 1.05;
 const DUEL_ATTACK_EDGE = 0.15;
 const KEY_TERRITORY_RISK = 2;
+const CAPITAL_GUARD = 3;
+const EXPENDABLE_RISK = 5;
+const CAPITAL_CAPTURE = 15;
 const ANTI_LEADER = 0.15;
 const GRUDGE = 0.1;
 const CARD = 0.5;
@@ -267,6 +274,10 @@ function riskAndWaste(
   let largestAny = 0;
   let excess = 0;
   let hasBorder = false;
+  const riskCap =
+    ctx.game.gameMode === 'capitals'
+      ? EXPENDABLE_RISK * troopScale(state)
+      : Infinity;
   for (const id of ownedIds(state, ctx.botId)) {
     const troops = troopsIn(state, id);
     largestAny = Math.max(largestAny, troops);
@@ -274,7 +285,10 @@ function riskAndWaste(
     if (isBotBorder(ctx, state, id)) {
       hasBorder = true;
       const threat = strongestThreatAt(ctx, state, id);
-      risk += Math.max(0, threat - troops);
+      const deficit = Math.max(0, threat - troops);
+      risk += isKeyTerritory(ctx.game, id)
+        ? deficit
+        : Math.min(deficit, riskCap);
       concentration += Math.pow(Math.max(1, troops), 1.15);
       largestBorder = Math.max(largestBorder, troops);
     } else if (!isKeyTerritory(ctx.game, id)) {
@@ -435,6 +449,8 @@ function scoreState(
   score -= NEARBY_BREAK * ctx.weights.aggression * nearbyHeldBonus(ctx, state);
   score -= (DUEL_STACK_MASS * ctx.duel.rolling * stacks.mass) / scale;
   score -= KEY_TERRITORY_RISK * keyTerritoryRisk(ctx, state);
+  score -= (CAPITAL_GUARD * capitalShortfall(ctx, state)) / scale;
+  score += CAPITAL_CAPTURE * heldRivalCapitals(ctx, state);
   if (leader && leader.playerId !== ctx.botId)
     score -=
       ctx.weights.antiLeader *

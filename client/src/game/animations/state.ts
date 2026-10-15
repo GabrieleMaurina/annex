@@ -134,6 +134,9 @@ export function startAnimation(
   arrowFades?: ('start' | 'end' | undefined)[][],
 ) {
   if (disabled) return;
+  if (label)
+    for (const a of animations)
+      if (a.label && a.x === x && a.y === y) a.label = undefined;
   animations.push({
     type,
     x,

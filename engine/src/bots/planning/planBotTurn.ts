@@ -13,6 +13,7 @@ import {
   holdingGain,
 } from '../features/cardOutlook';
 import { attackWinProbability, scaledOutcome } from '../features/combat';
+import { capitalReserve, guardedCapitals } from '../features/mode/capitalGuard';
 import { modeGoalFor } from '../features/mode/modeGoals';
 import {
   PASSIVE_RELEASE_PRESSURE,
@@ -431,7 +432,9 @@ function planAttack(
   plan: TurnPlan,
 ): PlanBotTurnResult {
   if (game.attackConquestMinTroops !== null) {
-    const chained = continuesFromConquest(ctx, game, plan);
+    const chained =
+      continuesFromConquest(ctx, game, plan) ||
+      returnsToCapital(ctx, game, plan);
     const endShare = chained ? 1 : conquestShare(ctx, game);
     const troops = chooseAttackMoveTroops(game, chained, endShare);
     return result([{ event: 'game:attackMove', payload: { troops } }], plan);
@@ -613,6 +616,20 @@ function planAttack(
     );
     return attackers - outcome.winProbability * outcome.attackerSurvivorsMean;
   };
+  const returning =
+    plan.fortify !== null && guardedCapitals(ctx).includes(plan.fortify.endId)
+      ? plan.fortify.startId
+      : null;
+  const drainsCapital = (startId: number, endId: number) => {
+    if (startId === returning) return true;
+    boardNow ??= snapshotState(ctx);
+    const reserve = capitalReserve(ctx, boardNow, startId);
+    return (
+      reserve > 0 &&
+      (game.territoryTroops.get(startId) ?? 0) - expectedLoss(startId, endId) <
+        reserve
+    );
+  };
   const risk = passive ? passiveRisk : stackRisk;
   const regular = chooseAttack(
     game,
@@ -622,7 +639,7 @@ function planAttack(
     ctx.params.noise,
     ctx.standing,
     (startId, endId) =>
-      expectedLoss(startId, endId) > lossLimit
+      expectedLoss(startId, endId) > lossLimit || drainsCapital(startId, endId)
         ? Infinity
         : risk(startId, endId),
   );
@@ -673,6 +690,20 @@ function continuesFromConquest(
   return plan.attackSteps
     .slice(firstUpcoming)
     .some((step) => step.startId === game.attackEndTerritoryId);
+}
+
+function returnsToCapital(
+  ctx: PlanContext,
+  game: Game,
+  plan: TurnPlan,
+): boolean {
+  const capitals = guardedCapitals(ctx);
+  return (
+    plan.fortify !== null &&
+    plan.fortify.startId === game.attackEndTerritoryId &&
+    capitals.includes(plan.fortify.endId) &&
+    !capitals.includes(game.attackStartTerritoryId!)
+  );
 }
 
 function conquestShare(ctx: PlanContext, game: Game): number {
@@ -777,7 +808,9 @@ function planFortify(
     ? bestFortify(ctx, snapshotState(ctx), undefined, false, true).move
     : plan.fortify;
   if (planned && fortifyValid(ctx, game, planned)) {
-    const move = planned;
+    const move = guardedCapitals(ctx).includes(planned.endId)
+      ? { ...planned, troops: MAX_TERRITORY_TROOPS }
+      : planned;
     const troops = cappedFortifyTroops(game, move);
     if (troops >= 1)
       return result(

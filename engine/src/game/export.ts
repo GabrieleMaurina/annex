@@ -178,7 +178,7 @@ function territoryDelta(
   }
   for (const t of previous) {
     if (!currentIds.has(t.id))
-      delta.push({ id: t.id, ownerId: -1, troops: 0, entrenchedTurns: 0 });
+      delta.push({ id: t.id, ownerId: 0, troops: 0, entrenchedTurns: 0 });
   }
   return delta;
 }

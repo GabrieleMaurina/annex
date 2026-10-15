@@ -25,6 +25,7 @@ import {
 } from '../planning/simulate';
 import { Deployment, Objective, ObjectiveKind } from '../planning/turnPlan';
 import { isVisible } from '../view';
+import { sortieCandidates } from './sortieObjectives';
 
 const MAX_HOPS = 3;
 const MAX_TARGETS = 4;
@@ -245,5 +246,6 @@ export function modeCandidates(
     ...(deny ? denyCandidates(ctx, state, budget, goal, threats) : []),
     ...expandCandidates(ctx, state, budget, goal),
     ...garrisonCandidates(ctx, state, budget, goal),
+    ...sortieCandidates(ctx, state, budget),
   ];
 }

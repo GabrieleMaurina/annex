@@ -39,6 +39,7 @@ const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
   capture: () => 2,
   expand: () => 1,
   deny: () => 2,
+  sortie: () => 0.4,
 };
 
 const DUEL_FINISHER_ELIMINATE_BONUS = 50;
@@ -112,6 +113,7 @@ export function repairPlan(ctx: PlanContext, plan: TurnPlan): boolean {
     !objective ||
     objective.kind === 'defensive' ||
     objective.kind === 'card' ||
+    objective.kind === 'sortie' ||
     objective.kind === 'holdChokepoint'
   )
     return false;

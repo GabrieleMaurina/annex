@@ -59,10 +59,17 @@ function EndPage({
   useEffect(() => {
     if (view !== 'replay' || replay || replayFailed) return;
     connector.replay((res) => {
-      if (res.ok) setReplay(foldStoredReplay(res.replay, res.serverLog));
+      if (res.ok)
+        setReplay(
+          foldStoredReplay(
+            res.replay,
+            res.serverLog,
+            game.players.map((p) => p.id),
+          ),
+        );
       else setReplayFailed(true);
     });
-  }, [view, replay, replayFailed]);
+  }, [view, replay, replayFailed, game.players]);
 
   return (
     <>

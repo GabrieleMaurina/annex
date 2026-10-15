@@ -1,3 +1,4 @@
+import { capitalReserve } from '../features/mode/capitalGuard';
 import { consolidation, spreading } from '../features/stackStyle';
 import {
   PlanContext,
@@ -219,7 +220,11 @@ export function conquestEndShare(
   const toReach =
     reachTotal(stackReach(ctx, state, toId, attackers)) ** sharpness;
   const total = fromReach + toReach;
-  return total > 0 ? toReach / total : 1;
+  const share = total > 0 ? toReach / total : 1;
+  const reserve = capitalReserve(ctx, state, fromId);
+  return reserve > 0
+    ? Math.min(share, Math.max(0, 1 - reserve / attackers))
+    : share;
 }
 
 export function openedEnemyStackPower(

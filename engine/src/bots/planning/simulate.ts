@@ -5,7 +5,16 @@ import {
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { cashForcedSets } from '../features/cardOutlook';
 import { scaledOutcome } from '../features/combat';
-import { modeGoalFor, sideProgress } from '../features/mode/modeGoals';
+import {
+  capitalGap,
+  guardedCapitals,
+  sortieCapitals,
+} from '../features/mode/capitalGuard';
+import {
+  SideProgress,
+  modeGoalFor,
+  sideProgress,
+} from '../features/mode/modeGoals';
 import { consolidation, spreading } from '../features/stackStyle';
 import { isKeyTerritory } from '../features/territory';
 import { defensiveHome } from '../goals/defensiveHome';
@@ -192,7 +201,8 @@ export function walkStack(
     if (outcome.winProbability < STEP_FLOOR) break;
     if (objectiveProb < CHAIN_FLOOR) break;
   }
-  if (lastConquest)
+  const sortie = taken > 1 && guardedCapitals(ctx).includes(stack.startId);
+  if (lastConquest && !sortie)
     settleConquest(ctx, state, lastConquest.fromId, lastConquest.toId);
   return objectiveProb;
 }
@@ -270,6 +280,32 @@ function siegeMove(
   return null;
 }
 
+function capitalReturn(
+  ctx: PlanContext,
+  state: SimState,
+  sources: number[],
+  capital: number,
+  cachedProgress: SideProgress | undefined,
+): { move: FortifyMove; score: number } | null {
+  const source = sources.find(
+    (id) => id !== capital && reachableOwned(ctx, state, id).has(capital),
+  );
+  if (source === undefined) return null;
+  const sourceTroops = troopsIn(state, source);
+  const capitalTroops = troopsIn(state, capital);
+  const troops = Math.min(
+    sourceTroops - 1,
+    MAX_TERRITORY_TROOPS - capitalTroops,
+  );
+  if (troops < 1) return null;
+  state.troops.set(source, 1);
+  state.troops.set(capital, capitalTroops + troops);
+  const score = evaluateBoard(ctx, state, cachedProgress);
+  state.troops.set(source, sourceTroops);
+  state.troops.set(capital, capitalTroops);
+  return { move: { startId: source, endId: capital, troops }, score };
+}
+
 export function bestFortify(
   ctx: PlanContext,
   state: SimState,
@@ -299,8 +335,11 @@ export function bestFortify(
       : [];
   const mainStack =
     consolidation(ctx.stackFocus) > 0 ? mainStackOf(ctx, state) : null;
+  const guarded = guardedCapitals(ctx);
+  const capitals = guarded.filter((id) => capitalGap(ctx, state, id) > 0);
   const allTargets = [
     ...new Set([
+      ...capitals,
       ...borderTargets,
       ...openTargets,
       ...(mainStack !== null ? [mainStack] : []),
@@ -322,8 +361,17 @@ export function bestFortify(
   }
 
   if (!optimize) {
+    const capital = targets.find((id) => guarded.includes(id));
+    const returning =
+      capital === undefined
+        ? null
+        : capitalReturn(ctx, state, sources, capital, cachedProgress);
+    if (returning && returning.score > baseScore) return returning;
     const source = sources.find(
-      (id) => !isBotBorder(ctx, state, id) && troopsIn(state, id) >= 3,
+      (id) =>
+        !isBotBorder(ctx, state, id) &&
+        troopsIn(state, id) >= 3 &&
+        !guarded.includes(id),
     );
     const target = targets[0];
     if (source !== undefined && target !== undefined && target !== source) {
@@ -581,12 +629,23 @@ export function defensiveDeployments(
   );
   const home = defensive ? defensiveHome(ctx).ids : null;
   const homeBorders = home ? allBorders.filter((id) => home.has(id)) : [];
-  const borders = (homeBorders.length > 0 ? homeBorders : allBorders)
+  const capitals = guardedCapitals(ctx).filter(
+    (id) => state.owners.get(id) === ctx.botId && supplyConnected(ctx, id),
+  );
+  const borders = [
+    ...new Set([
+      ...(homeBorders.length > 0 ? homeBorders : allBorders),
+      ...capitals,
+    ]),
+  ]
     .map((id) => ({
       id,
       deficit:
-        Math.max(1, strongestThreatAt(ctx, state, id) - troopsIn(state, id)) *
-        (isKeyTerritory(ctx.game, id) ? KEY_TERRITORY_DEFICIT_WEIGHT : 1),
+        Math.max(
+          1,
+          strongestThreatAt(ctx, state, id) - troopsIn(state, id),
+          capitalGap(ctx, state, id),
+        ) * (isKeyTerritory(ctx.game, id) ? KEY_TERRITORY_DEFICIT_WEIGHT : 1),
     }))
     .sort((a, b) => b.deficit - a.deficit)
     .slice(0, maxBorders);
@@ -625,6 +684,19 @@ export function openStackDeployments(
   );
   const target = bestStackingBorder(ctx, state, borders, budget);
   return target === null ? [] : [{ territoryId: target, troops: budget }];
+}
+
+export function capitalDeployments(
+  ctx: PlanContext,
+  state: SimState,
+  budget: number,
+): Deployment[] {
+  if (budget <= 0) return [];
+  const capital = guardedCapitals(ctx)
+    .filter((id) => supplyConnected(ctx, id))
+    .sort((a, b) => capitalGap(ctx, state, b) - capitalGap(ctx, state, a))[0];
+  if (capital === undefined || capitalGap(ctx, state, capital) <= 0) return [];
+  return [{ territoryId: capital, troops: budget }];
 }
 
 export function mainStackOf(ctx: PlanContext, state: SimState): number | null {
@@ -744,6 +816,30 @@ export function stackCandidates(
       stacks: [{ startId: staging, route: route.path, objectiveIndex: 0 }],
       fortifyHint: objective.fortifyHint,
       stagingCosts: [{ id: staging, cost: route.cost }],
+    });
+  }
+
+  const sortieStarts =
+    stagingOverride === undefined
+      ? sortieCapitals(ctx, state).filter(
+          (id) => id !== staging && supplyConnected(ctx, id),
+        )
+      : [];
+  for (const capital of sortieStarts) {
+    const route = routeStack(ctx, state, capital, objective.mustVisit, null);
+    if (route.path.length === 0) continue;
+    candidates.push({
+      objectives: [objective],
+      deployments: offensiveDeployments(
+        ctx,
+        state,
+        capital,
+        budget,
+        route.cost,
+      ),
+      stacks: [{ startId: capital, route: route.path, objectiveIndex: 0 }],
+      fortifyHint: capital,
+      stagingCosts: [{ id: capital, cost: route.cost }],
     });
   }
 

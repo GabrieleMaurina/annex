@@ -195,6 +195,7 @@ export function chooseTroopPlacement(game: Game, botId: number): number | null {
 const PROTECTION_WEIGHT = 2;
 const CENTRALITY_WEIGHT = 1;
 const TRAFFIC_WEIGHT = 0.5;
+const CHOKEPOINT_WEIGHT = 1;
 
 function landLinks(game: Game): Map<number, number[]> {
   const map = getGameMap(game);
@@ -262,6 +263,40 @@ function bonusProtection(
   return protection;
 }
 
+function chokepointValue(
+  game: Game,
+  links: Map<number, number[]>,
+): Map<number, number> {
+  const continentOf = new Map(
+    getGameMap(game).territories.map((t) => [t.id, t.continentId]),
+  );
+  const crossings = new Map<number, string[]>();
+  const gateways = new Map<string, number>();
+  for (const [id, linked] of links) {
+    const from = continentOf.get(id);
+    const routes = [
+      ...new Set(
+        linked
+          .map((n) => continentOf.get(n))
+          .filter((to) => to !== from)
+          .map((to) => `${from}>${to}`),
+      ),
+    ];
+    crossings.set(id, routes);
+    for (const route of routes)
+      gateways.set(route, (gateways.get(route) ?? 0) + 1);
+  }
+  return new Map(
+    [...crossings].map(([id, routes]) => [
+      id,
+      Math.min(
+        1,
+        routes.reduce((sum, route) => sum + 1 / gateways.get(route)!, 0),
+      ),
+    ]),
+  );
+}
+
 function normalized(values: Map<number, number>): Map<number, number> {
   const all = [...values.values()];
   const min = Math.min(...all);
@@ -285,10 +320,12 @@ export function chooseCapital(game: Game, botId: number): number | null {
   const traffic = normalized(
     new Map(owned.map((id) => [id, neighborsOf(game, id).length])),
   );
+  const chokepoint = chokepointValue(game, links);
   const value = (id: number) =>
     PROTECTION_WEIGHT * (protection.get(id) ?? 0) +
     CENTRALITY_WEIGHT * (centrality.get(id) ?? 0) +
-    TRAFFIC_WEIGHT * (traffic.get(id) ?? 0);
+    TRAFFIC_WEIGHT * (traffic.get(id) ?? 0) +
+    CHOKEPOINT_WEIGHT * (chokepoint.get(id) ?? 0);
   return owned.reduce((best, id) => (value(id) > value(best) ? id : best));
 }
 

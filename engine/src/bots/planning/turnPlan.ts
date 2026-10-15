@@ -16,7 +16,8 @@ export type ObjectiveKind =
   | 'roll'
   | 'capture'
   | 'expand'
-  | 'deny';
+  | 'deny'
+  | 'sortie';
 
 export interface Objective {
   kind: ObjectiveKind;

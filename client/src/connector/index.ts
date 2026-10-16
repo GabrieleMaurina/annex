@@ -780,7 +780,10 @@ export const connector = {
     route('game:attackMove', data, cb);
   },
 
-  quickAttack(data: { territoryId: number }, cb: AckCallback): void {
+  quickAttack(
+    data: { territoryId: number; minimal: boolean },
+    cb: AckCallback,
+  ): void {
     route('game:quickAttack', data, cb);
   },
 

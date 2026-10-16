@@ -305,6 +305,7 @@ export const EVENT_VIEWS: EventViews = {
       bonuses: p.bonuses,
       wraps: p.wraps,
       imageSrc: p.imageSrc,
+      borderColors: p.borderColors,
     }),
 };
 

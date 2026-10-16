@@ -1,3 +1,5 @@
+import { GenerationType } from '../core/params';
+
 export const EARTH_TONES = [
   '#7a8450',
   '#a6813f',
@@ -68,3 +70,13 @@ export function continentTempleTone(continentId: number): string {
 export const TEMPLE_VOID_COLOR = '#0b0f22';
 export const TEMPLE_WALL_COLOR = '#1b2444';
 export const TEMPLE_SEAM_COLOR = '#7fd8ff';
+
+export const DEFAULT_BORDER_COLORS = [TERRITORY_STROKE_COLOR];
+
+export function generatedBorderColors(type: GenerationType): string[] {
+  if (type === 'dungeon')
+    return [DUNGEON_VOID_COLOR, DUNGEON_WALL_COLOR, DUNGEON_SEAM_COLOR];
+  if (type === 'temple')
+    return [TEMPLE_VOID_COLOR, TEMPLE_WALL_COLOR, TEMPLE_SEAM_COLOR];
+  return [TERRITORY_STROKE_COLOR];
+}

@@ -22,6 +22,7 @@ export interface MapDoc {
   generation: MapGeneration | null;
   image: Binary;
   imageMime: string;
+  borderColors: string[];
 }
 
 const schema = {
@@ -43,7 +44,12 @@ const schema = {
 export function replayMapId(
   map: Pick<
     MapDoc,
-    'territories' | 'seaTerritories' | 'bonuses' | 'wraps' | 'imageMime'
+    | 'territories'
+    | 'seaTerritories'
+    | 'bonuses'
+    | 'wraps'
+    | 'imageMime'
+    | 'borderColors'
   >,
   imageBytes: Uint8Array,
 ): string {
@@ -55,6 +61,7 @@ export function replayMapId(
         bonuses: map.bonuses,
         wraps: map.wraps,
         imageMime: map.imageMime,
+        borderColors: map.borderColors,
       }),
     )
     .update(imageBytes)
@@ -86,6 +93,7 @@ export interface StoredMap {
   wraps: MapDoc['wraps'];
   image: string;
   imageMime: string;
+  borderColors: string[];
 }
 
 export function findMapIdsByName(name: string): Promise<string[]> {
@@ -116,6 +124,7 @@ export function getMapById(id: string): Promise<StoredMap | null> {
             wraps: doc.wraps,
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
+            borderColors: doc.borderColors,
           }
         : null,
     );

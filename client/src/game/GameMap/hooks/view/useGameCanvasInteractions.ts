@@ -19,6 +19,7 @@ type OwnParamKeys =
   | 'attackSeaTerritoryId'
   | 'attackSeaDefenderId'
   | 'camera'
+  | 'regions'
   | 'imgDims'
   | 'VERTEX_RADIUS'
   | 'gameEnded'

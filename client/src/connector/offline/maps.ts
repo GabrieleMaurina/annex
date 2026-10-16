@@ -10,6 +10,7 @@ export interface LoadedPlayerMap {
   bonuses: number[];
   wraps: GameMap['wraps'];
   imageSrc: string;
+  borderColors: string[];
 }
 
 export function loadPlayerMap(id: string): Promise<LoadedPlayerMap> {
@@ -25,6 +26,7 @@ export function loadPlayerMap(id: string): Promise<LoadedPlayerMap> {
           bonuses: map.bonuses,
           wraps: map.wraps,
           imageSrc: map.image,
+          borderColors: map.borderColors,
         }
       : Promise.reject(new Error('map unavailable')),
   );

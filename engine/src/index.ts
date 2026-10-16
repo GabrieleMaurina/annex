@@ -133,6 +133,7 @@ export {
   mapSizeLabel,
 } from './mapgen/core/params';
 export {
+  DEFAULT_BORDER_COLORS,
   DUNGEON_SEAM_COLOR,
   DUNGEON_TONES,
   DUNGEON_VOID_COLOR,

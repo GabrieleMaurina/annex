@@ -574,7 +574,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       cb?.(engine.attackMove(id, d.troops));
       return;
     case 'game:quickAttack':
-      cb?.(engine.quickAttack(id, d.territoryId));
+      cb?.(engine.quickAttack(id, d.territoryId, d.minimal));
       return;
     case 'game:attackSeaSelectStart':
       cb?.(engine.attackSeaSelectStart(id, d.territoryId));

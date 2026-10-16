@@ -20,6 +20,7 @@ export interface GeneratedEditorMap {
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   imageSrc: string;
+  borderColors: string[];
 }
 
 type WorkerReply =

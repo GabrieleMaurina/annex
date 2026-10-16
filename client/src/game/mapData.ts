@@ -1,3 +1,4 @@
+import { DEFAULT_BORDER_COLORS } from 'engine';
 import { httpGet } from '../lib/http';
 import type { MapWrap } from '../lib/types';
 
@@ -25,6 +26,7 @@ export interface GeneratedMapData {
   bonuses: number[];
   wraps: MapWrap[];
   imageSrc: string;
+  borderColors: string[];
 }
 
 const generatedMaps = new Map<string, GeneratedMapData>();
@@ -60,6 +62,7 @@ function ensurePlayerMap(
     bonuses?: number[];
     wraps?: MapWrap[];
     image?: string;
+    borderColors: string[];
   }>('/player-maps/' + encodeURIComponent(playerMapId))
     .then((map) => {
       if (map.territories && map.bonuses && map.image) {
@@ -69,6 +72,7 @@ function ensurePlayerMap(
           bonuses: map.bonuses,
           wraps: map.wraps ?? [],
           imageSrc: map.image,
+          borderColors: map.borderColors,
         });
         fetchedPlayerMapIds.add(playerMapId);
       }
@@ -82,6 +86,7 @@ const EMPTY_MAP = {
   bonuses: [],
   wraps: [] as MapWrap[],
   imageSrc: null,
+  borderColors: DEFAULT_BORDER_COLORS,
 };
 
 export function loadGameMap(
@@ -93,6 +98,7 @@ export function loadGameMap(
   bonuses: number[];
   wraps: MapWrap[];
   imageSrc: string | null;
+  borderColors: string[];
 }> {
   return ensurePlayerMap(mapName, playerMapId).then(
     () => generatedMaps.get(mapName) ?? EMPTY_MAP,

@@ -278,6 +278,7 @@ function App() {
       bonuses: number[];
       wraps: MapWrap[];
       imageSrc: string;
+      borderColors: string[];
     }) {
       registerGeneratedMap(data.name, {
         territories: data.territories,
@@ -285,6 +286,7 @@ function App() {
         bonuses: data.bonuses,
         wraps: data.wraps,
         imageSrc: data.imageSrc,
+        borderColors: data.borderColors,
       });
     }
     connector.on('game:mapGenerated', onMapGenerated);

@@ -38,6 +38,7 @@ export interface GeneratedGameMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   imageSrc: string;
+  borderColors: string[];
   seed: string;
   size: MapSize;
   type: GenerationType;
@@ -304,6 +305,7 @@ export interface PlayerGameMap {
   bonuses: number[];
   wraps: MapWrap[];
   imageSrc: string;
+  borderColors: string[];
 }
 
 export interface RememberedTerritory {

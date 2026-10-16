@@ -1,4 +1,5 @@
 import { Fill, GenerationType, MapSize } from '../mapgen/core/params';
+import { DEFAULT_BORDER_COLORS } from '../mapgen/render/palette';
 import { Game, GameMap, MapWrap, SeaTerritory, Territory } from '../types';
 
 const maps = new Map<string, GameMap>();
@@ -46,6 +47,7 @@ export interface ArchivedMap {
   bonuses: number[];
   wraps: MapWrap[];
   imageSrc: string | null;
+  borderColors: string[];
   generation: {
     seed: string;
     size: MapSize;
@@ -66,6 +68,10 @@ export function getArchivedMap(game: Game): ArchivedMap {
     bonuses,
     wraps,
     imageSrc: generated?.imageSrc ?? game.playerMap?.imageSrc ?? null,
+    borderColors:
+      generated?.borderColors ??
+      game.playerMap?.borderColors ??
+      DEFAULT_BORDER_COLORS,
     generation: generated
       ? {
           seed: generated.seed,

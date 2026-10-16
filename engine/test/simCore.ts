@@ -126,6 +126,7 @@ export function runGame(
     seaTerritories: [],
     bonuses: map.bonuses,
     imageSrc: '',
+    borderColors: [],
     seed: mapName,
     size: 'medium',
     type: 'terrain',

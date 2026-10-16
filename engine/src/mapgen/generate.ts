@@ -9,6 +9,7 @@ import { createRng } from './core/rng';
 import { generateDungeon } from './pipeline/maze/dungeon';
 import { generateTemple } from './pipeline/maze/temple';
 import { generateTerrain } from './pipeline/terrain/terrainMap';
+import { generatedBorderColors } from './render/palette';
 
 export interface GeneratedMap {
   name: string;
@@ -16,6 +17,7 @@ export interface GeneratedMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   imageSrc: string;
+  borderColors: string[];
 }
 
 export function generateMap(params: GenerateMapParams): GeneratedMap {
@@ -34,5 +36,9 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
         ? generateTemple(rng, fill, size, dims, seas)
         : generateTerrain(rng, fill, size, dims, seas);
 
-  return { name: generatedMapName(params), ...built };
+  return {
+    name: generatedMapName(params),
+    ...built,
+    borderColors: generatedBorderColors(type),
+  };
 }

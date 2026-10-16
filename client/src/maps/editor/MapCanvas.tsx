@@ -12,6 +12,7 @@ import type { WrapAxes } from '../../game/mapMath';
 import { playSound } from '../../lib/sounds';
 import { hitVertex, NO_WRAP, wrapAxesOf } from './canvas/canvasGeometry';
 import { drawGraph } from './canvas/drawGraph';
+import type { ClickableCheck } from './canvas/useClickableCheck';
 import {
   handleVertexClick as linkVertices,
   type VertexLinkContext,
@@ -30,6 +31,7 @@ import {
   SEA_BRUSH,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
+import type { Viewport } from './paint/PaintLayer';
 import { drawFreehand, paintContext, type Rect } from './paint/paintTools';
 
 interface Props {
@@ -50,12 +52,8 @@ interface Props {
   panOnly?: boolean;
   hideImage?: boolean;
   hideGraph?: boolean;
-  onViewport?: (v: {
-    offsetX: number;
-    offsetY: number;
-    scaleX: number;
-    scaleY: number;
-  }) => void;
+  onViewport?: (v: Viewport) => void;
+  clickable?: ClickableCheck | null;
 }
 
 interface Transform {
@@ -111,6 +109,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     hideImage,
     hideGraph,
     onViewport,
+    clickable,
   }: Props,
   ref,
 ) {
@@ -534,6 +533,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         dragging: dragRef.current !== null,
         forceWrap,
         allowCrossover,
+        clickable,
       });
     }
   });

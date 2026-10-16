@@ -402,6 +402,7 @@ export function sendGeneratedMapIfAny(game: Game, playerId: number) {
       bonuses: map.bonuses,
       wraps: getGameMap(game).wraps,
       imageSrc: map.imageSrc,
+      borderColors: map.borderColors,
     },
     game.name,
   );

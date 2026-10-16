@@ -6,6 +6,7 @@ import Help from '../../common/tooltips/Help';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { getGeneratedMapData, loadGameMap } from '../../game/mapData';
+import { loadClickableRegions } from '../../game/regions/clickableRegions';
 import { isRegeneratingMap } from '../../lib/gameSetup';
 import { playSound, useToggleSound } from '../../lib/sounds';
 import type {
@@ -143,6 +144,7 @@ function SettingsPanel({
     if (loadedMapNamesRef.current.has(key)) return;
     loadedMapNamesRef.current.add(key);
     loadGameMap(name, game.playerMapId).then(({ imageSrc, territories }) => {
+      loadClickableRegions(name, game.playerMapId);
       if (imageSrc) {
         setMapThumbnails((prev) => ({ ...prev, [name]: imageSrc }));
       }

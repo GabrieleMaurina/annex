@@ -1,8 +1,6 @@
 import { deployableTroops } from 'engine';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { useWhiteIcon } from '../../common/icon';
-import { connector } from '../../connector';
-import type { Ack } from '../../lib/types';
 import { buildForcedWraps } from '../mapMath';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
@@ -24,6 +22,7 @@ import { useMapView } from './hooks/useMapView';
 import {
   useAnimationActiveFlags,
   useAutoAdvancePhase,
+  useGameEndActions,
   useLiveGameRefs,
   useLockViewportZoom,
   useResetTroopInputOnSelection,
@@ -137,6 +136,7 @@ function GameMap({
     seaTerritories,
     bonuses,
     wraps,
+    regions,
     camera,
     imgDims,
     size,
@@ -497,6 +497,7 @@ function GameMap({
     attackSeaTerritoryId,
     attackSeaDefenderId,
     camera,
+    regions,
     imgDims,
     VERTEX_RADIUS,
     gameEnded,
@@ -687,6 +688,7 @@ function GameMap({
       cardImagesRef,
       bonuses,
       forcedWraps,
+      regions,
     };
     startAnimationLoop();
   });
@@ -695,17 +697,7 @@ function GameMap({
   const combos = showReplay ? [] : cardsFlow.combos;
   const hasSetToPlay = showReplay ? false : cardsFlow.hasSetToPlay;
 
-  const applyAck = useCallback(
-    (res: Ack) => {
-      if (res.ok) setGame(res.game);
-    },
-    [setGame],
-  );
-  const surrender = useCallback(
-    () => connector.surrender(applyAck),
-    [applyAck],
-  );
-  const endGame = useCallback(() => connector.endGame(applyAck), [applyAck]);
+  const { surrender, endGame } = useGameEndActions(setGame);
 
   return (
     <div className="position-fixed top-0 bottom-0 start-0 end-0 overflow-hidden">
@@ -716,6 +708,7 @@ function GameMap({
         onMouseUp={interactions.handleMouseUp}
         onMouseLeave={interactions.handleMouseLeave}
         onContextMenu={interactions.handleContextMenu}
+        onAuxClick={interactions.handleAuxClick}
         onTouchStart={interactions.handleTouchStart}
         onTouchMove={interactions.handleTouchMove}
         onTouchEnd={interactions.handleTouchEnd}

@@ -53,6 +53,7 @@ export function generateMap(
       seaTerritories: generated.seaTerritories,
       bonuses: generated.bonuses,
       imageSrc: generated.imageSrc,
+      borderColors: generated.borderColors,
       seed: trimmedSeed,
       size,
       type,
@@ -70,6 +71,7 @@ export function generateMap(
           bonuses: generated.bonuses,
           wraps: [],
           imageSrc: generated.imageSrc,
+          borderColors: generated.borderColors,
         },
         current.name,
       );
@@ -104,6 +106,7 @@ export function selectPlayerMap(
     bonuses: map.bonuses,
     wraps: map.wraps,
     imageSrc: map.imageSrc,
+    borderColors: map.borderColors,
   };
 
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
@@ -116,6 +119,7 @@ export function selectPlayerMap(
         bonuses: map.bonuses,
         wraps: map.wraps,
         imageSrc: map.imageSrc,
+        borderColors: map.borderColors,
       },
       game.name,
     );

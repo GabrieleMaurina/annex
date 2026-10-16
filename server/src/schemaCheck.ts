@@ -1,3 +1,4 @@
+import { DEFAULT_BORDER_COLORS } from 'engine';
 import { Binary, Document, FindCursor, ObjectId } from 'mongodb';
 import { connectDb } from './db';
 import { replaceGamesMapId } from './db/games';
@@ -7,6 +8,9 @@ import { getCollection, getDb } from './db/mongo';
 type Node = Record<string, unknown>;
 
 const NUMERIC = ['number', 'int', 'long', 'double', 'decimal'];
+const FIELD_DEFAULTS: Record<string, unknown> = {
+  borderColors: DEFAULT_BORDER_COLORS,
+};
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -107,8 +111,12 @@ function buildObject(node: Node): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const key of required)
     if (typeof key === 'string' && key !== '_id')
-      out[key] = schemaDefault(isObject(props[key]) ? props[key] : {});
+      out[key] = fieldDefault(key, isObject(props[key]) ? props[key] : {});
   return out;
+}
+
+function fieldDefault(key: string, node: Node): unknown {
+  return key in FIELD_DEFAULTS ? FIELD_DEFAULTS[key] : schemaDefault(node);
 }
 
 function schemaDefault(node: Node): unknown {
@@ -183,7 +191,7 @@ function reconcile(
     }
     for (const key of required)
       if (typeof key === 'string' && key !== '_id' && !(key in out))
-        out[key] = schemaDefault(isObject(props[key]) ? props[key] : {});
+        out[key] = fieldDefault(key, isObject(props[key]) ? props[key] : {});
     return out;
   }
   if (types.includes('array') && Array.isArray(value) && isObject(node.items)) {
@@ -214,6 +222,7 @@ function replayContentId(doc: Document): string {
       bonuses: doc.bonuses,
       wraps: doc.wraps,
       imageMime: doc.imageMime,
+      borderColors: doc.borderColors,
     },
     image instanceof Binary
       ? image.buffer.subarray(0, image.position)

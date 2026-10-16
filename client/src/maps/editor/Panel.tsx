@@ -18,6 +18,7 @@ const MIN_BONUS = 2;
 const MAX_BONUS = 15;
 const MIN_BRUSH = 1;
 const MAX_BRUSH = 100;
+const MAX_BORDER_COLORS = 8;
 
 interface Props {
   collapsed: boolean;
@@ -61,6 +62,11 @@ interface Props {
   dirty: boolean;
   mapEmpty: boolean;
   error: string;
+  showClickable: boolean;
+  setShowClickable: (value: boolean) => void;
+  clickableStatus: string;
+  borderColors: string[];
+  setBorderColors: (value: string[]) => void;
 }
 
 function BonusInput({
@@ -178,6 +184,11 @@ function Panel(props: Props) {
     dirty,
     mapEmpty,
     error,
+    showClickable,
+    setShowClickable,
+    clickableStatus,
+    borderColors,
+    setBorderColors,
   } = props;
 
   const brushNumberInput = useNumberInput({
@@ -191,6 +202,7 @@ function Panel(props: Props) {
     customColors[customColors.length - 1] ?? '#000000',
   );
   const pickerFocusValue = useRef(customPicker);
+  const [borderPicker, setBorderPicker] = useState('#000000');
   const panelRef = useRef<HTMLDivElement>(null);
 
   useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
@@ -382,6 +394,58 @@ function Panel(props: Props) {
           Draw
         </Button>
       </ButtonGroup>
+
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <Form.Check
+          type="switch"
+          id="editor-clickable"
+          label="Clickable areas"
+          checked={showClickable}
+          onChange={(e) => setShowClickable(e.target.checked)}
+        />
+        <span className="small text-muted">{clickableStatus}</span>
+      </div>
+      {showClickable && (
+        <div className="d-flex flex-wrap align-items-center gap-1 mb-2">
+          <span className="small me-1">Borders</span>
+          {borderColors.map((c) => (
+            <Button
+              key={c}
+              size="sm"
+              variant="outline-secondary"
+              className="d-flex align-items-center gap-1 py-0 px-1"
+              disabled={borderColors.length === 1}
+              onClick={() =>
+                setBorderColors(borderColors.filter((b) => b !== c))
+              }
+            >
+              <span
+                className="d-inline-block rounded border"
+                style={{ width: 14, height: 14, backgroundColor: c }}
+              />
+              ×
+            </Button>
+          ))}
+          <Form.Control
+            type="color"
+            size="sm"
+            value={borderPicker}
+            onChange={(e) => setBorderPicker(e.target.value.toLowerCase())}
+          />
+          <Button
+            size="sm"
+            variant="outline-secondary"
+            className="py-0"
+            disabled={
+              borderColors.length >= MAX_BORDER_COLORS ||
+              borderColors.includes(borderPicker)
+            }
+            onClick={() => setBorderColors([...borderColors, borderPicker])}
+          >
+            Add
+          </Button>
+        </div>
+      )}
 
       {error && (
         <Alert variant="danger" className="py-1 px-2 small mb-2">

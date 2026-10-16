@@ -28,6 +28,7 @@ import {
 } from '../../db';
 import { isImageAllowed } from '../../moderation';
 import {
+  isBorderColors,
   isObject,
   MapGeneration,
   MapSeaTerritory,
@@ -72,6 +73,7 @@ interface ParsedInput {
   image: Buffer;
   imageMime: string;
   imageDataUrl: string;
+  borderColors: string[];
   generation: MapGeneration | null;
 }
 
@@ -115,6 +117,9 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
   );
   if (!geometry.ok) return geometry;
 
+  if (!isBorderColors(body.borderColors))
+    return { ok: false, error: 'invalid border colors' };
+
   return {
     ok: true,
     input: {
@@ -126,6 +131,7 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
       image: data,
       imageMime: match[1],
       imageDataUrl: match[0],
+      borderColors: body.borderColors,
       generation: generation.generation,
     },
   };
@@ -205,6 +211,7 @@ playerMapsRouter.get('/player-maps/:id', (req, res) => {
         wraps: map.wraps,
         image: `data:${map.imageMime};base64,${map.image}`,
         imageMime: map.imageMime,
+        borderColors: map.borderColors,
         generation: map.generation,
         dangerous: map.dangerous,
         likeCount: map.likeCount,

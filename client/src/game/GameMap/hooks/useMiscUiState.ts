@@ -1,5 +1,5 @@
 import type { CSSProperties, RefObject } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { connector } from '../../../connector';
 import type { Ack, CardSymbol, GameState, TurnPhase } from '../../../lib/types';
 import {
@@ -517,6 +517,21 @@ export function useResetTroopInputOnSelection({
       else setDeployTroops(deployMaxTroops);
     }
   }
+}
+
+export function useGameEndActions(setGame: (game: GameState) => void) {
+  const applyAck = useCallback(
+    (res: Ack) => {
+      if (res.ok) setGame(res.game);
+    },
+    [setGame],
+  );
+  const surrender = useCallback(
+    () => connector.surrender(applyAck),
+    [applyAck],
+  );
+  const endGame = useCallback(() => connector.endGame(applyAck), [applyAck]);
+  return { surrender, endGame };
 }
 
 export function useLockViewportZoom() {

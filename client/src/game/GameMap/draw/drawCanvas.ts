@@ -21,6 +21,7 @@ import {
   type ForcedWraps,
 } from '../../mapMath';
 import { isPortalHop } from '../../portals';
+import type { ClickableRegions } from '../../regions/clickableRegions';
 import type { ConquestArrow } from '../../replay/replay';
 import type { RailEdge } from '../../supplyLines';
 import { drawSupplyLines } from '../../supplyLines';
@@ -43,6 +44,7 @@ import {
   UNCLAIMED_TERRITORY_COLOR,
   type Point,
 } from '../helpers';
+import { fillRegion, strokeRegion } from './drawRegions';
 
 export interface DrawCanvasParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -101,6 +103,7 @@ export interface DrawCanvasParams {
   cardImagesRef: RefObject<Record<CardSymbol, HTMLImageElement>>;
   bonuses: number[];
   forcedWraps: ForcedWraps;
+  regions: ClickableRegions | null;
 }
 
 export function drawGameMapCanvas(params: DrawCanvasParams) {
@@ -159,6 +162,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     cardImagesRef,
     bonuses,
     forcedWraps,
+    regions,
   } = params;
 
   const canvas = canvasRef.current;
@@ -222,6 +226,36 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     [...territories, ...seaTerritories].map((t) => [t.id, t]),
   );
 
+  const visibleSet = visibleTerritoryIds
+    ? new Set([
+        ...visibleTerritoryIds,
+        ...[...(frozenVisibleTerritoryIdsRef.current ?? [])].filter(
+          (id) =>
+            !territoryById.has(id) ||
+            ownerById.has(id) ||
+            frozenTerritoryDataRef.current.has(id),
+        ),
+      ])
+    : null;
+  const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
+  const ownerOf = (id: number) =>
+    ownerById.get(id) ?? frozenTerritoryDataRef.current.get(id);
+  const fillColorOf = (id: number) => {
+    const displayOwnerId =
+      frozenOwnerRef.current.get(id) ?? ownerOf(id)?.ownerId;
+    return displayOwnerId !== undefined
+      ? playerColor(colorByPlayerId.get(displayOwnerId) ?? 0)
+      : UNCLAIMED_TERRITORY_COLOR;
+  };
+  const view = { scaleX, scaleY, offsetX, offsetY };
+
+  for (const t of territories) {
+    const shape = regions?.shapes.get(t.id);
+    if (!shape || radiationById.has(t.id)) continue;
+    if (visibleSet && !visibleSet.has(t.id)) continue;
+    fillRegion(ctx, shape, fillColorOf(t.id), view);
+  }
+
   if (supplyLineEdgesByPlayer.size > 0) {
     drawSupplyLines(
       ctx,
@@ -249,17 +283,6 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     forcedWraps,
   );
 
-  const visibleSet = visibleTerritoryIds
-    ? new Set([
-        ...visibleTerritoryIds,
-        ...[...(frozenVisibleTerritoryIdsRef.current ?? [])].filter(
-          (id) =>
-            !territoryById.has(id) ||
-            ownerById.has(id) ||
-            frozenTerritoryDataRef.current.has(id),
-        ),
-      ])
-    : null;
   const fadeForPair = (
     fromId: number,
     toId: number,
@@ -384,7 +407,6 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   }
   ctx.restore();
 
-  const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
   const portalTerritoryIdSet = new Set(portalTerritoryIds);
   const toxinByTerritoryId = new Map(
     displayedToxinTerritories.map((t) => [t.id, t]),
@@ -402,14 +424,26 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       continue;
     }
 
-    ctx.beginPath();
-    hexagonPath(ctx, p.x, p.y, hexRadius);
-    ctx.fillStyle = SEA_COLOR;
-    ctx.fill();
-    ctx.strokeStyle = STATE_STYLE[nodeState(s.id)].stroke;
-    ctx.lineWidth =
-      STATE_STYLE[nodeState(s.id)].width * zoom * stateBorderScale;
-    ctx.stroke();
+    const seaShape = regions?.shapes.get(s.id);
+    const seaStyle = STATE_STYLE[nodeState(s.id)];
+    if (seaShape) {
+      if (seaStyle !== STATE_STYLE.normal)
+        strokeRegion(
+          ctx,
+          seaShape,
+          seaStyle.stroke,
+          seaStyle.width * zoom * stateBorderScale,
+          view,
+        );
+    } else {
+      ctx.beginPath();
+      hexagonPath(ctx, p.x, p.y, hexRadius);
+      ctx.fillStyle = SEA_COLOR;
+      ctx.fill();
+      ctx.strokeStyle = seaStyle.stroke;
+      ctx.lineWidth = seaStyle.width * zoom * stateBorderScale;
+      ctx.stroke();
+    }
 
     const ships = (
       frozenSeaShipsRef.current.get(s.id) ??
@@ -456,6 +490,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   for (const t of territories) {
     const isVisible = visibleSet === null || visibleSet.has(t.id);
     const p = toScreen(t);
+    const shape = regions?.shapes.get(t.id);
 
     if (portalTerritoryIdSet.has(t.id)) {
       drawPortal(
@@ -502,7 +537,15 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       }
       drawFogCloud(ctx, p.x, p.y, VERTEX_RADIUS * scaleX, now, t.id);
       const fogStyle = STATE_STYLE[nodeState(t.id)];
-      if (fogStyle !== STATE_STYLE.normal) {
+      if (shape && fogStyle !== STATE_STYLE.normal) {
+        strokeRegion(
+          ctx,
+          shape,
+          fogStyle.stroke,
+          fogStyle.width * zoom * stateBorderScale,
+          view,
+        );
+      } else if (fogStyle !== STATE_STYLE.normal) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
         ctx.strokeStyle = fogStyle.stroke;
@@ -511,12 +554,16 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       }
     } else {
       const style = STATE_STYLE[nodeState(t.id)];
-      owner = ownerById.get(t.id) ?? frozenTerritoryDataRef.current.get(t.id);
-      const displayOwnerId = frozenOwnerRef.current.get(t.id) ?? owner?.ownerId;
-      const fillColor =
-        displayOwnerId !== undefined
-          ? playerColor(colorByPlayerId.get(displayOwnerId) ?? 0)
-          : UNCLAIMED_TERRITORY_COLOR;
+      owner = ownerOf(t.id);
+      const fillColor = fillColorOf(t.id);
+      if (shape && style !== STATE_STYLE.normal)
+        strokeRegion(
+          ctx,
+          shape,
+          style.stroke,
+          style.width * zoom * stateBorderScale,
+          view,
+        );
 
       if (owner && owner.entrenchedTurns > 0) {
         traceOctagon(
@@ -550,18 +597,21 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       }
 
       if (!toxin && !isRadiated) {
-        ctx.beginPath();
-        if (owner?.isCapital) {
-          const half = VERTEX_RADIUS * scaleX;
-          ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
-        } else {
-          ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
+        if (!shape || owner?.isCapital) {
+          const markerStyle = shape ? STATE_STYLE.normal : style;
+          ctx.beginPath();
+          if (owner?.isCapital) {
+            const half = VERTEX_RADIUS * scaleX;
+            ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
+          } else {
+            ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
+          }
+          ctx.fillStyle = fillColor;
+          ctx.fill();
+          ctx.strokeStyle = markerStyle.stroke;
+          ctx.lineWidth = markerStyle.width * zoom * stateBorderScale;
+          ctx.stroke();
         }
-        ctx.fillStyle = fillColor;
-        ctx.fill();
-        ctx.strokeStyle = style.stroke;
-        ctx.lineWidth = style.width * zoom * stateBorderScale;
-        ctx.stroke();
 
         if (radiationUpcomingById.has(t.id)) {
           drawRadiationCloud(

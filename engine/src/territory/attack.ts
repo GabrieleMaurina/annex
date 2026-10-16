@@ -519,6 +519,7 @@ export function attack(
 export function quickAttack(
   playerId: number,
   rawTerritoryId: unknown,
+  minimal: unknown,
 ): GameResponse {
   const ctx = requirePlayingTurn(requireGame(playerId), 'attack');
   if (!ctx.ok) return ctx;
@@ -539,7 +540,12 @@ export function quickAttack(
   if (game.state !== 'playing' || !hasPendingConquest(game, playerId))
     return { ok: true, game: attacked.game };
 
-  return attackMove(playerId, (game.territoryTroops.get(startId) ?? 0) - 1);
+  return attackMove(
+    playerId,
+    minimal === true
+      ? game.attackConquestMinTroops
+      : (game.territoryTroops.get(startId) ?? 0) - 1,
+  );
 }
 
 export function attackMove(playerId: number, rawTroops: unknown): GameResponse {

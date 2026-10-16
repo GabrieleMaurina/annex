@@ -43,6 +43,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               bonuses: map.bonuses,
               wraps: map.wraps,
               imageSrc: `data:${map.imageMime};base64,${map.image}`,
+              borderColors: map.borderColors,
             },
             (response) => callback(viewResponse(playerId, response)),
           );

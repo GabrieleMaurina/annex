@@ -289,6 +289,7 @@ export interface EngineCallbacks {
       bonuses: number[];
       wraps: unknown[];
       imageSrc: string;
+      borderColors: string[];
     },
     gameName: string,
   ): void;

@@ -48,6 +48,19 @@ const MAX_BONUS = 25;
 const MIN_CONTINENT_SIZE = 2;
 const MAX_CONTINENT_SIZE = 40;
 const MAX_TERRITORIES = MAX_CONTINENTS * MAX_CONTINENT_SIZE;
+export const MAX_BORDER_COLORS = 8;
+export const BORDER_COLOR_PATTERN = '^#[0-9a-f]{6}$';
+
+export function isBorderColors(value: unknown): value is string[] {
+  const pattern = new RegExp(BORDER_COLOR_PATTERN);
+  return (
+    Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= MAX_BORDER_COLORS &&
+    new Set(value).size === value.length &&
+    value.every((c) => typeof c === 'string' && pattern.test(c))
+  );
+}
 
 function isTerritory(value: unknown): value is MapTerritory {
   if (!isObject(value)) return false;

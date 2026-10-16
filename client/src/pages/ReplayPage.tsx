@@ -223,6 +223,7 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
             bonuses: map.bonuses,
             wraps: map.wraps,
             imageSrc: `data:${map.imageMime};base64,${map.image}`,
+            borderColors: map.borderColors,
           });
         }
         setNotFound(false);

@@ -8,6 +8,7 @@ import type {
 import type { EvaluatedCombo } from '../../../logic/cards';
 import type { SeaTerritory, Territory } from '../../../mapData';
 import type { DiceRoll } from '../../../panels/attack/AttackPanel';
+import type { ClickableRegions } from '../../../regions/clickableRegions';
 import type { Camera } from '../../camera';
 
 export type CanvasInteractionsParams = {
@@ -41,6 +42,7 @@ export type CanvasInteractionsParams = {
   quickAttackSea: (territoryId: number) => void;
   cancelAttackSea: () => void;
   camera: Camera;
+  regions: ClickableRegions | null;
   imgDims: { w: number; h: number };
   VERTEX_RADIUS: number;
   gameEnded: boolean;
@@ -148,7 +150,7 @@ export type CanvasInteractionsParams = {
   cycleAttackOption: (direction: 1 | -1) => void;
   selectAttackStart: (territoryId: number | null) => void;
   selectAttackEnd: (territoryId: number) => void;
-  quickAttack: (territoryId: number) => void;
+  quickAttack: (territoryId: number, minimal: boolean) => void;
   submitAttackMove: () => void;
   cancelAttack: () => void;
   submitAttack: () => void;

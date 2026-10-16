@@ -1,4 +1,5 @@
 import { FILL_VALUES, GENERATION_TYPE_VALUES, MAP_SIZE_VALUES } from 'engine';
+import { BORDER_COLOR_PATTERN, MAX_BORDER_COLORS } from '../../validate';
 
 const MAX_NAME_LENGTH = 40;
 const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -12,6 +13,7 @@ export const MAP_REQUIRED = [
   'generation',
   'image',
   'imageMime',
+  'borderColors',
 ];
 
 export const MAP_PROPERTIES = {
@@ -74,4 +76,10 @@ export const MAP_PROPERTIES = {
   },
   image: { bsonType: 'binData' },
   imageMime: { enum: IMAGE_MIMES },
+  borderColors: {
+    bsonType: 'array',
+    minItems: 1,
+    maxItems: MAX_BORDER_COLORS,
+    items: { bsonType: 'string', pattern: BORDER_COLOR_PATTERN },
+  },
 };

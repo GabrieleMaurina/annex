@@ -4,6 +4,7 @@ import { connector } from '../../../../connector';
 import { playSound } from '../../../../lib/sounds';
 import type { Ack } from '../../../../lib/types';
 import { ATTACK_EMOJI } from '../../../logic/emoji';
+import { regionAt } from '../../../regions/clickableRegions';
 import {
   DRAG_THRESHOLD,
   getScales,
@@ -63,6 +64,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     quickAttackSea,
     cancelAttackSea,
     camera,
+    regions,
     imgDims,
     VERTEX_RADIUS,
     gameEnded,
@@ -338,6 +340,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     let nearest: { id: number } | null = null;
     let nearestDist = Infinity;
     for (const t of [...territories, ...seaTerritories]) {
+      if (regions?.shapes.has(t.id)) continue;
       const d = Math.hypot(
         pos.x - (t.x * scaleX + offsetX),
         pos.y - (t.y * scaleY + offsetY),
@@ -347,7 +350,16 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         nearestDist = d;
       }
     }
-    return nearest;
+    const regionId = regions
+      ? regionAt(
+          regions,
+          (pos.x - offsetX) / scaleX,
+          (pos.y - offsetY) / scaleY,
+        )
+      : null;
+    if (regionId === null || nearestDist <= VERTEX_RADIUS * scaleX)
+      return nearest;
+    return { id: regionId };
   }
 
   const seaIdSet = new Set(seaTerritories.map((s) => s.id));
@@ -382,6 +394,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
   }
 
   function handleMouseDown(e: React.MouseEvent) {
+    if (e.button === 1) e.preventDefault();
     if (e.button !== 0 || isSyntheticMouseEvent()) return;
     beginDrag(getPos(e));
   }
@@ -779,7 +792,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         vertex &&
         attackEndCandidates.has(vertex.id)
       ) {
-        quickAttack(vertex.id);
+        quickAttack(vertex.id, false);
       } else if (attackStartTerritoryId !== null) {
         cancelAttack();
       } else if (attackSeaDiceOnly) {
@@ -818,6 +831,18 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     }
   }
 
+  function handleAuxClick(e: React.MouseEvent) {
+    if (e.button !== 1 || isSyntheticMouseEvent()) return;
+    e.preventDefault();
+    if (gameEnded || !isMyTurn || paused || nukeTargeting) return;
+    if (turnPhase !== 'attack' || attackPendingConquest) return;
+    if (attackSeaTerritoryId !== null || !blitzEnabled || attackRevealing)
+      return;
+    const vertex = hitVertex(getPos(e));
+    if (vertex && attackEndCandidates.has(vertex.id))
+      quickAttack(vertex.id, true);
+  }
+
   useCanvasKeyboard({ ...params, selectTerritory, zoomAround });
 
   return {
@@ -831,6 +856,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     handleMouseUp,
     handleMouseLeave,
     handleContextMenu,
+    handleAuxClick,
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,

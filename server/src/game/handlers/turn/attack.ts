@@ -20,6 +20,6 @@ export function registerAttackHandlers(socket: Socket, engine: Engine) {
   );
 
   registerGameAction(socket, 'game:quickAttack', (playerId, data) =>
-    engine.quickAttack(playerId, data.territoryId),
+    engine.quickAttack(playerId, data.territoryId, data.minimal),
   );
 }

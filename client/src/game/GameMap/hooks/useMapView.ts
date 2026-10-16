@@ -7,6 +7,10 @@ import {
   type SeaTerritory,
   type Territory,
 } from '../../mapData';
+import {
+  loadClickableRegions,
+  type ClickableRegions,
+} from '../../regions/clickableRegions';
 import { createCamera, DEFAULT_TRANSFORM } from '../camera';
 
 export function useMapView(mapName: string, playerMapId?: string | null) {
@@ -16,6 +20,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
   const [seaTerritories, setSeaTerritories] = useState<SeaTerritory[]>([]);
   const [bonuses, setBonuses] = useState<number[]>([]);
   const [wraps, setWraps] = useState<MapWrap[]>([]);
+  const [regions, setRegions] = useState<ClickableRegions | null>(null);
   const [camera] = useState(createCamera);
   const [imgDims, setImgDims] = useState({
     w: DEFAULT_IMAGE_WIDTH,
@@ -33,6 +38,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         setSeaTerritories(seaTerritories);
         setBonuses(bonuses);
         setWraps(wraps);
+        loadClickableRegions(mapName, playerMapId).then(setRegions);
         camera.set({ ...DEFAULT_TRANSFORM });
         if (!imageSrc) {
           imageRef.current = null;
@@ -65,6 +71,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     seaTerritories,
     bonuses,
     wraps,
+    regions,
     camera,
     imgDims,
     size,

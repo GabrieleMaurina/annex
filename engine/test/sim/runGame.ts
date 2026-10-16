@@ -132,6 +132,7 @@ export function runSimGame(
     seaTerritories: generated.seaTerritories,
     bonuses: generated.bonuses,
     imageSrc: generated.imageSrc,
+    borderColors: generated.borderColors,
     seed: mapParams.seed,
     size: mapParams.size,
     type: mapParams.type,

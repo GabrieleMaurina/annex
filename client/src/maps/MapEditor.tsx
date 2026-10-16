@@ -1,4 +1,9 @@
-import { MAP_SIZE_VALUES, mapImageSize, mapSizeLabel } from 'engine';
+import {
+  DEFAULT_BORDER_COLORS,
+  MAP_SIZE_VALUES,
+  mapImageSize,
+  mapSizeLabel,
+} from 'engine';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -6,6 +11,7 @@ import { formatError } from '../common/formatError';
 import { connector } from '../connector';
 import { playSound, useToggleSound } from '../lib/sounds';
 import type { Account, GenerateMapInput, MapSize } from '../lib/types';
+import { useClickableCheck } from './editor/canvas/useClickableCheck';
 import {
   createBlankImage,
   createDefaultImage,
@@ -290,6 +296,19 @@ function MapEditor({ account }: { account: Account | null }) {
     paintSurfaceRef.current = paintSurface;
   });
 
+  const [showClickable, setShowClickable] = useState(false);
+  const [borderColors, setBorderColors] = useState(DEFAULT_BORDER_COLORS);
+  const clickable = useClickableCheck(
+    paintSurfaceRef,
+    paintVersion,
+    territories,
+    borderColors,
+    showClickable,
+  );
+  const clickableCount = clickable
+    ? territories.filter((t) => !clickable.invalidIds.has(t.id)).length
+    : 0;
+
   const syncHistoryFlags = useCallback(() => {
     setCanUndo(pastRef.current.length > 0);
     setCanRedo(futureRef.current.length > 0);
@@ -407,6 +426,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setMapName(map.name);
       setSavedName(map.name);
       setGeneration(map.generation ?? null);
+      setBorderColors(map.borderColors);
       setCurrentContinentId(0);
       setImageSrc(map.image);
     });
@@ -487,6 +507,11 @@ function MapEditor({ account }: { account: Account | null }) {
     setDirty(true);
   }
 
+  function handleBorderColorsChange(value: string[]) {
+    setBorderColors(value);
+    setDirty(true);
+  }
+
   function handleLeave() {
     if (dirty) setLeaveOpen(true);
     else navigate('/maps/mine');
@@ -519,6 +544,7 @@ function MapEditor({ account }: { account: Account | null }) {
     setContinentCount(1);
     setCurrentContinentId(0);
     setGeneration(null);
+    setBorderColors(DEFAULT_BORDER_COLORS);
     setMapName(DEFAULT_MAP_NAME);
     setSavedId(null);
     setSavedName(null);
@@ -562,6 +588,7 @@ function MapEditor({ account }: { account: Account | null }) {
     setContinentCount(Math.max(1, sorted.bonuses.length));
     setCurrentContinentId(0);
     setGeneration(input);
+    setBorderColors(map.borderColors);
     setMapName(map.name);
     setImageSrc(map.imageSrc);
   }
@@ -580,6 +607,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setBonuses(map.bonuses);
       setContinentCount(map.bonuses.length);
       setGeneration(map.generation ?? null);
+      setBorderColors(map.borderColors);
       setMapName(map.name);
       setCurrentContinentId(0);
       setImageSrc(map.image);
@@ -628,6 +656,7 @@ function MapEditor({ account }: { account: Account | null }) {
       wraps: sorted.wraps,
       image,
       generation,
+      borderColors,
     };
     const done = (res: { ok: boolean; error?: string; id?: string }) => {
       setSaving(false);
@@ -652,6 +681,7 @@ function MapEditor({ account }: { account: Account | null }) {
     continentCount,
     bonuses,
     generation,
+    borderColors,
     effectiveId,
     paintSurface,
     navigate,
@@ -731,6 +761,7 @@ function MapEditor({ account }: { account: Account | null }) {
         hideImage={exclusive && mode === 'graph'}
         hideGraph={exclusive && mode === 'paint'}
         onViewport={handleViewport}
+        clickable={showClickable ? clickable : null}
       />
 
       {mode === 'paint' && tool !== null && (
@@ -798,6 +829,11 @@ function MapEditor({ account }: { account: Account | null }) {
           dirty={dirty}
           mapEmpty={territories.length === 0}
           error={error}
+          showClickable={showClickable}
+          setShowClickable={setShowClickable}
+          clickableStatus={`${clickableCount}/${territories.length}`}
+          borderColors={borderColors}
+          setBorderColors={handleBorderColorsChange}
         />
       </div>
 

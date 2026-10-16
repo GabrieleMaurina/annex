@@ -199,8 +199,8 @@ export function useAttackFlow({
   );
 
   const quickAttack = useCallback(
-    (territoryId: number) => {
-      connector.quickAttack({ territoryId }, (res: Ack) => {
+    (territoryId: number, minimal: boolean) => {
+      connector.quickAttack({ territoryId, minimal }, (res: Ack) => {
         if (!res.ok) return;
         setAttackDiceRoll(null);
         setGame(res.game);

@@ -914,6 +914,7 @@ export interface StoredMap {
   wraps: MapWrap[];
   image: string;
   imageMime: string;
+  borderColors: string[];
 }
 
 export type PlayerMapSort =
@@ -968,6 +969,7 @@ export interface PlayerMapDetail {
   wraps: MapWrap[];
   image: string;
   imageMime: string;
+  borderColors: string[];
   generation: GenerateMapInput | null;
   dangerous: boolean;
   likeCount: number;
@@ -982,5 +984,6 @@ export interface PlayerMapSaveBody {
   bonuses: number[];
   wraps: MapWrap[];
   image: string;
+  borderColors: string[];
   generation: GenerateMapInput | null;
 }

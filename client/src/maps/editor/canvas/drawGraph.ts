@@ -11,6 +11,7 @@ import {
   wrapOf,
   type Viewport,
 } from './canvasGeometry';
+import type { ClickableCheck } from './useClickableCheck';
 
 interface DrawGraphParams {
   ctx: CanvasRenderingContext2D;
@@ -24,6 +25,7 @@ interface DrawGraphParams {
   dragging: boolean;
   forceWrap: WrapAxes;
   allowCrossover: boolean;
+  clickable?: ClickableCheck | null;
 }
 
 function hexagonPath(
@@ -54,6 +56,7 @@ export function drawGraph({
   dragging,
   forceWrap,
   allowCrossover,
+  clickable,
 }: DrawGraphParams) {
   const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = viewport;
   const toScreen = (p: Point): Point => ({
@@ -61,6 +64,17 @@ export function drawGraph({
     y: p.y * scaleY + offsetY,
   });
   const byId = new Map(territories.map((t) => [t.id, t]));
+
+  if (clickable?.overlay) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(
+      clickable.overlay,
+      offsetX,
+      offsetY,
+      imgW * scaleX,
+      imgH * scaleY,
+    );
+  }
 
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 2 * zoom;
@@ -142,6 +156,7 @@ export function drawGraph({
     const p = toScreen(t);
     const isSelected = selectedVertexId === t.id;
     const isHovered = hoveredVertexId === t.id;
+    const isInvalid = clickable?.invalidIds.has(t.id) ?? false;
     ctx.beginPath();
     if (t.isSea) {
       hexagonPath(ctx, p.x, p.y, vertexRadius * scaleX * SEA_SIZE_MULTIPLIER);
@@ -155,9 +170,13 @@ export function drawGraph({
       ? '#bbbbbb'
       : isHovered
         ? '#555555'
-        : '#000000';
+        : isInvalid
+          ? '#dc3545'
+          : '#000000';
     ctx.lineWidth =
-      (isSelected || isHovered ? 7 : 2) * zoom * vertexBorderScale;
+      (isSelected || isHovered ? 7 : isInvalid ? 5 : 2) *
+      zoom *
+      vertexBorderScale;
     ctx.stroke();
 
     const labelRadius = t.isSea

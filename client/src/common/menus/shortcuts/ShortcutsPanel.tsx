@@ -29,6 +29,7 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
       ['Esc', 'Cancel the current selection'],
       ['Right-click', 'Deploy all troops, or buy the most ships'],
       ['Right-click', 'Blitz a target and move all troops in'],
+      ['Middle-click', 'Blitz a target and move the fewest troops in'],
       ['Right-click', 'Blitz enemy ships with all your ships'],
       ['Right-click', 'Fortify or sail everything to the target'],
       ['← ↓ / → ↑', 'Decrease / increase troops'],

@@ -39,6 +39,7 @@ interface PlayerMapDoc {
   wraps: PlayerMapWrap[];
   image: Binary;
   imageMime: string;
+  borderColors: string[];
   generation: MapGeneration | null;
   territoryCount: number;
   continentCount: number;
@@ -125,6 +126,7 @@ export interface PlayerMapInput {
   wraps: PlayerMapWrap[];
   image: Buffer;
   imageMime: string;
+  borderColors: string[];
   generation: MapGeneration | null;
 }
 
@@ -142,6 +144,7 @@ export function createPlayerMap(
       wraps: input.wraps,
       image: new Binary(input.image),
       imageMime: input.imageMime,
+      borderColors: input.borderColors,
       generation: input.generation,
       territoryCount: input.territories.length,
       continentCount: input.bonuses.length,
@@ -184,6 +187,7 @@ export function updatePlayerMap(
               wraps: input.wraps,
               image: new Binary(input.image),
               imageMime: input.imageMime,
+              borderColors: input.borderColors,
               generation: input.generation,
               territoryCount: input.territories.length,
               continentCount: input.bonuses.length,
@@ -220,6 +224,7 @@ export interface PlayerMapDetail {
   wraps: PlayerMapWrap[];
   image: string;
   imageMime: string;
+  borderColors: string[];
   generation: MapGeneration | null;
   dangerous: boolean;
   likeCount: number;
@@ -242,6 +247,7 @@ export function getPlayerMapById(id: string): Promise<PlayerMapDetail | null> {
             wraps: doc.wraps,
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
+            borderColors: doc.borderColors,
             generation: doc.generation,
             dangerous: doc.dangerous,
             likeCount: doc.likeCount,

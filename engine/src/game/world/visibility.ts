@@ -2,7 +2,12 @@ import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { allianceStatesForViewer, alliedIds } from '../alliances';
 import { isAnonymousPlaying } from '../anonymous';
-import { gameState, isEliminated, territoryStats } from '../state';
+import {
+  gameState,
+  isClaimPhase,
+  isEliminated,
+  territoryStats,
+} from '../state';
 import { SERVER_VIEW_ID } from './fog';
 import { withPortalEdges } from './portals';
 
@@ -46,7 +51,10 @@ export function isFogActive(
 ): boolean {
   if (game.fogOfWar !== 'on') return false;
   if (game.state !== 'playing') return false;
-  if (game.turnPhase === 'territory' || game.turnPhase === 'troop')
+  if (
+    (isClaimPhase(game) && game.placement !== 'single') ||
+    game.turnPhase === 'troop'
+  )
     return false;
   if (game.spectatorIds.includes(viewerId)) return false;
   if (game.surrenderedIds.has(viewerId)) return false;
@@ -71,6 +79,21 @@ export function rememberVisibleTerritories(game: Game): void {
     }
     game.fogMemory.set(playerId, memory);
   }
+}
+
+export function rememberClaimedTerritory(
+  game: Game,
+  playerId: number,
+  territoryId: number,
+): void {
+  const ownerId = game.territoryOwners.get(territoryId);
+  if (ownerId === undefined || !isFogActive(game, playerId)) return;
+  const memory = game.fogMemory.get(playerId) ?? new Map();
+  memory.set(territoryId, {
+    ownerId,
+    troops: game.territoryTroops.get(territoryId) ?? 0,
+  });
+  game.fogMemory.set(playerId, memory);
 }
 
 export function visibleTerritoryIdsOrAll(

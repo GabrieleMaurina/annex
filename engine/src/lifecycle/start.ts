@@ -110,7 +110,7 @@ export function startGame(playerId: number): GameResponse {
   game.fogMemory = new Map();
   game.deathOrder = [];
   game.teamDeathOrder = [];
-  if (game.placement !== 'custom') {
+  if (game.placement === 'random' || game.placement === 'semi') {
     for (const id of game.playerIds) {
       if (!ownsAnyTerritory(game, id)) game.deathOrder.push(id);
     }
@@ -119,8 +119,13 @@ export function startGame(playerId: number): GameResponse {
   game.state = 'playing';
   game.startedAt = Date.now();
   game.remainingSpecialPhases = [
-    ...(game.placement === 'custom' ? (['territory'] as const) : []),
-    ...(game.placement !== 'random' ? (['troop'] as const) : []),
+    ...(game.placement === 'custom' ||
+    (game.placement === 'single' && game.gameMode !== 'capitals')
+      ? (['territory'] as const)
+      : []),
+    ...(game.placement === 'semi' || game.placement === 'custom'
+      ? (['troop'] as const)
+      : []),
     ...(game.gameMode === 'capitals' ? (['capital'] as const) : []),
   ];
   beginNextSpecialPhase(game);

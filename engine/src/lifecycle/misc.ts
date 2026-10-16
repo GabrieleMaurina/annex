@@ -1,5 +1,6 @@
 import { startTakeover } from '../bots/takeover';
 import { nextBotSpeed } from '../bots/thinkTime';
+import { callbacks } from '../callbacks';
 import { isAnonymous } from '../game/anonymous';
 import { checkGameEnd, finishGame } from '../game/end';
 import { recomputeHost } from '../game/host';
@@ -7,12 +8,14 @@ import {
   cycleColor as cycleColorImpl,
   ownsAnyTerritory,
 } from '../game/mechanics';
+import { isClaimPhase } from '../game/state';
 import {
   advanceTurnPhase,
   pauseTurnTimer,
   pauseTurnTimerWithAutoResume,
   resumeTurnTimer,
 } from '../game/turns';
+import { recordLogForAll } from '../game/world/fog';
 import { ArchivedMap, getArchivedMap } from '../maps/maps';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
@@ -135,7 +138,7 @@ export function surrender(playerId: number): GameResponse {
   if (game.state !== 'playing') return { ok: false, error: 'game not started' };
   if (!game.playerIds.includes(player.id))
     return { ok: false, error: 'not a player' };
-  if (game.turnPhase !== 'territory' && !ownsAnyTerritory(game, player.id))
+  if (!isClaimPhase(game) && !ownsAnyTerritory(game, player.id))
     return { ok: false, error: 'already eliminated' };
   if (game.surrenderedIds.has(player.id))
     return { ok: false, error: 'already eliminated' };
@@ -173,5 +176,9 @@ export function surrenderPlayer(game: Game, player: Player): void {
     game.frozenKillCount.set(player.id, stats.playersKilled.length);
   else if (game.gameMode === 'troop kills')
     game.frozenKillCount.set(player.id, stats.troopsKilled);
+  const payload = { playerId: player.id };
+  for (const viewerId of [...game.playerIds, ...game.spectatorIds])
+    callbacks.onSurrendered(viewerId, payload, game.name);
+  recordLogForAll(game, 'game:surrendered', payload);
   startTakeover(game, player);
 }

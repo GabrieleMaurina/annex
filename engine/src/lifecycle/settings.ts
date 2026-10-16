@@ -86,7 +86,7 @@ const GAME_MODE_VALUES: GameMode[] = [
   'king of the hill',
   'empire',
 ];
-const PLACEMENT_VALUES: Placement[] = ['random', 'semi', 'custom'];
+const PLACEMENT_VALUES: Placement[] = ['random', 'semi', 'custom', 'single'];
 const PORTALS_VALUES: Portals[] = ['off', 'static', 'dynamic'];
 const RADIATIONS_VALUES: Radiations[] = [
   'off',

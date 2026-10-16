@@ -1,6 +1,8 @@
+import { callbacks } from '../../callbacks';
 import { getGameMap } from '../../maps/maps';
 import { Game, GameMode } from '../../types';
 import { calculateDeployTroopsBreakdown, shuffle } from '../mechanics';
+import { recordLogForAll } from '../world/fog';
 import { countTerritories } from './stats';
 
 export const MAX_POINTS_VALUES = [
@@ -54,10 +56,19 @@ export function awardTurnPoints(game: Game, playerId: number): void {
     game.surrenderedIds.has(playerId)
   )
     return;
-  game.points.set(
+  const points = pointsGain(game, playerId);
+  const total = (game.points.get(playerId) ?? 0) + points;
+  game.points.set(playerId, total);
+  if (points === 0) return;
+  const payload = {
     playerId,
-    (game.points.get(playerId) ?? 0) + pointsGain(game, playerId),
-  );
+    points,
+    total,
+    roundNumber: game.roundNumber,
+  };
+  for (const viewerId of [...game.playerIds, ...game.spectatorIds])
+    callbacks.onPointsScored(viewerId, payload, game.name);
+  recordLogForAll(game, 'game:pointsScored', payload);
 }
 
 export function pointsWinner(

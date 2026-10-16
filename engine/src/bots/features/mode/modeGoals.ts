@@ -1,4 +1,7 @@
-import { supremacyTerritoriesToWin } from '../../../game/mechanics';
+import {
+  availableTerritoryCount,
+  supremacyTerritoriesToWin,
+} from '../../../game/mechanics';
 import { findKillerId } from '../../../game/progression/stats';
 import {
   PlanContext,
@@ -120,7 +123,9 @@ function setAssassin(ctx: PlanContext, goal: ModeGoal, targetId: number): void {
   const killerId = findKillerId(game, targetId);
   if (killerId === botId) return;
   if (killerId !== undefined) {
-    goal.threshold = Math.ceil(goal.total * ASSASSIN_FALLBACK_FRACTION);
+    goal.threshold = Math.ceil(
+      availableTerritoryCount(game) * ASSASSIN_FALLBACK_FRACTION,
+    );
     goal.expand = true;
   }
   if (game.deathOrder.includes(targetId) || ctx.friendlyIds.has(targetId))
@@ -148,10 +153,11 @@ function setMission(ctx: PlanContext, goal: ModeGoal): void {
   const mission = ctx.game.playerMissions.get(ctx.botId);
   goal.killWeight = SURVIVOR_KILL_WEIGHT;
   if (!mission) return;
-  goal.threatThreshold = Math.ceil(goal.total * OPPONENT_MISSION_FRACTION);
+  const total = availableTerritoryCount(ctx.game);
+  goal.threatThreshold = Math.ceil(total * OPPONENT_MISSION_FRACTION);
   goal.threatWeight = OPPONENT_MISSION_WEIGHT;
   if (mission.type === 'territories') {
-    goal.threshold = Math.ceil(goal.total * mission.fraction);
+    goal.threshold = Math.ceil(total * mission.fraction);
     goal.minTroops = mission.minTroopsPerTerritory;
     goal.expand = true;
   } else if (mission.type === 'continents') {

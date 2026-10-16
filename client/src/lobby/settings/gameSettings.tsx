@@ -142,7 +142,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     key: 'placement',
     label: 'Placement',
     section: 'Setup',
-    options: caps('random', 'semi', 'custom'),
+    options: caps('random', 'semi', 'custom', 'single'),
     help: PLACEMENT_HELP,
   },
   {

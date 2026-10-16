@@ -85,7 +85,7 @@ export interface EngineCallbacks {
   onCapitalPlacementStarted(playerId: number): void;
   onTerritoryClaimed(
     playerId: number,
-    payload: { territoryId: number; playerId: number },
+    payload: { territoryId: number; playerId: number; troops: number },
     gameName: string,
   ): void;
   onTurnStarted(
@@ -197,6 +197,8 @@ export interface EngineCallbacks {
       defendingTroops?: number;
       defenceLosses?: number;
       conquered?: boolean;
+      eliminated?: boolean;
+      cardsTaken?: number;
     },
     gameName: string,
   ): void;
@@ -251,6 +253,26 @@ export interface EngineCallbacks {
       defendingShips: number;
       defenceLosses: number;
     },
+    gameName: string,
+  ): void;
+  onSurrendered(
+    playerId: number,
+    payload: { playerId: number },
+    gameName: string,
+  ): void;
+  onPointsScored(
+    playerId: number,
+    payload: {
+      playerId: number;
+      points: number;
+      total: number;
+      roundNumber: number;
+    },
+    gameName: string,
+  ): void;
+  onGameOver(
+    playerId: number,
+    payload: { winnerIds: number[] },
     gameName: string,
   ): void;
   onSelected(

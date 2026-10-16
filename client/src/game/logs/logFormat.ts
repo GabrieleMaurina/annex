@@ -66,6 +66,13 @@ export function createLogFormatter() {
       parts.push({ color, text, colorRanges });
     const p = entry.payload as Record<string, unknown>;
     const n = (key: string) => p[key] as number;
+    const moved = (added: string, removed: string) =>
+      (p[added] ?? p[removed]) as number;
+    const logRound = (round: number) => {
+      if (lastLoggedRound !== null && round <= lastLoggedRound) return;
+      lastLoggedRound = round;
+      push(NEUTRAL_LOG_COLOR, `Started round ${round + 1}`);
+    };
     const deploy = (playerId: number, territoryId: number, troops: number) =>
       push(
         colorFor(playerId),
@@ -86,13 +93,13 @@ export function createLogFormatter() {
       case 'game:fortified':
         push(
           colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} fortified ${n('troops')} troops from territory #${n('fromTerritoryId') + 1} to territory #${n('territoryId') + 1}`,
+          `${nameFor(n('playerId'))} fortified ${moved('troopsAdded', 'troopsRemoved')} troops from territory #${n('fromTerritoryId') + 1} to territory #${n('territoryId') + 1}`,
         );
         break;
       case 'game:attackMoved':
         push(
           colorFor(lastConquestAttackerId),
-          `${nameFor(lastConquestAttackerId)} moved ${n('troops')} troops into conquered territory #${n('territoryId') + 1}`,
+          `${nameFor(lastConquestAttackerId)} moved ${moved('troopsAdded', 'troopsRemoved')} troops into conquered territory #${n('territoryId') + 1}`,
         );
         break;
       case 'game:entrenched':
@@ -177,6 +184,100 @@ export function createLogFormatter() {
 
         const { text, colorRanges } = b.finish();
         push(colorFor(attackerId), text, colorRanges);
+
+        if (p.eliminated && defenderId !== undefined) {
+          const kill = buildText();
+          kill.append(nameFor(attackerId), botHighlight(attackerId));
+          kill.append(' eliminated ');
+          kill.append(nameFor(defenderId), {
+            ...defenderHighlight!,
+            isBot: isBotFor(defenderId),
+          });
+          const killed = kill.finish();
+          push(colorFor(attackerId), killed.text, killed.colorRanges);
+        }
+        if (n('cardsTaken') > 0 && defenderId !== undefined) {
+          const cards = buildText();
+          cards.append(nameFor(attackerId), botHighlight(attackerId));
+          cards.append(
+            ` took ${n('cardsTaken')} card${n('cardsTaken') === 1 ? '' : 's'} from `,
+          );
+          cards.append(nameFor(defenderId), {
+            ...defenderHighlight!,
+            isBot: isBotFor(defenderId),
+          });
+          const taken = cards.finish();
+          push(colorFor(attackerId), taken.text, taken.colorRanges);
+        }
+        break;
+      }
+      case 'game:shipsBought':
+        push(
+          colorFor(n('playerId')),
+          p.fromPool
+            ? `${nameFor(n('playerId'))} deployed ${n('ships')} ships to sea territory #${n('seaTerritoryId') + 1}`
+            : `${nameFor(n('playerId'))} built ${n('ships')} ships from territory #${n('sourceTerritoryId') + 1} to sea territory #${n('seaTerritoryId') + 1}`,
+        );
+        break;
+      case 'game:sailed':
+        push(
+          colorFor(n('playerId')),
+          `${nameFor(n('playerId'))} sailed ${moved('shipsAdded', 'shipsRemoved')} ships from sea territory #${n('fromSeaTerritoryId') + 1} to sea territory #${n('seaTerritoryId') + 1}`,
+        );
+        break;
+      case 'game:seaAttacked': {
+        const attackerId = n('attackerId');
+        const defenderId = n('defenderId');
+        const defenderHighlight = { color: colorFor(defenderId), badge: true };
+
+        const b = buildText();
+        b.append(nameFor(attackerId), botHighlight(attackerId));
+        b.append(' attacked ');
+        b.append(nameFor(defenderId), {
+          ...defenderHighlight,
+          isBot: isBotFor(defenderId),
+        });
+        b.append("'s ships in sea territory ");
+        b.append(`#${n('seaTerritoryId') + 1}`, defenderHighlight);
+        b.append(`: ${n('attackingShips')} vs `);
+        b.append(String(n('defendingShips')), defenderHighlight);
+        b.append(` ships, lost ${n('attackLosses')} and killed `);
+        b.append(String(n('defenceLosses')), defenderHighlight);
+
+        const { text, colorRanges } = b.finish();
+        push(colorFor(attackerId), text, colorRanges);
+        break;
+      }
+      case 'game:surrendered':
+        push(colorFor(n('playerId')), `${nameFor(n('playerId'))} surrendered`);
+        break;
+      case 'game:pointsScored':
+        logRound(n('roundNumber'));
+        push(
+          colorFor(n('playerId')),
+          `${nameFor(n('playerId'))} scored ${n('points')} point${n('points') === 1 ? '' : 's'} (total ${n('total')})`,
+        );
+        break;
+      case 'game:gameOver': {
+        const winnerIds = p.winnerIds as number[];
+        const b = buildText();
+        b.append('Game over');
+        winnerIds.forEach((id, index) => {
+          b.append(
+            index === 0
+              ? ', won by '
+              : index === winnerIds.length - 1
+                ? ' and '
+                : ', ',
+          );
+          b.append(nameFor(id), {
+            color: colorFor(id),
+            badge: true,
+            isBot: isBotFor(id),
+          });
+        });
+        const { text, colorRanges } = b.finish();
+        push(NEUTRAL_LOG_COLOR, text, colorRanges);
         break;
       }
       case 'game:cardSetPlayed':
@@ -186,11 +287,7 @@ export function createLogFormatter() {
         );
         break;
       case 'game:turnStarted': {
-        const round = n('roundNumber');
-        if (lastLoggedRound === null || round > lastLoggedRound) {
-          lastLoggedRound = round;
-          push(NEUTRAL_LOG_COLOR, `Started round ${round + 1}`);
-        }
+        logRound(n('roundNumber'));
         const color = colorFor(n('playerId'));
         const name = nameFor(n('playerId'));
         const source = (key: string, label: string) => {
@@ -218,7 +315,7 @@ export function createLogFormatter() {
         push(color, `${name} claimed territory #${n('territoryId') + 1}`);
         push(
           color,
-          `${name} deployed 1 troops to territory #${n('territoryId') + 1}`,
+          `${name} deployed ${n('troops') ?? 1} troops to territory #${n('territoryId') + 1}`,
         );
         break;
       }

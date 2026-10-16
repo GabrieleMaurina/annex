@@ -25,14 +25,18 @@ export function supremacyTerritoriesToWin(game: Game): number | null {
         ? 2 / 3
         : null;
   if (fraction === null) return null;
+  return Math.ceil(availableTerritoryCount(game) * fraction);
+}
+
+export function availableTerritoryCount(game: Game): number {
   const permanentToxinCount = [...game.territoryToxins.values()].filter(
     (toxin) => toxin.permanent,
   ).length;
-  const availableCount =
+  return (
     getGameMap(game).territories.length -
     game.radiationTerritoryIds.size -
-    permanentToxinCount;
-  return Math.ceil(availableCount * fraction);
+    permanentToxinCount
+  );
 }
 
 export function ownsAnyTerritory(game: Game, playerId: number): boolean {
@@ -378,10 +382,11 @@ export function calculateDeployTroopsBreakdown(
         (id) =>
           !game.radiationTerritoryIds.has(id) && !game.territoryToxins.has(id),
       )
-      .map((id) => game.territoryOwners.get(id))
-      .filter((ownerId) => ownerId !== undefined);
+      .map((id) => game.territoryOwners.get(id));
+    const owned = owners.filter((ownerId) => ownerId === playerId).length;
     const controlsContinent =
-      owners.length > 0 && owners.every((ownerId) => ownerId === playerId);
+      owned * 2 > owners.length &&
+      owners.every((ownerId) => ownerId === undefined || ownerId === playerId);
     if (controlsContinent && game.continents === 'on')
       bonuses += map.bonuses[continentId] ?? 0;
   }

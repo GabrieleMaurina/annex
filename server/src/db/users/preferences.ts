@@ -120,7 +120,7 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'exponential per player',
     'off',
   ],
-  placement: ['random', 'semi', 'custom'],
+  placement: ['random', 'semi', 'custom', 'single'],
   fortification: ['connected', 'neighboring', 'unrestricted'],
   entrenchments: ['off', 'on'],
   toxins: ['off', 'temporary', 'permanent'],

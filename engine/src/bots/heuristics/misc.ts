@@ -10,7 +10,7 @@ import {
   ownedTerritoryIds,
 } from '../features/territory';
 import { Weights } from '../types';
-import { BotView } from '../view';
+import { BotView, getBotView, ownerOf } from '../view';
 
 const MAX_ENTRENCH_TROOPS = 5;
 
@@ -53,6 +53,7 @@ function isRival(game: Game, botId: number, ownerId: number): boolean {
 
 function continentClaims(
   game: Game,
+  view: BotView,
   botId: number,
   continents: Map<number, number[]>,
 ): Map<number, ContinentClaims> {
@@ -65,7 +66,7 @@ function continentClaims(
     let own = 0;
     let unclaimed = 0;
     for (const id of ids) {
-      const ownerId = game.territoryOwners.get(id);
+      const ownerId = ownerOf(game, view, id);
       if (ownerId === undefined) unclaimed++;
       else if (ownerId === botId) own++;
       else if (isRival(game, botId, ownerId))
@@ -90,16 +91,19 @@ function continentClaims(
 
 function rivalDistances(
   game: Game,
+  view: BotView,
   botId: number,
   links: Map<number, number[]>,
 ): Map<number, number> {
   const distance = new Map<number, number>();
   const queue: number[] = [];
-  for (const [id, ownerId] of game.territoryOwners)
-    if (isRival(game, botId, ownerId)) {
+  for (const { id } of getGameMap(game).territories) {
+    const ownerId = ownerOf(game, view, id);
+    if (ownerId !== undefined && isRival(game, botId, ownerId)) {
       distance.set(id, 0);
       queue.push(id);
     }
+  }
   for (let i = 0; i < queue.length; i++)
     for (const n of links.get(queue[i]) ?? [])
       if (!distance.has(n)) {
@@ -148,13 +152,15 @@ export function chooseTerritoryClaim(
   botId: number,
   noise: number,
 ): number | null {
+  const view = getBotView(game, botId);
   const unclaimed = getGameMap(game).territories.filter(
     (t) =>
-      !game.territoryOwners.has(t.id) && !game.radiationTerritoryIds.has(t.id),
+      ownerOf(game, view, t.id) === undefined &&
+      !game.radiationTerritoryIds.has(t.id),
   );
   if (unclaimed.length === 0) return null;
-  const claims = continentClaims(game, botId, continentsOf(game));
-  const distances = rivalDistances(game, botId, landLinks(game));
+  const claims = continentClaims(game, view, botId, continentsOf(game));
+  const distances = rivalDistances(game, view, botId, landLinks(game));
   let best: number | null = null;
   let bestValue = -Infinity;
   for (const territory of unclaimed) {

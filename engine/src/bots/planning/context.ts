@@ -14,6 +14,7 @@ import {
   NEUTRAL_STACK_FOCUS,
 } from '../features/stackStyle';
 import { buildStanding, playerStrengths, Standing } from '../features/standing';
+import { isHazardTerritory } from '../features/territory';
 import { publicIncomes, withPublicIntel } from '../intel';
 import { getWeights } from '../personality/registry';
 import { DifficultyParams, Weights } from '../types';
@@ -472,12 +473,17 @@ export function holdsContinent(
   territoryIds: number[],
   playerId: number,
 ): boolean {
+  const counted = territoryIds.filter(
+    (id) => !isHazardTerritory(ctx.game, ctx.view, id),
+  );
+  const owned = counted.filter((id) => state.owners.get(id) === playerId);
   return (
-    territoryIds.every(
+    owned.length * 2 > counted.length &&
+    counted.every(
       (id) =>
         state.owners.get(id) === playerId ||
         (!state.owners.has(id) && isVisible(ctx.view, id)),
-    ) && territoryIds.some((id) => state.owners.get(id) === playerId)
+    )
   );
 }
 

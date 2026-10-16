@@ -27,6 +27,12 @@ const LIVE_EVENTS = [
   'game:territoryClaimed',
   'game:allianceFormed',
   'game:allianceTerminated',
+  'game:shipsBought',
+  'game:sailed',
+  'game:seaAttacked',
+  'game:surrendered',
+  'game:pointsScored',
+  'game:gameOver',
 ];
 
 export function useGameLogs(game: GameState | null): LogEntry[] {

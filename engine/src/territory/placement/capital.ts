@@ -1,8 +1,16 @@
 import { callbacks } from '../../callbacks';
 import { recordReplayFrame } from '../../game/replay';
-import { advanceCapitalPlacement, assignCapital } from '../../game/turns';
+import {
+  advanceCapitalPlacement,
+  assignCapital,
+  claimCapital,
+} from '../../game/turns';
 import { fogFilterEmit } from '../../game/world/fog';
-import { visibleTerritoryIdsOrAll } from '../../game/world/visibility';
+import {
+  rememberClaimedTerritory,
+  visibleTerritoryIdsOrAll,
+} from '../../game/world/visibility';
+import { getGameMap } from '../../maps/maps';
 import { GameResponse, requireGame } from '../../session/context';
 import { respondGameState } from '../../session/store';
 import { isInteger } from '../../util/validate';
@@ -23,6 +31,21 @@ export function selectCapital(
   if (!isInteger(rawTerritoryId))
     return { ok: false, error: 'invalid territory' };
   const territoryId = rawTerritoryId;
+  if (game.placement === 'single') {
+    if (
+      territoryId < 0 ||
+      territoryId >= getGameMap(game).territories.length ||
+      game.radiationTerritoryIds.has(territoryId)
+    )
+      return { ok: false, error: 'invalid territory' };
+    if (game.territoryOwners.has(territoryId)) {
+      rememberClaimedTerritory(game, playerId, territoryId);
+      return { ok: false, error: 'territory already claimed' };
+    }
+    claimCapital(game, playerId, territoryId);
+    advanceCapitalPlacement(game);
+    return respondGameState(game, playerId);
+  }
   if (game.territoryOwners.get(territoryId) !== playerId)
     return { ok: false, error: 'territory not owned' };
 

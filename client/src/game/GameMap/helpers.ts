@@ -78,6 +78,18 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
+export function unclaimedTerritoryIds(
+  territories: Territory[],
+  ownerById: ReadonlyMap<number, unknown>,
+  radiationById: ReadonlySet<number>,
+): Set<number> {
+  return new Set(
+    territories
+      .filter((t) => !ownerById.has(t.id) && !radiationById.has(t.id))
+      .map((t) => t.id),
+  );
+}
+
 const ARC_STEP = Math.PI / 10;
 const MITER_CAP = 2;
 const REFLEX_FILLET = 0.6;

@@ -55,12 +55,15 @@ export function territoryStats(game: Game) {
   return stats;
 }
 
-export function isEliminated(game: Game, territoryCount: number): boolean {
+export function isClaimPhase(game: Game): boolean {
   return (
-    game.state !== 'lobby' &&
-    game.turnPhase !== 'territory' &&
-    territoryCount === 0
+    game.turnPhase === 'territory' ||
+    (game.turnPhase === 'capital' && game.placement === 'single')
   );
+}
+
+export function isEliminated(game: Game, territoryCount: number): boolean {
+  return game.state !== 'lobby' && !isClaimPhase(game) && territoryCount === 0;
 }
 
 export function gameSummary(game: Game) {

@@ -18,6 +18,7 @@ export interface FogEventPayloads {
   'game:sailed': CallbackPayload<'onSailed'>;
   'game:shipsBought': CallbackPayload<'onShipsBought'>;
   'game:seaAttacked': CallbackPayload<'onSeaAttacked'>;
+  'game:territoryClaimed': CallbackPayload<'onTerritoryClaimed'>;
 }
 
 export interface LogPayloads {
@@ -36,6 +37,12 @@ export interface LogPayloads {
   'game:allianceTerminated': { withId: number; playerId?: number };
   'game:capitalPlacementStarted': Record<string, never>;
   'game:territoryClaimed': CallbackPayload<'onTerritoryClaimed'>;
+  'game:shipsBought': CallbackPayload<'onShipsBought'>;
+  'game:sailed': CallbackPayload<'onSailed'>;
+  'game:seaAttacked': CallbackPayload<'onSeaAttacked'>;
+  'game:surrendered': CallbackPayload<'onSurrendered'>;
+  'game:pointsScored': CallbackPayload<'onPointsScored'>;
+  'game:gameOver': CallbackPayload<'onGameOver'>;
 }
 
 const LOGGED_EVENTS: Set<string> = new Set<keyof LogPayloads>([
@@ -54,6 +61,12 @@ const LOGGED_EVENTS: Set<string> = new Set<keyof LogPayloads>([
   'game:allianceTerminated',
   'game:capitalPlacementStarted',
   'game:territoryClaimed',
+  'game:shipsBought',
+  'game:sailed',
+  'game:seaAttacked',
+  'game:surrendered',
+  'game:pointsScored',
+  'game:gameOver',
 ]);
 
 function appendLog(

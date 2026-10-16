@@ -1,4 +1,5 @@
 import { pickBestSet, upcomingSetValues } from '../../game/progression/cards';
+import { getGameMap } from '../../maps/maps';
 import { Card, CardSymbol, Game } from '../../types';
 
 export const FORCED_HAND = 5;
@@ -55,7 +56,7 @@ function outlookFor(game: Game, botId: number): Outlook {
     values: upcomingSetValues(game, botId, horizon),
     ownTrade: isEscalating(game) ? 1 : 0,
     rivalTrades,
-    wildOdds: 2 / (game.territoryOwners.size + 2),
+    wildOdds: 2 / (getGameMap(game).territories.length + 2),
     discount:
       game.cards === 'exponential' ? EXPONENTIAL_TURN_DISCOUNT : TURN_DISCOUNT,
   };

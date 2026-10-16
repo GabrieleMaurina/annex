@@ -501,6 +501,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         );
       }
       drawFogCloud(ctx, p.x, p.y, VERTEX_RADIUS * scaleX, now, t.id);
+      const fogStyle = STATE_STYLE[nodeState(t.id)];
+      if (fogStyle !== STATE_STYLE.normal) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
+        ctx.strokeStyle = fogStyle.stroke;
+        ctx.lineWidth = fogStyle.width * zoom * stateBorderScale;
+        ctx.stroke();
+      }
     } else {
       const style = STATE_STYLE[nodeState(t.id)];
       owner = ownerById.get(t.id) ?? frozenTerritoryDataRef.current.get(t.id);

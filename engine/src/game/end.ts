@@ -14,8 +14,10 @@ import {
   countTerritories,
 } from './progression/stats';
 import { refreshLastReplayPlayerStates } from './replay';
+import { isClaimPhase } from './state';
 import { clearTurnTimer } from './turns';
 import { continentTerritoryIds } from './world/continent';
+import { recordLogForAll } from './world/fog';
 
 const EARLY_WIN_GATE_ROUND_NUMBER = 3;
 export const HUMANS_ABANDONED_GRACE_MS = 5000;
@@ -28,6 +30,10 @@ function emitGameEnded(game: Game): void {
     seen.add(id);
     ranking.push({ playerId: id, team: game.playerTeams.get(id) ?? 0 });
   }
+  const payload = { winnerIds: game.winnerIds };
+  for (const viewerId of [...game.playerIds, ...game.spectatorIds])
+    callbacks.onGameOver(viewerId, payload, game.name);
+  recordLogForAll(game, 'game:gameOver', payload);
   callbacks.onGameEnded?.({
     gameName: game.name,
     gameMode: game.gameMode,
@@ -60,7 +66,7 @@ function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
 }
 
 export function computeGameEndWinnerIds(game: Game): number[] | null {
-  if (game.turnPhase === 'territory') {
+  if (isClaimPhase(game)) {
     const remaining = game.playerIds.filter(
       (id) => !isPlayerEliminated(game, id),
     );
@@ -132,7 +138,7 @@ function lockEarlyWin(game: Game, winnerIds: number[]): void {
   game.finalRanking = computeFinalRanking(game);
 }
 
-function resolveWinnerIds(game: Game): number[] | null {
+export function resolveWinnerIds(game: Game): number[] | null {
   const survivorId = continuingHumanSurvivorId(game);
   if (game.earlyWin) return survivorId === null ? game.winnerIds : null;
   const winnerIds = computeGameEndWinnerIds(game);

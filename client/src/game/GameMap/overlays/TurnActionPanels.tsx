@@ -6,6 +6,7 @@ import type {
   BlitzOutcome,
   DiceTies,
   GameState,
+  Placement,
   TurnDuration,
   TurnPhase,
 } from '../../../lib/types';
@@ -28,6 +29,7 @@ export default function TurnActionPanels({
   currentTurnPlayer,
   gameEnded,
   turnPhase,
+  placement,
   turnDuration,
   paused,
   pausedAt,
@@ -123,6 +125,7 @@ export default function TurnActionPanels({
   currentTurnPlayer: GameState['players'][number] | undefined;
   gameEnded: boolean;
   turnPhase: TurnPhase;
+  placement: Placement;
   turnDuration: TurnDuration;
   paused: boolean;
   pausedAt: number | null;
@@ -247,10 +250,11 @@ export default function TurnActionPanels({
             <TurnProgressBar
               turnStartedAt={turnStartedAt}
               turnDuration={
-                turnPhase === 'territory' || turnPhase === 'troop'
-                  ? PLACEMENT_PHASE_DURATION
-                  : turnPhase === 'capital'
-                    ? CAPITAL_PHASE_DURATION
+                turnPhase === 'capital' ||
+                (turnPhase === 'territory' && placement === 'single')
+                  ? CAPITAL_PHASE_DURATION
+                  : turnPhase === 'territory' || turnPhase === 'troop'
+                    ? PLACEMENT_PHASE_DURATION
                     : turnDuration + turnExtension
               }
               color={playerColor(currentTurnPlayer.color)}

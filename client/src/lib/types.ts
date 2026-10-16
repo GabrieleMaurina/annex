@@ -127,7 +127,7 @@ export const GAME_MODES: GameMode[] = [
   'empire',
 ];
 
-export type Placement = 'random' | 'semi' | 'custom';
+export type Placement = 'random' | 'semi' | 'custom' | 'single';
 export type Fortification = 'connected' | 'neighboring' | 'unrestricted';
 export type Entrenchments = 'off' | 'on';
 export type Toxins = 'off' | 'temporary' | 'permanent';

@@ -1,6 +1,6 @@
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
-import { BotView, ownerOf, troopsAt } from '../view';
+import { BotView, isVisible, ownerOf, troopsAt } from '../view';
 import { isTeammate } from './mode/mode';
 import { isHazardTerritory } from './territory';
 
@@ -13,6 +13,10 @@ function continentGroups(game: Game): Map<number, number[]> {
     else continents.set(territory.continentId, [territory.id]);
   }
   return continents;
+}
+
+function isKnown(view: BotView, territoryId: number): boolean {
+  return isVisible(view, territoryId) || view.remembered.has(territoryId);
 }
 
 export interface ContinentCompletionCandidate {
@@ -40,6 +44,12 @@ export function continentCompletionCandidates(
       const ownerId = ownerOf(game, view, id);
       return ownerId !== undefined && ownerId !== botId;
     });
+    if ((owned.length + remaining.length) * 2 <= contested.length)
+      remaining.push(
+        ...contested.filter(
+          (id) => isKnown(view, id) && ownerOf(game, view, id) === undefined,
+        ),
+      );
     if (remaining.length === 0) continue;
     if (
       remaining.some((id) => {
@@ -75,20 +85,19 @@ export function continentBreakCandidates(
   for (const [continentId, territoryIds] of continentGroups(game)) {
     if ((map.bonuses[continentId] ?? 0) <= 0 || territoryIds.length < 2)
       continue;
-    const held = territoryIds.filter(
-      (id) =>
-        !isHazardTerritory(game, view, id) &&
-        ownerOf(game, view, id) !== undefined,
+    const counted = territoryIds.filter(
+      (id) => !isHazardTerritory(game, view, id) && isKnown(view, id),
     );
-    if (held.length === 0) continue;
-    const ownerId = ownerOf(game, view, held[0]);
-    if (
-      ownerId === undefined ||
-      ownerId === botId ||
-      isTeammate(game, botId, ownerId) ||
-      !held.every((id) => ownerOf(game, view, id) === ownerId)
-    )
-      continue;
+    const owners = new Set(
+      counted
+        .map((id) => ownerOf(game, view, id))
+        .filter((id) => id !== undefined),
+    );
+    if (owners.size !== 1) continue;
+    const ownerId = [...owners][0];
+    if (ownerId === botId || isTeammate(game, botId, ownerId)) continue;
+    const held = counted.filter((id) => ownerOf(game, view, id) === ownerId);
+    if (held.length * 2 <= counted.length) continue;
 
     let weakestId = held[0];
     let weakestTroops = Infinity;

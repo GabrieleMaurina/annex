@@ -913,12 +913,13 @@ export function useGameSocketEvents({
     function onTerritoryClaimed(payload: {
       territoryId: number;
       playerId: number;
+      troops: number;
     }) {
       playSound('select');
       playSound('deploy');
       animateAdd({
         territoryId: payload.territoryId,
-        troops: 1,
+        troops: payload.troops,
         playerId: payload.playerId,
       });
       startAnimationLoop();

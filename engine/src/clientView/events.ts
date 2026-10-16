@@ -150,6 +150,7 @@ export const EVENT_VIEWS: EventViews = {
     complete<EventPayload<'onTerritoryClaimed'>>({
       territoryId: p.territoryId,
       playerId: aliasOf(game, p.playerId),
+      troops: p.troops,
     }),
   onTurnStarted: (game, _viewerId, p) =>
     complete<EventPayload<'onTurnStarted'>>({
@@ -235,6 +236,8 @@ export const EVENT_VIEWS: EventViews = {
       defendingTroops: p.defendingTroops,
       defenceLosses: p.defenceLosses,
       conquered: p.conquered,
+      eliminated: p.eliminated,
+      cardsTaken: p.cardsTaken,
     }),
   onTankFired: (_game, _viewerId, p) =>
     complete<EventPayload<'onTankFired'>>({
@@ -276,6 +279,21 @@ export const EVENT_VIEWS: EventViews = {
       attackLosses: p.attackLosses,
       defendingShips: p.defendingShips,
       defenceLosses: p.defenceLosses,
+    }),
+  onSurrendered: (game, _viewerId, p) =>
+    complete<EventPayload<'onSurrendered'>>({
+      playerId: aliasOf(game, p.playerId),
+    }),
+  onPointsScored: (game, _viewerId, p) =>
+    complete<EventPayload<'onPointsScored'>>({
+      playerId: aliasOf(game, p.playerId),
+      points: p.points,
+      total: p.total,
+      roundNumber: p.roundNumber,
+    }),
+  onGameOver: (game, _viewerId, p) =>
+    complete<EventPayload<'onGameOver'>>({
+      winnerIds: aliasesOf(game, p.winnerIds),
     }),
   onSelected: (_game, _viewerId, p) =>
     complete<EventPayload<'onSelected'>>({ territoryId: p.territoryId }),
@@ -324,6 +342,12 @@ const LOG_VIEWS: LogViews = {
   'game:allianceTerminated': (game, _viewerId, p) => viewAllianceLog(game, p),
   'game:capitalPlacementStarted': () =>
     complete<LogPayloads['game:capitalPlacementStarted']>({}),
+  'game:shipsBought': EVENT_VIEWS.onShipsBought,
+  'game:sailed': EVENT_VIEWS.onSailed,
+  'game:seaAttacked': EVENT_VIEWS.onSeaAttacked,
+  'game:surrendered': EVENT_VIEWS.onSurrendered,
+  'game:pointsScored': EVENT_VIEWS.onPointsScored,
+  'game:gameOver': EVENT_VIEWS.onGameOver,
 };
 
 function viewLogEntry(

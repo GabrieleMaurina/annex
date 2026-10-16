@@ -16,7 +16,7 @@ import {
   hasAnySeaBridgeFrom,
   hasSeaBridgeTo,
 } from '../game/combat/seaBridge';
-import { checkGameEnd } from '../game/end';
+import { finishGame, resolveWinnerIds } from '../game/end';
 import { hasReadyNuke } from '../game/nukes/nukes';
 import { recordElimination } from '../game/progression/stats';
 import { recordReplayFrame } from '../game/replay';
@@ -353,6 +353,9 @@ export function attack(
     fromTerritoryId: number;
     troops: number;
   } | null = null;
+  let defenderEliminated = false;
+  let cardsTaken = 0;
+  let winnerIds: number[] | null = null;
   if (conquered) {
     game.conqueredThisTurn = true;
     attackerStats.territoriesConquered++;
@@ -361,12 +364,12 @@ export function attack(
       defenderStats.territoriesLost++;
       if (game.capitalTerritoryIds.has(endId)) defenderStats.capitalsLost++;
     }
-    const defenderEliminated =
+    defenderEliminated =
       defenderId !== undefined
         ? recordElimination(game, defenderId, playerId)
         : false;
-    checkGameEnd(game);
-    if (game.state === 'playing') {
+    winnerIds = resolveWinnerIds(game);
+    if (winnerIds === null) {
       const remainingAttackers = attackingTroops - attackLosses;
       const minMoveTroops = Math.min(
         troops,
@@ -380,6 +383,7 @@ export function attack(
         attackerHand.push(...defenderHand);
         game.playerCards.set(defenderId, []);
         attackerStats.cardsGained += defenderHand.length;
+        cardsTaken = defenderHand.length;
         if (defenderHand.length > 0) {
           sendPlayerCards(game, playerId);
           sendPlayerCards(game, defenderId);
@@ -440,7 +444,14 @@ export function attack(
       path: pathRunsForViewer(fullPath, visible),
       ...(sourceVisible ? { attackingTroops: troops, attackLosses } : {}),
       ...(targetVisible
-        ? { defenderId, defendingTroops, defenceLosses, conquered }
+        ? {
+            defenderId,
+            defendingTroops,
+            defenceLosses,
+            conquered,
+            eliminated: defenderEliminated,
+            cardsTaken,
+          }
         : {}),
     };
   });
@@ -482,6 +493,7 @@ export function attack(
       },
     );
   }
+  if (winnerIds !== null) finishGame(game, winnerIds);
 
   if (
     game.state === 'playing' &&

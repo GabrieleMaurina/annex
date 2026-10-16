@@ -2,6 +2,7 @@ import {
   advanceTerritoryPhase,
   claimTerritory as claimTerritoryImpl,
 } from '../../game/turns';
+import { rememberClaimedTerritory } from '../../game/world/visibility';
 import { getGameMap } from '../../maps/maps';
 import { GameResponse, requireGame } from '../../session/context';
 import { respondGameState } from '../../session/store';
@@ -31,8 +32,10 @@ export function claimTerritory(
     game.radiationTerritoryIds.has(territoryId)
   )
     return { ok: false, error: 'invalid territory' };
-  if (game.territoryOwners.has(territoryId))
+  if (game.territoryOwners.has(territoryId)) {
+    rememberClaimedTerritory(game, playerId, territoryId);
     return { ok: false, error: 'territory already claimed' };
+  }
 
   claimTerritoryImpl(game, playerId, territoryId);
   advanceTerritoryPhase(game);

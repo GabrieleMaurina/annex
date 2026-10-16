@@ -10,6 +10,7 @@ import {
   computeTooltipLabels,
   getScales,
   getTerritoryScreenPos,
+  unclaimedTerritoryIds,
 } from './helpers';
 import { useAttackSeaFlow } from './hooks/sea/useAttackSeaFlow';
 import { useDeploySeaFlow } from './hooks/sea/useDeploySeaFlow';
@@ -467,12 +468,10 @@ function GameMap({
       selfId,
     });
   const territoryClaimCandidates =
-    turnPhase === 'territory' && isMyTurn
-      ? new Set(
-          territories
-            .filter((t) => !ownerById.has(t.id) && !radiationById.has(t.id))
-            .map((t) => t.id),
-        )
+    (turnPhase === 'territory' ||
+      (turnPhase === 'capital' && game.placement === 'single')) &&
+    isMyTurn
+      ? unclaimedTerritoryIds(territories, ownerById, radiationById)
       : new Set<number>();
   const canAdvancePhase =
     isMyTurn &&
@@ -891,6 +890,7 @@ function GameMap({
         currentTurnPlayer={currentTurnPlayer}
         gameEnded={gameEnded}
         turnPhase={turnPhase}
+        placement={game.placement}
         turnDuration={turnDuration}
         paused={paused}
         pausedAt={pausedAt}

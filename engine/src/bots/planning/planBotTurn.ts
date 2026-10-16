@@ -3,6 +3,7 @@ import {
   MAX_TERRITORY_TROOPS,
   supplyHubTerritoryIds,
 } from '../../game/mechanics';
+import { isClaimPhase } from '../../game/state';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
@@ -208,16 +209,16 @@ export function planBotTurn(
   const phase = game.turnPhase;
   const stale = emptyPlan(-1, botId);
 
-  if (phase === 'territory') {
+  if (isClaimPhase(game)) {
     const territoryId = chooseTerritoryClaim(
       game,
       botId,
       difficultyParams(botProfile.difficulty).noise,
     );
+    const event =
+      phase === 'capital' ? 'game:selectCapital' : 'game:claimTerritory';
     return result(
-      territoryId !== null
-        ? [{ event: 'game:claimTerritory', payload: { territoryId } }]
-        : [],
+      territoryId !== null ? [{ event, payload: { territoryId } }] : [],
       stale,
     );
   }

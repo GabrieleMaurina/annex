@@ -35,6 +35,12 @@ const INBOUND_EVENTS = [
   'game:allianceFormed',
   'game:allianceDeclined',
   'game:allianceTerminated',
+  'game:shipsBought',
+  'game:sailed',
+  'game:seaAttacked',
+  'game:surrendered',
+  'game:pointsScored',
+  'game:gameOver',
 ];
 
 const listeners = new Map<string, Set<Handler>>();

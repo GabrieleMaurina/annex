@@ -63,6 +63,8 @@ export const CAPITAL_PHASE_DURATION = 60;
 export const ONLINE_PAUSE_SECONDS = 60;
 const MAX_EXTENDED_REMAINING_SECONDS = 180;
 const TROOP_PHASE_TURN_MAX = 3;
+const SINGLE_TERRITORY_TROOPS = 10;
+const SINGLE_CAPITAL_TROOPS = 5;
 const MAX_DISCONNECTED_TURNS = 2;
 
 const turnTimers = new Map<string, NodeJS.Timeout>();
@@ -75,6 +77,8 @@ export function clearTurnTimer(gameName: string) {
 }
 
 function turnDurationSeconds(game: Game): number {
+  if (game.turnPhase === 'territory' && game.placement === 'single')
+    return CAPITAL_PHASE_DURATION;
   if (game.turnPhase === 'territory' || game.turnPhase === 'troop')
     return PLACEMENT_PHASE_DURATION;
   if (game.turnPhase === 'capital') return CAPITAL_PHASE_DURATION;
@@ -293,7 +297,12 @@ export function advanceCapitalPlacement(game: Game) {
   )
     index++;
 
-  if (index >= game.playerIds.length) {
+  if (
+    index >= game.playerIds.length ||
+    (game.placement === 'single' &&
+      game.territoryOwners.size >= totalTerritoryCount(game))
+  ) {
+    if (game.placement === 'single') eliminatePlayersWithoutTerritory(game);
     beginNextSpecialPhase(game);
   } else {
     game.turnPlayerIndex = index;
@@ -359,12 +368,25 @@ export function startTerritoryPhase(game: Game) {
   scheduleTurnTimer(game);
 }
 
+function eliminatePlayersWithoutTerritory(game: Game) {
+  for (const id of game.playerIds) {
+    if (!ownsAnyTerritory(game, id) && !game.deathOrder.includes(id))
+      game.deathOrder.push(id);
+  }
+}
+
+function everyAlivePlayerOwnsTerritory(game: Game): boolean {
+  return game.playerIds.every(
+    (id) => game.deathOrder.includes(id) || ownsAnyTerritory(game, id),
+  );
+}
+
 export function advanceTerritoryPhase(game: Game) {
-  if (game.territoryOwners.size >= totalTerritoryCount(game)) {
-    for (const id of game.playerIds) {
-      if (!ownsAnyTerritory(game, id) && !game.deathOrder.includes(id))
-        game.deathOrder.push(id);
-    }
+  if (
+    game.territoryOwners.size >= totalTerritoryCount(game) ||
+    (game.placement === 'single' && everyAlivePlayerOwnsTerritory(game))
+  ) {
+    eliminatePlayersWithoutTerritory(game);
     beginNextSpecialPhase(game);
     return;
   }
@@ -429,31 +451,50 @@ export function claimTerritory(
   playerId: number,
   territoryId: number,
 ) {
+  const troops =
+    game.placement !== 'single'
+      ? 1
+      : game.turnPhase === 'capital'
+        ? SINGLE_CAPITAL_TROOPS
+        : SINGLE_TERRITORY_TROOPS;
   game.territoryOwners.set(territoryId, playerId);
-  game.territoryTroops.set(territoryId, 1);
-  recordReplayFrame(game, { type: 'deploy', territoryId, troops: 1, playerId });
-  for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
-    callbacks.onTerritoryClaimed(
-      viewerId,
-      { territoryId, playerId },
-      game.name,
-    );
-  }
-  recordLogForAll(game, 'game:territoryClaimed', { territoryId, playerId });
+  game.territoryTroops.set(territoryId, troops);
+  recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
+  fogFilterEmit(
+    game,
+    'game:territoryClaimed',
+    callbacks.onTerritoryClaimed,
+    (viewerId) => {
+      const visible = visibleTerritoryIdsOrAll(game, viewerId);
+      if (visible !== null && !visible.has(territoryId)) return null;
+      return { territoryId, playerId, troops };
+    },
+  );
 }
 
-function autoClaimRandomTerritory(game: Game, playerId: number) {
-  const map = getGameMap(game);
-  const unclaimed = map.territories
-    .map((t) => t.id)
+export function claimCapital(
+  game: Game,
+  playerId: number,
+  territoryId: number,
+) {
+  claimTerritory(game, playerId, territoryId);
+  game.capitalTerritoryIds.add(territoryId);
+}
+
+function pickRandomUnclaimedTerritory(game: Game): number | null {
+  const unclaimed = getGameMap(game)
+    .territories.map((t) => t.id)
     .filter(
       (id) =>
         !game.territoryOwners.has(id) && !game.radiationTerritoryIds.has(id),
     );
-  if (unclaimed.length > 0) {
-    const territoryId = unclaimed[Math.floor(Math.random() * unclaimed.length)];
-    claimTerritory(game, playerId, territoryId);
-  }
+  if (unclaimed.length === 0) return null;
+  return unclaimed[Math.floor(Math.random() * unclaimed.length)];
+}
+
+function autoClaimRandomTerritory(game: Game, playerId: number) {
+  const territoryId = pickRandomUnclaimedTerritory(game);
+  if (territoryId !== null) claimTerritory(game, playerId, territoryId);
   advanceTerritoryPhase(game);
 }
 
@@ -605,6 +646,13 @@ export function forceEndTurnImpl(game: Game, skipDeploy = false) {
 
   if (game.turnPhase === 'troop') {
     autoPlaceRemainingTroops(game, playerId);
+    return;
+  }
+
+  if (game.turnPhase === 'capital' && game.placement === 'single') {
+    const territoryId = pickRandomUnclaimedTerritory(game);
+    if (territoryId !== null) claimCapital(game, playerId, territoryId);
+    advanceCapitalPlacement(game);
     return;
   }
 
@@ -918,7 +966,7 @@ function updatePortalsForNewRound(game: Game) {
 
 export function startTurns(game: Game) {
   game.roundNumber = 0;
-  game.turnPlayerIndex = 0;
+  game.turnPlayerIndex = findNextAliveIndexFrom(game, -1) ?? 0;
   game.turnPhase = 'deploy';
   game.selectedTerritoryId = null;
   game.fortifyStartTerritoryId = null;
@@ -931,7 +979,8 @@ export function startTurns(game: Game) {
   game.attackSeaTerritoryId = null;
   game.attackSeaDefenderId = null;
   game.conqueredThisTurn = false;
-  surrenderIfLongDisconnected(game, game.playerIds[0]);
-  startDeployPhase(game, game.playerIds[0]);
+  const playerId = game.playerIds[game.turnPlayerIndex];
+  surrenderIfLongDisconnected(game, playerId);
+  startDeployPhase(game, playerId);
   scheduleTurnTimer(game);
 }

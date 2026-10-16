@@ -1,5 +1,6 @@
 import { getGameMap } from '../../maps/maps';
 import { Game, GameMap, Mission, MissionType } from '../../types';
+import { availableTerritoryCount } from '../mechanics';
 import { countTerritories, findKillerId } from './stats';
 
 const ALL_MISSION_TYPES: MissionType[] = [
@@ -105,7 +106,7 @@ export function missionAccomplished(
   playerId: number,
   mission: Mission,
 ): boolean {
-  const totalTerritories = game.territoryOwners.size;
+  const totalTerritories = availableTerritoryCount(game);
 
   if (mission.type === 'territories') {
     const threshold = Math.ceil(totalTerritories * mission.fraction);

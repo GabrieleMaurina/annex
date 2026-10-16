@@ -152,8 +152,9 @@ export const CONTINENTS_HELP = (
     <ul className="mb-0 ps-3">
       <li>Off: no continent bonuses, and the bonuses panel is hidden.</li>
       <li>
-        On: holding every territory of a continent gives its bonus troops at the
-        start of each of your turns.
+        On: holding a continent gives its bonus troops at the start of each of
+        your turns. You hold it when you own more than half of its territories
+        and no other player owns any of the rest.
       </li>
     </ul>
   </>
@@ -207,6 +208,13 @@ export const PLACEMENT_HELP = (
         Custom: players take turns claiming territories one at a time, then take
         turns placing their starting troops. If there aren&apos;t enough
         territories for everyone, players who never get one are eliminated.
+      </li>
+      <li>
+        Single: each player takes turns claiming a single territory with 10
+        troops, or, with capitals, picking a capital among empty territories
+        with 5 troops. Every other territory starts empty and can be taken
+        without losses. With fog of war, picks are blind: picking a territory
+        someone already owns is rejected and you pick again.
       </li>
     </ul>
   </>

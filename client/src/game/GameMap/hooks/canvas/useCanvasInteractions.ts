@@ -152,18 +152,28 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     (territoryId: number) => {
       connector.selectCapital({ territoryId }, (res: Ack) => {
         if (res.ok) setGame(res.game);
+        else
+          setToasts((prev) => [
+            ...prev,
+            { id: Date.now(), message: res.error },
+          ]);
       });
     },
-    [setGame],
+    [setGame, setToasts],
   );
 
   const claimTerritory = useCallback(
     (territoryId: number) => {
       connector.claimTerritory({ territoryId }, (res: Ack) => {
         if (res.ok) setGame(res.game);
+        else
+          setToasts((prev) => [
+            ...prev,
+            { id: Date.now(), message: res.error },
+          ]);
       });
     },
-    [setGame],
+    [setGame, setToasts],
   );
 
   const nukeCandidates = new Set<number>(
@@ -187,7 +197,11 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     if (gameEnded || !isMyTurn || paused) return false;
     if (nukeTargeting) return nukeCandidates.has(t.id);
     if (turnPhase === 'territory') return territoryClaimCandidates.has(t.id);
-    if (turnPhase === 'capital') return ownerById.get(t.id)?.ownerId === selfId;
+    if (turnPhase === 'capital')
+      return (
+        territoryClaimCandidates.has(t.id) ||
+        ownerById.get(t.id)?.ownerId === selfId
+      );
     if (turnPhase === 'deploy' || turnPhase === 'troop') {
       if (seaIdSet.has(t.id))
         return turnPhase === 'deploy' && deploySeaCandidates.has(t.id);
@@ -236,7 +250,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       if (id === hoveredId) return 'hovered';
       return nukeCandidates.has(id) ? 'selectable' : 'normal';
     }
-    if (turnPhase === 'territory') {
+    if (turnPhase === 'territory' || territoryClaimCandidates.size > 0) {
       if (id === hoveredId) return 'hovered';
       return territoryClaimCandidates.has(id) ? 'selectable' : 'normal';
     }

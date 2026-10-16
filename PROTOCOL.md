@@ -782,7 +782,7 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not territory phase`, `not your turn`, `invalid territory`, `territory already claimed`.
 
 ### `game:placeTroop`
-- **When sent:** in `'semi'` or `'custom'` games only, the player whose turn it currently is to place, during `'troop'`, deposits some of their turn's troops (see `turnPhase` above) on one of their own territories, same as `game:deploy` (including the right-click shortcut).
+- **When sent:** in `'semi'` or `'custom'` games only, the player whose turn it currently is to place, during `'troop'`, deposits some of their turn's troops (see `turnPhase` above) on one of their own territories, same as `game:deploy` (including the right-click and middle-click shortcuts).
 - **Purpose:** add `troops` to `territoryId` and deduct it from both `troopsToDeploy` (this turn's `min(3, pool)` allotment) and the caller's remaining starting-troop pool, clearing `selectedTerritoryId` in the process, and broadcast `game:deployed` like any other deposit. Once `troopsToDeploy` reaches `0`, play advances to the next player who still has pool left, or, once every pool is empty, moves on to `'capital'` (if `'capitals'`) or `'deploy'`; until then, the same caller keeps this turn and may call it again to spread the remaining troops across other territories. The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'troop'`, `territoryId` must be owned by the caller, `troops` must be an integer from `1` up to `troopsToDeploy`, and, while `supplyLines` is `'on'`, `territoryId` must be reachable from one of the caller's supply hubs (see the `supplyLines` paragraph above).
 - **Content:**
   ```ts
@@ -815,7 +815,7 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `invalid territory`, `territory not owned`, `territory not connected to supply hub`.
 
 ### `game:deploy`
-- **When sent:** the player whose turn it currently is, during `'deploy'`, places some of their troop pool (see `turnPhase` above) on one of their own territories, or, by right-clicking a territory, as much of the pool as it can take.
+- **When sent:** the player whose turn it currently is, during `'deploy'`, places some of their troop pool (see `turnPhase` above) on one of their own territories, or, by right-clicking a territory, as much of the pool as it can take (middle-clicking places exactly `1`).
 - **Purpose:** add `troops` to `territoryId`'s troop count and deduct them from the caller's remaining pool for the turn, clearing `selectedTerritoryId` in the process. Once the pool reaches `0`, the server auto-advances `turnPhase` to `'attack'` (same as a `game:nextPhase` call would) unless the caller can currently play a card set, in which case `turnPhase` stays `'deploy'` (see "Territory cards" above). The caller must be the player at `turnPlayerIndex`, the game must be `playing` and in `'deploy'`, `territoryId` must be owned by the caller, `troops` must be an integer from `1` up to the caller's remaining pool, while `supplyLines` is `'on'`, `territoryId` must be reachable from one of the caller's supply hubs (see the `supplyLines` paragraph above), and the deposit must not take `territoryId` above `1000000` troops.
 - **Content:**
   ```ts
@@ -824,7 +824,7 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not deploy phase`, `territory not owned`, `invalid troops`, `territory troop cap exceeded`, `territory not connected to supply hub`.
 
 ### `game:buyShips`
-- **When sent:** the player whose turn it currently is, during `'deploy'`, buys one or more ships from the buy-ships control (see "Seas and ships" above), or right-clicks a sea to buy as many ships as it can pay for (from the selected adjacent territory's troops when one is selected, otherwise from the pool).
+- **When sent:** the player whose turn it currently is, during `'deploy'`, buys one or more ships from the buy-ships control (see "Seas and ships" above), or right-clicks a sea to buy as many ships as it can pay for (from the selected adjacent territory's troops when one is selected, otherwise from the pool), or middle-clicks one to buy exactly `1`.
 - **Purpose:** spend `ships * 3` troops and add `ships` to the caller's ship count in `seaTerritoryId`. The `3`-per-ship cost is either deducted from the caller's still-unspent `troopsToDeploy` (`fromPool: true`) or straight off `sourceTerritoryId`'s own troop stack, leaving at least `1` behind (`fromPool: false`); either way, `sourceTerritoryId` must be owned by the caller and directly adjacent to `seaTerritoryId`. Doesn't itself end `'deploy'` or advance the turn, but when paid `fromPool` and this leaves `troopsToDeploy` at `0`, the same auto-advance check `game:deploy` makes applies (see above). The caller must be the player at `turnPlayerIndex`, and the game must be `playing` and in `'deploy'`.
 - **Content:**
   ```ts
@@ -887,11 +887,11 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not fortify phase`, `no fortify selection`, `invalid troops`, `territory troop cap exceeded`.
 
 ### `game:quickFortify`
-- **When sent:** the player whose turn it currently is, during `'fortify'` with `fortifyStartTerritoryId` already set (whether or not `fortifyEndTerritoryId` is set too, in which case this replaces it), right-clicks one of the candidate end territories on the map.
-- **Purpose:** the two-step fortify in a single call: exactly `game:fortifySelectEnd` with `territoryId`, then `game:fortify` with `troops` equal to the start territory's troops - 1, capped so the end territory stays within `1000000` troops. Each step validates, mutates state, and emits its events exactly as the standalone call would.
+- **When sent:** the player whose turn it currently is, during `'fortify'` with `fortifyStartTerritoryId` already set (whether or not `fortifyEndTerritoryId` is set too, in which case this replaces it), right-clicks (or middle-clicks, with `minimal: true`) one of the candidate end territories on the map.
+- **Purpose:** the two-step fortify in a single call: exactly `game:fortifySelectEnd` with `territoryId`, then `game:fortify` with `troops` equal to the start territory's troops - 1, capped so the end territory stays within `1000000` troops, or to `1` when `minimal` is `true`. Each step validates, mutates state, and emits its events exactly as the standalone call would.
 - **Content:**
   ```ts
-  { territoryId: number }
+  { territoryId: number; minimal: boolean }
   ```
 - **Ack:** shared Ack response carrying the final state. Errors: any `game:fortifySelectEnd` or `game:fortify` error.
 
@@ -923,11 +923,11 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
 - **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `game not started`, `game paused`, `not your turn`, `not sail phase`, `no sail selection`, `invalid ships`.
 
 ### `game:quickSail`
-- **When sent:** the player whose turn it currently is, during `'sail'` with `sailStartTerritoryId` already set (whether or not `sailEndTerritoryId` is set too, in which case this replaces it), right-clicks one of the candidate end seas on the map.
-- **Purpose:** the two-step sail in a single call: exactly `game:sailSelectEnd` with `territoryId`, then `game:sail` with `ships` equal to all of the caller's ships on the start sea. Each step validates, mutates state, and emits its events exactly as the standalone call would.
+- **When sent:** the player whose turn it currently is, during `'sail'` with `sailStartTerritoryId` already set (whether or not `sailEndTerritoryId` is set too, in which case this replaces it), right-clicks (or middle-clicks, with `minimal: true`) one of the candidate end seas on the map.
+- **Purpose:** the two-step sail in a single call: exactly `game:sailSelectEnd` with `territoryId`, then `game:sail` with `ships` equal to all of the caller's ships on the start sea, or to `1` when `minimal` is `true`. Each step validates, mutates state, and emits its events exactly as the standalone call would.
 - **Content:**
   ```ts
-  { territoryId: number }
+  { territoryId: number; minimal: boolean }
   ```
 - **Ack:** shared Ack response carrying the final state. Errors: any `game:sailSelectEnd` or `game:sail` error.
 

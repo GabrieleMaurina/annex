@@ -135,7 +135,7 @@ export function useDeploySeaFlow({
   }, [deploySeaTerritoryId, comboActive, deploySeaShips, buyShips]);
 
   const quickDeploySea = useCallback(
-    (seaTerritoryId: number) => {
+    (seaTerritoryId: number, minimal: boolean) => {
       const combo =
         selectedTerritoryId !== null &&
         isSeaAdjacentToTerritory(seaTerritoryId, selectedTerritoryId);
@@ -144,7 +144,7 @@ export function useDeploySeaFlow({
             ((ownerById.get(selectedTerritoryId)?.troops ?? 0) - 1) / SHIP_COST,
           )
         : Math.floor(troopsToDeploy / SHIP_COST);
-      if (ships >= 1) buyShips(seaTerritoryId, combo, ships);
+      if (ships >= 1) buyShips(seaTerritoryId, combo, minimal ? 1 : ships);
     },
     [
       selectedTerritoryId,

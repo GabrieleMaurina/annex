@@ -200,6 +200,7 @@ export function fortify(playerId: number, rawTroops: unknown): GameResponse {
 export function quickFortify(
   playerId: number,
   rawTerritoryId: unknown,
+  minimal: unknown,
 ): GameResponse {
   const ctx = requireFortifyTurn(playerId);
   if (!ctx.ok) return ctx;
@@ -211,6 +212,8 @@ export function quickFortify(
   const endTroops = game.territoryTroops.get(game.fortifyEndTerritoryId!) ?? 0;
   return fortify(
     playerId,
-    Math.min(startTroops - 1, MAX_TERRITORY_TROOPS - endTroops),
+    minimal === true
+      ? 1
+      : Math.min(startTroops - 1, MAX_TERRITORY_TROOPS - endTroops),
   );
 }

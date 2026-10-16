@@ -129,6 +129,7 @@ export function sail(playerId: number, rawShips: unknown): GameResponse {
 export function quickSail(
   playerId: number,
   rawTerritoryId: unknown,
+  minimal: unknown,
 ): GameResponse {
   const ctx = requireSailTurn(playerId);
   if (!ctx.ok) return ctx;
@@ -137,6 +138,8 @@ export function quickSail(
   if (!selected.ok) return selected;
   return sail(
     playerId,
-    game.seaShips.get(game.sailStartTerritoryId!)?.get(playerId) ?? 0,
+    minimal === true
+      ? 1
+      : (game.seaShips.get(game.sailStartTerritoryId!)?.get(playerId) ?? 0),
   );
 }

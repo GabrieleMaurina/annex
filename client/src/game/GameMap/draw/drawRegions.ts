@@ -1,3 +1,4 @@
+import type { ClickableRegions } from '../../regions/clickableRegions';
 import type { RegionShape } from '../../regions/traceRegions';
 
 export interface ImageView {
@@ -13,16 +14,38 @@ function enterImageSpace(ctx: CanvasRenderingContext2D, view: ImageView) {
   ctx.scale(view.scaleX, view.scaleY);
 }
 
-export function fillRegion(
-  ctx: CanvasRenderingContext2D,
-  shape: RegionShape,
-  color: string,
-  view: ImageView,
-) {
-  enterImageSpace(ctx, view);
-  ctx.fillStyle = color;
-  ctx.fill(shape.fill);
-  ctx.restore();
+interface FillLayer {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  colors: Map<number, string>;
+}
+
+const fillLayers = new WeakMap<ClickableRegions, FillLayer>();
+
+export function regionFillLayer(
+  regions: ClickableRegions,
+  colors: Map<number, string>,
+): HTMLCanvasElement {
+  let layer = fillLayers.get(regions);
+  if (!layer) {
+    const canvas = document.createElement('canvas');
+    canvas.width = regions.width;
+    canvas.height = regions.height;
+    layer = { canvas, ctx: canvas.getContext('2d')!, colors: new Map() };
+    fillLayers.set(regions, layer);
+  }
+  const { ctx } = layer;
+  ctx.globalCompositeOperation = 'destination-out';
+  for (const id of layer.colors.keys())
+    if (!colors.has(id)) ctx.fill(regions.shapes.get(id)!.fill);
+  ctx.globalCompositeOperation = 'source-over';
+  for (const [id, color] of colors) {
+    if (layer.colors.get(id) === color) continue;
+    ctx.fillStyle = color;
+    ctx.fill(regions.shapes.get(id)!.fill);
+  }
+  layer.colors = colors;
+  return layer.canvas;
 }
 
 export function strokeRegion(

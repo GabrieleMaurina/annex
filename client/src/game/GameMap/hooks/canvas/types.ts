@@ -26,7 +26,7 @@ export type CanvasInteractionsParams = {
   selectSailStart: (territoryId: number | null) => void;
   selectSailEnd: (territoryId: number) => void;
   submitSail: () => void;
-  quickSail: (territoryId: number) => void;
+  quickSail: (territoryId: number, minimal: boolean) => void;
   cancelSail: () => void;
   attackSeaTerritoryId: number | null;
   attackSeaDefenderId: number | null;
@@ -122,7 +122,7 @@ export type CanvasInteractionsParams = {
   selectDeploySea: (seaTerritoryId: number) => void;
   cancelDeploySea: () => void;
   submitDeploySea: () => void;
-  quickDeploySea: (seaTerritoryId: number) => void;
+  quickDeploySea: (seaTerritoryId: number, minimal: boolean) => void;
   deploySeaPanelOpen: boolean;
   deploySeaInputRef: RefObject<HTMLInputElement | null>;
   setDeploySeaShips: Dispatch<SetStateAction<number>>;
@@ -138,7 +138,7 @@ export type CanvasInteractionsParams = {
   selectFortifyStart: (territoryId: number | null) => void;
   selectFortifyEnd: (territoryId: number) => void;
   submitFortify: () => void;
-  quickFortify: (territoryId: number) => void;
+  quickFortify: (territoryId: number, minimal: boolean) => void;
   entrenchPanelOpen: boolean;
   setEntrenchTroops: Dispatch<SetStateAction<number>>;
   submitEntrench: () => void;

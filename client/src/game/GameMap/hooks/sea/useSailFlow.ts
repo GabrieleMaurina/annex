@@ -91,8 +91,8 @@ export function useSailFlow({
   }, [sailShips, setGame]);
 
   const quickSail = useCallback(
-    (territoryId: number) => {
-      connector.quickSail({ territoryId }, (res: Ack) => {
+    (territoryId: number, minimal: boolean) => {
+      connector.quickSail({ territoryId, minimal }, (res: Ack) => {
         if (res.ok) setGame(res.game);
       });
     },

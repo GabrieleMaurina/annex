@@ -139,8 +139,8 @@ export function useTurnActionFlows({
   }, [fortifyTroops, setGame]);
 
   const quickFortify = useCallback(
-    (territoryId: number) => {
-      connector.quickFortify({ territoryId }, (res: Ack) => {
+    (territoryId: number, minimal: boolean) => {
+      connector.quickFortify({ territoryId, minimal }, (res: Ack) => {
         if (res.ok) setGame(res.game);
       });
     },

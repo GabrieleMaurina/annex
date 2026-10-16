@@ -44,7 +44,7 @@ import {
   UNCLAIMED_TERRITORY_COLOR,
   type Point,
 } from '../helpers';
-import { fillRegion, strokeRegion } from './drawRegions';
+import { regionFillLayer, strokeRegion } from './drawRegions';
 
 export interface DrawCanvasParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -249,11 +249,22 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   };
   const view = { scaleX, scaleY, offsetX, offsetY };
 
-  for (const t of territories) {
-    const shape = regions?.shapes.get(t.id);
-    if (!shape || radiationById.has(t.id)) continue;
-    if (visibleSet && !visibleSet.has(t.id)) continue;
-    fillRegion(ctx, shape, fillColorOf(t.id), view);
+  if (regions) {
+    const fillColors = new Map<number, string>();
+    for (const t of territories) {
+      if (!regions.shapes.has(t.id) || radiationById.has(t.id)) continue;
+      if (visibleSet && !visibleSet.has(t.id)) continue;
+      fillColors.set(t.id, fillColorOf(t.id));
+    }
+    ctx.imageSmoothingEnabled = scaleX * dpr < 1;
+    ctx.drawImage(
+      regionFillLayer(regions, fillColors),
+      offsetX,
+      offsetY,
+      imgW * scaleX,
+      imgH * scaleY,
+    );
+    ctx.imageSmoothingEnabled = true;
   }
 
   if (supplyLineEdgesByPlayer.size > 0) {
@@ -652,8 +663,10 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
                   : fortifyPanelOpen && t.id === fortifyStartTerritoryId
                     ? owner.troops - fortifyTroops
                     : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
-        ctx.fillStyle = contrastTextColor(fillColor);
-        ctx.font = `bold ${VERTEX_RADIUS * scaleX}px sans-serif`;
+        const textColor = contrastTextColor(fillColor);
+        const fullyClickable = shape && !owner.isCapital;
+        ctx.fillStyle = textColor;
+        ctx.font = `bold ${VERTEX_RADIUS * scaleX * (fullyClickable ? 1.25 : 1)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
         const text = formatTroops(troops);
@@ -662,6 +675,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           p.y +
           (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
             2;
+        if (fullyClickable) {
+          ctx.save();
+          ctx.strokeStyle = textColor === '#000000' ? '#ffffff' : '#000000';
+          ctx.lineWidth = 3 * zoom;
+          ctx.lineJoin = 'round';
+          ctx.strokeText(text, p.x, baselineY);
+          ctx.restore();
+        }
         ctx.fillText(text, p.x, baselineY);
       }
     }

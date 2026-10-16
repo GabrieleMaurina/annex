@@ -6,6 +6,7 @@ import {
   SEA_COLOR,
   TERRITORY_STROKE_COLOR,
 } from './palette';
+import { repairSplitTerritories } from './splitRepair';
 
 const BORDER_RADIUS = 2;
 const DASH_ON = 8;
@@ -102,6 +103,8 @@ function rasterize(
       }
     }
   }
+
+  repairSplitTerritories(combinedLabel, seam, width, height);
 
   const indices = new Uint8Array(size);
   for (let i = 0; i < size; i++) {

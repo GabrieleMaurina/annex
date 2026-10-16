@@ -764,13 +764,14 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     }
     const vertex = hitVertex(getPos(e));
     if (turnPhase === 'sail') {
-      if (vertex && sailEndCandidates.has(vertex.id)) quickSail(vertex.id);
+      if (vertex && sailEndCandidates.has(vertex.id))
+        quickSail(vertex.id, false);
       else if (sailStartTerritoryId !== null) cancelSail();
       return;
     }
     if (turnPhase === 'fortify') {
       if (vertex && fortifyEndCandidates.has(vertex.id))
-        quickFortify(vertex.id);
+        quickFortify(vertex.id, false);
       else if (fortifyStartTerritoryId !== null) cancelFortify();
       return;
     }
@@ -810,7 +811,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       isInteractable(vertex)
     ) {
       if (seaIdSet.has(vertex.id)) {
-        quickDeploySea(vertex.id);
+        quickDeploySea(vertex.id, false);
         return;
       }
       if (deploySeaTerritoryId !== null) cancelDeploySea();
@@ -835,12 +836,38 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     if (e.button !== 1 || isSyntheticMouseEvent()) return;
     e.preventDefault();
     if (gameEnded || !isMyTurn || paused || nukeTargeting) return;
-    if (turnPhase !== 'attack' || attackPendingConquest) return;
-    if (attackSeaTerritoryId !== null || !blitzEnabled || attackRevealing)
-      return;
     const vertex = hitVertex(getPos(e));
-    if (vertex && attackEndCandidates.has(vertex.id))
-      quickAttack(vertex.id, true);
+    if (!vertex) return;
+    if (turnPhase === 'sail') {
+      if (sailEndCandidates.has(vertex.id)) quickSail(vertex.id, true);
+      return;
+    }
+    if (turnPhase === 'fortify') {
+      if (fortifyEndCandidates.has(vertex.id)) quickFortify(vertex.id, true);
+      return;
+    }
+    if (turnPhase === 'attack') {
+      if (
+        !attackPendingConquest &&
+        attackSeaTerritoryId === null &&
+        blitzEnabled &&
+        !attackRevealing &&
+        attackEndCandidates.has(vertex.id)
+      )
+        quickAttack(vertex.id, true);
+      return;
+    }
+    if (
+      (turnPhase === 'deploy' || turnPhase === 'troop') &&
+      isInteractable(vertex)
+    ) {
+      if (seaIdSet.has(vertex.id)) {
+        quickDeploySea(vertex.id, true);
+        return;
+      }
+      if (deploySeaTerritoryId !== null) cancelDeploySea();
+      quickDeploy(vertex.id, 1);
+    }
   }
 
   useCanvasKeyboard({ ...params, selectTerritory, zoomAround });

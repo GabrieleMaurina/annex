@@ -704,7 +704,10 @@ export const connector = {
     route('game:fortify', data, cb);
   },
 
-  quickFortify(data: { territoryId: number }, cb: AckCallback): void {
+  quickFortify(
+    data: { territoryId: number; minimal: boolean },
+    cb: AckCallback,
+  ): void {
     route('game:quickFortify', data, cb);
   },
 
@@ -720,7 +723,10 @@ export const connector = {
     route('game:sail', data, cb);
   },
 
-  quickSail(data: { territoryId: number }, cb: AckCallback): void {
+  quickSail(
+    data: { territoryId: number; minimal: boolean },
+    cb: AckCallback,
+  ): void {
     route('game:quickSail', data, cb);
   },
 

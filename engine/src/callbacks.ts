@@ -288,6 +288,7 @@ export interface EngineCallbacks {
       seaTerritories: unknown[];
       bonuses: number[];
       wraps: unknown[];
+      timedConnections: unknown[];
       imageSrc: string;
       borderColors: string[];
     },

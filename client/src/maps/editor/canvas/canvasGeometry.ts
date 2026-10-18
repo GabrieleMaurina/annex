@@ -100,7 +100,7 @@ export function segmentWouldCross(
 
   const seen = new Set<string>();
   for (const t of territories) {
-    for (const n of t.neighbors) {
+    for (const n of [...t.neighbors, ...t.timed.map((m) => m.id)]) {
       if (excludeIds.has(t.id) || excludeIds.has(n)) continue;
       const key = edgeKey(t.id, n);
       if (seen.has(key)) continue;

@@ -1,4 +1,4 @@
-import { SeaTerritory, Territory } from '../../../types';
+import { SeaTerritory, Territory, TimedConnection } from '../../../types';
 import { timeStep } from '../../core/bench';
 import {
   Fill,
@@ -10,6 +10,7 @@ import {
 } from '../../core/params';
 import { randomInt, Rng } from '../../core/rng';
 import { renderTerrainImage } from '../../render/gif';
+import { extractTimedConnections } from '../../timed';
 import { computeTerritoryCentroids } from '../centroid';
 import {
   addRedundantBridges,
@@ -35,6 +36,7 @@ export interface TerrainMap {
   territories: Territory[];
   seaTerritories: SeaTerritory[];
   bonuses: number[];
+  timedConnections: TimedConnection[];
   imageSrc: string;
 }
 
@@ -46,6 +48,7 @@ export function generateTerrain(
   size: MapSize,
   dims: GridDimensions,
   seas: boolean,
+  timedRng: Rng | null,
 ): TerrainMap {
   const { width, height } = dims;
 
@@ -246,6 +249,12 @@ export function generateTerrain(
     bonuses.push(computeBonus(continentSizes.get(i) ?? 0));
   }
 
+  const timedConnections = extractTimedConnections(
+    timedRng,
+    specialEdges,
+    combinedAdjacency,
+  );
+
   const territories: Territory[] = centers.map((_, id) => ({
     id,
     continentId: continentIdByTerritory[id],
@@ -283,5 +292,5 @@ export function generateTerrain(
     ),
   );
 
-  return { territories, seaTerritories, bonuses, imageSrc };
+  return { territories, seaTerritories, bonuses, timedConnections, imageSrc };
 }

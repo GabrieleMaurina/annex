@@ -15,6 +15,7 @@ export interface GameSettings {
     type: string;
     fill: string;
     seas: boolean;
+    timed: boolean;
   } | null;
   playerMapId: string | null;
   slots: number;
@@ -295,7 +296,7 @@ export const preferencesSchemaProperties = {
       },
       mapGeneration: {
         bsonType: ['object', 'null'],
-        required: ['seed', 'size', 'type', 'fill', 'seas'],
+        required: ['seed', 'size', 'type', 'fill', 'seas', 'timed'],
         additionalProperties: false,
         properties: {
           seed: { bsonType: 'string' },
@@ -303,6 +304,7 @@ export const preferencesSchemaProperties = {
           type: { enum: GENERATION_TYPES },
           fill: { enum: FILL_VALUES },
           seas: { bsonType: 'bool' },
+          timed: { bsonType: 'bool' },
         },
       },
       slots: { bsonType: 'number', minimum: 2, maximum: 20 },
@@ -430,6 +432,7 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
     type: r.type as string,
     fill: r.fill as string,
     seas: r.seas,
+    timed: r.timed === true,
   };
 }
 

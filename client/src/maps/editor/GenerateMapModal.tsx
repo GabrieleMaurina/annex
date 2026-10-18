@@ -3,7 +3,10 @@ import { useState } from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
 import Help from '../../common/tooltips/Help';
 import type { Fill, GenerationType, MapSize } from '../../lib/types';
-import { SEAS_HELP } from '../../lobby/settings/settingsHelp';
+import {
+  SEAS_HELP,
+  TIMED_CONNECTIONS_HELP,
+} from '../../lobby/settings/settingsHelp';
 import { randomSeed } from '../randomMap';
 import {
   generateMap,
@@ -37,6 +40,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
   const [fill, setFill] = useState<Fill>('mixed');
   const [size, setSize] = useState<MapSize>('medium');
   const [seas, setSeas] = useState(false);
+  const [timed, setTimed] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [lastGenerated, setLastGenerated] = useState<GenerateInput | null>(
@@ -56,7 +60,8 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
       lastGenerated.size === size &&
       lastGenerated.type === type &&
       lastGenerated.fill === fill &&
-      lastGenerated.seas === seas
+      lastGenerated.seas === seas &&
+      lastGenerated.timed === timed
     ) {
       effectiveSeed = randomSeed();
       setSeed(effectiveSeed);
@@ -70,6 +75,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
       type,
       fill,
       seas,
+      timed,
     };
     generateMap(input)
       .then((map) => {
@@ -157,6 +163,15 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
             onChange={(e) => setSeas(e.target.checked)}
           />
           <Help>{SEAS_HELP}</Help>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <Form.Check
+            type="checkbox"
+            label="Timed connections"
+            checked={timed}
+            onChange={(e) => setTimed(e.target.checked)}
+          />
+          <Help>{TIMED_CONNECTIONS_HELP}</Help>
         </div>
         {error && <div className="text-danger small">{error}</div>}
         <p className="text-muted small mb-0">

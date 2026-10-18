@@ -123,6 +123,7 @@ export { GameSummary } from './game/state';
 export { ONLINE_PAUSE_SECONDS } from './game/turns';
 export { isBlitzOffAllowed } from './lifecycle/settings';
 export {
+  expectedTerritoryArea,
   Fill,
   FILL_VALUES,
   GENERATION_TYPE_VALUES,
@@ -132,6 +133,8 @@ export {
   MapSize,
   mapSizeLabel,
 } from './mapgen/core/params';
+export { createWarpField, warpAt } from './mapgen/core/warp';
+export { enforceContiguity } from './mapgen/pipeline/contiguity';
 export {
   DEFAULT_BORDER_COLORS,
   DUNGEON_SEAM_COLOR,
@@ -147,8 +150,14 @@ export {
 } from './mapgen/render/palette';
 export { runMapgenWorker } from './mapgen/worker';
 export { ArchivedMap } from './maps/maps';
+export {
+  isConnectionOpen,
+  MAX_TIMED_VALUE,
+  roundsUntilToggle,
+  withOpenConnections,
+} from './maps/timedConnections';
 export { randomPlayerName } from './session/players';
-export { GameMap, PlayerGameMap } from './types';
+export { GameMap, PlayerGameMap, TimedConnection } from './types';
 export { containsProfanity } from './util/profanity';
 export {
   EngineWorkerConfig,

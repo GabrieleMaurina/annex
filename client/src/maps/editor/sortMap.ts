@@ -1,4 +1,9 @@
-import type { MapSeaTerritory, MapTerritory, MapWrap } from '../../lib/types';
+import type {
+  MapSeaTerritory,
+  MapTerritory,
+  MapWrap,
+  TimedConnection,
+} from '../../lib/types';
 import {
   NO_CONTINENT,
   type EditorTerritory as Territory,
@@ -98,6 +103,7 @@ export function sortTerritories(
       id: idMap.get(t.id)!,
       neighbors: t.neighbors.map((n) => idMap.get(n)!),
       wraps: t.wraps.map((w) => ({ ...w, id: idMap.get(w.id)! })),
+      timed: t.timed.map((m) => ({ ...m, id: idMap.get(m.id)! })),
     }),
   );
 
@@ -115,6 +121,7 @@ export function sortMapData(
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
 } {
   const sorted = sortTerritories(territories, bonuses);
   const newTerritories: MapTerritory[] = sorted.territories
@@ -138,6 +145,11 @@ export function sortMapData(
       t.wraps
         .filter((w) => t.id < w.id)
         .map((w) => ({ a: t.id, b: w.id, x: w.x, y: w.y })),
+    ),
+    timedConnections: sorted.territories.flatMap((t) =>
+      t.timed
+        .filter((m) => t.id < m.id)
+        .map(({ id, ...values }) => ({ a: t.id, b: id, ...values })),
     ),
   };
 }

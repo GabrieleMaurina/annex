@@ -1,8 +1,20 @@
 import { Fill, GenerationType, MapSize } from '../mapgen/core/params';
 import { DEFAULT_BORDER_COLORS } from '../mapgen/render/palette';
-import { Game, GameMap, MapWrap, SeaTerritory, Territory } from '../types';
+import {
+  Game,
+  GameMap,
+  MapWrap,
+  SeaTerritory,
+  Territory,
+  TimedConnection,
+} from '../types';
+import { withOpenConnections } from './timedConnections';
 
 const maps = new Map<string, GameMap>();
+const openMaps = new WeakMap<
+  Game,
+  { round: number; territories: Territory[]; open: GameMap }
+>();
 
 export function loadMaps(entries: GameMap[]): void {
   for (const entry of entries) {
@@ -10,7 +22,7 @@ export function loadMaps(entries: GameMap[]): void {
   }
 }
 
-export function getGameMap(game: Game): GameMap {
+function baseGameMap(game: Game): GameMap {
   if (game.generatedMap) {
     return {
       name: game.mapName,
@@ -18,6 +30,7 @@ export function getGameMap(game: Game): GameMap {
       seaTerritories: game.generatedMap.seaTerritories,
       bonuses: game.generatedMap.bonuses,
       wraps: [],
+      timedConnections: game.generatedMap.timedConnections,
     };
   }
   if (game.playerMap) {
@@ -27,6 +40,7 @@ export function getGameMap(game: Game): GameMap {
       seaTerritories: game.playerMap.seaTerritories,
       bonuses: game.playerMap.bonuses,
       wraps: game.playerMap.wraps,
+      timedConnections: game.playerMap.timedConnections,
     };
   }
   return (
@@ -36,8 +50,38 @@ export function getGameMap(game: Game): GameMap {
       seaTerritories: [],
       bonuses: [],
       wraps: [],
+      timedConnections: [],
     }
   );
+}
+
+export function gameMapAtRound(game: Game, round: number): GameMap {
+  const base = baseGameMap(game);
+  if (base.timedConnections.length === 0) return base;
+  return {
+    ...base,
+    territories: withOpenConnections(
+      base.territories,
+      base.timedConnections,
+      round,
+    ),
+  };
+}
+
+export function getGameMap(game: Game): GameMap {
+  const base = baseGameMap(game);
+  if (base.timedConnections.length === 0) return base;
+  const cached = openMaps.get(game);
+  if (
+    cached &&
+    cached.round === game.roundNumber &&
+    cached.territories === base.territories
+  )
+    return cached.open;
+  const round = game.roundNumber;
+  const open = gameMapAtRound(game, round);
+  openMaps.set(game, { round, territories: base.territories, open });
+  return open;
 }
 
 export interface ArchivedMap {
@@ -46,6 +90,7 @@ export interface ArchivedMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
   imageSrc: string | null;
   borderColors: string[];
   generation: {
@@ -54,12 +99,19 @@ export interface ArchivedMap {
     type: GenerationType;
     fill: Fill;
     seas: boolean;
+    timed: boolean;
   } | null;
 }
 
 export function getArchivedMap(game: Game): ArchivedMap {
-  const { name, territories, seaTerritories, bonuses, wraps } =
-    getGameMap(game);
+  const {
+    name,
+    territories,
+    seaTerritories,
+    bonuses,
+    wraps,
+    timedConnections,
+  } = baseGameMap(game);
   const generated = game.generatedMap;
   return {
     name,
@@ -67,6 +119,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
     seaTerritories,
     bonuses,
     wraps,
+    timedConnections,
     imageSrc: generated?.imageSrc ?? game.playerMap?.imageSrc ?? null,
     borderColors:
       generated?.borderColors ??
@@ -79,6 +132,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
           type: generated.type,
           fill: generated.fill,
           seas: generated.seas,
+          timed: generated.timed,
         }
       : null,
   };

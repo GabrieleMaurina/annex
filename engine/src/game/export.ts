@@ -91,6 +91,7 @@ export interface GameExport {
     type: string;
     fill: string;
     seas: boolean;
+    timed: boolean;
   } | null;
   playerMapId: string | null;
   originalHostId: number;
@@ -342,6 +343,7 @@ export function exportGame(gameName: string): GameExport | null {
           type: game.generatedMap.type,
           fill: game.generatedMap.fill,
           seas: game.generatedMap.seas,
+          timed: game.generatedMap.timed,
         }
       : null,
     playerMapId: game.playerMap?.id ?? null,

@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { TimedConnection } from 'engine';
 import { Binary } from 'mongodb';
 import { MapGeneration } from '../../validate';
 import { ensureCollection, getCollection } from '../mongo';
@@ -19,6 +20,7 @@ export interface MapDoc {
   seaTerritories: { id: number; x: number; y: number; neighbors: number[] }[];
   bonuses: number[];
   wraps: { a: number; b: number; x: boolean; y: boolean }[];
+  timedConnections: TimedConnection[];
   generation: MapGeneration | null;
   image: Binary;
   imageMime: string;
@@ -48,6 +50,7 @@ export function replayMapId(
     | 'seaTerritories'
     | 'bonuses'
     | 'wraps'
+    | 'timedConnections'
     | 'imageMime'
     | 'borderColors'
   >,
@@ -60,6 +63,7 @@ export function replayMapId(
         seaTerritories: map.seaTerritories,
         bonuses: map.bonuses,
         wraps: map.wraps,
+        timedConnections: map.timedConnections,
         imageMime: map.imageMime,
         borderColors: map.borderColors,
       }),
@@ -91,6 +95,7 @@ export interface StoredMap {
   seaTerritories: MapDoc['seaTerritories'];
   bonuses: number[];
   wraps: MapDoc['wraps'];
+  timedConnections: TimedConnection[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -122,6 +127,7 @@ export function getMapById(id: string): Promise<StoredMap | null> {
             seaTerritories: doc.seaTerritories ?? [],
             bonuses: doc.bonuses,
             wraps: doc.wraps,
+            timedConnections: doc.timedConnections ?? [],
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
             borderColors: doc.borderColors,

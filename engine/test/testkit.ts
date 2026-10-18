@@ -90,6 +90,7 @@ export function buildMap(spec: MapSpec): GameMap {
     seaTerritories,
     bonuses: spec.bonuses,
     wraps: [],
+    timedConnections: [],
   };
 }
 

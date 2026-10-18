@@ -207,6 +207,7 @@ export function gameState(game: Game) {
           type: game.generatedMap.type,
           fill: game.generatedMap.fill,
           seas: game.generatedMap.seas,
+          timed: game.generatedMap.timed,
         }
       : null,
     playerMapId: game.playerMap?.id ?? null,

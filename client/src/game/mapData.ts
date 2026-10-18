@@ -1,6 +1,6 @@
 import { DEFAULT_BORDER_COLORS } from 'engine';
 import { httpGet } from '../lib/http';
-import type { MapWrap } from '../lib/types';
+import type { MapWrap, TimedConnection } from '../lib/types';
 
 export interface Territory {
   id: number;
@@ -25,6 +25,7 @@ export interface GeneratedMapData {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
   imageSrc: string;
   borderColors: string[];
 }
@@ -61,6 +62,7 @@ function ensurePlayerMap(
     seaTerritories?: SeaTerritory[];
     bonuses?: number[];
     wraps?: MapWrap[];
+    timedConnections?: TimedConnection[];
     image?: string;
     borderColors: string[];
   }>('/player-maps/' + encodeURIComponent(playerMapId))
@@ -71,6 +73,7 @@ function ensurePlayerMap(
           seaTerritories: map.seaTerritories ?? [],
           bonuses: map.bonuses,
           wraps: map.wraps ?? [],
+          timedConnections: map.timedConnections ?? [],
           imageSrc: map.image,
           borderColors: map.borderColors,
         });
@@ -85,6 +88,7 @@ const EMPTY_MAP = {
   seaTerritories: [] as SeaTerritory[],
   bonuses: [],
   wraps: [] as MapWrap[],
+  timedConnections: [] as TimedConnection[],
   imageSrc: null,
   borderColors: DEFAULT_BORDER_COLORS,
 };
@@ -97,6 +101,7 @@ export function loadGameMap(
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
   imageSrc: string | null;
   borderColors: string[];
 }> {

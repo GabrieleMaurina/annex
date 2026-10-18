@@ -11,6 +11,10 @@ import { formatError } from '../common/formatError';
 import { connector } from '../connector';
 import { playSound, useToggleSound } from '../lib/sounds';
 import type { Account, GenerateMapInput, MapSize } from '../lib/types';
+import {
+  findTerritories,
+  linkTerritories,
+} from './editor/canvas/findTerritories';
 import { useClickableCheck } from './editor/canvas/useClickableCheck';
 import {
   createBlankImage,
@@ -25,17 +29,30 @@ import { isConnected } from './editor/graph';
 import MapCanvas, { type MapCanvasHandle } from './editor/MapCanvas';
 import type { EditorTerritory as Territory } from './editor/model/editorTypes';
 import { toEditorTerritories } from './editor/model/editorTypes';
+import {
+  graphKeyOf,
+  graphOf,
+  type GraphState,
+  type HistoryEntry,
+} from './editor/model/history';
+import { drawTerritoryBorders } from './editor/paint/drawTerritories';
+import { fillTerritories } from './editor/paint/fillTerritories';
 import PaintLayer, {
   type PaintLayerHandle,
-  type Shape,
   type Viewport,
 } from './editor/paint/PaintLayer';
 import {
   drawShape,
-  paintContext,
   PALETTE_GROUPS,
   type PaintTool,
 } from './editor/paint/paintTools';
+import {
+  blankSurface,
+  blitSurface,
+  decodeToSurface,
+  loadImage,
+  surfaceToDataUrl,
+} from './editor/paint/surface';
 import Panel from './editor/Panel';
 import { sortMapData, sortTerritories } from './editor/sortMap';
 import MapBrowser from './MapBrowser';
@@ -48,25 +65,6 @@ const DEFAULT_MAP_NAME = 'Map';
 const CUSTOM_COLORS_LIMIT = 30;
 const MAX_IMAGE_BYTES = 6_000_000;
 
-interface HistoryEntry {
-  pixels: Uint8ClampedArray;
-  width: number;
-  height: number;
-  shape: Shape | null;
-  territories: Territory[];
-  bonuses: number[];
-  continentCount: number;
-  graphKey: string;
-}
-
-function graphKeyOf(
-  territories: Territory[],
-  bonuses: number[],
-  continentCount: number,
-): string {
-  return JSON.stringify([territories, bonuses, continentCount]);
-}
-
 function isDefaultName(name: string): boolean {
   return !name.trim() || name.trim() === DEFAULT_MAP_NAME;
 }
@@ -77,46 +75,6 @@ function mapSizeText(width: number, height: number): string {
     return m.width === width && m.height === height;
   });
   return match ? mapSizeLabel(match) : 'Custom';
-}
-
-function blankSurface(width: number, height: number): ImageData {
-  const s = new ImageData(Math.max(1, width), Math.max(1, height));
-  s.data.fill(255);
-  return s;
-}
-
-function blitSurface(surface: ImageData, canvas: HTMLCanvasElement): void {
-  canvas.width = surface.width;
-  canvas.height = surface.height;
-  paintContext(canvas)?.putImageData(surface, 0, 0);
-}
-
-function surfaceToDataUrl(surface: ImageData): string {
-  const c = document.createElement('canvas');
-  c.width = surface.width;
-  c.height = surface.height;
-  c.getContext('2d')?.putImageData(surface, 0, 0);
-  return c.toDataURL('image/png');
-}
-
-function decodeToSurface(img: HTMLImageElement): ImageData {
-  const c = document.createElement('canvas');
-  c.width = img.naturalWidth;
-  c.height = img.naturalHeight;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return blankSurface(img.naturalWidth, img.naturalHeight);
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(img, 0, 0);
-  return ctx.getImageData(0, 0, c.width, c.height);
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
 }
 
 function invalidContinentSizes(
@@ -146,6 +104,7 @@ function MapEditor({ account }: { account: Account | null }) {
       (location.state as { blank?: string } | null)?.blank ??
       createDefaultImage(),
   );
+  const [imageLoads, setImageLoads] = useState(0);
   const [mapName, setMapName] = useState(DEFAULT_MAP_NAME);
   const [generation, setGeneration] = useState<GenerateMapInput | null>(null);
   const [currentContinentId, setCurrentContinentId] = useState(0);
@@ -153,6 +112,7 @@ function MapEditor({ account }: { account: Account | null }) {
   useToggleSound(collapsed);
 
   const [mode, setMode] = useState<'graph' | 'paint'>('graph');
+  const [timedMode, setTimedMode] = useState(false);
   const [exclusive, setExclusive] = useState(false);
   function handleModeClick(target: 'graph' | 'paint') {
     if (mode === target) setExclusive((e) => !e);
@@ -205,6 +165,7 @@ function MapEditor({ account }: { account: Account | null }) {
   const paintRevRef = useRef(0);
   const committedPaintRef = useRef(0);
   const applyingRef = useRef(false);
+  const keepHistoryRef = useRef(false);
 
   const [paintCanvas] = useState(() => {
     const canvas = document.createElement('canvas');
@@ -281,14 +242,16 @@ function MapEditor({ account }: { account: Account | null }) {
       ? 'You already have a map with this name.'
       : '';
 
-  const graphKey = useMemo(
-    () => graphKeyOf(territories, bonuses, continentCount),
-    [territories, bonuses, continentCount],
+  const [borderColors, setBorderColors] = useState(DEFAULT_BORDER_COLORS);
+  const graph = useMemo(
+    () => ({ territories, bonuses, continentCount, borderColors, generation }),
+    [territories, bonuses, continentCount, borderColors, generation],
   );
+  const graphKey = useMemo(() => graphKeyOf(graph), [graph]);
 
-  const graphRef = useRef({ territories, bonuses, continentCount, graphKey });
+  const graphRef = useRef({ ...graph, graphKey });
   useEffect(() => {
-    graphRef.current = { territories, bonuses, continentCount, graphKey };
+    graphRef.current = { ...graph, graphKey };
   });
 
   const paintSurfaceRef = useRef(paintSurface);
@@ -297,7 +260,6 @@ function MapEditor({ account }: { account: Account | null }) {
   });
 
   const [showClickable, setShowClickable] = useState(false);
-  const [borderColors, setBorderColors] = useState(DEFAULT_BORDER_COLORS);
   const clickable = useClickableCheck(
     paintSurfaceRef,
     paintVersion,
@@ -308,6 +270,40 @@ function MapEditor({ account }: { account: Account | null }) {
   const clickableCount = clickable
     ? territories.filter((t) => !clickable.invalidIds.has(t.id)).length
     : 0;
+
+  function handleFindTerritories() {
+    paintLayerRef.current?.flush();
+    setTerritories(
+      findTerritories(
+        paintSurfaceRef.current,
+        territories,
+        borderColors,
+        currentContinentId,
+        continentCount,
+      ),
+    );
+  }
+
+  function handleLinkTerritories() {
+    paintLayerRef.current?.flush();
+    setTerritories(
+      linkTerritories(
+        paintSurfaceRef.current,
+        territories,
+        borderColors,
+        brushSize,
+      ),
+    );
+  }
+
+  function applyTerritoryPaint(paint: typeof drawTerritoryBorders) {
+    paintLayerRef.current?.flush();
+    const surface = paintSurfaceRef.current;
+    if (!paint(surface, territories, borderColors, brushSize)) return;
+    blitSurface(surface, paintCanvas);
+    bumpPaint();
+    commitPaint();
+  }
 
   const syncHistoryFlags = useCallback(() => {
     setCanUndo(pastRef.current.length > 0);
@@ -381,7 +377,12 @@ function MapEditor({ account }: { account: Account | null }) {
         applyingRef.current = false;
         paintRevRef.current = 0;
         committedPaintRef.current = 0;
-        pastRef.current = [];
+        const previous = committedRef.current;
+        pastRef.current =
+          keepHistoryRef.current && previous
+            ? [...pastRef.current, previous].slice(-HISTORY_LIMIT)
+            : [];
+        keepHistoryRef.current = false;
         futureRef.current = [];
         syncHistoryFlags();
         committedRef.current = {
@@ -389,22 +390,30 @@ function MapEditor({ account }: { account: Account | null }) {
           width: surface.width,
           height: surface.height,
           shape: null,
-          territories,
-          bonuses,
-          continentCount,
-          graphKey: graphKeyOf(territories, bonuses, continentCount),
+          ...graph,
+          graphKey,
         };
         setDirty(pendingDirtyRef.current);
         pendingDirtyRef.current = false;
         bumpPaint();
         bumpEpoch();
       })
-      .catch(() => {});
+      .catch(() => {
+        applyingRef.current = false;
+        keepHistoryRef.current = false;
+      });
     return () => {
       stale = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageSrc, paintCanvas, bumpPaint, bumpEpoch, syncHistoryFlags]);
+  }, [
+    imageSrc,
+    imageLoads,
+    paintCanvas,
+    bumpPaint,
+    bumpEpoch,
+    syncHistoryFlags,
+  ]);
 
   useEffect(() => {
     connector.listMyMapNames(setTakenNames);
@@ -419,7 +428,12 @@ function MapEditor({ account }: { account: Account | null }) {
         return;
       }
       setTerritories(
-        toEditorTerritories(map.territories, map.seaTerritories, map.wraps),
+        toEditorTerritories(
+          map.territories,
+          map.seaTerritories,
+          map.wraps,
+          map.timedConnections,
+        ),
       );
       setBonuses(map.bonuses);
       setContinentCount(map.bonuses.length);
@@ -438,15 +452,12 @@ function MapEditor({ account }: { account: Account | null }) {
       setTerritories(e.territories);
       setBonuses(e.bonuses);
       setContinentCount(e.continentCount);
+      setBorderColors(e.borderColors);
+      setGeneration(e.generation);
       setCurrentContinentId(0);
       committedRef.current = e;
       committedPaintRef.current = paintRevRef.current;
-      graphRef.current = {
-        territories: e.territories,
-        bonuses: e.bonuses,
-        continentCount: e.continentCount,
-        graphKey: graphKeyOf(e.territories, e.bonuses, e.continentCount),
-      };
+      graphRef.current = { ...graphOf(e), graphKey: e.graphKey };
 
       let target = paintSurface;
       if (e.width === paintSurface.width && e.height === paintSurface.height) {
@@ -454,6 +465,7 @@ function MapEditor({ account }: { account: Account | null }) {
       } else {
         target = new ImageData(e.pixels.slice(), e.width, e.height);
         setPaintSurface(target);
+        bumpEpoch();
       }
 
       const layer = paintLayerRef.current;
@@ -475,10 +487,11 @@ function MapEditor({ account }: { account: Account | null }) {
       bumpPaint();
       applyingRef.current = false;
     },
-    [paintSurface, paintCanvas, bumpPaint],
+    [paintSurface, paintCanvas, bumpPaint, bumpEpoch],
   );
 
   const undo = useCallback(() => {
+    if (applyingRef.current) return;
     paintLayerRef.current?.flush();
     commitHistory();
     const current = committedRef.current;
@@ -491,6 +504,7 @@ function MapEditor({ account }: { account: Account | null }) {
   }, [commitHistory, syncHistoryFlags, applyEntry]);
 
   const redo = useCallback(() => {
+    if (applyingRef.current) return;
     paintLayerRef.current?.flush();
     commitHistory();
     const current = committedRef.current;
@@ -517,12 +531,21 @@ function MapEditor({ account }: { account: Account | null }) {
     else navigate('/maps/mine');
   }
 
+  function replaceImage(src: string) {
+    paintLayerRef.current?.flush();
+    commitHistory();
+    pendingDirtyRef.current = true;
+    applyingRef.current = true;
+    keepHistoryRef.current = true;
+    setImageSrc(src);
+    setImageLoads((n) => n + 1);
+  }
+
   function handleFile(file: File) {
     if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
     reader.onload = () => {
-      pendingDirtyRef.current = true;
-      setImageSrc(reader.result as string);
+      replaceImage(reader.result as string);
       setGeneration(null);
       if (isDefaultName(mapName)) setMapName(file.name.replace(/\.[^.]+$/, ''));
     };
@@ -559,15 +582,21 @@ function MapEditor({ account }: { account: Account | null }) {
     pendingDirtyRef.current = false;
     pastRef.current = [];
     futureRef.current = [];
+    keepHistoryRef.current = false;
+    const emptyGraph: GraphState = {
+      territories: [],
+      bonuses: [2],
+      continentCount: 1,
+      borderColors: DEFAULT_BORDER_COLORS,
+      generation: null,
+    };
     committedRef.current = {
       pixels: surface.data.slice(),
       width,
       height,
       shape: null,
-      territories: [],
-      bonuses: [2],
-      continentCount: 1,
-      graphKey: graphKeyOf([], [2], 1),
+      ...emptyGraph,
+      graphKey: graphKeyOf(emptyGraph),
     };
     syncHistoryFlags();
     setImageSrc(blank);
@@ -577,10 +606,15 @@ function MapEditor({ account }: { account: Account | null }) {
   }
 
   function handleGenerated(map: GeneratedEditorMap, input: GenerateInput) {
-    pendingDirtyRef.current = true;
+    replaceImage(map.imageSrc);
     const bonusesIn = map.bonuses.length ? map.bonuses : [2];
     const sorted = sortTerritories(
-      toEditorTerritories(map.territories, map.seaTerritories, []),
+      toEditorTerritories(
+        map.territories,
+        map.seaTerritories,
+        [],
+        map.timedConnections,
+      ),
       bonusesIn,
     );
     setTerritories(sorted.territories);
@@ -590,7 +624,6 @@ function MapEditor({ account }: { account: Account | null }) {
     setGeneration(input);
     setBorderColors(map.borderColors);
     setMapName(map.name);
-    setImageSrc(map.imageSrc);
   }
 
   function pickLibraryMap(mapId: string) {
@@ -600,9 +633,14 @@ function MapEditor({ account }: { account: Account | null }) {
         setLibraryOpen(false);
         return;
       }
-      pendingDirtyRef.current = true;
+      replaceImage(map.image);
       setTerritories(
-        toEditorTerritories(map.territories, map.seaTerritories, map.wraps),
+        toEditorTerritories(
+          map.territories,
+          map.seaTerritories,
+          map.wraps,
+          map.timedConnections,
+        ),
       );
       setBonuses(map.bonuses);
       setContinentCount(map.bonuses.length);
@@ -610,7 +648,6 @@ function MapEditor({ account }: { account: Account | null }) {
       setBorderColors(map.borderColors);
       setMapName(map.name);
       setCurrentContinentId(0);
-      setImageSrc(map.image);
       setLibraryOpen(false);
     });
   }
@@ -634,6 +671,10 @@ function MapEditor({ account }: { account: Account | null }) {
       setError('All territories must be connected.');
       return;
     }
+    if (territories.some((t) => t.isSea && t.timed.length > 0)) {
+      setError('Timed links can only connect two land territories.');
+      return;
+    }
     if (invalidContinentSizes(territories, continentCount)) {
       setError(
         `Each continent must have ${MIN_CONTINENT_SIZE}-${MAX_CONTINENT_SIZE} territories.`,
@@ -654,6 +695,7 @@ function MapEditor({ account }: { account: Account | null }) {
       seaTerritories: sorted.seaTerritories,
       bonuses: sorted.bonuses,
       wraps: sorted.wraps,
+      timedConnections: sorted.timedConnections,
       image,
       generation,
       borderColors,
@@ -762,6 +804,7 @@ function MapEditor({ account }: { account: Account | null }) {
         hideGraph={exclusive && mode === 'paint'}
         onViewport={handleViewport}
         clickable={showClickable ? clickable : null}
+        timedMode={timedMode}
       />
 
       {mode === 'paint' && tool !== null && (
@@ -832,8 +875,14 @@ function MapEditor({ account }: { account: Account | null }) {
           showClickable={showClickable}
           setShowClickable={setShowClickable}
           clickableStatus={`${clickableCount}/${territories.length}`}
+          onFindTerritories={handleFindTerritories}
+          onLinkTerritories={handleLinkTerritories}
+          onDrawTerritories={() => applyTerritoryPaint(drawTerritoryBorders)}
+          onFillTerritories={() => applyTerritoryPaint(fillTerritories)}
           borderColors={borderColors}
           setBorderColors={handleBorderColorsChange}
+          timedMode={timedMode}
+          setTimedMode={setTimedMode}
         />
       </div>
 

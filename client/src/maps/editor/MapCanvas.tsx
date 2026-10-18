@@ -17,7 +17,6 @@ import {
   handleVertexClick as linkVertices,
   type VertexLinkContext,
 } from './canvas/vertexLink';
-import { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from './defaultImage';
 import { touchDistance, touchMidpoint, type Point } from './mapCanvasGeometry';
 import {
   clamp,
@@ -27,8 +26,11 @@ import {
   zoomTransform,
 } from './mapViewport';
 import {
+  newTerritory,
   nextInContinentCycle,
+  nextTerritoryId,
   SEA_BRUSH,
+  withoutVertex,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
 import type { Viewport } from './paint/PaintLayer';
@@ -42,7 +44,7 @@ interface Props {
   currentContinentId: number;
   setCurrentContinentId: Dispatch<SetStateAction<number>>;
   setCollapsed: Dispatch<SetStateAction<boolean>>;
-  paintCanvas?: HTMLCanvasElement | null;
+  paintCanvas: HTMLCanvasElement;
   paintSurfaceRef?: MutableRefObject<ImageData>;
   paintVersion?: number;
   paintSize?: number;
@@ -54,6 +56,7 @@ interface Props {
   hideGraph?: boolean;
   onViewport?: (v: Viewport) => void;
   clickable?: ClickableCheck | null;
+  timedMode: boolean;
 }
 
 interface Transform {
@@ -110,13 +113,13 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     hideGraph,
     onViewport,
     clickable,
+    timedMode,
   }: Props,
   ref,
 ) {
   void paintVersion;
   const brushContinentId = Math.min(currentContinentId, continentCount - 1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<DragState>(null);
   const pinchRef = useRef<{ lastDistance: number } | null>(null);
   const settleRef = useRef<number | null>(null);
@@ -184,10 +187,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   }
 
   function getImageDims(): { w: number; h: number } {
-    const img = imageRef.current;
-    return img
-      ? { w: img.naturalWidth, h: img.naturalHeight }
-      : { w: DEFAULT_IMAGE_WIDTH, h: DEFAULT_IMAGE_HEIGHT };
+    return { w: paintCanvas.width, h: paintCanvas.height };
   }
 
   function getScales(canvasW: number, canvasH: number, zoom: number) {
@@ -327,7 +327,6 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     const img = new Image();
     img.onload = () => {
       if (stale) return;
-      imageRef.current = img;
       setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
     };
     img.src = imageSrc;
@@ -380,14 +379,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
 
   const deleteVertex = useCallback(
     (id: number) => {
-      const next = territoriesRef.current
-        .filter((t) => t.id !== id)
-        .map((t) => ({
-          ...t,
-          neighbors: t.neighbors.filter((n) => n !== id),
-          wraps: t.wraps.filter((w) => w.id !== id),
-        }));
-      setTerritories(next);
+      setTerritories(withoutVertex(territoriesRef.current, id));
       setSelectedVertexId(null);
       setHoveredVertexId((hovered) => (hovered === id ? null : hovered));
       if (lastAddedVertexRef.current === id) lastAddedVertexRef.current = null;
@@ -423,14 +415,19 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       cancelSettle();
       const canvasW = canvas.clientWidth;
       const canvasH = canvas.clientHeight;
-      const img = imageRef.current;
-      const imgW = img ? img.naturalWidth : DEFAULT_IMAGE_WIDTH;
-      const imgH = img ? img.naturalHeight : DEFAULT_IMAGE_HEIGHT;
       setTransform((prev) =>
-        zoomTransform(prev, canvasW, canvasH, imgW, imgH, pos, factor),
+        zoomTransform(
+          prev,
+          canvasW,
+          canvasH,
+          paintCanvas.width,
+          paintCanvas.height,
+          pos,
+          factor,
+        ),
       );
     },
-    [cancelSettle],
+    [cancelSettle, paintCanvas],
   );
 
   useEffect(() => {
@@ -509,7 +506,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       imgH * scaleY + 20 * zoom,
     );
 
-    if (paintCanvas && !hideImage) {
+    if (!hideImage) {
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(
         paintCanvas,
@@ -534,6 +531,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         forceWrap,
         allowCrossover,
         clickable,
+        timedMode,
       });
     }
   });
@@ -546,7 +544,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   function erasePaint(pos: Point) {
     const points = eraseRef.current;
     const paintSurface = paintSurfaceRef?.current ?? null;
-    if (!points || !paintCanvas || !paintSurface) return;
+    if (!points || !paintSurface) return;
     const ctx = paintContext(paintCanvas);
     if (!ctx) return;
     const { scaleX, scaleY, offsetX, offsetY } = getViewport();
@@ -576,21 +574,10 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = getViewport();
     const worldX = clamp((pos.x - offsetX) / scaleX, 0, imgW);
     const worldY = clamp((pos.y - offsetY) / scaleY, 0, imgH);
-    const nextId = territories.length
-      ? Math.max(...territories.map((t) => t.id)) + 1
-      : 0;
-    const isSea = currentContinentId === SEA_BRUSH;
+    const nextId = nextTerritoryId(territories);
     setTerritories([
       ...territories,
-      {
-        id: nextId,
-        continentId: isSea ? 0 : brushContinentId,
-        x: worldX,
-        y: worldY,
-        neighbors: [],
-        wraps: [],
-        isSea,
-      },
+      newTerritory(nextId, worldX, worldY, currentContinentId, continentCount),
     ]);
     setHoveredVertexId(nextId);
     return nextId;
@@ -610,6 +597,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       rejectedTimeoutRef,
       getViewport,
       getImageDims,
+      timedMode,
     };
     linkVertices(ctx, id, forced, allowCrossover);
   }
@@ -800,7 +788,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   cycleContinentAtRef.current = cycleContinentAt;
 
   function handleMouseDown(e: React.MouseEvent) {
-    if (disabledRef.current && e.button === 2 && paintCanvas) {
+    if (disabledRef.current && e.button === 2) {
       eraseRef.current = [];
       erasePaint(getPos(e));
       return;

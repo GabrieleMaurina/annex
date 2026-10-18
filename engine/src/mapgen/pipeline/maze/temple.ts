@@ -306,6 +306,7 @@ export function generateTemple(
   size: MapSize,
   dims: GridDimensions,
   seas: boolean,
+  timedRng: Rng | null,
 ): MazeMap {
   const layer = timeStep('shape', () => {
     const grid = buildPolarGrid(rng, randomInt(rng, ...RING_RANGES[size]));
@@ -335,5 +336,6 @@ export function generateTemple(
     },
     fill !== 'full',
     seas,
+    timedRng,
   );
 }

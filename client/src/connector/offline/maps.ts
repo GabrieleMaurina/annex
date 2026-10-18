@@ -9,6 +9,7 @@ export interface LoadedPlayerMap {
   seaTerritories: GameMap['seaTerritories'];
   bonuses: number[];
   wraps: GameMap['wraps'];
+  timedConnections: GameMap['timedConnections'];
   imageSrc: string;
   borderColors: string[];
 }
@@ -25,6 +26,7 @@ export function loadPlayerMap(id: string): Promise<LoadedPlayerMap> {
           seaTerritories: map.seaTerritories,
           bonuses: map.bonuses,
           wraps: map.wraps,
+          timedConnections: map.timedConnections,
           imageSrc: map.image,
           borderColors: map.borderColors,
         }

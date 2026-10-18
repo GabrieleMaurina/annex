@@ -1,4 +1,4 @@
-import type { MapTerritory as Territory } from '../../lib/types';
+import type { EditorTerritory as Territory } from './model/editorTypes';
 
 export function isConnected(territories: Territory[]): boolean {
   if (territories.length === 0) return true;
@@ -9,7 +9,8 @@ export function isConnected(territories: Territory[]): boolean {
     const id = stack.pop()!;
     if (visited.has(id)) continue;
     visited.add(id);
-    for (const n of byId.get(id)!.neighbors) {
+    const t = byId.get(id)!;
+    for (const n of [...t.neighbors, ...t.timed.map((m) => m.id)]) {
       if (!visited.has(n)) stack.push(n);
     }
   }

@@ -44,7 +44,9 @@ import {
   UNCLAIMED_TERRITORY_COLOR,
   type Point,
 } from '../helpers';
+import type { TimedLink } from '../hooks/view/useTimedConnections';
 import { regionFillLayer, strokeRegion } from './drawRegions';
+import { drawTimedLinks } from './drawTimedLinks';
 
 export interface DrawCanvasParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -104,6 +106,7 @@ export interface DrawCanvasParams {
   bonuses: number[];
   forcedWraps: ForcedWraps;
   regions: ClickableRegions | null;
+  timedLinks: TimedLink[];
 }
 
 export function drawGameMapCanvas(params: DrawCanvasParams) {
@@ -163,6 +166,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     bonuses,
     forcedWraps,
     regions,
+    timedLinks,
   } = params;
 
   const canvas = canvasRef.current;
@@ -249,8 +253,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   };
   const view = { scaleX, scaleY, offsetX, offsetY };
 
+  const fillColors = new Map<number, string>();
   if (regions) {
-    const fillColors = new Map<number, string>();
     for (const t of territories) {
       if (!regions.shapes.has(t.id) || radiationById.has(t.id)) continue;
       if (visibleSet && !visibleSet.has(t.id)) continue;
@@ -285,6 +289,18 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   ctx.beginPath();
   ctx.rect(offsetX, offsetY, imgW * scaleX, imgH * scaleY);
   ctx.clip();
+  drawTimedLinks(
+    ctx,
+    timedLinks,
+    pathPointById,
+    toScreen,
+    imgW,
+    imgH,
+    forcedWraps,
+    VERTEX_RADIUS,
+    scaleX,
+    { image: imageRef.current, regions, fillColors },
+  );
   drawAnimations(
     ctx,
     toScreen,

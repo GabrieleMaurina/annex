@@ -25,18 +25,28 @@ export interface MapWrap {
   y: boolean;
 }
 
+export interface TimedConnection {
+  a: number;
+  b: number;
+  delay: number;
+  open: number;
+  closed: number;
+}
+
 export interface GameMap {
   name: string;
   territories: Territory[];
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
 }
 
 export interface GeneratedGameMap {
   territories: Territory[];
   seaTerritories: SeaTerritory[];
   bonuses: number[];
+  timedConnections: TimedConnection[];
   imageSrc: string;
   borderColors: string[];
   seed: string;
@@ -44,6 +54,7 @@ export interface GeneratedGameMap {
   type: GenerationType;
   fill: Fill;
   seas: boolean;
+  timed: boolean;
 }
 
 export interface Player {
@@ -304,6 +315,7 @@ export interface PlayerGameMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
   imageSrc: string;
   borderColors: string[];
 }

@@ -453,6 +453,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
           type: d.type as GenerationType,
           fill: d.fill as Fill,
           seas: d.seas as boolean,
+          timed: d.timed as boolean,
         },
         cb ?? (() => {}),
       );

@@ -328,6 +328,7 @@ export function generateDungeon(
   size: MapSize,
   dims: GridDimensions,
   seas: boolean,
+  timedRng: Rng | null,
 ): MazeMap {
   const densityScale = Math.sqrt(
     (1 - VOID_FRACTION.full) / (1 - VOID_FRACTION[fill]),
@@ -371,5 +372,6 @@ export function generateDungeon(
     },
     fill !== 'full',
     seas,
+    timedRng,
   );
 }

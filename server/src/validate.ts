@@ -5,6 +5,8 @@ import {
   GenerationType,
   MAP_SIZE_VALUES,
   MapSize,
+  MAX_TIMED_VALUE,
+  TimedConnection,
 } from 'engine';
 
 export function isObject(value: unknown): value is Record<string, unknown> {
@@ -100,6 +102,23 @@ function isWrap(value: unknown): value is MapWrap {
     typeof value.x === 'boolean' &&
     typeof value.y === 'boolean' &&
     (value.x === true || value.y === true)
+  );
+}
+
+function isTimedValue(value: unknown, min: number): boolean {
+  return isInteger(value) && value >= min && value <= MAX_TIMED_VALUE;
+}
+
+function isTimedConnection(value: unknown): value is TimedConnection {
+  if (!isObject(value)) return false;
+  return (
+    Object.keys(value).length === 5 &&
+    Number.isInteger(value.a) &&
+    Number.isInteger(value.b) &&
+    value.a !== value.b &&
+    isTimedValue(value.delay, 0) &&
+    isTimedValue(value.open, 1) &&
+    isTimedValue(value.closed, 1)
   );
 }
 
@@ -203,14 +222,23 @@ export function readImageDimensions(
 function allConnected(
   nodes: { id: number; neighbors: number[] }[],
   byId: Map<number, { neighbors: number[] }>,
+  timedConnections: TimedConnection[],
 ): boolean {
+  const timedNeighbors = new Map<number, number[]>();
+  for (const { a, b } of timedConnections) {
+    timedNeighbors.set(a, [...(timedNeighbors.get(a) ?? []), b]);
+    timedNeighbors.set(b, [...(timedNeighbors.get(b) ?? []), a]);
+  }
   const visited = new Set<number>();
   const stack = [nodes[0].id];
   while (stack.length > 0) {
     const id = stack.pop()!;
     if (visited.has(id)) continue;
     visited.add(id);
-    for (const n of byId.get(id)!.neighbors)
+    for (const n of [
+      ...byId.get(id)!.neighbors,
+      ...(timedNeighbors.get(id) ?? []),
+    ])
       if (byId.has(n) && !visited.has(n)) stack.push(n);
   }
   return visited.size === nodes.length;
@@ -222,6 +250,7 @@ export interface MapGeneration {
   type: GenerationType;
   fill: Fill;
   seas: boolean;
+  timed: boolean;
 }
 
 const MAX_SEED_LENGTH = 20;
@@ -233,7 +262,7 @@ export function validateMapGeneration(
   | { ok: false; error: string } {
   if (raw === undefined || raw === null) return { ok: true, generation: null };
   if (!isObject(raw)) return { ok: false, error: 'invalid generation' };
-  const { seed, size, type, fill, seas } = raw;
+  const { seed, size, type, fill, seas, timed } = raw;
   if (
     typeof seed !== 'string' ||
     seed.length < 1 ||
@@ -241,7 +270,8 @@ export function validateMapGeneration(
     !(MAP_SIZE_VALUES as string[]).includes(size as string) ||
     !(GENERATION_TYPE_VALUES as string[]).includes(type as string) ||
     !(FILL_VALUES as string[]).includes(fill as string) ||
-    typeof seas !== 'boolean'
+    typeof seas !== 'boolean' ||
+    typeof timed !== 'boolean'
   )
     return { ok: false, error: 'invalid generation' };
   return {
@@ -252,6 +282,7 @@ export function validateMapGeneration(
       type: type as GenerationType,
       fill: fill as Fill,
       seas,
+      timed,
     },
   };
 }
@@ -261,6 +292,7 @@ export function validateMapGeometry(
   seaTerritoriesRaw: unknown,
   bonusesRaw: unknown,
   wrapsRaw: unknown,
+  timedRaw: unknown,
   imageWidth: number,
   imageHeight: number,
 ):
@@ -270,6 +302,7 @@ export function validateMapGeometry(
       seaTerritories: MapSeaTerritory[];
       bonuses: number[];
       wraps: MapWrap[];
+      timedConnections: TimedConnection[];
     }
   | { ok: false; error: string } {
   if (!Array.isArray(territoriesRaw))
@@ -292,11 +325,18 @@ export function validateMapGeometry(
     return { ok: false, error: 'invalid bonuses' };
   if (!Array.isArray(wrapsRaw) || !wrapsRaw.every(isWrap))
     return { ok: false, error: 'invalid wraps' };
+  if (
+    !Array.isArray(timedRaw) ||
+    timedRaw.length > MAX_TERRITORIES ||
+    !timedRaw.every(isTimedConnection)
+  )
+    return { ok: false, error: 'invalid timed connections' };
 
   const territories = territoriesRaw as MapTerritory[];
   const seaTerritories = seaTerritoriesRaw as MapSeaTerritory[];
   const bonuses = bonusesRaw as number[];
   const wraps = wrapsRaw as MapWrap[];
+  const timedConnections = timedRaw as TimedConnection[];
 
   if (territories.length < MIN_CONTINENT_SIZE)
     return { ok: false, error: 'not enough territories' };
@@ -322,15 +362,33 @@ export function validateMapGeometry(
       return { ok: false, error: 'asymmetric neighbor' };
   }
 
+  const pairKey = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+  const landIds = new Set(territories.map((t) => t.id));
+  const timedKeys = new Set<string>();
+  for (const c of timedConnections) {
+    const key = pairKey(c.a, c.b);
+    if (
+      timedKeys.has(key) ||
+      !landIds.has(c.a) ||
+      !landIds.has(c.b) ||
+      byId.get(c.a)!.neighbors.includes(c.b)
+    )
+      return { ok: false, error: 'invalid timed connections' };
+    timedKeys.add(key);
+  }
+
   const wrapKeys = new Set<string>();
   for (const w of wraps) {
-    const key = w.a < w.b ? `${w.a}-${w.b}` : `${w.b}-${w.a}`;
-    if (wrapKeys.has(key) || !byId.get(w.a)?.neighbors.includes(w.b))
+    const key = pairKey(w.a, w.b);
+    if (
+      wrapKeys.has(key) ||
+      (!byId.get(w.a)?.neighbors.includes(w.b) && !timedKeys.has(key))
+    )
       return { ok: false, error: 'invalid wraps' };
     wrapKeys.add(key);
   }
 
-  if (!allConnected(allNodes, byId))
+  if (!allConnected(allNodes, byId, timedConnections))
     return { ok: false, error: 'territories not all connected' };
 
   const sizeByContinent = new Map<number, number>();
@@ -345,5 +403,12 @@ export function validateMapGeometry(
       return { ok: false, error: 'invalid continent size' };
   }
 
-  return { ok: true, territories, seaTerritories, bonuses, wraps };
+  return {
+    ok: true,
+    territories,
+    seaTerritories,
+    bonuses,
+    wraps,
+    timedConnections,
+  };
 }

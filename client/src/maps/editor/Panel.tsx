@@ -1,6 +1,7 @@
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { useRef, useState } from 'react';
 import { Alert, Button, ButtonGroup, Form, Table } from 'react-bootstrap';
+import { flushSync } from 'react-dom';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useNumberInput } from '../../common/inputs/useNumberInput';
 import { contrastTextColor } from '../../lib/palette';
@@ -11,6 +12,8 @@ import {
 import type { PaintTool } from './paint/paintTools';
 import { PALETTE_GROUPS } from './paint/paintTools';
 import { continentColor } from './palette';
+import NumberCell from './panel/NumberCell';
+import TimedLinksTable from './panel/TimedLinksTable';
 
 const MIN_CONTINENTS = 0;
 const MAX_CONTINENTS = 20;
@@ -19,6 +22,7 @@ const MAX_BONUS = 15;
 const MIN_BRUSH = 1;
 const MAX_BRUSH = 100;
 const MAX_BORDER_COLORS = 8;
+const BORDER_PICKER_START = '#808080';
 
 interface Props {
   collapsed: boolean;
@@ -65,36 +69,14 @@ interface Props {
   showClickable: boolean;
   setShowClickable: (value: boolean) => void;
   clickableStatus: string;
+  onFindTerritories: () => void;
+  onLinkTerritories: () => void;
+  onDrawTerritories: () => void;
+  onFillTerritories: () => void;
   borderColors: string[];
   setBorderColors: (value: string[]) => void;
-}
-
-function BonusInput({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  const numberInput = useNumberInput({
-    value,
-    min: MIN_BONUS,
-    max: MAX_BONUS,
-    onChange,
-  });
-  return (
-    <Form.Control
-      type="number"
-      size="sm"
-      className="text-center"
-      min={MIN_BONUS}
-      max={MAX_BONUS}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      {...numberInput}
-      style={numberInput.style}
-    />
-  );
+  timedMode: boolean;
+  setTimedMode: (value: boolean) => void;
 }
 
 function clampBrush(raw: string, current: number): number {
@@ -187,8 +169,14 @@ function Panel(props: Props) {
     showClickable,
     setShowClickable,
     clickableStatus,
+    onFindTerritories,
+    onLinkTerritories,
+    onDrawTerritories,
+    onFillTerritories,
     borderColors,
     setBorderColors,
+    timedMode,
+    setTimedMode,
   } = props;
 
   const brushNumberInput = useNumberInput({
@@ -202,7 +190,8 @@ function Panel(props: Props) {
     customColors[customColors.length - 1] ?? '#000000',
   );
   const pickerFocusValue = useRef(customPicker);
-  const [borderPicker, setBorderPicker] = useState('#000000');
+  const [borderPick, setBorderPick] = useState<string | null>(null);
+  const borderPickerRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
@@ -254,9 +243,7 @@ function Panel(props: Props) {
   }
 
   function updateBonus(index: number, value: number) {
-    if (Number.isNaN(value)) return;
-    const clamped = Math.max(MIN_BONUS, Math.min(MAX_BONUS, Math.round(value)));
-    setBonuses((prev) => prev.map((b, i) => (i === index ? clamped : b)));
+    setBonuses((prev) => prev.map((b, i) => (i === index ? value : b)));
   }
 
   if (collapsed) {
@@ -368,33 +355,6 @@ function Panel(props: Props) {
 
       {undoRedo}
 
-      <ButtonGroup size="sm" className="w-100 mb-2">
-        <Button
-          variant={
-            mode === 'graph'
-              ? exclusive
-                ? 'success'
-                : 'primary'
-              : 'outline-primary'
-          }
-          onClick={() => onModeClick('graph')}
-        >
-          Graph
-        </Button>
-        <Button
-          variant={
-            mode === 'paint'
-              ? exclusive
-                ? 'success'
-                : 'primary'
-              : 'outline-primary'
-          }
-          onClick={() => onModeClick('paint')}
-        >
-          Draw
-        </Button>
-      </ButtonGroup>
-
       <div className="d-flex justify-content-between align-items-center mb-2">
         <Form.Check
           type="switch"
@@ -426,23 +386,119 @@ function Panel(props: Props) {
               ×
             </Button>
           ))}
-          <Form.Control
-            type="color"
-            size="sm"
-            value={borderPicker}
-            onChange={(e) => setBorderPicker(e.target.value.toLowerCase())}
-          />
+          {borderPick === null ? (
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              className="py-0"
+              disabled={borderColors.length >= MAX_BORDER_COLORS}
+              onClick={() => {
+                flushSync(() => setBorderPick(BORDER_PICKER_START));
+                borderPickerRef.current?.showPicker();
+              }}
+            >
+              Add
+            </Button>
+          ) : (
+            <>
+              <Form.Control
+                ref={borderPickerRef}
+                type="color"
+                size="sm"
+                value={borderPick}
+                onChange={(e) => setBorderPick(e.target.value.toLowerCase())}
+              />
+              <Button
+                size="sm"
+                variant="success"
+                className="py-0"
+                disabled={
+                  borderColors.length >= MAX_BORDER_COLORS ||
+                  borderColors.includes(borderPick)
+                }
+                onClick={() => {
+                  setBorderColors([...borderColors, borderPick]);
+                  setBorderPick(null);
+                }}
+              >
+                ✓
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                className="py-0"
+                onClick={() => setBorderPick(null)}
+              >
+                ✕
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      <ButtonGroup size="sm" className="w-100 mb-2">
+        <Button
+          variant={
+            mode === 'graph'
+              ? exclusive
+                ? 'success'
+                : 'primary'
+              : 'outline-primary'
+          }
+          onClick={() => onModeClick('graph')}
+        >
+          Graph
+        </Button>
+        <Button
+          variant={
+            mode === 'paint'
+              ? exclusive
+                ? 'success'
+                : 'primary'
+              : 'outline-primary'
+          }
+          onClick={() => onModeClick('paint')}
+        >
+          Draw
+        </Button>
+      </ButtonGroup>
+
+      {mode === 'graph' ? (
+        <div className="d-flex gap-2 mb-2">
           <Button
             size="sm"
-            variant="outline-secondary"
-            className="py-0"
-            disabled={
-              borderColors.length >= MAX_BORDER_COLORS ||
-              borderColors.includes(borderPicker)
-            }
-            onClick={() => setBorderColors([...borderColors, borderPicker])}
+            variant="secondary"
+            className="w-100"
+            onClick={onFindTerritories}
           >
-            Add
+            Find territories
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-100"
+            onClick={onLinkTerritories}
+          >
+            Link territories
+          </Button>
+        </div>
+      ) : (
+        <div className="d-flex gap-2 mb-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-100"
+            onClick={onDrawTerritories}
+          >
+            Draw territories
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-100"
+            onClick={onFillTerritories}
+          >
+            Fill territories
           </Button>
         </div>
       )}
@@ -639,8 +695,10 @@ function Panel(props: Props) {
                       }
                     </td>
                     <td>
-                      <BonusInput
+                      <NumberCell
                         value={bonuses[i] ?? 2}
+                        min={MIN_BONUS}
+                        max={MAX_BONUS}
                         onChange={(value) => updateBonus(i, value)}
                       />
                     </td>
@@ -670,6 +728,12 @@ function Panel(props: Props) {
                 </tr>
               </tbody>
             </Table>
+            <TimedLinksTable
+              territories={territories}
+              setTerritories={setTerritories}
+              timedMode={timedMode}
+              setTimedMode={setTimedMode}
+            />
           </>
         )}
       </div>

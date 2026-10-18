@@ -374,7 +374,7 @@ const schema = {
         endedAt: int,
         mapGeneration: {
           bsonType: ['object', 'null'],
-          required: ['seed', 'size', 'type', 'fill', 'seas'],
+          required: ['seed', 'size', 'type', 'fill', 'seas', 'timed'],
           additionalProperties: false,
           properties: {
             seed: string,
@@ -382,6 +382,7 @@ const schema = {
             type: { enum: GENERATION_TYPES },
             fill: { enum: FILL_VALUES },
             seas: bool,
+            timed: bool,
           },
         },
         playerMapId: { bsonType: ['string', 'null'] },

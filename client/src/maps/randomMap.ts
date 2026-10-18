@@ -10,6 +10,7 @@ export const DEFAULT_MAP_GENERATION = {
   type: 'terrain',
   fill: 'mixed',
   seas: false,
+  timed: false,
 } as const;
 
 export function randomSeed(): string {

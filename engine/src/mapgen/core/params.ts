@@ -8,6 +8,7 @@ export interface GenerateMapParams {
   type: GenerationType;
   fill: Fill;
   seas: boolean;
+  timed: boolean;
 }
 
 export const MAP_SIZE_VALUES: MapSize[] = [
@@ -70,6 +71,19 @@ export function mapImageSize(size: MapSize): GridDimensions {
     width: grid.width * OUTPUT_SCALE,
     height: grid.height * OUTPUT_SCALE,
   };
+}
+
+export function expectedTerritoryArea(width: number, height: number): number {
+  const area = width * height;
+  const gap = (size: MapSize) => {
+    const dims = mapImageSize(size);
+    return Math.abs(dims.width * dims.height - area);
+  };
+  const size = MAP_SIZE_VALUES.reduce((best, s) =>
+    gap(s) < gap(best) ? s : best,
+  );
+  const [min, max] = TERRITORY_COUNT_RANGES[size];
+  return (2 * area) / (min + max);
 }
 
 export const CONTINENT_SIZE_MEAN = 7;

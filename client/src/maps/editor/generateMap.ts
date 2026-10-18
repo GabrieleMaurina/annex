@@ -4,6 +4,7 @@ import type {
   MapSeaTerritory,
   MapSize,
   MapTerritory,
+  TimedConnection,
 } from '../../lib/types';
 
 export interface GenerateInput {
@@ -12,6 +13,7 @@ export interface GenerateInput {
   type: GenerationType;
   fill: Fill;
   seas: boolean;
+  timed: boolean;
 }
 
 export interface GeneratedEditorMap {
@@ -19,6 +21,7 @@ export interface GeneratedEditorMap {
   territories: MapTerritory[];
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
+  timedConnections: TimedConnection[];
   imageSrc: string;
   borderColors: string[];
 }

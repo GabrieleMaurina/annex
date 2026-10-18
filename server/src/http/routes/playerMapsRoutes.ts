@@ -5,6 +5,7 @@ import {
   GenerationType,
   MAP_SIZE_VALUES,
   MapSize,
+  TimedConnection,
 } from 'engine';
 import { Response, Router } from 'express';
 import {
@@ -70,6 +71,7 @@ interface ParsedInput {
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
   image: Buffer;
   imageMime: string;
   imageDataUrl: string;
@@ -112,6 +114,7 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
     body.seaTerritories,
     body.bonuses,
     body.wraps,
+    body.timedConnections,
     dimensions.width,
     dimensions.height,
   );
@@ -128,6 +131,7 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
       seaTerritories: geometry.seaTerritories,
       bonuses: geometry.bonuses,
       wraps: geometry.wraps,
+      timedConnections: geometry.timedConnections,
       image: data,
       imageMime: match[1],
       imageDataUrl: match[0],
@@ -209,6 +213,7 @@ playerMapsRouter.get('/player-maps/:id', (req, res) => {
         seaTerritories: map.seaTerritories,
         bonuses: map.bonuses,
         wraps: map.wraps,
+        timedConnections: map.timedConnections,
         image: `data:${map.imageMime};base64,${map.image}`,
         imageMime: map.imageMime,
         borderColors: map.borderColors,

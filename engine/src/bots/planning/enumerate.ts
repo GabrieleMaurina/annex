@@ -98,6 +98,7 @@ function materialize(
     playerId: ctx.botId,
     topology: {
       neighbors: ctx.neighbors,
+      horizonNeighbors: ctx.horizonNeighbors,
       seaLinks: ctx.seaLinks,
       continentTerritories: ctx.continentTerritories,
       territoryContinent: ctx.territoryContinent,

@@ -72,6 +72,9 @@ export const MAP_GEN_HELP =
 export const SEAS_HELP =
   'Splits the water into seas. Players can buy ships, which let them attack across water and attack other ships.';
 
+export const TIMED_CONNECTIONS_HELP =
+  'Turns some of the connections drawn across water or void into timed connections that open and close every round. A timed connection can only be used to attack or move through while it is open. Each one is marked with an hourglass, an X while it is closed, and the number of rounds until it changes.';
+
 export const BLITZ_HELP = (
   <>
     How an all-out attack (&quot;blitz&quot;) resolves a battle instantly

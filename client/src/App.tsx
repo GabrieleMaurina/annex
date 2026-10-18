@@ -18,7 +18,13 @@ import {
 } from './game/mapData';
 import { applySavedGameSettings } from './lib/gameSetup';
 import { applyServerSettings, setPlayerName } from './lib/player';
-import type { Account, Ack, IdentifyResult, MapWrap } from './lib/types';
+import type {
+  Account,
+  Ack,
+  IdentifyResult,
+  MapWrap,
+  TimedConnection,
+} from './lib/types';
 import MapEditor from './maps/MapEditor';
 import Maps from './maps/Maps';
 import MyMaps from './maps/MyMaps';
@@ -277,6 +283,7 @@ function App() {
       seaTerritories: SeaTerritory[];
       bonuses: number[];
       wraps: MapWrap[];
+      timedConnections: TimedConnection[];
       imageSrc: string;
       borderColors: string[];
     }) {
@@ -285,6 +292,7 @@ function App() {
         seaTerritories: data.seaTerritories,
         bonuses: data.bonuses,
         wraps: data.wraps,
+        timedConnections: data.timedConnections,
         imageSrc: data.imageSrc,
         borderColors: data.borderColors,
       });

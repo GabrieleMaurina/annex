@@ -1,4 +1,4 @@
-import type { Fill, GenerationType, MapSize } from 'engine';
+import type { Fill, GenerationType, MapSize, TimedConnection } from 'engine';
 
 export interface ClientSettings {
   muted: boolean;
@@ -455,7 +455,7 @@ export type GameRulesSettings = Pick<
 
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 
-export type { Fill, GenerationType, MapSize };
+export type { Fill, GenerationType, MapSize, TimedConnection };
 
 export interface GenerateMapInput {
   seed: string;
@@ -463,6 +463,7 @@ export interface GenerateMapInput {
   type: GenerationType;
   fill: Fill;
   seas: boolean;
+  timed: boolean;
 }
 
 export interface ChatMessage {
@@ -912,6 +913,7 @@ export interface StoredMap {
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -967,6 +969,7 @@ export interface PlayerMapDetail {
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -983,6 +986,7 @@ export interface PlayerMapSaveBody {
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
+  timedConnections: TimedConnection[];
   image: string;
   borderColors: string[];
   generation: GenerateMapInput | null;

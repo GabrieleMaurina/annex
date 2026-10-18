@@ -304,6 +304,7 @@ export const EVENT_VIEWS: EventViews = {
       seaTerritories: p.seaTerritories,
       bonuses: p.bonuses,
       wraps: p.wraps,
+      timedConnections: p.timedConnections,
       imageSrc: p.imageSrc,
       borderColors: p.borderColors,
     }),

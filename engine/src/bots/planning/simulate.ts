@@ -33,6 +33,7 @@ import {
   botBorderIds,
   cloneState,
   defenceDiceAt,
+  horizonOf,
   hostileNeighborsOf,
   isBotBorder,
   isFriendly,
@@ -318,11 +319,12 @@ export function bestFortify(
     goal.minTroops <= 1 ? sideProgress(ctx, goal, state) : undefined;
   const baseScore = evaluateBoard(ctx, state, cachedProgress);
   const owned = ownedIds(state, ctx.botId);
+  const horizon = horizonOf(ctx);
   const borderTargets = owned
-    .filter((id) => isBotBorder(ctx, state, id))
+    .filter((id) => isBotBorder(horizon, state, id))
     .map((id) => ({
       id,
-      deficit: strongestThreatAt(ctx, state, id) - troopsIn(state, id),
+      deficit: strongestThreatAt(horizon, state, id) - troopsIn(state, id),
     }))
     .sort((a, b) => b.deficit - a.deficit)
     .slice(0, 6)
@@ -369,7 +371,7 @@ export function bestFortify(
     if (returning && returning.score > baseScore) return returning;
     const source = sources.find(
       (id) =>
-        !isBotBorder(ctx, state, id) &&
+        !isBotBorder(horizon, state, id) &&
         troopsIn(state, id) >= 3 &&
         !guarded.includes(id),
     );
@@ -624,8 +626,9 @@ export function defensiveDeployments(
   const maxBorders = defensive
     ? Infinity
     : DEFENDED_BORDERS + Math.round(SPREAD_BORDERS * spreading(ctx.stackFocus));
+  const horizon = horizonOf(ctx);
   const allBorders = ownedIds(state, ctx.botId).filter(
-    (id) => isBotBorder(ctx, state, id) && supplyConnected(ctx, id),
+    (id) => isBotBorder(horizon, state, id) && supplyConnected(ctx, id),
   );
   const home = defensive ? defensiveHome(ctx).ids : null;
   const homeBorders = home ? allBorders.filter((id) => home.has(id)) : [];
@@ -643,7 +646,7 @@ export function defensiveDeployments(
       deficit:
         Math.max(
           1,
-          strongestThreatAt(ctx, state, id) - troopsIn(state, id),
+          strongestThreatAt(horizon, state, id) - troopsIn(state, id),
           capitalGap(ctx, state, id),
         ) * (isKeyTerritory(ctx.game, id) ? KEY_TERRITORY_DEFICIT_WEIGHT : 1),
     }))

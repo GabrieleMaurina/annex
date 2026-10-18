@@ -2,8 +2,14 @@ import { alliedIds } from '../../game/alliances';
 import { defenceDiceFor } from '../../game/combat/dice';
 import { calculateDeployTroopsBreakdown } from '../../game/mechanics';
 import { withPortalEdges } from '../../game/world/portals';
-import { getGameMap } from '../../maps/maps';
-import { BotPersonality, BotProfile, Game, GameMap } from '../../types';
+import { gameMapAtRound, getGameMap } from '../../maps/maps';
+import {
+  BotPersonality,
+  BotProfile,
+  Game,
+  GameMap,
+  TurnPhase,
+} from '../../types';
 import { difficultyParams } from '../difficulty';
 import { troopsPerDefender } from '../features/combat';
 import { finisherMode } from '../features/finisher';
@@ -30,6 +36,7 @@ export interface PlanContext {
   weights: Weights;
   params: DifficultyParams;
   neighbors: Map<number, number[]>;
+  horizonNeighbors: Map<number, number[]>;
   seaLinks: Map<number, number[]>;
   shippedSeaIds: Set<number>;
   continentTerritories: Map<number, number[]>;
@@ -53,9 +60,54 @@ export function planDepth(ctx: PlanContext): number {
     : ctx.params.maxPlanDepth;
 }
 
-function buildTopology(game: Game, map: GameMap): MapTopology {
+function landNeighbors(game: Game, map: GameMap): Map<number, number[]> {
   const seaIds = new Set(map.seaTerritories.map((t) => t.id));
-  const neighbors = new Map<number, number[]>();
+  return new Map(
+    map.territories.map((territory) => [
+      territory.id,
+      withPortalEdges(
+        territory.neighbors.filter((n) => !seaIds.has(n)),
+        territory.id,
+        game.portalTerritoryIds,
+        game.portalsEnabled,
+      ),
+    ]),
+  );
+}
+
+const PLACEMENT_PHASES: TurnPhase[] = ['territory', 'troop', 'capital'];
+
+function othersMoveThisRound(game: Game, botId: number): boolean {
+  const owners = new Set(game.territoryOwners.values());
+  return game.playerIds
+    .slice(game.playerIds.indexOf(botId) + 1)
+    .some((id) => owners.has(id));
+}
+
+function horizonNeighborsOf(
+  game: Game,
+  map: GameMap,
+  botId: number,
+  neighbors: Map<number, number[]>,
+): Map<number, number[]> {
+  if (map.timedConnections.length === 0) return neighbors;
+  const next = landNeighbors(game, gameMapAtRound(game, game.roundNumber + 1));
+  if (
+    !PLACEMENT_PHASES.includes(game.turnPhase) &&
+    !othersMoveThisRound(game, botId)
+  )
+    return next;
+  return new Map(
+    [...next].map(([id, ids]) => [
+      id,
+      [...new Set([...ids, ...(neighbors.get(id) ?? [])])],
+    ]),
+  );
+}
+
+function buildTopology(game: Game, map: GameMap, botId: number): MapTopology {
+  const seaIds = new Set(map.seaTerritories.map((t) => t.id));
+  const neighbors = landNeighbors(game, map);
   const seaLinks = new Map<number, number[]>();
   const continentTerritories = new Map<number, number[]>();
   const territoryContinent = new Map<number, number>();
@@ -66,15 +118,6 @@ function buildTopology(game: Game, map: GameMap): MapTopology {
       territory.id,
       territory.neighbors.filter((n) => seaIds.has(n)),
     );
-    neighbors.set(
-      territory.id,
-      withPortalEdges(
-        territory.neighbors.filter((n) => !seaIds.has(n)),
-        territory.id,
-        game.portalTerritoryIds,
-        game.portalsEnabled,
-      ),
-    );
     territoryContinent.set(territory.id, territory.continentId);
     if (territory.continentId < 0) continue;
     const list = continentTerritories.get(territory.continentId);
@@ -82,7 +125,13 @@ function buildTopology(game: Game, map: GameMap): MapTopology {
     else continentTerritories.set(territory.continentId, [territory.id]);
   }
 
-  return { neighbors, seaLinks, continentTerritories, territoryContinent };
+  return {
+    neighbors,
+    horizonNeighbors: horizonNeighborsOf(game, map, botId, neighbors),
+    seaLinks,
+    continentTerritories,
+    territoryContinent,
+  };
 }
 
 interface Focus {
@@ -232,7 +281,7 @@ export function buildContext(
   const topology =
     isPlanFresh(cachedPlan, game, botId) && cachedPlan.topology
       ? cachedPlan.topology
-      : buildTopology(game, map);
+      : buildTopology(game, map, botId);
 
   const weights = getWeights(botProfile.personality);
   const params = difficultyParams(botProfile.difficulty);
@@ -270,6 +319,7 @@ export function buildContext(
     weights,
     params,
     neighbors: topology.neighbors,
+    horizonNeighbors: topology.horizonNeighbors,
     seaLinks: topology.seaLinks,
     shippedSeaIds: shippedSeaIdsOf(game, botId),
     continentTerritories: topology.continentTerritories,
@@ -282,6 +332,18 @@ export function buildContext(
     stackFocus,
     income: incomeOf(game, botId),
   };
+}
+
+const horizons = new WeakMap<PlanContext, PlanContext>();
+
+export function horizonOf(ctx: PlanContext): PlanContext {
+  if (ctx.horizonNeighbors === ctx.neighbors) return ctx;
+  let horizon = horizons.get(ctx);
+  if (!horizon) {
+    horizon = { ...ctx, neighbors: ctx.horizonNeighbors };
+    horizons.set(ctx, horizon);
+  }
+  return horizon;
 }
 
 export function isStrategist(ctx: PlanContext): boolean {

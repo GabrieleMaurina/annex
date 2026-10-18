@@ -1,15 +1,7 @@
-import { Perlin2D } from '../core/noise';
-import { OUTPUT_SCALE } from '../core/params';
 import { Rng } from '../core/rng';
+import { createWarpField, warpAt, WarpField } from '../core/warp';
 import { enforceContiguity } from './contiguity';
 import { GridPoint } from './placement';
-
-const WARP_SCALE = 0.7;
-const WARP_FREQUENCY_1 = 0.035 / OUTPUT_SCALE;
-const WARP_AMPLITUDE_1 = 9 * OUTPUT_SCALE * WARP_SCALE;
-const WARP_FREQUENCY_2 = 0.12 / OUTPUT_SCALE;
-const WARP_AMPLITUDE_2 = 3.5 * OUTPUT_SCALE * WARP_SCALE;
-const WARP_STEP = 8;
 
 const MIN_LAKE_AREA_RATIO = 0.4;
 
@@ -28,12 +20,11 @@ export function tessellate(
   centers: GridPoint[],
   expectedTerritoryArea: number,
 ): Tessellation {
-  const warpX = new Perlin2D(rng);
-  const warpY = new Perlin2D(rng);
+  const field = createWarpField(rng, width, height);
   const labelGrid = new Int16Array(width * height).fill(-1);
 
   if (centers.length > 0)
-    assignWarpedVoronoi(land, width, height, centers, warpX, warpY, labelGrid);
+    assignWarpedVoronoi(land, width, height, centers, field, labelGrid);
 
   enforceContiguity(labelGrid, width, height);
   fillSmallLakes(
@@ -53,8 +44,7 @@ function assignWarpedVoronoi(
   width: number,
   height: number,
   centers: GridPoint[],
-  warpX: Perlin2D,
-  warpY: Perlin2D,
+  field: WarpField,
   labelGrid: Int16Array,
 ): void {
   const n = centers.length;
@@ -112,46 +102,12 @@ function assignWarpedVoronoi(
     return bestId;
   };
 
-  const wcols = Math.ceil(width / WARP_STEP) + 2;
-  const wrows = Math.ceil(height / WARP_STEP) + 2;
-  const warpDX = new Float32Array(wcols * wrows);
-  const warpDY = new Float32Array(wcols * wrows);
-  for (let j = 0; j < wrows; j++) {
-    const sy = j * WARP_STEP;
-    for (let i = 0; i < wcols; i++) {
-      const sx = i * WARP_STEP;
-      warpDX[j * wcols + i] =
-        warpX.noise(sx * WARP_FREQUENCY_1, sy * WARP_FREQUENCY_1) *
-          WARP_AMPLITUDE_1 +
-        warpX.noise(sx * WARP_FREQUENCY_2, sy * WARP_FREQUENCY_2) *
-          WARP_AMPLITUDE_2;
-      warpDY[j * wcols + i] =
-        warpY.noise(sx * WARP_FREQUENCY_1, sy * WARP_FREQUENCY_1) *
-          WARP_AMPLITUDE_1 +
-        warpY.noise(sx * WARP_FREQUENCY_2, sy * WARP_FREQUENCY_2) *
-          WARP_AMPLITUDE_2;
-    }
-  }
-
+  const warped = { x: 0, y: 0 };
   for (let gy = 0; gy < height; gy++) {
-    const fy = gy / WARP_STEP;
-    const j0 = fy | 0;
-    const ty = fy - j0;
     for (let gx = 0; gx < width; gx++) {
       if (!land[gy * width + gx]) continue;
-      const fx = gx / WARP_STEP;
-      const i0 = fx | 0;
-      const tx = fx - i0;
-      const k = j0 * wcols + i0;
-      const dxT = warpDX[k] + (warpDX[k + 1] - warpDX[k]) * tx;
-      const dxB =
-        warpDX[k + wcols] + (warpDX[k + wcols + 1] - warpDX[k + wcols]) * tx;
-      const dyT = warpDY[k] + (warpDY[k + 1] - warpDY[k]) * tx;
-      const dyB =
-        warpDY[k + wcols] + (warpDY[k + wcols + 1] - warpDY[k + wcols]) * tx;
-      const wx = gx + dxT + (dxB - dxT) * ty;
-      const wy = gy + dyT + (dyB - dyT) * ty;
-      labelGrid[gy * width + gx] = nearest(wx, wy);
+      warpAt(field, gx, gy, warped);
+      labelGrid[gy * width + gx] = nearest(warped.x, warped.y);
     }
   }
 }

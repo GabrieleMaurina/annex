@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import type { MapWrap } from '../../../lib/types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { MapWrap, TimedConnection } from '../../../lib/types';
 import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
@@ -7,6 +7,7 @@ import {
   type SeaTerritory,
   type Territory,
 } from '../../mapData';
+import { buildForcedWraps } from '../../mapMath';
 import {
   loadClickableRegions,
   type ClickableRegions,
@@ -20,6 +21,9 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
   const [seaTerritories, setSeaTerritories] = useState<SeaTerritory[]>([]);
   const [bonuses, setBonuses] = useState<number[]>([]);
   const [wraps, setWraps] = useState<MapWrap[]>([]);
+  const [timedConnections, setTimedConnections] = useState<TimedConnection[]>(
+    [],
+  );
   const [regions, setRegions] = useState<ClickableRegions | null>(null);
   const [camera] = useState(createCamera);
   const [imgDims, setImgDims] = useState({
@@ -33,11 +37,19 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
 
   useEffect(() => {
     loadGameMap(mapName, playerMapId).then(
-      ({ territories, seaTerritories, bonuses, wraps, imageSrc }) => {
+      ({
+        territories,
+        seaTerritories,
+        bonuses,
+        wraps,
+        timedConnections,
+        imageSrc,
+      }) => {
         setTerritories(territories);
         setSeaTerritories(seaTerritories);
         setBonuses(bonuses);
         setWraps(wraps);
+        setTimedConnections(timedConnections);
         loadClickableRegions(mapName, playerMapId).then(setRegions);
         camera.set({ ...DEFAULT_TRANSFORM });
         if (!imageSrc) {
@@ -56,6 +68,11 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     );
   }, [mapName, playerMapId, camera]);
 
+  const forcedWraps = useMemo(
+    () => buildForcedWraps([...territories, ...seaTerritories], wraps),
+    [territories, seaTerritories, wraps],
+  );
+
   useEffect(() => {
     function onResize() {
       setSize({ w: window.innerWidth, h: window.innerHeight });
@@ -70,7 +87,8 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     territories,
     seaTerritories,
     bonuses,
-    wraps,
+    timedConnections,
+    forcedWraps,
     regions,
     camera,
     imgDims,

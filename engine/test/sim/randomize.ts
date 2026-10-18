@@ -134,6 +134,7 @@ export function randomMapParams(
     type: pick<GenerationType>(rng, GENERATION_TYPE_VALUES),
     fill: pick<Fill>(rng, FILL_VALUES),
     seas: rng() < 0.5,
+    timed: rng() < 0.2,
   };
 }
 

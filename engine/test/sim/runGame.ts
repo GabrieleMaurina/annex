@@ -131,6 +131,7 @@ export function runSimGame(
     territories: generated.territories,
     seaTerritories: generated.seaTerritories,
     bonuses: generated.bonuses,
+    timedConnections: generated.timedConnections,
     imageSrc: generated.imageSrc,
     borderColors: generated.borderColors,
     seed: mapParams.seed,
@@ -138,6 +139,7 @@ export function runSimGame(
     type: mapParams.type,
     fill: mapParams.fill,
     seas: mapParams.seas,
+    timed: mapParams.timed,
   };
 
   const { settings, teams } = randomGameSettings(rng, ROSTER_SIZE);

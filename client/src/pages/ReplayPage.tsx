@@ -222,6 +222,7 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
             seaTerritories: map.seaTerritories,
             bonuses: map.bonuses,
             wraps: map.wraps,
+            timedConnections: map.timedConnections,
             imageSrc: `data:${map.imageMime};base64,${map.image}`,
             borderColors: map.borderColors,
           });

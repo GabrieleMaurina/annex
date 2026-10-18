@@ -65,6 +65,7 @@ import {
   PlanContext,
   SimState,
   buildContext,
+  horizonOf,
   hostileNeighborsOf,
   isBotBorder,
   isStrategist,
@@ -181,7 +182,8 @@ function endangered(ctx: PlanContext): boolean {
   const owned = ownedIds(state, ctx.botId);
   if (owned.length < SAFE_TERRITORIES) return true;
   const army = owned.reduce((sum, id) => sum + troopsIn(state, id), 0);
-  return owned.some((id) => strongestThreatAt(ctx, state, id) >= army);
+  const horizon = horizonOf(ctx);
+  return owned.some((id) => strongestThreatAt(horizon, state, id) >= army);
 }
 
 function holdPays(ctx: PlanContext): boolean {
@@ -271,7 +273,7 @@ function plannedPlacement(
   troops: number,
   pool: number,
 ): number | null {
-  const ctx = buildContext(game, botId, botProfile, null);
+  const ctx = horizonOf(buildContext(game, botId, botProfile, null));
   const state = snapshotState(ctx);
   for (const [playerId, remaining] of game.placementTroopPools) {
     if (playerId === botId || remaining <= 0) continue;

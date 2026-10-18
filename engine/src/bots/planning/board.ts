@@ -24,6 +24,7 @@ import {
   cloneState,
   heldContinentBonus,
   holdsContinent,
+  horizonOf,
   isBotBorder,
   isEnemyTerritory,
   isFriendly,
@@ -473,8 +474,9 @@ export function evaluateBoard(
   state: SimState,
   cachedProgress?: SideProgress,
 ): number {
-  const raw = scoreState(ctx, state, cachedProgress);
-  const afterResponse = scoreState(ctx, applyEnemyResponse(ctx, state));
+  const horizon = horizonOf(ctx);
+  const raw = scoreState(horizon, state, cachedProgress);
+  const afterResponse = scoreState(horizon, applyEnemyResponse(horizon, state));
   const responseWeight = isStrategist(ctx)
     ? STRATEGIST_RESPONSE_WEIGHT
     : RESPONSE_WEIGHT;

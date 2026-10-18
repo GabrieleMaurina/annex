@@ -401,6 +401,7 @@ export function sendGeneratedMapIfAny(game: Game, playerId: number) {
       seaTerritories: map.seaTerritories,
       bonuses: map.bonuses,
       wraps: getGameMap(game).wraps,
+      timedConnections: map.timedConnections,
       imageSrc: map.imageSrc,
       borderColors: map.borderColors,
     },

@@ -26,6 +26,7 @@ interface DrawGraphParams {
   forceWrap: WrapAxes;
   allowCrossover: boolean;
   clickable?: ClickableCheck | null;
+  timedMode: boolean;
 }
 
 function hexagonPath(
@@ -57,6 +58,7 @@ export function drawGraph({
   forceWrap,
   allowCrossover,
   clickable,
+  timedMode,
 }: DrawGraphParams) {
   const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = viewport;
   const toScreen = (p: Point): Point => ({
@@ -76,32 +78,41 @@ export function drawGraph({
     );
   }
 
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 2 * zoom;
+  const timedDash = [10 * zoom, 6 * zoom];
   const drawnEdges = new Set<string>();
-  for (const t of territories) {
-    for (const n of t.neighbors) {
-      const key = edgeKey(t.id, n);
-      if (drawnEdges.has(key)) continue;
-      drawnEdges.add(key);
-      const other = byId.get(n);
-      if (!other) continue;
-      for (const [a, b] of wrapEdgeSegments(
-        t,
-        other,
-        imgW,
-        imgH,
-        wrapOf(t, n),
-      )) {
-        const p1 = toScreen(a);
-        const p2 = toScreen(b);
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
+  const drawEdges = (otherIds: (t: Territory) => number[]) => {
+    for (const t of territories) {
+      for (const n of otherIds(t)) {
+        const key = edgeKey(t.id, n);
+        if (drawnEdges.has(key)) continue;
+        drawnEdges.add(key);
+        const other = byId.get(n);
+        if (!other) continue;
+        for (const [a, b] of wrapEdgeSegments(
+          t,
+          other,
+          imgW,
+          imgH,
+          wrapOf(t, n),
+        )) {
+          const p1 = toScreen(a);
+          const p2 = toScreen(b);
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
       }
     }
-  }
+  };
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2 * zoom;
+  drawEdges((t) => t.neighbors);
+  ctx.save();
+  ctx.lineWidth = 3 * zoom;
+  ctx.setLineDash(timedDash);
+  drawEdges((t) => t.timed.map((m) => m.id));
+  ctx.restore();
 
   if (rejectedEdge) {
     ctx.strokeStyle = '#ff0000';
@@ -131,8 +142,10 @@ export function drawGraph({
           excludeIds,
           forceWrap,
         );
+      ctx.save();
       ctx.strokeStyle = overlapping ? '#ff0000' : '#000000';
-      ctx.lineWidth = 2 * zoom;
+      ctx.lineWidth = (timedMode ? 3 : 2) * zoom;
+      if (timedMode) ctx.setLineDash(timedDash);
       for (const [a, b] of wrapEdgeSegments(
         fromTerritory,
         mouseWorldPos,
@@ -147,6 +160,7 @@ export function drawGraph({
         ctx.lineTo(p2.x, p2.y);
         ctx.stroke();
       }
+      ctx.restore();
     }
   }
 
@@ -156,7 +170,6 @@ export function drawGraph({
     const p = toScreen(t);
     const isSelected = selectedVertexId === t.id;
     const isHovered = hoveredVertexId === t.id;
-    const isInvalid = clickable?.invalidIds.has(t.id) ?? false;
     ctx.beginPath();
     if (t.isSea) {
       hexagonPath(ctx, p.x, p.y, vertexRadius * scaleX * SEA_SIZE_MULTIPLIER);
@@ -170,13 +183,9 @@ export function drawGraph({
       ? '#bbbbbb'
       : isHovered
         ? '#555555'
-        : isInvalid
-          ? '#dc3545'
-          : '#000000';
+        : '#000000';
     ctx.lineWidth =
-      (isSelected || isHovered ? 7 : isInvalid ? 5 : 2) *
-      zoom *
-      vertexBorderScale;
+      (isSelected || isHovered ? 7 : 2) * zoom * vertexBorderScale;
     ctx.stroke();
 
     const labelRadius = t.isSea

@@ -1,4 +1,4 @@
-import { Fill, GenerationType, MapSize } from 'engine';
+import { Fill, GenerationType, MapSize, TimedConnection } from 'engine';
 import { Binary, ObjectId } from 'mongodb';
 import { MapGeneration } from '../../validate';
 import { ensureCollection, getCollection } from '../mongo';
@@ -37,6 +37,7 @@ interface PlayerMapDoc {
   seaTerritories: PlayerMapSeaTerritory[];
   bonuses: number[];
   wraps: PlayerMapWrap[];
+  timedConnections: TimedConnection[];
   image: Binary;
   imageMime: string;
   borderColors: string[];
@@ -124,6 +125,7 @@ export interface PlayerMapInput {
   seaTerritories: PlayerMapSeaTerritory[];
   bonuses: number[];
   wraps: PlayerMapWrap[];
+  timedConnections: TimedConnection[];
   image: Buffer;
   imageMime: string;
   borderColors: string[];
@@ -142,6 +144,7 @@ export function createPlayerMap(
       seaTerritories: input.seaTerritories,
       bonuses: input.bonuses,
       wraps: input.wraps,
+      timedConnections: input.timedConnections,
       image: new Binary(input.image),
       imageMime: input.imageMime,
       borderColors: input.borderColors,
@@ -185,6 +188,7 @@ export function updatePlayerMap(
               seaTerritories: input.seaTerritories,
               bonuses: input.bonuses,
               wraps: input.wraps,
+              timedConnections: input.timedConnections,
               image: new Binary(input.image),
               imageMime: input.imageMime,
               borderColors: input.borderColors,
@@ -222,6 +226,7 @@ export interface PlayerMapDetail {
   seaTerritories: PlayerMapSeaTerritory[];
   bonuses: number[];
   wraps: PlayerMapWrap[];
+  timedConnections: TimedConnection[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -245,6 +250,7 @@ export function getPlayerMapById(id: string): Promise<PlayerMapDetail | null> {
             seaTerritories: doc.seaTerritories ?? [],
             bonuses: doc.bonuses,
             wraps: doc.wraps,
+            timedConnections: doc.timedConnections ?? [],
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
             borderColors: doc.borderColors,
@@ -430,6 +436,7 @@ export function listPlayerMaps(
           seaTerritories: 0,
           bonuses: 0,
           wraps: 0,
+          timedConnections: 0,
         },
       })
       .sort(sortSpec(query.sort))

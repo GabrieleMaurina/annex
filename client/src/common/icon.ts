@@ -8,7 +8,7 @@ function toWhite(svg: string): string {
 
 const whiteIconCache = new Map<string, Promise<string>>();
 
-function loadWhiteIcon(path: string): Promise<string> {
+export function loadWhiteIcon(path: string): Promise<string> {
   let promise = whiteIconCache.get(path);
   if (!promise) {
     promise = fetch(path)

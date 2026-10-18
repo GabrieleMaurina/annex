@@ -26,6 +26,7 @@ export function persistGameMap(
     seaTerritories: map.seaTerritories,
     bonuses: map.bonuses,
     wraps: map.wraps,
+    timedConnections: map.timedConnections,
     generation: map.generation,
     image: new Binary(image.bytes),
     imageMime: image.mime,

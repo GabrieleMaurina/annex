@@ -1,9 +1,9 @@
 import { deployableTroops } from 'engine';
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 import { useWhiteIcon } from '../../common/icon';
-import { buildForcedWraps } from '../mapMath';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
+import { loadHourglassIcons } from './draw/drawTimedLinks';
 import {
   computeTooltipLabels,
   getScales,
@@ -33,6 +33,7 @@ import { useTurnActionFlows } from './hooks/useTurnActionFlows';
 import { useDisplayedGame } from './hooks/view/useDisplayedGame';
 import { useGameCanvasInteractions } from './hooks/view/useGameCanvasInteractions';
 import { useNukeControls } from './hooks/view/useNukeControls';
+import { useTimedConnections } from './hooks/view/useTimedConnections';
 import { useTurnToasts } from './hooks/view/useTurnToasts';
 import AlliancePopupOverlay from './overlays/AlliancePopupOverlay';
 import CardSetFlash from './overlays/CardSetFlash';
@@ -132,20 +133,16 @@ function GameMap({
   const {
     canvasRef,
     imageRef,
-    territories,
+    territories: mapTerritories,
     seaTerritories,
     bonuses,
-    wraps,
+    timedConnections,
+    forcedWraps,
     regions,
     camera,
     imgDims,
     size,
   } = useMapView(mapName, game.playerMapId);
-
-  const forcedWraps = useMemo(
-    () => buildForcedWraps([...territories, ...seaTerritories], wraps),
-    [territories, seaTerritories, wraps],
-  );
 
   useLockViewportZoom();
 
@@ -254,6 +251,11 @@ function GameMap({
     showReplay,
     replay,
   });
+  const { territories, timedLinks } = useTimedConnections(
+    mapTerritories,
+    timedConnections,
+    showReplay ? (replay.roundNumber ?? 0) : roundNumber,
+  );
   const ownedTerritoryIds = new Set(
     ownership.filter((o) => o.ownerId === selfId).map((o) => o.id),
   );
@@ -633,6 +635,10 @@ function GameMap({
   );
 
   useEffect(() => {
+    loadHourglassIcons().then(startAnimationLoop);
+  }, [startAnimationLoop]);
+
+  useEffect(() => {
     drawParamsRef.current = {
       canvasRef,
       size,
@@ -640,7 +646,7 @@ function GameMap({
       camera,
       imageRef,
       supplyLineEdgesByPlayer,
-      territories,
+      territories: mapTerritories,
       seaTerritories,
       seas: displayedSeas,
       fortifyPathTerritoryIds,
@@ -689,6 +695,7 @@ function GameMap({
       bonuses,
       forcedWraps,
       regions,
+      timedLinks,
     };
     startAnimationLoop();
   });

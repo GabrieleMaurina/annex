@@ -12,7 +12,7 @@ import type {
   MapSize,
 } from '../lib/types';
 import { DEFAULT_MAP_GENERATION, randomSeed } from '../maps/randomMap';
-import { SEAS_HELP } from './settings/settingsHelp';
+import { SEAS_HELP, TIMED_CONNECTIONS_HELP } from './settings/settingsHelp';
 
 export interface MapGenerationPanelHandle {
   generate: () => void;
@@ -62,6 +62,9 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
     const [genSeas, setGenSeas] = useState(
       saved?.seas ?? DEFAULT_MAP_GENERATION.seas,
     );
+    const [genTimed, setGenTimed] = useState(
+      saved?.timed ?? DEFAULT_MAP_GENERATION.timed,
+    );
     const [generating, setGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState<GenerateMapInput | null>(
       saved ?? null,
@@ -82,7 +85,8 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         lastGenerated.size === genSize &&
         lastGenerated.type === genType &&
         lastGenerated.fill === genFill &&
-        lastGenerated.seas === genSeas
+        lastGenerated.seas === genSeas &&
+        lastGenerated.timed === genTimed
       ) {
         effectiveSeed = randomSeed();
         setSeed(effectiveSeed);
@@ -94,6 +98,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         type: genType,
         fill: genFill,
         seas: genSeas,
+        timed: genTimed,
       };
       setGenerating(true);
       generateMap(input, (ok) => {
@@ -190,6 +195,15 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                   onChange={(e) => setGenSeas(e.target.checked)}
                 />
                 <Help>{SEAS_HELP}</Help>
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <Form.Check
+                  type="checkbox"
+                  label="Timed connections"
+                  checked={genTimed}
+                  onChange={(e) => setGenTimed(e.target.checked)}
+                />
+                <Help>{TIMED_CONNECTIONS_HELP}</Help>
               </div>
               <div>
                 <Button

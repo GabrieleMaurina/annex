@@ -104,6 +104,12 @@ function appendGameFilterParams(
     params.set('mapGenerationType', query.mapGenerationType);
   if (query.mapGenerationFill)
     params.set('mapGenerationFill', query.mapGenerationFill);
+  if (query.mapGenerationTile)
+    params.set('mapGenerationTile', query.mapGenerationTile);
+  if (query.mapGenerationSeas !== undefined)
+    params.set('mapGenerationSeas', query.mapGenerationSeas ? '1' : '0');
+  if (query.mapGenerationTimed !== undefined)
+    params.set('mapGenerationTimed', query.mapGenerationTimed ? '1' : '0');
   if (query.playersMin !== undefined)
     params.set('playersMin', String(query.playersMin));
   if (query.playersMax !== undefined)
@@ -278,6 +284,11 @@ export const connector = {
     if (query.generationType) params.set('genType', query.generationType);
     if (query.generationFill) params.set('genFill', query.generationFill);
     if (query.generationSize) params.set('genSize', query.generationSize);
+    if (query.generationTile) params.set('genTile', query.generationTile);
+    if (query.generationSeas !== undefined)
+      params.set('genSeas', query.generationSeas ? '1' : '0');
+    if (query.generationTimed !== undefined)
+      params.set('genTimed', query.generationTimed ? '1' : '0');
     params.set('sort', query.sort);
     const empty: PlayerMapsPage = {
       maps: [],

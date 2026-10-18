@@ -21,7 +21,10 @@ import {
   type ForcedWraps,
 } from '../../mapMath';
 import { isPortalHop } from '../../portals';
-import type { ClickableRegions } from '../../regions/clickableRegions';
+import {
+  continentShapes,
+  type ClickableRegions,
+} from '../../regions/clickableRegions';
 import type { ConquestArrow } from '../../replay/replay';
 import type { RailEdge } from '../../supplyLines';
 import { drawSupplyLines } from '../../supplyLines';
@@ -45,7 +48,11 @@ import {
   type Point,
 } from '../helpers';
 import type { TimedLink } from '../hooks/view/useTimedConnections';
-import { regionFillLayer, strokeRegion } from './drawRegions';
+import {
+  outlineContinentRegion,
+  regionFillLayer,
+  strokeRegion,
+} from './drawRegions';
 import { drawTimedLinks } from './drawTimedLinks';
 
 export interface DrawCanvasParams {
@@ -389,8 +396,11 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.lineWidth = 2.5 * zoom;
     ctx.lineJoin = 'round';
     ctx.setLineDash([6 * zoom, 5 * zoom]);
-    for (const group of continentGroups.values()) {
-      strokeContinentOutline(ctx, group, toScreen, hullPad);
+    const shapes = regions ? continentShapes(regions, territories) : null;
+    for (const [continentGroupId, group] of continentGroups) {
+      const shape = shapes?.get(continentGroupId);
+      if (shape) outlineContinentRegion(ctx, shape, view, true);
+      else strokeContinentOutline(ctx, group, toScreen, hullPad, true);
     }
     ctx.restore();
   }
@@ -402,11 +412,20 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     if (targetTerritories.length > 0) {
       const hullPad = (VERTEX_RADIUS + 30) * scaleX;
       ctx.save();
-      ctx.fillStyle = 'rgba(110, 110, 110, 0.4)';
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.lineWidth = 3.5 * zoom;
       ctx.lineJoin = 'round';
-      strokeContinentOutline(ctx, targetTerritories, toScreen, hullPad);
+      const shape =
+        regions && continentShapes(regions, territories).get(continentId);
+      if (shape) outlineContinentRegion(ctx, shape, view, false);
+      else
+        strokeContinentOutline(
+          ctx,
+          targetTerritories,
+          toScreen,
+          hullPad,
+          false,
+        );
       ctx.restore();
     }
   }

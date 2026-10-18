@@ -6,6 +6,8 @@ import {
   MAP_SIZE_VALUES,
   MapSize,
   MAX_TIMED_VALUE,
+  TILE_SHAPE_VALUES,
+  TileShape,
   TimedConnection,
 } from 'engine';
 
@@ -249,6 +251,7 @@ export interface MapGeneration {
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  tile: TileShape;
   seas: boolean;
   timed: boolean;
 }
@@ -262,7 +265,7 @@ export function validateMapGeneration(
   | { ok: false; error: string } {
   if (raw === undefined || raw === null) return { ok: true, generation: null };
   if (!isObject(raw)) return { ok: false, error: 'invalid generation' };
-  const { seed, size, type, fill, seas, timed } = raw;
+  const { seed, size, type, fill, tile, seas, timed } = raw;
   if (
     typeof seed !== 'string' ||
     seed.length < 1 ||
@@ -270,6 +273,7 @@ export function validateMapGeneration(
     !(MAP_SIZE_VALUES as string[]).includes(size as string) ||
     !(GENERATION_TYPE_VALUES as string[]).includes(type as string) ||
     !(FILL_VALUES as string[]).includes(fill as string) ||
+    !(TILE_SHAPE_VALUES as string[]).includes(tile as string) ||
     typeof seas !== 'boolean' ||
     typeof timed !== 'boolean'
   )
@@ -281,6 +285,7 @@ export function validateMapGeneration(
       size: size as MapSize,
       type: type as GenerationType,
       fill: fill as Fill,
+      tile: tile as TileShape,
       seas,
       timed,
     },

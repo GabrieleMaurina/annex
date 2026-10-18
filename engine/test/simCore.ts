@@ -133,6 +133,7 @@ export function runGame(
     size: 'medium',
     type: 'terrain',
     fill: 'full',
+    tile: 'triangles',
     seas: false,
     timed: false,
   };

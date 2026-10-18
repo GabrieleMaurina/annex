@@ -75,6 +75,9 @@ export function gameSummary(game: Game) {
           size: game.generatedMap.size,
           type: game.generatedMap.type,
           fill: game.generatedMap.fill,
+          tile: game.generatedMap.tile,
+          seas: game.generatedMap.seas,
+          timed: game.generatedMap.timed,
         }
       : null,
     hostName: isAnonymousPlaying(game)
@@ -206,6 +209,7 @@ export function gameState(game: Game) {
           size: game.generatedMap.size,
           type: game.generatedMap.type,
           fill: game.generatedMap.fill,
+          tile: game.generatedMap.tile,
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
         }

@@ -90,6 +90,7 @@ export interface GameExport {
     size: string;
     type: string;
     fill: string;
+    tile: string;
     seas: boolean;
     timed: boolean;
   } | null;
@@ -342,6 +343,7 @@ export function exportGame(gameName: string): GameExport | null {
           size: game.generatedMap.size,
           type: game.generatedMap.type,
           fill: game.generatedMap.fill,
+          tile: game.generatedMap.tile,
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
         }

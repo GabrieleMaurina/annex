@@ -20,6 +20,7 @@ import type {
   GamesQuery,
   GenerationType,
   MapSize,
+  TileShape,
 } from '../lib/types';
 import { GAME_MODES } from '../lib/types';
 import {
@@ -78,6 +79,9 @@ interface Filters {
   mapGenerationSize: string;
   mapGenerationType: string;
   mapGenerationFill: string;
+  mapGenerationTile: string;
+  mapGenerationSeas: string;
+  mapGenerationTimed: string;
   settings: Record<string, string>;
   hasBots: '' | 'yes' | 'no';
   outcome: '' | 'won' | 'lost';
@@ -189,6 +193,9 @@ function Games({ account }: Props) {
   const [mapGenerationSize, setMapGenerationSize] = useState('');
   const [mapGenerationType, setMapGenerationType] = useState('');
   const [mapGenerationFill, setMapGenerationFill] = useState('');
+  const [mapGenerationTile, setMapGenerationTile] = useState('');
+  const [mapGenerationSeas, setMapGenerationSeas] = useState('');
+  const [mapGenerationTimed, setMapGenerationTimed] = useState('');
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [hasBots, setHasBots] = useState<'' | 'yes' | 'no'>('');
   const [outcome, setOutcome] = useState<'' | 'won' | 'lost'>('');
@@ -219,6 +226,9 @@ function Games({ account }: Props) {
     mapGenerationSize,
     mapGenerationType,
     mapGenerationFill,
+    mapGenerationTile,
+    mapGenerationSeas,
+    mapGenerationTimed,
     settings,
     hasBots,
     outcome,
@@ -271,6 +281,18 @@ function Games({ account }: Props) {
         mapName === GENERATED_MAP_VALUE
           ? (mapGenerationFill as Fill) || undefined
           : undefined,
+      mapGenerationTile:
+        mapName === GENERATED_MAP_VALUE
+          ? (mapGenerationTile as TileShape) || undefined
+          : undefined,
+      mapGenerationSeas:
+        mapName === GENERATED_MAP_VALUE && mapGenerationSeas
+          ? mapGenerationSeas === 'yes'
+          : undefined,
+      mapGenerationTimed:
+        mapName === GENERATED_MAP_VALUE && mapGenerationTimed
+          ? mapGenerationTimed === 'yes'
+          : undefined,
       settings,
       hasBots: hasBots === 'yes' ? true : hasBots === 'no' ? false : undefined,
       outcome: outcome || undefined,
@@ -320,6 +342,9 @@ function Games({ account }: Props) {
     setMapGenerationSize('');
     setMapGenerationType('');
     setMapGenerationFill('');
+    setMapGenerationTile('');
+    setMapGenerationSeas('');
+    setMapGenerationTimed('');
     setSettings({});
     setHasBots('');
     setOutcome('');
@@ -493,10 +518,16 @@ function Games({ account }: Props) {
               size={mapGenerationSize}
               type={mapGenerationType}
               fill={mapGenerationFill}
+              tile={mapGenerationTile}
+              seas={mapGenerationSeas}
+              timed={mapGenerationTimed}
               onMapName={resetPage(setMapName)}
               onSize={resetPage(setMapGenerationSize)}
               onType={resetPage(setMapGenerationType)}
               onFill={resetPage(setMapGenerationFill)}
+              onTile={resetPage(setMapGenerationTile)}
+              onSeas={resetPage(setMapGenerationSeas)}
+              onTimed={resetPage(setMapGenerationTimed)}
             />
           </div>
         </div>

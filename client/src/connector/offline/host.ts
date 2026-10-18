@@ -5,6 +5,7 @@ import {
   type Fill,
   type GenerationType,
   type MapSize,
+  type TileShape,
 } from 'engine';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
 import type { GameState } from '../../lib/types';
@@ -452,6 +453,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
           size: d.size as MapSize,
           type: d.type as GenerationType,
           fill: d.fill as Fill,
+          tile: d.tile as TileShape,
           seas: d.seas as boolean,
           timed: d.timed as boolean,
         },

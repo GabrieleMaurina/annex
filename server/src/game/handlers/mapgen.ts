@@ -6,6 +6,8 @@ import {
   GenerationType,
   MAP_SIZE_VALUES,
   MapSize,
+  TILE_SHAPE_VALUES,
+  TileShape,
   viewResponse,
 } from 'engine';
 import { Socket } from 'socket.io';
@@ -71,6 +73,8 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
         return callback({ ok: false, error: 'invalid type' });
       if (!(FILL_VALUES as unknown[]).includes(input.fill))
         return callback({ ok: false, error: 'invalid fill' });
+      if (!(TILE_SHAPE_VALUES as unknown[]).includes(input.tile))
+        return callback({ ok: false, error: 'invalid tile' });
       if (typeof input.seas !== 'boolean')
         return callback({ ok: false, error: 'invalid seas' });
       if (typeof input.timed !== 'boolean')
@@ -83,6 +87,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           size: input.size as MapSize,
           type: input.type as GenerationType,
           fill: input.fill as Fill,
+          tile: input.tile as TileShape,
           seas: input.seas,
           timed: input.timed,
         },

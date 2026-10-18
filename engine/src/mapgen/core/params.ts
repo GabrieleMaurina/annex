@@ -1,12 +1,15 @@
 export type MapSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type Fill = 'full' | 'mixed' | 'sparse';
-export type GenerationType = 'terrain' | 'dungeon' | 'temple';
+export type GenerationType = 'terrain' | 'dungeon' | 'temple' | 'tile';
+export type TileShape =
+  'triangles' | 'squares' | 'hexagons' | 'octares' | 'hexgles' | 'squagles';
 
 export interface GenerateMapParams {
   seed: string;
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  tile: TileShape;
   seas: boolean;
   timed: boolean;
 }
@@ -22,6 +25,15 @@ export const GENERATION_TYPE_VALUES: GenerationType[] = [
   'terrain',
   'dungeon',
   'temple',
+  'tile',
+];
+export const TILE_SHAPE_VALUES: TileShape[] = [
+  'triangles',
+  'squares',
+  'hexagons',
+  'octares',
+  'hexgles',
+  'squagles',
 ];
 
 export const TERRITORY_COUNT_RANGES: Record<MapSize, [number, number]> = {
@@ -105,9 +117,29 @@ export function fillLabel(fill: Fill): string {
 }
 
 export function generationTypeLabel(type: GenerationType): string {
-  return { terrain: 'Terrain', dungeon: 'Dungeon', temple: 'Temple' }[type];
+  return {
+    terrain: 'Terrain',
+    dungeon: 'Dungeon',
+    temple: 'Temple',
+    tile: 'Tile',
+  }[type];
+}
+
+export function tileShapeLabel(tile: TileShape): string {
+  return {
+    triangles: 'Triangles',
+    squares: 'Squares',
+    hexagons: 'Hexagons',
+    octares: 'Octares',
+    hexgles: 'Hexgles',
+    squagles: 'Squagles',
+  }[tile];
 }
 
 export function generatedMapName(params: GenerateMapParams): string {
-  return `${generationTypeLabel(params.type)} (${fillLabel(params.fill)}-${mapSizeLabel(params.size)})`;
+  const label =
+    params.type === 'tile'
+      ? tileShapeLabel(params.tile)
+      : generationTypeLabel(params.type);
+  return `${label} (${fillLabel(params.fill)}-${mapSizeLabel(params.size)})`;
 }

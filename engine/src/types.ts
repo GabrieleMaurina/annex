@@ -1,4 +1,9 @@
-import type { Fill, GenerationType, MapSize } from './mapgen/core/params';
+import type {
+  Fill,
+  GenerationType,
+  MapSize,
+  TileShape,
+} from './mapgen/core/params';
 
 export const HOME_ROOM = 'home';
 export const OFFLINE_ROOM = 'offline';
@@ -53,6 +58,7 @@ export interface GeneratedGameMap {
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  tile: TileShape;
   seas: boolean;
   timed: boolean;
 }

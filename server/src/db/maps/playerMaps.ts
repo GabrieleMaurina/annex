@@ -1,4 +1,10 @@
-import { Fill, GenerationType, MapSize, TimedConnection } from 'engine';
+import {
+  Fill,
+  GenerationType,
+  MapSize,
+  TileShape,
+  TimedConnection,
+} from 'engine';
 import { Binary, ObjectId } from 'mongodb';
 import { MapGeneration } from '../../validate';
 import { ensureCollection, getCollection } from '../mongo';
@@ -336,6 +342,9 @@ export interface PlayerMapsQuery {
   generationType?: GenerationType;
   generationFill?: Fill;
   generationSize?: MapSize;
+  generationTile?: TileShape;
+  generationSeas?: boolean;
+  generationTimed?: boolean;
   sort: PlayerMapSort;
   viewerId?: string;
 }
@@ -405,6 +414,11 @@ export function listPlayerMaps(
   if (query.generationType) filter['generation.type'] = query.generationType;
   if (query.generationFill) filter['generation.fill'] = query.generationFill;
   if (query.generationSize) filter['generation.size'] = query.generationSize;
+  if (query.generationTile) filter['generation.tile'] = query.generationTile;
+  if (query.generationSeas !== undefined)
+    filter['generation.seas'] = query.generationSeas;
+  if (query.generationTimed !== undefined)
+    filter['generation.timed'] = query.generationTimed;
 
   const qRegex = query.q ? new RegExp(escapeRegex(query.q), 'i') : null;
 

@@ -4,6 +4,7 @@ import type {
   MapSeaTerritory,
   MapSize,
   MapTerritory,
+  TileShape,
   TimedConnection,
 } from '../../lib/types';
 
@@ -12,6 +13,7 @@ export interface GenerateInput {
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  tile: TileShape;
   seas: boolean;
   timed: boolean;
 }

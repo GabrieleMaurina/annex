@@ -16,6 +16,8 @@ import {
   GenerationType,
   MAP_SIZE_VALUES,
   MapSize,
+  TILE_SHAPE_VALUES,
+  TileShape,
 } from '../../src/mapgen/core/params';
 import {
   Blitz,
@@ -133,6 +135,7 @@ export function randomMapParams(
     size: pick<MapSize>(rng, MAP_SIZE_VALUES),
     type: pick<GenerationType>(rng, GENERATION_TYPE_VALUES),
     fill: pick<Fill>(rng, FILL_VALUES),
+    tile: pick<TileShape>(rng, TILE_SHAPE_VALUES),
     seas: rng() < 0.5,
     timed: rng() < 0.2,
   };

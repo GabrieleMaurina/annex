@@ -3,6 +3,7 @@ import {
   GENERATION_TYPE_VALUES,
   MAP_SIZE_VALUES,
   MAX_TIMED_VALUE,
+  TILE_SHAPE_VALUES,
 } from 'engine';
 import { BORDER_COLOR_PATTERN, MAX_BORDER_COLORS } from '../../validate';
 
@@ -91,13 +92,14 @@ export const MAP_PROPERTIES = {
   },
   generation: {
     bsonType: ['object', 'null'],
-    required: ['seed', 'size', 'type', 'fill', 'seas', 'timed'],
+    required: ['seed', 'size', 'type', 'fill', 'tile', 'seas', 'timed'],
     additionalProperties: false,
     properties: {
       seed: { bsonType: 'string', minLength: 1, maxLength: 20 },
       size: { enum: MAP_SIZE_VALUES },
       type: { enum: GENERATION_TYPE_VALUES },
       fill: { enum: FILL_VALUES },
+      tile: { enum: TILE_SHAPE_VALUES },
       seas: { bsonType: 'bool' },
       timed: { bsonType: 'bool' },
     },

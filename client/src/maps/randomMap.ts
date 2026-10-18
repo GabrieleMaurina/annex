@@ -9,6 +9,7 @@ export const DEFAULT_MAP_GENERATION = {
   size: 'medium',
   type: 'terrain',
   fill: 'mixed',
+  tile: 'hexagons',
   seas: false,
   timed: false,
 } as const;

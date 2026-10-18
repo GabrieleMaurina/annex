@@ -33,6 +33,7 @@ import type {
   HomeGamesPage,
   HomeGamesQuery,
   MapSize,
+  TileShape,
 } from '../lib/types';
 import { GAME_MODES } from '../lib/types';
 import {
@@ -60,6 +61,9 @@ const DEFAULT_FILTERS: HomeFilters = {
   mapGenerationSize: '',
   mapGenerationType: '',
   mapGenerationFill: '',
+  mapGenerationTile: '',
+  mapGenerationSeas: '',
+  mapGenerationTimed: '',
   playersMin: PLAYERS_MIN,
   playersMax: PLAYERS_MAX,
   roundsMin: ROUNDS_MIN,
@@ -141,6 +145,15 @@ function Home({
   const [mapGenerationFill, setMapGenerationFill] = useState(
     initial.mapGenerationFill,
   );
+  const [mapGenerationTile, setMapGenerationTile] = useState(
+    initial.mapGenerationTile,
+  );
+  const [mapGenerationSeas, setMapGenerationSeas] = useState(
+    initial.mapGenerationSeas,
+  );
+  const [mapGenerationTimed, setMapGenerationTimed] = useState(
+    initial.mapGenerationTimed,
+  );
   const [playersMin, setPlayersMin] = useState(initial.playersMin);
   const [playersMax, setPlayersMax] = useState(initial.playersMax);
   const [roundsMin, setRoundsMin] = useState(initial.roundsMin);
@@ -173,6 +186,9 @@ function Home({
     mapGenerationSize,
     mapGenerationType,
     mapGenerationFill,
+    mapGenerationTile,
+    mapGenerationSeas,
+    mapGenerationTimed,
     playersMin,
     playersMax,
     roundsMin,
@@ -191,6 +207,9 @@ function Home({
     mapGenerationSize,
     mapGenerationType,
     mapGenerationFill,
+    mapGenerationTile,
+    mapGenerationSeas,
+    mapGenerationTimed,
     playersMin,
     playersMax,
     roundsMin,
@@ -237,6 +256,17 @@ function Home({
         mapGenerationFill: generated
           ? (mapGenerationFill as Fill) || undefined
           : undefined,
+        mapGenerationTile: generated
+          ? (mapGenerationTile as TileShape) || undefined
+          : undefined,
+        mapGenerationSeas:
+          generated && mapGenerationSeas
+            ? mapGenerationSeas === 'yes'
+            : undefined,
+        mapGenerationTimed:
+          generated && mapGenerationTimed
+            ? mapGenerationTimed === 'yes'
+            : undefined,
         playersMin: playersNarrowed ? playersMin : undefined,
         playersMax: playersNarrowed ? playersMax : undefined,
         minRounds: roundsNarrowed ? roundsMin : undefined,
@@ -296,6 +326,9 @@ function Home({
     setMapGenerationSize('');
     setMapGenerationType('');
     setMapGenerationFill('');
+    setMapGenerationTile('');
+    setMapGenerationSeas('');
+    setMapGenerationTimed('');
     setPlayersMin(PLAYERS_MIN);
     setPlayersMax(PLAYERS_MAX);
     setRoundsMin(ROUNDS_MIN);
@@ -526,10 +559,16 @@ function Home({
                   size={mapGenerationSize}
                   type={mapGenerationType}
                   fill={mapGenerationFill}
+                  tile={mapGenerationTile}
+                  seas={mapGenerationSeas}
+                  timed={mapGenerationTimed}
                   onMapName={resetPage(setMapName)}
                   onSize={resetPage(setMapGenerationSize)}
                   onType={resetPage(setMapGenerationType)}
                   onFill={resetPage(setMapGenerationFill)}
+                  onTile={resetPage(setMapGenerationTile)}
+                  onSeas={resetPage(setMapGenerationSeas)}
+                  onTimed={resetPage(setMapGenerationTimed)}
                 />
               </div>
             </div>

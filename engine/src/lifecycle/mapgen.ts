@@ -37,7 +37,7 @@ export function generateMap(
 
   const gameName = game.name;
   const hostId = player.id;
-  const { size, type, fill, seas, timed } = input;
+  const { size, type, fill, tile, seas, timed } = input;
 
   generateMapAsync({ ...input, seed: trimmedSeed }, (res) => {
     const current = games.get(gameName);
@@ -59,6 +59,7 @@ export function generateMap(
       size,
       type,
       fill,
+      tile,
       seas,
       timed,
     };

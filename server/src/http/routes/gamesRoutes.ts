@@ -1,9 +1,16 @@
 import { Router } from 'express';
-import { FILL_VALUES, GAME_ENUMS, GENERATION_TYPES, MAP_SIZES } from '../../db';
+import {
+  FILL_VALUES,
+  GAME_ENUMS,
+  GENERATION_TYPES,
+  MAP_SIZES,
+  TILE_SHAPES,
+} from '../../db';
 import { filterLiveGames, LiveGameRow, LiveGamesQuery } from '../liveGames';
 import { identityOf } from '../middleware';
 import {
   intParam,
+  optBoolParam,
   optIntParam,
   parseSettings,
   stringArrayParam,
@@ -48,6 +55,13 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
         FILL_VALUES.includes(q.mapGenerationFill)
           ? q.mapGenerationFill
           : undefined,
+      mapGenerationTile:
+        typeof q.mapGenerationTile === 'string' &&
+        TILE_SHAPES.includes(q.mapGenerationTile)
+          ? q.mapGenerationTile
+          : undefined,
+      mapGenerationSeas: optBoolParam(q.mapGenerationSeas),
+      mapGenerationTimed: optBoolParam(q.mapGenerationTimed),
       playersMin: optIntParam(q.playersMin, 1, 100),
       playersMax: optIntParam(q.playersMax, 1, 100),
       minRounds: optIntParam(q.minRounds, 0, 100000),

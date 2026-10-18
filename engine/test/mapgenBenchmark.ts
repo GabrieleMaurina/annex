@@ -41,7 +41,7 @@ function runOnce(
 ): RunResult {
   startBench();
   const start = performance.now();
-  generateMap({ seed, size, type, fill, seas, timed: false });
+  generateMap({ seed, size, type, fill, tile: 'hexagons', seas, timed: false });
   const total = performance.now() - start;
   const steps = stopBench();
   return { total, steps };

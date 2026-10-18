@@ -71,6 +71,30 @@ export const TEMPLE_VOID_COLOR = '#0b0f22';
 export const TEMPLE_WALL_COLOR = '#1b2444';
 export const TEMPLE_SEAM_COLOR = '#7fd8ff';
 
+export const TILE_TONES = [
+  '#0d2466',
+  '#06402f',
+  '#141b56',
+  '#073d63',
+  '#102a7a',
+  '#0a4a3a',
+  '#0b3570',
+  '#1a1f70',
+  '#05405a',
+  '#0b3a24',
+  '#0f3388',
+  '#083a4e',
+];
+
+export function continentTileTone(continentId: number): string {
+  return TILE_TONES[continentId % TILE_TONES.length];
+}
+
+export const TILE_VOID_COLOR = '#000000';
+export const TILE_SEA_COLOR = '#000011';
+export const TILE_WALL_COLOR = '#39ff7a';
+export const TILE_SEAM_COLOR = '#1e9bff';
+
 export const DEFAULT_BORDER_COLORS = [TERRITORY_STROKE_COLOR];
 
 export function generatedBorderColors(type: GenerationType): string[] {
@@ -78,5 +102,7 @@ export function generatedBorderColors(type: GenerationType): string[] {
     return [DUNGEON_VOID_COLOR, DUNGEON_WALL_COLOR, DUNGEON_SEAM_COLOR];
   if (type === 'temple')
     return [TEMPLE_VOID_COLOR, TEMPLE_WALL_COLOR, TEMPLE_SEAM_COLOR];
+  if (type === 'tile')
+    return [TILE_VOID_COLOR, TILE_WALL_COLOR, TILE_SEAM_COLOR];
   return [TERRITORY_STROKE_COLOR];
 }

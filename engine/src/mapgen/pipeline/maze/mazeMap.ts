@@ -261,14 +261,19 @@ export function buildMazeMap(
     for (const cell of source.pixelCell) {
       if (cell >= 0) cellPixelCount[cell]++;
     }
-    const { territoryOfCell, territoryCount } = partitionCellsMultiComponent(
-      rng,
-      cellCount,
-      cellNeighbors,
-      targetCount,
-      source.chambers,
-      cellPixelCount,
-    );
+    const { territoryOfCell, territoryCount } = source.cellTerritories
+      ? {
+          territoryOfCell: Int32Array.from({ length: cellCount }, (_, i) => i),
+          territoryCount: cellCount,
+        }
+      : partitionCellsMultiComponent(
+          rng,
+          cellCount,
+          cellNeighbors,
+          targetCount,
+          source.chambers,
+          cellPixelCount,
+        );
 
     const fullLabelGrid = new Int16Array(source.width * source.height).fill(-1);
     const fullOrphanMask = new Uint8Array(source.width * source.height);
@@ -369,7 +374,7 @@ export function buildMazeMap(
     computeWallSeamMasks(
       labelGrid,
       layer,
-      palette.roundedWalls === true,
+      palette,
       hasSea
         ? {
             pixelSea: seaBuild!.seaLabelGrid,

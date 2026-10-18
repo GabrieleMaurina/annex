@@ -1,4 +1,4 @@
-import { isBlitzOffAllowed, MAX_DICE } from 'engine';
+import { isBlitzOffAllowed, MAX_DICE, TILE_SHAPE_VALUES } from 'engine';
 
 export interface ClientSettings {
   muted: boolean;
@@ -14,6 +14,7 @@ export interface GameSettings {
     size: string;
     type: string;
     fill: string;
+    tile: string;
     seas: boolean;
     timed: boolean;
   } | null;
@@ -62,6 +63,9 @@ export interface HomeFilters {
   mapGenerationSize: string;
   mapGenerationType: string;
   mapGenerationFill: string;
+  mapGenerationTile: string;
+  mapGenerationSeas: string;
+  mapGenerationTimed: string;
   playersMin: number;
   playersMax: number;
   roundsMin: number;
@@ -75,7 +79,8 @@ export interface HomeFilters {
 
 export const MAP_SIZES = ['small', 'medium', 'large', 'xlarge'];
 export const FILL_VALUES = ['full', 'mixed', 'sparse'];
-export const GENERATION_TYPES = ['terrain', 'dungeon', 'temple'];
+export const GENERATION_TYPES = ['terrain', 'dungeon', 'temple', 'tile'];
+export const TILE_SHAPES: string[] = TILE_SHAPE_VALUES;
 
 export const GAME_ENUMS: Record<string, unknown[]> = {
   gameMode: [
@@ -164,6 +169,8 @@ const HOME_MAP_NAMES = ['', GENERATED_MAP_VALUE];
 const HOME_SIZES = ['', ...MAP_SIZES];
 const HOME_GENERATION_TYPES = ['', ...GENERATION_TYPES];
 const HOME_FILLS = ['', ...FILL_VALUES];
+const HOME_TILES = ['', ...TILE_SHAPES];
+const HOME_GENERATION_FLAGS = ['', 'yes', 'no'];
 const HOME_PHASES = ['', 'lobby', 'playing', 'ended'];
 const HOME_PASSWORDS = ['', 'yes', 'no'];
 const HOME_HAS_BOTS = ['', 'yes', 'no'];
@@ -238,6 +245,9 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
   mapGenerationSize: '',
   mapGenerationType: '',
   mapGenerationFill: '',
+  mapGenerationTile: '',
+  mapGenerationSeas: '',
+  mapGenerationTimed: '',
   playersMin: HOME_PLAYERS_MIN,
   playersMax: HOME_PLAYERS_MAX,
   roundsMin: HOME_ROUNDS_MIN,
@@ -296,13 +306,14 @@ export const preferencesSchemaProperties = {
       },
       mapGeneration: {
         bsonType: ['object', 'null'],
-        required: ['seed', 'size', 'type', 'fill', 'seas', 'timed'],
+        required: ['seed', 'size', 'type', 'fill', 'tile', 'seas', 'timed'],
         additionalProperties: false,
         properties: {
           seed: { bsonType: 'string' },
           size: { enum: MAP_SIZES },
           type: { enum: GENERATION_TYPES },
           fill: { enum: FILL_VALUES },
+          tile: { enum: TILE_SHAPES },
           seas: { bsonType: 'bool' },
           timed: { bsonType: 'bool' },
         },
@@ -326,6 +337,9 @@ export const preferencesSchemaProperties = {
       'mapGenerationSize',
       'mapGenerationType',
       'mapGenerationFill',
+      'mapGenerationTile',
+      'mapGenerationSeas',
+      'mapGenerationTimed',
       'playersMin',
       'playersMax',
       'roundsMin',
@@ -357,6 +371,9 @@ export const preferencesSchemaProperties = {
       mapGenerationSize: { enum: HOME_SIZES },
       mapGenerationType: { enum: HOME_GENERATION_TYPES },
       mapGenerationFill: { enum: HOME_FILLS },
+      mapGenerationTile: { enum: HOME_TILES },
+      mapGenerationSeas: { enum: HOME_GENERATION_FLAGS },
+      mapGenerationTimed: { enum: HOME_GENERATION_FLAGS },
       playersMin: {
         bsonType: 'number',
         minimum: HOME_PLAYERS_MIN,
@@ -431,6 +448,9 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
     size: r.size as string,
     type: r.type as string,
     fill: r.fill as string,
+    tile: TILE_SHAPES.includes(r.tile as string)
+      ? (r.tile as string)
+      : TILE_SHAPES[0],
     seas: r.seas,
     timed: r.timed === true,
   };
@@ -556,6 +576,13 @@ export function sanitizeHomeFilters(raw: unknown): HomeFilters {
     mapGenerationSize: pickEnum(r.mapGenerationSize, HOME_SIZES, ''),
     mapGenerationType: pickEnum(r.mapGenerationType, HOME_GENERATION_TYPES, ''),
     mapGenerationFill: pickEnum(r.mapGenerationFill, HOME_FILLS, ''),
+    mapGenerationTile: pickEnum(r.mapGenerationTile, HOME_TILES, ''),
+    mapGenerationSeas: pickEnum(r.mapGenerationSeas, HOME_GENERATION_FLAGS, ''),
+    mapGenerationTimed: pickEnum(
+      r.mapGenerationTimed,
+      HOME_GENERATION_FLAGS,
+      '',
+    ),
     playersMin: clampInt(
       r.playersMin,
       HOME_PLAYERS_MIN,

@@ -71,6 +71,42 @@ export function buildClickableRegions(
   return { width, height, labels, shapes };
 }
 
+interface ContinentTerritory {
+  id: number;
+  continentId: number;
+}
+
+const continentShapesByRegions = new WeakMap<
+  ClickableRegions,
+  { territories: ContinentTerritory[]; shapes: Map<number, RegionShape> }
+>();
+
+export function continentShapes(
+  regions: ClickableRegions,
+  territories: ContinentTerritory[],
+): Map<number, RegionShape> {
+  const cached = continentShapesByRegions.get(regions);
+  if (cached?.territories === territories) return cached.shapes;
+  const partial = new Set(
+    territories
+      .filter((t) => !regions.shapes.has(t.id))
+      .map((t) => t.continentId),
+  );
+  const continentById = new Map(
+    territories
+      .filter((t) => t.continentId >= 0 && !partial.has(t.continentId))
+      .map((t) => [t.id, t.continentId]),
+  );
+  const shapes = traceRegionShapes(
+    regions.labels.map((id) => continentById.get(id) ?? -1),
+    regions.width,
+    regions.height,
+    Infinity,
+  );
+  continentShapesByRegions.set(regions, { territories, shapes });
+  return shapes;
+}
+
 export function sharedBorders(
   image: ImageData,
   points: RegionPoint[],

@@ -6,4 +6,5 @@ export interface CellLayer {
   pixelCell: Int32Array;
   chambers: number[][];
   outsideMask?: Uint8Array;
+  cellTerritories?: boolean;
 }

@@ -10,6 +10,10 @@ export interface MazePalette {
   seamColor: string;
   tone: (continentId: number) => string;
   roundedWalls?: boolean;
+  uniformLines?: boolean;
+  continentWalls?: boolean;
+  voidSeas?: boolean;
+  seaColor?: string;
 }
 
 const SPECIAL_EDGE_RADIUS = 2;
@@ -130,9 +134,11 @@ export interface MazeSeaLayer {
 export function computeWallSeamMasks(
   labelGrid: Int16Array,
   layer: CellLayer,
-  roundedWalls: boolean,
+  palette: MazePalette,
   seaLayer?: MazeSeaLayer,
+  continentOf?: number[],
 ): { wallMask: Uint8Array; seamMask: Uint8Array } {
+  const roundedWalls = palette.roundedWalls === true;
   const { width, height, cellCount, cellNeighbors, pixelCell } = layer;
   const size = width * height;
   const pixelSea = seaLayer?.pixelSea ?? null;
@@ -141,8 +147,12 @@ export function computeWallSeamMasks(
   let navigablePixels = 0;
   for (let i = 0; i < size; i++) if (pixelCell[i] >= 0) navigablePixels++;
   const cellPx = Math.sqrt(navigablePixels / Math.max(1, cellCount));
-  const wallRadius = clamp(Math.round(cellPx * 0.13), 4, 16);
-  const seamRadius = clamp(Math.round(cellPx * 0.035), 1, 5);
+  const seamRadius = palette.uniformLines
+    ? clamp(Math.round(cellPx * 0.025), 2, 5)
+    : clamp(Math.round(cellPx * 0.035), 1, 5);
+  const wallRadius = palette.uniformLines
+    ? seamRadius
+    : clamp(Math.round(cellPx * 0.13), 4, 16);
 
   const connected = new Set<number>();
   for (let a = 0; a < cellCount; a++) {
@@ -164,7 +174,13 @@ export function computeWallSeamMasks(
     if (ca >= 0 && cb >= 0) {
       const key = ca < cb ? ca * cellCount + cb : cb * cellCount + ca;
       if (connected.has(key)) {
-        if (labelGrid[i] !== labelGrid[j]) {
+        if (
+          continentOf &&
+          continentOf[labelGrid[i]] !== continentOf[labelGrid[j]]
+        ) {
+          wall[i] = 1;
+          wall[j] = 1;
+        } else if (labelGrid[i] !== labelGrid[j]) {
           seam[i] = 1;
           seam[j] = 1;
         }
@@ -178,10 +194,13 @@ export function computeWallSeamMasks(
     if (wa >= 0 || wb >= 0) {
       const bothSea = wa >= 0 && wb >= 0;
       const landId = ca >= 0 ? labelGrid[i] : cb >= 0 ? labelGrid[j] : -1;
+      if (palette.voidSeas && !bothSea && landId < 0) return;
       const seaId = wa >= 0 ? wa : wb;
       const isDoor =
         bothSea ||
-        (landId >= 0 && (!doors || (doors.get(landId)?.has(seaId) ?? false)));
+        (!palette.voidSeas &&
+          landId >= 0 &&
+          (!doors || (doors.get(landId)?.has(seaId) ?? false)));
       if (isDoor) {
         seam[i] = 1;
         seam[j] = 1;
@@ -238,7 +257,7 @@ export function renderMazeImage(
   const voidIndex = builder.indexHex(palette.voidColor);
   const wallIndex = builder.indexHex(palette.wallColor);
   const seamIndex = builder.indexHex(palette.seamColor);
-  const seaIndex = builder.indexHex(SEA_COLOR);
+  const seaIndex = builder.indexHex(palette.seaColor ?? SEA_COLOR);
   const toneIndex = continentIdByTerritory.map((c) =>
     builder.indexHex(palette.tone(c)),
   );
@@ -246,8 +265,9 @@ export function renderMazeImage(
   const { wallMask, seamMask } = computeWallSeamMasks(
     labelGrid,
     layer,
-    palette.roundedWalls === true,
+    palette,
     seaLayer,
+    palette.continentWalls ? continentIdByTerritory : undefined,
   );
 
   const indices = new Uint8Array(size);

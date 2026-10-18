@@ -1,4 +1,10 @@
-import type { Fill, GenerationType, MapSize, TimedConnection } from 'engine';
+import type {
+  Fill,
+  GenerationType,
+  MapSize,
+  TileShape,
+  TimedConnection,
+} from 'engine';
 
 export interface ClientSettings {
   muted: boolean;
@@ -38,6 +44,9 @@ export interface HomeFilters {
   mapGenerationSize: string;
   mapGenerationType: string;
   mapGenerationFill: string;
+  mapGenerationTile: string;
+  mapGenerationSeas: string;
+  mapGenerationTimed: string;
   playersMin: number;
   playersMax: number;
   roundsMin: number;
@@ -61,7 +70,14 @@ export interface SessionResult {
 export interface GameSummary {
   name: string;
   mapName: string;
-  mapGeneration: { size: MapSize; type: GenerationType; fill: Fill } | null;
+  mapGeneration: {
+    size: MapSize;
+    type: GenerationType;
+    fill: Fill;
+    tile: TileShape;
+    seas: boolean;
+    timed: boolean;
+  } | null;
   hostName: string;
   playerCount: number;
   slots: number;
@@ -455,13 +471,14 @@ export type GameRulesSettings = Pick<
 
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 
-export type { Fill, GenerationType, MapSize, TimedConnection };
+export type { Fill, GenerationType, MapSize, TileShape, TimedConnection };
 
 export interface GenerateMapInput {
   seed: string;
   size: MapSize;
   type: GenerationType;
   fill: Fill;
+  tile: TileShape;
   seas: boolean;
   timed: boolean;
 }
@@ -751,6 +768,9 @@ export interface GamesQuery {
   mapGenerationSize?: MapSize;
   mapGenerationType?: GenerationType;
   mapGenerationFill?: Fill;
+  mapGenerationTile?: TileShape;
+  mapGenerationSeas?: boolean;
+  mapGenerationTimed?: boolean;
   minRounds?: number;
   maxRounds?: number;
   hasBots?: boolean;
@@ -787,6 +807,9 @@ export interface HomeGamesQuery {
   mapGenerationSize?: MapSize;
   mapGenerationType?: GenerationType;
   mapGenerationFill?: Fill;
+  mapGenerationTile?: TileShape;
+  mapGenerationSeas?: boolean;
+  mapGenerationTimed?: boolean;
   playersMin?: number;
   playersMax?: number;
   minRounds?: number;
@@ -885,109 +908,4 @@ export interface MessagesOverview {
   blocked: BlockedPlayer[];
 }
 
-export interface MapTerritory {
-  id: number;
-  continentId: number;
-  x: number;
-  y: number;
-  neighbors: number[];
-}
-
-export interface MapSeaTerritory {
-  id: number;
-  x: number;
-  y: number;
-  neighbors: number[];
-}
-
-export interface MapWrap {
-  a: number;
-  b: number;
-  x: boolean;
-  y: boolean;
-}
-
-export interface StoredMap {
-  name: string;
-  territories: MapTerritory[];
-  seaTerritories: MapSeaTerritory[];
-  bonuses: number[];
-  wraps: MapWrap[];
-  timedConnections: TimedConnection[];
-  image: string;
-  imageMime: string;
-  borderColors: string[];
-}
-
-export type PlayerMapSort =
-  'mostLiked' | 'newest' | 'oldest' | 'nameAsc' | 'nameDesc';
-
-export interface PlayerMapsQuery {
-  page: number;
-  pageSize: number;
-  q?: string;
-  authorId?: string;
-  mine?: boolean;
-  liked?: boolean;
-  notMine?: boolean;
-  notLiked?: boolean;
-  territoryMin?: number;
-  territoryMax?: number;
-  generationType?: GenerationType;
-  generationFill?: Fill;
-  generationSize?: MapSize;
-  sort: PlayerMapSort;
-}
-
-export interface PlayerMapRow {
-  id: string;
-  name: string;
-  authorId: string;
-  authorName: string;
-  territoryCount: number;
-  continentCount: number;
-  likeCount: number;
-  liked: boolean;
-  mine: boolean;
-  dangerous: boolean;
-  generation: GenerateMapInput | null;
-  createdAt: number;
-}
-
-export interface PlayerMapsPage {
-  maps: PlayerMapRow[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-export interface PlayerMapDetail {
-  id: string;
-  name: string;
-  authorId: string;
-  territories: MapTerritory[];
-  seaTerritories: MapSeaTerritory[];
-  bonuses: number[];
-  wraps: MapWrap[];
-  timedConnections: TimedConnection[];
-  image: string;
-  imageMime: string;
-  borderColors: string[];
-  generation: GenerateMapInput | null;
-  dangerous: boolean;
-  likeCount: number;
-  mine: boolean;
-  createdAt: number;
-}
-
-export interface PlayerMapSaveBody {
-  name: string;
-  territories: MapTerritory[];
-  seaTerritories: MapSeaTerritory[];
-  bonuses: number[];
-  wraps: MapWrap[];
-  timedConnections: TimedConnection[];
-  image: string;
-  borderColors: string[];
-  generation: GenerateMapInput | null;
-}
+export * from '../maps/mapTypes';

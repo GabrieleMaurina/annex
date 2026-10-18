@@ -1,4 +1,9 @@
-import { Fill, GenerationType, MapSize } from '../mapgen/core/params';
+import {
+  Fill,
+  GenerationType,
+  MapSize,
+  TileShape,
+} from '../mapgen/core/params';
 import { DEFAULT_BORDER_COLORS } from '../mapgen/render/palette';
 import {
   Game,
@@ -98,6 +103,7 @@ export interface ArchivedMap {
     size: MapSize;
     type: GenerationType;
     fill: Fill;
+    tile: TileShape;
     seas: boolean;
     timed: boolean;
   } | null;
@@ -131,6 +137,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
           size: generated.size,
           type: generated.type,
           fill: generated.fill,
+          tile: generated.tile,
           seas: generated.seas,
           timed: generated.timed,
         }

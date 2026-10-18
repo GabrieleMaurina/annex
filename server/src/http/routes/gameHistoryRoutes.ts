@@ -9,10 +9,12 @@ import {
   listGames,
   MAP_SIZES,
   searchUsers,
+  TILE_SHAPES,
 } from '../../db';
 import { identityOf } from '../middleware';
 import {
   intParam,
+  optBoolParam,
   optIntParam,
   parseSettings,
   stringArrayParam,
@@ -66,6 +68,13 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     FILL_VALUES.includes(q.mapGenerationFill)
       ? q.mapGenerationFill
       : undefined;
+  const mapGenerationTile =
+    typeof q.mapGenerationTile === 'string' &&
+    TILE_SHAPES.includes(q.mapGenerationTile)
+      ? q.mapGenerationTile
+      : undefined;
+  const mapGenerationSeas = optBoolParam(q.mapGenerationSeas);
+  const mapGenerationTimed = optBoolParam(q.mapGenerationTimed);
   const outcome =
     q.outcome === 'won' || q.outcome === 'lost' ? q.outcome : undefined;
   const hasBots =
@@ -90,6 +99,9 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     mapGenerationSize,
     mapGenerationType,
     mapGenerationFill,
+    mapGenerationTile,
+    mapGenerationSeas,
+    mapGenerationTimed,
     playersMin: optIntParam(q.playersMin, 1, 100),
     playersMax: optIntParam(q.playersMax, 1, 100),
     minRounds: optIntParam(q.minRounds, 1, 100000),

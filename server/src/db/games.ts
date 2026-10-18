@@ -7,6 +7,7 @@ import {
   GAME_ENUMS,
   GENERATION_TYPES,
   MAP_SIZES,
+  TILE_SHAPES,
 } from './users/preferences';
 import {
   findUserByUsername,
@@ -79,6 +80,9 @@ export interface GamesQuery {
   mapGenerationSize?: string;
   mapGenerationType?: string;
   mapGenerationFill?: string;
+  mapGenerationTile?: string;
+  mapGenerationSeas?: boolean;
+  mapGenerationTimed?: boolean;
   minRounds?: number;
   maxRounds?: number;
   hasBots?: boolean;
@@ -374,13 +378,14 @@ const schema = {
         endedAt: int,
         mapGeneration: {
           bsonType: ['object', 'null'],
-          required: ['seed', 'size', 'type', 'fill', 'seas', 'timed'],
+          required: ['seed', 'size', 'type', 'fill', 'tile', 'seas', 'timed'],
           additionalProperties: false,
           properties: {
             seed: string,
             size: { enum: MAP_SIZES },
             type: { enum: GENERATION_TYPES },
             fill: { enum: FILL_VALUES },
+            tile: { enum: TILE_SHAPES },
             seas: bool,
             timed: bool,
           },
@@ -619,6 +624,12 @@ function queryGames(
     filter['mapGeneration.type'] = query.mapGenerationType;
   if (query.mapGenerationFill)
     filter['mapGeneration.fill'] = query.mapGenerationFill;
+  if (query.mapGenerationTile)
+    filter['mapGeneration.tile'] = query.mapGenerationTile;
+  if (query.mapGenerationSeas !== undefined)
+    filter['mapGeneration.seas'] = query.mapGenerationSeas;
+  if (query.mapGenerationTimed !== undefined)
+    filter['mapGeneration.timed'] = query.mapGenerationTimed;
   if (query.minRounds !== undefined || query.maxRounds !== undefined) {
     const range: Record<string, number> = {};
     if (query.minRounds !== undefined) range.$gte = query.minRounds;

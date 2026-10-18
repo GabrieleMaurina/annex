@@ -138,6 +138,7 @@ export function runSimGame(
     size: mapParams.size,
     type: mapParams.type,
     fill: mapParams.fill,
+    tile: mapParams.tile,
     seas: mapParams.seas,
     timed: mapParams.timed,
   };

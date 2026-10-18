@@ -48,6 +48,22 @@ export function regionFillLayer(
   return layer.canvas;
 }
 
+export function outlineContinentRegion(
+  ctx: CanvasRenderingContext2D,
+  shape: RegionShape,
+  view: ImageView,
+  tinted: boolean,
+) {
+  const width = ctx.lineWidth;
+  const dash = ctx.getLineDash();
+  enterImageSpace(ctx, view);
+  ctx.lineWidth = width / view.scaleX;
+  ctx.setLineDash(dash.map((d) => d / view.scaleX));
+  if (tinted) ctx.fill(shape.outline);
+  ctx.stroke(shape.outline);
+  ctx.restore();
+}
+
 export function strokeRegion(
   ctx: CanvasRenderingContext2D,
   shape: RegionShape,

@@ -1,4 +1,4 @@
-import { containsProfanity } from 'engine';
+import { containsProfanity, TILE_SHAPE_VALUES, tileShapeLabel } from 'engine';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
@@ -10,6 +10,7 @@ import type {
   GenerateMapInput,
   GenerationType,
   MapSize,
+  TileShape,
 } from '../lib/types';
 import { DEFAULT_MAP_GENERATION, randomSeed } from '../maps/randomMap';
 import { SEAS_HELP, TIMED_CONNECTIONS_HELP } from './settings/settingsHelp';
@@ -59,6 +60,9 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
     const [genSize, setGenSize] = useState<MapSize>(
       saved?.size ?? DEFAULT_MAP_GENERATION.size,
     );
+    const [genTile, setGenTile] = useState<TileShape>(
+      saved?.tile ?? DEFAULT_MAP_GENERATION.tile,
+    );
     const [genSeas, setGenSeas] = useState(
       saved?.seas ?? DEFAULT_MAP_GENERATION.seas,
     );
@@ -85,6 +89,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         lastGenerated.size === genSize &&
         lastGenerated.type === genType &&
         lastGenerated.fill === genFill &&
+        (genType !== 'tile' || lastGenerated.tile === genTile) &&
         lastGenerated.seas === genSeas &&
         lastGenerated.timed === genTimed
       ) {
@@ -97,6 +102,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         size: genSize,
         type: genType,
         fill: genFill,
+        tile: genTile,
         seas: genSeas,
         timed: genTimed,
       };
@@ -156,8 +162,27 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                   <option value="terrain">Terrain</option>
                   <option value="dungeon">Dungeon</option>
                   <option value="temple">Temple</option>
+                  <option value="tile">Tile</option>
                 </Form.Select>
               </div>
+              {genType === 'tile' && (
+                <div className="d-flex align-items-center gap-2">
+                  <Form.Label className="mb-0" style={{ minWidth: 40 }}>
+                    Tile
+                  </Form.Label>
+                  <Form.Select
+                    className="w-auto"
+                    value={genTile}
+                    onChange={(e) => setGenTile(e.target.value as TileShape)}
+                  >
+                    {TILE_SHAPE_VALUES.map((tile) => (
+                      <option key={tile} value={tile}>
+                        {tileShapeLabel(tile)}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </div>
+              )}
               <div className="d-flex align-items-center gap-2">
                 <Form.Label className="mb-0" style={{ minWidth: 40 }}>
                   Fill

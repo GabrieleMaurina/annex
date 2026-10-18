@@ -132,6 +132,9 @@ export {
   mapImageSize,
   MapSize,
   mapSizeLabel,
+  TILE_SHAPE_VALUES,
+  TileShape,
+  tileShapeLabel,
 } from './mapgen/core/params';
 export { createWarpField, warpAt } from './mapgen/core/warp';
 export { enforceContiguity } from './mapgen/pipeline/contiguity';
@@ -147,6 +150,11 @@ export {
   TEMPLE_TONES,
   TEMPLE_VOID_COLOR,
   TEMPLE_WALL_COLOR,
+  TILE_SEA_COLOR,
+  TILE_SEAM_COLOR,
+  TILE_TONES,
+  TILE_VOID_COLOR,
+  TILE_WALL_COLOR,
 } from './mapgen/render/palette';
 export { runMapgenWorker } from './mapgen/worker';
 export { ArchivedMap } from './maps/maps';

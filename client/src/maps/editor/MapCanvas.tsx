@@ -570,10 +570,11 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     onPaintStrokeEnd?.();
   }
 
-  function addVertexAt(pos: Point): number {
+  function addVertexAt(pos: Point): number | null {
     const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = getViewport();
-    const worldX = clamp((pos.x - offsetX) / scaleX, 0, imgW);
-    const worldY = clamp((pos.y - offsetY) / scaleY, 0, imgH);
+    const worldX = (pos.x - offsetX) / scaleX;
+    const worldY = (pos.y - offsetY) / scaleY;
+    if (worldX < 0 || worldY < 0 || worldX > imgW || worldY > imgH) return null;
     const nextId = nextTerritoryId(territories);
     setTerritories([
       ...territories,

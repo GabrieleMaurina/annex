@@ -1,3 +1,4 @@
+import { TILE_SHAPE_VALUES, tileShapeLabel } from 'engine';
 import { Form } from 'react-bootstrap';
 import { Field } from '../common/inputs/filterControls';
 import SearchMultiSelect, {
@@ -33,6 +34,7 @@ const MAP_GENERATION_TYPES: { value: GenerationType; label: string }[] = [
   { value: 'terrain', label: 'Terrain' },
   { value: 'dungeon', label: 'Dungeon' },
   { value: 'temple', label: 'Temple' },
+  { value: 'tile', label: 'Tile' },
 ];
 
 const MAP_GENERATION_FILLS: { value: Fill; label: string }[] = [
@@ -69,19 +71,31 @@ export function MapFilterFields({
   size,
   type,
   fill,
+  tile,
+  seas,
+  timed,
   onMapName,
   onSize,
   onType,
   onFill,
+  onTile,
+  onSeas,
+  onTimed,
 }: {
   mapName: string;
   size: string;
   type: string;
   fill: string;
+  tile: string;
+  seas: string;
+  timed: string;
   onMapName: (v: string) => void;
   onSize: (v: string) => void;
   onType: (v: string) => void;
   onFill: (v: string) => void;
+  onTile: (v: string) => void;
+  onSeas: (v: string) => void;
+  onTimed: (v: string) => void;
 }) {
   return (
     <>
@@ -97,6 +111,9 @@ export function MapFilterFields({
               onSize('');
               onType('');
               onFill('');
+              onTile('');
+              onSeas('');
+              onTimed('');
             }
           }}
         >
@@ -126,7 +143,10 @@ export function MapFilterFields({
               size="sm"
               className="w-auto"
               value={type}
-              onChange={(e) => onType(e.target.value)}
+              onChange={(e) => {
+                onType(e.target.value);
+                if (e.target.value !== 'tile') onTile('');
+              }}
             >
               <option value="">Any</option>
               {MAP_GENERATION_TYPES.map((o) => (
@@ -136,6 +156,23 @@ export function MapFilterFields({
               ))}
             </Form.Select>
           </Field>
+          {type === 'tile' && (
+            <Field label="Generated map tile">
+              <Form.Select
+                size="sm"
+                className="w-auto"
+                value={tile}
+                onChange={(e) => onTile(e.target.value)}
+              >
+                <option value="">Any</option>
+                {TILE_SHAPE_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {tileShapeLabel(value)}
+                  </option>
+                ))}
+              </Form.Select>
+            </Field>
+          )}
           <Field label="Generated map fill">
             <Form.Select
               size="sm"
@@ -149,6 +186,30 @@ export function MapFilterFields({
                   {o.label}
                 </option>
               ))}
+            </Form.Select>
+          </Field>
+          <Field label="Generated map seas">
+            <Form.Select
+              size="sm"
+              className="w-auto"
+              value={seas}
+              onChange={(e) => onSeas(e.target.value)}
+            >
+              <option value="">Any</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </Form.Select>
+          </Field>
+          <Field label="Generated map timed connections">
+            <Form.Select
+              size="sm"
+              className="w-auto"
+              value={timed}
+              onChange={(e) => onTimed(e.target.value)}
+            >
+              <option value="">Any</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
             </Form.Select>
           </Field>
         </>

@@ -1,3 +1,4 @@
+import { tileShapeLabel } from 'engine';
 import { useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
 import { connector } from '../connector';
@@ -51,8 +52,13 @@ function MapPreviewModal({
             </p>
             {preview.generation && (
               <p className="mb-1 text-muted small">
-                Generated: {preview.generation.type}, {preview.generation.fill}{' '}
-                fill, {preview.generation.size} · seed {preview.generation.seed}
+                Generated: {preview.generation.type}
+                {preview.generation.type === 'tile' &&
+                  ` (${tileShapeLabel(preview.generation.tile)})`}
+                , {preview.generation.fill} fill, {preview.generation.size}
+                {preview.generation.seas && ', seas'}
+                {preview.generation.timed && ', timed connections'} · seed{' '}
+                {preview.generation.seed}
               </p>
             )}
           </>

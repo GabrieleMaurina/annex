@@ -401,6 +401,7 @@ export function strokeContinentOutline(
   territories: Territory[],
   toScreen: (p: Point) => Point,
   pad: number,
+  tinted: boolean,
 ) {
   const isAdjacent = (i: number, j: number) =>
     territories[i].neighbors.includes(territories[j].id) ||
@@ -421,6 +422,6 @@ export function strokeContinentOutline(
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
     ctx.closePath();
   }
-  ctx.fill();
+  if (tinted) ctx.fill();
   ctx.stroke();
 }

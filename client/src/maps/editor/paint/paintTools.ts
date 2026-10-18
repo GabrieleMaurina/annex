@@ -9,6 +9,11 @@ import {
   TEMPLE_TONES,
   TEMPLE_VOID_COLOR,
   TEMPLE_WALL_COLOR,
+  TILE_SEA_COLOR,
+  TILE_SEAM_COLOR,
+  TILE_TONES,
+  TILE_VOID_COLOR,
+  TILE_WALL_COLOR,
 } from 'engine';
 
 export type PaintTool =
@@ -49,6 +54,16 @@ export const PALETTE_GROUPS: PaletteGroup[] = [
       TEMPLE_WALL_COLOR,
       TEMPLE_VOID_COLOR,
       TEMPLE_SEAM_COLOR,
+    ],
+  },
+  {
+    label: 'Tile',
+    colors: [
+      ...TILE_TONES,
+      TILE_WALL_COLOR,
+      TILE_VOID_COLOR,
+      TILE_SEAM_COLOR,
+      TILE_SEA_COLOR,
     ],
   },
   {

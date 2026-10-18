@@ -5,6 +5,8 @@ import {
   GenerationType,
   MAP_SIZE_VALUES,
   MapSize,
+  TILE_SHAPE_VALUES,
+  TileShape,
   TimedConnection,
 } from 'engine';
 import { Response, Router } from 'express';
@@ -40,7 +42,7 @@ import {
   validateMapGeometry,
 } from '../../validate';
 import { identityOf, rateLimited } from '../middleware';
-import { intParam, optIntParam } from '../queryParams';
+import { intParam, optBoolParam, optIntParam } from '../queryParams';
 
 export const playerMapsRouter = Router();
 
@@ -177,6 +179,9 @@ playerMapsRouter.get('/player-maps', (req, res) => {
     ),
     generationFill: enumParam<Fill>(q.genFill, FILL_VALUES),
     generationSize: enumParam<MapSize>(q.genSize, MAP_SIZE_VALUES),
+    generationTile: enumParam<TileShape>(q.genTile, TILE_SHAPE_VALUES),
+    generationSeas: optBoolParam(q.genSeas),
+    generationTimed: optBoolParam(q.genTimed),
     sort,
     viewerId: viewer,
   };

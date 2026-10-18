@@ -1,8 +1,8 @@
-import { containsProfanity } from 'engine';
+import { containsProfanity, TILE_SHAPE_VALUES, tileShapeLabel } from 'engine';
 import { useState } from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
 import Help from '../../common/tooltips/Help';
-import type { Fill, GenerationType, MapSize } from '../../lib/types';
+import type { Fill, GenerationType, MapSize, TileShape } from '../../lib/types';
 import {
   SEAS_HELP,
   TIMED_CONNECTIONS_HELP,
@@ -39,6 +39,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
   const [type, setType] = useState<GenerationType>('terrain');
   const [fill, setFill] = useState<Fill>('mixed');
   const [size, setSize] = useState<MapSize>('medium');
+  const [tile, setTile] = useState<TileShape>('hexagons');
   const [seas, setSeas] = useState(false);
   const [timed, setTimed] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -60,6 +61,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
       lastGenerated.size === size &&
       lastGenerated.type === type &&
       lastGenerated.fill === fill &&
+      (type !== 'tile' || lastGenerated.tile === tile) &&
       lastGenerated.seas === seas &&
       lastGenerated.timed === timed
     ) {
@@ -74,6 +76,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
       size,
       type,
       fill,
+      tile,
       seas,
       timed,
     };
@@ -126,8 +129,26 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
             <option value="terrain">Terrain</option>
             <option value="dungeon">Dungeon</option>
             <option value="temple">Temple</option>
+            <option value="tile">Tile</option>
           </Form.Select>
         </Form.Group>
+        {type === 'tile' && (
+          <Form.Group className="d-flex align-items-center gap-2">
+            <Form.Label className="mb-0" style={{ minWidth: 50 }}>
+              Tile
+            </Form.Label>
+            <Form.Select
+              value={tile}
+              onChange={(e) => setTile(e.target.value as TileShape)}
+            >
+              {TILE_SHAPE_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {tileShapeLabel(value)}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        )}
         <Form.Group className="d-flex align-items-center gap-2">
           <Form.Label className="mb-0" style={{ minWidth: 50 }}>
             Fill

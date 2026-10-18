@@ -24,6 +24,12 @@ export function optIntParam(
   return Math.min(max, Math.max(min, Math.trunc(n)));
 }
 
+export function optBoolParam(value: unknown): boolean | undefined {
+  if (value === '1') return true;
+  if (value === '0') return false;
+  return undefined;
+}
+
 export function timeParam(value: unknown): number | undefined {
   if (typeof value !== 'string' || value.trim() === '') return undefined;
   const time = Number(value);

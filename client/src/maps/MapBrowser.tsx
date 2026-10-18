@@ -1,3 +1,4 @@
+import { TILE_SHAPE_VALUES, tileShapeLabel } from 'engine';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Button, Form, Spinner, Table } from 'react-bootstrap';
@@ -20,6 +21,7 @@ import type {
   PlayerMapSort,
   PlayerMapsPage,
   PlayerMapsQuery,
+  TileShape,
 } from '../lib/types';
 import { mapImageUrl } from './mapUrl';
 
@@ -60,6 +62,9 @@ function MapBrowser({
   const [genType, setGenType] = useState<GenerationType | ''>('');
   const [genFill, setGenFill] = useState<Fill | ''>('');
   const [genSize, setGenSize] = useState<MapSize | ''>('');
+  const [genTile, setGenTile] = useState<TileShape | ''>('');
+  const [genSeas, setGenSeas] = useState('');
+  const [genTimed, setGenTimed] = useState('');
   const [sort, setSort] = useState<PlayerMapSort>('mostLiked');
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PlayerMapsPage | null>(null);
@@ -75,6 +80,9 @@ function MapBrowser({
     genType,
     genFill,
     genSize,
+    genTile,
+    genSeas,
+    genTimed,
   });
 
   useEffect(() => {
@@ -93,6 +101,9 @@ function MapBrowser({
       generationType: genType || undefined,
       generationFill: genFill || undefined,
       generationSize: genSize || undefined,
+      generationTile: genTile || undefined,
+      generationSeas: genSeas ? genSeas === 'yes' : undefined,
+      generationTimed: genTimed ? genTimed === 'yes' : undefined,
       sort,
     };
     connector.listPlayerMaps(query, (r) => {
@@ -154,6 +165,9 @@ function MapBrowser({
     setGenType('');
     setGenFill('');
     setGenSize('');
+    setGenTile('');
+    setGenSeas('');
+    setGenTimed('');
     setPage(1);
   }
 
@@ -231,16 +245,37 @@ function MapBrowser({
                 size="sm"
                 className="w-auto"
                 value={genType}
-                onChange={(e) =>
-                  resetPage(setGenType)(e.target.value as GenerationType | '')
-                }
+                onChange={(e) => {
+                  resetPage(setGenType)(e.target.value as GenerationType | '');
+                  if (e.target.value !== 'tile') setGenTile('');
+                }}
               >
                 <option value="">Any</option>
                 <option value="terrain">Terrain</option>
                 <option value="dungeon">Dungeon</option>
                 <option value="temple">Temple</option>
+                <option value="tile">Tile</option>
               </Form.Select>
             </Field>
+            {genType === 'tile' && (
+              <Field label="Generated tile">
+                <Form.Select
+                  size="sm"
+                  className="w-auto"
+                  value={genTile}
+                  onChange={(e) =>
+                    resetPage(setGenTile)(e.target.value as TileShape | '')
+                  }
+                >
+                  <option value="">Any</option>
+                  {TILE_SHAPE_VALUES.map((value) => (
+                    <option key={value} value={value}>
+                      {tileShapeLabel(value)}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Field>
+            )}
             <Field label="Generated fill">
               <Form.Select
                 size="sm"
@@ -270,6 +305,30 @@ function MapBrowser({
                 <option value="medium">Medium</option>
                 <option value="large">Large</option>
                 <option value="xlarge">Extra Large</option>
+              </Form.Select>
+            </Field>
+            <Field label="Generated seas">
+              <Form.Select
+                size="sm"
+                className="w-auto"
+                value={genSeas}
+                onChange={(e) => resetPage(setGenSeas)(e.target.value)}
+              >
+                <option value="">Any</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </Form.Select>
+            </Field>
+            <Field label="Generated timed connections">
+              <Form.Select
+                size="sm"
+                className="w-auto"
+                value={genTimed}
+                onChange={(e) => resetPage(setGenTimed)(e.target.value)}
+              >
+                <option value="">Any</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
               </Form.Select>
             </Field>
           </div>

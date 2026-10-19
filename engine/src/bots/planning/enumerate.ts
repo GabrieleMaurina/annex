@@ -102,6 +102,7 @@ function materialize(
       seaLinks: ctx.seaLinks,
       continentTerritories: ctx.continentTerritories,
       territoryContinent: ctx.territoryContinent,
+      unlockedTiles: ctx.game.unlockedTileIds.size,
     },
   };
 }

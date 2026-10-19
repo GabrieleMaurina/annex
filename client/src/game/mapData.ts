@@ -1,6 +1,6 @@
 import { DEFAULT_BORDER_COLORS } from 'engine';
 import { httpGet } from '../lib/http';
-import type { MapWrap, TimedConnection } from '../lib/types';
+import type { LockedTile, MapWrap, TimedConnection } from '../lib/types';
 
 export interface Territory {
   id: number;
@@ -26,6 +26,7 @@ export interface GeneratedMapData {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
 }
@@ -63,6 +64,7 @@ function ensurePlayerMap(
     bonuses?: number[];
     wraps?: MapWrap[];
     timedConnections?: TimedConnection[];
+    lockedTiles?: LockedTile[];
     image?: string;
     borderColors: string[];
   }>('/player-maps/' + encodeURIComponent(playerMapId))
@@ -74,6 +76,7 @@ function ensurePlayerMap(
           bonuses: map.bonuses,
           wraps: map.wraps ?? [],
           timedConnections: map.timedConnections ?? [],
+          lockedTiles: map.lockedTiles ?? [],
           imageSrc: map.image,
           borderColors: map.borderColors,
         });
@@ -89,6 +92,7 @@ const EMPTY_MAP = {
   bonuses: [],
   wraps: [] as MapWrap[],
   timedConnections: [] as TimedConnection[],
+  lockedTiles: [] as LockedTile[],
   imageSrc: null,
   borderColors: DEFAULT_BORDER_COLORS,
 };
@@ -102,6 +106,7 @@ export function loadGameMap(
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   imageSrc: string | null;
   borderColors: string[];
 }> {

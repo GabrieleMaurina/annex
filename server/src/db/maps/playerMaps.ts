@@ -1,6 +1,7 @@
 import {
   Fill,
   GenerationType,
+  LockedTile,
   MapSize,
   TileShape,
   TimedConnection,
@@ -44,6 +45,7 @@ interface PlayerMapDoc {
   bonuses: number[];
   wraps: PlayerMapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   image: Binary;
   imageMime: string;
   borderColors: string[];
@@ -132,6 +134,7 @@ export interface PlayerMapInput {
   bonuses: number[];
   wraps: PlayerMapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   image: Buffer;
   imageMime: string;
   borderColors: string[];
@@ -151,6 +154,7 @@ export function createPlayerMap(
       bonuses: input.bonuses,
       wraps: input.wraps,
       timedConnections: input.timedConnections,
+      lockedTiles: input.lockedTiles,
       image: new Binary(input.image),
       imageMime: input.imageMime,
       borderColors: input.borderColors,
@@ -195,6 +199,7 @@ export function updatePlayerMap(
               bonuses: input.bonuses,
               wraps: input.wraps,
               timedConnections: input.timedConnections,
+              lockedTiles: input.lockedTiles,
               image: new Binary(input.image),
               imageMime: input.imageMime,
               borderColors: input.borderColors,
@@ -233,6 +238,7 @@ export interface PlayerMapDetail {
   bonuses: number[];
   wraps: PlayerMapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -257,6 +263,7 @@ export function getPlayerMapById(id: string): Promise<PlayerMapDetail | null> {
             bonuses: doc.bonuses,
             wraps: doc.wraps,
             timedConnections: doc.timedConnections ?? [],
+            lockedTiles: doc.lockedTiles ?? [],
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
             borderColors: doc.borderColors,
@@ -345,6 +352,7 @@ export interface PlayerMapsQuery {
   generationTile?: TileShape;
   generationSeas?: boolean;
   generationTimed?: boolean;
+  generationUnlockable?: boolean;
   sort: PlayerMapSort;
   viewerId?: string;
 }
@@ -419,6 +427,8 @@ export function listPlayerMaps(
     filter['generation.seas'] = query.generationSeas;
   if (query.generationTimed !== undefined)
     filter['generation.timed'] = query.generationTimed;
+  if (query.generationUnlockable !== undefined)
+    filter['generation.unlockable'] = query.generationUnlockable;
 
   const qRegex = query.q ? new RegExp(escapeRegex(query.q), 'i') : null;
 
@@ -451,6 +461,7 @@ export function listPlayerMaps(
           bonuses: 0,
           wraps: 0,
           timedConnections: 0,
+          lockedTiles: 0,
         },
       })
       .sort(sortSpec(query.sort))

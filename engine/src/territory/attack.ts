@@ -1,5 +1,9 @@
 import { callbacks } from '../callbacks';
-import { hasAnyAttack, hasAnyShipFight } from '../game/combat/autoSkip';
+import {
+  hasAnyAttack,
+  hasAnyShipFight,
+  isAttackStartCandidate,
+} from '../game/combat/autoSkip';
 import {
   balancedBlitz,
   balancedWinProbs,
@@ -11,16 +15,13 @@ import {
   trueBlitz,
   trueWinProbs,
 } from '../game/combat/dice';
-import {
-  attackFullPath,
-  hasAnySeaBridgeFrom,
-  hasSeaBridgeTo,
-} from '../game/combat/seaBridge';
+import { attackFullPath, hasSeaBridgeTo } from '../game/combat/seaBridge';
 import { finishGame, resolveWinnerIds } from '../game/end';
 import { hasReadyNuke } from '../game/nukes/nukes';
 import { recordElimination } from '../game/progression/stats';
 import { recordReplayFrame } from '../game/replay';
 import { gameState } from '../game/state';
+import { lockedTilesNextTo, unlockCost } from '../game/tiles/unlock';
 import { isFreeConquestTarget } from '../game/toxins/toxins';
 import {
   advanceTurnPhase,
@@ -94,29 +95,6 @@ function computeBlitzOutcomes(
     attackingTroops - 1,
     defendingTroops,
     gameDiceRules(game, defendingDice),
-  );
-}
-
-function isAttackStartCandidate(
-  game: Game,
-  playerId: number,
-  territoryId: number,
-): boolean {
-  if ((game.territoryTroops.get(territoryId) ?? 0) < 2) return false;
-  const map = getGameMap(game);
-  const territory = map.territories.find((t) => t.id === territoryId);
-  const neighbors = withPortalEdges(
-    territory?.neighbors ?? [],
-    territoryId,
-    game.portalTerritoryIds,
-    game.portalsEnabled,
-  );
-  return (
-    neighbors.some((n) => {
-      const ownerId = game.territoryOwners.get(n);
-      if (ownerId !== undefined) return ownerId !== playerId;
-      return isFreeConquestTarget(game, n);
-    }) || hasAnySeaBridgeFrom(game, playerId, territoryId)
   );
 }
 
@@ -357,7 +335,7 @@ export function attack(
   let cardsTaken = 0;
   let winnerIds: number[] | null = null;
   if (conquered) {
-    game.conqueredThisTurn = true;
+    if (defenderId !== undefined) game.conqueredThisTurn = true;
     attackerStats.territoriesConquered++;
     if (game.capitalTerritoryIds.has(endId)) attackerStats.capitalsConquered++;
     if (defenderStats) {
@@ -546,6 +524,72 @@ export function quickAttack(
       ? game.attackConquestMinTroops
       : (game.territoryTroops.get(startId) ?? 0) - 1,
   );
+}
+
+export function unlockTile(
+  playerId: number,
+  rawTileId: unknown,
+  enter: unknown,
+): GameResponse {
+  const ctx = requirePlayingTurn(requireGame(playerId), 'attack');
+  if (!ctx.ok) return ctx;
+  const { game } = ctx;
+  if (hasPendingConquest(game, playerId))
+    return { ok: false, error: 'pending conquest move' };
+  if (game.attackSeaTerritoryId !== null)
+    return { ok: false, error: 'sea attack in progress' };
+  const startId = game.attackStartTerritoryId;
+  if (startId === null)
+    return { ok: false, error: 'no start territory selected' };
+  if (!isInteger(rawTileId)) return { ok: false, error: 'invalid tile' };
+  const tileId = rawTileId;
+  if (!lockedTilesNextTo(game, startId).some((tile) => tile.id === tileId))
+    return { ok: false, error: 'invalid tile' };
+  const cost = unlockCost(game, playerId);
+  const startTroops = game.territoryTroops.get(startId) ?? 0;
+  if (startTroops < cost + 1) return { ok: false, error: 'not enough troops' };
+
+  game.territoryTroops.set(startId, startTroops - cost);
+  game.unlockedTileIds.add(tileId);
+  game.attackEndTerritoryId = null;
+  recordReplayFrame(game, {
+    type: 'unlock',
+    fromTerritoryId: startId,
+    tileId,
+    cost,
+    playerId,
+  });
+
+  fogFilterEmit(game, 'game:unlocked', callbacks.onUnlocked, (viewerId) => {
+    const visible = visibleTerritoryIdsOrAll(game, viewerId);
+    if (visible !== null && !visible.has(startId) && !visible.has(tileId))
+      return null;
+    return { fromTerritoryId: startId, tileId, cost, playerId };
+  });
+
+  if (startTroops - cost < 2) {
+    game.attackStartTerritoryId = null;
+    if (
+      !hasAnyAttack(game, playerId) &&
+      !hasReadyNuke(game, playerId) &&
+      !hasAnyShipFight(game, playerId)
+    )
+      advanceTurnPhase(game);
+    return respondGameState(game, playerId);
+  }
+  if (enter !== true) return respondGameState(game, playerId);
+
+  const selected = attackSelectEnd(playerId, tileId);
+  if (!selected.ok) return selected;
+  const attacked = attack(
+    playerId,
+    'regular',
+    Math.min(startTroops - cost - 1, game.attackDice),
+  );
+  if (!attacked.ok) return attacked;
+  if (game.state !== 'playing' || !hasPendingConquest(game, playerId))
+    return { ok: true, game: attacked.game };
+  return attackMove(playerId, (game.territoryTroops.get(startId) ?? 0) - 1);
 }
 
 export function attackMove(playerId: number, rawTroops: unknown): GameResponse {

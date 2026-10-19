@@ -3,6 +3,7 @@ import {
   FILL_VALUES,
   GENERATION_TYPE_VALUES,
   GenerationType,
+  LockedTile,
   MAP_SIZE_VALUES,
   MapSize,
   TILE_SHAPE_VALUES,
@@ -74,6 +75,7 @@ interface ParsedInput {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   image: Buffer;
   imageMime: string;
   imageDataUrl: string;
@@ -117,6 +119,7 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
     body.bonuses,
     body.wraps,
     body.timedConnections,
+    body.lockedTiles,
     dimensions.width,
     dimensions.height,
   );
@@ -134,6 +137,7 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
       bonuses: geometry.bonuses,
       wraps: geometry.wraps,
       timedConnections: geometry.timedConnections,
+      lockedTiles: geometry.lockedTiles,
       image: data,
       imageMime: match[1],
       imageDataUrl: match[0],
@@ -182,6 +186,7 @@ playerMapsRouter.get('/player-maps', (req, res) => {
     generationTile: enumParam<TileShape>(q.genTile, TILE_SHAPE_VALUES),
     generationSeas: optBoolParam(q.genSeas),
     generationTimed: optBoolParam(q.genTimed),
+    generationUnlockable: optBoolParam(q.genUnlockable),
     sort,
     viewerId: viewer,
   };
@@ -219,6 +224,7 @@ playerMapsRouter.get('/player-maps/:id', (req, res) => {
         bonuses: map.bonuses,
         wraps: map.wraps,
         timedConnections: map.timedConnections,
+        lockedTiles: map.lockedTiles,
         image: `data:${map.imageMime};base64,${map.image}`,
         imageMime: map.imageMime,
         borderColors: map.borderColors,

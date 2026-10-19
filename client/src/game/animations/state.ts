@@ -1,8 +1,16 @@
 import { makeEntrenchParticles } from './entrench';
 import { makeExplosionParticles } from './nukes/explosion';
+import { type DustPuff, makeUnlockEffect, type RockPiece } from './unlock';
 
 export type AnimationType =
-  'add' | 'remove' | 'explosion' | 'entrench' | 'starve' | 'arrow' | 'nuke';
+  | 'add'
+  | 'remove'
+  | 'explosion'
+  | 'entrench'
+  | 'starve'
+  | 'arrow'
+  | 'nuke'
+  | 'unlock';
 
 export interface Particle {
   angle: number;
@@ -33,10 +41,19 @@ export interface Animation {
   intercepted?: boolean;
   interceptFromX?: number;
   interceptFromY?: number;
+  tileId?: number;
+  points?: [number, number][];
+  cracks?: { points: [number, number][]; start: number }[];
+  rocks?: RockPiece[];
+  dust?: DustPuff[];
 }
 
 export const NUKE_FLIGHT_MS = 1200;
 export const NUKE_MUSHROOM_MS = 1800;
+export const UNLOCK_DELAY_MS = 120;
+export const UNLOCK_CRACK_MS = 300;
+export const UNLOCK_CRUMBLE_MS = 850;
+const UNLOCK_REVEAL_MS = UNLOCK_DELAY_MS + UNLOCK_CRACK_MS;
 
 export const DURATIONS: Record<AnimationType, number> = {
   add: 400,
@@ -46,6 +63,7 @@ export const DURATIONS: Record<AnimationType, number> = {
   starve: 1000,
   arrow: 500,
   nuke: NUKE_FLIGHT_MS + NUKE_MUSHROOM_MS,
+  unlock: UNLOCK_DELAY_MS + UNLOCK_CRACK_MS + UNLOCK_CRUMBLE_MS,
 };
 export const TROOP_CHANGE_RING_COLOR = '255, 255, 255';
 const REFERENCE_RADIUS = 20;
@@ -113,6 +131,7 @@ let portalsActive = false;
 let toxinsActive = false;
 let radiationActive = false;
 let fogActive = false;
+let timedLinksActive = false;
 const toggleListeners = new Set<() => void>();
 
 export function getAnimations(): readonly Animation[] {
@@ -176,6 +195,34 @@ export function startNukeAnimation(
   });
 }
 
+export function startUnlockAnimation(tile: {
+  id: number;
+  x: number;
+  y: number;
+  points: [number, number][];
+}) {
+  if (disabled) return;
+  animations.push({
+    type: 'unlock',
+    x: tile.x,
+    y: tile.y,
+    startedAt: performance.now(),
+    tileId: tile.id,
+    ...makeUnlockEffect(tile),
+  });
+}
+
+export function crackingTileIds(): Set<number> {
+  const now = performance.now();
+  return new Set(
+    animations
+      .filter(
+        (a) => a.type === 'unlock' && now - a.startedAt < UNLOCK_REVEAL_MS,
+      )
+      .map((a) => a.tileId!),
+  );
+}
+
 export function areAnimationsDisabled(): boolean {
   return disabled;
 }
@@ -217,6 +264,10 @@ export function setFogActive(active: boolean) {
   fogActive = active;
 }
 
+export function setTimedLinksActive(active: boolean) {
+  timedLinksActive = active;
+}
+
 export function hasActiveAnimations(): boolean {
   if (animations.length > 0) return true;
   if (disabled) return false;
@@ -225,7 +276,8 @@ export function hasActiveAnimations(): boolean {
     portalsActive ||
     toxinsActive ||
     radiationActive ||
-    fogActive
+    fogActive ||
+    timedLinksActive
   );
 }
 

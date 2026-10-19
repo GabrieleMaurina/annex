@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MapWrap, TimedConnection } from '../../../lib/types';
+import type { LockedTile, MapWrap, TimedConnection } from '../../../lib/types';
 import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
@@ -24,6 +24,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
   const [timedConnections, setTimedConnections] = useState<TimedConnection[]>(
     [],
   );
+  const [lockedTiles, setLockedTiles] = useState<LockedTile[]>([]);
   const [regions, setRegions] = useState<ClickableRegions | null>(null);
   const [camera] = useState(createCamera);
   const [imgDims, setImgDims] = useState({
@@ -43,6 +44,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         bonuses,
         wraps,
         timedConnections,
+        lockedTiles,
         imageSrc,
       }) => {
         setTerritories(territories);
@@ -50,6 +52,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         setBonuses(bonuses);
         setWraps(wraps);
         setTimedConnections(timedConnections);
+        setLockedTiles(lockedTiles);
         loadClickableRegions(mapName, playerMapId).then(setRegions);
         camera.set({ ...DEFAULT_TRANSFORM });
         if (!imageSrc) {
@@ -88,6 +91,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     seaTerritories,
     bonuses,
     timedConnections,
+    lockedTiles,
     forcedWraps,
     regions,
     camera,

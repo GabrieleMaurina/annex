@@ -23,7 +23,7 @@ function keepSize(ctx: PlanContext, state: SimState): number {
   );
 }
 
-function completesOrBreaksContinent(
+export function completesOrBreaksContinent(
   ctx: PlanContext,
   state: SimState,
   endId: number,
@@ -48,8 +48,13 @@ function earnsSomething(
   state: SimState,
   endId: number,
 ): boolean {
-  if (ctx.game.cards !== 'off' && !ctx.game.conqueredThisTurn) return true;
   const ownerId = state.owners.get(endId);
+  if (
+    ctx.game.cards !== 'off' &&
+    !ctx.game.conqueredThisTurn &&
+    ownerId !== undefined
+  )
+    return true;
   if (ownerId !== undefined && ctx.preTurnOpponents.get(ownerId) === 1)
     return true;
   return completesOrBreaksContinent(ctx, state, endId, ownerId);

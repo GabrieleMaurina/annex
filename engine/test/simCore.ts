@@ -47,6 +47,7 @@ function buildGridMap(name: string, cols: number, rows: number): GameMap {
     bonuses: Array.from({ length: continents }, () => 3),
     wraps: [],
     timedConnections: [],
+    lockedTiles: [],
   };
 }
 
@@ -127,6 +128,7 @@ export function runGame(
     seaTerritories: [],
     bonuses: map.bonuses,
     timedConnections: [],
+    lockedTiles: [],
     imageSrc: '',
     borderColors: [],
     seed: mapName,
@@ -136,6 +138,7 @@ export function runGame(
     tile: 'triangles',
     seas: false,
     timed: false,
+    unlockable: false,
   };
   updateSettings(host.id, { slots: roster.length, ...settings });
   for (let i = 1; i < roster.length; i++)

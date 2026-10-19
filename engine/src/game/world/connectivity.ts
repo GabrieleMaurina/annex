@@ -1,5 +1,7 @@
+import { withUnlockedTiles } from '../../maps/lockedTiles';
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
+import { closedTiles } from '../tiles/unlock';
 import { withPortalEdges } from './portals';
 
 export function wouldSplitAttackMap(
@@ -20,8 +22,13 @@ export function wouldSplitAttackMap(
       t.neighbors.filter((n) => !seaIds.has(n)),
     ]),
   );
+  const locked = closedTiles(game);
   const neighborsById = new Map(
-    map.territories.map((t) => [t.id, t.neighbors]),
+    withUnlockedTiles(
+      map.territories,
+      locked,
+      new Set(locked.map((tile) => tile.id)),
+    ).map((t) => [t.id, t.neighbors]),
   );
   const visited = new Set<number>([remaining[0].id]);
   const stack = [remaining[0].id];

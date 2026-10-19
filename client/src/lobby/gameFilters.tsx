@@ -74,6 +74,7 @@ export function MapFilterFields({
   tile,
   seas,
   timed,
+  unlockable,
   onMapName,
   onSize,
   onType,
@@ -81,6 +82,7 @@ export function MapFilterFields({
   onTile,
   onSeas,
   onTimed,
+  onUnlockable,
 }: {
   mapName: string;
   size: string;
@@ -89,6 +91,7 @@ export function MapFilterFields({
   tile: string;
   seas: string;
   timed: string;
+  unlockable: string;
   onMapName: (v: string) => void;
   onSize: (v: string) => void;
   onType: (v: string) => void;
@@ -96,6 +99,7 @@ export function MapFilterFields({
   onTile: (v: string) => void;
   onSeas: (v: string) => void;
   onTimed: (v: string) => void;
+  onUnlockable: (v: string) => void;
 }) {
   return (
     <>
@@ -114,6 +118,7 @@ export function MapFilterFields({
               onTile('');
               onSeas('');
               onTimed('');
+              onUnlockable('');
             }
           }}
         >
@@ -206,6 +211,18 @@ export function MapFilterFields({
               className="w-auto"
               value={timed}
               onChange={(e) => onTimed(e.target.value)}
+            >
+              <option value="">Any</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </Form.Select>
+          </Field>
+          <Field label="Generated map unlockable">
+            <Form.Select
+              size="sm"
+              className="w-auto"
+              value={unlockable}
+              onChange={(e) => onUnlockable(e.target.value)}
             >
               <option value="">Any</option>
               <option value="yes">Yes</option>

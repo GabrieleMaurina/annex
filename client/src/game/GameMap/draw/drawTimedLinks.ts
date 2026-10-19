@@ -1,6 +1,7 @@
 import { loadWhiteIcon } from '../../../common/icon';
 import { contrastTextColor } from '../../../lib/palette';
-import { radiusScale } from '../../animations/state';
+import { CHEVRONS_PER_MS, drawSplitArrow } from '../../animations/arrow';
+import { areAnimationsDisabled, radiusScale } from '../../animations/state';
 import {
   buildWrappedPathSegments,
   type ForcedWraps,
@@ -15,13 +16,63 @@ import type { TimedLink } from '../hooks/view/useTimedConnections';
 
 const HOURGLASS_SRC = '/icons/hourglass.svg';
 const ICON_RADII = 1;
-const CROSS_RADII = 0.7;
 const SIDE_OFFSET_RADII = 1.1;
-const CLOSED_SIDE_OFFSET_RADII = 1.8;
 const COUNT_FONT_RADII = 1.1;
 const ICON_OUTLINE = 2;
 const BLACK = '#000000';
 const WHITE = '#ffffff';
+const TRANSITION_MS = 1200;
+const TIMED_CHEVRONS_PER_MS = CHEVRONS_PER_MS / 3;
+
+interface LinkMotion {
+  open: boolean;
+  since: number;
+  base: number;
+  target: number;
+}
+
+const motionsByImage = new WeakMap<HTMLImageElement, Map<string, LinkMotion>>();
+
+function motionsOf(image: HTMLImageElement | null): Map<string, LinkMotion> {
+  if (!image) return new Map();
+  const motions = motionsByImage.get(image) ?? new Map<string, LinkMotion>();
+  motionsByImage.set(image, motions);
+  return motions;
+}
+
+function phaseAt(motion: LinkMotion, now: number): number {
+  const elapsed = now - motion.since;
+  const p = Math.min(1, elapsed / TRANSITION_MS);
+  if (!motion.open)
+    return motion.base + (motion.target - motion.base) * (1 - (1 - p) ** 2);
+  return elapsed < TRANSITION_MS
+    ? motion.base + (TIMED_CHEVRONS_PER_MS * elapsed ** 2) / (2 * TRANSITION_MS)
+    : motion.base + TIMED_CHEVRONS_PER_MS * (elapsed - TRANSITION_MS / 2);
+}
+
+function closednessAt(motion: LinkMotion, now: number): number {
+  const p = Math.min(1, (now - motion.since) / TRANSITION_MS);
+  return motion.open ? (1 - p) ** 2 : p ** 2;
+}
+
+function motionOf(
+  motions: Map<string, LinkMotion>,
+  link: TimedLink,
+  now: number,
+): LinkMotion {
+  const key = `${link.a},${link.b}`;
+  const motion = motions.get(key);
+  if (motion && motion.open === link.open) return motion;
+  const base = motion ? phaseAt(motion, now) : 0;
+  const next = {
+    open: link.open,
+    since: motion ? now : now - TRANSITION_MS,
+    base,
+    target: Math.round(base + (TIMED_CHEVRONS_PER_MS * TRANSITION_MS) / 2),
+  };
+  motions.set(key, next);
+  return next;
+}
 
 const hourglassIcons: Record<string, HTMLImageElement> = {
   [BLACK]: new Image(),
@@ -183,29 +234,6 @@ function drawHourglass(
   draw(icon, 0, 0);
 }
 
-function drawCross(
-  ctx: CanvasRenderingContext2D,
-  center: Point,
-  half: number,
-  color: string,
-  scale: number,
-) {
-  ctx.save();
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(center.x - half, center.y - half);
-  ctx.lineTo(center.x + half, center.y + half);
-  ctx.moveTo(center.x + half, center.y - half);
-  ctx.lineTo(center.x - half, center.y + half);
-  ctx.strokeStyle = opposite(color);
-  ctx.lineWidth = 9 * scale;
-  ctx.stroke();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 5 * scale;
-  ctx.stroke();
-  ctx.restore();
-}
-
 function drawCount(
   ctx: CanvasRenderingContext2D,
   center: Point,
@@ -242,7 +270,9 @@ export function drawTimedLinks(
   const screenRadius = vertexRadius * mapScale;
   const scale = radiusScale(screenRadius);
   const iconHalf = (ICON_RADII * vertexRadius) / 2;
-  const crossHalf = CROSS_RADII * vertexRadius;
+  const animated = !areAnimationsDisabled();
+  const now = performance.now();
+  const motions = motionsOf(backdrop.image);
   for (const link of links) {
     const a = pointById.get(link.a);
     const b = pointById.get(link.b);
@@ -251,8 +281,16 @@ export function drawTimedLinks(
       buildWrappedPathSegments([a, b], (p) => p, imgW, imgH, forcedWraps),
     );
     const { x: nx, y: ny } = snappedNormal(along);
-    const offset =
-      (link.open ? SIDE_OFFSET_RADII : CLOSED_SIDE_OFFSET_RADII) * vertexRadius;
+    const motion = motionOf(motions, link, now);
+    drawSplitArrow(
+      ctx,
+      buildWrappedPathSegments([a, b], toScreen, imgW, imgH, forcedWraps),
+      screenRadius,
+      animated ? phaseAt(motion, now) : 0,
+      animated ? closednessAt(motion, now) : link.open ? 0 : 1,
+    );
+
+    const offset = SIDE_OFFSET_RADII * vertexRadius;
     const iconAt = { x: at.x + nx * offset, y: at.y + ny * offset };
     const countAt = { x: at.x - nx * offset, y: at.y - ny * offset };
 
@@ -263,14 +301,6 @@ export function drawTimedLinks(
       contrastAt(backdrop, iconAt, iconHalf),
       scale,
     );
-    if (!link.open)
-      drawCross(
-        ctx,
-        toScreen(at),
-        crossHalf * mapScale,
-        contrastAt(backdrop, at, crossHalf),
-        scale,
-      );
     drawCount(
       ctx,
       toScreen(countAt),

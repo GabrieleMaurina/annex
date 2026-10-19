@@ -130,6 +130,7 @@ export function createGame(
     territoryEntrenchment: new Map(),
     fogMemory: new Map(),
     territoryToxins: new Map(),
+    unlockedTileIds: new Set(),
     capitalTerritoryIds: new Set(),
     playerMissions: new Map(),
     hostPriority: [player.id],

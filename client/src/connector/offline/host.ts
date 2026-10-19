@@ -177,26 +177,34 @@ function handoffTarget(state: GameState): number | undefined {
   return next !== undefined && localPlayerIds.includes(next) ? next : undefined;
 }
 
+function handOffIfNeeded(state: GameState): boolean {
+  lastState = state;
+  const next = handoffTarget(state);
+  if (
+    state.state !== 'playing' ||
+    next === undefined ||
+    next === currentActorId
+  )
+    return false;
+  beginHandoff(next, bufferedTurnStarted);
+  bufferedTurnStarted = null;
+  return true;
+}
+
+function handOffAfterAck(res: unknown): void {
+  const { game } = (res ?? {}) as { game?: GameState };
+  if (game && pendingActor === null) handOffIfNeeded(game);
+}
+
 function forward(event: string) {
   return (playerId: number, payload?: unknown) => {
     if (
       event === 'game:state' &&
       playerId === currentActorId &&
-      pendingActor === null
-    ) {
-      const state = payload as GameState;
-      lastState = state;
-      const next = handoffTarget(state);
-      if (
-        state.state === 'playing' &&
-        next !== undefined &&
-        next !== currentActorId
-      ) {
-        beginHandoff(next, bufferedTurnStarted);
-        bufferedTurnStarted = null;
-        return;
-      }
-    }
+      pendingActor === null &&
+      handOffIfNeeded(payload as GameState)
+    )
+      return;
 
     if (
       event === 'game:turnStarted' &&
@@ -256,6 +264,7 @@ const callbacks: EngineCallbacks = {
   onGameOver: forward('game:gameOver'),
   onEntrenched: forward('game:entrenched'),
   onToxined: forward('game:toxined'),
+  onUnlocked: forward('game:unlocked'),
   onToxinExpired: forward('game:toxinExpired'),
   onRadiationUpcoming: forward('game:radiationUpcoming'),
   onRadiationChanged: forward('game:radiationChanged'),
@@ -393,7 +402,11 @@ export function dispatch(
   data: unknown,
   cb?: (res: unknown) => void,
 ): void {
-  const fn = () => run(event, data, cb);
+  const fn = () =>
+    run(event, data, (res) => {
+      cb?.(res);
+      handOffAfterAck(res);
+    });
   if (ready) fn();
   else queue.push(fn);
 }
@@ -456,6 +469,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
           tile: d.tile as TileShape,
           seas: d.seas as boolean,
           timed: d.timed as boolean,
+          unlockable: d.unlockable as boolean,
         },
         cb ?? (() => {}),
       );
@@ -578,6 +592,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     case 'game:quickAttack':
       cb?.(engine.quickAttack(id, d.territoryId, d.minimal));
+      return;
+    case 'game:unlock':
+      cb?.(engine.unlockTile(id, d.tileId, d.enter));
       return;
     case 'game:attackSeaSelectStart':
       cb?.(engine.attackSeaSelectStart(id, d.territoryId));

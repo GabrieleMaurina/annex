@@ -130,7 +130,7 @@ export function randomMapParams(
   rng: () => number,
   seed: string,
 ): GenerateMapParams {
-  return {
+  const params = {
     seed,
     size: pick<MapSize>(rng, MAP_SIZE_VALUES),
     type: pick<GenerationType>(rng, GENERATION_TYPE_VALUES),
@@ -139,6 +139,10 @@ export function randomMapParams(
     seas: rng() < 0.5,
     timed: rng() < 0.2,
   };
+  const unlockable = params.type === 'tile' && rng() < 0.1;
+  return unlockable
+    ? { ...params, seas: false, timed: false, unlockable }
+    : { ...params, unlockable };
 }
 
 export interface RandomSettings {

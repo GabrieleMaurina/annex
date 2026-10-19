@@ -57,7 +57,8 @@ function MapPreviewModal({
                   ` (${tileShapeLabel(preview.generation.tile)})`}
                 , {preview.generation.fill} fill, {preview.generation.size}
                 {preview.generation.seas && ', seas'}
-                {preview.generation.timed && ', timed connections'} · seed{' '}
+                {preview.generation.timed && ', timed connections'}
+                {preview.generation.unlockable && ', unlockable'} · seed{' '}
                 {preview.generation.seed}
               </p>
             )}

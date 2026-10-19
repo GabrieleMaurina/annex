@@ -2,7 +2,11 @@ import type { MutableRefObject, RefObject } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import { connector } from '../../../../connector';
 import { playSound } from '../../../../lib/sounds';
-import type { GameState, ReplayAnimation } from '../../../../lib/types';
+import type {
+  GameState,
+  LockedTile,
+  ReplayAnimation,
+} from '../../../../lib/types';
 import {
   areAnimationsDisabled,
   DICE_ROLL_STEP_DURATION,
@@ -23,6 +27,7 @@ export function useSeaSocketEvents({
   territoriesRef,
   seaTerritoriesRef,
   seasRef,
+  lockedTiles,
   portalTerritoryIds,
   portalsEnabled,
   visibleTerritoryIdsRef,
@@ -39,6 +44,7 @@ export function useSeaSocketEvents({
   territoriesRef: RefObject<Territory[]>;
   seaTerritoriesRef: RefObject<SeaTerritory[]>;
   seasRef: RefObject<GameState['seas']>;
+  lockedTiles: LockedTile[];
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
   visibleTerritoryIdsRef: RefObject<GameState['visibleTerritoryIds']>;
@@ -69,6 +75,7 @@ export function useSeaSocketEvents({
   const { arrowRunsForPath } = useAnimationPathHelpers({
     territoriesRef,
     seaTerritoriesRef,
+    lockedTiles,
     portalTerritoryIds,
     portalsEnabled,
   });

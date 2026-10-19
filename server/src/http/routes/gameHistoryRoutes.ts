@@ -75,6 +75,7 @@ gameHistoryRouter.get('/games/history', (req, res) => {
       : undefined;
   const mapGenerationSeas = optBoolParam(q.mapGenerationSeas);
   const mapGenerationTimed = optBoolParam(q.mapGenerationTimed);
+  const mapGenerationUnlockable = optBoolParam(q.mapGenerationUnlockable);
   const outcome =
     q.outcome === 'won' || q.outcome === 'lost' ? q.outcome : undefined;
   const hasBots =
@@ -102,6 +103,7 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     mapGenerationTile,
     mapGenerationSeas,
     mapGenerationTimed,
+    mapGenerationUnlockable,
     playersMin: optIntParam(q.playersMin, 1, 100),
     playersMax: optIntParam(q.playersMax, 1, 100),
     minRounds: optIntParam(q.minRounds, 1, 100000),

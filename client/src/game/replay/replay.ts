@@ -360,6 +360,13 @@ export function useReplay(
     ? ((index <= 0 ? replay.frames[0] : replay.frames[index - 1])
         ?.playerStates ?? [])
     : null;
+  const unlockedTileIds = replay
+    ? replay.frames
+        .slice(0, index)
+        .flatMap((f) =>
+          f.animation.type === 'unlock' ? [f.animation.tileId] : [],
+        )
+    : null;
 
   return {
     index,
@@ -373,6 +380,7 @@ export function useReplay(
     seas,
     hands,
     playerStates,
+    unlockedTileIds,
     log: replay ? replay.log : null,
     turnPhase: currentFrame ? currentFrame.turnPhase : null,
     roundNumber: currentFrame ? currentFrame.roundNumber : null,

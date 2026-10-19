@@ -45,6 +45,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               bonuses: map.bonuses,
               wraps: map.wraps,
               timedConnections: map.timedConnections,
+              lockedTiles: map.lockedTiles,
               imageSrc: `data:${map.imageMime};base64,${map.image}`,
               borderColors: map.borderColors,
             },
@@ -79,6 +80,12 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
         return callback({ ok: false, error: 'invalid seas' });
       if (typeof input.timed !== 'boolean')
         return callback({ ok: false, error: 'invalid timed' });
+      if (
+        typeof input.unlockable !== 'boolean' ||
+        (input.unlockable &&
+          (input.type !== 'tile' || input.seas || input.timed))
+      )
+        return callback({ ok: false, error: 'invalid unlockable' });
 
       engine.generateMap(
         playerId,
@@ -90,6 +97,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           tile: input.tile as TileShape,
           seas: input.seas,
           timed: input.timed,
+          unlockable: input.unlockable,
         },
         (response) => callback(viewResponse(playerId, response)),
       );

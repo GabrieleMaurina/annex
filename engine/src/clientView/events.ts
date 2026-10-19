@@ -197,6 +197,13 @@ export const EVENT_VIEWS: EventViews = {
       roundsRemaining: p.roundsRemaining,
       playerId: aliasOf(game, p.playerId),
     }),
+  onUnlocked: (game, _viewerId, p) =>
+    complete<EventPayload<'onUnlocked'>>({
+      fromTerritoryId: p.fromTerritoryId,
+      tileId: p.tileId,
+      cost: p.cost,
+      playerId: aliasOf(game, p.playerId),
+    }),
   onToxinExpired: (_game, _viewerId, p) =>
     complete<EventPayload<'onToxinExpired'>>({
       territoryIds: p.territoryIds,
@@ -305,6 +312,7 @@ export const EVENT_VIEWS: EventViews = {
       bonuses: p.bonuses,
       wraps: p.wraps,
       timedConnections: p.timedConnections,
+      lockedTiles: p.lockedTiles,
       imageSrc: p.imageSrc,
       borderColors: p.borderColors,
     }),
@@ -335,6 +343,7 @@ const LOG_VIEWS: LogViews = {
   'game:attacked': EVENT_VIEWS.onAttacked,
   'game:entrenched': EVENT_VIEWS.onEntrenched,
   'game:toxined': EVENT_VIEWS.onToxined,
+  'game:unlocked': EVENT_VIEWS.onUnlocked,
   'game:radiationChanged': EVENT_VIEWS.onRadiationChanged,
   'game:nukeLaunched': EVENT_VIEWS.onNukeLaunched,
   'game:cardSetPlayed': EVENT_VIEWS.onCardSetPlayed,

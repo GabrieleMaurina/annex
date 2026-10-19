@@ -60,6 +60,7 @@ import {
   chooseShipPurchase,
   chooseSupplyBridge,
 } from '../heuristics/ships';
+import { chooseOpportunisticUnlock, chooseUnlock } from '../heuristics/unlock';
 import { defensiveBoldness } from '../personality/defensive';
 import {
   PlanContext,
@@ -500,6 +501,22 @@ function planAttack(
       plan,
     );
 
+  const unlockChoice = chooseUnlock(ctx);
+  if (unlockChoice)
+    return result(
+      [
+        {
+          event: 'game:attackSelectStart',
+          payload: { territoryId: unlockChoice.fromId },
+        },
+        {
+          event: 'game:unlock',
+          payload: { tileId: unlockChoice.tileId, enter: true },
+        },
+      ],
+      plan,
+    );
+
   let repaired = false;
   while (plan.step < plan.attackSteps.length) {
     const step = plan.attackSteps[plan.step];
@@ -556,6 +573,35 @@ function planAttack(
   }
 
   plan.step = plan.attackSteps.length;
+  const opportunity = chooseOpportunisticUnlock(ctx, plan.unlocksIssued ?? 0);
+  if (opportunity) {
+    plan.unlocksIssued = (plan.unlocksIssued ?? 0) + 1;
+    plan.attackSteps.push(...opportunity.steps);
+    return result(
+      [
+        {
+          event: 'game:attackSelectStart',
+          payload: { territoryId: opportunity.fromId },
+        },
+        {
+          event: 'game:unlock',
+          payload: { tileId: opportunity.tileId, enter: !opportunity.occupy },
+        },
+        ...(opportunity.occupy
+          ? [
+              {
+                event: 'game:attackSelectEnd',
+                payload: { territoryId: opportunity.tileId },
+              },
+              { event: 'game:attack', payload: { type: 'regular', troops: 1 } },
+              { event: 'game:attackMove', payload: { troops: 1 } },
+            ]
+          : []),
+      ],
+      plan,
+    );
+  }
+
   const frustration = frustrationLevel(game);
   const fallbackBudget = Math.min(
     MAX_FALLBACK_ATTACKS_PER_TURN,

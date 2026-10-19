@@ -131,6 +131,7 @@ function buildTopology(game: Game, map: GameMap, botId: number): MapTopology {
     seaLinks,
     continentTerritories,
     territoryContinent,
+    unlockedTiles: game.unlockedTileIds.size,
   };
 }
 
@@ -279,7 +280,8 @@ export function buildContext(
       ? gameMap
       : { ...gameMap, bonuses: gameMap.bonuses.map(() => 0) };
   const topology =
-    isPlanFresh(cachedPlan, game, botId) && cachedPlan.topology
+    isPlanFresh(cachedPlan, game, botId) &&
+    cachedPlan.topology?.unlockedTiles === game.unlockedTileIds.size
       ? cachedPlan.topology
       : buildTopology(game, map, botId);
 

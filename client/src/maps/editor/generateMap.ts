@@ -1,6 +1,7 @@
 import type {
   Fill,
   GenerationType,
+  LockedTile,
   MapSeaTerritory,
   MapSize,
   MapTerritory,
@@ -16,6 +17,7 @@ export interface GenerateInput {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  unlockable: boolean;
 }
 
 export interface GeneratedEditorMap {
@@ -24,6 +26,7 @@ export interface GeneratedEditorMap {
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
 }

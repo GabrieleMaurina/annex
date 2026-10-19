@@ -35,6 +35,11 @@ import {
   type GraphState,
   type HistoryEntry,
 } from './editor/model/history';
+import {
+  remapLockedTiles,
+  toEditorLockedTiles,
+  useLockedTiles,
+} from './editor/model/lockedTiles';
 import { drawTerritoryBorders } from './editor/paint/drawTerritories';
 import { fillTerritories } from './editor/paint/fillTerritories';
 import PaintLayer, {
@@ -107,6 +112,7 @@ function MapEditor({ account }: { account: Account | null }) {
   const [imageLoads, setImageLoads] = useState(0);
   const [mapName, setMapName] = useState(DEFAULT_MAP_NAME);
   const [generation, setGeneration] = useState<GenerateMapInput | null>(null);
+  const [lockedTiles, setLockedTiles] = useLockedTiles(territories);
   const [currentContinentId, setCurrentContinentId] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   useToggleSound(collapsed);
@@ -244,8 +250,22 @@ function MapEditor({ account }: { account: Account | null }) {
 
   const [borderColors, setBorderColors] = useState(DEFAULT_BORDER_COLORS);
   const graph = useMemo(
-    () => ({ territories, bonuses, continentCount, borderColors, generation }),
-    [territories, bonuses, continentCount, borderColors, generation],
+    () => ({
+      territories,
+      bonuses,
+      continentCount,
+      borderColors,
+      generation,
+      lockedTiles,
+    }),
+    [
+      territories,
+      bonuses,
+      continentCount,
+      borderColors,
+      generation,
+      lockedTiles,
+    ],
   );
   const graphKey = useMemo(() => graphKeyOf(graph), [graph]);
 
@@ -440,11 +460,12 @@ function MapEditor({ account }: { account: Account | null }) {
       setMapName(map.name);
       setSavedName(map.name);
       setGeneration(map.generation ?? null);
+      setLockedTiles(toEditorLockedTiles(map.lockedTiles));
       setBorderColors(map.borderColors);
       setCurrentContinentId(0);
       setImageSrc(map.image);
     });
-  }, [id, navigate]);
+  }, [id, navigate, setLockedTiles]);
 
   const applyEntry = useCallback(
     (e: HistoryEntry) => {
@@ -454,6 +475,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setContinentCount(e.continentCount);
       setBorderColors(e.borderColors);
       setGeneration(e.generation);
+      setLockedTiles(e.lockedTiles);
       setCurrentContinentId(0);
       committedRef.current = e;
       committedPaintRef.current = paintRevRef.current;
@@ -487,7 +509,7 @@ function MapEditor({ account }: { account: Account | null }) {
       bumpPaint();
       applyingRef.current = false;
     },
-    [paintSurface, paintCanvas, bumpPaint, bumpEpoch],
+    [paintSurface, paintCanvas, bumpPaint, bumpEpoch, setLockedTiles],
   );
 
   const undo = useCallback(() => {
@@ -547,6 +569,7 @@ function MapEditor({ account }: { account: Account | null }) {
     reader.onload = () => {
       replaceImage(reader.result as string);
       setGeneration(null);
+      setLockedTiles([]);
       if (isDefaultName(mapName)) setMapName(file.name.replace(/\.[^.]+$/, ''));
     };
     reader.readAsDataURL(file);
@@ -567,6 +590,7 @@ function MapEditor({ account }: { account: Account | null }) {
     setContinentCount(1);
     setCurrentContinentId(0);
     setGeneration(null);
+    setLockedTiles([]);
     setBorderColors(DEFAULT_BORDER_COLORS);
     setMapName(DEFAULT_MAP_NAME);
     setSavedId(null);
@@ -589,6 +613,7 @@ function MapEditor({ account }: { account: Account | null }) {
       continentCount: 1,
       borderColors: DEFAULT_BORDER_COLORS,
       generation: null,
+      lockedTiles: [],
     };
     committedRef.current = {
       pixels: surface.data.slice(),
@@ -622,6 +647,9 @@ function MapEditor({ account }: { account: Account | null }) {
     setContinentCount(Math.max(1, sorted.bonuses.length));
     setCurrentContinentId(0);
     setGeneration(input);
+    setLockedTiles(
+      remapLockedTiles(toEditorLockedTiles(map.lockedTiles), sorted.idMap),
+    );
     setBorderColors(map.borderColors);
     setMapName(map.name);
   }
@@ -645,6 +673,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setBonuses(map.bonuses);
       setContinentCount(map.bonuses.length);
       setGeneration(map.generation ?? null);
+      setLockedTiles(toEditorLockedTiles(map.lockedTiles));
       setBorderColors(map.borderColors);
       setMapName(map.name);
       setCurrentContinentId(0);
@@ -667,7 +696,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setError('Add at least one territory before saving.');
       return;
     }
-    if (!isConnected(territories)) {
+    if (!isConnected(territories, lockedTiles)) {
       setError('All territories must be connected.');
       return;
     }
@@ -688,7 +717,7 @@ function MapEditor({ account }: { account: Account | null }) {
       return;
     }
     setSaving(true);
-    const sorted = sortMapData(territories, bonuses);
+    const sorted = sortMapData(territories, bonuses, lockedTiles);
     const body = {
       name,
       territories: sorted.territories,
@@ -696,6 +725,7 @@ function MapEditor({ account }: { account: Account | null }) {
       bonuses: sorted.bonuses,
       wraps: sorted.wraps,
       timedConnections: sorted.timedConnections,
+      lockedTiles: sorted.lockedTiles,
       image,
       generation,
       borderColors,
@@ -723,6 +753,7 @@ function MapEditor({ account }: { account: Account | null }) {
     continentCount,
     bonuses,
     generation,
+    lockedTiles,
     borderColors,
     effectiveId,
     paintSurface,

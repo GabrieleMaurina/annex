@@ -1,3 +1,4 @@
+import type { LockedTile } from '../../lib/types';
 import { loadGameMap } from '../mapData';
 import { labelRegions, type RegionPoint } from './labelRegions';
 import { traceRegionShapes, type RegionShape } from './traceRegions';
@@ -7,6 +8,7 @@ export interface ClickableRegions {
   height: number;
   labels: Int16Array;
   shapes: Map<number, RegionShape>;
+  unlocked?: { tiles: LockedTile[]; lineWidth: number };
 }
 
 const BORDER_REACH = 8;

@@ -26,6 +26,7 @@ export interface MapSpec {
   edges: [number, number][];
   bonuses: number[];
   seaIds?: number[];
+  lockedTiles?: Record<number, number[]>;
 }
 
 export interface ScenarioSpec {
@@ -91,6 +92,19 @@ export function buildMap(spec: MapSpec): GameMap {
     bonuses: spec.bonuses,
     wraps: [],
     timedConnections: [],
+    lockedTiles: Object.entries(spec.lockedTiles ?? {}).map(
+      ([id, tileNeighbors]) => ({
+        id: Number(id),
+        x: Number(id) * 10,
+        y: 0,
+        points: [
+          [Number(id) * 10 - 5, -5],
+          [Number(id) * 10 + 5, -5],
+          [Number(id) * 10, 5],
+        ],
+        neighbors: tileNeighbors,
+      }),
+    ),
   };
 }
 
@@ -188,6 +202,7 @@ function baseGame(name: string): Game {
     territoryEntrenchment: new Map(),
     fogMemory: new Map(),
     territoryToxins: new Map(),
+    unlockedTileIds: new Set(),
     capitalTerritoryIds: new Set(),
     playerMissions: new Map(),
     hostPriority: [],

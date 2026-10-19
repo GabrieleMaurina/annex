@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { drawMapBorder, mapBorder } from '../../game/mapBorder';
 import type { WrapAxes } from '../../game/mapMath';
 import { playSound } from '../../lib/sounds';
 import { hitVertex, NO_WRAP, wrapAxesOf } from './canvas/canvasGeometry';
@@ -498,12 +499,14 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
 
     onViewport?.({ offsetX, offsetY, scaleX, scaleY });
 
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(
-      offsetX - 10 * zoom,
-      offsetY - 10 * zoom,
-      imgW * scaleX + 20 * zoom,
-      imgH * scaleY + 20 * zoom,
+    drawMapBorder(
+      ctx,
+      paintSurfaceRef ? mapBorder(paintSurfaceRef.current) : null,
+      offsetX,
+      offsetY,
+      imgW * scaleX,
+      imgH * scaleY,
+      10 * zoom,
     );
 
     if (!hideImage) {

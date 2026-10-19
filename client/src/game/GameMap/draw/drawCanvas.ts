@@ -1,8 +1,15 @@
 import type { RefObject } from 'react';
 import { contrastTextColor, playerColor } from '../../../lib/palette';
-import type { Card, CardSymbol, GameMode, GameState } from '../../../lib/types';
+import type {
+  Card,
+  CardSymbol,
+  GameMode,
+  GameState,
+  LockedTile,
+} from '../../../lib/types';
 import {
   areAnimationsDisabled,
+  crackingTileIds,
   drawAnimations,
   drawFogCloud,
   drawFortifyPath,
@@ -14,6 +21,7 @@ import {
 } from '../../animations';
 import type { EvaluatedCombo } from '../../logic/cards';
 import { formatTroops } from '../../logic/formatTroops';
+import { drawMapBorder, imageBorder } from '../../mapBorder';
 import type { SeaTerritory, Territory } from '../../mapData';
 import {
   borderScale,
@@ -52,6 +60,7 @@ import {
   outlineContinentRegion,
   regionFillLayer,
   strokeRegion,
+  unlockedTileLayer,
 } from './drawRegions';
 import { drawTimedLinks } from './drawTimedLinks';
 
@@ -114,6 +123,7 @@ export interface DrawCanvasParams {
   forcedWraps: ForcedWraps;
   regions: ClickableRegions | null;
   timedLinks: TimedLink[];
+  unlockTiles: LockedTile[];
 }
 
 export function drawGameMapCanvas(params: DrawCanvasParams) {
@@ -174,6 +184,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     forcedWraps,
     regions,
     timedLinks,
+    unlockTiles,
   } = params;
 
   const canvas = canvasRef.current;
@@ -205,12 +216,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     imgDims,
   );
 
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(
-    offsetX - 10 * zoom,
-    offsetY - 10 * zoom,
-    imgW * scaleX + 20 * zoom,
-    imgH * scaleY + 20 * zoom,
+  drawMapBorder(
+    ctx,
+    imageRef.current && imageBorder(imageRef.current),
+    offsetX,
+    offsetY,
+    imgW * scaleX,
+    imgH * scaleY,
+    10 * zoom,
   );
 
   if (imageRef.current) {
@@ -222,6 +235,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       imgW * scaleX,
       imgH * scaleY,
     );
+    ctx.imageSmoothingEnabled = true;
+  }
+
+  const cracking = crackingTileIds();
+  const tileLayer = regions && unlockedTileLayer(regions, cracking);
+  if (tileLayer) {
+    ctx.imageSmoothingEnabled = scaleX * dpr < 1;
+    ctx.drawImage(tileLayer, offsetX, offsetY, imgW * scaleX, imgH * scaleY);
     ctx.imageSmoothingEnabled = true;
   }
 
@@ -264,6 +285,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   if (regions) {
     for (const t of territories) {
       if (!regions.shapes.has(t.id) || radiationById.has(t.id)) continue;
+      if (cracking.has(t.id)) continue;
       if (visibleSet && !visibleSet.has(t.id)) continue;
       fillColors.set(t.id, fillColorOf(t.id));
     }
@@ -534,6 +556,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   }
 
   for (const t of territories) {
+    if (cracking.has(t.id)) continue;
     const isVisible = visibleSet === null || visibleSet.has(t.id);
     const p = toScreen(t);
     const shape = regions?.shapes.get(t.id);
@@ -832,6 +855,22 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ctx.textBaseline = 'middle';
       ctx.fillText(idText, p.x, boxY + boxH / 2 + 1 * zoom);
     }
+  }
+
+  for (const tile of unlockTiles) {
+    const p = toScreen(tile);
+    const state = nodeState(tile.id);
+    const highlighted = state === 'hovered' || state === 'selected';
+    ctx.beginPath();
+    ctx.arc(
+      p.x,
+      p.y,
+      VERTEX_RADIUS * scaleX * (highlighted ? 0.35 : 0.2),
+      0,
+      Math.PI * 2,
+    );
+    ctx.fillStyle = highlighted ? '#ffffff' : '#bbbbbb';
+    ctx.fill();
   }
 
   if (continentGroups) {

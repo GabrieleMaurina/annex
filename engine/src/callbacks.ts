@@ -147,6 +147,16 @@ export interface EngineCallbacks {
     },
     gameName: string,
   ): void;
+  onUnlocked(
+    playerId: number,
+    payload: {
+      fromTerritoryId: number;
+      tileId: number;
+      cost: number;
+      playerId: number;
+    },
+    gameName: string,
+  ): void;
   onToxinExpired(
     playerId: number,
     payload: { territoryIds: number[] },
@@ -289,6 +299,7 @@ export interface EngineCallbacks {
       bonuses: number[];
       wraps: unknown[];
       timedConnections: unknown[];
+      lockedTiles: unknown[];
       imageSrc: string;
       borderColors: string[];
     },

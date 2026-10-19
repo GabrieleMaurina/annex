@@ -95,6 +95,7 @@ export function useCanvasKeyboard({
   submitToxins,
   attackPanelOpen,
   attackShowPendingConquest,
+  unlockTileId,
   setAttackMoveTroops,
   cycleAttackOption,
   submitAttackMove,
@@ -376,6 +377,7 @@ export function useCanvasKeyboard({
       }
       if (
         attackPanelOpen &&
+        unlockTileId === null &&
         !attackShowPendingConquest &&
         !attackDiceOnly &&
         !isTypingTarget(e.target) &&
@@ -469,6 +471,7 @@ export function useCanvasKeyboard({
     attackRevealing,
     cancelAttack,
     attackPanelOpen,
+    unlockTileId,
     submitAttack,
     submitAttackMove,
     stepTroopPanel,
@@ -508,12 +511,17 @@ export function useCanvasKeyboard({
         playSound('click');
         return;
       }
-      if (attackPanelOpen && !attackShowPendingConquest && !attackDiceOnly) {
+      if (
+        attackPanelOpen &&
+        unlockTileId === null &&
+        !attackShowPendingConquest &&
+        !attackDiceOnly
+      ) {
         playSound('click');
         cycleAttackOption(e.deltaY < 0 ? -1 : 1);
         return;
       }
-      if (attackPanelOpen) return;
+      if (attackPanelOpen && unlockTileId === null) return;
       zoomAround(e.clientX, e.clientY, e.deltaY < 0 ? 1.1 : 0.9);
     }
     window.addEventListener('wheel', onWheel, { passive: false });
@@ -521,6 +529,7 @@ export function useCanvasKeyboard({
   }, [
     stepTroopPanel,
     attackPanelOpen,
+    unlockTileId,
     attackShowPendingConquest,
     attackDiceOnly,
     cycleAttackOption,

@@ -10,6 +10,7 @@ export interface LoadedPlayerMap {
   bonuses: number[];
   wraps: GameMap['wraps'];
   timedConnections: GameMap['timedConnections'];
+  lockedTiles: GameMap['lockedTiles'];
   imageSrc: string;
   borderColors: string[];
 }
@@ -27,6 +28,7 @@ export function loadPlayerMap(id: string): Promise<LoadedPlayerMap> {
           bonuses: map.bonuses,
           wraps: map.wraps,
           timedConnections: map.timedConnections,
+          lockedTiles: map.lockedTiles,
           imageSrc: map.image,
           borderColors: map.borderColors,
         }

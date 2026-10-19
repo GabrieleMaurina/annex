@@ -193,6 +193,7 @@ function cardCandidates(
     if (starts && !starts.has(from)) continue;
     if (troopsIn(state, from) < 3 || !supplyConnected(ctx, from)) continue;
     for (const to of hostileNeighborsOf(ctx, state, from)) {
+      if (!state.owners.has(to)) continue;
       if (starts && !favorableAttack(state, from, to, budget)) continue;
       const defenders = troopsIn(state, to);
       if (defenders >= bestDefenders && !bestWalls) continue;
@@ -327,6 +328,7 @@ function safeCardCandidates(
 ): Candidate[] {
   const deployments = defensiveDeployments(ctx, state, budget);
   return safeAttacks(ctx, state, SAFE_ATTACK_RATIO)
+    .filter((attack) => state.owners.has(attack.to))
     .slice(0, MAX_SAFE_SEEDS)
     .flatMap((seed) => {
       const chain = safeChain(ctx, state, seed);

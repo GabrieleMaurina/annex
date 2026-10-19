@@ -26,6 +26,7 @@ export interface LiveGamesQuery {
   mapGenerationTile?: string;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
+  mapGenerationUnlockable?: boolean;
   playersMin?: number;
   playersMax?: number;
   minRounds?: number;
@@ -79,6 +80,11 @@ function matches(game: LiveGameRow, query: LiveGamesQuery): boolean {
   if (
     query.mapGenerationTimed !== undefined &&
     game.mapGeneration?.timed !== query.mapGenerationTimed
+  )
+    return false;
+  if (
+    query.mapGenerationUnlockable !== undefined &&
+    game.mapGeneration?.unlockable !== query.mapGenerationUnlockable
   )
     return false;
   if (query.playersMin !== undefined && game.playerCount < query.playersMin)

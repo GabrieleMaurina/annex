@@ -56,6 +56,25 @@ function GameSettingsFields({
   if (game.gameMode === 'team deathmatch') disabledKeys.add('alliances');
   const blitzOffAllowed = isBlitzOffAllowed(game);
 
+  function optionDisabled(def: GameSettingDef, option: string): boolean {
+    const value = def.numeric ? Number(option) : option;
+    if (def.key === 'blitz') return value === 'off' && !blitzOffAllowed;
+    if (
+      game.blitz === 'off' &&
+      !isBlitzOffAllowed({ ...game, [def.key]: value })
+    )
+      return true;
+    if (def.key === 'attackDice') return Number(value) < game.defenceDice;
+    if (def.key === 'defenceDice')
+      return (
+        Number(value) > game.attackDice ||
+        (Number(value) >= MAX_DICE && game.entrenchments === 'on')
+      );
+    if (def.key === 'gameMode')
+      return value === 'team deathmatch' && game.alliances === 'on';
+    return false;
+  }
+
   function field(def: GameSettingDef) {
     const value = game[def.key as keyof GameState];
     return (
@@ -90,13 +109,7 @@ function GameSettingsFields({
               <option
                 key={o.value}
                 value={o.value}
-                disabled={
-                  (def.key === 'blitz' &&
-                    o.value === 'off' &&
-                    !blitzOffAllowed) ||
-                  (def.key === 'defenceDice' &&
-                    Number(o.value) > game.attackDice)
-                }
+                disabled={optionDisabled(def, o.value)}
               >
                 {o.label}
               </option>

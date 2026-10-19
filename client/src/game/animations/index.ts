@@ -10,6 +10,7 @@ import {
   radiusScale,
   TROOP_CHANGE_RING_COLOR,
 } from './state';
+import { drawUnlock } from './unlock';
 
 const TROOP_CHANGE_RING_WIDTH = 4;
 
@@ -30,6 +31,8 @@ export function drawAnimations(
       drawExplosion(ctx, a, p, radius, now);
     } else if (a.type === 'nuke') {
       drawNuke(ctx, a, toScreen, radius, now);
+    } else if (a.type === 'unlock') {
+      drawUnlock(ctx, a, toScreen, now);
     } else if (a.type === 'entrench') {
       drawEntrench(ctx, a, p, radius, now);
     } else if (a.type === 'add' || a.type === 'remove') {
@@ -75,6 +78,7 @@ export { drawPortal } from './portal';
 export {
   areAnimationsDisabled,
   CARD_SET_FLASH_DURATION,
+  crackingTileIds,
   getAnimationDuration,
   hasActiveAnimations,
   onAnimationsToggle,
@@ -84,9 +88,11 @@ export {
   setFogActive,
   setPortalsActive,
   setRadiationActive,
+  setTimedLinksActive,
   setToxinsActive,
   startAnimation,
   startNukeAnimation,
+  startUnlockAnimation,
   toggleAnimationsDisabled,
 } from './state';
 export type { AnimationType } from './state';

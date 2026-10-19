@@ -5,6 +5,7 @@ import { playSound } from '../../../../lib/sounds';
 import type { Ack } from '../../../../lib/types';
 import { ATTACK_EMOJI } from '../../../logic/emoji';
 import { regionAt } from '../../../regions/clickableRegions';
+import { tileAt } from '../../../tiles/unlock';
 import {
   DRAG_THRESHOLD,
   getScales,
@@ -123,6 +124,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     submitAttackMove,
     cancelAttack,
     submitAttack,
+    unlockTiles,
+    unlockTileId,
+    selectUnlockTile,
+    unlock,
   } = params;
   const dragRef = useRef<DragState>(null);
   const pinchRef = useRef<{ lastDistance: number } | null>(null);
@@ -286,7 +291,11 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         if (id === hoveredId) return 'hovered';
         return 'normal';
       }
-      if (id === attackStartTerritoryId || id === attackEndTerritoryId)
+      if (
+        id === attackStartTerritoryId ||
+        id === attackEndTerritoryId ||
+        id === unlockTileId
+      )
         return 'selected';
       if (id === hoveredId) return 'hovered';
       if (
@@ -350,19 +359,18 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         nearestDist = d;
       }
     }
-    const regionId = regions
-      ? regionAt(
-          regions,
-          (pos.x - offsetX) / scaleX,
-          (pos.y - offsetY) / scaleY,
-        )
-      : null;
+    const imageX = (pos.x - offsetX) / scaleX;
+    const imageY = (pos.y - offsetY) / scaleY;
+    const tile = tileAt(unlockTiles, imageX, imageY);
+    if (tile) return { id: tile.id };
+    const regionId = regions ? regionAt(regions, imageX, imageY) : null;
     if (regionId === null || nearestDist <= VERTEX_RADIUS * scaleX)
       return nearest;
     return { id: regionId };
   }
 
   const seaIdSet = new Set(seaTerritories.map((s) => s.id));
+  const unlockIdSet = new Set(unlockTiles.map((t) => t.id));
 
   function beginDrag(pos: Point) {
     cancelSettle();
@@ -572,6 +580,15 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         }
         return;
       }
+      if (unlockTileId !== null) {
+        if (
+          vertex &&
+          (vertex.id === attackStartTerritoryId || vertex.id === unlockTileId)
+        )
+          submitAttack();
+        else cancelAttack();
+        return;
+      }
       if (!vertex || !isInteractable(vertex)) {
         if (attackStartTerritoryId !== null) {
           if (vertex?.id !== attackStartTerritoryId) cancelAttack();
@@ -586,6 +603,8 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       }
       if (attackStartTerritoryId === null) {
         selectAttackStart(vertex.id);
+      } else if (unlockIdSet.has(vertex.id)) {
+        selectUnlockTile(vertex.id);
       } else {
         selectAttackEnd(vertex.id);
       }
@@ -788,6 +807,13 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       ) {
         quickAttackSea(vertex.id);
       } else if (
+        !attackRevealing &&
+        vertex &&
+        unlockIdSet.has(vertex.id) &&
+        attackEndCandidates.has(vertex.id)
+      ) {
+        unlock(vertex.id, true);
+      } else if (
         blitzEnabled &&
         !attackRevealing &&
         vertex &&
@@ -848,13 +874,14 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     }
     if (turnPhase === 'attack') {
       if (
-        !attackPendingConquest &&
-        attackSeaTerritoryId === null &&
-        blitzEnabled &&
-        !attackRevealing &&
-        attackEndCandidates.has(vertex.id)
+        attackPendingConquest ||
+        attackSeaTerritoryId !== null ||
+        attackRevealing ||
+        !attackEndCandidates.has(vertex.id)
       )
-        quickAttack(vertex.id, true);
+        return;
+      if (unlockIdSet.has(vertex.id)) unlock(vertex.id, false);
+      else if (blitzEnabled) quickAttack(vertex.id, true);
       return;
     }
     if (

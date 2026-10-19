@@ -2,7 +2,12 @@ import { MAX_TERRITORY_TROOPS } from 'engine';
 import { useCallback, useRef, useState } from 'react';
 import { connector } from '../../../connector';
 import { playSound } from '../../../lib/sounds';
-import type { Ack, Fortification, GameState } from '../../../lib/types';
+import type {
+  Ack,
+  Fortification,
+  GameState,
+  LockedTile,
+} from '../../../lib/types';
 import { getEntrenchCandidates } from '../../logic/entrench';
 import {
   getFortifyEndCandidates,
@@ -32,6 +37,7 @@ export function useTurnActionFlows({
   nextSetBaseValues,
   blockedById,
   upcomingBlockedById,
+  closedTiles,
   setGame,
 }: {
   fortifyStartTerritoryId: number | null;
@@ -54,6 +60,7 @@ export function useTurnActionFlows({
   nextSetBaseValues: GameState['nextSetBaseValues'];
   blockedById: Set<number>;
   upcomingBlockedById: Set<number>;
+  closedTiles: LockedTile[];
   setGame: (game: GameState) => void;
 }) {
   const [fortifyTroops, setFortifyTroops] = useState(1);
@@ -189,6 +196,7 @@ export function useTurnActionFlows({
         upcomingBlockedById,
         portalTerritoryIds,
         portalsEnabled,
+        closedTiles,
       )
     : new Set<number>();
   if (toxins === 'permanent')

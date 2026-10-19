@@ -63,8 +63,6 @@ export const CAPITAL_PHASE_DURATION = 60;
 export const ONLINE_PAUSE_SECONDS = 60;
 const MAX_EXTENDED_REMAINING_SECONDS = 180;
 const TROOP_PHASE_TURN_MAX = 3;
-const SINGLE_TERRITORY_TROOPS = 10;
-const SINGLE_CAPITAL_TROOPS = 5;
 const MAX_DISCONNECTED_TURNS = 2;
 
 const turnTimers = new Map<string, NodeJS.Timeout>();
@@ -451,12 +449,7 @@ export function claimTerritory(
   playerId: number,
   territoryId: number,
 ) {
-  const troops =
-    game.placement !== 'single'
-      ? 1
-      : game.turnPhase === 'capital'
-        ? SINGLE_CAPITAL_TROOPS
-        : SINGLE_TERRITORY_TROOPS;
+  const troops = game.placement === 'single' ? game.initialTroops : 1;
   game.territoryOwners.set(territoryId, playerId);
   game.territoryTroops.set(territoryId, troops);
   recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });

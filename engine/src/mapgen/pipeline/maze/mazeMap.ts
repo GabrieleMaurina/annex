@@ -160,6 +160,34 @@ function partitionCellsMultiComponent(
   return { territoryOfCell, territoryCount };
 }
 
+function nearestAcrossVoid(
+  centroids: { gx: number; gy: number }[],
+  adjacency: Map<number, Set<number>>,
+): SpecialEdge[] {
+  const componentOf = new Int32Array(centroids.length);
+  findCellComponents(
+    centroids.length,
+    centroids.map((_, t) => [...(adjacency.get(t) ?? [])]),
+  ).forEach((members, component) => {
+    for (const t of members) componentOf[t] = component;
+  });
+  const edges: SpecialEdge[] = [];
+  centroids.forEach((p, a) => {
+    let nearest = -1;
+    let nearestDistance = Infinity;
+    centroids.forEach((q, b) => {
+      if (componentOf[b] === componentOf[a]) return;
+      const distance = (p.gx - q.gx) ** 2 + (p.gy - q.gy) ** 2;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = b;
+      }
+    });
+    if (nearest >= 0) edges.push({ a, b: nearest });
+  });
+  return edges;
+}
+
 interface CropBox {
   x: number;
   y: number;
@@ -468,6 +496,15 @@ export function buildMazeMap(
       );
 
       validateTerritoryGraph(territoryCount + sea.seaCount, combinedAdjacency);
+    } else if (source.unlockable) {
+      continentIdByTerritory = clusterContinents(
+        rng,
+        territoryCount,
+        adjacency,
+        specialEdges,
+        centroids,
+        nearestAcrossVoid(centroids, adjacency),
+      );
     } else {
       specialEdges = ensureConnected(
         rng,

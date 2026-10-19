@@ -3,6 +3,7 @@ import {
   FILL_VALUES,
   GENERATION_TYPE_VALUES,
   GenerationType,
+  LockedTile,
   MAP_SIZE_VALUES,
   MapSize,
   MAX_TIMED_VALUE,
@@ -52,6 +53,7 @@ const MAX_BONUS = 25;
 const MIN_CONTINENT_SIZE = 2;
 const MAX_CONTINENT_SIZE = 40;
 const MAX_TERRITORIES = MAX_CONTINENTS * MAX_CONTINENT_SIZE;
+const MAX_TILE_POINTS = 8;
 export const MAX_BORDER_COLORS = 8;
 export const BORDER_COLOR_PATTERN = '^#[0-9a-f]{6}$';
 
@@ -121,6 +123,29 @@ function isTimedConnection(value: unknown): value is TimedConnection {
     isTimedValue(value.delay, 0) &&
     isTimedValue(value.open, 1) &&
     isTimedValue(value.closed, 1)
+  );
+}
+
+function isLockedTile(value: unknown): value is LockedTile {
+  if (!isObject(value)) return false;
+  return (
+    Object.keys(value).length === 5 &&
+    Number.isInteger(value.id) &&
+    typeof value.x === 'number' &&
+    Number.isFinite(value.x) &&
+    typeof value.y === 'number' &&
+    Number.isFinite(value.y) &&
+    Array.isArray(value.points) &&
+    value.points.length >= 3 &&
+    value.points.length <= MAX_TILE_POINTS &&
+    value.points.every(
+      (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        p.every((c) => typeof c === 'number' && Number.isFinite(c)),
+    ) &&
+    Array.isArray(value.neighbors) &&
+    value.neighbors.every((n) => Number.isInteger(n))
   );
 }
 
@@ -225,11 +250,20 @@ function allConnected(
   nodes: { id: number; neighbors: number[] }[],
   byId: Map<number, { neighbors: number[] }>,
   timedConnections: TimedConnection[],
+  lockedTiles: LockedTile[],
 ): boolean {
-  const timedNeighbors = new Map<number, number[]>();
+  const extraNeighbors = new Map<number, number[]>();
+  const link = (a: number, b: number) =>
+    extraNeighbors.set(a, [...(extraNeighbors.get(a) ?? []), b]);
   for (const { a, b } of timedConnections) {
-    timedNeighbors.set(a, [...(timedNeighbors.get(a) ?? []), b]);
-    timedNeighbors.set(b, [...(timedNeighbors.get(b) ?? []), a]);
+    link(a, b);
+    link(b, a);
+  }
+  for (const tile of lockedTiles) {
+    for (const n of tile.neighbors) {
+      link(tile.id, n);
+      link(n, tile.id);
+    }
   }
   const visited = new Set<number>();
   const stack = [nodes[0].id];
@@ -238,12 +272,12 @@ function allConnected(
     if (visited.has(id)) continue;
     visited.add(id);
     for (const n of [
-      ...byId.get(id)!.neighbors,
-      ...(timedNeighbors.get(id) ?? []),
+      ...(byId.get(id)?.neighbors ?? []),
+      ...(extraNeighbors.get(id) ?? []),
     ])
-      if (byId.has(n) && !visited.has(n)) stack.push(n);
+      if (!visited.has(n)) stack.push(n);
   }
-  return visited.size === nodes.length;
+  return nodes.every((t) => visited.has(t.id));
 }
 
 export interface MapGeneration {
@@ -254,6 +288,7 @@ export interface MapGeneration {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  unlockable: boolean;
 }
 
 const MAX_SEED_LENGTH = 20;
@@ -265,7 +300,7 @@ export function validateMapGeneration(
   | { ok: false; error: string } {
   if (raw === undefined || raw === null) return { ok: true, generation: null };
   if (!isObject(raw)) return { ok: false, error: 'invalid generation' };
-  const { seed, size, type, fill, tile, seas, timed } = raw;
+  const { seed, size, type, fill, tile, seas, timed, unlockable } = raw;
   if (
     typeof seed !== 'string' ||
     seed.length < 1 ||
@@ -275,7 +310,9 @@ export function validateMapGeneration(
     !(FILL_VALUES as string[]).includes(fill as string) ||
     !(TILE_SHAPE_VALUES as string[]).includes(tile as string) ||
     typeof seas !== 'boolean' ||
-    typeof timed !== 'boolean'
+    typeof timed !== 'boolean' ||
+    typeof unlockable !== 'boolean' ||
+    (unlockable && (type !== 'tile' || seas || timed))
   )
     return { ok: false, error: 'invalid generation' };
   return {
@@ -288,6 +325,7 @@ export function validateMapGeneration(
       tile: tile as TileShape,
       seas,
       timed,
+      unlockable,
     },
   };
 }
@@ -298,6 +336,7 @@ export function validateMapGeometry(
   bonusesRaw: unknown,
   wrapsRaw: unknown,
   timedRaw: unknown,
+  lockedRaw: unknown,
   imageWidth: number,
   imageHeight: number,
 ):
@@ -308,6 +347,7 @@ export function validateMapGeometry(
       bonuses: number[];
       wraps: MapWrap[];
       timedConnections: TimedConnection[];
+      lockedTiles: LockedTile[];
     }
   | { ok: false; error: string } {
   if (!Array.isArray(territoriesRaw))
@@ -336,12 +376,19 @@ export function validateMapGeometry(
     !timedRaw.every(isTimedConnection)
   )
     return { ok: false, error: 'invalid timed connections' };
+  if (
+    !Array.isArray(lockedRaw) ||
+    lockedRaw.length > MAX_TERRITORIES ||
+    !lockedRaw.every(isLockedTile)
+  )
+    return { ok: false, error: 'invalid locked tiles' };
 
   const territories = territoriesRaw as MapTerritory[];
   const seaTerritories = seaTerritoriesRaw as MapSeaTerritory[];
   const bonuses = bonusesRaw as number[];
   const wraps = wrapsRaw as MapWrap[];
   const timedConnections = timedRaw as TimedConnection[];
+  const lockedTiles = lockedRaw as LockedTile[];
 
   if (territories.length < MIN_CONTINENT_SIZE)
     return { ok: false, error: 'not enough territories' };
@@ -393,7 +440,30 @@ export function validateMapGeometry(
     wrapKeys.add(key);
   }
 
-  if (!allConnected(allNodes, byId, timedConnections))
+  const lockedById = new Map(lockedTiles.map((t) => [t.id, t]));
+  if (
+    lockedById.size !== lockedTiles.length ||
+    lockedTiles.some((t) => ids.has(t.id))
+  )
+    return { ok: false, error: 'invalid locked tiles' };
+  const inImage = ([x, y]: [number, number]) =>
+    x >= 0 && x <= imageWidth && y >= 0 && y <= imageHeight;
+  for (const t of lockedTiles) {
+    if (
+      !inImage([t.x, t.y]) ||
+      !t.points.every(inImage) ||
+      t.neighbors.some(
+        (n) => n === t.id || (!landIds.has(n) && !lockedById.has(n)),
+      ) ||
+      t.neighbors.some(
+        (n) =>
+          lockedById.has(n) && !lockedById.get(n)!.neighbors.includes(t.id),
+      )
+    )
+      return { ok: false, error: 'invalid locked tiles' };
+  }
+
+  if (!allConnected(allNodes, byId, timedConnections, lockedTiles))
     return { ok: false, error: 'territories not all connected' };
 
   const sizeByContinent = new Map<number, number>();
@@ -415,5 +485,6 @@ export function validateMapGeometry(
     bonuses,
     wraps,
     timedConnections,
+    lockedTiles,
   };
 }

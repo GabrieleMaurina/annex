@@ -17,6 +17,7 @@ export interface GameSettings {
     tile: string;
     seas: boolean;
     timed: boolean;
+    unlockable: boolean;
   } | null;
   playerMapId: string | null;
   slots: number;
@@ -66,6 +67,7 @@ export interface HomeFilters {
   mapGenerationTile: string;
   mapGenerationSeas: string;
   mapGenerationTimed: string;
+  mapGenerationUnlockable: string;
   playersMin: number;
   playersMax: number;
   roundsMin: number;
@@ -248,6 +250,7 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
   mapGenerationTile: '',
   mapGenerationSeas: '',
   mapGenerationTimed: '',
+  mapGenerationUnlockable: '',
   playersMin: HOME_PLAYERS_MIN,
   playersMax: HOME_PLAYERS_MAX,
   roundsMin: HOME_ROUNDS_MIN,
@@ -306,7 +309,16 @@ export const preferencesSchemaProperties = {
       },
       mapGeneration: {
         bsonType: ['object', 'null'],
-        required: ['seed', 'size', 'type', 'fill', 'tile', 'seas', 'timed'],
+        required: [
+          'seed',
+          'size',
+          'type',
+          'fill',
+          'tile',
+          'seas',
+          'timed',
+          'unlockable',
+        ],
         additionalProperties: false,
         properties: {
           seed: { bsonType: 'string' },
@@ -316,6 +328,7 @@ export const preferencesSchemaProperties = {
           tile: { enum: TILE_SHAPES },
           seas: { bsonType: 'bool' },
           timed: { bsonType: 'bool' },
+          unlockable: { bsonType: 'bool' },
         },
       },
       slots: { bsonType: 'number', minimum: 2, maximum: 20 },
@@ -340,6 +353,7 @@ export const preferencesSchemaProperties = {
       'mapGenerationTile',
       'mapGenerationSeas',
       'mapGenerationTimed',
+      'mapGenerationUnlockable',
       'playersMin',
       'playersMax',
       'roundsMin',
@@ -374,6 +388,7 @@ export const preferencesSchemaProperties = {
       mapGenerationTile: { enum: HOME_TILES },
       mapGenerationSeas: { enum: HOME_GENERATION_FLAGS },
       mapGenerationTimed: { enum: HOME_GENERATION_FLAGS },
+      mapGenerationUnlockable: { enum: HOME_GENERATION_FLAGS },
       playersMin: {
         bsonType: 'number',
         minimum: HOME_PLAYERS_MIN,
@@ -453,6 +468,7 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
       : TILE_SHAPES[0],
     seas: r.seas,
     timed: r.timed === true,
+    unlockable: r.unlockable === true,
   };
 }
 
@@ -580,6 +596,11 @@ export function sanitizeHomeFilters(raw: unknown): HomeFilters {
     mapGenerationSeas: pickEnum(r.mapGenerationSeas, HOME_GENERATION_FLAGS, ''),
     mapGenerationTimed: pickEnum(
       r.mapGenerationTimed,
+      HOME_GENERATION_FLAGS,
+      '',
+    ),
+    mapGenerationUnlockable: pickEnum(
+      r.mapGenerationUnlockable,
       HOME_GENERATION_FLAGS,
       '',
     ),

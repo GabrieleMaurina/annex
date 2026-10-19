@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../../../connector';
 import { playSound } from '../../../lib/sounds';
-import type { Ack, BlitzOutcome, GameState } from '../../../lib/types';
+import type {
+  Ack,
+  BlitzOutcome,
+  GameState,
+  LockedTile,
+} from '../../../lib/types';
 import { DICE_ROLL_STEP_DURATION, DICE_ROLL_STEPS } from '../../animations';
 import {
   getAttackEndCandidates,
@@ -9,6 +14,7 @@ import {
 } from '../../logic/attack';
 import type { SeaTerritory, Territory } from '../../mapData';
 import type { AttackType, DiceRoll } from '../../panels/attack/AttackPanel';
+import { unlockCost, unlockSources, unlockTargets } from '../../tiles/unlock';
 
 type AttackSelectEndAck =
   | {
@@ -47,6 +53,9 @@ export function useAttackFlow({
   paused,
   blitzEnabled,
   attackDice,
+  closedTiles,
+  cards,
+  nextSetBaseValues,
   setGame,
 }: {
   attackStartTerritoryId: number | null;
@@ -65,6 +74,9 @@ export function useAttackFlow({
   paused: boolean;
   blitzEnabled: boolean;
   attackDice: number;
+  closedTiles: LockedTile[];
+  cards: GameState['cards'];
+  nextSetBaseValues: GameState['nextSetBaseValues'];
   setGame: (game: GameState) => void;
 }) {
   const [attackWinProbabilities, setAttackWinProbabilities] = useState<
@@ -92,6 +104,7 @@ export function useAttackFlow({
     blitzTroops: number;
   } | null>(null);
   const attackOptionIndexRef = useRef(0);
+  const [unlockTileId, setUnlockTileId] = useState<number | null>(null);
 
   const maxBlitzTroops =
     attackStartTerritoryId !== null
@@ -100,6 +113,7 @@ export function useAttackFlow({
 
   const selectAttackStart = useCallback(
     (territoryId: number | null) => {
+      setUnlockTileId(null);
       connector.attackSelectStart({ territoryId }, (res: Ack) => {
         if (!res.ok) return;
         setGame(res.game);
@@ -159,16 +173,24 @@ export function useAttackFlow({
     (game: GameState, conqueredTerritoryId: number) => {
       const freshOwnerById = new Map(game.territories.map((t) => [t.id, t]));
       if (freshOwnerById.get(conqueredTerritoryId)?.ownerId !== selfId) return;
-      const candidates = getAttackStartCandidates(
-        territories,
-        seaTerritories,
-        seas,
-        freshOwnerById,
-        selfId,
-        portalTerritoryIds,
-        portalsEnabled,
-        unusableTerritoryById,
-      );
+      const candidates = new Set([
+        ...getAttackStartCandidates(
+          territories,
+          seaTerritories,
+          seas,
+          freshOwnerById,
+          selfId,
+          portalTerritoryIds,
+          portalsEnabled,
+          unusableTerritoryById,
+        ),
+        ...unlockSources(
+          closedTiles,
+          freshOwnerById,
+          selfId,
+          unlockCost(game.cards, game.nextSetBaseValues),
+        ),
+      ]);
       if (candidates.has(conqueredTerritoryId)) {
         selectAttackStart(conqueredTerritoryId);
       }
@@ -181,6 +203,7 @@ export function useAttackFlow({
       portalTerritoryIds,
       portalsEnabled,
       unusableTerritoryById,
+      closedTiles,
       selectAttackStart,
     ],
   );
@@ -214,7 +237,29 @@ export function useAttackFlow({
     [setGame, continueFromConquest],
   );
 
+  const unlock = useCallback(
+    (tileId: number, enter: boolean) => {
+      setUnlockTileId(null);
+      connector.unlockTile({ tileId, enter }, (res: Ack) => {
+        if (!res.ok) return;
+        setAttackDiceRoll(null);
+        setGame(res.game);
+        if (enter) continueFromConquest(res.game, tileId);
+      });
+    },
+    [setGame, continueFromConquest],
+  );
+
+  const selectUnlockTile = useCallback((tileId: number) => {
+    playSound('select');
+    setUnlockTileId(tileId);
+  }, []);
+
   const submitAttack = useCallback(() => {
+    if (unlockTileId !== null) {
+      unlock(unlockTileId, false);
+      return;
+    }
     const preRevealSnapshot = {
       maxBlitzTroops,
       blitzWinProbabilities: attackWinProbabilities ?? [],
@@ -295,6 +340,8 @@ export function useAttackFlow({
       }
     });
   }, [
+    unlockTileId,
+    unlock,
     attackSelectedType,
     attackRegularTroops,
     attackBlitzTroops,
@@ -313,35 +360,55 @@ export function useAttackFlow({
   }, [attackMoveTroops, attackEndTerritoryId, performAttackMove]);
 
   const attackPendingConquest = attackConquestMinTroops !== null;
+  const attackActive = turnPhase === 'attack' && isMyTurn;
+  const unlockCostValue = unlockCost(cards, nextSetBaseValues);
+  const sources =
+    attackActive && !attackPendingConquest
+      ? unlockSources(closedTiles, ownerById, selfId, unlockCostValue)
+      : new Set<number>();
+  const unlockTiles =
+    attackEndTerritoryId === null
+      ? unlockTargets(closedTiles, sources, attackStartTerritoryId)
+      : [];
+  if (unlockTileId !== null && !unlockTiles.some((t) => t.id === unlockTileId))
+    setUnlockTileId(null);
+  const selectedUnlockTile =
+    unlockTiles.find((t) => t.id === unlockTileId) ?? null;
   const attackStartCandidates =
-    turnPhase === 'attack' && isMyTurn && !attackPendingConquest
-      ? getAttackStartCandidates(
-          territories,
-          seaTerritories,
-          seas,
-          ownerById,
-          selfId,
-          portalTerritoryIds,
-          portalsEnabled,
-          unusableTerritoryById,
-        )
+    attackActive && !attackPendingConquest
+      ? new Set([
+          ...getAttackStartCandidates(
+            territories,
+            seaTerritories,
+            seas,
+            ownerById,
+            selfId,
+            portalTerritoryIds,
+            portalsEnabled,
+            unusableTerritoryById,
+          ),
+          ...sources,
+        ])
       : new Set<number>();
   const attackEndCandidates =
-    turnPhase === 'attack' &&
-    isMyTurn &&
+    attackActive &&
     attackStartTerritoryId !== null &&
-    attackEndTerritoryId === null
-      ? getAttackEndCandidates(
-          territories,
-          seaTerritories,
-          seas,
-          ownerById,
-          selfId,
-          attackStartTerritoryId,
-          portalTerritoryIds,
-          portalsEnabled,
-          unusableTerritoryById,
-        )
+    attackEndTerritoryId === null &&
+    unlockTileId === null
+      ? new Set([
+          ...getAttackEndCandidates(
+            territories,
+            seaTerritories,
+            seas,
+            ownerById,
+            selfId,
+            attackStartTerritoryId,
+            portalTerritoryIds,
+            portalsEnabled,
+            unusableTerritoryById,
+          ),
+          ...unlockTiles.map((t) => t.id),
+        ])
       : new Set<number>();
   const attackMoveMinTroops = attackConquestMinTroops ?? 1;
   const attackMoveMaxTroops =
@@ -392,6 +459,7 @@ export function useAttackFlow({
     isMyTurn &&
     !paused &&
     (attackRevealing ||
+      selectedUnlockTile !== null ||
       (attackEndTerritoryId !== null &&
         (attackPendingConquest || attackWinProbabilities !== null)) ||
       attackDiceOnly);
@@ -411,8 +479,8 @@ export function useAttackFlow({
     return () => clearTimeout(timer);
   }, [attackDiceOnly, attackDiceRoll?.id]);
 
-  const attackDisplay =
-    attackRevealing && attackPreRevealSnapshot
+  const attackDisplay = {
+    ...(attackRevealing && attackPreRevealSnapshot
       ? attackPreRevealSnapshot
       : {
           maxBlitzTroops,
@@ -421,7 +489,13 @@ export function useAttackFlow({
           selectedType: attackSelectedType,
           regularTroops: attackRegularTroops,
           blitzTroops: attackBlitzTroops,
-        };
+        }),
+    unlock: selectedUnlockTile && {
+      x: selectedUnlockTile.x,
+      y: selectedUnlockTile.y,
+      cost: unlockCostValue,
+    },
+  };
 
   return {
     attackWinProbabilities,
@@ -458,5 +532,9 @@ export function useAttackFlow({
     attackShowPendingConquest,
     attackPanelOpen,
     attackDisplay,
+    unlockTiles,
+    unlockTileId,
+    selectUnlockTile,
+    unlock,
   };
 }

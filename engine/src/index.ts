@@ -44,6 +44,7 @@ import {
   attackSelectEnd,
   attackSelectStart,
   quickAttack,
+  unlockTile,
 } from './territory/attack';
 import { playCardSet, requestCards } from './territory/cards';
 import { deploy, selectTerritory } from './territory/deploy';
@@ -157,6 +158,7 @@ export {
   TILE_WALL_COLOR,
 } from './mapgen/render/palette';
 export { runMapgenWorker } from './mapgen/worker';
+export { withUnlockedTiles } from './maps/lockedTiles';
 export { ArchivedMap } from './maps/maps';
 export {
   isConnectionOpen,
@@ -165,7 +167,7 @@ export {
   withOpenConnections,
 } from './maps/timedConnections';
 export { randomPlayerName } from './session/players';
-export { GameMap, PlayerGameMap, TimedConnection } from './types';
+export { GameMap, LockedTile, PlayerGameMap, TimedConnection } from './types';
 export { containsProfanity } from './util/profanity';
 export {
   EngineWorkerConfig,
@@ -257,6 +259,7 @@ export function createEngine(
     attack,
     attackMove,
     quickAttack,
+    unlockTile,
 
     requestReplay,
     exportGame,

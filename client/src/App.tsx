@@ -22,6 +22,7 @@ import type {
   Account,
   Ack,
   IdentifyResult,
+  LockedTile,
   MapWrap,
   TimedConnection,
 } from './lib/types';
@@ -284,6 +285,7 @@ function App() {
       bonuses: number[];
       wraps: MapWrap[];
       timedConnections: TimedConnection[];
+      lockedTiles: LockedTile[];
       imageSrc: string;
       borderColors: string[];
     }) {
@@ -293,6 +295,7 @@ function App() {
         bonuses: data.bonuses,
         wraps: data.wraps,
         timedConnections: data.timedConnections,
+        lockedTiles: data.lockedTiles,
         imageSrc: data.imageSrc,
         borderColors: data.borderColors,
       });

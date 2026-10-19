@@ -6,6 +6,7 @@ import type { Fill, GenerationType, MapSize, TileShape } from '../../lib/types';
 import {
   SEAS_HELP,
   TIMED_CONNECTIONS_HELP,
+  UNLOCKABLE_HELP,
 } from '../../lobby/settings/settingsHelp';
 import { randomSeed } from '../randomMap';
 import {
@@ -42,6 +43,8 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
   const [tile, setTile] = useState<TileShape>('hexagons');
   const [seas, setSeas] = useState(false);
   const [timed, setTimed] = useState(false);
+  const [unlockable, setUnlockable] = useState(false);
+  const tileUnlockable = type === 'tile' && unlockable;
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [lastGenerated, setLastGenerated] = useState<GenerateInput | null>(
@@ -63,7 +66,8 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
       lastGenerated.fill === fill &&
       (type !== 'tile' || lastGenerated.tile === tile) &&
       lastGenerated.seas === seas &&
-      lastGenerated.timed === timed
+      lastGenerated.timed === timed &&
+      lastGenerated.unlockable === tileUnlockable
     ) {
       effectiveSeed = randomSeed();
       setSeed(effectiveSeed);
@@ -79,6 +83,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
       tile,
       seas,
       timed,
+      unlockable: tileUnlockable,
     };
     generateMap(input)
       .then((map) => {
@@ -124,7 +129,10 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
           </Form.Label>
           <Form.Select
             value={type}
-            onChange={(e) => setType(e.target.value as GenerationType)}
+            onChange={(e) => {
+              setType(e.target.value as GenerationType);
+              if (e.target.value !== 'tile') setUnlockable(false);
+            }}
           >
             <option value="terrain">Terrain</option>
             <option value="dungeon">Dungeon</option>
@@ -181,6 +189,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
             type="checkbox"
             label="Seas"
             checked={seas}
+            disabled={tileUnlockable}
             onChange={(e) => setSeas(e.target.checked)}
           />
           <Help>{SEAS_HELP}</Help>
@@ -190,10 +199,23 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
             type="checkbox"
             label="Timed connections"
             checked={timed}
+            disabled={tileUnlockable}
             onChange={(e) => setTimed(e.target.checked)}
           />
           <Help>{TIMED_CONNECTIONS_HELP}</Help>
         </div>
+        {type === 'tile' && (
+          <div className="d-flex align-items-center gap-2">
+            <Form.Check
+              type="checkbox"
+              label="Unlockable"
+              checked={tileUnlockable}
+              disabled={seas || timed}
+              onChange={(e) => setUnlockable(e.target.checked)}
+            />
+            <Help>{UNLOCKABLE_HELP}</Help>
+          </div>
+        )}
         {error && <div className="text-danger small">{error}</div>}
         <p className="text-muted small mb-0">
           Generating replaces the current territories and background image. You

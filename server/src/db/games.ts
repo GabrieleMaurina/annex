@@ -83,6 +83,7 @@ export interface GamesQuery {
   mapGenerationTile?: string;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
+  mapGenerationUnlockable?: boolean;
   minRounds?: number;
   maxRounds?: number;
   hasBots?: boolean;
@@ -378,7 +379,16 @@ const schema = {
         endedAt: int,
         mapGeneration: {
           bsonType: ['object', 'null'],
-          required: ['seed', 'size', 'type', 'fill', 'tile', 'seas', 'timed'],
+          required: [
+            'seed',
+            'size',
+            'type',
+            'fill',
+            'tile',
+            'seas',
+            'timed',
+            'unlockable',
+          ],
           additionalProperties: false,
           properties: {
             seed: string,
@@ -388,6 +398,7 @@ const schema = {
             tile: { enum: TILE_SHAPES },
             seas: bool,
             timed: bool,
+            unlockable: bool,
           },
         },
         playerMapId: { bsonType: ['string', 'null'] },
@@ -630,6 +641,8 @@ function queryGames(
     filter['mapGeneration.seas'] = query.mapGenerationSeas;
   if (query.mapGenerationTimed !== undefined)
     filter['mapGeneration.timed'] = query.mapGenerationTimed;
+  if (query.mapGenerationUnlockable !== undefined)
+    filter['mapGeneration.unlockable'] = query.mapGenerationUnlockable;
   if (query.minRounds !== undefined || query.maxRounds !== undefined) {
     const range: Record<string, number> = {};
     if (query.minRounds !== undefined) range.$gte = query.minRounds;

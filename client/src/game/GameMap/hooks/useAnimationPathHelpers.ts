@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import { useCallback } from 'react';
+import type { LockedTile } from '../../../lib/types';
 import type { SeaTerritory, Territory } from '../../mapData';
 import { isPortalHop } from '../../portals';
 import type { Point } from '../helpers';
@@ -7,19 +8,22 @@ import type { Point } from '../helpers';
 export function useAnimationPathHelpers({
   territoriesRef,
   seaTerritoriesRef,
+  lockedTiles,
   portalTerritoryIds,
   portalsEnabled,
 }: {
   territoriesRef: RefObject<Territory[]>;
   seaTerritoriesRef: RefObject<SeaTerritory[]>;
+  lockedTiles: LockedTile[];
   portalTerritoryIds: number[];
   portalsEnabled: boolean;
 }) {
   const findPosition = useCallback(
     (id: number): { x: number; y: number } | undefined =>
       territoriesRef.current.find((t) => t.id === id) ??
-      seaTerritoriesRef.current.find((t) => t.id === id),
-    [territoriesRef, seaTerritoriesRef],
+      seaTerritoriesRef.current.find((t) => t.id === id) ??
+      lockedTiles.find((t) => t.id === id),
+    [territoriesRef, seaTerritoriesRef, lockedTiles],
   );
 
   const territoryPoints = useCallback(

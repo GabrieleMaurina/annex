@@ -65,6 +65,7 @@ function MapBrowser({
   const [genTile, setGenTile] = useState<TileShape | ''>('');
   const [genSeas, setGenSeas] = useState('');
   const [genTimed, setGenTimed] = useState('');
+  const [genUnlockable, setGenUnlockable] = useState('');
   const [sort, setSort] = useState<PlayerMapSort>('mostLiked');
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PlayerMapsPage | null>(null);
@@ -83,6 +84,7 @@ function MapBrowser({
     genTile,
     genSeas,
     genTimed,
+    genUnlockable,
   });
 
   useEffect(() => {
@@ -104,6 +106,7 @@ function MapBrowser({
       generationTile: genTile || undefined,
       generationSeas: genSeas ? genSeas === 'yes' : undefined,
       generationTimed: genTimed ? genTimed === 'yes' : undefined,
+      generationUnlockable: genUnlockable ? genUnlockable === 'yes' : undefined,
       sort,
     };
     connector.listPlayerMaps(query, (r) => {
@@ -168,6 +171,7 @@ function MapBrowser({
     setGenTile('');
     setGenSeas('');
     setGenTimed('');
+    setGenUnlockable('');
     setPage(1);
   }
 
@@ -325,6 +329,18 @@ function MapBrowser({
                 className="w-auto"
                 value={genTimed}
                 onChange={(e) => resetPage(setGenTimed)(e.target.value)}
+              >
+                <option value="">Any</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </Form.Select>
+            </Field>
+            <Field label="Generated unlockable">
+              <Form.Select
+                size="sm"
+                className="w-auto"
+                value={genUnlockable}
+                onChange={(e) => resetPage(setGenUnlockable)(e.target.value)}
               >
                 <option value="">Any</option>
                 <option value="yes">Yes</option>

@@ -35,8 +35,7 @@ function parseAttackTarget(raw: unknown, game: Game): EmojiAttackTarget | null {
     const map = getGameMap(game);
     if (
       typeof territoryId === 'number' &&
-      territoryId >= 0 &&
-      territoryId < map.territories.length
+      map.territories.some((t) => t.id === territoryId)
     )
       return { type: 'territory', territoryId };
     return null;

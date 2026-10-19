@@ -12,6 +12,7 @@ export const DEFAULT_MAP_GENERATION = {
   tile: 'hexagons',
   seas: false,
   timed: false,
+  unlockable: false,
 } as const;
 
 export function randomSeed(): string {

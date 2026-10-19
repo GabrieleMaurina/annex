@@ -164,6 +164,10 @@ export function updateSettings(
   if (game.state !== 'lobby')
     return { ok: false, error: 'game already started' };
 
+  const merged = { ...game, ...settings };
+  if (merged.blitz === 'off' && !isBlitzOffAllowed(merged))
+    return { ok: false, error: 'blitz off not allowed with these settings' };
+
   if (settings.alliances !== undefined) {
     if (!(ALLIANCES_VALUES as unknown[]).includes(settings.alliances))
       return { ok: false, error: 'invalid alliances' };
@@ -196,8 +200,12 @@ export function updateSettings(
       settings.attackDice > MAX_DICE
     )
       return { ok: false, error: 'invalid attack dice' };
+    const defenceDice = isInteger(settings.defenceDice)
+      ? settings.defenceDice
+      : game.defenceDice;
+    if (settings.attackDice < defenceDice)
+      return { ok: false, error: 'invalid attack dice' };
     game.attackDice = settings.attackDice;
-    if (game.defenceDice > game.attackDice) game.defenceDice = game.attackDice;
   }
 
   if (settings.attackIncrement !== undefined) {
@@ -245,18 +253,6 @@ export function updateSettings(
   if (settings.blitz !== undefined) {
     if (!(BLITZ_VALUES as unknown[]).includes(settings.blitz))
       return { ok: false, error: 'invalid blitz' };
-    if (
-      settings.blitz === 'off' &&
-      !isBlitzOffAllowed({
-        roundTroops: settings.roundTroops ?? game.roundTroops,
-        cards: settings.cards ?? game.cards,
-        troopsPerTerritory:
-          settings.troopsPerTerritory ?? game.troopsPerTerritory,
-        initialTroops: settings.initialTroops ?? game.initialTroops,
-        minTroops: settings.minTroops ?? game.minTroops,
-      })
-    )
-      return { ok: false, error: 'invalid blitz' };
     game.blitz = settings.blitz as Blitz;
   }
 
@@ -282,11 +278,12 @@ export function updateSettings(
     if (
       !isInteger(settings.defenceDice) ||
       settings.defenceDice < 1 ||
-      settings.defenceDice > game.attackDice
+      settings.defenceDice > game.attackDice ||
+      (settings.defenceDice >= MAX_DICE &&
+        (settings.entrenchments ?? game.entrenchments) === 'on')
     )
       return { ok: false, error: 'invalid defence dice' };
     game.defenceDice = settings.defenceDice;
-    if (game.defenceDice >= MAX_DICE) game.entrenchments = 'off';
   }
 
   if (settings.diceTies !== undefined) {
@@ -330,9 +327,10 @@ export function updateSettings(
   if (settings.gameMode !== undefined) {
     if (!(GAME_MODE_VALUES as unknown[]).includes(settings.gameMode))
       return { ok: false, error: 'invalid game mode' };
+    if (settings.gameMode === 'team deathmatch' && game.alliances === 'on')
+      return { ok: false, error: 'invalid game mode' };
     const previousGameMode = game.gameMode;
     game.gameMode = settings.gameMode as GameMode;
-    if (game.gameMode === 'team deathmatch') game.alliances = 'off';
     const maxPoints = defaultMaxPoints(game.gameMode);
     if (game.gameMode !== previousGameMode && maxPoints !== undefined)
       game.maxPoints = maxPoints;
@@ -493,8 +491,6 @@ export function updateSettings(
       return { ok: false, error: 'invalid round troops' };
     game.roundTroops = settings.roundTroops as RoundTroops;
   }
-
-  if (game.blitz === 'off' && !isBlitzOffAllowed(game)) game.blitz = 'balanced';
 
   broadcastHomeGames();
   return respondGameState(game, player.id);

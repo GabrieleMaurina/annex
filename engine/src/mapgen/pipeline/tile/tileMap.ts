@@ -1,3 +1,4 @@
+import { LockedTile } from '../../../types';
 import { timeStep } from '../../core/bench';
 import { Perlin2D } from '../../core/noise';
 import {
@@ -18,6 +19,7 @@ import {
 } from '../../render/palette';
 import { CellLayer } from '../maze/cellLayer';
 import { buildMazeMap, MazeMap } from '../maze/mazeMap';
+import { validateTerritoryGraph } from '../validate';
 import {
   layTiles,
   Point,
@@ -275,18 +277,24 @@ function cropToKept(
   };
 }
 
+function cellIds(kept: Uint8Array): { cellId: Int32Array; cellCount: number } {
+  const cellId = new Int32Array(kept.length).fill(-1);
+  let cellCount = 0;
+  for (let tile = 0; tile < kept.length; tile++) {
+    if (kept[tile]) cellId[tile] = cellCount++;
+  }
+  return { cellId, cellCount };
+}
+
 function toCellLayer(
   tiles: Point[][],
   neighbors: number[][],
   kept: Uint8Array,
   dims: GridDimensions,
+  unlockable: boolean,
 ): CellLayer {
   const { width, height } = dims;
-  const cellId = new Int32Array(tiles.length).fill(-1);
-  let cellCount = 0;
-  for (let tile = 0; tile < tiles.length; tile++) {
-    if (kept[tile]) cellId[tile] = cellCount++;
-  }
+  const { cellId, cellCount } = cellIds(kept);
 
   const cellNeighbors: number[][] = Array.from({ length: cellCount }, () => []);
   neighbors.forEach((list, tile) => {
@@ -312,7 +320,47 @@ function toCellLayer(
     pixelCell,
     chambers: [],
     cellTerritories: true,
+    unlockable,
   };
+}
+
+function roundPoint([x, y]: Point): Point {
+  return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+}
+
+function toLockedTiles(
+  tiles: Point[][],
+  neighbors: number[][],
+  kept: Uint8Array,
+  dims: GridDimensions,
+): LockedTile[] {
+  const { cellId, cellCount } = cellIds(kept);
+  const inside = (points: Point[]) =>
+    points.every(
+      ([x, y]) => x >= 0 && y >= 0 && x <= dims.width && y <= dims.height,
+    );
+  const lockedId = new Int32Array(tiles.length).fill(-1);
+  let lockedCount = 0;
+  tiles.forEach((points, tile) => {
+    if (!kept[tile] && inside(points))
+      lockedId[tile] = cellCount + lockedCount++;
+  });
+  const idOf = (tile: number) => (kept[tile] ? cellId[tile] : lockedId[tile]);
+  const locked: LockedTile[] = [];
+  tiles.forEach((points, tile) => {
+    if (lockedId[tile] < 0) return;
+    locked.push({
+      id: lockedId[tile],
+      x: Math.round(points.reduce((sum, p) => sum + p[0], 0) / points.length),
+      y: Math.round(points.reduce((sum, p) => sum + p[1], 0) / points.length),
+      points: points.map(roundPoint),
+      neighbors: neighbors[tile]
+        .map(idOf)
+        .filter((id) => id >= 0)
+        .sort((a, b) => a - b),
+    });
+  });
+  return locked;
 }
 
 export function generateTile(
@@ -322,9 +370,10 @@ export function generateTile(
   size: MapSize,
   dims: GridDimensions,
   seas: boolean,
+  unlockable: boolean,
   timedRng: Rng | null,
-): MazeMap {
-  const layer = timeStep('shape', () => {
+): MazeMap & { lockedTiles: LockedTile[] } {
+  const { layer, lockedTiles } = timeStep('shape', () => {
     const margin = Math.round(
       Math.min(dims.width, dims.height) * MARGIN_FRACTION,
     );
@@ -343,9 +392,31 @@ export function generateTile(
               MAP_SIZE_VALUES.indexOf(size),
           );
     const cropped = cropToKept(tiles, kept, margin);
-    return toCellLayer(cropped.tiles, neighbors, kept, cropped.dims);
+    return {
+      layer: toCellLayer(
+        cropped.tiles,
+        neighbors,
+        kept,
+        cropped.dims,
+        unlockable,
+      ),
+      lockedTiles: unlockable
+        ? toLockedTiles(cropped.tiles, neighbors, kept, cropped.dims)
+        : [],
+    };
   });
-  return buildMazeMap(
+  if (unlockable) {
+    const adjacency = new Map(
+      layer.cellNeighbors.map((list, id) => [id, new Set(list)] as const),
+    );
+    for (const tile of lockedTiles) {
+      adjacency.set(tile.id, new Set(tile.neighbors));
+      for (const n of tile.neighbors)
+        if (n < layer.cellCount) adjacency.get(n)!.add(tile.id);
+    }
+    validateTerritoryGraph(layer.cellCount + lockedTiles.length, adjacency);
+  }
+  const map = buildMazeMap(
     rng,
     layer,
     size,
@@ -364,4 +435,5 @@ export function generateTile(
     seas,
     timedRng,
   );
+  return { ...map, lockedTiles };
 }

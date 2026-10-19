@@ -180,6 +180,7 @@ export default function TurnActionPanels({
     selectedType: AttackType;
     regularTroops: number;
     blitzTroops: number;
+    unlock: { x: number; y: number; cost: number } | null;
   };
   blitzEnabled: boolean;
   attackDice: number;
@@ -230,7 +231,8 @@ export default function TurnActionPanels({
     sailPanelStyle,
     attackSeaPanelStyle,
     deploySeaPanelStyle: seaPanelStyle,
-  } = usePanelStyles(anchors, useCameraTransform(camera));
+    unlockPanelStyle,
+  } = usePanelStyles(anchors, useCameraTransform(camera), attackDisplay.unlock);
   const deploySeaPanelStyle = deploySeaComboActive
     ? deployPanelStyle
     : seaPanelStyle;
@@ -350,7 +352,16 @@ export default function TurnActionPanels({
           }
         />
       )}
-      {attackPanelOpen && attackPanelStyle && (
+      {attackPanelOpen && unlockPanelStyle && attackDisplay.unlock && (
+        <ConfirmPanel
+          label="Unlock tile:"
+          buttonLabel="Unlock"
+          onConfirm={submitAttack}
+          style={unlockPanelStyle}
+          extra={`Costs ${attackDisplay.unlock.cost} troops`}
+        />
+      )}
+      {attackPanelOpen && attackPanelStyle && !attackDisplay.unlock && (
         <AttackPanel
           blitzWinProbabilities={attackDisplay.blitzWinProbabilities}
           blitzOutcomes={attackDisplay.blitzOutcomes}

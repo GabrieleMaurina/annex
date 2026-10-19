@@ -222,6 +222,7 @@ function replayContentId(doc: Document): string {
       bonuses: doc.bonuses,
       wraps: doc.wraps,
       timedConnections: doc.timedConnections,
+      lockedTiles: doc.lockedTiles,
       imageMime: doc.imageMime,
       borderColors: doc.borderColors,
     },

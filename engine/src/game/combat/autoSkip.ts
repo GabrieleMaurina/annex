@@ -1,6 +1,7 @@
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { ownedTerritoryIds } from '../mechanics';
+import { canUnlockFrom } from '../tiles/unlock';
 import {
   isFreeConquestTarget,
   isPermanentToxinOnHill,
@@ -14,25 +15,35 @@ import {
 import { withPortalEdges } from '../world/portals';
 import { hasAnySeaBridgeFrom } from './seaBridge';
 
-export function hasAnyAttack(game: Game, playerId: number): boolean {
+export function isAttackStartCandidate(
+  game: Game,
+  playerId: number,
+  territoryId: number,
+): boolean {
+  if ((game.territoryTroops.get(territoryId) ?? 0) < 2) return false;
   const map = getGameMap(game);
-  const territoryById = new Map(map.territories.map((t) => [t.id, t]));
-  return ownedTerritoryIds(game, playerId).some((id) => {
-    if ((game.territoryTroops.get(id) ?? 0) < 2) return false;
-    const neighbors = withPortalEdges(
-      territoryById.get(id)?.neighbors ?? [],
-      id,
-      game.portalTerritoryIds,
-      game.portalsEnabled,
-    );
-    return (
-      neighbors.some((n) => {
-        const ownerId = game.territoryOwners.get(n);
-        if (ownerId !== undefined) return ownerId !== playerId;
-        return isFreeConquestTarget(game, n);
-      }) || hasAnySeaBridgeFrom(game, playerId, id)
-    );
-  });
+  const territory = map.territories.find((t) => t.id === territoryId);
+  const neighbors = withPortalEdges(
+    territory?.neighbors ?? [],
+    territoryId,
+    game.portalTerritoryIds,
+    game.portalsEnabled,
+  );
+  return (
+    neighbors.some((n) => {
+      const ownerId = game.territoryOwners.get(n);
+      if (ownerId !== undefined) return ownerId !== playerId;
+      return isFreeConquestTarget(game, n);
+    }) ||
+    hasAnySeaBridgeFrom(game, playerId, territoryId) ||
+    canUnlockFrom(game, playerId, territoryId)
+  );
+}
+
+export function hasAnyAttack(game: Game, playerId: number): boolean {
+  return ownedTerritoryIds(game, playerId).some((id) =>
+    isAttackStartCandidate(game, playerId, id),
+  );
 }
 
 export function hasAnyToxin(game: Game, playerId: number): boolean {

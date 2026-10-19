@@ -23,6 +23,7 @@ export const MAP_REQUIRED = [
   'bonuses',
   'wraps',
   'timedConnections',
+  'lockedTiles',
   'generation',
   'image',
   'imageMime',
@@ -90,9 +91,41 @@ export const MAP_PROPERTIES = {
       },
     },
   },
+  lockedTiles: {
+    bsonType: 'array',
+    items: {
+      bsonType: 'object',
+      required: ['id', 'x', 'y', 'points', 'neighbors'],
+      additionalProperties: false,
+      properties: {
+        id: { bsonType: 'number' },
+        x: { bsonType: 'number' },
+        y: { bsonType: 'number' },
+        points: {
+          bsonType: 'array',
+          items: {
+            bsonType: 'array',
+            minItems: 2,
+            maxItems: 2,
+            items: { bsonType: 'number' },
+          },
+        },
+        neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
+      },
+    },
+  },
   generation: {
     bsonType: ['object', 'null'],
-    required: ['seed', 'size', 'type', 'fill', 'tile', 'seas', 'timed'],
+    required: [
+      'seed',
+      'size',
+      'type',
+      'fill',
+      'tile',
+      'seas',
+      'timed',
+      'unlockable',
+    ],
     additionalProperties: false,
     properties: {
       seed: { bsonType: 'string', minLength: 1, maxLength: 20 },
@@ -102,6 +135,7 @@ export const MAP_PROPERTIES = {
       tile: { enum: TILE_SHAPE_VALUES },
       seas: { bsonType: 'bool' },
       timed: { bsonType: 'bool' },
+      unlockable: { bsonType: 'bool' },
     },
   },
   image: { bsonType: 'binData' },

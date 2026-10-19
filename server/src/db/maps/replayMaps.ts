@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { TimedConnection } from 'engine';
+import { LockedTile, TimedConnection } from 'engine';
 import { Binary } from 'mongodb';
 import { MapGeneration } from '../../validate';
 import { ensureCollection, getCollection } from '../mongo';
@@ -21,6 +21,7 @@ export interface MapDoc {
   bonuses: number[];
   wraps: { a: number; b: number; x: boolean; y: boolean }[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   generation: MapGeneration | null;
   image: Binary;
   imageMime: string;
@@ -51,6 +52,7 @@ export function replayMapId(
     | 'bonuses'
     | 'wraps'
     | 'timedConnections'
+    | 'lockedTiles'
     | 'imageMime'
     | 'borderColors'
   >,
@@ -64,6 +66,7 @@ export function replayMapId(
         bonuses: map.bonuses,
         wraps: map.wraps,
         timedConnections: map.timedConnections,
+        ...(map.lockedTiles.length > 0 ? { lockedTiles: map.lockedTiles } : {}),
         imageMime: map.imageMime,
         borderColors: map.borderColors,
       }),
@@ -96,6 +99,7 @@ export interface StoredMap {
   bonuses: number[];
   wraps: MapDoc['wraps'];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -128,6 +132,7 @@ export function getMapById(id: string): Promise<StoredMap | null> {
             bonuses: doc.bonuses,
             wraps: doc.wraps,
             timedConnections: doc.timedConnections ?? [],
+            lockedTiles: doc.lockedTiles ?? [],
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
             borderColors: doc.borderColors,

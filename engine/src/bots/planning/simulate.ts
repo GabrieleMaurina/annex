@@ -194,7 +194,7 @@ export function walkStack(
       next,
       survivors + capturedCardTroops(ctx, state, defenderId),
     );
-    state.conquered = true;
+    if (defenderId !== undefined) state.conquered = true;
     lastConquest = { fromId: cur, toId: next };
     cur = next;
     taken++;

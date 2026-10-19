@@ -7,6 +7,7 @@ import {
   setFogActive,
   setPortalsActive,
   setRadiationActive,
+  setTimedLinksActive,
   setToxinsActive,
 } from '../../animations';
 import type { SeaTerritory, Territory } from '../../mapData';
@@ -132,6 +133,7 @@ export function usePanelStyles(
     deploySeaTerritoryId,
   }: PanelAnchors,
   transform: Transform,
+  unlockAnchor: { x: number; y: number } | null,
 ) {
   const zoomedRadius =
     VERTEX_RADIUS * getScales(size.w, size.h, transform.zoom, imgDims).scaleX;
@@ -230,6 +232,17 @@ export function usePanelStyles(
     size,
   );
 
+  const unlockScreenPos = unlockAnchor
+    ? getTerritoryScreenPos(unlockAnchor, size, transform, imgDims)
+    : null;
+  const unlockPanelStyle = anchoredStyle(
+    unlockScreenPos,
+    zoomedRadius,
+    TROOP_PANEL_WIDTH,
+    TROOP_PANEL_HEIGHT,
+    size,
+  );
+
   return {
     deployPanelStyle,
     fortifyPanelStyle,
@@ -237,6 +250,7 @@ export function usePanelStyles(
     sailPanelStyle,
     attackSeaPanelStyle,
     deploySeaPanelStyle,
+    unlockPanelStyle,
   };
 }
 
@@ -252,6 +266,7 @@ export function useAnimationActiveFlags({
   portalsEnabled,
   portalTerritoryIds,
   hasToxinTerritories,
+  hasTimedLinks,
   radiationById,
   radiationUpcomingById,
   visibleTerritoryIds,
@@ -270,6 +285,7 @@ export function useAnimationActiveFlags({
   portalsEnabled: boolean;
   portalTerritoryIds: number[];
   hasToxinTerritories: boolean;
+  hasTimedLinks: boolean;
   radiationById: Set<number>;
   radiationUpcomingById: Set<number>;
   visibleTerritoryIds: GameState['visibleTerritoryIds'];
@@ -321,6 +337,12 @@ export function useAnimationActiveFlags({
     if (hasToxinTerritories) startAnimationLoop();
     return () => setToxinsActive(false);
   }, [hasToxinTerritories, startAnimationLoop]);
+
+  useEffect(() => {
+    setTimedLinksActive(hasTimedLinks);
+    if (hasTimedLinks) startAnimationLoop();
+    return () => setTimedLinksActive(false);
+  }, [hasTimedLinks, startAnimationLoop]);
 
   const hasRadiationTerritories =
     radiationById.size > 0 || radiationUpcomingById.size > 0;

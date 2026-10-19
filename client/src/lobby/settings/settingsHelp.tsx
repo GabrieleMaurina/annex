@@ -75,6 +75,9 @@ export const SEAS_HELP =
 export const TIMED_CONNECTIONS_HELP =
   'Turns some of the connections drawn across water or void into timed connections that open and close every round. A timed connection can only be used to attack or move through while it is open. Each one is marked with an hourglass, an X while it is closed, and the number of rounds until it changes.';
 
+export const UNLOCKABLE_HELP =
+  'Tile maps only, not with Seas or Timed connections. Removes every connection drawn across the void, so islands may start disconnected. Instead, the empty slots between tiles become locked tiles. During your attack phase, the locked tiles you can unlock are marked with a dot: a territory next to one can unlock it for 5 troops (Constant or Off cards) or 25% of the value of the next card set, paid from the attacking territory, which must keep at least 1 troop. The tile then becomes an empty territory you can move into straight away or conquer later. Unlocking never earns a card.';
+
 export const BLITZ_HELP = (
   <>
     How an all-out attack (&quot;blitz&quot;) resolves a battle instantly
@@ -165,7 +168,9 @@ export const CONTINENTS_HELP = (
 
 export const CARDS_HELP = (
   <>
-    How much a set of 3 territory cards is worth in troops when played.
+    How much a set of 3 territory cards is worth in troops when played. You earn
+    a card at the end of a turn in which you conquered a territory owned by
+    another player; taking an empty territory never earns one.
     <ul className="mb-0 ps-3">
       <li>
         Constant: always worth the same: 4 for three Soldiers, 6 for three
@@ -213,9 +218,9 @@ export const PLACEMENT_HELP = (
         territories for everyone, players who never get one are eliminated.
       </li>
       <li>
-        Single: each player takes turns claiming a single territory with 10
-        troops, or, with capitals, picking a capital among empty territories
-        with 5 troops. Every other territory starts empty and can be taken
+        Single: each player takes turns claiming a single territory, or, with
+        capitals, a capital among empty territories, with as many troops as
+        Initial Troops. Every other territory starts empty and can be taken
         without losses. With fog of war, picks are blind: picking a territory
         someone already owns is rejected and you pick again.
       </li>
@@ -241,7 +246,8 @@ export const HILLS_HELP = (
 export const INITIAL_TROOPS_HELP = (
   <>
     Average number of starting troops per territory. Each player starts with
-    this many troops for every territory they own, at least 1 on each.
+    this many troops for every territory they own, at least 1 on each. With
+    Single placement, the troops on the one territory each player claims.
   </>
 );
 
@@ -336,7 +342,8 @@ export const TOXINS_HELP = (
       <li>
         Temporary: costs 5 troops (Constant cards) or 25% of the next card
         set&apos;s value, and clears itself after 3 rounds; once cleared, the
-        territory can be freely conquered by anyone with no dice roll.
+        territory can be freely conquered by anyone with no dice roll, which
+        never earns a card.
       </li>
       <li>
         Permanent: costs 10 troops (Constant cards) or 50% of the next card

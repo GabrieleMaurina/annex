@@ -166,6 +166,7 @@ export function viewGameStateFor(
         ),
       }),
     ),
+    unlockedTileIds: s.unlockedTileIds,
     visibleTerritoryIds: s.visibleTerritoryIds,
   });
 }

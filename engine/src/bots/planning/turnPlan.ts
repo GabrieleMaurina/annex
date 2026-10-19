@@ -51,6 +51,7 @@ export interface MapTopology {
   seaLinks: Map<number, number[]>;
   continentTerritories: Map<number, number[]>;
   territoryContinent: Map<number, number>;
+  unlockedTiles: number;
 }
 
 export interface TurnPlan {
@@ -73,6 +74,7 @@ export interface TurnPlan {
   playerId: number;
   nukeLaunched?: boolean;
   replans?: number;
+  unlocksIssued?: number;
   antiNukeDeployed?: boolean;
   topology?: MapTopology;
 }

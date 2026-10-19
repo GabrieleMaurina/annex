@@ -1,4 +1,5 @@
-import type { GameState } from '../../lib/types';
+import { withUnlockedTiles } from 'engine';
+import type { GameState, LockedTile } from '../../lib/types';
 import type { SeaTerritory, Territory } from '../mapData';
 import { withPortalEdges } from '../portals';
 
@@ -23,6 +24,7 @@ export function wouldSplitMap(
   blockedById: Set<number>,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
+  closedTiles: LockedTile[],
   candidateTerritoryId: number,
 ): boolean {
   const removed = new Set(blockedById);
@@ -37,7 +39,13 @@ export function wouldSplitMap(
       t.neighbors.filter((n) => !seaIds.has(n)),
     ]),
   );
-  const neighborsById = new Map(territories.map((t) => [t.id, t.neighbors]));
+  const neighborsById = new Map(
+    withUnlockedTiles(
+      territories,
+      closedTiles,
+      new Set(closedTiles.map((tile) => tile.id)),
+    ).map((t) => [t.id, t.neighbors]),
+  );
   const visited = new Set<number>([remaining[0].id]);
   const stack = [remaining[0].id];
   while (stack.length > 0) {
@@ -67,6 +75,7 @@ export function getToxinsCandidates(
   upcomingBlockedById: Set<number>,
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
+  closedTiles: LockedTile[],
 ): Set<number> {
   const candidates = new Set<number>();
   const ownedCount = territories.filter(
@@ -86,6 +95,7 @@ export function getToxinsCandidates(
           blocked,
           portalTerritoryIds,
           portalsEnabled,
+          closedTiles,
           t.id,
         ),
       )

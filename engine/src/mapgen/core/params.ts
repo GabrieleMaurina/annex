@@ -12,6 +12,7 @@ export interface GenerateMapParams {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  unlockable: boolean;
 }
 
 export const MAP_SIZE_VALUES: MapSize[] = [

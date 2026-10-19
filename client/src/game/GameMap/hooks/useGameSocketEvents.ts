@@ -6,6 +6,7 @@ import { playSound } from '../../../lib/sounds';
 import type {
   Fortification,
   GameState,
+  LockedTile,
   ReplayAnimation,
 } from '../../../lib/types';
 import {
@@ -18,6 +19,7 @@ import {
   pruneAnimations,
   startAnimation,
   startNukeAnimation,
+  startUnlockAnimation,
 } from '../../animations';
 import { NUKE_FLIGHT_MS } from '../../animations/state';
 import { getAttackPath } from '../../logic/attack';
@@ -26,6 +28,7 @@ import { getFortifyPath } from '../../logic/fortify';
 import type { SeaTerritory, Territory } from '../../mapData';
 import type { ReplayData } from '../../replay/replay';
 import { useReplay } from '../../replay/replay';
+import { insetPolygon, tileLineWidth } from '../../tiles/tileGeometry';
 import type { DrawCanvasParams } from '../draw/drawCanvas';
 import { drawGameMapCanvas } from '../draw/drawCanvas';
 import type { Point } from '../helpers';
@@ -42,6 +45,7 @@ export function useGameSocketEvents({
   territoriesRef,
   seaTerritoriesRef,
   seasRef,
+  lockedTiles,
   ownerByIdRef,
   colorByPlayerIdRef,
   visibleTerritoryIdsRef,
@@ -59,6 +63,7 @@ export function useGameSocketEvents({
   territoriesRef: RefObject<Territory[]>;
   seaTerritoriesRef: RefObject<SeaTerritory[]>;
   seasRef: RefObject<GameState['seas']>;
+  lockedTiles: LockedTile[];
   ownerByIdRef: RefObject<Map<number, GameState['territories'][number]>>;
   colorByPlayerIdRef: RefObject<Map<number, number>>;
   visibleTerritoryIdsRef: RefObject<GameState['visibleTerritoryIds']>;
@@ -124,6 +129,7 @@ export function useGameSocketEvents({
     useAnimationPathHelpers({
       territoriesRef,
       seaTerritoriesRef,
+      lockedTiles,
       portalTerritoryIds,
       portalsEnabled,
     });
@@ -195,6 +201,19 @@ export function useGameSocketEvents({
       startAnimation('explosion', territory.x, territory.y);
     },
     [findPosition],
+  );
+
+  const unlockEffect = useCallback(
+    (tileId: number) => {
+      const tile = lockedTiles.find((t) => t.id === tileId);
+      if (tile)
+        startUnlockAnimation({
+          ...tile,
+          points: insetPolygon(tile.points, tileLineWidth(lockedTiles) / 2),
+        });
+      explode(tileId);
+    },
+    [lockedTiles, explode],
   );
 
   const entrenchEffect = useCallback(
@@ -398,6 +417,7 @@ export function useGameSocketEvents({
     territoriesRef,
     seaTerritoriesRef,
     seasRef,
+    lockedTiles,
     portalTerritoryIds,
     portalsEnabled,
     visibleTerritoryIdsRef,
@@ -474,6 +494,14 @@ export function useGameSocketEvents({
         toxinPlaceEffect(animation.territoryId);
       } else if (animation.type === 'nuke') {
         nukeEffect(animation);
+      } else if (animation.type === 'unlock') {
+        playSound('explode');
+        unlockEffect(animation.tileId);
+        animateRemove({
+          territoryId: animation.fromTerritoryId,
+          troops: animation.cost,
+          playerId: animation.playerId,
+        });
       } else if (
         animation.type === 'buyShips' ||
         animation.type === 'sail' ||
@@ -513,6 +541,7 @@ export function useGameSocketEvents({
       animateStarve,
       toxinPlaceEffect,
       nukeEffect,
+      unlockEffect,
       playAttackLossEffects,
       arrowRunsForPath,
       playSeaFrameAnimation,
@@ -658,6 +687,22 @@ export function useGameSocketEvents({
       ]);
       startAnimationLoop();
     }
+    function onUnlocked(payload: {
+      fromTerritoryId: number;
+      tileId: number;
+      cost: number;
+    }) {
+      playSound('explode');
+      adjustTerritoryTroops([
+        { territoryId: payload.fromTerritoryId, delta: -payload.cost },
+      ]);
+      unlockEffect(payload.tileId);
+      animateRemove({
+        territoryId: payload.fromTerritoryId,
+        troops: payload.cost,
+      });
+      startAnimationLoop();
+    }
     function onToxinExpired(payload: { territoryIds: number[] }) {
       adjustToxinTerritories(
         payload.territoryIds.map((territoryId) => ({
@@ -698,6 +743,7 @@ export function useGameSocketEvents({
     connector.on('game:entrenched', onEntrenched);
     connector.on('game:starved', onStarved);
     connector.on('game:toxined', onToxined);
+    connector.on('game:unlocked', onUnlocked);
     connector.on('game:toxinExpired', onToxinExpired);
     connector.on('game:radiationUpcoming', onRadiationUpcoming);
     connector.on('game:radiationChanged', onRadiationChanged);
@@ -710,6 +756,7 @@ export function useGameSocketEvents({
       connector.off('game:entrenched', onEntrenched);
       connector.off('game:starved', onStarved);
       connector.off('game:toxined', onToxined);
+      connector.off('game:unlocked', onUnlocked);
       connector.off('game:toxinExpired', onToxinExpired);
       connector.off('game:radiationUpcoming', onRadiationUpcoming);
       connector.off('game:radiationChanged', onRadiationChanged);
@@ -722,6 +769,7 @@ export function useGameSocketEvents({
     animateStarve,
     adjustTerritoryTroops,
     toxinPlaceEffect,
+    unlockEffect,
     adjustToxinTerritories,
     radiationPlaceEffect,
     radiationTerritoryIds,

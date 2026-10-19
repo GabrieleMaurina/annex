@@ -13,7 +13,11 @@ import type {
   TileShape,
 } from '../lib/types';
 import { DEFAULT_MAP_GENERATION, randomSeed } from '../maps/randomMap';
-import { SEAS_HELP, TIMED_CONNECTIONS_HELP } from './settings/settingsHelp';
+import {
+  SEAS_HELP,
+  TIMED_CONNECTIONS_HELP,
+  UNLOCKABLE_HELP,
+} from './settings/settingsHelp';
 
 export interface MapGenerationPanelHandle {
   generate: () => void;
@@ -69,6 +73,10 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
     const [genTimed, setGenTimed] = useState(
       saved?.timed ?? DEFAULT_MAP_GENERATION.timed,
     );
+    const [genUnlockable, setGenUnlockable] = useState(
+      saved?.unlockable ?? DEFAULT_MAP_GENERATION.unlockable,
+    );
+    const unlockable = genType === 'tile' && genUnlockable;
     const [generating, setGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState<GenerateMapInput | null>(
       saved ?? null,
@@ -91,7 +99,8 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         lastGenerated.fill === genFill &&
         (genType !== 'tile' || lastGenerated.tile === genTile) &&
         lastGenerated.seas === genSeas &&
-        lastGenerated.timed === genTimed
+        lastGenerated.timed === genTimed &&
+        lastGenerated.unlockable === unlockable
       ) {
         effectiveSeed = randomSeed();
         setSeed(effectiveSeed);
@@ -105,6 +114,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         tile: genTile,
         seas: genSeas,
         timed: genTimed,
+        unlockable,
       };
       setGenerating(true);
       generateMap(input, (ok) => {
@@ -157,7 +167,10 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                 <Form.Select
                   className="w-auto"
                   value={genType}
-                  onChange={(e) => setGenType(e.target.value as GenerationType)}
+                  onChange={(e) => {
+                    setGenType(e.target.value as GenerationType);
+                    if (e.target.value !== 'tile') setGenUnlockable(false);
+                  }}
                 >
                   <option value="terrain">Terrain</option>
                   <option value="dungeon">Dungeon</option>
@@ -217,6 +230,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                   type="checkbox"
                   label="Seas"
                   checked={genSeas}
+                  disabled={unlockable}
                   onChange={(e) => setGenSeas(e.target.checked)}
                 />
                 <Help>{SEAS_HELP}</Help>
@@ -226,10 +240,23 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                   type="checkbox"
                   label="Timed connections"
                   checked={genTimed}
+                  disabled={unlockable}
                   onChange={(e) => setGenTimed(e.target.checked)}
                 />
                 <Help>{TIMED_CONNECTIONS_HELP}</Help>
               </div>
+              {genType === 'tile' && (
+                <div className="d-flex align-items-center gap-2">
+                  <Form.Check
+                    type="checkbox"
+                    label="Unlockable"
+                    checked={unlockable}
+                    disabled={genSeas || genTimed}
+                    onChange={(e) => setGenUnlockable(e.target.checked)}
+                  />
+                  <Help>{UNLOCKABLE_HELP}</Help>
+                </div>
+              )}
               <div>
                 <Button
                   disabled={generating || !seedValid}

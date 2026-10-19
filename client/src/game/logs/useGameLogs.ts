@@ -18,6 +18,7 @@ const LIVE_EVENTS = [
   'game:deployedMany',
   'game:entrenched',
   'game:toxined',
+  'game:unlocked',
   'game:radiationChanged',
   'game:nukeLaunched',
   'game:attacked',

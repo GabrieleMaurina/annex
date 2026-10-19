@@ -1,4 +1,4 @@
-import { SeaTerritory, Territory, TimedConnection } from '../types';
+import { LockedTile, SeaTerritory, Territory, TimedConnection } from '../types';
 import {
   generatedMapName,
   GenerateMapParams,
@@ -18,12 +18,13 @@ export interface GeneratedMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
 }
 
 export function generateMap(params: GenerateMapParams): GeneratedMap {
-  const { seed, size, type, fill, tile, seas, timed } = params;
+  const { seed, size, type, fill, tile, seas, timed, unlockable } = params;
   const key = `${seed}::${size}::${type}::${fill}${type === 'tile' ? `::${tile}` : ''}`;
   const rng = createRng(key);
   const timedRng = timed ? createRng(`${key}::timed`) : null;
@@ -39,11 +40,21 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
       : type === 'temple'
         ? generateTemple(rng, fill, size, dims, seas, timedRng)
         : type === 'tile'
-          ? generateTile(rng, tile, fill, size, dims, seas, timedRng)
+          ? generateTile(
+              rng,
+              tile,
+              fill,
+              size,
+              dims,
+              seas,
+              unlockable,
+              timedRng,
+            )
           : generateTerrain(rng, fill, size, dims, seas, timedRng);
 
   return {
     name: generatedMapName(params),
+    lockedTiles: [],
     ...built,
     borderColors: generatedBorderColors(type),
   };

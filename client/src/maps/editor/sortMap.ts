@@ -1,4 +1,5 @@
 import type {
+  LockedTile,
   MapSeaTerritory,
   MapTerritory,
   MapWrap,
@@ -8,6 +9,7 @@ import {
   NO_CONTINENT,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
+import { toLockedTiles, type EditorLockedTile } from './model/lockedTiles';
 
 const ROW_TOLERANCE_FRACTION = 0.5;
 
@@ -37,6 +39,7 @@ function sortByPosition<T>(
 export interface SortedTerritories {
   territories: Territory[];
   bonuses: number[];
+  idMap: Map<number, number>;
 }
 
 export function sortTerritories(
@@ -110,18 +113,21 @@ export function sortTerritories(
   return {
     territories: newTerritories,
     bonuses: newBonuses,
+    idMap,
   };
 }
 
 export function sortMapData(
   territories: Territory[],
   bonuses: number[],
+  lockedTiles: EditorLockedTile[],
 ): {
   territories: MapTerritory[];
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
 } {
   const sorted = sortTerritories(territories, bonuses);
   const newTerritories: MapTerritory[] = sorted.territories
@@ -150,6 +156,11 @@ export function sortMapData(
       t.timed
         .filter((m) => t.id < m.id)
         .map(({ id, ...values }) => ({ a: t.id, b: id, ...values })),
+    ),
+    lockedTiles: toLockedTiles(
+      lockedTiles,
+      new Map([...sorted.idMap].filter(([, id]) => id < newTerritories.length)),
+      sorted.territories.length,
     ),
   };
 }

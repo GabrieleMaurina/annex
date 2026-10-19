@@ -38,6 +38,14 @@ export interface TimedConnection {
   closed: number;
 }
 
+export interface LockedTile {
+  id: number;
+  x: number;
+  y: number;
+  points: [number, number][];
+  neighbors: number[];
+}
+
 export interface GameMap {
   name: string;
   territories: Territory[];
@@ -45,6 +53,7 @@ export interface GameMap {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
 }
 
 export interface GeneratedGameMap {
@@ -52,6 +61,7 @@ export interface GeneratedGameMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
   seed: string;
@@ -61,6 +71,7 @@ export interface GeneratedGameMap {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  unlockable: boolean;
 }
 
 export interface Player {
@@ -194,6 +205,13 @@ export type ReplayAnimation =
   | { type: 'starve'; territoryId: number; troops: number; playerId: number }
   | { type: 'toxins'; territoryId: number; playerId: number }
   | {
+      type: 'unlock';
+      fromTerritoryId: number;
+      tileId: number;
+      cost: number;
+      playerId: number;
+    }
+  | {
       type: 'nuke';
       fromTerritoryId: number;
       targetTerritoryId: number;
@@ -322,6 +340,7 @@ export interface PlayerGameMap {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
 }
@@ -424,6 +443,7 @@ export interface Game {
   territoryEntrenchment: Map<number, number>;
   fogMemory: Map<number, Map<number, RememberedTerritory>>;
   territoryToxins: Map<number, { permanent: boolean; roundsRemaining: number }>;
+  unlockedTileIds: Set<number>;
   capitalTerritoryIds: Set<number>;
   playerMissions: Map<number, Mission>;
   hostPriority: number[];

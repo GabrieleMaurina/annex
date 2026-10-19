@@ -22,4 +22,8 @@ export function registerAttackHandlers(socket: Socket, engine: Engine) {
   registerGameAction(socket, 'game:quickAttack', (playerId, data) =>
     engine.quickAttack(playerId, data.territoryId, data.minimal),
   );
+
+  registerGameAction(socket, 'game:unlock', (playerId, data) =>
+    engine.unlockTile(playerId, data.tileId, data.enter),
+  );
 }

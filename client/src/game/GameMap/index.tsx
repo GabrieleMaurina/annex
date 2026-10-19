@@ -32,8 +32,8 @@ import { usePanelsUI } from './hooks/usePanelsUI';
 import { useTurnActionFlows } from './hooks/useTurnActionFlows';
 import { useDisplayedGame } from './hooks/view/useDisplayedGame';
 import { useGameCanvasInteractions } from './hooks/view/useGameCanvasInteractions';
+import { useMapGraph } from './hooks/view/useMapGraph';
 import { useNukeControls } from './hooks/view/useNukeControls';
-import { useTimedConnections } from './hooks/view/useTimedConnections';
 import { useTurnToasts } from './hooks/view/useTurnToasts';
 import AlliancePopupOverlay from './overlays/AlliancePopupOverlay';
 import CardSetFlash from './overlays/CardSetFlash';
@@ -137,8 +137,9 @@ function GameMap({
     seaTerritories,
     bonuses,
     timedConnections,
+    lockedTiles,
     forcedWraps,
-    regions,
+    regions: mapRegions,
     camera,
     imgDims,
     size,
@@ -198,6 +199,7 @@ function GameMap({
     territoriesRef,
     seaTerritoriesRef,
     seasRef,
+    lockedTiles,
     ownerByIdRef,
     colorByPlayerIdRef,
     visibleTerritoryIdsRef,
@@ -251,11 +253,15 @@ function GameMap({
     showReplay,
     replay,
   });
-  const { territories, timedLinks } = useTimedConnections(
-    mapTerritories,
-    timedConnections,
-    showReplay ? (replay.roundNumber ?? 0) : roundNumber,
-  );
+  const { territories, openTerritories, regions, closedTiles, timedLinks } =
+    useMapGraph({
+      mapTerritories,
+      mapRegions,
+      timedConnections,
+      lockedTiles,
+      unlockedTileIds: replay.unlockedTileIds ?? game.unlockedTileIds,
+      round: showReplay ? (replay.roundNumber ?? 0) : roundNumber,
+    });
   const ownedTerritoryIds = new Set(
     ownership.filter((o) => o.ownerId === selfId).map((o) => o.id),
   );
@@ -295,6 +301,9 @@ function GameMap({
     paused,
     blitzEnabled: game.blitz !== 'off',
     attackDice: game.attackDice,
+    closedTiles,
+    cards,
+    nextSetBaseValues,
     setGame,
   });
 
@@ -344,6 +353,7 @@ function GameMap({
     nextSetBaseValues,
     blockedById: unusableTerritoryById,
     upcomingBlockedById: upcomingUnusableTerritoryById,
+    closedTiles,
     setGame,
   });
 
@@ -370,15 +380,7 @@ function GameMap({
     settingsPanelTop,
     panelCollapsed,
     setPanelCollapsed,
-  } = usePanelsUI();
-
-  useEffect(() => {
-    if (settingsMenuOpen) setOpenPanel(null);
-  }, [settingsMenuOpen, setOpenPanel]);
-
-  useEffect(() => {
-    onPanelOpenChange(openPanel !== null);
-  }, [openPanel, onPanelOpenChange]);
+  } = usePanelsUI(settingsMenuOpen, onPanelOpenChange);
 
   const { nukeReady, nukeTargeting, setNukeTargeting, nukes } = useNukeControls(
     {
@@ -605,6 +607,7 @@ function GameMap({
     portalsEnabled,
     portalTerritoryIds,
     hasToxinTerritories,
+    hasTimedLinks: timedLinks.length > 0,
     radiationById,
     radiationUpcomingById,
     visibleTerritoryIds,
@@ -646,7 +649,7 @@ function GameMap({
       camera,
       imageRef,
       supplyLineEdgesByPlayer,
-      territories: mapTerritories,
+      territories: openTerritories,
       seaTerritories,
       seas: displayedSeas,
       fortifyPathTerritoryIds,
@@ -696,13 +699,10 @@ function GameMap({
       forcedWraps,
       regions,
       timedLinks,
+      unlockTiles: attackFlow.unlockTiles,
     };
     startAnimationLoop();
   });
-
-  const hand = showReplay ? replayHandCards : cardsFlow.hand;
-  const combos = showReplay ? [] : cardsFlow.combos;
-  const hasSetToPlay = showReplay ? false : cardsFlow.hasSetToPlay;
 
   const { surrender, endGame } = useGameEndActions(setGame);
 
@@ -753,12 +753,12 @@ function GameMap({
         bonusesOpen={bonusesOpen}
         cardsOpen={cardsOpen}
         cardsPanelRef={cardsPanelRef}
-        hand={hand}
+        hand={showReplay ? replayHandCards : cardsFlow.hand}
         ownedTerritoryIds={
           showReplay ? replayActingOwnedIds : ownedTerritoryIds
         }
         upcomingSetValues={upcomingSetValues}
-        combos={combos}
+        combos={showReplay ? [] : cardsFlow.combos}
         selectedCombo={showReplay ? undefined : cardsFlow.selectedCombo}
         setSelectedComboKey={cardsFlow.setSelectedComboKey}
         isMyTurn={showReplay ? false : isMyTurn}
@@ -773,7 +773,7 @@ function GameMap({
             ? `${replayPlayer.name}'s Cards`
             : undefined
         }
-        hasSetToPlay={hasSetToPlay}
+        hasSetToPlay={showReplay ? false : cardsFlow.hasSetToPlay}
         setAwardedCards={cardsFlow.setAwardedCards}
         logsOpen={logsOpen}
         logsPanelRef={logsPanelRef}

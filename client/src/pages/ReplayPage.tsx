@@ -193,6 +193,7 @@ function buildGameState(
     })),
     toxinTerritories: [],
     seas: [],
+    unlockedTileIds: [],
     visibleTerritoryIds: undefined,
   };
 }
@@ -223,6 +224,7 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
             bonuses: map.bonuses,
             wraps: map.wraps,
             timedConnections: map.timedConnections,
+            lockedTiles: map.lockedTiles,
             imageSrc: `data:${map.imageMime};base64,${map.image}`,
             borderColors: map.borderColors,
           });

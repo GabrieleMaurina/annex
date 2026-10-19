@@ -78,6 +78,7 @@ export function gameSummary(game: Game) {
           tile: game.generatedMap.tile,
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
+          unlockable: game.generatedMap.unlockable,
         }
       : null,
     hostName: isAnonymousPlaying(game)
@@ -212,6 +213,7 @@ export function gameState(game: Game) {
           tile: game.generatedMap.tile,
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
+          unlockable: game.generatedMap.unlockable,
         }
       : null,
     playerMapId: game.playerMap?.id ?? null,
@@ -371,6 +373,7 @@ export function gameState(game: Game) {
       }),
     ),
     seas: seaState(game),
+    unlockedTileIds: [...game.unlockedTileIds],
     visibleTerritoryIds: undefined as number[] | undefined,
   };
 }

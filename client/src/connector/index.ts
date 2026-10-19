@@ -110,6 +110,11 @@ function appendGameFilterParams(
     params.set('mapGenerationSeas', query.mapGenerationSeas ? '1' : '0');
   if (query.mapGenerationTimed !== undefined)
     params.set('mapGenerationTimed', query.mapGenerationTimed ? '1' : '0');
+  if (query.mapGenerationUnlockable !== undefined)
+    params.set(
+      'mapGenerationUnlockable',
+      query.mapGenerationUnlockable ? '1' : '0',
+    );
   if (query.playersMin !== undefined)
     params.set('playersMin', String(query.playersMin));
   if (query.playersMax !== undefined)
@@ -289,6 +294,8 @@ export const connector = {
       params.set('genSeas', query.generationSeas ? '1' : '0');
     if (query.generationTimed !== undefined)
       params.set('genTimed', query.generationTimed ? '1' : '0');
+    if (query.generationUnlockable !== undefined)
+      params.set('genUnlockable', query.generationUnlockable ? '1' : '0');
     params.set('sort', query.sort);
     const empty: PlayerMapsPage = {
       maps: [],
@@ -802,6 +809,10 @@ export const connector = {
     cb: AckCallback,
   ): void {
     route('game:quickAttack', data, cb);
+  },
+
+  unlockTile(data: { tileId: number; enter: boolean }, cb: AckCallback): void {
+    route('game:unlock', data, cb);
   },
 
   attackSeaSelectStart(

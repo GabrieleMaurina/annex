@@ -4,6 +4,7 @@ import type {
   EmojiAttackTarget,
   EmojiValue,
   GameState,
+  LockedTile,
 } from '../../../../lib/types';
 import type { EvaluatedCombo } from '../../../logic/cards';
 import type { SeaTerritory, Territory } from '../../../mapData';
@@ -154,5 +155,9 @@ export type CanvasInteractionsParams = {
   submitAttackMove: () => void;
   cancelAttack: () => void;
   submitAttack: () => void;
+  unlockTiles: LockedTile[];
+  unlockTileId: number | null;
+  selectUnlockTile: (tileId: number) => void;
+  unlock: (tileId: number, enter: boolean) => void;
   canAdvancePhase: boolean;
 };

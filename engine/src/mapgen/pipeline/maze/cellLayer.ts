@@ -7,4 +7,5 @@ export interface CellLayer {
   chambers: number[][];
   outsideMask?: Uint8Array;
   cellTerritories?: boolean;
+  unlockable?: boolean;
 }

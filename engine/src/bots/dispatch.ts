@@ -4,6 +4,7 @@ import {
   attackMove,
   attackSelectEnd,
   attackSelectStart,
+  unlockTile,
 } from '../territory/attack';
 import { playCardSet } from '../territory/cards';
 import { deploy } from '../territory/deploy';
@@ -85,6 +86,8 @@ export function dispatchBotAction(
       return attackMove(playerId, p.troops as number);
     case 'game:attackSelectStart':
       return attackSelectStart(playerId, p.territoryId as number);
+    case 'game:unlock':
+      return unlockTile(playerId, p.tileId, p.enter);
     case 'game:attackSelectEnd':
       return attackSelectEnd(playerId, p.territoryId as number);
     case 'game:attack':

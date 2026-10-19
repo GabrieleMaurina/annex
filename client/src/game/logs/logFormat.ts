@@ -116,6 +116,12 @@ export function createLogFormatter() {
             : `${nameFor(n('playerId'))} released toxin on territory #${n('territoryId') + 1} for ${n('roundsRemaining')} rounds`,
         );
         break;
+      case 'game:unlocked':
+        push(
+          colorFor(n('playerId')),
+          `${nameFor(n('playerId'))} unlocked tile #${n('tileId') + 1} from territory #${n('fromTerritoryId') + 1} for ${n('cost')} troops`,
+        );
+        break;
       case 'game:nukeLaunched': {
         const launcherId = n('playerId');
         if (p.intercepted)

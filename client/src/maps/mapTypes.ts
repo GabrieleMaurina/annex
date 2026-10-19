@@ -2,6 +2,7 @@ import type {
   Fill,
   GenerateMapInput,
   GenerationType,
+  LockedTile,
   MapSize,
   TileShape,
   TimedConnection,
@@ -36,6 +37,7 @@ export interface StoredMap {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -61,6 +63,7 @@ export interface PlayerMapsQuery {
   generationTile?: TileShape;
   generationSeas?: boolean;
   generationTimed?: boolean;
+  generationUnlockable?: boolean;
   sort: PlayerMapSort;
 }
 
@@ -95,6 +98,7 @@ export interface PlayerMapDetail {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -112,6 +116,7 @@ export interface PlayerMapSaveBody {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  lockedTiles: LockedTile[];
   image: string;
   borderColors: string[];
   generation: GenerateMapInput | null;

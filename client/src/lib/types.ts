@@ -1,6 +1,7 @@
 import type {
   Fill,
   GenerationType,
+  LockedTile,
   MapSize,
   TileShape,
   TimedConnection,
@@ -47,6 +48,7 @@ export interface HomeFilters {
   mapGenerationTile: string;
   mapGenerationSeas: string;
   mapGenerationTimed: string;
+  mapGenerationUnlockable: string;
   playersMin: number;
   playersMax: number;
   roundsMin: number;
@@ -77,6 +79,7 @@ export interface GameSummary {
     tile: TileShape;
     seas: boolean;
     timed: boolean;
+    unlockable: boolean;
   } | null;
   hostName: string;
   playerCount: number;
@@ -369,6 +372,7 @@ export interface GameState {
   }[];
   toxinTerritories: ReplayToxinTerritory[];
   seas: { id: number; ships: { playerId: number; ships: number }[] }[];
+  unlockedTileIds: number[];
   visibleTerritoryIds?: number[];
 }
 
@@ -471,7 +475,14 @@ export type GameRulesSettings = Pick<
 
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 
-export type { Fill, GenerationType, MapSize, TileShape, TimedConnection };
+export type {
+  Fill,
+  GenerationType,
+  LockedTile,
+  MapSize,
+  TileShape,
+  TimedConnection,
+};
 
 export interface GenerateMapInput {
   seed: string;
@@ -481,6 +492,7 @@ export interface GenerateMapInput {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  unlockable: boolean;
 }
 
 export interface ChatMessage {
@@ -529,6 +541,13 @@ export type ReplayAnimation =
   | { type: 'entrench'; territoryId: number; troops: number; playerId: number }
   | { type: 'starve'; territoryId: number; troops: number; playerId: number }
   | { type: 'toxins'; territoryId: number; playerId: number }
+  | {
+      type: 'unlock';
+      fromTerritoryId: number;
+      tileId: number;
+      cost: number;
+      playerId: number;
+    }
   | {
       type: 'nuke';
       fromTerritoryId: number;
@@ -771,6 +790,7 @@ export interface GamesQuery {
   mapGenerationTile?: TileShape;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
+  mapGenerationUnlockable?: boolean;
   minRounds?: number;
   maxRounds?: number;
   hasBots?: boolean;
@@ -810,6 +830,7 @@ export interface HomeGamesQuery {
   mapGenerationTile?: TileShape;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
+  mapGenerationUnlockable?: boolean;
   playersMin?: number;
   playersMax?: number;
   minRounds?: number;

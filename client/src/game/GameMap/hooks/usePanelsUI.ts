@@ -2,7 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useToggleSound } from '../../../lib/sounds';
 import { DEFAULT_CARDS_BUTTONS_TOP, TOP_BUTTON_GAP } from '../helpers';
 
-export function usePanelsUI() {
+export function usePanelsUI(
+  settingsMenuOpen: boolean,
+  onPanelOpenChange: (open: boolean) => void,
+) {
   const [openPanel, setOpenPanel] = useState<
     'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null
   >(null);
@@ -31,6 +34,17 @@ export function usePanelsUI() {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   useToggleSound(openPanel);
   useToggleSound(panelCollapsed);
+
+  const [seenSettingsMenuOpen, setSeenSettingsMenuOpen] =
+    useState(settingsMenuOpen);
+  if (settingsMenuOpen !== seenSettingsMenuOpen) {
+    setSeenSettingsMenuOpen(settingsMenuOpen);
+    if (settingsMenuOpen) setOpenPanel(null);
+  }
+
+  useEffect(() => {
+    onPanelOpenChange(openPanel !== null);
+  }, [openPanel, onPanelOpenChange]);
 
   useEffect(() => {
     const settingsEl = document.getElementById('settings-toggle');

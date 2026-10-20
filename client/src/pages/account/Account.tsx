@@ -126,7 +126,7 @@ function AccountPage({ account, onCountryChange }: Props) {
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
       <h1 className="text-center mb-4">Account</h1>
-      <div className="d-flex flex-column gap-5">
+      <div className="d-flex flex-column flex-lg-row justify-content-center align-items-center align-items-lg-start gap-5 py-lg-5">
         <div className="d-flex flex-column gap-3">
           <div>
             <div className="small text-muted">Username</div>
@@ -138,7 +138,7 @@ function AccountPage({ account, onCountryChange }: Props) {
           </div>
           <div className="d-flex flex-column gap-1">
             <div className="small text-muted">Country</div>
-            <div style={{ maxWidth: '32ch' }}>
+            <div style={{ width: '32ch' }}>
               <CountrySelect value={country} onChange={changeCountry} />
             </div>
             {countryError && (
@@ -149,7 +149,7 @@ function AccountPage({ account, onCountryChange }: Props) {
           </div>
         </div>
 
-        <div className="d-flex flex-column align-items-start gap-2">
+        <div className="d-flex flex-column align-items-start gap-2 px-lg-4">
           <div className="small text-muted">Profile picture</div>
           {picture ? (
             <img
@@ -213,7 +213,7 @@ function AccountPage({ account, onCountryChange }: Props) {
           <Form
             onSubmit={changePassword}
             className="d-flex flex-column gap-2"
-            style={{ maxWidth: '24ch' }}
+            style={{ width: '24ch' }}
           >
             <div className="small text-muted">Change password</div>
             <Form.Control

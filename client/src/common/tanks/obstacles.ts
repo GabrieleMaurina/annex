@@ -1,5 +1,7 @@
 const MEDIA = new Set(['img', 'svg', 'canvas', 'video', 'iframe']);
 const SIDES = ['top', 'right', 'bottom', 'left'];
+const INTERACTIVE =
+  'a, button, input, select, textarea, label, summary, [role="button"], [tabindex], [contenteditable]';
 
 function hasColor(color: string): boolean {
   return color !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(color);
@@ -40,34 +42,44 @@ function onScreen(rect: DOMRect): boolean {
   );
 }
 
+function contains(rect: DOMRect, x: number, y: number): boolean {
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
 function overText(element: Element, x: number, y: number): boolean {
   const range = document.createRange();
   return Array.from(element.childNodes).some((node) => {
     if (!(node instanceof Text) || !node.textContent?.trim()) return false;
     range.selectNodeContents(node);
-    return Array.from(range.getClientRects()).some(
-      (rect) =>
-        x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom,
+    return Array.from(range.getClientRects()).some((rect) =>
+      contains(rect, x, y),
     );
   });
 }
 
-export function isBackground(event: MouseEvent): boolean {
+export function isBackground(
+  event: MouseEvent,
+  canvas: HTMLCanvasElement,
+): boolean {
   const target = event.target;
-  if (!(target instanceof Element)) return false;
+  if (!(target instanceof Element) || target.closest(INTERACTIVE)) {
+    return false;
+  }
   if (!['auto', 'default'].includes(getComputedStyle(target).cursor)) {
     return false;
   }
   const { clientX: x, clientY: y } = event;
-  return document
-    .elementsFromPoint(x, y)
-    .every(
-      (element) =>
-        element === document.body ||
-        element === document.documentElement ||
-        (!paints(element, getComputedStyle(element)) &&
-          !overText(element, x, y)),
-    );
+  return (
+    document
+      .elementsFromPoint(x, y)
+      .every(
+        (element) =>
+          element === document.body ||
+          element === document.documentElement ||
+          (!paints(element, getComputedStyle(element)) &&
+            !overText(element, x, y)),
+      ) && !scanObstacles(canvas).some((rect) => contains(rect, x, y))
+  );
 }
 
 export function scanObstacles(canvas: HTMLCanvasElement): DOMRect[] {

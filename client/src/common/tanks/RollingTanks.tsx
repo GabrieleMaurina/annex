@@ -40,13 +40,25 @@ function RollingTanks({ spawnInitial }: Props) {
     }
     resize();
 
+    let pressedOnBackground = false;
+
+    function onPointerDown(event: PointerEvent) {
+      pressedOnBackground = isBackground(event, canvas);
+    }
+
+    function releasedOnBackground(event: MouseEvent) {
+      const pressed = pressedOnBackground;
+      pressedOnBackground = false;
+      return pressed && isBackground(event, canvas);
+    }
+
     function onClick(event: MouseEvent) {
-      if (!isBackground(event)) return;
+      if (!releasedOnBackground(event)) return;
       blast(world, event.clientX, event.clientY, performance.now());
     }
 
     function onContextMenu(event: MouseEvent) {
-      if (!isBackground(event)) return;
+      if (!releasedOnBackground(event)) return;
       event.preventDefault();
       spawnTank(world, event.clientX, event.clientY);
       clampTanks(world);
@@ -89,6 +101,7 @@ function RollingTanks({ spawnInitial }: Props) {
     });
     window.addEventListener('scroll', markDirty, true);
     window.addEventListener('resize', resize);
+    window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('click', onClick);
     window.addEventListener('contextmenu', onContextMenu);
     return () => {
@@ -96,6 +109,7 @@ function RollingTanks({ spawnInitial }: Props) {
       observer.disconnect();
       window.removeEventListener('scroll', markDirty, true);
       window.removeEventListener('resize', resize);
+      window.removeEventListener('pointerdown', onPointerDown, true);
       window.removeEventListener('click', onClick);
       window.removeEventListener('contextmenu', onContextMenu);
     };

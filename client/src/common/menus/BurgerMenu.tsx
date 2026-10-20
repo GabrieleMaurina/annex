@@ -175,6 +175,16 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
               )}
             </Button>
           ))}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              close();
+              setShortcutsOpen(true);
+            }}
+          >
+            Shortcuts
+          </Button>
           {showAuth &&
             (account ? (
               !hideLogout && (
@@ -200,16 +210,6 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
                 Log in
               </Button>
             ))}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              close();
-              setShortcutsOpen(true);
-            }}
-          >
-            Shortcuts
-          </Button>
         </div>
       )}
       {shortcutsOpen && (

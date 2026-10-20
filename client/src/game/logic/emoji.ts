@@ -7,18 +7,20 @@ export const EMOJIS: EmojiValue[] = [
   '🙂',
   '🙁',
   '😲',
+  '❓',
   '🙏',
   '⚔️',
 ];
 export const ATTACK_EMOJI: EmojiValue = '⚔️';
 export const GLOBAL_TARGET_ID = -1;
 export const EMOJI_LABELS: Record<EmojiValue, string> = {
-  '👍': 'Like',
-  '👎': 'Dislike',
+  '👍': 'Like\nYes',
+  '👎': 'Dislike\nNo',
   '❤️': 'Love',
   '🙂': 'Happy',
   '🙁': 'Sad',
   '😲': 'Surprised',
+  '❓': 'Question',
   '🙏': 'Please\nSorry\nThanks',
   '⚔️': 'Attack',
 };

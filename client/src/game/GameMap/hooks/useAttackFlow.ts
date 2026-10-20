@@ -170,7 +170,11 @@ export function useAttackFlow({
   );
 
   const continueFromConquest = useCallback(
-    (game: GameState, conqueredTerritoryId: number) => {
+    (
+      game: GameState,
+      conqueredTerritoryId: number,
+      nextStartId = conqueredTerritoryId,
+    ) => {
       const freshOwnerById = new Map(game.territories.map((t) => [t.id, t]));
       if (freshOwnerById.get(conqueredTerritoryId)?.ownerId !== selfId) return;
       const candidates = new Set([
@@ -191,8 +195,8 @@ export function useAttackFlow({
           unlockCost(game.cards, game.nextSetBaseValues),
         ),
       ]);
-      if (candidates.has(conqueredTerritoryId)) {
-        selectAttackStart(conqueredTerritoryId);
+      if (candidates.has(nextStartId)) {
+        selectAttackStart(nextStartId);
       }
     },
     [
@@ -223,6 +227,7 @@ export function useAttackFlow({
 
   const quickAttack = useCallback(
     (territoryId: number, minimal: boolean) => {
+      const startId = attackStartTerritoryId;
       connector.quickAttack({ territoryId, minimal }, (res: Ack) => {
         if (!res.ok) return;
         setAttackDiceRoll(null);
@@ -231,10 +236,14 @@ export function useAttackFlow({
           playSound('end');
           return;
         }
-        continueFromConquest(res.game, territoryId);
+        continueFromConquest(
+          res.game,
+          territoryId,
+          minimal && startId !== null ? startId : territoryId,
+        );
       });
     },
-    [setGame, continueFromConquest],
+    [attackStartTerritoryId, setGame, continueFromConquest],
   );
 
   const unlock = useCallback(

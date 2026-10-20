@@ -13,6 +13,7 @@ const EMOJI_VALUES: EmojiValue[] = [
   '🙂',
   '🙁',
   '😲',
+  '❓',
   '🙏',
   '⚔️',
 ];

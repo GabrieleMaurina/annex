@@ -783,6 +783,18 @@ function findNextAliveIndexFrom(game: Game, fromIndex: number): number | null {
   return nextIndexMatching(game, fromIndex, (id) => ownsAnyTerritory(game, id));
 }
 
+function isIdleBot(playerId: number): boolean {
+  const player = playersById.get(playerId);
+  return !!player?.isBot && player.botProfile?.difficulty === 'idle';
+}
+
+function shouldSkipTurn(game: Game, playerId: number): boolean {
+  return (
+    isIdleBot(playerId) &&
+    game.playerIds.some((id) => ownsAnyTerritory(game, id) && !isIdleBot(id))
+  );
+}
+
 function nextAlivePlayerIndex(game: Game): number {
   const fromIndex = game.turnPlayerIndex;
   const nextIndex = findNextAliveIndexFrom(game, fromIndex);
@@ -890,6 +902,10 @@ export function advanceToNextPlayer(game: Game) {
     }
   }
   decrementEntrenchmentForPlayer(game, game.playerIds[nextIndex]);
+  if (shouldSkipTurn(game, game.playerIds[nextIndex])) {
+    advanceToNextPlayer(game);
+    return;
+  }
   startDeployPhase(game, game.playerIds[nextIndex]);
   scheduleTurnTimer(game);
 }
@@ -974,6 +990,10 @@ export function startTurns(game: Game) {
   game.conqueredThisTurn = false;
   const playerId = game.playerIds[game.turnPlayerIndex];
   surrenderIfLongDisconnected(game, playerId);
+  if (shouldSkipTurn(game, playerId)) {
+    advanceToNextPlayer(game);
+    return;
+  }
   startDeployPhase(game, playerId);
   scheduleTurnTimer(game);
 }

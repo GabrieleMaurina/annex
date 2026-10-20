@@ -9,9 +9,27 @@ export interface MapBorder {
   right: Span[];
 }
 
+const DARK_LUMA = 40;
+const MIN_SPAN = 100;
+
 function isDark(data: Uint8ClampedArray, i: number): boolean {
   const yiq = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
-  return (yiq * data[i + 3]) / 255 < 128;
+  return (yiq * data[i + 3]) / 255 < DARK_LUMA;
+}
+
+function cleanSpans(spans: Span[], count: number): Span[] {
+  const merged: Span[] = [];
+  for (const [s, e] of spans) {
+    if (e - s < MIN_SPAN) continue;
+    const last = merged[merged.length - 1];
+    if (last && s - last[1] < MIN_SPAN) last[1] = e;
+    else merged.push([s, e]);
+  }
+  if (merged.length === 0) return merged;
+  if (merged[0][0] < MIN_SPAN) merged[0][0] = 0;
+  const last = merged[merged.length - 1];
+  if (count - last[1] < MIN_SPAN) last[1] = count;
+  return merged;
 }
 
 function darkSpans(
@@ -27,7 +45,7 @@ function darkSpans(
     if (last && last[1] === k) last[1] = k + 1;
     else spans.push([k, k + 1]);
   }
-  return spans;
+  return cleanSpans(spans, count);
 }
 
 export function mapBorder(pixels: ImageData): MapBorder {

@@ -421,24 +421,32 @@ function Home({
         </div>
       )}
 
-      <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-2 mb-4">
-        {!serverUnreachable && (
-          <Button onClick={createGame}>Create Online</Button>
-        )}
-        {!serverUnreachable &&
-          (joiningRandom ? (
-            <Button variant="secondary" onClick={() => setJoiningRandom(false)}>
-              <Spinner size="sm" className="me-2" />
-              Cancel
-            </Button>
-          ) : (
-            <Button onClick={() => setJoiningRandom(true)}>
-              Join Random Game
-            </Button>
-          ))}
-        <Button variant="secondary" onClick={() => navigate('/games/offline')}>
-          Create Offline
-        </Button>
+      <div className="d-flex justify-content-center mb-4">
+        <div className="d-flex flex-column flex-sm-row gap-2">
+          {!serverUnreachable && (
+            <Button onClick={createGame}>Create Online</Button>
+          )}
+          {!serverUnreachable &&
+            (joiningRandom ? (
+              <Button
+                variant="secondary"
+                onClick={() => setJoiningRandom(false)}
+              >
+                <Spinner size="sm" className="me-2" />
+                Cancel
+              </Button>
+            ) : (
+              <Button onClick={() => setJoiningRandom(true)}>
+                Join Random Game
+              </Button>
+            ))}
+          <Button
+            variant="secondary"
+            onClick={() => navigate('/games/offline')}
+          >
+            Create Offline
+          </Button>
+        </div>
       </div>
 
       {!serverUnreachable && (

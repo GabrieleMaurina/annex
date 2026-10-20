@@ -172,7 +172,8 @@ export type TurnPhase =
   | 'entrench'
   | 'toxins';
 
-export type EmojiValue = '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '🙏' | '⚔️';
+export type EmojiValue =
+  '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '❓' | '🙏' | '⚔️';
 export type EmojiAttackTarget =
   | { type: 'player'; playerId: number }
   | { type: 'territory'; territoryId: number };

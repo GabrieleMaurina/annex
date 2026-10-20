@@ -32,6 +32,7 @@ interface Props {
   account: Account | null;
   navigate: (path: string) => void;
   onRename: (name: string) => void;
+  onMapOpenChange: (open: boolean) => void;
 }
 
 function Game({
@@ -43,6 +44,7 @@ function Game({
   account,
   navigate,
   onRename,
+  onMapOpenChange,
 }: Props) {
   const [game, setGame] = useState<GameState | null>(null);
   const selfId = game?.selfId ?? identifiedSelfId;
@@ -56,6 +58,8 @@ function Game({
   const [results, setResults] = useState<Map<number, PlayerResultStats> | null>(
     null,
   );
+  const showMap =
+    game?.state === 'playing' || (game?.state === 'ended' && endReplaying);
   const receivedFirstStateRef = useRef(false);
   const prevStateRef = useRef<GameState['state'] | null>(null);
   const prevTurnPhaseRef = useRef<GameState['turnPhase'] | null>(null);
@@ -172,6 +176,11 @@ function Game({
       connector.off('game:results', onResults);
     };
   }, []);
+
+  useEffect(() => {
+    onMapOpenChange(showMap);
+    return () => onMapOpenChange(false);
+  }, [showMap, onMapOpenChange]);
 
   if (needsPassword) {
     return (
@@ -338,7 +347,6 @@ function Game({
   );
   const colorById = new Map(game.players.map((p) => [p.id, p.color]));
   const ended = game.state === 'ended';
-  const showMap = game.state === 'playing' || (ended && endReplaying);
 
   return (
     <>

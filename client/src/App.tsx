@@ -10,6 +10,7 @@ import {
 } from 'react-router-dom';
 import BurgerMenu from './common/menus/BurgerMenu';
 import SettingsMenu from './common/menus/SettingsMenu';
+import RollingTanks from './common/tanks/RollingTanks';
 import { connector } from './connector';
 import {
   registerGeneratedMap,
@@ -119,6 +120,7 @@ function App() {
   const [sessionReady, setSessionReady] = useState(false);
   const [serverUnreachable, setServerUnreachable] = useState(false);
   const [replayMapOpen, setReplayMapOpen] = useState(false);
+  const [gameMapOpen, setGameMapOpen] = useState(false);
   const offlineSetupApplied = useRef(false);
 
   const { pathname } = useLocation();
@@ -134,6 +136,7 @@ function App() {
   const onReplayMap =
     /^\/games\/replay\/[^/]+$/.test(pathname) && replayMapOpen;
   const onMapEditor = pathname.startsWith('/maps/editor');
+  const onGameMap = inGame && gameMapOpen;
 
   const refreshSession = useCallback(function load() {
     connector.session((res) => {
@@ -359,6 +362,7 @@ function App() {
       account={account}
       navigate={navigate}
       onRename={renameRoom}
+      onMapOpenChange={setGameMapOpen}
     />
   );
 
@@ -369,6 +373,9 @@ function App() {
           shareUrl={window.location.href}
           onOpenChange={setSettingsMenuOpen}
         />
+      )}
+      {!onGameMap && !onReplayMap && !onMapEditor && (
+        <RollingTanks spawnInitial={pathname === '/'} />
       )}
       {!inGame && !onReplayMap && !onMapEditor && (
         <div

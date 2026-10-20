@@ -33,7 +33,7 @@ export function preloadSounds() {
   }
 }
 
-export function playSound(name: string) {
+export function playSound(name: string, gain = 1) {
   if (muted) return;
   const audio = audioByName.get(name);
   if (!audio) return;
@@ -42,6 +42,7 @@ export function playSound(name: string) {
     if (now - lastClickAt < CLICK_DEDUPE_MS) return;
     lastClickAt = now;
   }
+  audio.volume = volume * gain;
   audio.currentTime = 0;
   audio.play().catch(() => {});
 }

@@ -10,7 +10,13 @@ import {
   recordRestoredBotInput,
   resetRestoredBotInputs,
 } from './player';
-import type { Ack, GenerateMapInput } from './types';
+import type { Ack, GenerateMapInput, SavedBot } from './types';
+
+const GUEST_SLOTS = 6;
+const GUEST_BOTS: SavedBot[] = Array.from({ length: 5 }, () => ({
+  difficulty: 'easy',
+  personality: 'random',
+}));
 
 let regeneratingMap = false;
 
@@ -51,18 +57,10 @@ function applySavedMap(
   }
 }
 
-export function applySavedGameSettings(): void {
-  const { mapGeneration, playerMapId, mapName, ...rules } = getGameSettings();
-  void mapName;
-  if (!isLoggedIn()) {
-    applySavedMap(mapGeneration, playerMapId);
-    return;
-  }
+function seatBots(slots: number, bots: SavedBot[]): void {
   resetRestoredBotInputs();
-  if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
-  applySavedMap(mapGeneration, playerMapId);
-  connector.updateSettings({ slots: getGameSlots() }, apply);
-  getGameBots().forEach((bot, index) => {
+  connector.updateSettings({ slots }, apply);
+  bots.forEach((bot, index) => {
     connector.addBot(
       { difficulty: bot.difficulty, personality: bot.personality },
       (res: Ack) => {
@@ -73,6 +71,19 @@ export function applySavedGameSettings(): void {
       },
     );
   });
+}
+
+export function applySavedGameSettings(): void {
+  const { mapGeneration, playerMapId, mapName, ...rules } = getGameSettings();
+  void mapName;
+  if (!isLoggedIn()) {
+    applySavedMap(mapGeneration, playerMapId);
+    seatBots(GUEST_SLOTS, GUEST_BOTS);
+    return;
+  }
+  if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
+  applySavedMap(mapGeneration, playerMapId);
+  seatBots(getGameSlots(), getGameBots());
   if (connector.isOffline())
     for (const name of getGameLocalPlayers()) connector.addLocalPlayer(name);
 }

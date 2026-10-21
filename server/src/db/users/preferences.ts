@@ -203,8 +203,11 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   mapName: '',
   mapGeneration: null,
   playerMapId: null,
-  slots: 2,
-  bots: [],
+  slots: 6,
+  bots: Array.from({ length: 5 }, () => ({
+    difficulty: 'easy',
+    personality: 'random',
+  })),
   localPlayers: [],
   gameMode: 'supremacy',
   blitz: 'balanced',

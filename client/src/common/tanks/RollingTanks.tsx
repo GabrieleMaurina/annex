@@ -41,9 +41,15 @@ function RollingTanks({ spawnInitial }: Props) {
     resize();
 
     let pressedOnBackground = false;
+    let touchedBackground = false;
 
     function onPointerDown(event: PointerEvent) {
       pressedOnBackground = isBackground(event, canvas);
+      touchedBackground = pressedOnBackground && event.pointerType === 'touch';
+    }
+
+    function onSelectStart(event: Event) {
+      if (touchedBackground) event.preventDefault();
     }
 
     function releasedOnBackground(event: MouseEvent) {
@@ -104,6 +110,7 @@ function RollingTanks({ spawnInitial }: Props) {
     window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('click', onClick);
     window.addEventListener('contextmenu', onContextMenu);
+    document.addEventListener('selectstart', onSelectStart);
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
@@ -112,6 +119,7 @@ function RollingTanks({ spawnInitial }: Props) {
       window.removeEventListener('pointerdown', onPointerDown, true);
       window.removeEventListener('click', onClick);
       window.removeEventListener('contextmenu', onContextMenu);
+      document.removeEventListener('selectstart', onSelectStart);
     };
   }, []);
 

@@ -23,12 +23,18 @@ let muted = false;
 let volume = 1;
 const CLICK_DEDUPE_MS = 120;
 let lastClickAt = -Infinity;
+const VOLUME_RANGE_DB = 40;
+
+function perceivedVolume(): number {
+  if (volume === 0) return 0;
+  return 10 ** ((VOLUME_RANGE_DB * (volume - 1)) / 20);
+}
 
 export function preloadSounds() {
   for (const name of SOUND_NAMES) {
     const audio = new Audio(`/sounds/${name}.mp3`);
     audio.preload = 'auto';
-    audio.volume = volume;
+    audio.volume = perceivedVolume();
     audioByName.set(name, audio);
   }
 }
@@ -42,7 +48,7 @@ export function playSound(name: string, gain = 1) {
     if (now - lastClickAt < CLICK_DEDUPE_MS) return;
     lastClickAt = now;
   }
-  audio.volume = volume * gain;
+  audio.volume = perceivedVolume() * gain;
   audio.currentTime = 0;
   audio.play().catch(() => {});
 }
@@ -77,7 +83,7 @@ export function getSoundVolume(): number {
 
 export function setSoundVolume(value: number) {
   volume = value;
-  for (const audio of audioByName.values()) audio.volume = value;
+  for (const audio of audioByName.values()) audio.volume = perceivedVolume();
 }
 
 const CLICK_SOUND_SELECTOR =

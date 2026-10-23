@@ -20,7 +20,7 @@ const SOUND_NAMES = [
 
 const audioByName = new Map<string, HTMLAudioElement>();
 let muted = false;
-let volume = 1;
+let volume = 0.5;
 const CLICK_DEDUPE_MS = 120;
 let lastClickAt = -Infinity;
 const VOLUME_RANGE_DB = 40;

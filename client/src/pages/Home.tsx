@@ -16,6 +16,7 @@ import {
   SortSelect,
 } from '../common/inputs/filterControls';
 import type { SearchSelectItem } from '../common/inputs/SearchMultiSelect';
+import InstallButton from '../common/InstallButton';
 import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { GAME_STATE_COLORS, contrastTextColor } from '../lib/palette';
@@ -383,25 +384,30 @@ function Home({
           />
         </Button>
       </Tip>
-      <div className="d-flex flex-nowrap justify-content-center align-items-center gap-3 gap-sm-5 mb-4">
-        <img
-          src="/favicon.svg"
-          alt=""
-          style={{ height: 'clamp(2rem, 12vw, 4rem)', flexShrink: 0 }}
-        />
-        <Tip text="/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission">
-          <h1
-            className="mb-0 text-nowrap"
-            style={{ fontSize: 'clamp(1.5rem, 9vw, 2.5rem)' }}
-          >
-            Annex
-          </h1>
-        </Tip>
-        <img
-          src="/favicon.svg"
-          alt=""
-          style={{ height: 'clamp(2rem, 12vw, 4rem)', flexShrink: 0 }}
-        />
+      <div className="d-flex justify-content-center mb-4">
+        <div className="d-flex flex-column gap-3">
+          <div className="d-flex flex-nowrap justify-content-center align-items-center gap-3 gap-sm-5">
+            <img
+              src="/favicon.svg"
+              alt=""
+              style={{ height: 'clamp(2rem, 12vw, 4rem)', flexShrink: 0 }}
+            />
+            <Tip text="/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission">
+              <h1
+                className="mb-0 text-nowrap"
+                style={{ fontSize: 'clamp(1.5rem, 9vw, 2.5rem)' }}
+              >
+                Annex
+              </h1>
+            </Tip>
+            <img
+              src="/favicon.svg"
+              alt=""
+              style={{ height: 'clamp(2rem, 12vw, 4rem)', flexShrink: 0 }}
+            />
+          </div>
+          <InstallButton />
+        </div>
       </div>
 
       {kickedMessage && (

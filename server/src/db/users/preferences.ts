@@ -194,7 +194,7 @@ const MAX_FILTER_PLAYERS = 10;
 
 export const DEFAULT_CLIENT_SETTINGS: ClientSettings = {
   muted: false,
-  volume: 1,
+  volume: 0.5,
   animationsDisabled: false,
   troopsPercentage: false,
 };

@@ -93,7 +93,7 @@ export function drawMapBorder(
     h + thickness * 2,
   );
   if (!border) return;
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#808080';
   const sx = w / border.width;
   const sy = h / border.height;
   const fromX = (s: number) => (s === 0 ? x - thickness : x + s * sx);

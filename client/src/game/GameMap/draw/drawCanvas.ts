@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { contrastTextColor, playerColor } from '../../../lib/palette';
+import { contrastTextColor, lighten, playerColor } from '../../../lib/palette';
 import type {
   Card,
   CardSymbol,
@@ -282,16 +282,22 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   const view = { scaleX, scaleY, offsetX, offsetY };
 
   const fillColors = new Map<number, string>();
+  const tintedFillColors = new Map<number, string>();
   if (regions) {
     for (const t of territories) {
       if (!regions.shapes.has(t.id) || radiationById.has(t.id)) continue;
       if (cracking.has(t.id)) continue;
       if (visibleSet && !visibleSet.has(t.id)) continue;
-      fillColors.set(t.id, fillColorOf(t.id));
+      const color = fillColorOf(t.id);
+      fillColors.set(t.id, color);
+      tintedFillColors.set(
+        t.id,
+        lighten(color, STATE_STYLE[nodeState(t.id)].tint),
+      );
     }
     ctx.imageSmoothingEnabled = scaleX * dpr < 1;
     ctx.drawImage(
-      regionFillLayer(regions, fillColors),
+      regionFillLayer(regions, tintedFillColors),
       offsetX,
       offsetY,
       imgW * scaleX,
@@ -721,9 +727,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
                   : fortifyPanelOpen && t.id === fortifyStartTerritoryId
                     ? owner.troops - fortifyTroops
                     : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
-        const textColor = contrastTextColor(fillColor);
         const fullyClickable = shape && !owner.isCapital;
-        ctx.fillStyle = textColor;
+        ctx.fillStyle = contrastTextColor(fillColor);
         ctx.font = `bold ${VERTEX_RADIUS * scaleX * (fullyClickable ? 1.25 : 1)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
@@ -733,14 +738,6 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           p.y +
           (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
             2;
-        if (fullyClickable) {
-          ctx.save();
-          ctx.strokeStyle = textColor === '#000000' ? '#ffffff' : '#000000';
-          ctx.lineWidth = 3 * zoom;
-          ctx.lineJoin = 'round';
-          ctx.strokeText(text, p.x, baselineY);
-          ctx.restore();
-        }
         ctx.fillText(text, p.x, baselineY);
       }
     }

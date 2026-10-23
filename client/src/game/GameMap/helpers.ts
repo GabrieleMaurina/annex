@@ -64,10 +64,10 @@ export function hexagonPath(
 }
 
 export const STATE_STYLE = {
-  normal: { stroke: '#000000', width: 2 },
-  selectable: { stroke: '#888888', width: 7 },
-  hovered: { stroke: '#bbbbbb', width: 7 },
-  selected: { stroke: '#ffffff', width: 7 },
+  normal: { stroke: '#000000', width: 2, tint: 0 },
+  selectable: { stroke: '#888888', width: 7, tint: 0.15 },
+  hovered: { stroke: '#bbbbbb', width: 7, tint: 0.3 },
+  selected: { stroke: '#ffffff', width: 7, tint: 0.45 },
 };
 
 export function isTypingTarget(target: EventTarget | null): boolean {

@@ -41,6 +41,17 @@ export function contrastTextColor(hex: string): string {
   return yiq >= 128 ? '#000000' : '#ffffff';
 }
 
+export function lighten(hex: string, amount: number): string {
+  return `#${[1, 3, 5]
+    .map((i) => {
+      const c = parseInt(hex.slice(i, i + 2), 16);
+      return Math.round(c + (255 - c) * amount)
+        .toString(16)
+        .padStart(2, '0');
+    })
+    .join('')}`;
+}
+
 export function withAlpha(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);

@@ -180,9 +180,9 @@ export function drawGraph({
     }
     ctx.fill();
     ctx.strokeStyle = isSelected
-      ? '#bbbbbb'
+      ? '#ffffff'
       : isHovered
-        ? '#555555'
+        ? '#bbbbbb'
         : '#000000';
     ctx.lineWidth =
       (isSelected || isHovered ? 7 : 2) * zoom * vertexBorderScale;

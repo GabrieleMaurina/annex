@@ -1,3 +1,6 @@
+const NO_GAP = -2;
+const MAX_GAPS_PER_BORDER = 3;
+
 export function visitNeighbors(
   p: number,
   width: number,
@@ -16,21 +19,20 @@ export function onImageEdge(p: number, width: number, size: number): boolean {
   return x === 0 || x === width - 1 || p < width || p + width >= size;
 }
 
-export function borderMask(
+function brushStamp(
   free: Uint8Array,
-  cells: Int16Array,
+  mask: Uint8Array,
   width: number,
   height: number,
   brushSize: number,
-): Uint8Array {
-  const mask = new Uint8Array(cells.length);
+): (x: number, y: number) => void {
   const radius = Math.max(0, Math.round((brushSize - 1) / 2));
   const offsets: number[] = [];
   for (let dy = -radius; dy <= radius; dy++)
     for (let dx = -radius; dx <= radius; dx++)
       if (dx * dx + dy * dy <= (radius + 0.5) * (radius + 0.5))
         offsets.push(dx, dy);
-  const stamp = (x: number, y: number) => {
+  return (x, y) => {
     for (let k = 0; k < offsets.length; k += 2) {
       const nx = x + offsets[k];
       const ny = y + offsets[k + 1];
@@ -39,6 +41,17 @@ export function borderMask(
       if (free[q]) mask[q] = 1;
     }
   };
+}
+
+export function borderMask(
+  free: Uint8Array,
+  cells: Int16Array,
+  width: number,
+  height: number,
+  brushSize: number,
+): Uint8Array {
+  const mask = new Uint8Array(cells.length);
+  const stamp = brushStamp(free, mask, width, height, brushSize);
   const separates = (id: number, q: number) =>
     free[q] === 1 && cells[q] !== id && (id >= 0 || cells[q] >= 0);
   for (let y = 0; y < height; y++)
@@ -52,6 +65,75 @@ export function borderMask(
       )
         stamp(x, y);
     }
+  return mask;
+}
+
+function findGaps(
+  labels: Int16Array,
+  wall: Uint8Array,
+  invalidIds: Set<number>,
+  width: number,
+  height: number,
+): { border: string; pixels: number[] }[] {
+  const size = labels.length;
+  const regionOf = (q: number) =>
+    labels[q] >= 0 && !invalidIds.has(labels[q]) ? labels[q] : -1;
+  const across = new Int32Array(size).fill(NO_GAP);
+  for (let p = 0; p < size; p++) {
+    const region = regionOf(p);
+    if (region < 0) continue;
+    visitNeighbors(p, width, size, (q) => {
+      if (!wall[q] && regionOf(q) < region) across[p] = regionOf(q);
+    });
+  }
+
+  const gaps: { border: string; pixels: number[] }[] = [];
+  for (let start = 0; start < size; start++) {
+    const other = across[start];
+    if (other === NO_GAP) continue;
+    const region = labels[start];
+    const pixels = [start];
+    across[start] = NO_GAP;
+    for (let i = 0; i < pixels.length; i++) {
+      const x = pixels[i] % width;
+      const y = Math.floor(pixels[i] / width);
+      for (let ny = y - 1; ny <= y + 1; ny++)
+        for (let nx = x - 1; nx <= x + 1; nx++) {
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          const q = ny * width + nx;
+          if (across[q] !== other || labels[q] !== region) continue;
+          across[q] = NO_GAP;
+          pixels.push(q);
+        }
+    }
+    gaps.push({ border: `${region}:${other}`, pixels });
+  }
+  return gaps;
+}
+
+export function gapMask(
+  labels: Int16Array,
+  wall: Uint8Array,
+  invalidIds: Set<number>,
+  width: number,
+  height: number,
+  brushSize: number,
+): Uint8Array {
+  const gaps = findGaps(labels, wall, invalidIds, width, height);
+  const gapsPerBorder = new Map<string, number>();
+  for (const { border } of gaps)
+    gapsPerBorder.set(border, (gapsPerBorder.get(border) ?? 0) + 1);
+  const mask = new Uint8Array(labels.length);
+  const stamp = brushStamp(
+    wall.map((w) => 1 - w),
+    mask,
+    width,
+    height,
+    brushSize,
+  );
+  for (const { border, pixels } of gaps)
+    if (gapsPerBorder.get(border)! <= MAX_GAPS_PER_BORDER)
+      for (const p of pixels) stamp(p % width, Math.floor(p / width));
   return mask;
 }
 

@@ -85,26 +85,32 @@ export function drawMapBorder(
   h: number,
   thickness: number,
 ) {
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(
+  const gray = new Path2D();
+  if (border) {
+    const sx = w / border.width;
+    const sy = h / border.height;
+    const fromX = (s: number) => (s === 0 ? x - thickness : x + s * sx);
+    const toX = (e: number) =>
+      e === border.width ? x + w + thickness : x + e * sx;
+    for (const [s, e] of border.top)
+      gray.rect(fromX(s), y - thickness, toX(e) - fromX(s), thickness);
+    for (const [s, e] of border.bottom)
+      gray.rect(fromX(s), y + h, toX(e) - fromX(s), thickness);
+    for (const [s, e] of border.left)
+      gray.rect(x - thickness, y + s * sy, thickness, (e - s) * sy);
+    for (const [s, e] of border.right)
+      gray.rect(x + w, y + s * sy, thickness, (e - s) * sy);
+  }
+  const black = new Path2D();
+  black.rect(
     x - thickness,
     y - thickness,
     w + thickness * 2,
     h + thickness * 2,
   );
-  if (!border) return;
+  black.addPath(gray);
+  ctx.fillStyle = '#000000';
+  ctx.fill(black, 'evenodd');
   ctx.fillStyle = '#808080';
-  const sx = w / border.width;
-  const sy = h / border.height;
-  const fromX = (s: number) => (s === 0 ? x - thickness : x + s * sx);
-  const toX = (e: number) =>
-    e === border.width ? x + w + thickness : x + e * sx;
-  for (const [s, e] of border.top)
-    ctx.fillRect(fromX(s), y - thickness, toX(e) - fromX(s), thickness);
-  for (const [s, e] of border.bottom)
-    ctx.fillRect(fromX(s), y + h, toX(e) - fromX(s), thickness);
-  for (const [s, e] of border.left)
-    ctx.fillRect(x - thickness, y + s * sy, thickness, (e - s) * sy);
-  for (const [s, e] of border.right)
-    ctx.fillRect(x + w, y + s * sy, thickness, (e - s) * sy);
+  ctx.fill(gray);
 }

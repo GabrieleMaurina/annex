@@ -14,6 +14,7 @@ import { wrapEdgeSegments } from '../mapCanvasGeometry';
 import type { EditorTerritory as Territory } from '../model/editorTypes';
 import {
   borderMask,
+  gapMask,
   mergeDetachedPieces,
   onImageEdge,
   paintMask,
@@ -202,8 +203,14 @@ export function drawTerritoryBorders(
     territories,
     borderColors,
   );
+  const color = rgbOf(borderColors[0]);
+  const paintedGaps = paintMask(
+    surface,
+    gapMask(labels, wall, invalidIds, width, height, brushSize),
+    color,
+  );
   const sites = territories.filter((t) => invalidIds.has(t.id));
-  if (sites.length === 0) return false;
+  if (sites.length === 0) return paintedGaps;
   const free = new Uint8Array(labels.length);
   for (let p = 0; p < labels.length; p++)
     if (labels[p] < 0 || invalidIds.has(labels[p])) free[p] = 1;
@@ -241,5 +248,5 @@ export function drawTerritoryBorders(
     if (!merged) break;
     mask = borderMask(free, cells, width, height, brushSize);
   }
-  return paintMask(surface, mask, rgbOf(borderColors[0]));
+  return paintMask(surface, mask, color) || paintedGaps;
 }

@@ -70,6 +70,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   anonymous: 'off',
   blitz: 'balanced',
   bounties: 'off',
+  capitalRefund: 'off',
   cards: 'constant',
   continents: 'on',
   defenceDice: 2,
@@ -86,6 +87,9 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   troopsPerTerritory: 1 / 3,
   maxPoints: 20,
   hills: 3,
+  minRank: 'private',
+  minGames: 0,
+  minAccountAge: 'none',
   password: null,
   placement: 'random',
   portals: 'off',
@@ -252,6 +256,7 @@ function SettingsPanel({
       game={game}
       gameMeta={gameMeta}
       isHost={isHost}
+      account={account}
       applySettings={applySettings}
     />
   );

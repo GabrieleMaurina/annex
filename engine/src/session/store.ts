@@ -10,6 +10,7 @@ import { assignRandomColor, maxTeam } from '../game/mechanics';
 import { gameResultsStats, gameState, gameSummary } from '../game/state';
 import { clearTurnTimer } from '../game/turns';
 import { filterGameStateForViewer } from '../game/world/visibility';
+import { canTakeSeat } from '../lifecycle/eligibility';
 import { getGameMap } from '../maps/maps';
 import { Game, HOME_ROOM, Player } from '../types';
 import { playersById } from './players';
@@ -154,13 +155,12 @@ export function removePlayerFromGame(game: Game, playerId: number) {
   game.playerTeams.delete(playerId);
   game.playerColors.delete(playerId);
 
-  if (
-    idx !== -1 &&
-    game.state === 'lobby' &&
-    game.playerIds.length < game.slots &&
-    game.spectatorIds.length > 0
-  ) {
-    const promotedId = game.spectatorIds.shift()!;
+  const promotedIndex =
+    idx !== -1 && game.state === 'lobby' && game.playerIds.length < game.slots
+      ? game.spectatorIds.findIndex((id) => canTakeSeat(game, id))
+      : -1;
+  if (promotedIndex !== -1) {
+    const promotedId = game.spectatorIds.splice(promotedIndex, 1)[0];
     game.playerIds.splice(idx, 0, promotedId);
     game.playerTeams.set(promotedId, 0);
     assignRandomColor(game, promotedId);
@@ -194,7 +194,7 @@ function cementSubstitute(game: Game, ownerId: number): boolean {
 function handleLobbyDisconnect(game: Game, player: Player) {
   const playerId = player.id;
   const subIndex = game.spectatorIds.findIndex(
-    (id) => playersById.get(id)?.connected,
+    (id) => playersById.get(id)?.connected && canTakeSeat(game, id),
   );
   if (subIndex === -1) {
     player.gameName = null;
@@ -234,6 +234,7 @@ export function reclaimSubstitutedSeat(game: Game, ownerId: number) {
 
   const [substituteId] = entry;
   game.substituteFor.delete(substituteId);
+  if (!canTakeSeat(game, ownerId)) return;
 
   const idx = game.playerIds.indexOf(substituteId);
   if (idx === -1) return;
@@ -535,6 +536,17 @@ export function setBadges(
   if (!player) return;
   player.country = country;
   player.elo = elo;
+}
+
+export function setExperience(
+  playerId: number,
+  gamesPlayed: number,
+  accountCreatedAt: number,
+): void {
+  const player = playersById.get(playerId);
+  if (!player) return;
+  player.gamesPlayed = gamesPlayed;
+  player.accountCreatedAt = accountCreatedAt;
 }
 
 export function disconnect(playerId: number): void {

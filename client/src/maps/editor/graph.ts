@@ -1,6 +1,9 @@
 import type { EditorTerritory as Territory } from './model/editorTypes';
 import type { EditorLockedTile } from './model/lockedTiles';
 
+export const MIN_CONTINENT_SIZE = 2;
+export const MAX_CONTINENT_SIZE = 40;
+
 export function isConnected(
   territories: Territory[],
   lockedTiles: EditorLockedTile[],
@@ -34,4 +37,18 @@ export function isConnected(
     }
   }
   return territories.every((t) => visited.has(t.id));
+}
+
+export function invalidContinentSizes(
+  territories: Territory[],
+  continentCount: number,
+): boolean {
+  const size = new Map<number, number>();
+  for (const t of territories)
+    if (!t.isSea) size.set(t.continentId, (size.get(t.continentId) ?? 0) + 1);
+  for (let i = 0; i < continentCount; i++) {
+    const n = size.get(i) ?? 0;
+    if (n < MIN_CONTINENT_SIZE || n > MAX_CONTINENT_SIZE) return true;
+  }
+  return false;
 }

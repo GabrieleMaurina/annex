@@ -123,6 +123,7 @@ export interface GameExport {
     starvation: string;
     roundTroops: string;
     bounties: string;
+    capitalRefund: string;
     supplyLines: string;
     fogOfWar: string;
     alliances: string;
@@ -132,6 +133,9 @@ export interface GameExport {
     attackIncrement: number;
     disconnectBotDifficulty: string;
     disconnectBotPersonality: string;
+    minRank: string;
+    minGames: number;
+    minAccountAge: string;
   };
   players: {
     playerId: number;
@@ -375,6 +379,7 @@ export function exportGame(gameName: string): GameExport | null {
       starvation: game.starvation,
       roundTroops: game.roundTroops,
       bounties: game.bounties,
+      capitalRefund: game.capitalRefund,
       supplyLines: game.supplyLines,
       fogOfWar: game.fogOfWar,
       alliances: game.alliances,
@@ -384,6 +389,9 @@ export function exportGame(gameName: string): GameExport | null {
       attackIncrement: game.attackIncrement,
       disconnectBotDifficulty: game.disconnectBotDifficulty,
       disconnectBotPersonality: game.disconnectBotPersonality,
+      minRank: game.minRank,
+      minGames: game.minGames,
+      minAccountAge: game.minAccountAge,
     },
     players: game.playerIds.map((playerId, turnOrder) => {
       const member = playersById.get(playerId);

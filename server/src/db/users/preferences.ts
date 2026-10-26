@@ -1,4 +1,11 @@
-import { isBlitzOffAllowed, MAX_DICE, TILE_SHAPE_VALUES } from 'engine';
+import {
+  isBlitzOffAllowed,
+  MAX_DICE,
+  MIN_ACCOUNT_AGE_VALUES,
+  MIN_GAMES_VALUES,
+  MIN_RANK_VALUES,
+  TILE_SHAPE_VALUES,
+} from 'engine';
 
 export interface ClientSettings {
   muted: boolean;
@@ -45,6 +52,7 @@ export interface GameSettings {
   starvation: string;
   roundTroops: string;
   bounties: string;
+  capitalRefund: string;
   supplyLines: string;
   fogOfWar: string;
   alliances: string;
@@ -53,6 +61,9 @@ export interface GameSettings {
   attackIncrement: number;
   disconnectBotDifficulty: string;
   disconnectBotPersonality: string;
+  minRank: string;
+  minGames: number;
+  minAccountAge: string;
   visibility: string;
 }
 
@@ -138,6 +149,7 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   starvation: ['off', 'territory', 'total', 'percent'],
   roundTroops: ['off', 'on'],
   bounties: ['off', 'on'],
+  capitalRefund: ['off', 'on'],
   supplyLines: ['off', 'on'],
   fogOfWar: ['off', 'on'],
   alliances: ['off', 'on'],
@@ -155,6 +167,9 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'erratic',
     'random',
   ],
+  minRank: MIN_RANK_VALUES,
+  minGames: MIN_GAMES_VALUES,
+  minAccountAge: MIN_ACCOUNT_AGE_VALUES,
   visibility: ['public', 'private'],
 };
 
@@ -231,6 +246,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   starvation: 'off',
   roundTroops: 'off',
   bounties: 'off',
+  capitalRefund: 'off',
   supplyLines: 'off',
   fogOfWar: 'off',
   alliances: 'off',
@@ -239,6 +255,9 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   attackIncrement: 0,
   disconnectBotDifficulty: 'random',
   disconnectBotPersonality: 'random',
+  minRank: 'private',
+  minGames: 0,
+  minAccountAge: 'none',
   visibility: 'public',
 };
 

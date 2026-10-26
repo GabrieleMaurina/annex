@@ -1,3 +1,5 @@
+import { dotSpacing } from './paintTools';
+
 const NO_GAP = -2;
 const MAX_GAPS_PER_BORDER = 3;
 
@@ -43,15 +45,83 @@ function brushStamp(
   };
 }
 
+function spacedDots(
+  line: number[],
+  width: number,
+  height: number,
+  spacing: number,
+): number[] {
+  const pending = new Uint8Array(width * height);
+  for (const p of line) pending[p] = 1;
+  const cols = Math.ceil(width / spacing);
+  const grid = new Map<number, number[]>();
+  const dots: number[] = [];
+  const farFromDots = (x: number, y: number) => {
+    const cx = Math.floor(x / spacing);
+    const cy = Math.floor(y / spacing);
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++)
+        for (const q of grid.get((cy + dy) * cols + cx + dx) ?? []) {
+          const qx = q % width;
+          const qy = (q - qx) / width;
+          if ((qx - x) ** 2 + (qy - y) ** 2 < spacing ** 2) return false;
+        }
+    return true;
+  };
+  for (const start of line) {
+    if (!pending[start]) continue;
+    pending[start] = 0;
+    const stack = [start];
+    while (stack.length > 0) {
+      const p = stack.pop()!;
+      const x = p % width;
+      const y = (p - x) / width;
+      if (farFromDots(x, y)) {
+        dots.push(p);
+        const key = Math.floor(y / spacing) * cols + Math.floor(x / spacing);
+        const cell = grid.get(key);
+        if (cell) cell.push(p);
+        else grid.set(key, [p]);
+      }
+      for (let ny = y - 1; ny <= y + 1; ny++)
+        for (let nx = x - 1; nx <= x + 1; nx++) {
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          const q = ny * width + nx;
+          if (!pending[q]) continue;
+          pending[q] = 0;
+          stack.push(q);
+        }
+    }
+  }
+  return dots;
+}
+
+function strokeMask(
+  line: number[],
+  free: Uint8Array,
+  width: number,
+  height: number,
+  brushSize: number,
+  dotted: boolean,
+): Uint8Array {
+  const mask = new Uint8Array(width * height);
+  const stamp = brushStamp(free, mask, width, height, brushSize);
+  const points = dotted
+    ? spacedDots(line, width, height, dotSpacing(brushSize))
+    : line;
+  for (const p of points) stamp(p % width, Math.floor(p / width));
+  return mask;
+}
+
 export function borderMask(
   free: Uint8Array,
   cells: Int16Array,
   width: number,
   height: number,
   brushSize: number,
+  dotted = false,
 ): Uint8Array {
-  const mask = new Uint8Array(cells.length);
-  const stamp = brushStamp(free, mask, width, height, brushSize);
+  const line: number[] = [];
   const separates = (id: number, q: number) =>
     free[q] === 1 && cells[q] !== id && (id >= 0 || cells[q] >= 0);
   for (let y = 0; y < height; y++)
@@ -63,9 +133,9 @@ export function borderMask(
         (x < width - 1 && separates(id, p + 1)) ||
         (y < height - 1 && separates(id, p + width))
       )
-        stamp(x, y);
+        line.push(p);
     }
-  return mask;
+  return strokeMask(line, free, width, height, brushSize, dotted);
 }
 
 function findGaps(
@@ -118,23 +188,23 @@ export function gapMask(
   width: number,
   height: number,
   brushSize: number,
+  dotted: boolean,
 ): Uint8Array {
   const gaps = findGaps(labels, wall, invalidIds, width, height);
   const gapsPerBorder = new Map<string, number>();
   for (const { border } of gaps)
     gapsPerBorder.set(border, (gapsPerBorder.get(border) ?? 0) + 1);
-  const mask = new Uint8Array(labels.length);
-  const stamp = brushStamp(
+  const line = gaps
+    .filter(({ border }) => gapsPerBorder.get(border)! <= MAX_GAPS_PER_BORDER)
+    .flatMap(({ pixels }) => pixels);
+  return strokeMask(
+    line,
     wall.map((w) => 1 - w),
-    mask,
     width,
     height,
     brushSize,
+    dotted,
   );
-  for (const { border, pixels } of gaps)
-    if (gapsPerBorder.get(border)! <= MAX_GAPS_PER_BORDER)
-      for (const p of pixels) stamp(p % width, Math.floor(p / width));
-  return mask;
 }
 
 export function paintMask(

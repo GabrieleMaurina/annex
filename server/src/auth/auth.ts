@@ -39,6 +39,7 @@ export interface SessionInfo {
   username: string;
   elo: number;
   country: string;
+  createdAt: number;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
@@ -264,6 +265,7 @@ export function resolveSession(token: string): Promise<SessionInfo | null> {
             username: user.username,
             elo: user.elo,
             country: user.country,
+            createdAt: user.createdAt,
             clientSettings: user.clientSettings,
             gameSettings: user.gameSettings,
             homeFilters: user.homeFilters,

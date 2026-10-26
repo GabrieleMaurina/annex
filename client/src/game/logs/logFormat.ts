@@ -101,6 +101,11 @@ export function createLogFormatter() {
           colorFor(lastConquestAttackerId),
           `${nameFor(lastConquestAttackerId)} moved ${moved('troopsAdded', 'troopsRemoved')} troops into conquered territory #${n('territoryId') + 1}`,
         );
+        if (p.troopsRefunded !== undefined)
+          push(
+            colorFor(lastConquestAttackerId),
+            `${nameFor(lastConquestAttackerId)} got ${n('troopsRefunded')} troops back from capital #${n('territoryId') + 1}`,
+          );
         break;
       case 'game:entrenched':
         push(
@@ -215,6 +220,11 @@ export function createLogFormatter() {
           const taken = cards.finish();
           push(colorFor(attackerId), taken.text, taken.colorRanges);
         }
+        if (p.troopsRefunded !== undefined)
+          push(
+            colorFor(attackerId),
+            `${nameFor(attackerId)} got ${n('troopsRefunded')} troops back from capital #${n('defendingTerritoryId') + 1}`,
+          );
         break;
       }
       case 'game:shipsBought':

@@ -74,7 +74,15 @@ function seatBots(slots: number, bots: SavedBot[]): void {
 }
 
 export function applySavedGameSettings(): void {
-  const { mapGeneration, playerMapId, mapName, ...rules } = getGameSettings();
+  const {
+    mapGeneration,
+    playerMapId,
+    mapName,
+    minAccountAge,
+    minGames,
+    minRank,
+    ...rules
+  } = getGameSettings();
   void mapName;
   if (!isLoggedIn()) {
     applySavedMap(mapGeneration, playerMapId);
@@ -82,6 +90,7 @@ export function applySavedGameSettings(): void {
     return;
   }
   if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
+  connector.updateSettings({ minAccountAge, minGames, minRank }, apply);
   applySavedMap(mapGeneration, playerMapId);
   seatBots(getGameSlots(), getGameBots());
   if (connector.isOffline())

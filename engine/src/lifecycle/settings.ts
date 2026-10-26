@@ -4,10 +4,10 @@ import { MAX_DICE } from '../game/combat/dice';
 import { addHostCandidate } from '../game/host';
 import { assignRandomColor, maxTeam } from '../game/mechanics';
 import {
+  defaultMaxPoints,
   MAX_HILLS,
   MAX_POINTS_VALUES,
   MIN_HILLS,
-  defaultMaxPoints,
 } from '../game/progression/points';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
@@ -22,6 +22,7 @@ import {
   Anonymous,
   Blitz,
   Bounties,
+  CapitalRefund,
   CardsMode,
   Continents,
   DiceTies,
@@ -42,11 +43,21 @@ import {
 } from '../types';
 import { isInteger } from '../util/validate';
 import { validateGameName } from './create';
+import {
+  canTakeSeat,
+  meetsMinAccountAge,
+  meetsMinGames,
+  meetsMinRank,
+  MIN_ACCOUNT_AGE_VALUES,
+  MIN_GAMES_VALUES,
+  MIN_RANK_VALUES,
+} from './eligibility';
 
 const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
 const ANONYMOUS_VALUES: Anonymous[] = ['off', 'on'];
 const BLITZ_VALUES: Blitz[] = ['balanced', 'true', 'fair', 'off'];
 const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
+const CAPITAL_REFUND_VALUES: CapitalRefund[] = ['off', 'on'];
 const CARDS_VALUES: CardsMode[] = [
   'constant',
   'linear',
@@ -262,6 +273,12 @@ export function updateSettings(
     game.bounties = settings.bounties as Bounties;
   }
 
+  if (settings.capitalRefund !== undefined) {
+    if (!(CAPITAL_REFUND_VALUES as unknown[]).includes(settings.capitalRefund))
+      return { ok: false, error: 'invalid capital refund' };
+    game.capitalRefund = settings.capitalRefund as CapitalRefund;
+  }
+
   if (settings.cards !== undefined) {
     if (!(CARDS_VALUES as unknown[]).includes(settings.cards))
       return { ok: false, error: 'invalid cards' };
@@ -362,6 +379,38 @@ export function updateSettings(
     game.maxPoints = settings.maxPoints as number;
   }
 
+  if (settings.minAccountAge !== undefined) {
+    if (
+      !MIN_ACCOUNT_AGE_VALUES.includes(settings.minAccountAge as string) ||
+      (!game.offline &&
+        !meetsMinAccountAge(
+          settings.minAccountAge as string,
+          player.accountCreatedAt,
+        ))
+    )
+      return { ok: false, error: 'invalid min account age' };
+    game.minAccountAge = settings.minAccountAge as string;
+  }
+
+  if (settings.minGames !== undefined) {
+    if (
+      !MIN_GAMES_VALUES.includes(settings.minGames as number) ||
+      (!game.offline &&
+        !meetsMinGames(settings.minGames as number, player.gamesPlayed))
+    )
+      return { ok: false, error: 'invalid min games' };
+    game.minGames = settings.minGames as number;
+  }
+
+  if (settings.minRank !== undefined) {
+    if (
+      !MIN_RANK_VALUES.includes(settings.minRank as string) ||
+      (!game.offline && !meetsMinRank(settings.minRank as string, player.elo))
+    )
+      return { ok: false, error: 'invalid min rank' };
+    game.minRank = settings.minRank as string;
+  }
+
   if (settings.minTroops !== undefined) {
     if (
       !isInteger(settings.minTroops) ||
@@ -441,7 +490,7 @@ export function updateSettings(
 
     while (game.playerIds.length < game.slots) {
       const idx = game.spectatorIds.findIndex(
-        (id) => playersById.get(id)?.connected,
+        (id) => playersById.get(id)?.connected && canTakeSeat(game, id),
       );
       if (idx === -1) break;
       const promotedId = game.spectatorIds.splice(idx, 1)[0];
@@ -490,6 +539,18 @@ export function updateSettings(
     if (!(ROUND_TROOPS_VALUES as unknown[]).includes(settings.roundTroops))
       return { ok: false, error: 'invalid round troops' };
     game.roundTroops = settings.roundTroops as RoundTroops;
+  }
+
+  if (
+    settings.minAccountAge !== undefined ||
+    settings.minGames !== undefined ||
+    settings.minRank !== undefined
+  ) {
+    for (const id of [...game.playerIds]) {
+      if (canTakeSeat(game, id)) continue;
+      removePlayerFromGame(game, id);
+      game.spectatorIds.push(id);
+    }
   }
 
   broadcastHomeGames();

@@ -4,14 +4,35 @@ import { userIdByPlayerId } from './sockets/socketRooms';
 const K = 32;
 const LOSS_DAMP_ELO = 1500;
 const MAX_ELO = 3100;
+const ABANDON_PENALTY = 8;
+const FREE_SURRENDER_ROUND = 4;
 
 function lossDamp(rating: number): number {
   return Math.min(1, Math.max(0, rating / LOSS_DAMP_ELO));
 }
 
+export type EloPenalty = 'disconnected' | 'surrender';
+
+interface AbandonEntry {
+  surrenderRound: number | null;
+  disconnected: boolean;
+}
+
+function abandonPenalty(entry: AbandonEntry): number {
+  if (entry.disconnected) return ABANDON_PENALTY;
+  if (entry.surrenderRound === null) return 0;
+  const roundsEarly = Math.max(0, FREE_SURRENDER_ROUND - entry.surrenderRound);
+  return (ABANDON_PENALTY * roundsEarly) / FREE_SURRENDER_ROUND;
+}
+
+function clampElo(rating: number): number {
+  return Math.min(MAX_ELO, Math.max(0, Math.round(rating)));
+}
+
 export interface GameElo {
   elo: number;
   eloDelta: number;
+  eloPenalty: EloPenalty | null;
 }
 
 const participantsByGame = new Map<string, Map<number, string>>();
@@ -47,7 +68,12 @@ export function handleGameEnded(payload: {
   gameName: string;
   gameMode: string;
   roundNumber: number;
-  ranking: { playerId: number; team: number }[];
+  ranking: {
+    playerId: number;
+    team: number;
+    surrenderRound: number | null;
+    disconnected: boolean;
+  }[];
 }): Promise<Map<number, GameElo>> {
   const participants = participantsByGame.get(payload.gameName);
   participantsByGame.delete(payload.gameName);
@@ -58,12 +84,22 @@ export function handleGameEnded(payload: {
 
   const isTeam = payload.gameMode === 'team deathmatch';
   const ranked = payload.ranking
-    .map((entry, rank) => ({
-      rank,
-      playerId: entry.playerId,
-      team: entry.team,
-      userId: participants.get(entry.playerId),
-    }))
+    .map((entry, rank) => {
+      const penalty = abandonPenalty(entry);
+      const reason: EloPenalty | null = entry.disconnected
+        ? 'disconnected'
+        : penalty > 0
+          ? 'surrender'
+          : null;
+      return {
+        rank,
+        playerId: entry.playerId,
+        team: entry.team,
+        penalty,
+        eloPenalty: reason,
+        userId: participants.get(entry.playerId),
+      };
+    })
     .filter(
       (
         entry,
@@ -71,6 +107,8 @@ export function handleGameEnded(payload: {
         rank: number;
         playerId: number;
         team: number;
+        penalty: number;
+        eloPenalty: EloPenalty | null;
         userId: string;
       } => entry.userId !== undefined,
     );
@@ -82,7 +120,11 @@ export function handleGameEnded(payload: {
       const elos = new Map<number, GameElo>(
         [...participants].map(([playerId, userId]) => [
           playerId,
-          { elo: ratings.get(userId) ?? DEFAULT_ELO, eloDelta: 0 },
+          {
+            elo: ratings.get(userId) ?? DEFAULT_ELO,
+            eloDelta: 0,
+            eloPenalty: null,
+          },
         ]),
       );
       for (const player of contenders) {
@@ -101,14 +143,15 @@ export function handleGameEnded(payload: {
           opponents += 1;
         }
         if (opponents === 0) continue;
-        const nextRating = Math.min(
-          MAX_ELO,
-          Math.max(0, Math.round(rating + delta / opponents)),
+        const unpenalized = clampElo(rating + delta / opponents);
+        const nextRating = clampElo(
+          rating + delta / opponents - player.penalty,
         );
         updates.push({ userId: player.userId, elo: nextRating });
         elos.set(player.playerId, {
           elo: rating,
           eloDelta: nextRating - rating,
+          eloPenalty: nextRating < unpenalized ? player.eloPenalty : null,
         });
       }
       return setElos(updates).then(() => {

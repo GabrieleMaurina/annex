@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { LiveGameRow } from './liveGames';
+import { LiveGameRow, SeatProfile } from './liveGames';
 import { corsMiddleware, identityMiddleware } from './middleware';
 import { accountRouter } from './routes/accountRoutes';
 import { authRouter } from './routes/authRoutes';
@@ -19,7 +19,11 @@ export interface HttpDeps {
   listGames: () => LiveGameRow[];
   playerGame: (token: string, userId: string | null) => string | null;
   inLiveGame: (token: string, userId: string | null) => boolean;
-  randomGame: (token: string, userId: string | null) => string | null;
+  randomGame: (
+    token: string,
+    userId: string | null,
+    profile: SeatProfile,
+  ) => string | null;
 }
 
 function errorHandler(

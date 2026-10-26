@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io';
 import { anonNameFor } from './auth/anonName';
 import { randomToken, resolveSession } from './auth/auth';
 import { sessionTokenFromRequest } from './auth/cookies';
+import { countGamesPlayed } from './db';
 import { emitGameMeta } from './gameMeta';
 import {
   bindSocket,
@@ -44,7 +45,11 @@ function resolveIdentity(engine: Engine, rawToken: string): Promise<Identity> {
         engine.setName(playerId, session.username);
         engine.setBadges(playerId, session.country, session.elo);
       }
-      return { playerId, token, userId: session.userId };
+      const accountPlayerId = playerId;
+      return countGamesPlayed(session.userId).then((gamesPlayed) => {
+        engine.setExperience(accountPlayerId, gamesPlayed, session.createdAt);
+        return { playerId: accountPlayerId, token, userId: session.userId };
+      });
     }
     const anonPlayerId = playerIdBySessionToken.get(token);
     if (anonPlayerId !== undefined) {

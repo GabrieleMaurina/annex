@@ -5,7 +5,16 @@ export type LiveGameSummary = Omit<
   'playerIds' | 'bannedIds' | 'settings'
 > & {
   hasPassword: boolean;
+  minRank: string;
+  minGames: number;
+  minAccountAge: string;
 };
+
+export interface SeatProfile {
+  elo: number | null;
+  gamesPlayed: number | null;
+  accountCreatedAt: number | null;
+}
 
 export type LiveGameRow = GameSummary & {
   hasPassword: boolean;
@@ -139,6 +148,9 @@ function toSummary(row: LiveGameRow): LiveGameSummary {
     roundNumber: row.roundNumber,
     hasPassword: row.hasPassword,
     hasBots: row.hasBots,
+    minRank: row.settings.minRank,
+    minGames: row.settings.minGames,
+    minAccountAge: row.settings.minAccountAge,
   };
 }
 

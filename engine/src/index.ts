@@ -9,6 +9,7 @@ import {
   resyncPlayer,
   setBadges,
   setBotTurnHook,
+  setExperience,
   setName,
 } from './session/store';
 import { setWorkerConfig } from './workers/registry';
@@ -122,6 +123,16 @@ export {
 } from './game/progression/points';
 export { GameSummary } from './game/state';
 export { ONLINE_PAUSE_SECONDS } from './game/turns';
+export {
+  meetsMinAccountAge,
+  meetsMinGames,
+  meetsMinRank,
+  meetsRequirements,
+  MIN_ACCOUNT_AGE_VALUES,
+  MIN_GAMES_VALUES,
+  MIN_RANK_VALUES,
+  RANKS,
+} from './lifecycle/eligibility';
 export { isBlitzOffAllowed } from './lifecycle/settings';
 export {
   expectedTerritoryArea,
@@ -192,6 +203,7 @@ export function createEngine(
     resyncPlayer,
     setName,
     setBadges,
+    setExperience,
     disconnect,
     listGameSummaries,
     playerGameName,

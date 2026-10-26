@@ -8,6 +8,7 @@ import {
   ownedIds,
   troopsIn,
 } from '../../planning/context';
+import { isVisible, troopsAt } from '../../view';
 import { stalematePressure } from '../pressure';
 import { isCapitalOf } from '../territory';
 
@@ -132,6 +133,13 @@ export function capitalShortfall(ctx: PlanContext, state: SimState): number {
       Math.max(0, target.comfort - troops);
   }
   return shortfall;
+}
+
+export function capitalRefundAt(ctx: PlanContext, territoryId: number): number {
+  if (!ctx.game.capitalRefunds.has(territoryId)) return 0;
+  return isVisible(ctx.view, territoryId)
+    ? (ctx.game.capitalRefunds.get(territoryId) ?? 0)
+    : troopsAt(ctx.game, ctx.view, territoryId);
 }
 
 export function heldRivalCapitals(ctx: PlanContext, state: SimState): number {

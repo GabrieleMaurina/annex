@@ -1,4 +1,10 @@
-import { isBlitzOffAllowed, MAX_DICE } from 'engine';
+import {
+  isBlitzOffAllowed,
+  MAX_DICE,
+  meetsMinAccountAge,
+  meetsMinGames,
+  meetsMinRank,
+} from 'engine';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
@@ -6,6 +12,7 @@ import Help from '../../common/tooltips/Help';
 import { connector } from '../../connector';
 import { playSound } from '../../lib/sounds';
 import type {
+  Account,
   GameMeta,
   GameSettingsInput,
   GameState,
@@ -15,6 +22,7 @@ import {
   GAME_SETTING_SECTIONS,
   GAME_SETTINGS,
   type GameSettingDef,
+  SEAT_REQUIREMENT_KEYS,
 } from './gameSettings';
 import { PASSWORD_HELP, VISIBILITY_HELP } from './settingsHelp';
 
@@ -31,6 +39,7 @@ interface Props {
   game: GameState;
   gameMeta?: GameMeta | null;
   isHost: boolean;
+  account: Account | null;
   applySettings: (settings: GameSettingsInput) => void;
 }
 
@@ -47,6 +56,7 @@ function GameSettingsFields({
   game,
   gameMeta = null,
   isHost,
+  account,
   applySettings,
 }: Props) {
   const [passwordInput, setPasswordInput] = useState('');
@@ -72,6 +82,12 @@ function GameSettingsFields({
       );
     if (def.key === 'gameMode')
       return value === 'team deathmatch' && game.alliances === 'on';
+    if (def.key === 'minRank')
+      return !meetsMinRank(option, account?.elo ?? null);
+    if (def.key === 'minGames')
+      return !meetsMinGames(value as number, account?.gamesPlayed ?? null);
+    if (def.key === 'minAccountAge')
+      return !meetsMinAccountAge(option, account?.createdAt ?? null);
     return false;
   }
 
@@ -129,7 +145,11 @@ function GameSettingsFields({
           (d) =>
             d.section === section &&
             (!d.modes || d.modes.includes(game.gameMode)) &&
-            !(d.key === 'anonymous' && connector.isOffline()),
+            !(
+              (d.key === 'anonymous' ||
+                SEAT_REQUIREMENT_KEYS.includes(d.key)) &&
+              connector.isOffline()
+            ),
         );
         const last = index === GAME_SETTING_SECTIONS.length - 1;
         return (

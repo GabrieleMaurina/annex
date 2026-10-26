@@ -143,6 +143,7 @@ export function surrender(playerId: number): GameResponse {
   if (game.surrenderedIds.has(player.id))
     return { ok: false, error: 'already eliminated' };
 
+  game.surrenderRounds.set(player.id, game.roundNumber);
   surrenderPlayer(game, player);
   checkGameEnd(game);
   recomputeHost(game);

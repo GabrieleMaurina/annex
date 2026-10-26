@@ -12,7 +12,7 @@ import {
   hasAnyShipFight,
   hasAnyToxin,
 } from './combat/autoSkip';
-import { attackFullPath } from './combat/seaBridge';
+import { moveIntoConquest, snapshotCapitalRefunds } from './combat/conquest';
 import { checkGameEnd } from './end';
 import {
   MAX_TERRITORY_TROOPS,
@@ -516,6 +516,7 @@ export function beginNextSpecialPhase(game: Game) {
 }
 
 function startDeployPhase(game: Game, playerId: number) {
+  snapshotCapitalRefunds(game, playerId);
   game.deployCardMandate = (game.playerCards.get(playerId)?.length ?? 0) >= 5;
   const breakdown = calculateDeployTroopsBreakdown(game, playerId);
   const earned =
@@ -545,29 +546,6 @@ function startDeployPhase(game: Game, playerId: number) {
     roundNumber: game.roundNumber,
     afterFrame: game.replayFrames.length,
   });
-}
-
-function completePendingAttackMove(
-  game: Game,
-  playerId: number,
-): { territoryId: number; fromTerritoryId: number; troops: number } | null {
-  if (game.attackConquestMinTroops === null) return null;
-
-  const startId = game.attackStartTerritoryId!;
-  const endId = game.attackEndTerritoryId!;
-  const troops = game.attackConquestMinTroops;
-  const startTroops = game.territoryTroops.get(startId) ?? 0;
-
-  game.territoryTroops.set(startId, startTroops - troops);
-  game.territoryTroops.set(endId, troops);
-  recordReplayFrame(game, {
-    type: 'fortify',
-    fromTerritoryId: startId,
-    toTerritoryId: endId,
-    troops,
-    playerId,
-  });
-  return { territoryId: endId, fromTerritoryId: startId, troops };
 }
 
 function completePendingFortify(
@@ -703,41 +681,14 @@ export function forceEndTurnImpl(game: Game, skipDeploy = false) {
       });
     }
   }
-  if (game.turnPhase === 'attack') {
-    const move = completePendingAttackMove(game, playerId);
-    if (move) {
-      const fullPath = attackFullPath(
-        game,
-        playerId,
-        move.fromTerritoryId,
-        move.territoryId,
-      );
-      fogFilterEmit(
-        game,
-        'game:attackMoved',
-        callbacks.onAttackMoved,
-        (viewerId) => {
-          const visible = visibleTerritoryIdsOrAll(game, viewerId);
-          if (
-            visible !== null &&
-            !visible.has(move.territoryId) &&
-            !visible.has(move.fromTerritoryId)
-          )
-            return null;
-          return {
-            territoryId: move.territoryId,
-            fromTerritoryId: move.fromTerritoryId,
-            path: pathRunsForViewer(fullPath, visible),
-            ...troopMoveFields(
-              visible,
-              move.fromTerritoryId,
-              move.territoryId,
-              move.troops,
-            ),
-          };
-        },
-      );
-    }
+  if (game.turnPhase === 'attack' && game.attackConquestMinTroops !== null) {
+    moveIntoConquest(
+      game,
+      playerId,
+      game.attackStartTerritoryId!,
+      game.attackEndTerritoryId!,
+      game.attackConquestMinTroops,
+    );
   }
   if (game.turnPhase === 'fortify') {
     const move = completePendingFortify(game, playerId);
@@ -817,7 +768,9 @@ function surrenderIfLongDisconnected(game: Game, playerId: number) {
   if (game.surrenderedIds.has(playerId)) return;
   const turns = (game.disconnectedTurns.get(playerId) ?? 0) + 1;
   game.disconnectedTurns.set(playerId, turns);
-  if (turns > MAX_DISCONNECTED_TURNS) surrenderPlayer(game, player);
+  if (turns <= MAX_DISCONNECTED_TURNS) return;
+  game.autoSurrenderedIds.add(playerId);
+  surrenderPlayer(game, player);
 }
 
 export function advanceToNextPlayer(game: Game) {

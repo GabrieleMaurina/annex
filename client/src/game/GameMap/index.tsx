@@ -1,5 +1,5 @@
 import { deployableTroops } from 'engine';
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 import { useWhiteIcon } from '../../common/icon';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
@@ -38,11 +38,12 @@ import { useTurnToasts } from './hooks/view/useTurnToasts';
 import AlliancePopupOverlay from './overlays/AlliancePopupOverlay';
 import CardSetFlash from './overlays/CardSetFlash';
 import EmojiOverlay from './overlays/EmojiOverlay';
-import GameToasts, { type GameToast } from './overlays/GameToasts';
+import GameToasts from './overlays/GameToasts';
 import MapButtonsColumn from './overlays/MapButtonsColumn';
 import TerritoryTooltip from './overlays/TerritoryTooltip';
 import TurnActionPanels from './overlays/TurnActionPanels';
 import type { GameMapProps } from './props';
+import { useGameToasts } from './useGameToasts';
 
 function GameMap({
   game,
@@ -166,15 +167,7 @@ function GameMap({
     cardImagesRef,
   } = useLiveGameRefs();
 
-  const [toasts, setToasts] = useState<GameToast[]>([]);
-  const addToasts = useCallback(
-    (messages: string[], delay?: number) =>
-      setToasts((prev) => [
-        ...prev,
-        ...messages.map((m, i) => ({ id: Date.now() + i, message: m, delay })),
-      ]),
-    [],
-  );
+  const { toasts, setToasts, addToasts } = useGameToasts();
   const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
 
   const {
@@ -692,6 +685,8 @@ function GameMap({
       frozenSeaShipsRef,
       cardByTerritoryId: cardsFlow.cardByTerritoryId,
       ownedTerritoryIds,
+      showReplay,
+      continentsEnabled: game.continents !== 'off',
       cardsOpen: cardsOpen,
       selectedCombo: cardsFlow.selectedCombo,
       cardImagesRef,

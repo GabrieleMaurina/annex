@@ -1,12 +1,18 @@
 import { Router } from 'express';
 import {
+  countGamesPlayed,
   FILL_VALUES,
   GAME_ENUMS,
   GENERATION_TYPES,
   MAP_SIZES,
   TILE_SHAPES,
 } from '../../db';
-import { filterLiveGames, LiveGameRow, LiveGamesQuery } from '../liveGames';
+import {
+  filterLiveGames,
+  LiveGameRow,
+  LiveGamesQuery,
+  SeatProfile,
+} from '../liveGames';
 import { identityOf } from '../middleware';
 import {
   intParam,
@@ -91,15 +97,27 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
 }
 
 export function randomGameRouter(
-  randomGame: (token: string, userId: string | null) => string | null,
+  randomGame: (
+    token: string,
+    userId: string | null,
+    profile: SeatProfile,
+  ) => string | null,
 ): Router {
   const router = Router();
-  router.get('/games/random', (_req, res) => {
+  router.get('/games/random', (_req, res, next) => {
     const { token, session } = identityOf(res);
-    res.json({
-      ok: true,
-      gameName: randomGame(token, session ? session.userId : null),
-    });
+    (session ? countGamesPlayed(session.userId) : Promise.resolve(null))
+      .then((gamesPlayed) => {
+        res.json({
+          ok: true,
+          gameName: randomGame(token, session ? session.userId : null, {
+            elo: session ? session.elo : null,
+            gamesPlayed,
+            accountCreatedAt: session ? session.createdAt : null,
+          }),
+        });
+      })
+      .catch(next);
   });
   return router;
 }

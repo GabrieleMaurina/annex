@@ -24,11 +24,11 @@ import {
 const STRAIGHT = 3;
 const DIAGONAL = 4;
 const BUCKETS = DIAGONAL + 1;
-const MAX_CELL_SCALE = 2;
+export const DEFAULT_CELL_SCALE = 2;
 const FULL_WARP_DISTANCE = 40;
 const CLEANUP_PASSES = 3;
 
-function seedSkeletons(
+export function seedSkeletons(
   sites: Territory[],
   byId: Map<number, Territory>,
   free: Uint8Array,
@@ -73,7 +73,7 @@ function seedSkeletons(
   return seeds;
 }
 
-function growCells(
+export function growCells(
   free: Uint8Array,
   width: number,
   dist: Int32Array,
@@ -196,6 +196,8 @@ export function drawTerritoryBorders(
   territories: Territory[],
   borderColors: string[],
   brushSize: number,
+  cellScale: number,
+  dotted: boolean,
 ): boolean {
   const { width, height } = surface;
   const { labels, wall, invalidIds } = labelRegions(
@@ -206,7 +208,7 @@ export function drawTerritoryBorders(
   const color = rgbOf(borderColors[0]);
   const paintedGaps = paintMask(
     surface,
-    gapMask(labels, wall, invalidIds, width, height, brushSize),
+    gapMask(labels, wall, invalidIds, width, height, brushSize, dotted),
     color,
   );
   const sites = territories.filter((t) => invalidIds.has(t.id));
@@ -221,7 +223,7 @@ export function drawTerritoryBorders(
   const seeds = seedSkeletons(sites, byId, free, width, height, dist, owner);
   const expectedArea = expectedTerritoryArea(width, height);
   const maxArea = Math.min(
-    MAX_CELL_SCALE * expectedArea,
+    cellScale * expectedArea,
     MAX_LAND_AREA_FRACTION * width * height,
   );
   growCells(free, width, dist, owner, seeds, maxArea);
@@ -248,5 +250,6 @@ export function drawTerritoryBorders(
     if (!merged) break;
     mask = borderMask(free, cells, width, height, brushSize);
   }
+  if (dotted) mask = borderMask(free, cells, width, height, brushSize, true);
   return paintMask(surface, mask, color) || paintedGaps;
 }

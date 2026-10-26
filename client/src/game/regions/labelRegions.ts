@@ -26,7 +26,7 @@ export function rgbOf(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-function wallMask(image: ImageData, borderColors: string[]): Uint8Array {
+export function wallMask(image: ImageData, borderColors: string[]): Uint8Array {
   const { data } = image;
   const colors = borderColors.map(rgbOf);
   const wall = new Uint8Array(image.width * image.height);
@@ -85,7 +85,11 @@ function pixelOf(point: RegionPoint, width: number, height: number): number {
   return x < 0 || y < 0 || x >= width || y >= height ? -1 : y * width + x;
 }
 
-function maxAreaOf(point: RegionPoint, width: number, height: number): number {
+export function maxAreaOf(
+  point: RegionPoint,
+  width: number,
+  height: number,
+): number {
   return (
     width *
     height *
@@ -93,17 +97,18 @@ function maxAreaOf(point: RegionPoint, width: number, height: number): number {
   );
 }
 
-function closingGap(width: number, height: number): number {
+export function closingGap(width: number, height: number): number {
   return Math.max(MIN_GAP, Math.max(width, height) * GAP_PER_LONGEST_SIDE);
 }
 
-function closedRegions(
+export function closedRegions(
   wall: Uint8Array,
   width: number,
   height: number,
   stack: Int32Array,
+  gap = closingGap(width, height),
 ): { closed: Int32Array; count: number } {
-  const reach = 3 * Math.ceil(closingGap(width, height) / 2);
+  const reach = 3 * Math.ceil(gap / 2);
   const dist = wallDistance(wall, width, height);
   const size = wall.length;
   const narrow = new Uint8Array(size);

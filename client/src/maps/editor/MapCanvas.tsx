@@ -57,6 +57,7 @@ interface Props {
   hideGraph?: boolean;
   onViewport?: (v: Viewport) => void;
   clickable?: ClickableCheck | null;
+  borderOverlay?: HTMLCanvasElement | null;
   timedMode: boolean;
 }
 
@@ -114,6 +115,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     hideGraph,
     onViewport,
     clickable,
+    borderOverlay,
     timedMode,
   }: Props,
   ref,
@@ -509,16 +511,11 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       10 * zoom,
     );
 
-    if (!hideImage) {
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(
-        paintCanvas,
-        offsetX,
-        offsetY,
-        imgW * scaleX,
-        imgH * scaleY,
-      );
-    }
+    ctx.imageSmoothingEnabled = false;
+    const drawLayer = (layer: HTMLCanvasElement) =>
+      ctx.drawImage(layer, offsetX, offsetY, imgW * scaleX, imgH * scaleY);
+    if (!hideImage) drawLayer(paintCanvas);
+    if (borderOverlay) drawLayer(borderOverlay);
 
     if (!hideGraph) {
       drawGraph({

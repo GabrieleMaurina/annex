@@ -6,7 +6,6 @@ import {
   drawFreehand,
   drawFreehandDot,
   drawLine,
-  drawShape,
   ERASER_COLOR,
   floodFill,
   paintContext,
@@ -14,8 +13,26 @@ import {
   type PaintTool,
   type Point,
   type Rect,
-  type ShapeKind,
 } from './paintTools';
+import {
+  computeCreate,
+  drawChrome,
+  drawHandle,
+  drawShape,
+  handleCursor,
+  hitHandle,
+  insideShape,
+  nearHandle,
+  resizeShape,
+  ROTATE_HANDLE,
+  rotateShape,
+  rotationDegrees,
+  shapeAspect,
+  shapeExtent,
+  type Shape,
+  type ShapeDrag,
+  type ShapeKind,
+} from './shapes';
 
 export interface Viewport {
   offsetX: number;
@@ -23,23 +40,6 @@ export interface Viewport {
   scaleX: number;
   scaleY: number;
 }
-
-export interface Shape {
-  kind: ShapeKind;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  color: string;
-  size: number;
-  filled: boolean;
-  dotted: boolean;
-}
-
-type ShapeDrag =
-  | { mode: 'create'; start: Point; last: Point }
-  | { mode: 'move'; start: Point; from: Shape }
-  | { mode: 'resize'; handle: number; from: Shape };
 
 export interface PaintLayerHandle {
   flush: () => void;
@@ -58,6 +58,7 @@ interface Props {
   size: number;
   dotted: boolean;
   filled: boolean;
+  shapeKind: ShapeKind | null;
   epoch: number;
   onStrokeEnd: () => void;
   onChange: () => void;
@@ -66,80 +67,6 @@ interface Props {
   onPanStart: (clientX: number, clientY: number) => void;
   onPanMove: (clientX: number, clientY: number) => void;
   onPanEnd: () => void;
-}
-
-const HANDLE_CURSOR = [
-  'nwse-resize',
-  'nesw-resize',
-  'nwse-resize',
-  'nesw-resize',
-  'ns-resize',
-  'ew-resize',
-  'ns-resize',
-  'ew-resize',
-];
-
-function bounds(s: Shape): { l: number; t: number; r: number; b: number } {
-  return {
-    l: Math.min(s.x, s.x + s.w),
-    t: Math.min(s.y, s.y + s.h),
-    r: Math.max(s.x, s.x + s.w),
-    b: Math.max(s.y, s.y + s.h),
-  };
-}
-
-function handlePoints(s: Shape): Point[] {
-  const { l, t, r, b } = bounds(s);
-  const mx = (l + r) / 2;
-  const my = (t + b) / 2;
-  return [
-    { x: l, y: t },
-    { x: r, y: t },
-    { x: r, y: b },
-    { x: l, y: b },
-    { x: mx, y: t },
-    { x: r, y: my },
-    { x: mx, y: b },
-    { x: l, y: my },
-  ];
-}
-
-function computeCreate(
-  start: Point,
-  cur: Point,
-  shift: boolean,
-  alt: boolean,
-): { x: number; y: number; w: number; h: number } {
-  let dx = cur.x - start.x;
-  let dy = cur.y - start.y;
-  if (shift) {
-    const m = Math.max(Math.abs(dx), Math.abs(dy));
-    dx = (dx < 0 ? -1 : 1) * m;
-    dy = (dy < 0 ? -1 : 1) * m;
-  }
-  if (alt) {
-    return { x: start.x - dx, y: start.y - dy, w: dx * 2, h: dy * 2 };
-  }
-  return { x: start.x, y: start.y, w: dx, h: dy };
-}
-
-function drawChrome(
-  c: CanvasRenderingContext2D,
-  s: Shape,
-  scale: number,
-): void {
-  const { l, t, r, b } = bounds(s);
-  const hs = 5 / scale;
-  c.save();
-  c.strokeStyle = '#1e88e5';
-  c.lineWidth = 1 / scale;
-  c.setLineDash([4 / scale, 3 / scale]);
-  c.strokeRect(l, t, r - l, b - t);
-  c.setLineDash([]);
-  c.fillStyle = '#1e88e5';
-  for (const p of handlePoints(s))
-    c.fillRect(p.x - hs, p.y - hs, hs * 2, hs * 2);
-  c.restore();
 }
 
 const BRUSH_TOOLS: PaintTool[] = ['pencil', 'line', 'curve', 'eraser'];
@@ -168,6 +95,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     size,
     dotted,
     filled,
+    shapeKind,
     epoch,
     onStrokeEnd,
     onChange,
@@ -185,6 +113,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   const ctrlHeldRef = useRef(false);
   const divRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const angleRef = useRef<HTMLDivElement>(null);
   const lastPointerRef = useRef<Point | null>(null);
   const samplingRef = useRef(false);
   const snapshotRef = useRef<Uint8ClampedArray | null>(null);
@@ -198,7 +127,13 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     phase: 'idle' | 'awaitControl' | 'control';
     a: Point;
     b: Point;
-  }>({ phase: 'idle', a: { x: 0, y: 0 }, b: { x: 0, y: 0 } });
+    handle: Point;
+  }>({
+    phase: 'idle',
+    a: { x: 0, y: 0 },
+    b: { x: 0, y: 0 },
+    handle: { x: 0, y: 0 },
+  });
   const eraseRef = useRef<{ active: boolean; points: Point[] }>({
     active: false,
     points: [],
@@ -222,11 +157,19 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
 
   useEffect(() => {
     if (shapeRef.current) {
-      shapeRef.current = { ...shapeRef.current, size, filled, dotted };
+      const kindChanged = !!shapeKind && shapeKind !== shapeRef.current.kind;
+      shapeRef.current = {
+        ...shapeRef.current,
+        kind: shapeKind ?? shapeRef.current.kind,
+        size,
+        filled,
+        dotted,
+      };
       renderShape();
+      if (kindChanged) onStrokeEnd();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [size, filled, dotted]);
+  }, [shapeKind, size, filled, dotted]);
 
   useEffect(() => {
     discardTransient();
@@ -307,7 +250,13 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       if (!s || !drag || drag.mode !== 'create') return;
       shapeRef.current = {
         ...s,
-        ...computeCreate(drag.start, drag.last, e.shiftKey, e.altKey),
+        ...computeCreate(
+          drag.start,
+          drag.last,
+          e.shiftKey,
+          e.altKey,
+          shapeAspect(s.kind),
+        ),
       };
       renderShape();
     }
@@ -318,7 +267,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       window.removeEventListener('keyup', onKey);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [surface]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -385,9 +334,19 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
 
   function resolveCursor(): string {
     if (ctrlHeldRef.current) return 'grab';
+    if (onCurveHandle()) return 'move';
     if (!BRUSH_TOOLS.includes(tool)) return 'crosshair';
     const scale = viewportRef.current.scaleX || 1;
     return brushCursor(tool === 'eraser' ? ERASER_COLOR : color, size * scale);
+  }
+
+  function onCurveHandle(): boolean {
+    const curve = curveRef.current;
+    const p = lastPointerRef.current;
+    if (tool !== 'curve' || curve.phase === 'idle' || !p) return false;
+    if (curve.phase === 'control') return true;
+    const q = toImage({ clientX: p.x, clientY: p.y });
+    return nearHandle(q, curve.handle, viewportRef.current.scaleX || 1);
   }
 
   function updateOverlay(): void {
@@ -399,6 +358,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     if (
       !p ||
       ctrlHeldRef.current ||
+      cursorRef.current === 'move' ||
       !BRUSH_TOOLS.includes(tool) ||
       diameter <= MAX_CURSOR_DIAMETER
     ) {
@@ -463,10 +423,29 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     return padRect(a - pad, b - pad, c + pad, d + pad);
   }
 
+  function curveRect(pts: Point[]): Rect {
+    return strokeRect(
+      pts,
+      Math.max(size, 12 / (viewportRef.current.scaleX || 1)),
+    );
+  }
+
+  function bendCurve(p: Point): Rect {
+    const curve = curveRef.current;
+    curve.handle = p;
+    const control = {
+      x: 2 * p.x - (curve.a.x + curve.b.x) / 2,
+      y: 2 * p.y - (curve.a.y + curve.b.y) / 2,
+    };
+    restoreRegion(previewRectRef.current);
+    drawCurve(surface, color, size, curve.a, curve.b, control, dotted);
+    return curveRect([curve.a, curve.b, control]);
+  }
+
   function shapeRect(s: Shape): Rect {
-    const bn = bounds(s);
-    const chrome = 20 / (viewportRef.current.scaleX || 1) + 4;
-    const pad = Math.max(chrome, s.size / 2 + 4);
+    const scale = viewportRef.current.scaleX || 1;
+    const bn = shapeExtent(s, scale);
+    const pad = Math.max(20 / scale + 4, s.size / 2 + 4);
     return padRect(bn.l - pad, bn.t - pad, bn.r + pad, bn.b + pad);
   }
 
@@ -495,8 +474,11 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       if (d === 'full' || !d || d.w <= 0 || d.h <= 0)
         c.putImageData(surface, 0, 0);
       else c.putImageData(surface, 0, 0, d.x, d.y, d.w, d.h);
+      const scale = viewportRef.current.scaleX || 1;
       const s = shapeRef.current;
-      if (s) drawChrome(c, s, viewportRef.current.scaleX || 1);
+      if (s) drawChrome(c, s, scale);
+      const curve = curveRef.current;
+      if (curve.phase !== 'idle') drawHandle(c, curve.handle, scale);
     }
     onChange();
   }
@@ -533,18 +515,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     const s = shapeRef.current;
     if (!s || !snapshotValid()) return;
     restoreRegion(previewRectRef.current);
-    drawShape(
-      surface,
-      s.kind,
-      s.color,
-      s.x,
-      s.y,
-      s.w,
-      s.h,
-      s.size,
-      s.filled,
-      s.dotted,
-    );
+    drawShape(surface, s);
     preview(shapeRect(s));
   }
 
@@ -552,18 +523,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     const s = shapeRef.current;
     if (!s || !snapshotValid()) return;
     restore();
-    drawShape(
-      surface,
-      s.kind,
-      s.color,
-      s.x,
-      s.y,
-      s.w,
-      s.h,
-      s.size,
-      s.filled,
-      s.dotted,
-    );
+    drawShape(surface, s);
     emit();
   }
 
@@ -598,20 +558,6 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     emit();
   }
 
-  function hitHandle(s: Shape, p: Point): number {
-    const hs = 8 / (viewportRef.current.scaleX || 1);
-    const pts = handlePoints(s);
-    for (let i = 0; i < pts.length; i++)
-      if (Math.abs(p.x - pts[i].x) <= hs && Math.abs(p.y - pts[i].y) <= hs)
-        return i;
-    return -1;
-  }
-
-  function inside(s: Shape, p: Point): boolean {
-    const { l, t, r, b } = bounds(s);
-    return p.x >= l && p.x <= r && p.y >= t && p.y <= b;
-  }
-
   function beginShape(kind: ShapeKind, p: Point) {
     snapshot();
     shapeRef.current = {
@@ -620,6 +566,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       y: p.y,
       w: 0,
       h: 0,
+      rotation: 0,
       color: colorRef.current,
       size,
       filled,
@@ -634,12 +581,16 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       beginShape(kind, p);
       return;
     }
-    const handle = hitHandle(s, p);
+    const handle = hitHandle(s, p, viewportRef.current.scaleX || 1);
+    if (handle === ROTATE_HANDLE) {
+      shapeDragRef.current = { mode: 'rotate', start: p, from: { ...s } };
+      return;
+    }
     if (handle >= 0) {
       shapeDragRef.current = { mode: 'resize', handle, from: { ...s } };
       return;
     }
-    if (inside(s, p)) {
+    if (insideShape(s, p)) {
       shapeDragRef.current = { mode: 'move', start: p, from: { ...s } };
       return;
     }
@@ -652,9 +603,13 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     const s = shapeRef.current;
     if (!drag || !s) {
       if (s && !ctrlHeldRef.current) {
-        const h = hitHandle(s, p);
+        const h = hitHandle(s, p, viewportRef.current.scaleX || 1);
         applyCursor(
-          h >= 0 ? HANDLE_CURSOR[h] : inside(s, p) ? 'move' : 'crosshair',
+          h >= 0
+            ? handleCursor(s, h)
+            : insideShape(s, p)
+              ? 'move'
+              : 'crosshair',
         );
       }
       return;
@@ -663,7 +618,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       drag.last = p;
       shapeRef.current = {
         ...s,
-        ...computeCreate(drag.start, p, shift, alt),
+        ...computeCreate(drag.start, p, shift, alt, shapeAspect(s.kind)),
       };
     } else if (drag.mode === 'move') {
       const dx = p.x - drag.start.x;
@@ -673,20 +628,31 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
         x: drag.from.x + dx,
         y: drag.from.y + dy,
       };
+    } else if (drag.mode === 'resize') {
+      shapeRef.current = resizeShape(drag.from, drag.handle, p);
     } else {
-      const f = bounds(drag.from);
-      let { l, t, r, b } = f;
-      const h = drag.handle;
-      if (h === 0 || h === 3 || h === 7) l = p.x;
-      if (h === 1 || h === 2 || h === 5) r = p.x;
-      if (h === 0 || h === 1 || h === 4) t = p.y;
-      if (h === 2 || h === 3 || h === 6) b = p.y;
-      shapeRef.current = { ...s, x: l, y: t, w: r - l, h: b - t };
+      shapeRef.current = rotateShape(drag.from, drag.start, p);
+      showAngle(shapeRef.current);
     }
     renderShape();
   }
 
+  function showAngle(s: Shape): void {
+    const el = angleRef.current;
+    const p = lastPointerRef.current;
+    if (!el || !p) return;
+    el.style.display = 'block';
+    el.style.left = `${p.x + 16}px`;
+    el.style.top = `${p.y + 16}px`;
+    el.textContent = `${rotationDegrees(s)}°`;
+  }
+
+  function hideAngle(): void {
+    if (angleRef.current) angleRef.current.style.display = 'none';
+  }
+
   function onShapePointerUp() {
+    hideAngle();
     const drag = shapeDragRef.current;
     shapeDragRef.current = null;
     const s = shapeRef.current;
@@ -721,9 +687,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     if (e.button === 2) {
       e.preventDefault();
       divRef.current?.setPointerCapture(e.pointerId);
-      commitShape();
-      lineRef.current = null;
-      curveRef.current.phase = 'idle';
+      discardTransient();
       freehandRef.current.active = false;
       snapshotRef.current = null;
       eraseRef.current = { active: true, points: [p] };
@@ -742,8 +706,8 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       return;
     }
 
-    if (tool === 'rect' || tool === 'ellipse') {
-      onShapePointerDown(tool, p);
+    if (tool === 'shape') {
+      if (shapeKind) onShapePointerDown(shapeKind, p);
       return;
     }
 
@@ -771,13 +735,11 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     const curve = curveRef.current;
     if (curve.phase === 'awaitControl') {
       curve.phase = 'control';
-      restoreRegion(previewRectRef.current);
-      drawCurve(surface, color, size, curve.a, curve.b, p, dotted);
-      preview(strokeRect([curve.a, curve.b, p], size));
+      preview(bendCurve(p));
       return;
     }
     snapshot();
-    curveRef.current = { phase: 'idle', a: p, b: p };
+    curveRef.current = { phase: 'idle', a: p, b: p, handle: p };
     lineRef.current = { active: true, a: p };
   }
 
@@ -802,7 +764,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     lastPointerRef.current = { x: e.clientX, y: e.clientY };
     const ctrlChanged = e.ctrlKey !== ctrlHeldRef.current;
     ctrlHeldRef.current = e.ctrlKey;
-    if (ctrlChanged || (tool !== 'rect' && tool !== 'ellipse')) {
+    if (ctrlChanged || tool !== 'shape') {
       applyCursor(resolveCursor());
       updateOverlay();
     } else {
@@ -824,7 +786,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       return;
     }
 
-    if (tool === 'rect' || tool === 'ellipse') {
+    if (tool === 'shape') {
       onShapePointerMove(p, e.shiftKey, e.altKey);
       return;
     }
@@ -867,9 +829,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
         drawLine(surface, color, size, lineRef.current.a, p, dotted);
         preview(strokeRect([lineRef.current.a, p], size));
       } else if (curve.phase === 'control') {
-        restoreRegion(previewRectRef.current);
-        drawCurve(surface, color, size, curve.a, curve.b, p, dotted);
-        preview(strokeRect([curve.a, curve.b, p], size));
+        preview(bendCurve(p));
       }
     }
   }
@@ -891,6 +851,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
     flushDisplay();
     lastPointerRef.current = null;
     if (overlayRef.current) overlayRef.current.style.display = 'none';
+    hideAngle();
   }
 
   function onPointerLeave(): void {
@@ -923,7 +884,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
       return;
     }
 
-    if (tool === 'rect' || tool === 'ellipse') {
+    if (tool === 'shape') {
       onShapePointerUp();
       return;
     }
@@ -953,13 +914,12 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
         lineRef.current = null;
         curve.b = p;
         curve.phase = 'awaitControl';
+        curve.handle = { x: (curve.a.x + p.x) / 2, y: (curve.a.y + p.y) / 2 };
         restoreRegion(previewRectRef.current);
         drawLine(surface, color, size, curve.a, p, dotted);
-        preview(strokeRect([curve.a, p], size));
+        preview(curveRect([curve.a, p]));
       } else if (curve.phase === 'control') {
-        restoreRegion(previewRectRef.current);
-        drawCurve(surface, color, size, curve.a, curve.b, p, dotted);
-        emit(strokeRect([curve.a, curve.b, p], size));
+        emit(unionRect(previewRectRef.current, bendCurve(p)));
         curve.phase = 'idle';
         snapshotRef.current = null;
         previewRectRef.current = null;
@@ -984,6 +944,11 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
         ref={overlayRef}
         className="position-fixed rounded-circle translate-middle pe-none"
         style={{ display: 'none', boxShadow: '0 0 0 1px #000, 0 0 0 2px #fff' }}
+      />
+      <div
+        ref={angleRef}
+        className="position-fixed badge bg-dark pe-none"
+        style={{ display: 'none' }}
       />
     </div>
   );

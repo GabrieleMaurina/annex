@@ -8,6 +8,7 @@ import {
   respondGameState,
   sendGeneratedMapIfAny,
 } from '../session/store';
+import { canTakeSeat } from './eligibility';
 
 export function joinGame(playerId: number, gameName: string): GameResponse {
   const player = playersById.get(playerId);
@@ -21,7 +22,11 @@ export function joinGame(playerId: number, gameName: string): GameResponse {
 
   if (game.playerIds.includes(player.id)) {
     recomputeHost(game);
-  } else if (game.state === 'lobby' && game.playerIds.length < game.slots) {
+  } else if (
+    game.state === 'lobby' &&
+    game.playerIds.length < game.slots &&
+    canTakeSeat(game, player.id)
+  ) {
     game.playerIds.push(player.id);
     const departed = game.lobbyDeparted.get(player.id);
     game.lobbyDeparted.delete(player.id);

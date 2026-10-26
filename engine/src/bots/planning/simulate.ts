@@ -7,6 +7,7 @@ import { cashForcedSets } from '../features/cardOutlook';
 import { scaledOutcome } from '../features/combat';
 import {
   capitalGap,
+  capitalRefundAt,
   guardedCapitals,
   sortieCapitals,
 } from '../features/mode/capitalGuard';
@@ -102,11 +103,12 @@ function settleConquest(
   fromId: number,
   toId: number,
 ): void {
-  const survivors = troopsIn(state, toId);
+  const refund = capitalRefundAt(ctx, toId);
+  const survivors = troopsIn(state, toId) - refund;
   if (survivors < 2) return;
   const share = conquestEndShare(ctx, state, fromId, toId, survivors);
   const moved = 1 + Math.round((survivors - 1) * share);
-  state.troops.set(toId, moved);
+  state.troops.set(toId, moved + refund);
   state.troops.set(fromId, troopsIn(state, fromId) + survivors - moved);
 }
 
@@ -188,11 +190,13 @@ export function walkStack(
     state.troopsLost += Math.max(0, attackers - outcome.attackerSurvivorsMean);
 
     const survivors = Math.max(1, Math.round(outcome.attackerSurvivorsMean));
+    const refund = capitalRefundAt(ctx, next);
+    state.troopsLost -= refund;
     state.troops.set(cur, 1);
     state.owners.set(next, ctx.botId);
     state.troops.set(
       next,
-      survivors + capturedCardTroops(ctx, state, defenderId),
+      survivors + capturedCardTroops(ctx, state, defenderId) + refund,
     );
     if (defenderId !== undefined) state.conquered = true;
     lastConquest = { fromId: cur, toId: next };

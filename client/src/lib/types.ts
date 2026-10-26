@@ -18,6 +18,8 @@ export interface Account {
   username: string;
   elo: number;
   country: string;
+  gamesPlayed: number;
+  createdAt: number;
 }
 
 export type AccountResult =
@@ -90,6 +92,9 @@ export interface GameSummary {
   hasBots: boolean;
   createdAt: number;
   roundNumber: number;
+  minRank: string;
+  minGames: number;
+  minAccountAge: string;
 }
 
 export type CardSymbol = 'soldier' | 'humvee' | 'tank';
@@ -156,6 +161,7 @@ export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type Continents = 'off' | 'on';
 export type RoundTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
+export type CapitalRefund = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
@@ -259,6 +265,7 @@ export interface GameState {
   }[];
   blitz: Blitz;
   bounties: Bounties;
+  capitalRefund: CapitalRefund;
   cards: CardsMode;
   continents: Continents;
   defenceDice: number;
@@ -275,6 +282,9 @@ export interface GameState {
   troopsPerTerritory: number;
   maxPoints: number;
   hills: number;
+  minRank: string;
+  minGames: number;
+  minAccountAge: string;
   hillTerritoryIds: number[];
   continentId: number | null;
   placement: Placement;
@@ -377,6 +387,8 @@ export interface GameState {
   visibleTerritoryIds?: number[];
 }
 
+export type EloPenalty = 'disconnected' | 'surrender';
+
 export interface PlayerResultStats {
   id: number;
   troopsGained: number;
@@ -392,6 +404,7 @@ export interface PlayerResultStats {
   userId?: string | null;
   elo?: number | null;
   eloDelta?: number | null;
+  eloPenalty?: EloPenalty | null;
 }
 
 export interface GameResults {
@@ -404,6 +417,7 @@ export interface GameSettingsInput {
   bannedPlayerIds?: number[];
   blitz?: Blitz;
   bounties?: Bounties;
+  capitalRefund?: CapitalRefund;
   cards?: CardsMode;
   continents?: Continents;
   defenceDice?: number;
@@ -420,6 +434,9 @@ export interface GameSettingsInput {
   troopsPerTerritory?: number;
   maxPoints?: number;
   hills?: number;
+  minRank?: string;
+  minGames?: number;
+  minAccountAge?: string;
   nukes?: Nukes;
   mapName?: string;
   name?: string;
@@ -444,6 +461,7 @@ export type GameRulesSettings = Pick<
   | 'anonymous'
   | 'blitz'
   | 'bounties'
+  | 'capitalRefund'
   | 'cards'
   | 'continents'
   | 'defenceDice'
@@ -460,6 +478,9 @@ export type GameRulesSettings = Pick<
   | 'troopsPerTerritory'
   | 'maxPoints'
   | 'hills'
+  | 'minRank'
+  | 'minGames'
+  | 'minAccountAge'
   | 'nukes'
   | 'mapName'
   | 'placement'
@@ -528,6 +549,7 @@ export type ReplayAnimation =
       fromTerritoryId: number;
       toTerritoryId: number;
       troops: number;
+      troopsRefunded?: number;
       playerId: number;
     }
   | {
@@ -538,6 +560,7 @@ export type ReplayAnimation =
       defenderId: number | undefined;
       attackLosses: number;
       defenceLosses: number;
+      troopsRefunded?: number;
     }
   | { type: 'entrench'; territoryId: number; troops: number; playerId: number }
   | { type: 'starve'; territoryId: number; troops: number; playerId: number }
@@ -694,6 +717,7 @@ export interface StoredGameSettings {
   starvation: Starvation;
   roundTroops: RoundTroops;
   bounties: Bounties;
+  capitalRefund: CapitalRefund;
   supplyLines: SupplyLines;
   fogOfWar: FogOfWar;
   alliances: Alliances;
@@ -703,6 +727,9 @@ export interface StoredGameSettings {
   attackIncrement: number;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';
+  minRank: string;
+  minGames: number;
+  minAccountAge: string;
 }
 
 export interface StoredGame {
@@ -736,6 +763,7 @@ export interface StoredGame {
     won: boolean;
     elo: number;
     eloDelta: number;
+    eloPenalty: EloPenalty | null;
   }[];
   results: StoredGameResult[];
   serverLog: ReplayLogEntry[];

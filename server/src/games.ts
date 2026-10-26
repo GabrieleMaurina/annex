@@ -48,6 +48,7 @@ export function persistFinishedGame(
             name: userId ? null : player.name,
             elo: elo?.elo ?? 0,
             eloDelta: elo?.eloDelta ?? 0,
+            eloPenalty: elo?.eloPenalty ?? null,
           };
         }),
       });

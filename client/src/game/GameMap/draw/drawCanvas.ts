@@ -116,6 +116,8 @@ export interface DrawCanvasParams {
   frozenSeaShipsRef: RefObject<Map<number, GameState['seas'][number]['ships']>>;
   cardByTerritoryId: Map<number, Card>;
   ownedTerritoryIds: Set<number>;
+  showReplay: boolean;
+  continentsEnabled: boolean;
   cardsOpen: boolean;
   selectedCombo: EvaluatedCombo | undefined;
   cardImagesRef: RefObject<Record<CardSymbol, HTMLImageElement>>;
@@ -177,6 +179,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     frozenSeaShipsRef,
     cardByTerritoryId,
     ownedTerritoryIds,
+    showReplay,
+    continentsEnabled,
     cardsOpen,
     selectedCombo,
     cardImagesRef,
@@ -403,32 +407,63 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
 
   ctx.restore();
 
-  const continentGroups = bonusesOpen
-    ? (() => {
-        const groups = new Map<number, Territory[]>();
-        for (const t of territories) {
-          if (t.continentId < 0) continue;
-          const list = groups.get(t.continentId);
-          if (list) list.push(t);
-          else groups.set(t.continentId, [t]);
-        }
-        return groups;
-      })()
-    : null;
+  const continentGroups = new Map<number, Territory[]>();
+  for (const t of territories) {
+    if (t.continentId < 0) continue;
+    const list = continentGroups.get(t.continentId);
+    if (list) list.push(t);
+    else continentGroups.set(t.continentId, [t]);
+  }
 
-  if (continentGroups) {
-    const hullPad = (VERTEX_RADIUS + 30) * scaleX;
+  const toxinByTerritoryId = new Map(
+    displayedToxinTerritories.map((t) => [t.id, t]),
+  );
+  const continentBonusOwnerOf = (group: Territory[]) => {
+    const owners = group
+      .filter((t) => !radiationById.has(t.id) && !toxinByTerritoryId.has(t.id))
+      .map((t) => frozenOwnerRef.current.get(t.id) ?? ownerOf(t.id)?.ownerId);
+    const [ownerId, ...otherOwnerIds] = new Set(
+      owners.filter((id) => id !== undefined),
+    );
+    const owned = owners.filter((id) => id === ownerId).length;
+    return otherOwnerIds.length === 0 && owned * 2 > owners.length
+      ? ownerId
+      : undefined;
+  };
+
+  const continentHullPad = (VERTEX_RADIUS + 30) * scaleX;
+  const continentShapesById = regions
+    ? continentShapes(regions, territories)
+    : null;
+  if (bonusesOpen) {
     ctx.save();
     ctx.fillStyle = 'rgba(110, 110, 110, 0.4)';
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 2.5 * zoom;
     ctx.lineJoin = 'round';
     ctx.setLineDash([6 * zoom, 5 * zoom]);
-    const shapes = regions ? continentShapes(regions, territories) : null;
     for (const [continentGroupId, group] of continentGroups) {
-      const shape = shapes?.get(continentGroupId);
+      const shape = continentShapesById?.get(continentGroupId);
       if (shape) outlineContinentRegion(ctx, shape, view, true);
-      else strokeContinentOutline(ctx, group, toScreen, hullPad, true);
+      else strokeContinentOutline(ctx, group, toScreen, continentHullPad, true);
+    }
+    ctx.restore();
+  } else if (continentsEnabled) {
+    ctx.save();
+    ctx.lineWidth = 3 * zoom;
+    ctx.lineJoin = 'round';
+    for (const [continentGroupId, group] of continentGroups) {
+      if (visibleSet && group.some((t) => !visibleSet.has(t.id))) continue;
+      const ownerId = continentBonusOwnerOf(group);
+      if (ownerId === undefined) continue;
+      ctx.strokeStyle = lighten(
+        playerColor(colorByPlayerId.get(ownerId) ?? 0),
+        STATE_STYLE.hovered.tint,
+      );
+      const shape = continentShapesById?.get(continentGroupId);
+      if (shape) outlineContinentRegion(ctx, shape, view, false);
+      else
+        strokeContinentOutline(ctx, group, toScreen, continentHullPad, false);
     }
     ctx.restore();
   }
@@ -438,20 +473,18 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       (t) => t.continentId === continentId,
     );
     if (targetTerritories.length > 0) {
-      const hullPad = (VERTEX_RADIUS + 30) * scaleX;
       ctx.save();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.lineWidth = 3.5 * zoom;
       ctx.lineJoin = 'round';
-      const shape =
-        regions && continentShapes(regions, territories).get(continentId);
+      const shape = continentShapesById?.get(continentId);
       if (shape) outlineContinentRegion(ctx, shape, view, false);
       else
         strokeContinentOutline(
           ctx,
           targetTerritories,
           toScreen,
-          hullPad,
+          continentHullPad,
           false,
         );
       ctx.restore();
@@ -482,9 +515,6 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   ctx.restore();
 
   const portalTerritoryIdSet = new Set(portalTerritoryIds);
-  const toxinByTerritoryId = new Map(
-    displayedToxinTerritories.map((t) => [t.id, t]),
-  );
   const now = areAnimationsDisabled() ? 0 : performance.now();
 
   const seaShipsById = new Map(seas.map((s) => [s.id, s.ships]));
@@ -715,7 +745,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       if (owner) {
         const troops =
           isMyTurn && attackPendingConquest && t.id === attackEndTerritoryId
-            ? attackMoveTroops
+            ? (frozenTroopsRef.current.has(t.id) ? 0 : owner.troops) +
+              attackMoveTroops
             : isMyTurn &&
                 attackPendingConquest &&
                 t.id === attackStartTerritoryId
@@ -870,7 +901,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.fill();
   }
 
-  if (continentGroups) {
+  if (bonusesOpen) {
+    const showStats = !showReplay && ownedTerritoryIds.size > 0;
     for (const [continentGroupId, group] of continentGroups) {
       const screenPoints = group.map((t) => toScreen(t));
       const cx =
@@ -878,12 +910,22 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       const cy =
         screenPoints.reduce((s, p) => s + p.y, 0) / screenPoints.length;
       const text = `#${continentGroupId + 1}:+${bonuses[continentGroupId] ?? 0}`;
+      const owned = group.filter((t) => ownedTerritoryIds.has(t.id)).length;
+      const statsText = `${owned}/${group.length} (${Math.round((owned / group.length) * 100)}%)`;
+      const mainFont = `bold ${34 * zoom}px sans-serif`;
+      const statsFont = `bold ${13 * zoom}px sans-serif`;
 
-      ctx.font = `bold ${34 * zoom}px sans-serif`;
-      const metrics = ctx.measureText(text);
+      ctx.font = mainFont;
+      const mainWidth = ctx.measureText(text).width;
+      ctx.font = statsFont;
+      const statsWidth = ctx.measureText(statsText).width;
       const paddingX = 10 * zoom;
-      const boxW = metrics.width + paddingX * 2;
-      const boxH = 42 * zoom;
+      const mainH = 42 * zoom;
+      const statsH = showStats ? 16 * zoom : 0;
+      const boxW =
+        (showStats ? Math.max(mainWidth, statsWidth) : mainWidth) +
+        paddingX * 2;
+      const boxH = mainH + statsH;
       const boxX = cx - boxW / 2;
       const boxY = cy - boxH / 2;
 
@@ -898,7 +940,12 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(text, cx, cy + 1 * zoom);
+      ctx.font = mainFont;
+      ctx.fillText(text, cx, boxY + mainH / 2 + 1 * zoom);
+      if (showStats) {
+        ctx.font = statsFont;
+        ctx.fillText(statsText, cx, boxY + mainH + statsH / 2 - 4 * zoom);
+      }
     }
   }
 }

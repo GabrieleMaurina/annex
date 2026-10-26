@@ -34,7 +34,12 @@ export interface EngineCallbacks {
     gameName: string;
     gameMode: string;
     roundNumber: number;
-    ranking: { playerId: number; team: number }[];
+    ranking: {
+      playerId: number;
+      team: number;
+      surrenderRound: number | null;
+      disconnected: boolean;
+    }[];
   }): void;
   onCardSetPlayed(
     playerId: number,
@@ -209,6 +214,7 @@ export interface EngineCallbacks {
       conquered?: boolean;
       eliminated?: boolean;
       cardsTaken?: number;
+      troopsRefunded?: number;
     },
     gameName: string,
   ): void;
@@ -225,6 +231,7 @@ export interface EngineCallbacks {
       path: number[][];
       troopsRemoved?: number;
       troopsAdded?: number;
+      troopsRefunded?: number;
     },
     gameName: string,
   ): void;

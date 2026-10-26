@@ -31,6 +31,7 @@ export interface GamePlayerDoc {
   won: boolean;
   elo: number;
   eloDelta: number;
+  eloPenalty: 'disconnected' | 'surrender' | null;
 }
 
 export interface EloHistoryPoint {
@@ -298,6 +299,7 @@ export const SETTINGS_ENUM_KEYS = [
   'starvation',
   'roundTroops',
   'bounties',
+  'capitalRefund',
   'supplyLines',
   'fogOfWar',
   'alliances',
@@ -307,6 +309,9 @@ export const SETTINGS_ENUM_KEYS = [
   'attackIncrement',
   'disconnectBotDifficulty',
   'disconnectBotPersonality',
+  'minRank',
+  'minGames',
+  'minAccountAge',
 ];
 
 const settings = object(['continentId', 'slots', ...SETTINGS_ENUM_KEYS], {
@@ -332,6 +337,7 @@ const player = object(
     'won',
     'elo',
     'eloDelta',
+    'eloPenalty',
   ],
   {
     playerId: int,
@@ -347,6 +353,7 @@ const player = object(
     won: bool,
     elo: { ...int, minimum: 0 },
     eloDelta: int,
+    eloPenalty: { enum: [null, 'disconnected', 'surrender'] },
   },
 );
 
@@ -455,6 +462,10 @@ export function storeGame(doc: GameDoc): Promise<string> {
   return collection()
     .insertOne(doc as GameDoc & { _id?: ObjectId })
     .then((res) => res.insertedId.toString());
+}
+
+export function countGamesPlayed(userId: string): Promise<number> {
+  return collection().countDocuments({ 'players.userId': userId });
 }
 
 function playerDisplayName(

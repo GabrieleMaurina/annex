@@ -4,6 +4,7 @@ import {
   hasAnyShipFight,
   isAttackStartCandidate,
 } from '../game/combat/autoSkip';
+import { moveIntoConquest, refundCapital } from '../game/combat/conquest';
 import {
   balancedBlitz,
   balancedWinProbs,
@@ -231,6 +232,7 @@ export function attack(
   playerId: number,
   rawType: unknown,
   rawTroops: unknown,
+  immediateMove = false,
 ): AttackResultResponse {
   const ctx = requirePlayingTurn(requireGame(playerId), 'attack');
   if (!ctx.ok) return ctx;
@@ -314,15 +316,6 @@ export function attack(
     game.territoryEntrenchment.delete(endId);
     game.territoryToxins.delete(endId);
   }
-  recordReplayFrame(game, {
-    type: 'attack',
-    attackingTerritoryId: startId,
-    defendingTerritoryId: endId,
-    attackerId: playerId,
-    defenderId,
-    attackLosses,
-    defenceLosses,
-  });
 
   let blitzWinProbabilities: number[] = [];
   let blitzOutcomes: BlitzOutcome[] | undefined;
@@ -333,6 +326,7 @@ export function attack(
   } | null = null;
   let defenderEliminated = false;
   let cardsTaken = 0;
+  let troopsRefunded = 0;
   let winnerIds: number[] | null = null;
   if (conquered) {
     if (defenderId !== undefined) game.conqueredThisTurn = true;
@@ -368,21 +362,13 @@ export function attack(
         }
       }
       game.attackConquestMinTroops = minMoveTroops;
+      if (!immediateMove && minMoveTroops < remainingAttackers - 1)
+        troopsRefunded = refundCapital(game, endId);
     } else {
-      const remainingAttackers = attackingTroops - attackLosses;
-      game.territoryTroops.set(startId, 0);
-      game.territoryTroops.set(endId, remainingAttackers);
-      recordReplayFrame(game, {
-        type: 'fortify',
-        fromTerritoryId: startId,
-        toTerritoryId: endId,
-        troops: remainingAttackers,
-        playerId,
-      });
       autoConquestMove = {
         territoryId: endId,
         fromTerritoryId: startId,
-        troops: remainingAttackers,
+        troops: attackingTroops - attackLosses,
       };
     }
   } else {
@@ -406,6 +392,16 @@ export function attack(
       game.attackEndTerritoryId = null;
     }
   }
+  recordReplayFrame(game, {
+    type: 'attack',
+    attackingTerritoryId: startId,
+    defendingTerritoryId: endId,
+    attackerId: playerId,
+    defenderId,
+    attackLosses,
+    defenceLosses,
+    ...(troopsRefunded > 0 ? { troopsRefunded } : {}),
+  });
 
   const fullPath = attackFullPath(game, playerId, startId, endId);
   fogFilterEmit(game, 'game:attacked', callbacks.onAttacked, (viewerId) => {
@@ -429,6 +425,7 @@ export function attack(
             conquered,
             eliminated: defenderEliminated,
             cardsTaken,
+            ...(troopsRefunded > 0 ? { troopsRefunded } : {}),
           }
         : {}),
     };
@@ -445,6 +442,15 @@ export function attack(
   }
   if (autoConquestMove) {
     const move = autoConquestMove;
+    game.territoryTroops.set(startId, 0);
+    game.territoryTroops.set(endId, move.troops);
+    recordReplayFrame(game, {
+      type: 'fortify',
+      fromTerritoryId: startId,
+      toTerritoryId: endId,
+      troops: move.troops,
+      playerId,
+    });
     fogFilterEmit(
       game,
       'game:attackMoved',
@@ -513,6 +519,7 @@ export function quickAttack(
     playerId,
     'blitz',
     (game.territoryTroops.get(startId) ?? 0) - 1,
+    true,
   );
   if (!attacked.ok) return attacked;
   if (game.state !== 'playing' || !hasPendingConquest(game, playerId))
@@ -585,6 +592,7 @@ export function unlockTile(
     playerId,
     'regular',
     Math.min(startTroops - cost - 1, game.attackDice),
+    true,
   );
   if (!attacked.ok) return attacked;
   if (game.state !== 'playing' || !hasPendingConquest(game, playerId))
@@ -610,37 +618,12 @@ export function attackMove(playerId: number, rawTroops: unknown): GameResponse {
   if (troops < min || troops > max)
     return { ok: false, error: 'invalid troops' };
 
-  game.territoryTroops.set(startId, startTroops - troops);
-  game.territoryTroops.set(endId, troops);
-  recordReplayFrame(game, {
-    type: 'fortify',
-    fromTerritoryId: startId,
-    toTerritoryId: endId,
-    troops,
-    playerId,
-  });
+  moveIntoConquest(game, playerId, startId, endId, troops);
   game.attackStartTerritoryId = null;
   game.attackEndTerritoryId = null;
   game.attackConquestMinTroops = null;
   extendTurnTimer(game, game.attackIncrement);
 
-  const fullPath = attackFullPath(game, playerId, startId, endId);
-  fogFilterEmit(
-    game,
-    'game:attackMoved',
-    callbacks.onAttackMoved,
-    (viewerId) => {
-      const visible = visibleTerritoryIdsOrAll(game, viewerId);
-      if (visible !== null && !visible.has(endId) && !visible.has(startId))
-        return null;
-      return {
-        territoryId: endId,
-        fromTerritoryId: startId,
-        path: pathRunsForViewer(fullPath, visible),
-        ...troopMoveFields(visible, startId, endId, troops),
-      };
-    },
-  );
   if ((game.playerCards.get(playerId)?.length ?? 0) >= 5) {
     game.turnPhase = 'deploy';
     game.deployCardMandate = true;

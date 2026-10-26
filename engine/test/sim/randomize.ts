@@ -230,6 +230,8 @@ export function randomGameSettings(
   }
   if (gameMode === 'king of the hill')
     settings.hills = rng() < 0.9 ? 3 : 1 + Math.floor(rng() * MAX_HILLS);
+  if (gameMode === 'capitals')
+    settings.capitalRefund = rng() < 0.5 ? 'on' : 'off';
 
   return { settings, teams };
 }

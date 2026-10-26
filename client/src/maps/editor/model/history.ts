@@ -1,5 +1,5 @@
 import type { GenerateMapInput } from '../../../lib/types';
-import type { Shape } from '../paint/PaintLayer';
+import type { Shape } from '../paint/shapes';
 import type { EditorTerritory } from './editorTypes';
 import type { EditorLockedTile } from './lockedTiles';
 

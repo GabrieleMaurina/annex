@@ -1,3 +1,4 @@
+import { meetsRequirements } from 'engine';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -27,6 +28,7 @@ import {
   saveHomeFilters,
 } from '../lib/player';
 import type {
+  Account,
   Fill,
   GameSummary,
   GenerationType,
@@ -106,6 +108,8 @@ interface Props {
   kickedMessage: string;
   clearKickedMessage: () => void;
   serverUnreachable: boolean;
+  account: Account | null;
+  onAccountChange: (account: Account | null) => void;
 }
 
 function suggestedGameName(base: string, attempt: number): string {
@@ -125,6 +129,8 @@ function Home({
   kickedMessage,
   clearKickedMessage,
   serverUnreachable,
+  account,
+  onAccountChange,
 }: Props) {
   const [result, setResult] = useState<HomeGamesPage | null>(null);
   const [resumeGame, setResumeGame] = useState<string | null>(null);
@@ -292,7 +298,10 @@ function Home({
         sortDir,
       };
       connector.listGames(query, setResult);
-      connector.session((s) => setResumeGame(s.gameName ?? null));
+      connector.session((s) => {
+        setResumeGame(s.gameName ?? null);
+        onAccountChange(s.account);
+      });
     }
     refresh();
     const timer = setInterval(refresh, POLL_MS);
@@ -633,9 +642,15 @@ function Home({
               </thead>
               <tbody>
                 {games.map((g) => {
-                  const isFullLobby =
-                    g.state === 'lobby' && g.playerCount >= g.slots;
-                  const bg = isFullLobby
+                  const spectateOnly =
+                    g.state === 'lobby' &&
+                    (g.playerCount >= g.slots ||
+                      !meetsRequirements(g, {
+                        elo: account?.elo ?? null,
+                        gamesPlayed: account?.gamesPlayed ?? null,
+                        accountCreatedAt: account?.createdAt ?? null,
+                      }));
+                  const bg = spectateOnly
                     ? GAME_STATE_COLORS.playing
                     : GAME_STATE_COLORS[g.state];
                   const rowStyle = {

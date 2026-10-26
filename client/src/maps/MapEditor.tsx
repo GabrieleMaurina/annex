@@ -1,9 +1,4 @@
-import {
-  DEFAULT_BORDER_COLORS,
-  MAP_SIZE_VALUES,
-  mapImageSize,
-  mapSizeLabel,
-} from 'engine';
+import { DEFAULT_BORDER_COLORS, mapImageSize } from 'engine';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -25,7 +20,12 @@ import {
 } from './editor/defaultImage';
 import type { GeneratedEditorMap, GenerateInput } from './editor/generateMap';
 import GenerateMapModal from './editor/GenerateMapModal';
-import { isConnected } from './editor/graph';
+import {
+  invalidContinentSizes,
+  isConnected,
+  MAX_CONTINENT_SIZE,
+  MIN_CONTINENT_SIZE,
+} from './editor/graph';
 import MapCanvas, { type MapCanvasHandle } from './editor/MapCanvas';
 import type { EditorTerritory as Territory } from './editor/model/editorTypes';
 import { toEditorTerritories } from './editor/model/editorTypes';
@@ -40,17 +40,19 @@ import {
   toEditorLockedTiles,
   useLockedTiles,
 } from './editor/model/lockedTiles';
-import { drawTerritoryBorders } from './editor/paint/drawTerritories';
+import {
+  DEFAULT_MAP_NAME,
+  freeDefaultName,
+  isDefaultName,
+} from './editor/model/mapName';
+import { mapSizeText } from './editor/model/mapSize';
 import { fillTerritories } from './editor/paint/fillTerritories';
 import PaintLayer, {
   type PaintLayerHandle,
   type Viewport,
 } from './editor/paint/PaintLayer';
-import {
-  drawShape,
-  PALETTE_GROUPS,
-  type PaintTool,
-} from './editor/paint/paintTools';
+import { PALETTE_GROUPS, type PaintTool } from './editor/paint/paintTools';
+import { drawShape, type ShapeKind } from './editor/paint/shapes';
 import {
   blankSurface,
   blitSurface,
@@ -58,43 +60,15 @@ import {
   loadImage,
   surfaceToDataUrl,
 } from './editor/paint/surface';
+import { useTerritoryBorders } from './editor/paint/useTerritoryBorders';
 import Panel from './editor/Panel';
 import { sortMapData, sortTerritories } from './editor/sortMap';
 import MapBrowser from './MapBrowser';
 
-const MIN_CONTINENT_SIZE = 2;
-const MAX_CONTINENT_SIZE = 40;
 const HISTORY_LIMIT = 30;
 const GRAPH_COMMIT_DELAY = 250;
-const DEFAULT_MAP_NAME = 'Map';
 const CUSTOM_COLORS_LIMIT = 30;
 const MAX_IMAGE_BYTES = 6_000_000;
-
-function isDefaultName(name: string): boolean {
-  return !name.trim() || name.trim() === DEFAULT_MAP_NAME;
-}
-
-function mapSizeText(width: number, height: number): string {
-  const match = MAP_SIZE_VALUES.find((s) => {
-    const m = mapImageSize(s);
-    return m.width === width && m.height === height;
-  });
-  return match ? mapSizeLabel(match) : 'Custom';
-}
-
-function invalidContinentSizes(
-  territories: Territory[],
-  continentCount: number,
-): boolean {
-  const size = new Map<number, number>();
-  for (const t of territories)
-    if (!t.isSea) size.set(t.continentId, (size.get(t.continentId) ?? 0) + 1);
-  for (let i = 0; i < continentCount; i++) {
-    const n = size.get(i) ?? 0;
-    if (n < MIN_CONTINENT_SIZE || n > MAX_CONTINENT_SIZE) return true;
-  }
-  return false;
-}
 
 function MapEditor({ account }: { account: Account | null }) {
   const navigate = useNavigate();
@@ -139,6 +113,7 @@ function MapEditor({ account }: { account: Account | null }) {
   const [brushSize, setBrushSize] = useState(10);
   const [dotted, setDotted] = useState(false);
   const [filled, setFilled] = useState(false);
+  const [shapeKind, setShapeKind] = useState<ShapeKind | null>(null);
   const [paintVersion, setPaintVersion] = useState(0);
   const [paintEpoch, setPaintEpoch] = useState(0);
   const [paintSurface, setPaintSurface] = useState(() =>
@@ -287,6 +262,14 @@ function MapEditor({ account }: { account: Account | null }) {
     borderColors,
     showClickable,
   );
+  const borders = useTerritoryBorders(
+    paintSurface,
+    paintVersion,
+    territories,
+    borderColors,
+    brushSize,
+    dotted,
+  );
   const clickableCount = clickable
     ? territories.filter((t) => !clickable.invalidIds.has(t.id)).length
     : 0;
@@ -316,10 +299,10 @@ function MapEditor({ account }: { account: Account | null }) {
     );
   }
 
-  function applyTerritoryPaint(paint: typeof drawTerritoryBorders) {
+  function applyTerritoryPaint(paint: (surface: ImageData) => boolean) {
     paintLayerRef.current?.flush();
     const surface = paintSurfaceRef.current;
-    if (!paint(surface, territories, borderColors, brushSize)) return;
+    if (!paint(surface)) return;
     blitSurface(surface, paintCanvas);
     bumpPaint();
     commitPaint();
@@ -436,8 +419,14 @@ function MapEditor({ account }: { account: Account | null }) {
   ]);
 
   useEffect(() => {
-    connector.listMyMapNames(setTakenNames);
-  }, []);
+    connector.listMyMapNames((names) => {
+      setTakenNames(names);
+      if (!id)
+        setMapName((name) =>
+          name === DEFAULT_MAP_NAME ? freeDefaultName(names) : name,
+        );
+    });
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -491,19 +480,7 @@ function MapEditor({ account }: { account: Account | null }) {
       }
 
       const layer = paintLayerRef.current;
-      if (e.shape && !layer)
-        drawShape(
-          target,
-          e.shape.kind,
-          e.shape.color,
-          e.shape.x,
-          e.shape.y,
-          e.shape.w,
-          e.shape.h,
-          e.shape.size,
-          e.shape.filled,
-          e.shape.dotted,
-        );
+      if (e.shape && !layer) drawShape(target, e.shape);
       blitSurface(target, paintCanvas);
       if (e.shape && layer) layer.adopt(e.shape);
       bumpPaint();
@@ -592,7 +569,7 @@ function MapEditor({ account }: { account: Account | null }) {
     setGeneration(null);
     setLockedTiles([]);
     setBorderColors(DEFAULT_BORDER_COLORS);
-    setMapName(DEFAULT_MAP_NAME);
+    setMapName(freeDefaultName(takenNames));
     setSavedId(null);
     setSavedName(null);
     setError('');
@@ -835,6 +812,7 @@ function MapEditor({ account }: { account: Account | null }) {
         hideGraph={exclusive && mode === 'paint'}
         onViewport={handleViewport}
         clickable={showClickable ? clickable : null}
+        borderOverlay={borders.overlay}
         timedMode={timedMode}
       />
 
@@ -850,6 +828,7 @@ function MapEditor({ account }: { account: Account | null }) {
           epoch={paintEpoch}
           dotted={dotted}
           filled={filled}
+          shapeKind={shapeKind}
           onStrokeEnd={commitPaint}
           onChange={bumpPaint}
           onWheelZoom={handleWheelZoom}
@@ -889,6 +868,8 @@ function MapEditor({ account }: { account: Account | null }) {
           setDotted={setDotted}
           filled={filled}
           setFilled={setFilled}
+          shapeKind={shapeKind}
+          setShapeKind={setShapeKind}
           onUndo={undo}
           onRedo={redo}
           canUndo={canUndo}
@@ -908,8 +889,16 @@ function MapEditor({ account }: { account: Account | null }) {
           clickableStatus={`${clickableCount}/${territories.length}`}
           onFindTerritories={handleFindTerritories}
           onLinkTerritories={handleLinkTerritories}
-          onDrawTerritories={() => applyTerritoryPaint(drawTerritoryBorders)}
-          onFillTerritories={() => applyTerritoryPaint(fillTerritories)}
+          onDrawTerritories={() => applyTerritoryPaint(borders.draw)}
+          onFillTerritories={() =>
+            applyTerritoryPaint((surface) =>
+              fillTerritories(surface, territories, borderColors, brushSize),
+            )
+          }
+          cellScale={borders.cellScale}
+          setCellScale={borders.setCellScale}
+          borderPreview={borders.preview}
+          setBorderPreview={borders.setPreview}
           borderColors={borderColors}
           setBorderColors={handleBorderColorsChange}
           timedMode={timedMode}

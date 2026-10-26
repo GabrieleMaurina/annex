@@ -245,6 +245,7 @@ export const EVENT_VIEWS: EventViews = {
       conquered: p.conquered,
       eliminated: p.eliminated,
       cardsTaken: p.cardsTaken,
+      troopsRefunded: p.troopsRefunded,
     }),
   onTankFired: (_game, _viewerId, p) =>
     complete<EventPayload<'onTankFired'>>({
@@ -258,6 +259,7 @@ export const EVENT_VIEWS: EventViews = {
       path: p.path,
       troopsRemoved: p.troopsRemoved,
       troopsAdded: p.troopsAdded,
+      troopsRefunded: p.troopsRefunded,
     }),
   onShipsBought: (game, _viewerId, p) =>
     complete<EventPayload<'onShipsBought'>>({

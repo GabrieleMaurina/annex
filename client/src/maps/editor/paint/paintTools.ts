@@ -17,16 +17,7 @@ import {
 } from 'engine';
 
 export type PaintTool =
-  | 'pencil'
-  | 'eraser'
-  | 'line'
-  | 'curve'
-  | 'rect'
-  | 'ellipse'
-  | 'fill'
-  | 'sampler';
-
-export type ShapeKind = 'rect' | 'ellipse';
+  'pencil' | 'eraser' | 'line' | 'curve' | 'shape' | 'fill' | 'sampler';
 
 export const ERASER_COLOR = '#ffffff';
 
@@ -278,6 +269,10 @@ function disc(
   }
 }
 
+export function dotSpacing(size: number): number {
+  return Math.max(4, Math.round(size) * 2);
+}
+
 function dottedSegment(
   s: ImageData,
   a: Point,
@@ -288,7 +283,7 @@ function dottedSegment(
   bl: number,
   carry: number,
 ): number {
-  const period = Math.max(4, Math.round(size) * 2);
+  const period = dotSpacing(size);
   const radius = size / 2;
   const len = Math.hypot(b.x - a.x, b.y - a.y);
   if (len === 0) {
@@ -349,25 +344,6 @@ function solidPath(
     segment(s, points[points.length - 1], points[0], size, r, g, bl);
 }
 
-function ellipsePerimeter(
-  left: number,
-  top: number,
-  rw: number,
-  rh: number,
-): Point[] {
-  const cx = left + rw / 2;
-  const cy = top + rh / 2;
-  const rx = rw / 2;
-  const ry = rh / 2;
-  const steps = Math.min(360, Math.max(24, Math.ceil((rx + ry) * 1.5)));
-  const pts: Point[] = [];
-  for (let i = 0; i < steps; i++) {
-    const t = (i / steps) * Math.PI * 2;
-    pts.push({ x: cx + rx * Math.cos(t), y: cy + ry * Math.sin(t) });
-  }
-  return pts;
-}
-
 export function drawFreehand(
   s: ImageData,
   tool: PaintTool,
@@ -423,7 +399,7 @@ export function drawCurve(
   b: Point,
   control: Point,
   dotted = false,
-): Rect {
+): void {
   const [r, g, bl] = hexToRgb(color);
   const approxLength =
     Math.hypot(control.x - a.x, control.y - a.y) +
@@ -440,64 +416,44 @@ export function drawCurve(
   }
   if (dotted) dottedPath(s, samples, size, r, g, bl, false);
   else solidPath(s, samples, size, r, g, bl, false);
-  return boundsOf([a, b, control], size / 2 + 2, s);
 }
 
-export function drawShape(
+function fillPolygon(
   s: ImageData,
-  kind: ShapeKind,
+  points: Point[],
+  r: number,
+  g: number,
+  b: number,
+): void {
+  const ys = points.map((p) => p.y);
+  const bottom = Math.ceil(Math.max(...ys));
+  for (let y = Math.floor(Math.min(...ys)); y < bottom; y++) {
+    const yy = y + 0.5;
+    const xs: number[] = [];
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const q = points[(i + 1) % points.length];
+      if (p.y <= yy === q.y <= yy) continue;
+      xs.push(p.x + ((yy - p.y) / (q.y - p.y)) * (q.x - p.x));
+    }
+    xs.sort((m, n) => m - n);
+    for (let i = 0; i + 1 < xs.length; i += 2)
+      fillRow(s, Math.round(xs[i]), Math.round(xs[i + 1]), y, r, g, b);
+  }
+}
+
+export function drawPolygon(
+  s: ImageData,
   color: string,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  points: Point[],
   size: number,
   filled: boolean,
   dotted: boolean,
-): Rect {
-  const left = Math.round(Math.min(x, x + w));
-  const top = Math.round(Math.min(y, y + h));
-  const rw = Math.round(Math.abs(w));
-  const rh = Math.round(Math.abs(h));
-  if (rw < 1 || rh < 1) return { x: 0, y: 0, w: 0, h: 0 };
+): void {
   const [r, g, b] = hexToRgb(color);
-  if (filled && kind === 'rect') {
-    for (let py = top; py < top + rh; py++)
-      fillRow(s, left, left + rw, py, r, g, b);
-  } else if (filled) {
-    const cx = left + rw / 2;
-    const cy = top + rh / 2;
-    const rx = rw / 2;
-    const ry = rh / 2;
-    for (let py = top; py < top + rh; py++) {
-      const ndy = (py + 0.5 - cy) / ry;
-      if (ndy * ndy >= 1) continue;
-      const span = rx * Math.sqrt(1 - ndy * ndy);
-      const xa = Math.round(cx - span);
-      fillRow(s, xa, Math.max(xa + 1, Math.round(cx + span)), py, r, g, b);
-    }
-  } else {
-    const pts =
-      kind === 'rect'
-        ? [
-            { x: left, y: top },
-            { x: left + rw, y: top },
-            { x: left + rw, y: top + rh },
-            { x: left, y: top + rh },
-          ]
-        : ellipsePerimeter(left, top, rw, rh);
-    if (dotted) dottedPath(s, pts, size, r, g, b, true);
-    else solidPath(s, pts, size, r, g, b, true);
-  }
-  const pad = filled ? 0 : Math.ceil(size / 2) + 2;
-  const bx = Math.max(0, left - pad);
-  const by = Math.max(0, top - pad);
-  return {
-    x: bx,
-    y: by,
-    w: Math.min(s.width, left + rw + pad) - bx,
-    h: Math.min(s.height, top + rh + pad) - by,
-  };
+  if (filled) fillPolygon(s, points, r, g, b);
+  else if (dotted) dottedPath(s, points, size, r, g, b, true);
+  else solidPath(s, points, size, r, g, b, true);
 }
 
 export function floodFill(

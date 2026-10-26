@@ -41,6 +41,7 @@ function viewAnimation(game: Game, a: ReplayAnimation): ReplayAnimation {
         fromTerritoryId: a.fromTerritoryId,
         toTerritoryId: a.toTerritoryId,
         troops: a.troops,
+        troopsRefunded: a.troopsRefunded,
         playerId: aliasOf(game, a.playerId),
       });
     case 'attack':
@@ -53,6 +54,7 @@ function viewAnimation(game: Game, a: ReplayAnimation): ReplayAnimation {
           a.defenderId === undefined ? undefined : aliasOf(game, a.defenderId),
         attackLosses: a.attackLosses,
         defenceLosses: a.defenceLosses,
+        troopsRefunded: a.troopsRefunded,
       });
     case 'toxins':
       return complete<typeof a>({

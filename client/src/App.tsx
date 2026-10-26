@@ -399,6 +399,8 @@ function App() {
               kickedMessage={kickedMessage}
               clearKickedMessage={() => setKickedMessage('')}
               serverUnreachable={serverUnreachable}
+              account={account}
+              onAccountChange={setAccount}
             />
           }
         />

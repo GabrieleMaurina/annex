@@ -4,7 +4,10 @@ import {
   MAX_DICE,
   MAX_HILLS,
   MAX_POINTS_VALUES,
+  MIN_ACCOUNT_AGE_VALUES,
+  MIN_GAMES_VALUES,
   MIN_HILLS,
+  RANKS,
 } from 'engine';
 import type { ReactNode } from 'react';
 import {
@@ -25,6 +28,7 @@ import {
   ATTACK_INCREMENT_HELP,
   BLITZ_HELP,
   BOUNTIES_HELP,
+  CAPITAL_REFUND_HELP,
   CARDS_HELP,
   CONTINENTS_HELP,
   DEFENCE_DICE_HELP,
@@ -37,6 +41,9 @@ import {
   HILLS_HELP,
   INITIAL_TROOPS_HELP,
   MAX_POINTS_HELP,
+  MIN_ACCOUNT_AGE_HELP,
+  MIN_GAMES_HELP,
+  MIN_RANK_HELP,
   MIN_TROOPS_HELP,
   NUKES_HELP,
   PLACEMENT_HELP,
@@ -162,6 +169,14 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     section: 'Setup',
     options: caps('connected', 'neighboring', 'unrestricted'),
     help: FORTIFICATION_HELP,
+  },
+  {
+    key: 'capitalRefund',
+    label: 'Capital Refund',
+    section: 'Setup',
+    modes: ['capitals'],
+    options: onOff(),
+    help: CAPITAL_REFUND_HELP,
   },
   {
     key: 'blitz',
@@ -359,7 +374,34 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     })),
     help: ATTACK_INCREMENT_HELP,
   },
+  {
+    key: 'minRank',
+    label: 'Min Rank',
+    section: 'Session',
+    options: RANKS.map((rank) => ({
+      value: rank.name.toLowerCase(),
+      label: rank.name,
+    })),
+    help: MIN_RANK_HELP,
+  },
+  {
+    key: 'minGames',
+    label: 'Min Games',
+    section: 'Session',
+    numeric: true,
+    options: options(...MIN_GAMES_VALUES.map(String)),
+    help: MIN_GAMES_HELP,
+  },
+  {
+    key: 'minAccountAge',
+    label: 'Min Account Age',
+    section: 'Session',
+    options: caps(...MIN_ACCOUNT_AGE_VALUES),
+    help: MIN_ACCOUNT_AGE_HELP,
+  },
 ];
+
+export const SEAT_REQUIREMENT_KEYS = ['minRank', 'minGames', 'minAccountAge'];
 
 function pick<T>(values: readonly T[]): T {
   return values[Math.floor(Math.random() * values.length)];
@@ -390,7 +432,8 @@ export function randomGameSettings(
   const gameMode = pick(GAME_MODES);
   const settings: Record<string, string | number> = { gameMode };
   for (const def of GAME_SETTINGS) {
-    if (def.key === 'anonymous') continue;
+    if (def.key === 'anonymous' || SEAT_REQUIREMENT_KEYS.includes(def.key))
+      continue;
     const { value } = def.numeric
       ? pickNearDefault(
           def.options,

@@ -1,19 +1,31 @@
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { useRef, useState } from 'react';
-import { Alert, Button, ButtonGroup, Form, Table } from 'react-bootstrap';
+import {
+  Alert,
+  Button,
+  ButtonGroup,
+  Dropdown,
+  Form,
+  Table,
+} from 'react-bootstrap';
 import { flushSync } from 'react-dom';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useNumberInput } from '../../common/inputs/useNumberInput';
 import { contrastTextColor } from '../../lib/palette';
+import { titleCase } from '../../lobby/settings/gameSettings';
 import {
   NO_CONTINENT,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
 import type { PaintTool } from './paint/paintTools';
 import { PALETTE_GROUPS } from './paint/paintTools';
+import { SHAPE_KINDS, shapeSides, type ShapeKind } from './paint/shapes';
 import { continentColor } from './palette';
 import NumberCell from './panel/NumberCell';
+import ShapeIcon from './panel/ShapeIcon';
+import TerritorySizeRange from './panel/TerritorySizeRange';
 import TimedLinksTable from './panel/TimedLinksTable';
+import ToolIcon from './panel/ToolIcon';
 
 const MIN_CONTINENTS = 0;
 const MAX_CONTINENTS = 20;
@@ -52,6 +64,8 @@ interface Props {
   setDotted: (value: boolean) => void;
   filled: boolean;
   setFilled: (value: boolean) => void;
+  shapeKind: ShapeKind | null;
+  setShapeKind: (kind: ShapeKind) => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -73,6 +87,10 @@ interface Props {
   onLinkTerritories: () => void;
   onDrawTerritories: () => void;
   onFillTerritories: () => void;
+  cellScale: number;
+  setCellScale: (value: number) => void;
+  borderPreview: boolean;
+  setBorderPreview: (value: boolean) => void;
   borderColors: string[];
   setBorderColors: (value: string[]) => void;
   timedMode: boolean;
@@ -112,15 +130,14 @@ function ColorSwatch({
   );
 }
 
-const TOOLS: { key: PaintTool; label: string }[] = [
-  { key: 'pencil', label: 'Pencil' },
-  { key: 'line', label: 'Line' },
-  { key: 'curve', label: 'Curve' },
-  { key: 'rect', label: 'Square' },
-  { key: 'ellipse', label: 'Circle' },
-  { key: 'fill', label: 'Fill' },
-  { key: 'sampler', label: 'Sampler' },
-  { key: 'eraser', label: 'Eraser' },
+const TOOLS: { key: PaintTool; label: string; icon?: string }[] = [
+  { key: 'pencil', label: 'Pencil', icon: '/icons/pencil.svg' },
+  { key: 'line', label: 'Line', icon: '/icons/line.svg' },
+  { key: 'curve', label: 'Curve', icon: '/icons/curve.svg' },
+  { key: 'shape', label: 'Shape' },
+  { key: 'fill', label: 'Fill', icon: '/icons/fill.svg' },
+  { key: 'sampler', label: 'Sampler', icon: '/icons/sample.svg' },
+  { key: 'eraser', label: 'Eraser', icon: '/icons/erase.svg' },
 ];
 
 function Panel(props: Props) {
@@ -152,6 +169,8 @@ function Panel(props: Props) {
     setDotted,
     filled,
     setFilled,
+    shapeKind,
+    setShapeKind,
     onUndo,
     onRedo,
     canUndo,
@@ -173,6 +192,10 @@ function Panel(props: Props) {
     onLinkTerritories,
     onDrawTerritories,
     onFillTerritories,
+    cellScale,
+    setCellScale,
+    borderPreview,
+    setBorderPreview,
     borderColors,
     setBorderColors,
     timedMode,
@@ -502,6 +525,17 @@ function Panel(props: Props) {
           </Button>
         </div>
       )}
+      <Form.Check
+        type="switch"
+        id="editor-border-preview"
+        label="Preview borders"
+        className="mb-2"
+        checked={borderPreview}
+        onChange={(e) => setBorderPreview(e.target.checked)}
+      />
+      {(borderPreview || mode === 'paint') && (
+        <TerritorySizeRange value={cellScale} onChange={setCellScale} />
+      )}
 
       {error && (
         <Alert variant="danger" className="py-1 px-2 small mb-2">
@@ -516,16 +550,76 @@ function Panel(props: Props) {
         {mode === 'paint' ? (
           <>
             <div className="d-flex flex-wrap gap-1 mb-1">
-              {TOOLS.map((t) => (
-                <Button
-                  key={t.key}
-                  size="sm"
-                  variant={tool === t.key ? 'primary' : 'outline-secondary'}
-                  onClick={() => setTool(tool === t.key ? null : t.key)}
-                >
-                  {t.label}
-                </Button>
-              ))}
+              {TOOLS.map((t) =>
+                t.key === 'shape' ? (
+                  <Dropdown
+                    key={t.key}
+                    as={ButtonGroup}
+                    onSelect={(key) => {
+                      if (!key) return;
+                      setShapeKind(key as ShapeKind);
+                      setTool('shape');
+                    }}
+                  >
+                    {shapeKind && (
+                      <Button
+                        size="sm"
+                        variant={
+                          tool === 'shape' ? 'primary' : 'outline-secondary'
+                        }
+                        className="d-flex align-items-center gap-1"
+                        onClick={() =>
+                          setTool(tool === 'shape' ? null : 'shape')
+                        }
+                      >
+                        <ShapeIcon kind={shapeKind} />
+                        {titleCase(shapeKind)}
+                      </Button>
+                    )}
+                    <Dropdown.Toggle
+                      size="sm"
+                      variant={
+                        tool === 'shape' ? 'primary' : 'outline-secondary'
+                      }
+                      split={!!shapeKind}
+                    >
+                      {shapeKind ? (
+                        <span className="visually-hidden">Choose shape</span>
+                      ) : (
+                        t.label
+                      )}
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu>
+                      {SHAPE_KINDS.map((k) => (
+                        <Dropdown.Item
+                          key={k}
+                          as="button"
+                          eventKey={k}
+                          active={tool === 'shape' && shapeKind === k}
+                          className="d-flex align-items-center gap-2"
+                        >
+                          <ShapeIcon kind={k} />
+                          <span className="flex-grow-1">{titleCase(k)}</span>
+                          <span className="small opacity-75">
+                            {shapeSides(k)}
+                          </span>
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown>
+                ) : (
+                  <Button
+                    key={t.key}
+                    size="sm"
+                    variant={tool === t.key ? 'primary' : 'outline-secondary'}
+                    onClick={() => setTool(tool === t.key ? null : t.key)}
+                    className="d-flex align-items-center gap-1"
+                  >
+                    {t.icon && <ToolIcon path={t.icon} />}
+                    {t.label}
+                  </Button>
+                ),
+              )}
             </div>
             <div className="d-flex gap-3 mb-2">
               <Form.Check

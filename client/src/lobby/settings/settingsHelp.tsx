@@ -243,6 +243,19 @@ export const HILLS_HELP = (
   </>
 );
 
+export const CAPITAL_REFUND_HELP = (
+  <>
+    Whether conquering an enemy capital gives back the troops it cost.
+    <ul className="mb-0 ps-3">
+      <li>Off: no refund.</li>
+      <li>
+        On: when you conquer an enemy capital, you get back as many troops as it
+        held at the start of your turn, added onto the capital itself.
+      </li>
+    </ul>
+  </>
+);
+
 export const INITIAL_TROOPS_HELP = (
   <>
     Average number of starting troops per territory. Each player starts with
@@ -521,3 +534,12 @@ export const VISIBILITY_HELP = (
     </ul>
   </>
 );
+
+export const MIN_RANK_HELP =
+  'Lowest rank a player needs to take a seat. Anyone can still join as a spectator. Players without an account have no rank, so only Private lets them sit. Seated players below a newly raised requirement are moved to the spectators.';
+
+export const MIN_GAMES_HELP =
+  'Fewest games a player needs in their game history to take a seat (only games that completed at least one round are recorded). Anyone can still join as a spectator. Players without an account have no games, so only 0 lets them sit. Seated players below a newly raised requirement are moved to the spectators.';
+
+export const MIN_ACCOUNT_AGE_HELP =
+  'How long ago a player must have created their account to take a seat. Anyone can still join as a spectator. Players without an account only sit with None. Seated players below a newly raised requirement are moved to the spectators.';

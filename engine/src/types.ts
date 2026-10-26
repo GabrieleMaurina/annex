@@ -79,6 +79,8 @@ export interface Player {
   name: string;
   country: string | null;
   elo: number | null;
+  gamesPlayed: number | null;
+  accountCreatedAt: number | null;
   gameName: string | null;
   connected: boolean;
   isBot: boolean;
@@ -145,6 +147,7 @@ export type Starvation = 'off' | 'territory' | 'total' | 'percent';
 export type Continents = 'off' | 'on';
 export type RoundTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
+export type CapitalRefund = 'off' | 'on';
 export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
@@ -191,6 +194,7 @@ export type ReplayAnimation =
       fromTerritoryId: number;
       toTerritoryId: number;
       troops: number;
+      troopsRefunded?: number;
       playerId: number;
     }
   | {
@@ -201,6 +205,7 @@ export type ReplayAnimation =
       defenderId: number | undefined;
       attackLosses: number;
       defenceLosses: number;
+      troopsRefunded?: number;
     }
   | { type: 'entrench'; territoryId: number; troops: number; playerId: number }
   | { type: 'starve'; territoryId: number; troops: number; playerId: number }
@@ -373,6 +378,7 @@ export interface Game {
   allianceInitiators: Map<string, number>;
   blitz: Blitz;
   bounties: Bounties;
+  capitalRefund: CapitalRefund;
   cards: CardsMode;
   continents: Continents;
   defenceDice: number;
@@ -389,6 +395,9 @@ export interface Game {
   troopsPerTerritory: number;
   maxPoints: number;
   hills: number;
+  minRank: string;
+  minGames: number;
+  minAccountAge: string;
   hillTerritoryIds: number[];
   points: Map<number, number>;
   continentId: number | null;
@@ -446,12 +455,15 @@ export interface Game {
   territoryToxins: Map<number, { permanent: boolean; roundsRemaining: number }>;
   unlockedTileIds: Set<number>;
   capitalTerritoryIds: Set<number>;
+  capitalRefunds: Map<number, number>;
   playerMissions: Map<number, Mission>;
   hostPriority: number[];
   substituteFor: Map<number, number>;
   lobbyDeparted: Map<number, { team: number; color: number }>;
   surrenderedIds: Set<number>;
   disconnectedTurns: Map<number, number>;
+  surrenderRounds: Map<number, number>;
+  autoSurrenderedIds: Set<number>;
   winnerIds: number[];
   deck: Card[];
   playerCards: Map<number, Card[]>;

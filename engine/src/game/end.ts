@@ -1,5 +1,6 @@
 import { revealBotProfiles } from '../bots/reveal';
 import { callbacks } from '../callbacks';
+import { playersById } from '../session/players';
 import { broadcastGameResults, broadcastHomeGames } from '../session/store';
 import { Game } from '../types';
 import { ownsAnyTerritory, supremacyTerritoriesToWin } from './mechanics';
@@ -24,11 +25,25 @@ export const HUMANS_ABANDONED_GRACE_MS = 5000;
 
 function emitGameEnded(game: Game): void {
   const seen = new Set<number>();
-  const ranking: { playerId: number; team: number }[] = [];
+  const ranking: {
+    playerId: number;
+    team: number;
+    surrenderRound: number | null;
+    disconnected: boolean;
+  }[] = [];
   for (const id of game.finalRanking) {
     if (seen.has(id)) continue;
     seen.add(id);
-    ranking.push({ playerId: id, team: game.playerTeams.get(id) ?? 0 });
+    const lockedWinner = game.earlyWin && game.winnerIds.includes(id);
+    const aliveAndAway =
+      !game.deathOrder.includes(id) && !playersById.get(id)?.connected;
+    ranking.push({
+      playerId: id,
+      team: game.playerTeams.get(id) ?? 0,
+      surrenderRound: game.surrenderRounds.get(id) ?? null,
+      disconnected:
+        game.autoSurrenderedIds.has(id) || (aliveAndAway && !lockedWinner),
+    });
   }
   const payload = { winnerIds: game.winnerIds };
   for (const viewerId of [...game.playerIds, ...game.spectatorIds])

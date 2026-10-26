@@ -1,6 +1,6 @@
 import { Badge, Table } from 'react-bootstrap';
 import { contrastTextColor, playerColor } from '../lib/palette';
-import type { GameState } from '../lib/types';
+import type { EloPenalty, GameState } from '../lib/types';
 import Flag from './badges/Flag';
 import RankIcon from './badges/RankIcon';
 import { useWhiteIcon } from './icon';
@@ -21,7 +21,13 @@ export interface ResultRow {
   userId?: string | null;
   elo?: number | null;
   eloDelta?: number | null;
+  eloPenalty?: EloPenalty | null;
 }
+
+const PENALTY_LABELS: Record<EloPenalty, string> = {
+  disconnected: 'Disconnected penalty',
+  surrender: 'Early surrender penalty',
+};
 
 function formatElo(row: ResultRow): string {
   if (row.elo == null || row.eloDelta == null) return '-';
@@ -218,7 +224,16 @@ function ResultsTable({
                     )}
                   </div>
                 </td>
-                {showElo && <td style={rowStyle}>{formatElo(stats)}</td>}
+                {showElo && (
+                  <td style={rowStyle}>
+                    {formatElo(stats)}
+                    {stats.eloPenalty && (
+                      <Tip text={PENALTY_LABELS[stats.eloPenalty]}>
+                        <span className="ms-1 fw-bold">!</span>
+                      </Tip>
+                    )}
+                  </td>
+                )}
                 {isPointsMode && <td style={rowStyle}>{p.points}</td>}
                 <td style={rowStyle}>
                   {stats.turnsPlayed}/{roundNumber + 1}

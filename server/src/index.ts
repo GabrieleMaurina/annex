@@ -3,6 +3,7 @@ import {
   EngineCallbacks,
   EventKey,
   EventPayload,
+  meetsRequirements,
   viewEvent,
 } from 'engine';
 import { createServer } from 'http';
@@ -46,7 +47,7 @@ import { getGameMeta, isGamePublic, reconcileGameMeta } from './gameMeta';
 import { persistFinishedGame } from './games';
 import { registerHomeHandlers } from './home';
 import { createHttpApp } from './http/app';
-import { LiveGameRow } from './http/liveGames';
+import { LiveGameRow, SeatProfile } from './http/liveGames';
 import { gameRoomName } from './sockets/rooms';
 import {
   emitTo,
@@ -78,7 +79,11 @@ function emptySlots(game: LiveGameRow): number {
   return game.slots - game.playerCount;
 }
 
-function randomGame(token: string, userId: string | null): string | null {
+function randomGame(
+  token: string,
+  userId: string | null,
+  profile: SeatProfile,
+): string | null {
   const playerId = playerIdForIdentity(token, userId);
   const currentGame =
     playerId === undefined ? null : engine.playerGameName(playerId);
@@ -89,7 +94,8 @@ function randomGame(token: string, userId: string | null): string | null {
         game.state === 'lobby' &&
         !game.hasPassword &&
         emptySlots(game) > 0 &&
-        (playerId === undefined || !game.bannedIds.includes(playerId)),
+        (playerId === undefined || !game.bannedIds.includes(playerId)) &&
+        meetsRequirements(game.settings, profile),
     )
     .sort((a, b) => emptySlots(a) - emptySlots(b) || a.createdAt - b.createdAt);
   return candidates[0]?.name ?? null;

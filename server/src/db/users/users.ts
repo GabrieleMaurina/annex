@@ -24,6 +24,7 @@ export interface User {
   emailValidated: boolean;
   elo: number;
   country: string;
+  createdAt: number;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
@@ -161,6 +162,7 @@ function toUser(doc: WithId<UserDoc>): User {
     emailValidated: doc.validated_email,
     elo: doc.elo,
     country: doc.country,
+    createdAt: doc._id.getTimestamp().getTime(),
     clientSettings: sanitizeClientSettings(doc.clientSettings),
     gameSettings: sanitizeGameSettings(doc.gameSettings),
     homeFilters: sanitizeHomeFilters(doc.homeFilters),

@@ -13,9 +13,12 @@ import {
   viewResponse,
 } from 'engine';
 import { Socket } from 'socket.io';
+import { clientIp } from '../../auth/cookies';
+import { allowAuthAttempt } from '../../auth/rateLimit';
 import { getPlayerMapById } from '../../db';
+import { isImageAllowed } from '../../moderation';
 import { playerIdBySocketId } from '../../sockets/socketRooms';
-import { isObject } from '../../validate';
+import { isObject, parseMapInput } from '../../validate';
 
 type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };
 
@@ -58,6 +61,56 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           );
         })
         .catch(() => callback({ ok: false, error: 'server error' }));
+    },
+  );
+
+  socket.on(
+    'game:selectEarthMap',
+    (data: unknown, callback: (response: GameResponse) => void) => {
+      if (typeof callback !== 'function') return;
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
+        return callback({ ok: false, error: 'not in a game' });
+      const hostError = engine.mapSelectionError(playerId);
+      if (hostError) return callback({ ok: false, error: hostError });
+      if (
+        !allowAuthAttempt(
+          clientIp(socket.handshake.headers, socket.handshake.address),
+        )
+      )
+        return callback({ ok: false, error: 'too many requests' });
+
+      const parsed = parseMapInput({
+        ...(isObject(data) ? data : {}),
+        generation: null,
+      });
+      if (!parsed.ok) return callback(parsed);
+      const map = parsed.input;
+
+      isImageAllowed(map.imageDataUrl)
+        .then((allowed) => {
+          if (!allowed) return callback({ ok: false, error: 'image rejected' });
+          engine.selectPlayerMap(
+            playerId,
+            {
+              id: null,
+              name: map.name,
+              territories: map.territories,
+              seaTerritories: map.seaTerritories,
+              bonuses: map.bonuses,
+              wraps: map.wraps,
+              timedConnections: map.timedConnections,
+              lockedTiles: map.lockedTiles,
+              imageSrc: map.imageDataUrl,
+              borderColors: map.borderColors,
+              territoryNames: map.territoryNames,
+              seaNames: map.seaNames,
+              continentNames: map.continentNames,
+            },
+            (response) => callback(viewResponse(playerId, response)),
+          );
+        })
+        .catch(() => callback({ ok: false, error: 'moderation failed' }));
     },
   );
 

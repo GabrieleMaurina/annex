@@ -130,3 +130,5 @@ export interface PlayerMapSaveBody {
   continentNames: string[];
   generation: GenerateMapInput | null;
 }
+
+export type EarthMapInput = Omit<PlayerMapSaveBody, 'generation'>;

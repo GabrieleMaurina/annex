@@ -24,7 +24,11 @@ import {
 } from './lifecycle/bots';
 import { createGame } from './lifecycle/create';
 import { joinGame } from './lifecycle/join';
-import { generateMap, selectPlayerMap } from './lifecycle/mapgen';
+import {
+  generateMap,
+  mapSelectionError,
+  selectPlayerMap,
+} from './lifecycle/mapgen';
 import {
   cycleBotSpeed,
   cycleColor,
@@ -246,6 +250,7 @@ export function createEngine(
 
     generateMap,
     selectPlayerMap,
+    mapSelectionError,
 
     addBot,
     setBotProfile,

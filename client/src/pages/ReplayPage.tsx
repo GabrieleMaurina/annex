@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
+import { formatError } from '../common/formatError';
 import { connector } from '../connector';
 import { registerGeneratedMap } from '../game/mapData';
 import GameReplayView from '../game/replay/GameReplayView';
 import { foldStoredReplay } from '../game/replay/replay';
 import ReplayLoading from '../game/replay/ReplayLoading';
+import { isLoggedIn } from '../lib/player';
 import type { GameState, ReplayTerritory, StoredGame } from '../lib/types';
 
 interface Props {
@@ -211,6 +213,8 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
     mapTerritoryCount: number;
   } | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [mapSave, setMapSave] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [mapSaveError, setMapSaveError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -238,6 +242,8 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
           });
         }
         setNotFound(false);
+        setMapSave('idle');
+        setMapSaveError('');
         setResolved({
           doc: game,
           mapRenderName: game.mapId,
@@ -251,6 +257,15 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
   }, [id]);
 
   const doc = resolved?.doc ?? null;
+
+  function saveMap() {
+    setMapSave('saving');
+    setMapSaveError('');
+    connector.saveReplayMap(id, (res) => {
+      setMapSave(res.ok ? 'saved' : 'idle');
+      if (!res.ok) setMapSaveError(res.error);
+    });
+  }
 
   const folded = useMemo(
     () =>
@@ -282,6 +297,8 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
     (finalFrame?.radiationTerritories ?? folded.data.initialRadiation).length -
     (finalFrame?.toxinTerritories ?? []).filter((t) => t.permanent).length;
   const game = buildGameState(doc, finalTerritories, availableTerritoryCount);
+  const mapSavable =
+    isLoggedIn() && (doc.mapGeneration !== null || doc.playerMapId === null);
 
   return (
     <GameReplayView
@@ -290,6 +307,28 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
       selfId={null}
       mapRenderName={resolved.mapRenderName}
       replay={folded}
+      belowTable={
+        mapSavable && (
+          <div className="d-flex flex-column align-items-center mt-3">
+            <Button
+              variant="outline-primary"
+              disabled={mapSave !== 'idle'}
+              onClick={saveMap}
+            >
+              {mapSave === 'saved'
+                ? 'Map saved'
+                : mapSave === 'saving'
+                  ? 'Saving…'
+                  : 'Save map'}
+            </Button>
+            {mapSaveError && (
+              <div className="text-danger small mt-1">
+                {formatError(mapSaveError)}
+              </div>
+            )}
+          </div>
+        )
+      }
       navigate={navigate}
       onViewChange={onViewChange}
       settingsMenuOpen={settingsMenuOpen}

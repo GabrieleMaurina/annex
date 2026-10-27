@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  createPlayerMap,
   FILL_VALUES,
   GAME_ENUMS,
   GamesQuery,
@@ -7,11 +8,13 @@ import {
   getGameById,
   getMapById,
   listGames,
+  listPlayerMapNames,
   MAP_SIZES,
   searchUsers,
   TILE_SHAPES,
 } from '../../db';
-import { identityOf } from '../middleware';
+import { MAX_NAME_LENGTH, validateMapGeneration } from '../../validate';
+import { identityOf, rateLimited } from '../middleware';
 import {
   intParam,
   optBoolParam,
@@ -157,4 +160,57 @@ publicGamesRouter.get('/replay-maps/:id', (req, res) => {
         : res.status(404).json({ ok: false, error: 'not found' }),
     )
     .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
+});
+
+function uniqueMapName(name: string, taken: string[]): string {
+  const used = new Set(taken.map((n) => n.toLowerCase()));
+  let candidate = name.slice(0, MAX_NAME_LENGTH);
+  for (let n = 2; used.has(candidate.toLowerCase()); n++) {
+    const suffix = ` (${n})`;
+    candidate = name.slice(0, MAX_NAME_LENGTH - suffix.length) + suffix;
+  }
+  return candidate;
+}
+
+gameHistoryRouter.post('/games/replay/:id/save-map', (req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  if (rateLimited(req)) {
+    res.json({ ok: false, error: 'too many requests' });
+    return;
+  }
+  getGameById(req.params.id)
+    .then((game) => {
+      if (!game) {
+        res.json({ ok: false, error: 'game not found' });
+        return;
+      }
+      const generation = validateMapGeneration(game.mapGeneration);
+      if (
+        !generation.ok ||
+        (!generation.generation && game.playerMapId !== null)
+      ) {
+        res.json({ ok: false, error: 'library map' });
+        return;
+      }
+      return Promise.all([
+        getMapById(game.mapId),
+        listPlayerMapNames(session.userId),
+      ]).then(([map, names]) => {
+        if (!map) {
+          res.json({ ok: false, error: 'game not found' });
+          return;
+        }
+        return createPlayerMap(session.userId, {
+          ...map,
+          name: uniqueMapName(map.name, names),
+          image: Buffer.from(map.image, 'base64'),
+          generation: generation.generation,
+        }).then((result) => res.json(result));
+      });
+    })
+    .catch(() => res.json({ ok: false, error: 'server error' }));
 });

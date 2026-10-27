@@ -1,4 +1,3 @@
-import { Rng } from '../../../core/rng';
 import { OsmFeatures, OsmWater } from '../types';
 import { fillRings, strokeLine } from './rasterize';
 import { smoothCoast } from './smooth';
@@ -8,7 +7,6 @@ const RIVER_LENGTH_RATIO = 0.25;
 const RIVER_REACH = 4;
 const RIVER_SHARE = 0.6;
 const MIN_RIVER_BORDER = 12;
-const BRIDGE_CHANCE = 0.2;
 const PAIR_KEY_BASE = 65536;
 
 export interface RiverBorders {
@@ -141,7 +139,6 @@ export function cutRiverBorders(
   width: number,
   height: number,
   adjacency: Map<number, Set<number>>,
-  rng: Rng,
 ): RiverBorders {
   const river = riverMask(features, width, height);
   const border = new Map<number, { river: number; pixels: number[] }>();
@@ -170,7 +167,7 @@ export function cutRiverBorders(
     result.rivers.push([a, b]);
     adjacency.get(a)!.delete(b);
     adjacency.get(b)!.delete(a);
-    if (rng() >= BRIDGE_CHANCE && connected(adjacency, a, b)) continue;
+    if (connected(adjacency, a, b)) continue;
     adjacency.get(a)!.add(b);
     adjacency.get(b)!.add(a);
     result.bridges.push(middlePixel(pixels, width));

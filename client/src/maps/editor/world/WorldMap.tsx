@@ -1,14 +1,16 @@
 import {
+  LngLat,
   Map as MapLibre,
   MercatorCoordinate,
   setWorkerUrl,
   type ErrorEvent,
+  type GeoJSONSource,
 } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
-import type { GazetteerPlace } from './gazetteer';
+import { loadOutline, type GazetteerPlace } from './gazetteer';
 import type { WorldFrame } from './tileCover';
 
 setWorkerUrl(workerUrl);
@@ -16,7 +18,19 @@ setWorkerUrl(workerUrl);
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
 const MARGIN = 56;
 const QUARTER_TURN = 90;
+const MIN_ZOOM = 0;
 const MAX_ZOOM = 16;
+const FIT_GAP = 0.06;
+const MAX_LATITUDE = 85.051129;
+const OUTLINE_SOURCE = 'selected-outline';
+const HIGHLIGHT_COLOR = '#ffffff';
+const HIGHLIGHT_WIDTH = 3;
+const ELLIPSE_POINTS = 64;
+
+const NO_HIGHLIGHT: GeoJSON.FeatureCollection = {
+  type: 'FeatureCollection',
+  features: [],
+};
 
 interface Rect {
   left: number;
@@ -35,6 +49,7 @@ interface Props {
   aspect: number;
   rightInset: number;
   target: GazetteerPlace | null;
+  highlight: GazetteerPlace | null;
   initialView: EarthView;
   onFrameChange: (frame: WorldFrame) => void;
   onViewChange: (view: EarthView) => void;
@@ -76,6 +91,66 @@ function worldFrame(map: MapLibre, rect: Rect): WorldFrame {
   };
 }
 
+function closedRing(ring: number[]): [number, number][] {
+  const points: [number, number][] = [];
+  for (let i = 0; i < ring.length; i += 2) points.push([ring[i], ring[i + 1]]);
+  return [...points, points[0]];
+}
+
+function boundsEllipse([w, s, e, n]: GazetteerPlace['bounds']): [
+  number,
+  number,
+][] {
+  const points: [number, number][] = [];
+  for (let i = 0; i <= ELLIPSE_POINTS; i++) {
+    const angle = (i / ELLIPSE_POINTS) * 2 * Math.PI;
+    points.push([
+      (w + e) / 2 + ((e - w) / 2) * Math.cos(angle),
+      (s + n) / 2 + ((n - s) / 2) * Math.sin(angle),
+    ]);
+  }
+  return points;
+}
+
+function highlightOf(
+  place: GazetteerPlace,
+  rings: number[][],
+): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'MultiLineString',
+          coordinates:
+            rings.length > 0
+              ? rings.map(closedRing)
+              : [boundsEllipse(place.bounds)],
+        },
+      },
+    ],
+  };
+}
+
+function showHighlight(map: MapLibre, highlight: GeoJSON.FeatureCollection) {
+  map.getSource<GeoJSONSource>(OUTLINE_SOURCE)?.setData(highlight);
+}
+
+function addHighlightLayer(
+  map: MapLibre,
+  highlight: GeoJSON.FeatureCollection,
+) {
+  map.addSource(OUTLINE_SOURCE, { type: 'geojson', data: highlight });
+  map.addLayer({
+    id: OUTLINE_SOURCE,
+    type: 'line',
+    source: OUTLINE_SOURCE,
+    paint: { 'line-color': HIGHLIGHT_COLOR, 'line-width': HIGHLIGHT_WIDTH },
+  });
+}
+
 function nextQuarterTurn(bearing: number): number {
   const normalized = ((Math.round(bearing) % 360) + 360) % 360;
   return ((Math.floor(normalized / QUARTER_TURN) + 1) * QUARTER_TURN) % 360;
@@ -85,6 +160,7 @@ function WorldMap({
   aspect,
   rightInset,
   target,
+  highlight,
   initialView,
   onFrameChange,
   onViewChange,
@@ -95,6 +171,7 @@ function WorldMap({
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [bearing, setBearing] = useState(initialView.bearing);
   const initial = useRef(initialView);
+  const shownHighlight = useRef(NO_HIGHLIGHT);
   const rect = frameRect(size.width, size.height, aspect, rightInset);
   const latest = useRef({ rect, size, onFrameChange, onViewChange, onError });
   useEffect(() => {
@@ -113,7 +190,15 @@ function WorldMap({
       attributionControl: false,
       pitchWithRotate: false,
       touchPitch: false,
+      transformConstrain: (lngLat, zoom) => ({
+        center: new LngLat(
+          lngLat.lng,
+          Math.max(-MAX_LATITUDE, Math.min(MAX_LATITUDE, lngLat.lat)),
+        ),
+        zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom)),
+      }),
     });
+    map.on('load', () => addHighlightLayer(map, shownHighlight.current));
     map.on('rotate', () => setBearing(map.getBearing()));
     const report = () =>
       latest.current.onFrameChange(worldFrame(map, latest.current.rect));
@@ -153,9 +238,27 @@ function WorldMap({
   }, [rect.left, rect.top, rect.width, rect.height]);
 
   useEffect(() => {
+    let cancelled = false;
+    const show = (next: GeoJSON.FeatureCollection) => {
+      if (cancelled) return;
+      shownHighlight.current = next;
+      if (mapRef.current) showHighlight(mapRef.current, next);
+    };
+    if (!highlight) show(NO_HIGHLIGHT);
+    else
+      loadOutline(highlight)
+        .then((rings) => show(highlightOf(highlight, rings)))
+        .catch(() => show(highlightOf(highlight, [])));
+    return () => {
+      cancelled = true;
+    };
+  }, [highlight]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!map || !target) return;
     const { rect: r, size: view } = latest.current;
+    const gap = Math.min(r.width, r.height) * FIT_GAP;
     const [w, s, e, n] = target.bounds;
     map.fitBounds(
       [
@@ -164,10 +267,10 @@ function WorldMap({
       ],
       {
         padding: {
-          left: r.left,
-          right: view.width - r.left - r.width,
-          top: r.top,
-          bottom: view.height - r.top - r.height,
+          left: r.left + gap,
+          right: view.width - r.left - r.width + gap,
+          top: r.top + gap,
+          bottom: view.height - r.top - r.height + gap,
         },
         bearing: map.getBearing(),
         duration: 800,

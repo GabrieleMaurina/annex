@@ -3,6 +3,9 @@ import { Atoms } from './regions';
 
 const MERGE_SHARE = 0.5;
 const GROUP_SHARE = 0.25;
+const EDGE_FRAGMENT_SHARE = 0.5;
+const BALANCE_SPLIT_RATIO = 1.5;
+export const GIANT_RATIO = 6;
 
 interface RegionSet {
   regionOfAtom: Int32Array;
@@ -135,6 +138,48 @@ function mergeDown(
     if (neighbor === null) continue;
     mergeInto(set, neighbor, region);
     heapPush(heap, [set.area.get(neighbor)!, neighbor]);
+  }
+}
+
+function edgeAtoms(atoms: Atoms, width: number): Set<number> {
+  const height = atoms.atomOf.length / width;
+  const edge = new Set<number>();
+  const add = (x: number, y: number) => {
+    const atom = atoms.atomOf[y * width + x];
+    if (atom >= 0) edge.add(atom);
+  };
+  for (let x = 0; x < width; x++) {
+    add(x, 0);
+    add(x, height - 1);
+  }
+  for (let y = 0; y < height; y++) {
+    add(0, y);
+    add(width - 1, y);
+  }
+  return edge;
+}
+
+function mergeEdgeFragments(
+  set: RegionSet,
+  parentOf: (region: number) => number,
+  edge: Set<number>,
+  maxArea: number,
+): void {
+  const stuck = new Set<number>();
+  for (;;) {
+    let fragment: number | null = null;
+    for (const [region, area] of set.area)
+      if (
+        area < maxArea &&
+        !stuck.has(region) &&
+        (fragment === null || area < set.area.get(fragment)!) &&
+        set.atomsOf.get(region)!.some((atom) => edge.has(atom))
+      )
+        fragment = region;
+    if (fragment === null) return;
+    const neighbor = bestNeighbor(set, fragment, parentOf);
+    if (neighbor === null) stuck.add(fragment);
+    else mergeInto(set, neighbor, fragment);
   }
 }
 
@@ -326,6 +371,7 @@ function splitByFinerLevels(
   cutIndex: number,
   targetArea: number,
   max: number,
+  minRatio: number,
 ): void {
   const done = new Set<number>();
   for (;;) {
@@ -333,7 +379,7 @@ function splitByFinerLevels(
     for (const [region, area] of set.area)
       if (
         !done.has(region) &&
-        Math.round(area / targetArea) >= 2 &&
+        area / targetArea >= minRatio &&
         (target === null || area > set.area.get(target)!)
       )
         target = region;
@@ -374,17 +420,30 @@ export function fitRegions(
   minArea: number,
   targetArea: number,
   [min, max]: [number, number],
+  width: number,
 ): FittedRegions {
   const set = buildRegionSet(atoms, levels.components[cutIndex]);
   const parentComponent = levels.components[parentIndex];
   const parentOf = (region: number) =>
     parentComponent[set.atomsOf.get(region)![0]];
   mergeDown(set, parentOf, minArea, max);
+  mergeEdgeFragments(
+    set,
+    parentOf,
+    edgeAtoms(atoms, width),
+    targetArea * EDGE_FRAGMENT_SHARE,
+  );
   const balance = set.atomsOf.size < min;
-  if (balance) {
-    mergeDown(set, parentOf, targetArea * MERGE_SHARE, max);
-    splitByFinerLevels(set, atoms, levels, cutIndex, targetArea, max);
-  }
+  if (balance) mergeDown(set, parentOf, targetArea * MERGE_SHARE, max);
+  splitByFinerLevels(
+    set,
+    atoms,
+    levels,
+    cutIndex,
+    targetArea,
+    max,
+    balance ? BALANCE_SPLIT_RATIO : GIANT_RATIO,
+  );
   const dense = new Map<number, number>();
   for (const region of set.atomsOf.keys()) dense.set(region, dense.size);
   const grid = new Int32Array(atoms.atomOf.length).fill(-1);

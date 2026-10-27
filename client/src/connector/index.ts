@@ -9,6 +9,7 @@ import type {
   AccountResult,
   Ack,
   ClientSettings,
+  EarthMapInput,
   EloHistoryPoint,
   FriendsOverview,
   GameSettingsInput,
@@ -261,6 +262,16 @@ export const connector = {
     httpGet<StoredGame>('/games/replay/' + encodeURIComponent(id))
       .then((game) => cb('id' in game ? game : null))
       .catch(() => cb(null));
+  },
+
+  saveReplayMap(gameId: string, cb: (res: SaveMapAck) => void): void {
+    httpSend<SaveMapAck>(
+      'POST',
+      '/games/replay/' + encodeURIComponent(gameId) + '/save-map',
+      {},
+    )
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
   getStoredMap(id: string, cb: (map: StoredMap | null) => void): void {
@@ -640,6 +651,10 @@ export const connector = {
 
   selectPlayerMap(data: { mapId: string }, cb: AckCallback): void {
     route('game:selectPlayerMap', data, cb);
+  },
+
+  selectEarthMap(data: EarthMapInput, cb: AckCallback): void {
+    route('game:selectEarthMap', data, cb);
   },
 
   addBot(

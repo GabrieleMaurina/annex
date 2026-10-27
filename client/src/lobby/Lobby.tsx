@@ -1,4 +1,4 @@
-import { isBlitzOffAllowed } from 'engine';
+import { isBlitzOffAllowed, type OsmGeneratedMap } from 'engine';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
@@ -22,6 +22,11 @@ import type {
   GenerateMapInput,
   SavedBot,
 } from '../lib/types';
+import {
+  decodeToSurface,
+  loadImage,
+  surfaceToDataUrl,
+} from '../maps/editor/paint/surface';
 import BannedList from './BannedList';
 import Header from './Header';
 import PlayerRoster from './PlayerRoster';
@@ -94,11 +99,29 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     });
   }
 
+  function selectEarthMap(map: OsmGeneratedMap, onSettled: () => void) {
+    const { imageSrc, ...rest } = map;
+    loadImage(imageSrc).then((img) =>
+      connector.selectEarthMap(
+        { ...rest, wraps: [], image: surfaceToDataUrl(decodeToSurface(img)) },
+        (res: Ack) => {
+          onSettled();
+          if (!res.ok) {
+            setSettingsError(res.error);
+            return;
+          }
+          setSettingsError('');
+          setGame(res.game);
+        },
+      ),
+    );
+  }
+
   const isHost = game.hostId === selfId;
   const isTeamDeathmatch = game.gameMode === 'team deathmatch';
   const maxTeams = game.players.length;
   const teamCount = new Set(game.players.map((p) => p.team)).size;
-  const hasMap = !!game.mapGeneration || !!game.playerMapId;
+  const hasMap = !!game.mapName;
   const canStart =
     hasMap &&
     game.players.length >= 2 &&
@@ -323,6 +346,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
           applySettings={applySettings}
           generateMap={generateMap}
           selectPlayerMap={selectPlayerMap}
+          selectEarthMap={selectEarthMap}
           headerActions={
             isHost && (
               <Button disabled={!canStart} onClick={startGame}>

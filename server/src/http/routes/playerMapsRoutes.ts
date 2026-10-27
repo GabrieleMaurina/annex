@@ -3,12 +3,10 @@ import {
   FILL_VALUES,
   GENERATION_TYPE_VALUES,
   GenerationType,
-  LockedTile,
   MAP_SIZE_VALUES,
   MapSize,
   TILE_SHAPE_VALUES,
   TileShape,
-  TimedConnection,
 } from 'engine';
 import { Response, Router } from 'express';
 import {
@@ -31,27 +29,11 @@ import {
   updatePlayerMap,
 } from '../../db';
 import { isImageAllowed } from '../../moderation';
-import {
-  isBorderColors,
-  isObject,
-  MapGeneration,
-  MapSeaTerritory,
-  MapTerritory,
-  MapWrap,
-  readImageDimensions,
-  validateMapGeneration,
-  validateMapGeometry,
-  validateMapNames,
-} from '../../validate';
+import { isObject, parseMapInput } from '../../validate';
 import { identityOf, rateLimited } from '../middleware';
 import { intParam, optBoolParam, optIntParam } from '../queryParams';
 
 export const playerMapsRouter = Router();
-
-const IMAGE_RE =
-  /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/;
-const MAX_IMAGE_BYTES = 6_000_000;
-const MAX_NAME_LENGTH = 40;
 
 const SORTS: PlayerMapSort[] = [
   'mostLiked',
@@ -69,24 +51,6 @@ function viewerId(res: Response): string | undefined {
   return identityOf(res).session?.userId;
 }
 
-interface ParsedInput {
-  name: string;
-  territories: MapTerritory[];
-  seaTerritories: MapSeaTerritory[];
-  bonuses: number[];
-  wraps: MapWrap[];
-  timedConnections: TimedConnection[];
-  lockedTiles: LockedTile[];
-  image: Buffer;
-  imageMime: string;
-  imageDataUrl: string;
-  borderColors: string[];
-  generation: MapGeneration | null;
-  territoryNames: string[] | null;
-  seaNames: string[] | null;
-  continentNames: string[] | null;
-}
-
 function enumParam<T extends string>(
   value: unknown,
   allowed: readonly T[],
@@ -95,73 +59,6 @@ function enumParam<T extends string>(
     (allowed as readonly string[]).includes(value)
     ? (value as T)
     : undefined;
-}
-
-type ParseResult =
-  { ok: true; input: ParsedInput } | { ok: false; error: string };
-
-function parseMapInput(body: Record<string, unknown>): ParseResult {
-  const name = typeof body.name === 'string' ? body.name.trim() : '';
-  if (!name || name.length > MAX_NAME_LENGTH)
-    return { ok: false, error: 'invalid name' };
-
-  const generation = validateMapGeneration(body.generation);
-  if (!generation.ok) return generation;
-
-  const image = body.image;
-  const match = typeof image === 'string' ? image.match(IMAGE_RE) : null;
-  if (!match) return { ok: false, error: 'invalid image' };
-  const data = Buffer.from(match[2], 'base64');
-  if (data.length === 0 || data.length > MAX_IMAGE_BYTES)
-    return { ok: false, error: 'invalid image' };
-  const dimensions = readImageDimensions(data, match[1]);
-  if (!dimensions) return { ok: false, error: 'invalid image' };
-
-  const geometry = validateMapGeometry(
-    body.territories,
-    body.seaTerritories,
-    body.bonuses,
-    body.wraps,
-    body.timedConnections,
-    body.lockedTiles,
-    dimensions.width,
-    dimensions.height,
-  );
-  if (!geometry.ok) return geometry;
-
-  const names = validateMapNames(
-    body.territoryNames,
-    body.seaNames,
-    body.continentNames,
-    geometry.territories.length,
-    geometry.seaTerritories.length,
-    geometry.bonuses.length,
-  );
-  if (!names.ok) return names;
-
-  if (!isBorderColors(body.borderColors))
-    return { ok: false, error: 'invalid border colors' };
-
-  return {
-    ok: true,
-    input: {
-      name,
-      territories: geometry.territories,
-      seaTerritories: geometry.seaTerritories,
-      bonuses: geometry.bonuses,
-      wraps: geometry.wraps,
-      timedConnections: geometry.timedConnections,
-      lockedTiles: geometry.lockedTiles,
-      image: data,
-      imageMime: match[1],
-      imageDataUrl: match[0],
-      borderColors: body.borderColors,
-      generation: generation.generation,
-      territoryNames: names.names.territoryNames,
-      seaNames: names.names.seaNames,
-      continentNames: names.names.continentNames,
-    },
-  };
 }
 
 function moderate(dataUrl: string): Promise<'error' | boolean> {

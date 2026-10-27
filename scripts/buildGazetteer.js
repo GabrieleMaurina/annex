@@ -5,6 +5,7 @@ const zlib = require('zlib');
 const WORLD = path.join(__dirname, '../client/src/maps/editor/world');
 const GAZETTEER_OUT = path.join(WORLD, 'gazetteer.json');
 const REGIONS_OUT = path.join(WORLD, 'regions.json');
+const CITIES_OUT = path.join(WORLD, 'cities.json');
 const UA = 'AnnexGame-gazetteer/1.0 (+https://www.annexgame.com)';
 const NE =
   'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/';
@@ -31,6 +32,13 @@ const MIN_PART_KM2 = 200;
 const CITY_ABBREVIATION = /^[A-Z]{2,5}$/;
 const POSTAL_COUNTRIES = new Set(['US', 'CA', 'AU']);
 const COUNTY_COUNTRY = 'US';
+const URBAN_TOLERANCE = 0.002;
+const URBAN_PRECISION = 1000;
+const MAX_URBAN_GAP_KM = 2;
+const MIN_URBAN_SPAN_RATIO = 0.5;
+const MAX_URBAN_SPAN_RATIO = 3;
+const URBAN_CLIP_RADIUS = 1.5;
+const CLIP_SIDES = 64;
 
 function download(url) {
   return fetch(url, { headers: { 'User-Agent': UA } })
@@ -258,6 +266,97 @@ function outline(geometry, tolerance) {
     .map((ring) => ring.flatMap(([lon, lat]) => [round(lon), round(lat)]));
 }
 
+function urbanIndex(features) {
+  const areas = features.map((f) => {
+    const ring = f.geometry.coordinates[0];
+    return { ring, box: ringBox(ring) };
+  });
+  const cells = new Map();
+  areas.forEach((area, index) => {
+    for (let x = Math.floor(area.box[0]); x <= Math.floor(area.box[2]); x++)
+      for (let y = Math.floor(area.box[1]); y <= Math.floor(area.box[3]); y++) {
+        const key = `${x}:${y}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(index);
+      }
+  });
+  return { areas, cells };
+}
+
+function urbanAreaAt({ areas, cells }, point) {
+  const cellX = Math.floor(point[0]);
+  const cellY = Math.floor(point[1]);
+  const containing = (cells.get(`${cellX}:${cellY}`) ?? []).find((index) => {
+    const { ring, box } = areas[index];
+    return (
+      point[0] >= box[0] &&
+      point[0] <= box[2] &&
+      point[1] >= box[1] &&
+      point[1] <= box[3] &&
+      insideRing(ring, point)
+    );
+  });
+  if (containing !== undefined) return containing;
+  const nearby = new Set();
+  for (let x = cellX - 1; x <= cellX + 1; x++)
+    for (let y = cellY - 1; y <= cellY + 1; y++)
+      for (const index of cells.get(`${x}:${y}`) ?? []) nearby.add(index);
+  let nearest = -1;
+  let nearestKm = MAX_URBAN_GAP_KM;
+  for (const index of nearby)
+    for (const vertex of areas[index].ring) {
+      const km = distanceKm(point, vertex);
+      if (km < nearestKm) {
+        nearestKm = km;
+        nearest = index;
+      }
+    }
+  return nearest;
+}
+
+function boxSpanKm([west, south, east, north]) {
+  const midLat = (((south + north) / 2) * Math.PI) / 180;
+  return (
+    Math.max((east - west) * Math.cos(midLat), north - south) * KM_PER_DEGREE
+  );
+}
+
+function clipToDisc(ring, [lon, lat], radiusKm) {
+  const scale = Math.cos((lat * Math.PI) / 180);
+  const radius = radiusKm / KM_PER_DEGREE;
+  const corner = (k) => {
+    const angle = (k / CLIP_SIDES) * 2 * Math.PI;
+    return [radius * Math.cos(angle), radius * Math.sin(angle)];
+  };
+  let points = ring.map(([x, y]) => [(x - lon) * scale, y - lat]);
+  for (let k = 0; k < CLIP_SIDES && points.length > 0; k++) {
+    const [ax, ay] = corner(k);
+    const [bx, by] = corner(k + 1);
+    const side = ([x, y]) => (bx - ax) * (y - ay) - (by - ay) * (x - ax);
+    const cut = (p, q) => {
+      const t = side(p) / (side(p) - side(q));
+      return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+    };
+    const kept = [];
+    points.forEach((point, i) => {
+      const previous = points[(i + points.length - 1) % points.length];
+      if (side(point) >= 0) {
+        if (side(previous) < 0) kept.push(cut(previous, point));
+        kept.push(point);
+      } else if (side(previous) >= 0) kept.push(cut(previous, point));
+    });
+    points = kept;
+  }
+  return points.map(([x, y]) => [x / scale + lon, y + lat]);
+}
+
+function urbanRing(ring) {
+  return simplify(ring, URBAN_TOLERANCE).flatMap(([lon, lat]) => [
+    Math.round(lon * URBAN_PRECISION) / URBAN_PRECISION,
+    Math.round(lat * URBAN_PRECISION) / URBAN_PRECISION,
+  ]);
+}
+
 function aliasesOf(name, candidates) {
   const seen = new Set([name.toLowerCase()]);
   const aliases = [];
@@ -403,6 +502,9 @@ function buildGazetteer(files) {
     const cols = line.split('\t');
     if (cols.length > 1) admin1Names.set(cols[0], cols[1]);
   }
+  const urban = urbanIndex(readJson(files.urban).features);
+  const shapeOfArea = new Map();
+  const cityShapes = { shapes: [], cities: [] };
   const admin1Boxes = new Map();
   for (const line of unzipEntry(files.cities, 'cities15000.txt').split('\n')) {
     const cols = line.split('\t');
@@ -422,6 +524,29 @@ function buildGazetteer(files) {
     );
     if (index >= 0 && abbreviations.length > 0)
       aliases.push([index, abbreviations.join('|')]);
+    const area = index >= 0 ? urbanAreaAt(urban, [lon, lat]) : -1;
+    const spanRatio =
+      area >= 0 ? boxSpanKm(urban.areas[area].box) / boxSpanKm(box) : 0;
+    if (
+      spanRatio >= MIN_URBAN_SPAN_RATIO &&
+      spanRatio <= MAX_URBAN_SPAN_RATIO
+    ) {
+      if (!shapeOfArea.has(area)) {
+        shapeOfArea.set(area, cityShapes.shapes.length);
+        cityShapes.shapes.push(urbanRing(urban.areas[area].ring));
+      }
+      cityShapes.cities.push([index, shapeOfArea.get(area)]);
+    } else if (spanRatio > MAX_URBAN_SPAN_RATIO) {
+      const clipped = clipToDisc(
+        urban.areas[area].ring,
+        [lon, lat],
+        (URBAN_CLIP_RADIUS * boxSpanKm(box)) / 2,
+      );
+      if (clipped.length >= 3) {
+        cityShapes.cities.push([index, cityShapes.shapes.length]);
+        cityShapes.shapes.push(urbanRing(clipped));
+      }
+    }
     const union = admin1Boxes.get(admin1);
     admin1Boxes.set(
       admin1,
@@ -446,6 +571,7 @@ function buildGazetteer(files) {
   return {
     gazetteer: { kinds: KINDS, contexts, places, aliases },
     regions: { outlines, counties: countyPoints(files.counties) },
+    cityShapes,
   };
 }
 
@@ -465,6 +591,7 @@ const sources = {
   lakes: NE + 'ne_10m_lakes.geojson',
   marine: NE + 'ne_10m_geography_marine_polys.geojson',
   regions: NE + 'ne_10m_geography_regions_polys.geojson',
+  urban: NE + 'ne_10m_urban_areas.geojson',
   countryInfo: GEONAMES + 'countryInfo.txt',
   admin1: GEONAMES + 'admin1CodesASCII.txt',
   cities: GEONAMES + 'cities15000.zip',
@@ -481,12 +608,13 @@ Object.entries(sources)
     Promise.resolve({}),
   )
   .then((files) => {
-    const { gazetteer, regions } = buildGazetteer(files);
+    const { gazetteer, regions, cityShapes } = buildGazetteer(files);
     console.log(
-      `${gazetteer.places.length} places, ${gazetteer.aliases.length} with aliases, ${Object.keys(regions.outlines).length} outlines, ${regions.counties.length} counties`,
+      `${gazetteer.places.length} places, ${gazetteer.aliases.length} with aliases, ${Object.keys(regions.outlines).length} outlines, ${regions.counties.length} counties, ${cityShapes.cities.length} cities with ${cityShapes.shapes.length} shapes`,
     );
     write(GAZETTEER_OUT, gazetteer);
     write(REGIONS_OUT, regions);
+    write(CITIES_OUT, cityShapes);
   })
   .catch((error) => {
     console.error(error);

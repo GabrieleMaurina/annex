@@ -342,7 +342,7 @@ export interface PlayerStats {
 }
 
 export interface PlayerGameMap {
-  id: string;
+  id: string | null;
   territories: Territory[];
   seaTerritories: SeaTerritory[];
   bonuses: number[];

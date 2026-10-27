@@ -2,7 +2,7 @@ import { Rng } from '../../core/rng';
 import { createWarpField, warpAt } from '../../core/warp';
 import { enforceContiguity } from '../contiguity';
 import { GridPoint, placeTerritoryCenters } from '../placement';
-import { FittedRegions } from './fit';
+import { FittedRegions, GIANT_RATIO } from './fit';
 import { comparePlaces } from './ranks';
 import { OsmPlace } from './types';
 
@@ -107,6 +107,54 @@ function splitRegion(
   return local;
 }
 
+function mergeSmallParts(
+  grid: Int32Array,
+  width: number,
+  area: number[],
+  minArea: number,
+  seedNames: Map<number, string>,
+): void {
+  const borders = area.map(() => new Map<number, number>());
+  const link = (a: number, b: number) => {
+    if (a < 0 || b < 0 || a === b) return;
+    borders[a].set(b, (borders[a].get(b) ?? 0) + 1);
+    borders[b].set(a, (borders[b].get(a) ?? 0) + 1);
+  };
+  for (let i = 0; i < grid.length; i++) {
+    if ((i + 1) % width !== 0) link(grid[i], grid[i + 1]);
+    if (i + width < grid.length) link(grid[i], grid[i + width]);
+  }
+  const owner = area.map((_, region) => region);
+  for (;;) {
+    let small = -1;
+    for (let r = 0; r < area.length; r++)
+      if (
+        owner[r] === r &&
+        area[r] < minArea &&
+        borders[r].size > 0 &&
+        (small < 0 || area[r] < area[small])
+      )
+        small = r;
+    if (small < 0) break;
+    const into = [...borders[small].entries()].sort(
+      (a, b) => b[1] - a[1],
+    )[0][0];
+    owner[small] = into;
+    area[into] += area[small];
+    for (const [neighbor, length] of borders[small]) {
+      borders[neighbor].delete(small);
+      if (neighbor === into) continue;
+      borders[neighbor].set(into, (borders[neighbor].get(into) ?? 0) + length);
+      borders[into].set(neighbor, (borders[into].get(neighbor) ?? 0) + length);
+    }
+    borders[small].clear();
+    seedNames.delete(small);
+  }
+  const root = (r: number): number => (owner[r] === r ? r : root(owner[r]));
+  for (let i = 0; i < grid.length; i++)
+    if (grid[i] >= 0) grid[i] = root(grid[i]);
+}
+
 function emptyBounds(): Bounds {
   return { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
 }
@@ -158,7 +206,9 @@ export function carveRegions(
         !unsplittable.has(r) &&
         area[r] >= 2 * minArea &&
         (needMore ||
-          (fitted.balance && Math.round(area[r] / targetArea) >= 2)) &&
+          (fitted.balance
+            ? Math.round(area[r] / targetArea) >= 2
+            : area[r] >= GIANT_RATIO * targetArea)) &&
         (target < 0 || area[r] > area[target])
       )
         target = r;
@@ -225,5 +275,6 @@ export function carveRegions(
       extend(bounds[id], x, y);
     }
   }
+  mergeSmallParts(grid, width, area, minArea, seedNames);
   return { grid, count, seedNames };
 }

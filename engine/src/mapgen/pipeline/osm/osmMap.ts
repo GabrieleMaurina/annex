@@ -32,6 +32,8 @@ import { Atoms, buildAtoms } from './regions';
 import { OsmGeneratedMap, OsmMapParams } from './types';
 
 const SPECK_AREA_RATIO = 0.1;
+const FINE_SPECK_AREA_RATIO = 0.3;
+const STATE_CUT = 90;
 const SEA_AREA_MULTIPLIER = 16;
 const LAKE_AREA_RATIO = 0.1;
 const BORDER_OVERSHOOT = 12;
@@ -181,10 +183,14 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     if (atoms.count === 0) throw new Error('no land in the selected area');
   }
 
-  const minArea = expectedTerritoryArea * SPECK_AREA_RATIO;
   const levels = buildCutLevels(atoms);
   const forced = detail === 'auto' ? null : DETAIL_RANKS[detail];
   const cutIndex = chooseCut(atoms, levels, expectedTerritoryArea, forced);
+  const minArea =
+    expectedTerritoryArea *
+    (levels.thresholds[cutIndex] >= STATE_CUT
+      ? SPECK_AREA_RATIO
+      : FINE_SPECK_AREA_RATIO);
   const parentIndex = parentCutIndex(atoms, levels, cutIndex, minArea);
   const fitted = fitRegions(
     atoms,
@@ -194,6 +200,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     minArea,
     expectedTerritoryArea,
     range,
+    width,
   );
   const carved = carveRegions(
     fitted,
@@ -218,14 +225,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   const { adjacency } = buildAdjacency(labelGrid, width, height);
   for (let t = 0; t < landCount; t++)
     if (!adjacency.has(t)) adjacency.set(t, new Set());
-  const rivers = cutRiverBorders(
-    features,
-    labelGrid,
-    width,
-    height,
-    adjacency,
-    createRng(`${key}::bridges`),
-  );
+  const rivers = cutRiverBorders(features, labelGrid, width, height, adjacency);
   const voidMask = focused?.voidMask ?? new Uint8Array(land.length);
   for (let i = 0; i < voidMask.length; i++)
     if (mountains[i] && !land[i]) voidMask[i] = MOUNTAIN_VOID;

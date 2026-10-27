@@ -92,6 +92,16 @@ export function generateMap(
   });
 }
 
+export function mapSelectionError(playerId: number): string | null {
+  const player = playersById.get(playerId);
+  if (!player || !player.gameName) return 'not in a game';
+  const game = games.get(player.gameName);
+  if (!game) return 'game not found';
+  if (game.hostId !== player.id) return 'not the host';
+  if (game.state !== 'lobby') return 'game already started';
+  return null;
+}
+
 export function selectPlayerMap(
   playerId: number,
   map: PlayerGameMap & { name: string },

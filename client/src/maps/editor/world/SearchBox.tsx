@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Form, ListGroup } from 'react-bootstrap';
+import { Button, Form, ListGroup } from 'react-bootstrap';
 import { titleCase } from '../../../lobby/settings/gameSettings';
 import {
   loadGazetteer,
+  randomPlace,
   searchPlaces,
   type GazetteerIndex,
   type GazetteerPlace,
@@ -32,6 +33,11 @@ function SearchBox({ initialQuery, onSelect }: Props) {
     setQuery(place.name);
     setOpen(false);
     onSelect(place);
+  }
+
+  function chooseRandom() {
+    const place = index && randomPlace(index);
+    if (place) choose(place);
   }
 
   return (
@@ -97,6 +103,15 @@ function SearchBox({ initialQuery, onSelect }: Props) {
           ))}
         </ListGroup>
       )}
+      <Button
+        variant="secondary"
+        size="sm"
+        className="w-100 mt-2"
+        disabled={!index}
+        onClick={chooseRandom}
+      >
+        Random location
+      </Button>
     </div>
   );
 }

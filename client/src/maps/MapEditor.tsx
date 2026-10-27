@@ -98,7 +98,7 @@ const WorldMapModal = lazy(() => import('./editor/world/WorldMapModal'));
 const HISTORY_LIMIT = 30;
 const GRAPH_COMMIT_DELAY = 250;
 const CUSTOM_COLORS_LIMIT = 30;
-const MAX_IMAGE_BYTES = 6_000_000;
+const MAX_IMAGE_BYTES = 5_000_000;
 
 function MapEditor({ account }: { account: Account | null }) {
   const navigate = useNavigate();
@@ -756,7 +756,7 @@ function MapEditor({ account }: { account: Account | null }) {
     paintLayerRef.current?.flush();
     const image = surfaceToDataUrl(paintSurface);
     if (image.length * 0.75 > MAX_IMAGE_BYTES) {
-      setError('Image too large, max 6 MB.');
+      setError('Image too large, max 5 MB.');
       return;
     }
     setSaving(true);

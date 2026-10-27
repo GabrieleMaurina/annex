@@ -1,5 +1,6 @@
+import type { OsmGeneratedMap } from 'engine';
 import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button, Dropdown, Form, Modal } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
 import Help from '../../common/tooltips/Help';
@@ -18,13 +19,14 @@ import type {
   GenerateMapInput,
 } from '../../lib/types';
 import { GAME_MODES } from '../../lib/types';
+import EarthErrorBoundary from '../../maps/editor/world/EarthErrorBoundary';
 import MapBrowser from '../../maps/MapBrowser';
 import MapGenerationPanel, {
   type MapGenerationPanelHandle,
 } from '../MapGenerationPanel';
 import MapLikeButton from '../MapLikeButton';
-import GameSettingsFields from './GameSettingsFields';
 import { randomGameSettings, titleCase } from './gameSettings';
+import GameSettingsFields from './GameSettingsFields';
 import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
 
 const LABEL_STYLE = { minWidth: 130, flexShrink: 0 };
@@ -43,8 +45,13 @@ const MAP_TOOLTIP_POPPER = {
   ],
 };
 
+const WorldMapModal = lazy(
+  () => import('../../maps/editor/world/WorldMapModal'),
+);
+
 const GENERATE_MAP_OPTION = '__generateMap__';
 const LIBRARY_MAP_OPTION = '__libraryMap__';
+const EARTH_MAP_OPTION = '__earthMap__';
 
 const COARSE_POINTER =
   typeof window.matchMedia === 'function' &&
@@ -61,6 +68,7 @@ interface Props {
     onSettled?: (ok: boolean, mapName?: string) => void,
   ) => void;
   selectPlayerMap?: (mapId: string) => void;
+  selectEarthMap?: (map: OsmGeneratedMap, onSettled: () => void) => void;
   headerActions?: ReactNode;
   collapsible?: boolean;
 }
@@ -112,6 +120,7 @@ function SettingsPanel({
   applySettings,
   generateMap,
   selectPlayerMap,
+  selectEarthMap,
   headerActions,
   collapsible = true,
 }: Props) {
@@ -127,10 +136,14 @@ function SettingsPanel({
   const loadedMapNamesRef = useRef(new Set<string>());
   const [mapGenOpen, setMapGenOpen] = useState(false);
   useToggleSound(mapGenOpen);
+  const [earthOpen, setEarthOpen] = useState(false);
+  useToggleSound(earthOpen);
+  const [earthUploading, setEarthUploading] = useState(false);
   const [mapRegenerating, setMapRegenerating] = useState(isRegeneratingMap);
   const [seedCopied, setSeedCopied] = useState(false);
   const mapGenRef = useRef<MapGenerationPanelHandle>(null);
   const whiteMapIcon = useWhiteIcon('/icons/map.svg');
+  const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
 
   useEffect(() => {
     function onRegenerating(value: boolean) {
@@ -210,10 +223,9 @@ function SettingsPanel({
     );
   }
 
-  const currentImageSrc = mapRegenerating
-    ? undefined
-    : imageSrcFor(game.mapName);
-  const currentMapLabel = mapRegenerating
+  const mapPending = mapRegenerating || earthUploading;
+  const currentImageSrc = mapPending ? undefined : imageSrcFor(game.mapName);
+  const currentMapLabel = mapPending
     ? 'Generating…'
     : game.mapName || 'Pick a map';
   const currentSeed = mapRegenerating ? undefined : game.mapGeneration?.seed;
@@ -346,6 +358,10 @@ function SettingsPanel({
                     setMapGenOpen(false);
                     setMapPickerOpen(true);
                   }
+                  if (key === EARTH_MAP_OPTION) {
+                    setMapGenOpen(false);
+                    setEarthOpen(true);
+                  }
                 }}
               >
                 {mapGenOpen || COARSE_POINTER ? (
@@ -397,6 +413,21 @@ function SettingsPanel({
                     />
                     Choose from library
                   </Dropdown.Item>
+                  {selectEarthMap && (
+                    <Dropdown.Item
+                      as="button"
+                      eventKey={EARTH_MAP_OPTION}
+                      className="d-flex align-items-center gap-2 text-nowrap"
+                    >
+                      <img
+                        src={whiteGlobeIcon ?? '/icons/globe.svg'}
+                        width={20}
+                        height={20}
+                        alt=""
+                      />
+                      Earth
+                    </Dropdown.Item>
+                  )}
                 </Dropdown.Menu>
               </Dropdown>
             ) : (
@@ -463,6 +494,20 @@ function SettingsPanel({
             />
           </Modal.Body>
         </Modal>
+      )}
+
+      {earthOpen && selectEarthMap && (
+        <EarthErrorBoundary onClose={() => setEarthOpen(false)}>
+          <Suspense fallback={null}>
+            <WorldMapModal
+              onHide={() => setEarthOpen(false)}
+              onGenerated={(map) => {
+                setEarthUploading(true);
+                selectEarthMap(map, () => setEarthUploading(false));
+              }}
+            />
+          </Suspense>
+        </EarthErrorBoundary>
       )}
 
       {collapsible ? (

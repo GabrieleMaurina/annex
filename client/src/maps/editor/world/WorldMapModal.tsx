@@ -5,7 +5,7 @@ import {
   type OsmDetail,
   type OsmGeneratedMap,
 } from 'engine';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Form, Modal, ProgressBar } from 'react-bootstrap';
 import Help from '../../../common/tooltips/Help';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../../../lobby/settings/settingsHelp';
 import {
   citiesIn,
+  loadFrameBounds,
   loadGazetteer,
   type GazetteerIndex,
   type GazetteerPlace,
@@ -55,6 +56,7 @@ const ASPECTS: [MapAspect, string][] = [
 ];
 
 const FOCUSABLE_KINDS = ['country', 'state', 'city'];
+const WIDE_FIT_MIN_RATIO = 4 / 3;
 const MIN_PLACE_OVERLAP = 0.5;
 const MAX_ZOOM_OUT = 3;
 const PANEL_WIDTH = 300;
@@ -67,6 +69,7 @@ interface EarthSession {
   seas: boolean;
   timed: boolean;
   place: GazetteerPlace | null;
+  placeBounds: GazetteerPlace['bounds'] | null;
   collapsed: boolean;
   view: EarthView;
 }
@@ -78,6 +81,7 @@ const session: EarthSession = {
   seas: false,
   timed: false,
   place: null,
+  placeBounds: null,
   collapsed: false,
   view: { center: [10, 30], zoom: 1.5, bearing: 0 },
 };
@@ -118,8 +122,10 @@ function lonLatBounds(frame: WorldFrame): [number, number, number, number] {
   ];
 }
 
-function placeInFrame(place: GazetteerPlace, frame: WorldFrame): boolean {
-  const [w, s, e, n] = place.bounds;
+function placeInFrame(
+  [w, s, e, n]: GazetteerPlace['bounds'],
+  frame: WorldFrame,
+): boolean {
   const box = frameBounds(frame);
   const shift = Math.round((box.x0 + box.x1) / 2 - ((w + e) / 2 + 180) / 360);
   const x0 = (w + 180) / 360 + shift;
@@ -135,6 +141,17 @@ function placeInFrame(place: GazetteerPlace, frame: WorldFrame): boolean {
     overlap >= MIN_PLACE_OVERLAP * Math.min(placeArea, frameArea) &&
     box.x1 - box.x0 <= MAX_ZOOM_OUT * (x1 - x0)
   );
+}
+
+function bestAspect(
+  [w, s, e, n]: GazetteerPlace['bounds'],
+  bearing: number,
+): MapAspect {
+  const width = (e - w) / 360;
+  const height = mercatorY(s) - mercatorY(n);
+  const quarterTurned = Math.round(bearing / 90) % 2 !== 0;
+  const ratio = quarterTurned ? height / width : width / height;
+  return ratio >= WIDE_FIT_MIN_RATIO ? 'wide' : 'square';
 }
 
 function focusOf(place: GazetteerPlace): WorldFocus | null {
@@ -165,6 +182,8 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
   const [frame, setFrame] = useState<WorldFrame | null>(null);
   const [target, setTarget] = useState<GazetteerPlace | null>(null);
   const [place, setPlace] = useState(session.place);
+  const [placeBounds, setPlaceBounds] = useState(session.placeBounds);
+  const selecting = useRef<GazetteerPlace | null>(null);
   const [job, setJob] = useState<WorldMapJob | null>(null);
   const [progress, setProgress] = useState<WorldMapProgress | null>(null);
   const [error, setError] = useState('');
@@ -180,6 +199,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
       seas,
       timed,
       place,
+      placeBounds,
       collapsed,
     });
   });
@@ -198,11 +218,10 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
     detail === 'auto' || available.includes(detail) ? detail : 'auto';
   const problem = frameProblem(frame);
   const placeInView =
-    place && frame && placeInFrame(place, frame) ? place : null;
+    place && placeBounds && frame && placeInFrame(placeBounds, frame)
+      ? place
+      : null;
   const focus = placeInView ? focusOf(placeInView) : null;
-  const hint =
-    problem ||
-    (frame && !available.includes('blocks') ? 'Zoom in for finer detail.' : '');
 
   function generate() {
     if (!frame || problem || job) return;
@@ -247,6 +266,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
           aspect={image.width / image.height}
           rightInset={collapsed ? 0 : PANEL_INSET}
           target={target}
+          highlight={place}
           initialView={session.view}
           onFrameChange={setFrame}
           onViewChange={(view) => {
@@ -285,8 +305,14 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
             <SearchBox
               initialQuery={session.place?.name ?? ''}
               onSelect={(selected) => {
-                setTarget({ ...selected });
-                setPlace(selected);
+                selecting.current = selected;
+                loadFrameBounds(selected).then((bounds) => {
+                  if (selecting.current !== selected) return;
+                  setAspect(bestAspect(bounds, session.view.bearing));
+                  setTarget({ ...selected, bounds });
+                  setPlace(selected);
+                  setPlaceBounds(bounds);
+                });
               }}
             />
             {focus && (
@@ -385,11 +411,11 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
                 />
               </>
             )}
-            {(error || mapError || hint) && (
+            {(error || mapError || problem) && (
               <div
                 className={`small ${error || mapError ? 'text-danger' : 'text-muted'}`}
               >
-                {error || mapError || hint}
+                {error || mapError || problem}
               </div>
             )}
             <div className="d-flex gap-2">

@@ -6,10 +6,12 @@ import {
   type GenerationType,
   type MapAspect,
   type MapSize,
+  type PlayerGameMap,
   type TileShape,
 } from 'engine';
+import { getGeneratedMapData } from '../../game/mapData';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
-import type { GameState } from '../../lib/types';
+import type { EarthMapInput, GameState } from '../../lib/types';
 import { publish } from '../inbound';
 import { browserWorkerPort } from './browserWorkerPort';
 import { loadPlayerMap } from './maps';
@@ -40,6 +42,7 @@ interface OfflineSeed {
   settings: Record<string, unknown>;
   mapGeneration: GameState['mapGeneration'];
   playerMapId: string | null;
+  earthMap: (PlayerGameMap & { name: string }) | null;
   slots: number;
   teams: number[] | null;
   bots: { difficulty: string; personality: string }[];
@@ -51,6 +54,10 @@ let convertedFromOnline = false;
 export function seedOffline(state: GameState): void {
   const host = state.players.find((p) => !p.isBot);
   const bots = state.players.filter((p) => p.isBot);
+  const earthMap =
+    state.mapGeneration || state.playerMapId
+      ? undefined
+      : getGeneratedMapData(state.mapName);
   seed = {
     settings: {
       alliances: state.alliances,
@@ -90,6 +97,7 @@ export function seedOffline(state: GameState): void {
     },
     mapGeneration: state.mapGeneration,
     playerMapId: state.playerMapId,
+    earthMap: earthMap ? { ...earthMap, id: null, name: state.mapName } : null,
     slots: state.slots,
     teams:
       state.gameMode === 'team deathmatch'
@@ -142,7 +150,10 @@ function applySeed(s: OfflineSeed): void {
         engine.requestState(id);
         flushQueue();
       });
-  else finish();
+  else if (s.earthMap) {
+    engine.selectPlayerMap(id, s.earthMap, () => {});
+    finish();
+  } else finish();
 }
 
 function beginHandoff(next: number, turnStarted: unknown): void {
@@ -488,6 +499,15 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
         })
         .catch(() => cb?.({ ok: false, error: 'map unavailable' }));
       return;
+    case 'game:selectEarthMap': {
+      const { image, ...map } = d as unknown as EarthMapInput;
+      engine.selectPlayerMap(
+        id,
+        { ...map, id: null, imageSrc: image },
+        cb ?? (() => {}),
+      );
+      return;
+    }
     case 'game:addBot':
       cb?.(engine.addBot(id, d.difficulty, d.personality));
       return;

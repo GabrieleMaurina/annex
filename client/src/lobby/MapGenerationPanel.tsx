@@ -1,4 +1,10 @@
-import { containsProfanity, TILE_SHAPE_VALUES, tileShapeLabel } from 'engine';
+import {
+  aspectLabel,
+  containsProfanity,
+  MAP_ASPECT_VALUES,
+  TILE_SHAPE_VALUES,
+  tileShapeLabel,
+} from 'engine';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
 import { useWhiteIcon } from '../common/icon';
@@ -9,6 +15,7 @@ import type {
   Fill,
   GenerateMapInput,
   GenerationType,
+  MapAspect,
   MapSize,
   TileShape,
 } from '../lib/types';
@@ -64,6 +71,9 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
     const [genSize, setGenSize] = useState<MapSize>(
       saved?.size ?? DEFAULT_MAP_GENERATION.size,
     );
+    const [genAspect, setGenAspect] = useState<MapAspect>(
+      saved?.aspect ?? DEFAULT_MAP_GENERATION.aspect,
+    );
     const [genTile, setGenTile] = useState<TileShape>(
       saved?.tile ?? DEFAULT_MAP_GENERATION.tile,
     );
@@ -95,6 +105,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         lastGenerated &&
         lastGenerated.seed === trimmedSeed &&
         lastGenerated.size === genSize &&
+        (lastGenerated.aspect ?? 'wide') === genAspect &&
         lastGenerated.type === genType &&
         lastGenerated.fill === genFill &&
         (genType !== 'tile' || lastGenerated.tile === genTile) &&
@@ -115,6 +126,7 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         seas: genSeas,
         timed: genTimed,
         unlockable,
+        aspect: genAspect,
       };
       setGenerating(true);
       generateMap(input, (ok) => {
@@ -223,6 +235,17 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                   <option value="medium">Medium</option>
                   <option value="large">Large</option>
                   <option value="xlarge">Extra Large</option>
+                </Form.Select>
+                <Form.Select
+                  className="w-auto"
+                  value={genAspect}
+                  onChange={(e) => setGenAspect(e.target.value as MapAspect)}
+                >
+                  {MAP_ASPECT_VALUES.map((value) => (
+                    <option key={value} value={value}>
+                      {aspectLabel(value)}
+                    </option>
+                  ))}
                 </Form.Select>
               </div>
               <div className="d-flex align-items-center gap-2">

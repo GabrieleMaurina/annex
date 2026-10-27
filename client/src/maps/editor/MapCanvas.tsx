@@ -59,6 +59,7 @@ interface Props {
   clickable?: ClickableCheck | null;
   borderOverlay?: HTMLCanvasElement | null;
   timedMode: boolean;
+  onSelect: (id: number | null) => void;
 }
 
 interface Transform {
@@ -117,6 +118,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     clickable,
     borderOverlay,
     timedMode,
+    onSelect,
   }: Props,
   ref,
 ) {
@@ -161,6 +163,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     offsetY: 0,
   });
   const [selectedVertexId, setSelectedVertexId] = useState<number | null>(null);
+  useEffect(() => onSelect(selectedVertexId), [selectedVertexId, onSelect]);
   const [hoveredVertexId, setHoveredVertexId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [mouseWorldPos, setMouseWorldPos] = useState<Point | null>(null);
@@ -331,6 +334,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     img.onload = () => {
       if (stale) return;
       setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
+      setSelectedVertexId(null);
     };
     img.src = imageSrc;
     return () => {
@@ -402,7 +406,8 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         return;
       }
       if (e.key !== 'Backspace' && e.key !== 'Delete') return;
-      if (selectedVertexId === null) return;
+      if (selectedVertexId === null || e.target instanceof HTMLInputElement)
+        return;
       e.preventDefault();
       playSound('click');
       deleteVertex(selectedVertexId);

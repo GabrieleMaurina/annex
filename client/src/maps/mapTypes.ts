@@ -41,6 +41,9 @@ export interface StoredMap {
   image: string;
   imageMime: string;
   borderColors: string[];
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
 }
 
 export type PlayerMapSort =
@@ -102,6 +105,9 @@ export interface PlayerMapDetail {
   image: string;
   imageMime: string;
   borderColors: string[];
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
   generation: GenerateMapInput | null;
   dangerous: boolean;
   likeCount: number;
@@ -119,5 +125,8 @@ export interface PlayerMapSaveBody {
   lockedTiles: LockedTile[];
   image: string;
   borderColors: string[];
+  territoryNames: string[];
+  seaNames: string[];
+  continentNames: string[];
   generation: GenerateMapInput | null;
 }

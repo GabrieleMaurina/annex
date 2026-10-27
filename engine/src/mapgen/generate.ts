@@ -2,8 +2,7 @@ import { LockedTile, SeaTerritory, Territory, TimedConnection } from '../types';
 import {
   generatedMapName,
   GenerateMapParams,
-  GRID_DIMENSIONS,
-  OUTPUT_SCALE,
+  mapImageSize,
 } from './core/params';
 import { createRng } from './core/rng';
 import { generateDungeon } from './pipeline/maze/dungeon';
@@ -24,15 +23,12 @@ export interface GeneratedMap {
 }
 
 export function generateMap(params: GenerateMapParams): GeneratedMap {
-  const { seed, size, type, fill, tile, seas, timed, unlockable } = params;
-  const key = `${seed}::${size}::${type}::${fill}${type === 'tile' ? `::${tile}` : ''}`;
+  const { seed, size, type, fill, tile, seas, timed, unlockable, aspect } =
+    params;
+  const key = `${seed}::${size}::${type}::${fill}${type === 'tile' ? `::${tile}` : ''}${aspect === 'square' ? '::square' : ''}`;
   const rng = createRng(key);
   const timedRng = timed ? createRng(`${key}::timed`) : null;
-  const grid = GRID_DIMENSIONS[size];
-  const dims = {
-    width: grid.width * OUTPUT_SCALE,
-    height: grid.height * OUTPUT_SCALE,
-  };
+  const dims = mapImageSize(size, aspect);
 
   const built =
     type === 'dungeon'

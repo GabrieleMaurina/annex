@@ -141,6 +141,7 @@ function GameMap({
     lockedTiles,
     forcedWraps,
     regions: mapRegions,
+    placeNames,
     camera,
     imgDims,
     size,
@@ -245,6 +246,7 @@ function GameMap({
     logs,
     showReplay,
     replay,
+    placeNames,
   });
   const { territories, openTerritories, regions, closedTiles, timedLinks } =
     useMapGraph({
@@ -546,6 +548,7 @@ function GameMap({
     visibleTerritoryById,
     ownerById,
     toxinById,
+    placeNames,
   );
 
   useAutoAdvancePhase({
@@ -695,6 +698,7 @@ function GameMap({
       regions,
       timedLinks,
       unlockTiles: attackFlow.unlockTiles,
+      placeNames,
     };
     startAnimationLoop();
   });
@@ -809,6 +813,7 @@ function GameMap({
         toxins={toxins}
         toxinsCost={turnFlow.toxinsCostValue}
         mission={mission}
+        continentNames={placeNames.continents}
         selfId={selfId}
         roundNumber={panelRoundNumber}
         turnPhase={panelTurnPhase}

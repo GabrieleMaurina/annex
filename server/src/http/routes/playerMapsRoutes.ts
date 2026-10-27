@@ -41,6 +41,7 @@ import {
   readImageDimensions,
   validateMapGeneration,
   validateMapGeometry,
+  validateMapNames,
 } from '../../validate';
 import { identityOf, rateLimited } from '../middleware';
 import { intParam, optBoolParam, optIntParam } from '../queryParams';
@@ -81,6 +82,9 @@ interface ParsedInput {
   imageDataUrl: string;
   borderColors: string[];
   generation: MapGeneration | null;
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
 }
 
 function enumParam<T extends string>(
@@ -125,6 +129,16 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
   );
   if (!geometry.ok) return geometry;
 
+  const names = validateMapNames(
+    body.territoryNames,
+    body.seaNames,
+    body.continentNames,
+    geometry.territories.length,
+    geometry.seaTerritories.length,
+    geometry.bonuses.length,
+  );
+  if (!names.ok) return names;
+
   if (!isBorderColors(body.borderColors))
     return { ok: false, error: 'invalid border colors' };
 
@@ -143,6 +157,9 @@ function parseMapInput(body: Record<string, unknown>): ParseResult {
       imageDataUrl: match[0],
       borderColors: body.borderColors,
       generation: generation.generation,
+      territoryNames: names.names.territoryNames,
+      seaNames: names.names.seaNames,
+      continentNames: names.names.continentNames,
     },
   };
 }
@@ -228,6 +245,9 @@ playerMapsRouter.get('/player-maps/:id', (req, res) => {
         image: `data:${map.imageMime};base64,${map.image}`,
         imageMime: map.imageMime,
         borderColors: map.borderColors,
+        territoryNames: map.territoryNames,
+        seaNames: map.seaNames,
+        continentNames: map.continentNames,
         generation: map.generation,
         dangerous: map.dangerous,
         likeCount: map.likeCount,

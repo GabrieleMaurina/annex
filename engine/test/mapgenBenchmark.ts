@@ -50,6 +50,7 @@ function runOnce(
     seas,
     timed: false,
     unlockable: false,
+    aspect: 'wide',
   });
   const total = performance.now() - start;
   const steps = stopBench();

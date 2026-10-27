@@ -1,5 +1,5 @@
 import { timeStep } from '../../core/bench';
-import { Fill, GridDimensions, MapSize } from '../../core/params';
+import { Fill, GridDimensions, mapImageSize, MapSize } from '../../core/params';
 import { randomInt, Rng } from '../../core/rng';
 import {
   continentDungeonTone,
@@ -333,7 +333,13 @@ export function generateDungeon(
   const densityScale = Math.sqrt(
     (1 - VOID_FRACTION.full) / (1 - VOID_FRACTION[fill]),
   );
-  const rows = Math.round(randomInt(rng, ...ROW_RANGES[size]) * densityScale);
+  const wide = mapImageSize(size, 'wide');
+  const shape = Math.sqrt(
+    wide.width / wide.height / (dims.width / dims.height),
+  );
+  const rows = Math.round(
+    randomInt(rng, ...ROW_RANGES[size]) * densityScale * shape,
+  );
   const cols = Math.round((rows * dims.width) / dims.height);
   const grid: CoarseGrid = {
     cols,

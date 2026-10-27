@@ -13,6 +13,7 @@ export const DEFAULT_MAP_GENERATION = {
   seas: false,
   timed: false,
   unlockable: false,
+  aspect: 'wide',
 } as const;
 
 export function randomSeed(): string {

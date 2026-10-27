@@ -4,6 +4,7 @@ import {
   type EngineCallbacks,
   type Fill,
   type GenerationType,
+  type MapAspect,
   type MapSize,
   type TileShape,
 } from 'engine';
@@ -474,6 +475,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
           seas: d.seas as boolean,
           timed: d.timed as boolean,
           unlockable: d.unlockable as boolean,
+          aspect: (d.aspect as MapAspect | undefined) ?? 'wide',
         },
         cb ?? (() => {}),
       );

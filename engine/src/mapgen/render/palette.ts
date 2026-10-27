@@ -23,6 +23,9 @@ export function continentEarthTone(continentId: number): string {
 }
 
 export const SEA_COLOR = '#3d6b8a';
+export const VOID_LAND_COLOR = '#9e9e94';
+export const MOUNTAIN_COLOR = '#cfc8bb';
+export const RIVER_BORDER_COLOR = '#4a90d9';
 export const TERRITORY_STROKE_COLOR = '#000000';
 
 export const DUNGEON_TONES = [

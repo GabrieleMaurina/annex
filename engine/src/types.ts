@@ -1,6 +1,7 @@
 import type {
   Fill,
   GenerationType,
+  MapAspect,
   MapSize,
   TileShape,
 } from './mapgen/core/params';
@@ -72,6 +73,7 @@ export interface GeneratedGameMap {
   seas: boolean;
   timed: boolean;
   unlockable: boolean;
+  aspect: MapAspect;
 }
 
 export interface Player {
@@ -349,6 +351,9 @@ export interface PlayerGameMap {
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
 }
 
 export interface RememberedTerritory {

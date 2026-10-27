@@ -1,10 +1,14 @@
 import {
+  duplicatePlaceNames,
   Fill,
   FILL_VALUES,
   GENERATION_TYPE_VALUES,
   GenerationType,
+  isValidPlaceName,
   LockedTile,
+  MAP_ASPECT_VALUES,
   MAP_SIZE_VALUES,
+  MapAspect,
   MapSize,
   MAX_TIMED_VALUE,
   TILE_SHAPE_VALUES,
@@ -289,6 +293,7 @@ export interface MapGeneration {
   seas: boolean;
   timed: boolean;
   unlockable: boolean;
+  aspect: MapAspect;
 }
 
 const MAX_SEED_LENGTH = 20;
@@ -301,6 +306,7 @@ export function validateMapGeneration(
   if (raw === undefined || raw === null) return { ok: true, generation: null };
   if (!isObject(raw)) return { ok: false, error: 'invalid generation' };
   const { seed, size, type, fill, tile, seas, timed, unlockable } = raw;
+  const aspect = raw.aspect ?? 'wide';
   if (
     typeof seed !== 'string' ||
     seed.length < 1 ||
@@ -312,7 +318,8 @@ export function validateMapGeneration(
     typeof seas !== 'boolean' ||
     typeof timed !== 'boolean' ||
     typeof unlockable !== 'boolean' ||
-    (unlockable && (type !== 'tile' || seas || timed))
+    (unlockable && (type !== 'tile' || seas || timed)) ||
+    !(MAP_ASPECT_VALUES as unknown[]).includes(aspect)
   )
     return { ok: false, error: 'invalid generation' };
   return {
@@ -326,8 +333,56 @@ export function validateMapGeneration(
       seas,
       timed,
       unlockable,
+      aspect: aspect as MapAspect,
     },
   };
+}
+
+interface MapNames {
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
+}
+
+function parsePlaceNames(
+  raw: unknown,
+  length: number,
+): string[] | null | undefined {
+  if (raw === undefined || raw === null) return null;
+  if (
+    !Array.isArray(raw) ||
+    raw.length !== length ||
+    !raw.every((name) => typeof name === 'string' && isValidPlaceName(name))
+  )
+    return undefined;
+  return raw.every((name) => name === '') ? null : raw;
+}
+
+export function validateMapNames(
+  territoryNamesRaw: unknown,
+  seaNamesRaw: unknown,
+  continentNamesRaw: unknown,
+  territoryCount: number,
+  seaCount: number,
+  continentCount: number,
+): { ok: true; names: MapNames } | { ok: false; error: string } {
+  const territoryNames = parsePlaceNames(territoryNamesRaw, territoryCount);
+  const seaNames = parsePlaceNames(seaNamesRaw, seaCount);
+  const continentNames = parsePlaceNames(continentNamesRaw, continentCount);
+  if (
+    territoryNames === undefined ||
+    seaNames === undefined ||
+    continentNames === undefined
+  )
+    return { ok: false, error: 'invalid names' };
+  const allNames = [
+    ...(territoryNames ?? []),
+    ...(seaNames ?? []),
+    ...(continentNames ?? []),
+  ];
+  if (duplicatePlaceNames(allNames).size > 0)
+    return { ok: false, error: 'duplicate names' };
+  return { ok: true, names: { territoryNames, seaNames, continentNames } };
 }
 
 export function validateMapGeometry(

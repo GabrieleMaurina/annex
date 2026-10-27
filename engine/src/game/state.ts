@@ -79,6 +79,7 @@ export function gameSummary(game: Game) {
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
           unlockable: game.generatedMap.unlockable,
+          aspect: game.generatedMap.aspect,
         }
       : null,
     hostName: isAnonymousPlaying(game)
@@ -218,6 +219,7 @@ export function gameState(game: Game) {
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
           unlockable: game.generatedMap.unlockable,
+          aspect: game.generatedMap.aspect,
         }
       : null,
     playerMapId: game.playerMap?.id ?? null,

@@ -317,6 +317,9 @@ export const EVENT_VIEWS: EventViews = {
       lockedTiles: p.lockedTiles,
       imageSrc: p.imageSrc,
       borderColors: p.borderColors,
+      territoryNames: p.territoryNames,
+      seaNames: p.seaNames,
+      continentNames: p.continentNames,
     }),
 };
 

@@ -291,6 +291,9 @@ function App() {
       lockedTiles: LockedTile[];
       imageSrc: string;
       borderColors: string[];
+      territoryNames: string[] | null;
+      seaNames: string[] | null;
+      continentNames: string[] | null;
     }) {
       registerGeneratedMap(data.name, {
         territories: data.territories,
@@ -301,6 +304,9 @@ function App() {
         lockedTiles: data.lockedTiles,
         imageSrc: data.imageSrc,
         borderColors: data.borderColors,
+        territoryNames: data.territoryNames,
+        seaNames: data.seaNames,
+        continentNames: data.continentNames,
       });
     }
     connector.on('game:mapGenerated', onMapGenerated);
@@ -364,6 +370,20 @@ function App() {
       onRename={renameRoom}
       onMapOpenChange={setGameMapOpen}
     />
+  );
+
+  const newMapEditor =
+    !sessionReady && !serverUnreachable ? null : account ||
+      serverUnreachable ? (
+      <MapEditor account={account} />
+    ) : (
+      <Navigate to="/" replace />
+    );
+
+  const savedMapEditor = !sessionReady ? null : account ? (
+    <MapEditor account={account} />
+  ) : (
+    <Navigate to="/" replace />
   );
 
   return (
@@ -469,27 +489,10 @@ function App() {
             )
           }
         />
-        <Route
-          path="/maps/editor"
-          element={
-            !sessionReady && !serverUnreachable ? null : account ||
-              serverUnreachable ? (
-              <MapEditor account={account} />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          }
-        />
-        <Route
-          path="/maps/editor/:id"
-          element={
-            !sessionReady ? null : account ? (
-              <MapEditor account={account} />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          }
-        />
+        <Route path="/maps/editor" element={newMapEditor} />
+        <Route path="/maps/editor/earth" element={newMapEditor} />
+        <Route path="/maps/editor/:id" element={savedMapEditor} />
+        <Route path="/maps/editor/:id/earth" element={savedMapEditor} />
         <Route path="/players" element={<Players />} />
         <Route
           path="/players/:username"

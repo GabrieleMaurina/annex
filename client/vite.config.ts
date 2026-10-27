@@ -21,6 +21,9 @@ export default defineConfig({
     },
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        globIgnores: ['**/WorldMapModal-*', '**/osmWorker-*.js'],
+      },
       manifest: {
         name: 'Annex',
         short_name: 'Annex',
@@ -43,7 +46,7 @@ export default defineConfig({
     }),
   ],
   optimizeDeps: {
-    include: ['engine'],
+    include: ['engine', 'maplibre-gl', '@mapbox/vector-tile', 'pbf'],
   },
   server: {
     port: 5000,

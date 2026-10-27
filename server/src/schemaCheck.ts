@@ -225,6 +225,9 @@ function replayContentId(doc: Document): string {
       lockedTiles: doc.lockedTiles,
       imageMime: doc.imageMime,
       borderColors: doc.borderColors,
+      territoryNames: doc.territoryNames,
+      seaNames: doc.seaNames,
+      continentNames: doc.continentNames,
     },
     image instanceof Binary
       ? image.buffer.subarray(0, image.position)

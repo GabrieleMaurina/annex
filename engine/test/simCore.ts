@@ -139,6 +139,7 @@ export function runGame(
     seas: false,
     timed: false,
     unlockable: false,
+    aspect: 'wide',
   };
   updateSettings(host.id, { slots: roster.length, ...settings });
   for (let i = 1; i < roster.length; i++)

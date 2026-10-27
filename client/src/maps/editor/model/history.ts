@@ -6,6 +6,7 @@ import type { EditorLockedTile } from './lockedTiles';
 export interface GraphState {
   territories: EditorTerritory[];
   bonuses: number[];
+  continentNames: string[];
   continentCount: number;
   borderColors: string[];
   generation: GenerateMapInput | null;
@@ -24,6 +25,7 @@ export function graphOf(s: GraphState): GraphState {
   return {
     territories: s.territories,
     bonuses: s.bonuses,
+    continentNames: s.continentNames,
     continentCount: s.continentCount,
     borderColors: s.borderColors,
     generation: s.generation,

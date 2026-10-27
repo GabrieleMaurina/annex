@@ -406,6 +406,9 @@ export function sendGeneratedMapIfAny(game: Game, playerId: number) {
       lockedTiles: map.lockedTiles,
       imageSrc: map.imageSrc,
       borderColors: map.borderColors,
+      territoryNames: game.playerMap?.territoryNames ?? null,
+      seaNames: game.playerMap?.seaNames ?? null,
+      continentNames: game.playerMap?.continentNames ?? null,
     },
     game.name,
   );

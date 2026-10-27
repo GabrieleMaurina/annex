@@ -1,4 +1,5 @@
 import { playerColor } from '../../lib/palette';
+import type { PlaceNames } from '../mapData';
 import type { LogEntry } from './useGameLogs';
 
 const NEUTRAL_LOG_COLOR = '#6c757d';
@@ -48,6 +49,7 @@ export function createLogFormatter() {
   return function format(
     entry: { type: string; payload: unknown },
     players: FormatPlayer[],
+    placeNames: PlaceNames,
   ): LogPart[] {
     const playerById = new Map(players.map((p) => [p.id, p]));
     const colorFor = (id: number | undefined) => {
@@ -60,6 +62,22 @@ export function createLogFormatter() {
       (id === undefined ? undefined : playerById.get(id)?.isBot) ?? false;
     const botHighlight = (id: number | undefined): LogHighlight | undefined =>
       isBotFor(id) ? { isBot: true } : undefined;
+    const place = (id: number, prefix: string) =>
+      placeNames.territories.get(id) ?? `${prefix}#${id + 1}`;
+    const appendPlace = (
+      b: ReturnType<typeof buildText>,
+      id: number,
+      prefix: string,
+      highlight?: LogHighlight,
+    ) => {
+      const name = placeNames.territories.get(id);
+      if (name) {
+        b.append(name, highlight);
+      } else {
+        b.append(prefix);
+        b.append(`#${id + 1}`, highlight);
+      }
+    };
 
     const parts: LogPart[] = [];
     const push = (color: string, text: string, colorRanges?: LogColorRange[]) =>
@@ -76,7 +94,7 @@ export function createLogFormatter() {
     const deploy = (playerId: number, territoryId: number, troops: number) =>
       push(
         colorFor(playerId),
-        `${nameFor(playerId)} deployed ${troops} troops to territory #${territoryId + 1}`,
+        `${nameFor(playerId)} deployed ${troops} troops to ${place(territoryId, 'territory ')}`,
       );
 
     switch (entry.type) {
@@ -93,38 +111,38 @@ export function createLogFormatter() {
       case 'game:fortified':
         push(
           colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} fortified ${moved('troopsAdded', 'troopsRemoved')} troops from territory #${n('fromTerritoryId') + 1} to territory #${n('territoryId') + 1}`,
+          `${nameFor(n('playerId'))} fortified ${moved('troopsAdded', 'troopsRemoved')} troops from ${place(n('fromTerritoryId'), 'territory ')} to ${place(n('territoryId'), 'territory ')}`,
         );
         break;
       case 'game:attackMoved':
         push(
           colorFor(lastConquestAttackerId),
-          `${nameFor(lastConquestAttackerId)} moved ${moved('troopsAdded', 'troopsRemoved')} troops into conquered territory #${n('territoryId') + 1}`,
+          `${nameFor(lastConquestAttackerId)} moved ${moved('troopsAdded', 'troopsRemoved')} troops into conquered ${place(n('territoryId'), 'territory ')}`,
         );
         if (p.troopsRefunded !== undefined)
           push(
             colorFor(lastConquestAttackerId),
-            `${nameFor(lastConquestAttackerId)} got ${n('troopsRefunded')} troops back from capital #${n('territoryId') + 1}`,
+            `${nameFor(lastConquestAttackerId)} got ${n('troopsRefunded')} troops back from ${place(n('territoryId'), 'capital ')}`,
           );
         break;
       case 'game:entrenched':
         push(
           colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} entrenched territory #${n('territoryId') + 1} with ${n('troops')} troops (now ${n('turnsRemaining')} turns)`,
+          `${nameFor(n('playerId'))} entrenched ${place(n('territoryId'), 'territory ')} with ${n('troops')} troops (now ${n('turnsRemaining')} turns)`,
         );
         break;
       case 'game:toxined':
         push(
           colorFor(n('playerId')),
           p.permanent
-            ? `${nameFor(n('playerId'))} released toxin on territory #${n('territoryId') + 1} permanently`
-            : `${nameFor(n('playerId'))} released toxin on territory #${n('territoryId') + 1} for ${n('roundsRemaining')} rounds`,
+            ? `${nameFor(n('playerId'))} released toxin on ${place(n('territoryId'), 'territory ')} permanently`
+            : `${nameFor(n('playerId'))} released toxin on ${place(n('territoryId'), 'territory ')} for ${n('roundsRemaining')} rounds`,
         );
         break;
       case 'game:unlocked':
         push(
           colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} unlocked tile #${n('tileId') + 1} from territory #${n('fromTerritoryId') + 1} for ${n('cost')} troops`,
+          `${nameFor(n('playerId'))} unlocked tile #${n('tileId') + 1} from ${place(n('fromTerritoryId'), 'territory ')} for ${n('cost')} troops`,
         );
         break;
       case 'game:nukeLaunched': {
@@ -132,12 +150,12 @@ export function createLogFormatter() {
         if (p.intercepted)
           push(
             colorFor(launcherId),
-            `${nameFor(launcherId)}'s nuke aimed at territory #${n('targetTerritoryId') + 1} was intercepted`,
+            `${nameFor(launcherId)}'s nuke aimed at ${place(n('targetTerritoryId'), 'territory ')} was intercepted`,
           );
         else
           push(
             colorFor(launcherId),
-            `${nameFor(launcherId)} nuked territory #${n('targetTerritoryId') + 1}`,
+            `${nameFor(launcherId)} nuked ${place(n('targetTerritoryId'), 'territory ')}`,
           );
         for (const id of (p.eliminatedPlayerIds as number[]) ?? [])
           push(colorFor(id), `${nameFor(id)} was eliminated by a nuke`);
@@ -148,7 +166,7 @@ export function createLogFormatter() {
         if (newly.length > 0)
           push(
             NEUTRAL_LOG_COLOR,
-            `Radiation spread to territor${newly.length === 1 ? 'y' : 'ies'} ${newly.map((id) => `#${id + 1}`).join(', ')}`,
+            `Radiation spread to territor${newly.length === 1 ? 'y' : 'ies'} ${newly.map((id) => place(id, '')).join(', ')}`,
           );
         for (const id of p.eliminatedPlayerIds as number[])
           push(colorFor(id), `${nameFor(id)} was eliminated by radiation`);
@@ -175,9 +193,14 @@ export function createLogFormatter() {
           });
           b.append("'s");
         }
-        b.append(' territory ');
-        b.append(`#${n('defendingTerritoryId') + 1}`, defenderHighlight);
-        b.append(` from #${n('attackingTerritoryId') + 1}`);
+        b.append(' ');
+        appendPlace(
+          b,
+          n('defendingTerritoryId'),
+          'territory ',
+          defenderHighlight,
+        );
+        b.append(` from ${place(n('attackingTerritoryId'), '')}`);
         if (
           p.attackingTroops !== undefined &&
           p.defendingTroops !== undefined
@@ -223,7 +246,7 @@ export function createLogFormatter() {
         if (p.troopsRefunded !== undefined)
           push(
             colorFor(attackerId),
-            `${nameFor(attackerId)} got ${n('troopsRefunded')} troops back from capital #${n('defendingTerritoryId') + 1}`,
+            `${nameFor(attackerId)} got ${n('troopsRefunded')} troops back from ${place(n('defendingTerritoryId'), 'capital ')}`,
           );
         break;
       }
@@ -231,14 +254,14 @@ export function createLogFormatter() {
         push(
           colorFor(n('playerId')),
           p.fromPool
-            ? `${nameFor(n('playerId'))} deployed ${n('ships')} ships to sea territory #${n('seaTerritoryId') + 1}`
-            : `${nameFor(n('playerId'))} built ${n('ships')} ships from territory #${n('sourceTerritoryId') + 1} to sea territory #${n('seaTerritoryId') + 1}`,
+            ? `${nameFor(n('playerId'))} deployed ${n('ships')} ships to ${place(n('seaTerritoryId'), 'sea territory ')}`
+            : `${nameFor(n('playerId'))} built ${n('ships')} ships from ${place(n('sourceTerritoryId'), 'territory ')} to ${place(n('seaTerritoryId'), 'sea territory ')}`,
         );
         break;
       case 'game:sailed':
         push(
           colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} sailed ${moved('shipsAdded', 'shipsRemoved')} ships from sea territory #${n('fromSeaTerritoryId') + 1} to sea territory #${n('seaTerritoryId') + 1}`,
+          `${nameFor(n('playerId'))} sailed ${moved('shipsAdded', 'shipsRemoved')} ships from ${place(n('fromSeaTerritoryId'), 'sea territory ')} to ${place(n('seaTerritoryId'), 'sea territory ')}`,
         );
         break;
       case 'game:seaAttacked': {
@@ -253,8 +276,13 @@ export function createLogFormatter() {
           ...defenderHighlight,
           isBot: isBotFor(defenderId),
         });
-        b.append("'s ships in sea territory ");
-        b.append(`#${n('seaTerritoryId') + 1}`, defenderHighlight);
+        b.append("'s ships in ");
+        appendPlace(
+          b,
+          n('seaTerritoryId'),
+          'sea territory ',
+          defenderHighlight,
+        );
         b.append(`: ${n('attackingShips')} vs `);
         b.append(String(n('defendingShips')), defenderHighlight);
         b.append(` ships, lost ${n('attackLosses')} and killed `);
@@ -328,10 +356,10 @@ export function createLogFormatter() {
       case 'game:territoryClaimed': {
         const color = colorFor(n('playerId'));
         const name = nameFor(n('playerId'));
-        push(color, `${name} claimed territory #${n('territoryId') + 1}`);
+        push(color, `${name} claimed ${place(n('territoryId'), 'territory ')}`);
         push(
           color,
-          `${name} deployed ${n('troops') ?? 1} troops to territory #${n('territoryId') + 1}`,
+          `${name} deployed ${n('troops') ?? 1} troops to ${place(n('territoryId'), 'territory ')}`,
         );
         break;
       }
@@ -373,11 +401,12 @@ export function createLogFormatter() {
 export function formatLogEntriesWithFrames(
   entries: { type: string; payload: unknown; afterFrame: number }[],
   players: FormatPlayer[],
+  placeNames: PlaceNames,
 ): (LogEntry & { afterFrame: number })[] {
   const format = createLogFormatter();
   const logs: (LogEntry & { afterFrame: number })[] = [];
   for (const entry of entries)
-    for (const part of format(entry, players))
+    for (const part of format(entry, players, placeNames))
       logs.push({ id: logs.length + 1, afterFrame: entry.afterFrame, ...part });
   return logs;
 }

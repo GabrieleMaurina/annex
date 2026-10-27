@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { playerColor } from '../../../../lib/palette';
 import { formatLogEntriesWithFrames } from '../../../logs/logFormat';
+import type { PlaceNames } from '../../../mapData';
 import { replayPlayerCounts } from '../../../replay/replay';
 import type { GameMapProps } from '../../props';
 import type { useGameSocketEvents } from '../useGameSocketEvents';
@@ -23,6 +24,7 @@ export function useDisplayedGame({
   logs,
   showReplay,
   replay,
+  placeNames,
 }: Pick<
   GameMapProps,
   | 'game'
@@ -39,7 +41,7 @@ export function useDisplayedGame({
   | 'visibleTerritoryIds'
   | 'logs'
   | 'showReplay'
-> & { replay: Replay }) {
+> & { replay: Replay; placeNames: PlaceNames }) {
   const {
     index: replayIndex,
     territories: replayTerritories,
@@ -192,9 +194,10 @@ export function useDisplayedGame({
               color: p.color,
               isBot: p.isBot,
             })),
+            placeNames,
           )
         : null,
-    [showReplay, replayLog, players],
+    [showReplay, replayLog, players, placeNames],
   );
   const displayedLogs = replayFormattedLog
     ? replayFormattedLog.filter((l) => l.afterFrame <= replayIndex)

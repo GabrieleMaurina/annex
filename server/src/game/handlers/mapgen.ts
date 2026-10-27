@@ -4,7 +4,9 @@ import {
   FILL_VALUES,
   GENERATION_TYPE_VALUES,
   GenerationType,
+  MAP_ASPECT_VALUES,
   MAP_SIZE_VALUES,
+  MapAspect,
   MapSize,
   TILE_SHAPE_VALUES,
   TileShape,
@@ -48,6 +50,9 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               lockedTiles: map.lockedTiles,
               imageSrc: `data:${map.imageMime};base64,${map.image}`,
               borderColors: map.borderColors,
+              territoryNames: map.territoryNames,
+              seaNames: map.seaNames,
+              continentNames: map.continentNames,
             },
             (response) => callback(viewResponse(playerId, response)),
           );
@@ -86,6 +91,9 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           (input.type !== 'tile' || input.seas || input.timed))
       )
         return callback({ ok: false, error: 'invalid unlockable' });
+      const aspect = input.aspect ?? 'wide';
+      if (!(MAP_ASPECT_VALUES as unknown[]).includes(aspect))
+        return callback({ ok: false, error: 'invalid aspect' });
 
       engine.generateMap(
         playerId,
@@ -98,6 +106,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           seas: input.seas,
           timed: input.timed,
           unlockable: input.unlockable,
+          aspect: aspect as MapAspect,
         },
         (response) => callback(viewResponse(playerId, response)),
       );

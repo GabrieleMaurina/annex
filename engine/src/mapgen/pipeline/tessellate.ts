@@ -192,7 +192,7 @@ function dropEmptyTerritories(
   return kept.map((oldId) => centers[oldId]);
 }
 
-function buildAdjacency(
+export function buildAdjacency(
   labelGrid: Int16Array,
   width: number,
   height: number,

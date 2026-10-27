@@ -17,10 +17,13 @@
     "check": "npm run format && npm run lint && npm run types && npm run limits"
   },
   "dependencies": {
+    "@mapbox/vector-tile": "^2.0.5",
     "bootstrap": "^5.3.8",
     "engine": "*",
     "flag-icons": "^7.5.0",
+    "maplibre-gl": "^6.16.0",
     "obscenity": "^0.4.6",
+    "pbf": "^4.0.2",
     "react": "^19.2.8",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.8",

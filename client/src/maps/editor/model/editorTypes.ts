@@ -19,6 +19,7 @@ export interface TimedMark {
 }
 
 export interface EditorTerritory extends MapTerritory {
+  name: string;
   isSea?: boolean;
   wraps: WrapMark[];
   timed: TimedMark[];
@@ -47,6 +48,7 @@ export function newTerritory(
     x,
     y,
     neighbors: [],
+    name: '',
     wraps: [],
     timed: [],
     isSea,
@@ -68,6 +70,8 @@ export function toEditorTerritories(
   seaTerritories: MapSeaTerritory[],
   wraps: MapWrap[],
   timedConnections: TimedConnection[],
+  territoryNames: string[] | null,
+  seaNames: string[] | null,
 ): EditorTerritory[] {
   const marksOf = (id: number): WrapMark[] =>
     wraps.flatMap((w) => {
@@ -82,14 +86,16 @@ export function toEditorTerritories(
       return [];
     });
   return [
-    ...territories.map((t) => ({
+    ...territories.map((t, i) => ({
       ...t,
+      name: territoryNames?.[i] ?? '',
       wraps: marksOf(t.id),
       timed: timedOf(t.id),
     })),
-    ...seaTerritories.map((s) => ({
+    ...seaTerritories.map((s, i) => ({
       ...s,
       continentId: 0,
+      name: seaNames?.[i] ?? '',
       isSea: true,
       wraps: marksOf(s.id),
       timed: timedOf(s.id),
@@ -109,4 +115,13 @@ export function withoutVertex(
       wraps: t.wraps.filter((w) => w.id !== id),
       timed: t.timed.filter((m) => m.id !== id),
     }));
+}
+
+export function allPlaceNames(
+  territories: EditorTerritory[],
+  continentNames: string[],
+): string[] {
+  return [...territories.map((t) => t.name), ...continentNames].map((n) =>
+    n.trim(),
+  );
 }

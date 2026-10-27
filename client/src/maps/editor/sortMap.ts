@@ -39,12 +39,14 @@ function sortByPosition<T>(
 export interface SortedTerritories {
   territories: Territory[];
   bonuses: number[];
+  continentNames: string[];
   idMap: Map<number, number>;
 }
 
 export function sortTerritories(
   territories: Territory[],
   bonuses: number[],
+  continentNames: string[],
 ): SortedTerritories {
   const land = territories.filter((t) => !t.isSea);
   const sea = territories.filter((t) => t.isSea);
@@ -71,6 +73,7 @@ export function sortTerritories(
     sortedContinents.map((c, newId) => [c.id, newId]),
   );
   const newBonuses = sortedContinents.map((c) => bonuses[c.id]);
+  const newContinentNames = sortedContinents.map((c) => continentNames[c.id]);
   const remapped = land.map((t) => ({
     ...t,
     continentId: continentIdMap.get(t.continentId) ?? NO_CONTINENT,
@@ -113,6 +116,7 @@ export function sortTerritories(
   return {
     territories: newTerritories,
     bonuses: newBonuses,
+    continentNames: newContinentNames,
     idMap,
   };
 }
@@ -120,6 +124,7 @@ export function sortTerritories(
 export function sortMapData(
   territories: Territory[],
   bonuses: number[],
+  continentNames: string[],
   lockedTiles: EditorLockedTile[],
 ): {
   territories: MapTerritory[];
@@ -128,8 +133,11 @@ export function sortMapData(
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   lockedTiles: LockedTile[];
+  territoryNames: string[];
+  seaNames: string[];
+  continentNames: string[];
 } {
-  const sorted = sortTerritories(territories, bonuses);
+  const sorted = sortTerritories(territories, bonuses, continentNames);
   const newTerritories: MapTerritory[] = sorted.territories
     .filter((t) => !t.isSea)
     .map((t) => ({
@@ -162,5 +170,12 @@ export function sortMapData(
       new Map([...sorted.idMap].filter(([, id]) => id < newTerritories.length)),
       sorted.territories.length,
     ),
+    territoryNames: sorted.territories
+      .filter((t) => !t.isSea)
+      .map((t) => t.name.trim()),
+    seaNames: sorted.territories
+      .filter((t) => t.isSea)
+      .map((t) => t.name.trim()),
+    continentNames: sorted.continentNames.map((name) => name.trim()),
   };
 }

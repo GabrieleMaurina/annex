@@ -309,6 +309,9 @@ export interface EngineCallbacks {
       lockedTiles: unknown[];
       imageSrc: string;
       borderColors: string[];
+      territoryNames: string[] | null;
+      seaNames: string[] | null;
+      continentNames: string[] | null;
     },
     gameName: string,
   ): void;

@@ -13,6 +13,9 @@ export interface LoadedPlayerMap {
   lockedTiles: GameMap['lockedTiles'];
   imageSrc: string;
   borderColors: string[];
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
 }
 
 export function loadPlayerMap(id: string): Promise<LoadedPlayerMap> {
@@ -31,6 +34,9 @@ export function loadPlayerMap(id: string): Promise<LoadedPlayerMap> {
           lockedTiles: map.lockedTiles,
           imageSrc: map.image,
           borderColors: map.borderColors,
+          territoryNames: map.territoryNames,
+          seaNames: map.seaNames,
+          continentNames: map.continentNames,
         }
       : Promise.reject(new Error('map unavailable')),
   );

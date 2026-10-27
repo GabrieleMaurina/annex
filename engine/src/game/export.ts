@@ -94,6 +94,7 @@ export interface GameExport {
     seas: boolean;
     timed: boolean;
     unlockable: boolean;
+    aspect: string;
   } | null;
   playerMapId: string | null;
   originalHostId: number;
@@ -352,6 +353,7 @@ export function exportGame(gameName: string): GameExport | null {
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
           unlockable: game.generatedMap.unlockable,
+          aspect: game.generatedMap.aspect,
         }
       : null,
     playerMapId: game.playerMap?.id ?? null,

@@ -232,6 +232,9 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
             lockedTiles: map.lockedTiles,
             imageSrc: `data:${map.imageMime};base64,${map.image}`,
             borderColors: map.borderColors,
+            territoryNames: map.territoryNames,
+            seaNames: map.seaNames,
+            continentNames: map.continentNames,
           });
         }
         setNotFound(false);

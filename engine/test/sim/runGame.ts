@@ -143,6 +143,7 @@ export function runSimGame(
     seas: mapParams.seas,
     timed: mapParams.timed,
     unlockable: mapParams.unlockable,
+    aspect: mapParams.aspect,
   };
 
   const { settings, teams } = randomGameSettings(rng, ROSTER_SIZE);

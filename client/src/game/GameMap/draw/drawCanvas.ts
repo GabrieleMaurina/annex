@@ -22,7 +22,7 @@ import {
 import type { EvaluatedCombo } from '../../logic/cards';
 import { formatTroops } from '../../logic/formatTroops';
 import { drawMapBorder, imageBorder } from '../../mapBorder';
-import type { SeaTerritory, Territory } from '../../mapData';
+import type { PlaceNames, SeaTerritory, Territory } from '../../mapData';
 import {
   borderScale,
   buildWrappedPathSegments,
@@ -56,6 +56,7 @@ import {
   type Point,
 } from '../helpers';
 import type { TimedLink } from '../hooks/view/useTimedConnections';
+import { drawTerritoryNames } from './drawNames';
 import {
   outlineContinentRegion,
   regionFillLayer,
@@ -126,6 +127,7 @@ export interface DrawCanvasParams {
   regions: ClickableRegions | null;
   timedLinks: TimedLink[];
   unlockTiles: LockedTile[];
+  placeNames: PlaceNames;
 }
 
 export function drawGameMapCanvas(params: DrawCanvasParams) {
@@ -189,6 +191,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     regions,
     timedLinks,
     unlockTiles,
+    placeNames,
   } = params;
 
   const canvas = canvasRef.current;
@@ -901,6 +904,16 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.fill();
   }
 
+  drawTerritoryNames(
+    ctx,
+    territories,
+    seaTerritories,
+    placeNames,
+    toScreen,
+    scaleX,
+    VERTEX_RADIUS * scaleX,
+  );
+
   if (bonusesOpen) {
     const showStats = !showReplay && ownedTerritoryIds.size > 0;
     for (const [continentGroupId, group] of continentGroups) {
@@ -909,7 +922,10 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         screenPoints.reduce((s, p) => s + p.x, 0) / screenPoints.length;
       const cy =
         screenPoints.reduce((s, p) => s + p.y, 0) / screenPoints.length;
-      const text = `#${continentGroupId + 1}:+${bonuses[continentGroupId] ?? 0}`;
+      const label =
+        placeNames.continents.get(continentGroupId) ??
+        `#${continentGroupId + 1}`;
+      const text = `${label}:+${bonuses[continentGroupId] ?? 0}`;
       const owned = group.filter((t) => ownedTerritoryIds.has(t.id)).length;
       const statsText = `${owned}/${group.length} (${Math.round((owned / group.length) * 100)}%)`;
       const mainFont = `bold ${34 * zoom}px sans-serif`;

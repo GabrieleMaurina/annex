@@ -1,4 +1,4 @@
-import type { Territory } from '../mapData';
+import type { PlaceNames, Territory } from '../mapData';
 import {
   getScales as computeScales,
   screenOffset as computeScreenOffset,
@@ -340,9 +340,12 @@ export function computeTooltipLabels(
   visibleTerritoryById: Set<number> | null,
   ownerById: Map<number, { isCapital: boolean; entrenchedTurns: number }>,
   toxinById: Set<number>,
+  placeNames: PlaceNames,
 ): string[] {
   const tooltipLabels: string[] = [];
   if (tooltipTerritoryId === null) return tooltipLabels;
+  const name = placeNames.territories.get(tooltipTerritoryId);
+  if (name) tooltipLabels.push(name);
   if (portalTerritoryIds.includes(tooltipTerritoryId))
     tooltipLabels.push('Portal');
   if (radiationById.has(tooltipTerritoryId)) tooltipLabels.push('Radiation');

@@ -1,6 +1,7 @@
 import {
   Fill,
   GenerationType,
+  MapAspect,
   MapSize,
   TileShape,
 } from '../mapgen/core/params';
@@ -120,6 +121,9 @@ export interface ArchivedMap {
   lockedTiles: LockedTile[];
   imageSrc: string | null;
   borderColors: string[];
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
   generation: {
     seed: string;
     size: MapSize;
@@ -129,6 +133,7 @@ export interface ArchivedMap {
     seas: boolean;
     timed: boolean;
     unlockable: boolean;
+    aspect: MapAspect;
   } | null;
 }
 
@@ -156,6 +161,9 @@ export function getArchivedMap(game: Game): ArchivedMap {
       generated?.borderColors ??
       game.playerMap?.borderColors ??
       DEFAULT_BORDER_COLORS,
+    territoryNames: game.playerMap?.territoryNames ?? null,
+    seaNames: game.playerMap?.seaNames ?? null,
+    continentNames: game.playerMap?.continentNames ?? null,
     generation: generated
       ? {
           seed: generated.seed,
@@ -166,6 +174,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
           seas: generated.seas,
           timed: generated.timed,
           unlockable: generated.unlockable,
+          aspect: generated.aspect,
         }
       : null,
   };

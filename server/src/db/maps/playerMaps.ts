@@ -50,6 +50,9 @@ interface PlayerMapDoc {
   imageMime: string;
   borderColors: string[];
   generation: MapGeneration | null;
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
   territoryCount: number;
   continentCount: number;
   likeCount: number;
@@ -139,6 +142,9 @@ export interface PlayerMapInput {
   imageMime: string;
   borderColors: string[];
   generation: MapGeneration | null;
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
 }
 
 export function createPlayerMap(
@@ -159,6 +165,9 @@ export function createPlayerMap(
       imageMime: input.imageMime,
       borderColors: input.borderColors,
       generation: input.generation,
+      territoryNames: input.territoryNames,
+      seaNames: input.seaNames,
+      continentNames: input.continentNames,
       territoryCount: input.territories.length,
       continentCount: input.bonuses.length,
       likeCount: 0,
@@ -204,6 +213,9 @@ export function updatePlayerMap(
               imageMime: input.imageMime,
               borderColors: input.borderColors,
               generation: input.generation,
+              territoryNames: input.territoryNames,
+              seaNames: input.seaNames,
+              continentNames: input.continentNames,
               territoryCount: input.territories.length,
               continentCount: input.bonuses.length,
             },
@@ -243,6 +255,9 @@ export interface PlayerMapDetail {
   imageMime: string;
   borderColors: string[];
   generation: MapGeneration | null;
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
   dangerous: boolean;
   likeCount: number;
   createdAt: number;
@@ -268,6 +283,9 @@ export function getPlayerMapById(id: string): Promise<PlayerMapDetail | null> {
             imageMime: doc.imageMime,
             borderColors: doc.borderColors,
             generation: doc.generation,
+            territoryNames: doc.territoryNames,
+            seaNames: doc.seaNames,
+            continentNames: doc.continentNames,
             dangerous: doc.dangerous,
             likeCount: doc.likeCount,
             createdAt: doc._id.getTimestamp().getTime(),

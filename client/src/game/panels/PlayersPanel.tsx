@@ -41,6 +41,7 @@ function formatList(items: string[]): string {
 function formatMission(
   mission: Mission,
   players: GameState['players'],
+  continentNames: Map<number, string>,
 ): ReactNode {
   if (mission.type === 'territories') {
     const percent = Math.round(mission.fraction * 100);
@@ -49,7 +50,9 @@ function formatMission(
       : `Occupy ${percent}%+ of the territories.`;
   }
   if (mission.type === 'continents') {
-    const names = formatList(mission.continentIds.map((id) => `#${id + 1}`));
+    const names = formatList(
+      mission.continentIds.map((id) => continentNames.get(id) ?? `#${id + 1}`),
+    );
     return `Conquer continents ${names}.`;
   }
   const target = players.find((p) => p.id === mission.targetId);
@@ -91,6 +94,7 @@ interface Props {
   toxins: Toxins;
   toxinsCost: number;
   mission: Mission | null;
+  continentNames: Map<number, string>;
   selfId: number | null;
   hostId: number;
   paused: boolean;
@@ -137,6 +141,7 @@ function PlayersPanel({
   toxins,
   toxinsCost,
   mission,
+  continentNames,
   selfId,
   hostId,
   paused,
@@ -272,7 +277,14 @@ function PlayersPanel({
         <div className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold">
           <span>{titleCase(gameMode)}</span>
           {mission && (
-            <Tip text={<>Your mission: {formatMission(mission, players)}</>}>
+            <Tip
+              text={
+                <>
+                  Your mission:{' '}
+                  {formatMission(mission, players, continentNames)}
+                </>
+              }
+            >
               <img
                 src={whiteTargetIcon ?? '/icons/target.svg'}
                 width={14}

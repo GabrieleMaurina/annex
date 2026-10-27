@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../../connector';
 import type { GameState } from '../../lib/types';
+import { loadGameMap, placeNamesFor } from '../mapData';
 import type { LogColorRange } from './logFormat';
 import { createLogFormatter } from './logFormat';
 
@@ -48,8 +49,15 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     formatRef.current = createLogFormatter();
   }
 
+  const entriesRef = useRef<{ type: string; payload: unknown }[]>([]);
+
   const append = useCallback((entry: { type: string; payload: unknown }) => {
-    const parts = formatRef.current!(entry, gameRef.current?.players ?? []);
+    entriesRef.current.push(entry);
+    const parts = formatRef.current!(
+      entry,
+      gameRef.current?.players ?? [],
+      placeNamesFor(gameRef.current?.mapName ?? ''),
+    );
     if (parts.length === 0) return;
     setLogs((prev) => {
       let id = prev.at(-1)?.id ?? 0;
@@ -59,6 +67,7 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
 
   const rebuild = useCallback(
     (entries: { type: string; payload: unknown }[]) => {
+      entriesRef.current = [...entries];
       formatRef.current = createLogFormatter();
       let id = 0;
       const rebuilt: LogEntry[] = [];
@@ -66,6 +75,7 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
         for (const part of formatRef.current(
           entry,
           gameRef.current?.players ?? [],
+          placeNamesFor(gameRef.current?.mapName ?? ''),
         ))
           rebuilt.push({ id: ++id, ...part });
       setLogs(rebuilt);
@@ -94,6 +104,13 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     pendingRef.current = null;
     rebuild(entries);
   }, [game, rebuild]);
+
+  const mapName = game?.mapName;
+  const playerMapId = game?.playerMapId;
+  useEffect(() => {
+    if (!mapName) return;
+    loadGameMap(mapName, playerMapId).then(() => rebuild(entriesRef.current));
+  }, [mapName, playerMapId, rebuild]);
 
   useEffect(() => {
     const handlers = LIVE_EVENTS.map((type) => {

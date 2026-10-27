@@ -1,8 +1,20 @@
-import { containsProfanity, TILE_SHAPE_VALUES, tileShapeLabel } from 'engine';
+import {
+  aspectLabel,
+  containsProfanity,
+  MAP_ASPECT_VALUES,
+  TILE_SHAPE_VALUES,
+  tileShapeLabel,
+} from 'engine';
 import { useState } from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
 import Help from '../../common/tooltips/Help';
-import type { Fill, GenerationType, MapSize, TileShape } from '../../lib/types';
+import type {
+  Fill,
+  GenerationType,
+  MapAspect,
+  MapSize,
+  TileShape,
+} from '../../lib/types';
 import {
   SEAS_HELP,
   TIMED_CONNECTIONS_HELP,
@@ -40,6 +52,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
   const [type, setType] = useState<GenerationType>('terrain');
   const [fill, setFill] = useState<Fill>('mixed');
   const [size, setSize] = useState<MapSize>('medium');
+  const [aspect, setAspect] = useState<MapAspect>('wide');
   const [tile, setTile] = useState<TileShape>('hexagons');
   const [seas, setSeas] = useState(false);
   const [timed, setTimed] = useState(false);
@@ -62,6 +75,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
       lastGenerated &&
       lastGenerated.seed === trimmed &&
       lastGenerated.size === size &&
+      lastGenerated.aspect === aspect &&
       lastGenerated.type === type &&
       lastGenerated.fill === fill &&
       (type !== 'tile' || lastGenerated.tile === tile) &&
@@ -78,6 +92,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
     const input: GenerateInput = {
       seed: effectiveSeed,
       size,
+      aspect,
       type,
       fill,
       tile,
@@ -182,6 +197,17 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
             <option value="medium">Medium</option>
             <option value="large">Large</option>
             <option value="xlarge">Extra Large</option>
+          </Form.Select>
+          <Form.Select
+            className="w-auto"
+            value={aspect}
+            onChange={(e) => setAspect(e.target.value as MapAspect)}
+          >
+            {MAP_ASPECT_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {aspectLabel(value)}
+              </option>
+            ))}
           </Form.Select>
         </Form.Group>
         <div className="d-flex align-items-center gap-2">

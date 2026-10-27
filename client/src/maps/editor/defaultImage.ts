@@ -1,6 +1,6 @@
 import { mapImageSize } from 'engine';
 
-const DEFAULT_SIZE = mapImageSize('medium');
+const DEFAULT_SIZE = mapImageSize('medium', 'wide');
 export const DEFAULT_IMAGE_WIDTH = DEFAULT_SIZE.width;
 export const DEFAULT_IMAGE_HEIGHT = DEFAULT_SIZE.height;
 

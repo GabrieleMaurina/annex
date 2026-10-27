@@ -37,7 +37,7 @@ export function generateMap(
 
   const gameName = game.name;
   const hostId = player.id;
-  const { size, type, fill, tile, seas, timed, unlockable } = input;
+  const { size, type, fill, tile, seas, timed, unlockable, aspect } = input;
 
   generateMapAsync({ ...input, seed: trimmedSeed }, (res) => {
     const current = games.get(gameName);
@@ -64,6 +64,7 @@ export function generateMap(
       seas,
       timed,
       unlockable,
+      aspect,
     };
 
     for (const viewerId of [...current.playerIds, ...current.spectatorIds]) {
@@ -79,6 +80,9 @@ export function generateMap(
           lockedTiles: generated.lockedTiles,
           imageSrc: generated.imageSrc,
           borderColors: generated.borderColors,
+          territoryNames: null,
+          seaNames: null,
+          continentNames: null,
         },
         current.name,
       );
@@ -116,6 +120,9 @@ export function selectPlayerMap(
     lockedTiles: map.lockedTiles,
     imageSrc: map.imageSrc,
     borderColors: map.borderColors,
+    territoryNames: map.territoryNames,
+    seaNames: map.seaNames,
+    continentNames: map.continentNames,
   };
 
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
@@ -131,6 +138,9 @@ export function selectPlayerMap(
         lockedTiles: map.lockedTiles,
         imageSrc: map.imageSrc,
         borderColors: map.borderColors,
+        territoryNames: map.territoryNames,
+        seaNames: map.seaNames,
+        continentNames: map.continentNames,
       },
       game.name,
     );

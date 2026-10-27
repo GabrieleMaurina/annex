@@ -135,12 +135,15 @@ export {
 } from './lifecycle/eligibility';
 export { isBlitzOffAllowed } from './lifecycle/settings';
 export {
+  aspectLabel,
   expectedTerritoryArea,
   Fill,
   FILL_VALUES,
   GENERATION_TYPE_VALUES,
   GenerationType,
+  MAP_ASPECT_VALUES,
   MAP_SIZE_VALUES,
+  MapAspect,
   mapImageSize,
   MapSize,
   mapSizeLabel,
@@ -150,6 +153,18 @@ export {
 } from './mapgen/core/params';
 export { createWarpField, warpAt } from './mapgen/core/warp';
 export { enforceContiguity } from './mapgen/pipeline/contiguity';
+export { generateOsmMap } from './mapgen/pipeline/osm/osmMap';
+export { LOCAL_ZOOM as OSM_LOCAL_ZOOM } from './mapgen/pipeline/osm/ranks';
+export {
+  OsmDetail,
+  OsmFeatures,
+  OsmFocus,
+  OsmGeneratedMap,
+  OsmLine,
+  OsmMapParams,
+  OsmPlace,
+  OsmWater,
+} from './mapgen/pipeline/osm/types';
 export {
   DEFAULT_BORDER_COLORS,
   DUNGEON_SEAM_COLOR,
@@ -171,6 +186,11 @@ export {
 export { runMapgenWorker } from './mapgen/worker';
 export { withUnlockedTiles } from './maps/lockedTiles';
 export { ArchivedMap } from './maps/maps';
+export {
+  duplicatePlaceNames,
+  isValidPlaceName,
+  MAX_PLACE_NAME_LENGTH,
+} from './maps/placeNames';
 export {
   isConnectionOpen,
   MAX_TIMED_VALUE,

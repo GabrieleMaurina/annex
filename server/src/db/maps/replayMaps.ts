@@ -26,6 +26,9 @@ export interface MapDoc {
   image: Binary;
   imageMime: string;
   borderColors: string[];
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
 }
 
 const schema = {
@@ -55,6 +58,9 @@ export function replayMapId(
     | 'lockedTiles'
     | 'imageMime'
     | 'borderColors'
+    | 'territoryNames'
+    | 'seaNames'
+    | 'continentNames'
   >,
   imageBytes: Uint8Array,
 ): string {
@@ -69,6 +75,9 @@ export function replayMapId(
         ...(map.lockedTiles.length > 0 ? { lockedTiles: map.lockedTiles } : {}),
         imageMime: map.imageMime,
         borderColors: map.borderColors,
+        ...(map.territoryNames ? { territoryNames: map.territoryNames } : {}),
+        ...(map.seaNames ? { seaNames: map.seaNames } : {}),
+        ...(map.continentNames ? { continentNames: map.continentNames } : {}),
       }),
     )
     .update(imageBytes)
@@ -103,6 +112,9 @@ export interface StoredMap {
   image: string;
   imageMime: string;
   borderColors: string[];
+  territoryNames: string[] | null;
+  seaNames: string[] | null;
+  continentNames: string[] | null;
 }
 
 export function findMapIdsByName(name: string): Promise<string[]> {
@@ -136,6 +148,9 @@ export function getMapById(id: string): Promise<StoredMap | null> {
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
             borderColors: doc.borderColors,
+            territoryNames: doc.territoryNames,
+            seaNames: doc.seaNames,
+            continentNames: doc.continentNames,
           }
         : null,
     );

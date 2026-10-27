@@ -3,6 +3,7 @@ export type Fill = 'full' | 'mixed' | 'sparse';
 export type GenerationType = 'terrain' | 'dungeon' | 'temple' | 'tile';
 export type TileShape =
   'triangles' | 'squares' | 'hexagons' | 'octares' | 'hexgles' | 'squagles';
+export type MapAspect = 'wide' | 'square';
 
 export interface GenerateMapParams {
   seed: string;
@@ -13,6 +14,7 @@ export interface GenerateMapParams {
   seas: boolean;
   timed: boolean;
   unlockable: boolean;
+  aspect: MapAspect;
 }
 
 export const MAP_SIZE_VALUES: MapSize[] = [
@@ -22,6 +24,7 @@ export const MAP_SIZE_VALUES: MapSize[] = [
   'xlarge',
 ];
 export const FILL_VALUES: Fill[] = ['full', 'mixed', 'sparse'];
+export const MAP_ASPECT_VALUES: MapAspect[] = ['wide', 'square'];
 export const GENERATION_TYPE_VALUES: GenerationType[] = [
   'terrain',
   'dungeon',
@@ -78,18 +81,19 @@ export const GRID_DIMENSIONS: Record<MapSize, GridDimensions> = {
 
 export const OUTPUT_SCALE = 5;
 
-export function mapImageSize(size: MapSize): GridDimensions {
+export function mapImageSize(size: MapSize, aspect: MapAspect): GridDimensions {
   const grid = GRID_DIMENSIONS[size];
-  return {
-    width: grid.width * OUTPUT_SCALE,
-    height: grid.height * OUTPUT_SCALE,
-  };
+  const width = grid.width * OUTPUT_SCALE;
+  const height = grid.height * OUTPUT_SCALE;
+  if (aspect === 'wide') return { width, height };
+  const side = Math.round(Math.sqrt(width * height));
+  return { width: side, height: side };
 }
 
 export function expectedTerritoryArea(width: number, height: number): number {
   const area = width * height;
   const gap = (size: MapSize) => {
-    const dims = mapImageSize(size);
+    const dims = mapImageSize(size, 'wide');
     return Math.abs(dims.width * dims.height - area);
   };
   const size = MAP_SIZE_VALUES.reduce((best, s) =>
@@ -111,6 +115,10 @@ export function mapSizeLabel(size: MapSize): string {
     large: 'Large',
     xlarge: 'Extra Large',
   }[size];
+}
+
+export function aspectLabel(aspect: MapAspect): string {
+  return { wide: '16:9', square: '1:1' }[aspect];
 }
 
 export function fillLabel(fill: Fill): string {
@@ -142,5 +150,6 @@ export function generatedMapName(params: GenerateMapParams): string {
     params.type === 'tile'
       ? tileShapeLabel(params.tile)
       : generationTypeLabel(params.type);
-  return `${label} (${fillLabel(params.fill)}-${mapSizeLabel(params.size)})`;
+  const shape = params.aspect === 'square' ? ` ${aspectLabel('square')}` : '';
+  return `${label} (${fillLabel(params.fill)}-${mapSizeLabel(params.size)}${shape})`;
 }

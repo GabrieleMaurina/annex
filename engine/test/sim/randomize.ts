@@ -138,6 +138,7 @@ export function randomMapParams(
     tile: pick<TileShape>(rng, TILE_SHAPE_VALUES),
     seas: rng() < 0.5,
     timed: rng() < 0.2,
+    aspect: 'wide' as const,
   };
   const unlockable = params.type === 'tile' && rng() < 0.1;
   return unlockable

@@ -1,5 +1,6 @@
 import {
   isBlitzOffAllowed,
+  MAP_ASPECT_VALUES,
   MAX_DICE,
   MIN_ACCOUNT_AGE_VALUES,
   MIN_GAMES_VALUES,
@@ -25,6 +26,7 @@ export interface GameSettings {
     seas: boolean;
     timed: boolean;
     unlockable: boolean;
+    aspect: string;
   } | null;
   playerMapId: string | null;
   slots: number;
@@ -94,6 +96,7 @@ export const MAP_SIZES = ['small', 'medium', 'large', 'xlarge'];
 export const FILL_VALUES = ['full', 'mixed', 'sparse'];
 export const GENERATION_TYPES = ['terrain', 'dungeon', 'temple', 'tile'];
 export const TILE_SHAPES: string[] = TILE_SHAPE_VALUES;
+export const MAP_ASPECTS: string[] = MAP_ASPECT_VALUES;
 
 export const GAME_ENUMS: Record<string, unknown[]> = {
   gameMode: [
@@ -340,6 +343,7 @@ export const preferencesSchemaProperties = {
           'seas',
           'timed',
           'unlockable',
+          'aspect',
         ],
         additionalProperties: false,
         properties: {
@@ -351,6 +355,7 @@ export const preferencesSchemaProperties = {
           seas: { bsonType: 'bool' },
           timed: { bsonType: 'bool' },
           unlockable: { bsonType: 'bool' },
+          aspect: { enum: MAP_ASPECTS },
         },
       },
       slots: { bsonType: 'number', minimum: 2, maximum: 20 },
@@ -491,6 +496,9 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
     seas: r.seas,
     timed: r.timed === true,
     unlockable: r.unlockable === true,
+    aspect: MAP_ASPECTS.includes(r.aspect as string)
+      ? (r.aspect as string)
+      : MAP_ASPECTS[0],
   };
 }
 

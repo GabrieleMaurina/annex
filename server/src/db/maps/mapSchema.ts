@@ -1,7 +1,9 @@
 import {
   FILL_VALUES,
   GENERATION_TYPE_VALUES,
+  MAP_ASPECT_VALUES,
   MAP_SIZE_VALUES,
+  MAX_PLACE_NAME_LENGTH,
   MAX_TIMED_VALUE,
   TILE_SHAPE_VALUES,
 } from 'engine';
@@ -15,6 +17,10 @@ const TIMED_DELAY = {
   maximum: MAX_TIMED_VALUE,
 };
 const TIMED_PERIOD = { ...TIMED_DELAY, minimum: 1 };
+const PLACE_NAMES = {
+  bsonType: ['array', 'null'],
+  items: { bsonType: 'string', maxLength: MAX_PLACE_NAME_LENGTH },
+};
 
 export const MAP_REQUIRED = [
   'name',
@@ -28,6 +34,9 @@ export const MAP_REQUIRED = [
   'image',
   'imageMime',
   'borderColors',
+  'territoryNames',
+  'seaNames',
+  'continentNames',
 ];
 
 export const MAP_PROPERTIES = {
@@ -125,6 +134,7 @@ export const MAP_PROPERTIES = {
       'seas',
       'timed',
       'unlockable',
+      'aspect',
     ],
     additionalProperties: false,
     properties: {
@@ -136,6 +146,7 @@ export const MAP_PROPERTIES = {
       seas: { bsonType: 'bool' },
       timed: { bsonType: 'bool' },
       unlockable: { bsonType: 'bool' },
+      aspect: { enum: MAP_ASPECT_VALUES },
     },
   },
   image: { bsonType: 'binData' },
@@ -146,4 +157,7 @@ export const MAP_PROPERTIES = {
     maxItems: MAX_BORDER_COLORS,
     items: { bsonType: 'string', pattern: BORDER_COLOR_PATTERN },
   },
+  territoryNames: PLACE_NAMES,
+  seaNames: PLACE_NAMES,
+  continentNames: PLACE_NAMES,
 };

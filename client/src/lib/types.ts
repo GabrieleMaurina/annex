@@ -2,6 +2,7 @@ import type {
   Fill,
   GenerationType,
   LockedTile,
+  MapAspect,
   MapSize,
   TileShape,
   TimedConnection,
@@ -82,6 +83,7 @@ export interface GameSummary {
     seas: boolean;
     timed: boolean;
     unlockable: boolean;
+    aspect: MapAspect;
   } | null;
   hostName: string;
   playerCount: number;
@@ -501,6 +503,7 @@ export type {
   Fill,
   GenerationType,
   LockedTile,
+  MapAspect,
   MapSize,
   TileShape,
   TimedConnection,
@@ -515,6 +518,7 @@ export interface GenerateMapInput {
   seas: boolean;
   timed: boolean;
   unlockable: boolean;
+  aspect: MapAspect;
 }
 
 export interface ChatMessage {

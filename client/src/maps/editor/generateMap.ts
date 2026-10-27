@@ -2,6 +2,7 @@ import type {
   Fill,
   GenerationType,
   LockedTile,
+  MapAspect,
   MapSeaTerritory,
   MapSize,
   MapTerritory,
@@ -18,6 +19,13 @@ export interface GenerateInput {
   seas: boolean;
   timed: boolean;
   unlockable: boolean;
+  aspect: MapAspect;
+}
+
+export interface GeneratedNames {
+  territoryNames: string[];
+  seaNames: string[];
+  continentNames: string[];
 }
 
 export interface GeneratedEditorMap {

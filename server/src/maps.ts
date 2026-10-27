@@ -32,6 +32,9 @@ export function persistGameMap(
     image: new Binary(image.bytes),
     imageMime: image.mime,
     borderColors: map.borderColors,
+    territoryNames: map.territoryNames,
+    seaNames: map.seaNames,
+    continentNames: map.continentNames,
   })
     .then(() => hash)
     .catch(() => null);

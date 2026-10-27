@@ -4,6 +4,8 @@ import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
   loadGameMap,
+  NO_PLACE_NAMES,
+  placeNamesFor,
   type SeaTerritory,
   type Territory,
 } from '../../mapData';
@@ -26,6 +28,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
   );
   const [lockedTiles, setLockedTiles] = useState<LockedTile[]>([]);
   const [regions, setRegions] = useState<ClickableRegions | null>(null);
+  const [placeNames, setPlaceNames] = useState(NO_PLACE_NAMES);
   const [camera] = useState(createCamera);
   const [imgDims, setImgDims] = useState({
     w: DEFAULT_IMAGE_WIDTH,
@@ -53,6 +56,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         setWraps(wraps);
         setTimedConnections(timedConnections);
         setLockedTiles(lockedTiles);
+        setPlaceNames(placeNamesFor(mapName));
         loadClickableRegions(mapName, playerMapId).then(setRegions);
         camera.set({ ...DEFAULT_TRANSFORM });
         if (!imageSrc) {
@@ -94,6 +98,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     lockedTiles,
     forcedWraps,
     regions,
+    placeNames,
     camera,
     imgDims,
     size,

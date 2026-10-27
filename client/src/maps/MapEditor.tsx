@@ -1,11 +1,29 @@
-import { DEFAULT_BORDER_COLORS, mapImageSize } from 'engine';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Form, Modal } from 'react-bootstrap';
+import {
+  DEFAULT_BORDER_COLORS,
+  duplicatePlaceNames,
+  isValidPlaceName,
+  mapImageSize,
+  MAX_PLACE_NAME_LENGTH,
+} from 'engine';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { formatError } from '../common/formatError';
 import { connector } from '../connector';
-import { playSound, useToggleSound } from '../lib/sounds';
-import type { Account, GenerateMapInput, MapSize } from '../lib/types';
+import { useToggleSound } from '../lib/sounds';
+import type {
+  Account,
+  GenerateMapInput,
+  MapAspect,
+  MapSize,
+} from '../lib/types';
 import {
   findTerritories,
   linkTerritories,
@@ -18,7 +36,11 @@ import {
   DEFAULT_IMAGE_WIDTH,
   isBlankImage,
 } from './editor/defaultImage';
-import type { GeneratedEditorMap, GenerateInput } from './editor/generateMap';
+import type {
+  GeneratedEditorMap,
+  GeneratedNames,
+  GenerateInput,
+} from './editor/generateMap';
 import GenerateMapModal from './editor/GenerateMapModal';
 import {
   invalidContinentSizes,
@@ -27,8 +49,11 @@ import {
   MIN_CONTINENT_SIZE,
 } from './editor/graph';
 import MapCanvas, { type MapCanvasHandle } from './editor/MapCanvas';
+import ImportMapModal from './editor/modals/ImportMapModal';
+import LeaveEditorModal from './editor/modals/LeaveEditorModal';
+import NewMapModal from './editor/modals/NewMapModal';
 import type { EditorTerritory as Territory } from './editor/model/editorTypes';
-import { toEditorTerritories } from './editor/model/editorTypes';
+import { allPlaceNames, toEditorTerritories } from './editor/model/editorTypes';
 import {
   graphKeyOf,
   graphOf,
@@ -46,6 +71,8 @@ import {
   isDefaultName,
 } from './editor/model/mapName';
 import { mapSizeText } from './editor/model/mapSize';
+import { useEarthRoute } from './editor/model/useEarthRoute';
+import { useEditorShortcuts } from './editor/model/useEditorShortcuts';
 import { fillTerritories } from './editor/paint/fillTerritories';
 import PaintLayer, {
   type PaintLayerHandle,
@@ -62,8 +89,11 @@ import {
 } from './editor/paint/surface';
 import { useTerritoryBorders } from './editor/paint/useTerritoryBorders';
 import Panel from './editor/Panel';
+import ImageFileInput from './editor/panel/ImageFileInput';
 import { sortMapData, sortTerritories } from './editor/sortMap';
-import MapBrowser from './MapBrowser';
+import EarthErrorBoundary from './editor/world/EarthErrorBoundary';
+
+const WorldMapModal = lazy(() => import('./editor/world/WorldMapModal'));
 
 const HISTORY_LIMIT = 30;
 const GRAPH_COMMIT_DELAY = 250;
@@ -78,6 +108,10 @@ function MapEditor({ account }: { account: Account | null }) {
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [continentCount, setContinentCount] = useState(1);
   const [bonuses, setBonuses] = useState<number[]>([2]);
+  const [continentNames, setContinentNames] = useState<string[]>(['']);
+  const [selectedTerritoryId, setSelectedTerritoryId] = useState<number | null>(
+    null,
+  );
   const [imageSrc, setImageSrc] = useState<string>(
     () =>
       (location.state as { blank?: string } | null)?.blank ??
@@ -129,9 +163,9 @@ function MapEditor({ account }: { account: Account | null }) {
   const [leaveOpen, setLeaveOpen] = useState(false);
   useToggleSound(libraryOpen);
   useToggleSound(generateOpen);
+  const earth = useEarthRoute(id);
   useToggleSound(newOpen);
   useToggleSound(leaveOpen);
-  const [newSize, setNewSize] = useState<MapSize>('medium');
   const [dirty, setDirty] = useState(false);
   const pendingDirtyRef = useRef(false);
   const [takenNames, setTakenNames] = useState<string[]>([]);
@@ -228,6 +262,7 @@ function MapEditor({ account }: { account: Account | null }) {
     () => ({
       territories,
       bonuses,
+      continentNames,
       continentCount,
       borderColors,
       generation,
@@ -236,6 +271,7 @@ function MapEditor({ account }: { account: Account | null }) {
     [
       territories,
       bonuses,
+      continentNames,
       continentCount,
       borderColors,
       generation,
@@ -442,9 +478,12 @@ function MapEditor({ account }: { account: Account | null }) {
           map.seaTerritories,
           map.wraps,
           map.timedConnections,
+          map.territoryNames,
+          map.seaNames,
         ),
       );
       setBonuses(map.bonuses);
+      setContinentNames(map.continentNames ?? map.bonuses.map(() => ''));
       setContinentCount(map.bonuses.length);
       setMapName(map.name);
       setSavedName(map.name);
@@ -461,6 +500,7 @@ function MapEditor({ account }: { account: Account | null }) {
       applyingRef.current = true;
       setTerritories(e.territories);
       setBonuses(e.bonuses);
+      setContinentNames(e.continentNames);
       setContinentCount(e.continentCount);
       setBorderColors(e.borderColors);
       setGeneration(e.generation);
@@ -559,11 +599,12 @@ function MapEditor({ account }: { account: Account | null }) {
     handleFile(file);
   }
 
-  function doNewMap(size: MapSize) {
-    const { width, height } = mapImageSize(size);
+  function doNewMap(size: MapSize, aspect: MapAspect) {
+    const { width, height } = mapImageSize(size, aspect);
     const blank = createBlankImage(width, height);
     setTerritories([]);
     setBonuses([2]);
+    setContinentNames(['']);
     setContinentCount(1);
     setCurrentContinentId(0);
     setGeneration(null);
@@ -587,6 +628,7 @@ function MapEditor({ account }: { account: Account | null }) {
     const emptyGraph: GraphState = {
       territories: [],
       bonuses: [2],
+      continentNames: [''],
       continentCount: 1,
       borderColors: DEFAULT_BORDER_COLORS,
       generation: null,
@@ -607,7 +649,11 @@ function MapEditor({ account }: { account: Account | null }) {
     if (id) navigate('/maps/editor', { state: { blank } });
   }
 
-  function handleGenerated(map: GeneratedEditorMap, input: GenerateInput) {
+  function handleGenerated(
+    map: GeneratedEditorMap,
+    input: GenerateInput | null,
+    names?: GeneratedNames,
+  ) {
     replaceImage(map.imageSrc);
     const bonusesIn = map.bonuses.length ? map.bonuses : [2];
     const sorted = sortTerritories(
@@ -616,11 +662,17 @@ function MapEditor({ account }: { account: Account | null }) {
         map.seaTerritories,
         [],
         map.timedConnections,
+        names?.territoryNames ?? null,
+        names?.seaNames ?? null,
       ),
       bonusesIn,
+      names && map.bonuses.length
+        ? names.continentNames
+        : bonusesIn.map(() => ''),
     );
     setTerritories(sorted.territories);
     setBonuses(sorted.bonuses);
+    setContinentNames(sorted.continentNames);
     setContinentCount(Math.max(1, sorted.bonuses.length));
     setCurrentContinentId(0);
     setGeneration(input);
@@ -645,9 +697,12 @@ function MapEditor({ account }: { account: Account | null }) {
           map.seaTerritories,
           map.wraps,
           map.timedConnections,
+          map.territoryNames,
+          map.seaNames,
         ),
       );
       setBonuses(map.bonuses);
+      setContinentNames(map.continentNames ?? map.bonuses.map(() => ''));
       setContinentCount(map.bonuses.length);
       setGeneration(map.generation ?? null);
       setLockedTiles(toEditorLockedTiles(map.lockedTiles));
@@ -687,6 +742,17 @@ function MapEditor({ account }: { account: Account | null }) {
       );
       return;
     }
+    const placeNames = allPlaceNames(territories, continentNames);
+    const badNames = [
+      ...placeNames.filter((n) => !isValidPlaceName(n)),
+      ...duplicatePlaceNames(placeNames),
+    ];
+    if (badNames.length > 0) {
+      setError(
+        `Names must be unique, at most ${MAX_PLACE_NAME_LENGTH} characters, with no profanity: ${badNames.join(', ')}`,
+      );
+      return;
+    }
     paintLayerRef.current?.flush();
     const image = surfaceToDataUrl(paintSurface);
     if (image.length * 0.75 > MAX_IMAGE_BYTES) {
@@ -694,7 +760,12 @@ function MapEditor({ account }: { account: Account | null }) {
       return;
     }
     setSaving(true);
-    const sorted = sortMapData(territories, bonuses, lockedTiles);
+    const sorted = sortMapData(
+      territories,
+      bonuses,
+      continentNames,
+      lockedTiles,
+    );
     const body = {
       name,
       territories: sorted.territories,
@@ -706,6 +777,9 @@ function MapEditor({ account }: { account: Account | null }) {
       image,
       generation,
       borderColors,
+      territoryNames: sorted.territoryNames,
+      seaNames: sorted.seaNames,
+      continentNames: sorted.continentNames,
     };
     const done = (res: { ok: boolean; error?: string; id?: string }) => {
       setSaving(false);
@@ -729,6 +803,7 @@ function MapEditor({ account }: { account: Account | null }) {
     territories,
     continentCount,
     bonuses,
+    continentNames,
     generation,
     lockedTiles,
     borderColors,
@@ -737,37 +812,15 @@ function MapEditor({ account }: { account: Account | null }) {
     navigate,
   ]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && mode === 'paint') {
-        if (tool) {
-          playSound('click');
-          setTool(null);
-        } else {
-          setCollapsed(true);
-        }
-        return;
-      }
-      if (!(e.ctrlKey || e.metaKey)) return;
-      const key = e.key.toLowerCase();
-      if (key === 's') {
-        e.preventDefault();
-        playSound('click');
-        handleSave();
-      } else if (key === 'z') {
-        e.preventDefault();
-        playSound('click');
-        if (e.shiftKey) redo();
-        else undo();
-      } else if (key === 'y') {
-        e.preventDefault();
-        playSound('click');
-        redo();
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [handleSave, undo, redo, mode, tool]);
+  useEditorShortcuts({
+    mode,
+    tool,
+    setTool,
+    setCollapsed,
+    onSave: handleSave,
+    onUndo: undo,
+    onRedo: redo,
+  });
 
   if (loading) return null;
 
@@ -779,17 +832,7 @@ function MapEditor({ account }: { account: Account | null }) {
       }}
       onDrop={handleDrop}
     >
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="d-none"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = '';
-          if (file) handleFile(file);
-        }}
-      />
+      <ImageFileInput ref={fileRef} onFile={handleFile} />
 
       <MapCanvas
         ref={mapCanvasRef}
@@ -814,6 +857,7 @@ function MapEditor({ account }: { account: Account | null }) {
         clickable={showClickable ? clickable : null}
         borderOverlay={borders.overlay}
         timedMode={timedMode}
+        onSelect={setSelectedTerritoryId}
       />
 
       {mode === 'paint' && tool !== null && (
@@ -849,6 +893,9 @@ function MapEditor({ account }: { account: Account | null }) {
           setContinentCount={setContinentCount}
           bonuses={bonuses}
           setBonuses={setBonuses}
+          continentNames={continentNames}
+          setContinentNames={setContinentNames}
+          selectedTerritoryId={selectedTerritoryId}
           mapName={mapName}
           setMapName={handleNameChange}
           mapSizeText={sizeLabel}
@@ -877,6 +924,7 @@ function MapEditor({ account }: { account: Account | null }) {
           onImportImage={() => fileRef.current?.click()}
           onImportLibrary={() => setLibraryOpen(true)}
           onGenerate={() => setGenerateOpen(true)}
+          onWorldMap={earth.show}
           onNew={() => setNewOpen(true)}
           onSave={handleSave}
           onLeave={handleLeave}
@@ -912,75 +960,36 @@ function MapEditor({ account }: { account: Account | null }) {
         onGenerated={handleGenerated}
       />
 
-      <Modal show={newOpen} onHide={() => setNewOpen(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>New map</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="d-flex flex-column gap-2">
-          {dirty && (
-            <Alert variant="warning" className="py-1 px-2 small mb-0">
-              You have unsaved changes. Creating a new map will discard them.
-            </Alert>
-          )}
-          <Form.Group className="d-flex align-items-center gap-2">
-            <Form.Label className="mb-0" style={{ minWidth: 50 }}>
-              Size
-            </Form.Label>
-            <Form.Select
-              value={newSize}
-              onChange={(e) => setNewSize(e.target.value as MapSize)}
-            >
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-              <option value="xlarge">Extra Large</option>
-            </Form.Select>
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setNewOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              setNewOpen(false);
-              doNewMap(newSize);
-            }}
-          >
-            Create
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {earth.open && (
+        <EarthErrorBoundary onClose={earth.hide}>
+          <Suspense fallback={null}>
+            <WorldMapModal
+              onHide={earth.hide}
+              onGenerated={(map) => handleGenerated(map, null, map)}
+            />
+          </Suspense>
+        </EarthErrorBoundary>
+      )}
 
-      <Modal show={leaveOpen} onHide={() => setLeaveOpen(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Leave editor</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          You have unsaved changes. Are you sure you want to leave?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setLeaveOpen(false)}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={() => navigate('/maps/mine')}>
-            Leave
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <NewMapModal
+        show={newOpen}
+        onHide={() => setNewOpen(false)}
+        dirty={dirty}
+        onCreate={doNewMap}
+      />
 
-      <Modal show={libraryOpen} onHide={() => setLibraryOpen(false)} size="xl">
-        <Modal.Header closeButton>
-          <Modal.Title>Import a map</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <MapBrowser
-            account={account}
-            mode="pick"
-            onRowClick={(row) => pickLibraryMap(row.id)}
-          />
-        </Modal.Body>
-      </Modal>
+      <LeaveEditorModal
+        show={leaveOpen}
+        onHide={() => setLeaveOpen(false)}
+        onLeave={() => navigate('/maps/mine')}
+      />
+
+      <ImportMapModal
+        show={libraryOpen}
+        onHide={() => setLibraryOpen(false)}
+        account={account}
+        onPick={pickLibraryMap}
+      />
     </div>
   );
 }

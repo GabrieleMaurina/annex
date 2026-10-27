@@ -1,3 +1,5 @@
+import { drawTerritoryNames } from '../../../game/GameMap/draw/drawNames';
+import type { PlaceNames } from '../../../game/mapData';
 import type { WrapAxes } from '../../../game/mapMath';
 import { contrastTextColor } from '../../../lib/palette';
 import { edgeKey, wrapEdgeSegments, type Point } from '../mapCanvasGeometry';
@@ -27,6 +29,23 @@ interface DrawGraphParams {
   allowCrossover: boolean;
   clickable?: ClickableCheck | null;
   timedMode: boolean;
+}
+
+const placeNamesCache = new WeakMap<Territory[], PlaceNames>();
+
+function editorPlaceNames(territories: Territory[]): PlaceNames {
+  const cached = placeNamesCache.get(territories);
+  if (cached) return cached;
+  const names = {
+    territories: new Map(
+      territories
+        .filter((t) => t.name.trim())
+        .map((t) => [t.id, t.name.trim()]),
+    ),
+    continents: new Map<number, string>(),
+  };
+  placeNamesCache.set(territories, names);
+  return names;
 }
 
 function hexagonPath(
@@ -204,4 +223,14 @@ export function drawGraph({
       (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
     ctx.fillText(text, p.x, baselineY);
   }
+
+  drawTerritoryNames(
+    ctx,
+    territories.filter((t) => !t.isSea),
+    territories.filter((t) => t.isSea),
+    editorPlaceNames(territories),
+    toScreen,
+    scaleX,
+    vertexRadius * scaleX,
+  );
 }

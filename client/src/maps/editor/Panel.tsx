@@ -1,3 +1,4 @@
+import { duplicatePlaceNames } from 'engine';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { useRef, useState } from 'react';
 import {
@@ -14,6 +15,7 @@ import { useNumberInput } from '../../common/inputs/useNumberInput';
 import { contrastTextColor } from '../../lib/palette';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import {
+  allPlaceNames,
   NO_CONTINENT,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
@@ -22,6 +24,7 @@ import { PALETTE_GROUPS } from './paint/paintTools';
 import { SHAPE_KINDS, shapeSides, type ShapeKind } from './paint/shapes';
 import { continentColor } from './palette';
 import NumberCell from './panel/NumberCell';
+import PlaceNameInput from './panel/PlaceNameInput';
 import ShapeIcon from './panel/ShapeIcon';
 import TerritorySizeRange from './panel/TerritorySizeRange';
 import TimedLinksTable from './panel/TimedLinksTable';
@@ -45,6 +48,9 @@ interface Props {
   setContinentCount: Dispatch<SetStateAction<number>>;
   bonuses: number[];
   setBonuses: Dispatch<SetStateAction<number[]>>;
+  continentNames: string[];
+  setContinentNames: Dispatch<SetStateAction<string[]>>;
+  selectedTerritoryId: number | null;
   mapName: string;
   setMapName: (value: string) => void;
   mapSizeText: string;
@@ -73,6 +79,7 @@ interface Props {
   onImportImage: () => void;
   onImportLibrary: () => void;
   onGenerate: () => void;
+  onWorldMap: () => void;
   onNew: () => void;
   onSave: () => void;
   onLeave: () => void;
@@ -150,6 +157,9 @@ function Panel(props: Props) {
     setContinentCount,
     bonuses,
     setBonuses,
+    continentNames,
+    setContinentNames,
+    selectedTerritoryId,
     mapName,
     setMapName,
     mapSizeText,
@@ -178,6 +188,7 @@ function Panel(props: Props) {
     onImportImage,
     onImportLibrary,
     onGenerate,
+    onWorldMap,
     onNew,
     onSave,
     onLeave,
@@ -245,6 +256,7 @@ function Panel(props: Props) {
   function addContinent() {
     if (continentCount >= MAX_CONTINENTS) return;
     setBonuses((prev) => [...prev, 2]);
+    setContinentNames((prev) => [...prev, '']);
     setContinentCount((c) => c + 1);
   }
 
@@ -262,12 +274,32 @@ function Panel(props: Props) {
       }),
     );
     setBonuses((prev) => prev.filter((_, i) => i !== index));
+    setContinentNames((prev) => prev.filter((_, i) => i !== index));
     setContinentCount((c) => c - 1);
   }
 
   function updateBonus(index: number, value: number) {
     setBonuses((prev) => prev.map((b, i) => (i === index ? value : b)));
   }
+
+  function updateContinentName(index: number, value: string) {
+    setContinentNames((prev) => prev.map((n, i) => (i === index ? value : n)));
+  }
+
+  function updateTerritoryName(id: number, value: string) {
+    setTerritories((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, name: value } : t)),
+    );
+  }
+
+  const selectedTerritory = territories.find(
+    (t) => t.id === selectedTerritoryId,
+  );
+  const duplicateNames = duplicatePlaceNames(
+    allPlaceNames(territories, continentNames),
+  );
+  const isDuplicate = (name: string) =>
+    duplicateNames.has(name.trim().toLowerCase());
 
   if (collapsed) {
     return (
@@ -285,7 +317,7 @@ function Panel(props: Props) {
   return (
     <div
       ref={panelRef}
-      className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column"
+      className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column overflow-y-auto overflow-x-hidden no-scrollbar"
       style={{
         width: 'min(300px, calc(100vw - 1rem))',
         maxHeight: 'calc(100dvh - 1rem)',
@@ -315,6 +347,14 @@ function Panel(props: Props) {
           onClick={onGenerate}
         >
           Generate
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-100"
+          onClick={onWorldMap}
+        >
+          Earth
         </Button>
       </div>
       <div className="d-flex gap-2 mb-2">
@@ -543,10 +583,7 @@ function Panel(props: Props) {
         </Alert>
       )}
 
-      <div
-        className="flex-grow-1 overflow-y-auto overflow-x-hidden no-scrollbar"
-        style={{ minHeight: 0 }}
-      >
+      <div>
         {mode === 'paint' ? (
           <>
             <div className="d-flex flex-wrap gap-1 mb-1">
@@ -738,6 +775,22 @@ function Panel(props: Props) {
           </>
         ) : (
           <>
+            {selectedTerritory && (
+              <Form.Group className="mb-2">
+                <Form.Label className="small mb-1">
+                  {selectedTerritory.isSea ? 'Sea' : 'Territory'} #
+                  {selectedTerritory.id + 1} name
+                </Form.Label>
+                <PlaceNameInput
+                  value={selectedTerritory.name}
+                  placeholder={`#${selectedTerritory.id + 1}`}
+                  duplicate={isDuplicate(selectedTerritory.name)}
+                  onChange={(value) =>
+                    updateTerritoryName(selectedTerritory.id, value)
+                  }
+                />
+              </Form.Group>
+            )}
             <Table size="sm" borderless className="mb-2 text-center">
               <thead>
                 <tr>
@@ -762,6 +815,7 @@ function Panel(props: Props) {
               <thead>
                 <tr>
                   <th>#</th>
+                  <th>Name</th>
                   <th>Size</th>
                   <th>Bonus</th>
                   <th></th>
@@ -781,6 +835,14 @@ function Panel(props: Props) {
                     }
                   >
                     <td>{i + 1}</td>
+                    <td>
+                      <PlaceNameInput
+                        value={continentNames[i]}
+                        placeholder={`#${i + 1}`}
+                        duplicate={isDuplicate(continentNames[i])}
+                        onChange={(value) => updateContinentName(i, value)}
+                      />
+                    </td>
                     <td>
                       {
                         territories.filter(
@@ -809,7 +871,7 @@ function Panel(props: Props) {
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={5}>
                     <Button
                       variant="success"
                       size="sm"

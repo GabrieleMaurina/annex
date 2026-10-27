@@ -6,6 +6,7 @@ import {
   FILL_VALUES,
   GAME_ENUMS,
   GENERATION_TYPES,
+  MAP_ASPECTS,
   MAP_SIZES,
   TILE_SHAPES,
 } from './users/preferences';
@@ -395,6 +396,7 @@ const schema = {
             'seas',
             'timed',
             'unlockable',
+            'aspect',
           ],
           additionalProperties: false,
           properties: {
@@ -406,6 +408,7 @@ const schema = {
             seas: bool,
             timed: bool,
             unlockable: bool,
+            aspect: { enum: MAP_ASPECTS },
           },
         },
         playerMapId: { bsonType: ['string', 'null'] },

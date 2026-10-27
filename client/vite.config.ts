@@ -22,7 +22,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globIgnores: ['**/WorldMapModal-*', '**/osmWorker-*.js'],
+        globIgnores: [
+          '**/WorldMapModal-*',
+          '**/maplibre-gl-worker-*.js',
+          '**/osmWorker-*.js',
+        ],
       },
       manifest: {
         name: 'Annex',
@@ -45,6 +49,16 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        assetFileNames: (asset) =>
+          asset.names.some((name) => name.endsWith('.mjs'))
+            ? 'assets/[name]-[hash].js'
+            : 'assets/[name]-[hash][extname]',
+      },
+    },
+  },
   optimizeDeps: {
     include: ['engine', 'maplibre-gl', '@mapbox/vector-tile', 'pbf'],
   },

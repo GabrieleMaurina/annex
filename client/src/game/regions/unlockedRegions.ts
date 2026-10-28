@@ -23,11 +23,20 @@ export function withUnlockedRegions(
 ): ClickableRegions {
   if (tiles.length === 0) return regions;
   const labels = regions.labels.slice();
+  const fillLabels = regions.fillLabels.slice();
   const shapes = new Map(regions.shapes);
   for (const tile of tiles) {
     paintTile(labels, regions.width, tile);
-    const path = polygonPath(insetPolygon(tile.points, lineWidth / 2));
+    const inset = insetPolygon(tile.points, lineWidth / 2);
+    paintTile(fillLabels, regions.width, { ...tile, points: inset });
+    const path = polygonPath(inset);
     shapes.set(tile.id, { fill: path, outline: path });
   }
-  return { ...regions, labels, shapes, unlocked: { tiles, lineWidth } };
+  return {
+    ...regions,
+    labels,
+    fillLabels,
+    shapes,
+    unlocked: { tiles, lineWidth },
+  };
 }

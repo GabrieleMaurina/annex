@@ -3,6 +3,8 @@ export interface RegionShape {
   outline: Path2D;
 }
 
+const CORNER_CUT = 0.5;
+
 function boundaryEdges(
   labels: Int16Array,
   width: number,
@@ -86,6 +88,25 @@ function appendLoop(path: Path2D, points: number[]) {
   path.closePath();
 }
 
+function appendCutLoop(path: Path2D, points: number[]) {
+  const n = points.length;
+  for (let i = 0; i < n; i += 2) {
+    const x = points[i];
+    const y = points[i + 1];
+    const cut = (j: number): [number, number] => {
+      const dx = points[j] - x;
+      const dy = points[j + 1] - y;
+      const length = Math.min(CORNER_CUT, (Math.abs(dx) + Math.abs(dy)) / 2);
+      return [x + Math.sign(dx) * length, y + Math.sign(dy) * length];
+    };
+    const from = cut((i + n - 2) % n);
+    if (i === 0) path.moveTo(...from);
+    else path.lineTo(...from);
+    path.lineTo(...cut((i + 2) % n));
+  }
+  path.closePath();
+}
+
 export function traceOuterLoops(
   labels: Int16Array,
   width: number,
@@ -116,7 +137,7 @@ export function traceRegionShapes(
       const points = corners(loop, stride);
       appendLoop(fill, points);
       const area = signedArea(points);
-      if (area > 0 || area <= -minHoleArea) appendLoop(outline, points);
+      if (area > 0 || area <= -minHoleArea) appendCutLoop(outline, points);
     }
     shapes.set(id, { fill, outline });
   }

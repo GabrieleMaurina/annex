@@ -135,26 +135,47 @@ function lonLatBounds(frame: WorldFrame): [number, number, number, number] {
   ];
 }
 
-function placeInFrame(
+function frameOverlap(
   [w, s, e, n]: GazetteerPlace['bounds'],
   frame: WorldFrame,
-  zoomOutLimit: boolean,
-): boolean {
+) {
   const box = frameBounds(frame);
   const shift = Math.round((box.x0 + box.x1) / 2 - ((w + e) / 2 + 180) / 360);
   const x0 = (w + 180) / 360 + shift;
   const x1 = (e + 180) / 360 + shift;
   const y0 = mercatorY(n);
   const y1 = mercatorY(s);
-  const overlap =
-    Math.max(0, Math.min(x1, box.x1) - Math.max(x0, box.x0)) *
-    Math.max(0, Math.min(y1, box.y1) - Math.max(y0, box.y0));
-  const placeArea = (x1 - x0) * (y1 - y0);
-  const frameArea = (box.x1 - box.x0) * (box.y1 - box.y0);
+  return {
+    overlap:
+      Math.max(0, Math.min(x1, box.x1) - Math.max(x0, box.x0)) *
+      Math.max(0, Math.min(y1, box.y1) - Math.max(y0, box.y0)),
+    placeArea: (x1 - x0) * (y1 - y0),
+    frameArea: (box.x1 - box.x0) * (box.y1 - box.y0),
+    tooSmall: box.x1 - box.x0 > MAX_ZOOM_OUT * (x1 - x0),
+  };
+}
+
+function placeInFrame(
+  bounds: GazetteerPlace['bounds'],
+  frame: WorldFrame,
+  zoomOutLimit: boolean,
+): boolean {
+  const { overlap, placeArea, frameArea, tooSmall } = frameOverlap(
+    bounds,
+    frame,
+  );
   return (
     overlap >= MIN_PLACE_OVERLAP * Math.min(placeArea, frameArea) &&
-    (!zoomOutLimit || box.x1 - box.x0 <= MAX_ZOOM_OUT * (x1 - x0))
+    (!zoomOutLimit || !tooSmall)
   );
+}
+
+function mostlyVisible(
+  bounds: GazetteerPlace['bounds'],
+  frame: WorldFrame,
+): boolean {
+  const { overlap, placeArea, tooSmall } = frameOverlap(bounds, frame);
+  return overlap >= MIN_PLACE_OVERLAP * placeArea && !tooSmall;
 }
 
 function bestAspect(
@@ -231,6 +252,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
   const [locating, setLocating] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [index, setIndex] = useState<GazetteerIndex | null>(null);
+  const [searchKey, setSearchKey] = useState(0);
 
   useEffect(() => {
     Object.assign(session, {
@@ -273,10 +295,8 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
     !!place &&
     !!placeBounds &&
     !!frame &&
-    (placeInFrame(placeBounds, frame, place.kind !== DRAWN_KIND) ||
-      extras.some((extra) =>
-        placeInFrame(extra.bounds, frame, extra.kind !== DRAWN_KIND),
-      ));
+    (placeInFrame(placeBounds, frame, false) ||
+      extras.some((extra) => placeInFrame(extra.bounds, frame, false)));
   const focusPlaces = focusActive
     ? selected.filter((one) => FOCUSABLE_KINDS.includes(one.kind))
     : [];
@@ -287,10 +307,18 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
   const choices = useMemo<PlaceChoice[]>(() => {
     if (job || !index || !outlines || !frame) return [];
     const view = lonLatBounds(frame);
-    if (!focusActive)
+    if (!focusActive) {
+      for (const kind of PLACE_KINDS) {
+        const whole = nearbyPlaces(index, kind, view, outlines, (one) =>
+          mostlyVisible(one.bounds, frame),
+        );
+        if (whole.length > 0)
+          return whole.map((nearby) => ({ ...nearby, added: false }));
+      }
       return nearbyPlaces(index, viewKind(view), view, outlines, (one) =>
         placeInFrame(one.bounds, frame, true),
       ).map((nearby) => ({ ...nearby, added: false }));
+    }
     if (!place) return [];
     const selectedIds = new Set(selected.map((one) => one.id));
     return [
@@ -459,7 +487,8 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
               Earth
             </div>
             <SearchBox
-              initialQuery={session.place?.name ?? ''}
+              key={searchKey}
+              initialQuery={place?.name ?? ''}
               onSelect={(chosen) => select(chosen, true)}
             />
             {drawing && !job && (
@@ -481,6 +510,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
                   onClick={() => {
                     setPlace(null);
                     setExtras([]);
+                    setSearchKey((key) => key + 1);
                   }}
                 />
               </div>

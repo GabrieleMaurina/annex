@@ -6,8 +6,10 @@ export function cleanLandMask(
   width: number,
   height: number,
   expectedTerritoryArea: number,
+  islandAreaRatio = MIN_COMPONENT_AREA_RATIO,
 ): Uint8Array {
   const minArea = expectedTerritoryArea * MIN_COMPONENT_AREA_RATIO;
+  const minIslandArea = expectedTerritoryArea * islandAreaRatio;
   const size = width * height;
   const cur = land.slice();
   const comp = new Int32Array(size);
@@ -16,6 +18,7 @@ export function cleanLandMask(
   for (let pass = 0; pass < MAX_CLEAN_PASSES; pass++) {
     comp.fill(-1);
     const sizes: number[] = [];
+    const phases: number[] = [];
     for (let start = 0; start < size; start++) {
       if (comp[start] !== -1) continue;
       const phase = cur[start];
@@ -50,11 +53,13 @@ export function cleanLandMask(
         }
       }
       sizes.push(area);
+      phases.push(phase);
     }
 
     let changed = false;
     for (let i = 0; i < size; i++) {
-      if (sizes[comp[i]] >= minArea) continue;
+      if (sizes[comp[i]] >= (phases[comp[i]] ? minIslandArea : minArea))
+        continue;
       cur[i] = cur[i] ? 0 : 1;
       changed = true;
     }

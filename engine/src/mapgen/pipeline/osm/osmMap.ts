@@ -38,6 +38,7 @@ import {
 
 const SPECK_AREA_RATIO = 0.1;
 const FINE_SPECK_AREA_RATIO = 0.3;
+const ISLAND_AREA_RATIO = 0.005;
 const STATE_CUT = 90;
 const SEA_AREA_MULTIPLIER = 16;
 const LAKE_AREA_RATIO = 0.1;
@@ -247,6 +248,13 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   const barrier = barrierMask(params, width, height);
   let expectedTerritoryArea = countLand(rawLand) / middle;
   let land = cleanLandMask(rawLand, width, height, expectedTerritoryArea);
+  const visibleLand = cleanLandMask(
+    rawLand,
+    width,
+    height,
+    expectedTerritoryArea,
+    ISLAND_AREA_RATIO,
+  );
   keepLakes(land, lakes, width, expectedTerritoryArea * LAKE_AREA_RATIO);
   let atoms = buildAtoms(land, barrier, width, height);
   if (atoms.count === 0) throw new Error('no land in the selected area');
@@ -305,6 +313,8 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     if (!adjacency.has(t)) adjacency.set(t, new Set());
   const rivers = cutRiverBorders(features, labelGrid, width, height, adjacency);
   const voidMask = focused?.voidMask ?? new Uint8Array(land.length);
+  for (let i = 0; i < voidMask.length; i++)
+    if (rawLand[i] && visibleLand[i] && labelGrid[i] < 0) voidMask[i] = 1;
   for (let i = 0; i < voidMask.length; i++)
     if (mountains[i] && !land[i]) voidMask[i] = MOUNTAIN_VOID;
   const parentOf = majorityParents(

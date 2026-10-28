@@ -7,6 +7,7 @@ export interface ClickableRegions {
   width: number;
   height: number;
   labels: Int16Array;
+  fillLabels: Int16Array;
   shapes: Map<number, RegionShape>;
   unlocked?: { tiles: LockedTile[]; lineWidth: number };
 }
@@ -69,8 +70,9 @@ export function buildClickableRegions(
     height,
     Math.PI * vertexRadius * vertexRadius,
   );
+  const fillLabels = labels.slice();
   growIntoBorders(labels, wall, width);
-  return { width, height, labels, shapes };
+  return { width, height, labels, fillLabels, shapes };
 }
 
 interface ContinentTerritory {

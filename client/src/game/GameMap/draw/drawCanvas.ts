@@ -33,6 +33,7 @@ import {
   continentShapes,
   type ClickableRegions,
 } from '../../regions/clickableRegions';
+import { drawSmoothImage } from '../../regions/smoothImage';
 import type { ConquestArrow } from '../../replay/replay';
 import type { RailEdge } from '../../supplyLines';
 import { drawSupplyLines } from '../../supplyLines';
@@ -233,25 +234,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     10 * zoom,
   );
 
-  if (imageRef.current) {
-    ctx.imageSmoothingEnabled = scaleX * dpr < 1;
-    ctx.drawImage(
-      imageRef.current,
-      offsetX,
-      offsetY,
-      imgW * scaleX,
-      imgH * scaleY,
-    );
-    ctx.imageSmoothingEnabled = true;
-  }
-
   const cracking = crackingTileIds();
   const tileLayer = regions && unlockedTileLayer(regions, cracking);
-  if (tileLayer) {
-    ctx.imageSmoothingEnabled = scaleX * dpr < 1;
-    ctx.drawImage(tileLayer, offsetX, offsetY, imgW * scaleX, imgH * scaleY);
-    ctx.imageSmoothingEnabled = true;
-  }
 
   const toScreen = (p: Point): Point => ({
     x: p.x * scaleX + offsetX,
@@ -302,15 +286,37 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         lighten(color, STATE_STYLE[nodeState(t.id)].tint),
       );
     }
-    ctx.imageSmoothingEnabled = scaleX * dpr < 1;
-    ctx.drawImage(
-      regionFillLayer(regions, tintedFillColors),
+  }
+
+  const image = imageRef.current;
+  const minified = scaleX * dpr < 1;
+  const smoothed =
+    image !== null &&
+    !minified &&
+    drawSmoothImage(
+      ctx,
+      {
+        image,
+        revision: 0,
+        tiles: tileLayer,
+        fill: regions && {
+          labels: regions.fillLabels,
+          colors: tintedFillColors,
+        },
+      },
       offsetX,
       offsetY,
-      imgW * scaleX,
-      imgH * scaleY,
+      scaleX,
     );
-    ctx.imageSmoothingEnabled = true;
+  if (!smoothed) {
+    const drawLayer = (layer: CanvasImageSource) => {
+      ctx.imageSmoothingEnabled = minified;
+      ctx.drawImage(layer, offsetX, offsetY, imgW * scaleX, imgH * scaleY);
+      ctx.imageSmoothingEnabled = true;
+    };
+    if (image) drawLayer(image);
+    if (tileLayer) drawLayer(tileLayer);
+    if (regions) drawLayer(regionFillLayer(regions, tintedFillColors));
   }
 
   if (supplyLineEdgesByPlayer.size > 0) {

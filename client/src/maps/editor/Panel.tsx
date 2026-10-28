@@ -14,6 +14,7 @@ import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsi
 import { useNumberInput } from '../../common/inputs/useNumberInput';
 import { contrastTextColor } from '../../lib/palette';
 import { titleCase } from '../../lobby/settings/gameSettings';
+import { useSmoothEdges } from './canvas/smoothEdges';
 import {
   allPlaceNames,
   NO_CONTINENT,
@@ -227,6 +228,8 @@ function Panel(props: Props) {
   const [borderPick, setBorderPick] = useState<string | null>(null);
   const borderPickerRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const [smoothEdges, setSmoothEdges] = useSmoothEdges();
 
   useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
 
@@ -576,6 +579,14 @@ function Panel(props: Props) {
       {(borderPreview || mode === 'paint') && (
         <TerritorySizeRange value={cellScale} onChange={setCellScale} />
       )}
+      <Form.Check
+        type="switch"
+        id="editor-smooth-edges"
+        label="Preview smoothing"
+        className="mb-2"
+        checked={smoothEdges}
+        onChange={(e) => setSmoothEdges(e.target.checked)}
+      />
 
       {error && (
         <Alert variant="danger" className="py-1 px-2 small mb-2">

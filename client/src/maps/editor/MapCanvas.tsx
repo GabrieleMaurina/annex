@@ -13,6 +13,7 @@ import type { WrapAxes } from '../../game/mapMath';
 import { playSound } from '../../lib/sounds';
 import { hitVertex, NO_WRAP, wrapAxesOf } from './canvas/canvasGeometry';
 import { drawGraph } from './canvas/drawGraph';
+import { drawSmoothPaint, useSmoothEdges } from './canvas/smoothEdges';
 import type { ClickableCheck } from './canvas/useClickableCheck';
 import {
   handleVertexClick as linkVertices,
@@ -122,7 +123,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   }: Props,
   ref,
 ) {
-  void paintVersion;
+  const [smoothEdges] = useSmoothEdges();
   const brushContinentId = Math.min(currentContinentId, continentCount - 1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<DragState>(null);
@@ -519,7 +520,11 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     ctx.imageSmoothingEnabled = false;
     const drawLayer = (layer: HTMLCanvasElement) =>
       ctx.drawImage(layer, offsetX, offsetY, imgW * scaleX, imgH * scaleY);
-    if (!hideImage) drawLayer(paintCanvas);
+    const smoothed =
+      !hideImage &&
+      smoothEdges &&
+      drawSmoothPaint(ctx, paintCanvas, paintVersion, offsetX, offsetY, scaleX);
+    if (!hideImage && !smoothed) drawLayer(paintCanvas);
     if (borderOverlay) drawLayer(borderOverlay);
 
     if (!hideGraph) {

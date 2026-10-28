@@ -13,6 +13,7 @@ export type OsmDetail =
 
 export interface OsmFocus {
   rings: number[][];
+  exact: boolean;
   name: string;
   x: number;
   y: number;
@@ -59,8 +60,20 @@ export interface OsmMapParams {
   name: string;
   zoom: number;
   aspect: MapAspect;
-  focus: OsmFocus | null;
+  focus: OsmFocus[];
   features: OsmFeatures;
+}
+
+export interface OsmPlaceParams {
+  width: number;
+  height: number;
+  focus: OsmFocus;
+  features: OsmFeatures;
+}
+
+export interface OsmAreaParams extends OsmPlaceParams {
+  zoom: number;
+  radius: number;
 }
 
 export interface OsmGeneratedMap extends GeneratedMap {

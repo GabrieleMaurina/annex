@@ -97,17 +97,30 @@ export function dataZoom(
   return zoom;
 }
 
-export function tileCover(
-  frame: WorldFrame,
-  size: MapSize,
-  aspect: MapAspect,
-): TileCover {
-  const zoom = dataZoom(frame, size, aspect);
+function coverAt(frame: WorldFrame, zoom: number): TileCover {
   const { x0, x1, y0, y1 } = tileRange(frame, zoom);
   const tiles: [number, number][] = [];
   for (let y = y0; y <= y1; y++)
     for (let x = x0; x <= x1; x++) tiles.push([x, y]);
   return { zoom, tiles };
+}
+
+export function tileCover(
+  frame: WorldFrame,
+  size: MapSize,
+  aspect: MapAspect,
+): TileCover {
+  return coverAt(frame, dataZoom(frame, size, aspect));
+}
+
+export function budgetCover(
+  frame: WorldFrame,
+  maxZoom: number,
+  budget: number,
+): TileCover {
+  let zoom = maxZoom;
+  while (zoom > 0 && tileRange(frame, zoom).count > budget) zoom--;
+  return coverAt(frame, zoom);
 }
 
 export function availableDetails(

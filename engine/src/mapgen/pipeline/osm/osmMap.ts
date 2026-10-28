@@ -16,7 +16,7 @@ import { buildAdjacency } from '../tessellate';
 import { carveRegions } from './carve';
 import { buildCutLevels, chooseCut, parentCutIndex } from './cut';
 import { fitRegions } from './fit';
-import { focusAtoms } from './focus';
+import { focusAtoms, matchComponents } from './focus';
 import { groupByParent } from './groups';
 import { mapTitle, nameMap } from './names';
 import { DETAIL_RANKS, lineRank, LOCAL_ZOOM, RIVER_RANK } from './ranks';
@@ -29,7 +29,12 @@ import {
 import { extendLine, fillRings, strokeLine } from './raster/rasterize';
 import { smoothBorders, smoothCoast } from './raster/smooth';
 import { Atoms, buildAtoms } from './regions';
-import { OsmGeneratedMap, OsmMapParams } from './types';
+import {
+  OsmAreaParams,
+  OsmGeneratedMap,
+  OsmMapParams,
+  OsmPlaceParams,
+} from './types';
 
 const SPECK_AREA_RATIO = 0.1;
 const FINE_SPECK_AREA_RATIO = 0.3;
@@ -38,9 +43,10 @@ const SEA_AREA_MULTIPLIER = 16;
 const LAKE_AREA_RATIO = 0.1;
 const BORDER_OVERSHOOT = 12;
 const WATER_CLASSES = ['ocean', 'lake'];
+const LIMIT_LEVELS = [8, 7, 6, 5, 4];
 
 function landMask(
-  params: OsmMapParams,
+  params: Pick<OsmMapParams, 'features'>,
   width: number,
   height: number,
 ): Uint8Array {
@@ -52,7 +58,7 @@ function landMask(
 }
 
 function barrierMask(
-  params: OsmMapParams,
+  params: Pick<OsmMapParams, 'features' | 'zoom'>,
   width: number,
   height: number,
 ): Uint8Array {
@@ -104,24 +110,95 @@ function focusedLand(
   width: number,
   height: number,
 ): { land: Uint8Array; voidMask: Uint8Array } | null {
-  if (!params.focus) return null;
+  if (params.focus.length === 0) return null;
   const keep = focusAtoms(
     atoms,
     buildCutLevels(atoms),
-    params.focus,
+    params.focus.filter((one) => !one.exact),
     params.features.places,
     width,
     height,
   );
-  if (!keep) return null;
+  const exact = new Uint8Array(land.length);
+  for (const one of params.focus)
+    if (one.exact) fillRings(exact, width, height, one.rings, 1);
   const kept = new Uint8Array(land.length);
   const voidMask = new Uint8Array(land.length);
   for (let i = 0; i < land.length; i++) {
     const atom = atoms.atomOf[i];
-    if (atom >= 0 && keep[atom]) kept[i] = 1;
+    if ((atom >= 0 && keep?.[atom]) || (land[i] && exact[i])) kept[i] = 1;
     else if (land[i]) voidMask[i] = 1;
   }
-  return { land: kept, voidMask };
+  return countLand(kept) > 0 ? { land: kept, voidMask } : null;
+}
+
+function limitRegion(
+  barrier: Uint8Array,
+  start: number,
+  width: number,
+): Uint8Array | null {
+  const region = new Uint8Array(barrier.length);
+  const stack = [start];
+  region[start] = 1;
+  while (stack.length > 0) {
+    const c = stack.pop()!;
+    const x = c % width;
+    if (x === 0 || x === width - 1 || c < width || c >= region.length - width)
+      return null;
+    for (const n of [c - 1, c + 1, c - width, c + width])
+      if (!region[n] && !barrier[n]) {
+        region[n] = 1;
+        stack.push(n);
+      }
+  }
+  return region;
+}
+
+export function osmPlaceMask(params: OsmPlaceParams): Uint8Array | null {
+  const { width, height, focus, features } = params;
+  const x = Math.floor(focus.x);
+  const y = Math.floor(focus.y);
+  if (x < 0 || y < 0 || x >= width || y >= height) return null;
+  const land = landMask(params, width, height);
+  for (const level of LIMIT_LEVELS) {
+    const barrier = new Uint8Array(width * height);
+    for (const line of features.lines)
+      if (
+        line.layer === 'boundary' &&
+        line.adminLevel > 0 &&
+        line.adminLevel <= level
+      )
+        strokeLine(barrier, width, height, line.points, 1);
+    const region = limitRegion(barrier, y * width + x, width);
+    if (!region) continue;
+    let landArea = 0;
+    for (let i = 0; i < region.length; i++) landArea += region[i] & land[i];
+    if (landArea >= focus.minArea) return region;
+  }
+  return null;
+}
+
+export function osmAreaMask(params: OsmAreaParams): Uint8Array {
+  const { width, height, focus, radius } = params;
+  const land = landMask(params, width, height);
+  const disc = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++)
+      if (Math.hypot(x + 0.5 - focus.x, y + 0.5 - focus.y) <= radius)
+        disc[y * width + x] = 1;
+  const atoms = buildAtoms(
+    land,
+    barrierMask(params, width, height),
+    width,
+    height,
+  );
+  if (atoms.count === 0) return disc;
+  const levels = buildCutLevels(atoms);
+  const keep = matchComponents(atoms, levels, disc, levels.thresholds);
+  if (!keep) return disc;
+  return Uint8Array.from(atoms.atomOf, (atom, i) =>
+    (atom >= 0 && keep[atom]) || (disc[i] && !land[i]) ? 1 : 0,
+  );
 }
 
 function countLand(land: Uint8Array): number {
@@ -201,6 +278,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     expectedTerritoryArea,
     range,
     width,
+    params.focus.length > 1,
   );
   const carved = carveRegions(
     fitted,

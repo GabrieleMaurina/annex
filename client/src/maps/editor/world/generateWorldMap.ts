@@ -1,5 +1,6 @@
 import type { OsmGeneratedMap } from 'engine';
 import type {
+  CityLimitsRequest,
   WorldMapProgress,
   WorldMapReply,
   WorldMapRequest,
@@ -10,13 +11,34 @@ export interface WorldMapJob {
   cancel: () => void;
 }
 
-export function generateWorldMap(
-  request: WorldMapRequest,
-  onProgress: (progress: WorldMapProgress) => void,
-): WorldMapJob {
-  const worker = new Worker(new URL('./osmWorker.ts', import.meta.url), {
+function startWorker(): Worker {
+  return new Worker(new URL('./osmWorker.ts', import.meta.url), {
     type: 'module',
   });
+}
+
+export function traceCityLimits(
+  request: CityLimitsRequest,
+): Promise<number[][]> {
+  const worker = startWorker();
+  return new Promise<number[][]>((resolve, reject) => {
+    worker.addEventListener('message', (event: MessageEvent<WorldMapReply>) => {
+      const message = event.data;
+      if (message.type === 'limits') resolve(message.rings);
+      else if (message.type === 'error') reject(new Error(message.error));
+    });
+    worker.addEventListener('error', () =>
+      reject(new Error('city limits failed')),
+    );
+    worker.postMessage(request);
+  }).finally(() => worker.terminate());
+}
+
+export function generateWorldMap(
+  request: Promise<WorldMapRequest>,
+  onProgress: (progress: WorldMapProgress) => void,
+): WorldMapJob {
+  const worker = startWorker();
   let settle: ((error: Error | null, map?: OsmGeneratedMap) => void) | null =
     null;
   const promise = new Promise<OsmGeneratedMap>((resolve, reject) => {
@@ -31,12 +53,12 @@ export function generateWorldMap(
     const message = event.data;
     if (message.type === 'progress') onProgress(message);
     else if (message.type === 'done') settle?.(null, message.map);
-    else settle?.(new Error(message.error));
+    else if (message.type === 'error') settle?.(new Error(message.error));
   });
   worker.addEventListener('error', () =>
     settle?.(new Error('map generation failed')),
   );
-  worker.postMessage(request);
+  request.then((ready) => worker.postMessage(ready));
   return {
     promise,
     cancel: () => settle?.(new Error('cancelled')),

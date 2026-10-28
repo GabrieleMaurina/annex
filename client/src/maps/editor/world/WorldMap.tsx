@@ -1,15 +1,19 @@
 import {
   LngLat,
   Map as MapLibre,
+  Marker,
   MercatorCoordinate,
   setWorkerUrl,
   type ErrorEvent,
   type GeoJSONSource,
+  type MapMouseEvent,
+  type MapTouchEvent,
 } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
+import ToolIcon from '../panel/ToolIcon';
 import { loadOutline, type GazetteerPlace } from './gazetteer';
 import type { WorldFrame } from './tileCover';
 
@@ -23,9 +27,13 @@ const MAX_ZOOM = 16;
 const FIT_GAP = 0.06;
 const MAX_LATITUDE = 85.051129;
 const OUTLINE_SOURCE = 'selected-outline';
+const DRAFT_SOURCE = 'drawn-draft';
+const MIN_DRAW_STEP = 3;
+const MIN_DRAWN_POINTS = 3;
 const HIGHLIGHT_COLOR = '#ffffff';
 const HIGHLIGHT_WIDTH = 3;
 const ELLIPSE_POINTS = 64;
+const CHOICE_SIZE = '24px';
 
 const NO_HIGHLIGHT: GeoJSON.FeatureCollection = {
   type: 'FeatureCollection',
@@ -45,11 +53,22 @@ export interface EarthView {
   bearing: number;
 }
 
+export interface PlaceChoice {
+  place: GazetteerPlace;
+  point: [number, number];
+  added: boolean;
+}
+
 interface Props {
   aspect: number;
   rightInset: number;
   target: GazetteerPlace | null;
-  highlight: GazetteerPlace | null;
+  highlights: GazetteerPlace[];
+  choices: PlaceChoice[];
+  onToggleChoice: (place: GazetteerPlace) => void;
+  drawing: boolean;
+  onToggleDrawing?: () => void;
+  onDrawn: (ring: number[]) => void;
   initialView: EarthView;
   onFrameChange: (frame: WorldFrame) => void;
   onViewChange: (view: EarthView) => void;
@@ -112,30 +131,66 @@ function boundsEllipse([w, s, e, n]: GazetteerPlace['bounds']): [
   return points;
 }
 
-function highlightOf(
+function outlineOf(
   place: GazetteerPlace,
   rings: number[][],
-): GeoJSON.FeatureCollection {
+): [number, number][][] {
+  return rings.length > 0
+    ? rings.map(closedRing)
+    : [boundsEllipse(place.bounds)];
+}
+
+function highlightOf(lines: [number, number][][]): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: [
       {
         type: 'Feature',
         properties: {},
-        geometry: {
-          type: 'MultiLineString',
-          coordinates:
-            rings.length > 0
-              ? rings.map(closedRing)
-              : [boundsEllipse(place.bounds)],
-        },
+        geometry: { type: 'MultiLineString', coordinates: lines },
       },
     ],
   };
 }
 
+function choiceButton(
+  choice: PlaceChoice,
+  onToggle: (place: GazetteerPlace) => void,
+): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `btn btn-sm ${choice.added ? 'btn-light' : 'btn-outline-light'} rounded-circle p-0 d-flex align-items-center justify-content-center fw-bold lh-1`;
+  button.style.width = CHOICE_SIZE;
+  button.style.height = CHOICE_SIZE;
+  button.textContent = choice.added ? '−' : '+';
+  button.title = `${choice.added ? 'Remove' : 'Add'} ${choice.place.name}`;
+  button.setAttribute('aria-label', button.title);
+  button.addEventListener('click', () => onToggle(choice.place));
+  return button;
+}
+
 function showHighlight(map: MapLibre, highlight: GeoJSON.FeatureCollection) {
   map.getSource<GeoJSONSource>(OUTLINE_SOURCE)?.setData(highlight);
+}
+
+function draftOf(points: [number, number][]): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features:
+      points.length < 2
+        ? []
+        : [
+            {
+              type: 'Feature',
+              properties: {},
+              geometry: { type: 'LineString', coordinates: points },
+            },
+          ],
+  };
+}
+
+function showDraft(map: MapLibre, points: [number, number][]) {
+  map.getSource<GeoJSONSource>(DRAFT_SOURCE)?.setData(draftOf(points));
 }
 
 function addHighlightLayer(
@@ -149,6 +204,17 @@ function addHighlightLayer(
     source: OUTLINE_SOURCE,
     paint: { 'line-color': HIGHLIGHT_COLOR, 'line-width': HIGHLIGHT_WIDTH },
   });
+  map.addSource(DRAFT_SOURCE, { type: 'geojson', data: draftOf([]) });
+  map.addLayer({
+    id: DRAFT_SOURCE,
+    type: 'line',
+    source: DRAFT_SOURCE,
+    paint: {
+      'line-color': HIGHLIGHT_COLOR,
+      'line-width': HIGHLIGHT_WIDTH,
+      'line-dasharray': [2, 1],
+    },
+  });
 }
 
 function nextQuarterTurn(bearing: number): number {
@@ -160,7 +226,12 @@ function WorldMap({
   aspect,
   rightInset,
   target,
-  highlight,
+  highlights,
+  choices,
+  onToggleChoice,
+  drawing,
+  onToggleDrawing,
+  onDrawn,
   initialView,
   onFrameChange,
   onViewChange,
@@ -173,9 +244,25 @@ function WorldMap({
   const initial = useRef(initialView);
   const shownHighlight = useRef(NO_HIGHLIGHT);
   const rect = frameRect(size.width, size.height, aspect, rightInset);
-  const latest = useRef({ rect, size, onFrameChange, onViewChange, onError });
+  const latest = useRef({
+    rect,
+    size,
+    onFrameChange,
+    onViewChange,
+    onError,
+    onToggleChoice,
+    onDrawn,
+  });
   useEffect(() => {
-    latest.current = { rect, size, onFrameChange, onViewChange, onError };
+    latest.current = {
+      rect,
+      size,
+      onFrameChange,
+      onViewChange,
+      onError,
+      onToggleChoice,
+      onDrawn,
+    };
   });
 
   useEffect(() => {
@@ -244,15 +331,91 @@ function WorldMap({
       shownHighlight.current = next;
       if (mapRef.current) showHighlight(mapRef.current, next);
     };
-    if (!highlight) show(NO_HIGHLIGHT);
-    else
-      loadOutline(highlight)
-        .then((rings) => show(highlightOf(highlight, rings)))
-        .catch(() => show(highlightOf(highlight, [])));
+    Promise.all(
+      highlights.map((place) =>
+        loadOutline(place)
+          .catch(() => [])
+          .then((rings) => outlineOf(place, rings)),
+      ),
+    ).then((outlines) => show(highlightOf(outlines.flat())));
     return () => {
       cancelled = true;
     };
-  }, [highlight]);
+  }, [highlights]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const markers = choices.map((choice) =>
+      new Marker({
+        element: choiceButton(choice, (place) =>
+          latest.current.onToggleChoice(place),
+        ),
+      })
+        .setLngLat(choice.point)
+        .addTo(map),
+    );
+    return () => markers.forEach((marker) => marker.remove());
+  }, [choices]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !drawing) return;
+    let points: [number, number][] = [];
+    let last: { x: number; y: number } | null = null;
+    const add = (event: MapMouseEvent | MapTouchEvent) => {
+      if (
+        last &&
+        Math.hypot(event.point.x - last.x, event.point.y - last.y) <
+          MIN_DRAW_STEP
+      )
+        return;
+      last = event.point;
+      points.push([event.lngLat.lng, event.lngLat.lat]);
+      showDraft(map, points);
+    };
+    const start = (event: MapMouseEvent | MapTouchEvent) => {
+      const { originalEvent } = event;
+      if (
+        originalEvent instanceof MouseEvent &&
+        (originalEvent.button !== 0 || originalEvent.ctrlKey)
+      )
+        return;
+      points = [];
+      last = null;
+      add(event);
+    };
+    const move = (event: MapMouseEvent | MapTouchEvent) => {
+      if (points.length > 0) add(event);
+    };
+    const end = () => {
+      if (points.length >= MIN_DRAWN_POINTS)
+        latest.current.onDrawn(points.flat());
+      points = [];
+      showDraft(map, points);
+    };
+    map.dragPan.disable();
+    map.touchZoomRotate.disable();
+    map.getCanvas().style.cursor = 'crosshair';
+    map.on('mousedown', start);
+    map.on('mousemove', move);
+    map.on('mouseup', end);
+    map.on('touchstart', start);
+    map.on('touchmove', move);
+    map.on('touchend', end);
+    return () => {
+      map.off('mousedown', start);
+      map.off('mousemove', move);
+      map.off('mouseup', end);
+      map.off('touchstart', start);
+      map.off('touchmove', move);
+      map.off('touchend', end);
+      showDraft(map, []);
+      map.getCanvas().style.cursor = '';
+      map.touchZoomRotate.enable();
+      map.dragPan.enable();
+    };
+  }, [drawing]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -291,22 +454,33 @@ function WorldMap({
           boxShadow: '0 0 0 100vmax rgba(0, 0, 0, 0.35)',
         }}
       />
-      <Button
-        variant="secondary"
-        size="sm"
-        className="position-absolute bottom-0 start-0 m-2"
-        aria-label="Rotate the map by 90 degrees"
-        onClick={() =>
-          mapRef.current?.easeTo({ bearing: nextQuarterTurn(bearing) })
-        }
-      >
-        <span
-          className="d-inline-block"
-          style={{ transform: `rotate(${-bearing}deg)` }}
+      <div className="position-absolute bottom-0 start-0 m-2 d-flex flex-column gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-label="Rotate the map by 90 degrees"
+          onClick={() =>
+            mapRef.current?.easeTo({ bearing: nextQuarterTurn(bearing) })
+          }
         >
-          ↑N
-        </span>
-      </Button>
+          <span
+            className="d-inline-block"
+            style={{ transform: `rotate(${-bearing}deg)` }}
+          >
+            ↑N
+          </span>
+        </Button>
+        <Button
+          variant={drawing ? 'primary' : 'secondary'}
+          size="sm"
+          aria-label="Draw an area"
+          title="Draw an area"
+          disabled={!onToggleDrawing}
+          onClick={onToggleDrawing}
+        >
+          <ToolIcon path="/icons/pencil.svg" />
+        </Button>
+      </div>
     </div>
   );
 }

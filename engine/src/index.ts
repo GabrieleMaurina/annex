@@ -157,9 +157,14 @@ export {
 } from './mapgen/core/params';
 export { createWarpField, warpAt } from './mapgen/core/warp';
 export { enforceContiguity } from './mapgen/pipeline/contiguity';
-export { generateOsmMap } from './mapgen/pipeline/osm/osmMap';
+export {
+  generateOsmMap,
+  osmAreaMask,
+  osmPlaceMask,
+} from './mapgen/pipeline/osm/osmMap';
 export { LOCAL_ZOOM as OSM_LOCAL_ZOOM } from './mapgen/pipeline/osm/ranks';
 export {
+  OsmAreaParams,
   OsmDetail,
   OsmFeatures,
   OsmFocus,
@@ -167,6 +172,7 @@ export {
   OsmLine,
   OsmMapParams,
   OsmPlace,
+  OsmPlaceParams,
   OsmWater,
 } from './mapgen/pipeline/osm/types';
 export {

@@ -86,6 +86,21 @@ function appendLoop(path: Path2D, points: number[]) {
   path.closePath();
 }
 
+export function traceOuterLoops(
+  labels: Int16Array,
+  width: number,
+  height: number,
+): number[][] {
+  const stride = width + 1;
+  const loops: number[][] = [];
+  for (const edges of boundaryEdges(labels, width, height).values())
+    for (const loop of chainLoops(edges)) {
+      const points = corners(loop, stride);
+      if (signedArea(points) > 0) loops.push(points);
+    }
+  return loops;
+}
+
 export function traceRegionShapes(
   labels: Int16Array,
   width: number,

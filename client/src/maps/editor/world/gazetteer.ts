@@ -1,5 +1,6 @@
 import citiesUrl from './cities.json?url';
 import gazetteerUrl from './gazetteer.json?url';
+import { traceCityLimits } from './generateWorldMap';
 import regionsUrl from './regions.json?url';
 import type { WorldMapRequest } from './worldTypes';
 
@@ -36,6 +37,8 @@ const KIND_ORDER = ['country', 'state', 'city', 'region', 'lake', 'sea'];
 const MIN_QUERY_LENGTH = 2;
 const MIN_PREFIX_ALIAS_LENGTH = 4;
 const MAX_RESULTS = 8;
+const MAX_NEARBY = 20;
+const LABEL_GRID = 12;
 
 const RANDOM_COUNTRY_SHARE = 0.5;
 const RANDOM_CITY_SHARE = 0.35;
@@ -183,7 +186,7 @@ function cachedJson<T, R>(url: string, read: (json: T) => R) {
   };
 }
 
-const loadOutlines = cachedJson(
+export const loadOutlines = cachedJson(
   regionsUrl,
   (regions: { outlines: Record<string, number[][]> }) => regions.outlines,
 );
@@ -194,13 +197,68 @@ const loadCityShapes = cachedJson(
     new Map(file.cities.map(([id, shape]) => [id, file.shapes[shape]])),
 );
 
-export function loadOutline(place: GazetteerPlace): Promise<number[][]> {
-  if (place.kind === 'city')
-    return loadCityShapes().then((shapes) => {
-      const shape = shapes.get(place.id);
-      return shape ? [shape] : [];
+const cityLimits = new Map<number, Promise<number[][]>>();
+
+function loadCityLimits(place: GazetteerPlace): Promise<number[][]> {
+  let pending = cityLimits.get(place.id);
+  if (!pending) {
+    const [w, s, e, n] = place.bounds;
+    pending = traceCityLimits({
+      type: 'limits',
+      name: place.name,
+      lon: (w + e) / 2,
+      lat: (s + n) / 2,
+      population: place.rank,
+      bounds: place.bounds,
+    }).catch(() => {
+      cityLimits.delete(place.id);
+      return [];
     });
-  return loadOutlines().then((outlines) => outlines[place.id] ?? []);
+    cityLimits.set(place.id, pending);
+  }
+  return pending;
+}
+
+const drawnAreas = new Map<number, number[]>();
+
+export function drawnArea(ring: number[]): GazetteerPlace {
+  const id = -1 - drawnAreas.size;
+  drawnAreas.set(id, ring);
+  return {
+    id,
+    name: `Area ${drawnAreas.size}`,
+    kind: 'area',
+    context: '',
+    bounds: ringBounds(ring),
+    rank: 0,
+  };
+}
+
+function drawnRings(place: GazetteerPlace): number[][] {
+  const ring = drawnAreas.get(place.id);
+  return ring ? [ring] : [];
+}
+
+export function loadFocusRings(place: GazetteerPlace): Promise<number[][]> {
+  if (place.kind === 'area') return Promise.resolve(drawnRings(place));
+  if (place.kind === 'city') return loadCityLimits(place);
+  return loadOutlines()
+    .then((outlines) => outlines[place.id] ?? [])
+    .catch(() => []);
+}
+
+export function loadOutline(place: GazetteerPlace): Promise<number[][]> {
+  if (place.kind !== 'city') return loadFocusRings(place);
+  return loadCityLimits(place).then((limits) =>
+    limits.length > 0
+      ? limits
+      : loadCityShapes()
+          .then((shapes) => {
+            const shape = shapes.get(place.id);
+            return shape ? [shape] : [];
+          })
+          .catch(() => []),
+  );
 }
 
 function ringBounds(ring: number[]): GazetteerPlace['bounds'] {
@@ -219,16 +277,115 @@ function ringBounds(ring: number[]): GazetteerPlace['bounds'] {
   return bounds;
 }
 
+function ringArea(ring: number[]): number {
+  let sum = 0;
+  for (let i = 0; i < ring.length; i += 2) {
+    const j = (i + 2) % ring.length;
+    sum += ring[i] * ring[j + 1] - ring[j] * ring[i + 1];
+  }
+  return Math.abs(sum) / 2;
+}
+
+function insideRing(ring: number[], x: number, y: number): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2)
+    if (
+      ring[i + 1] > y !== ring[j + 1] > y &&
+      x <
+        ((ring[j] - ring[i]) * (y - ring[i + 1])) /
+          (ring[j + 1] - ring[i + 1]) +
+          ring[i]
+    )
+      inside = !inside;
+  return inside;
+}
+
+function interiorPoint(ring: number[]): [number, number] {
+  const [w, s, e, n] = ringBounds(ring);
+  let best: [number, number] = [(w + e) / 2, (s + n) / 2];
+  let bestDistance = -1;
+  for (let i = 0; i < LABEL_GRID; i++)
+    for (let j = 0; j < LABEL_GRID; j++) {
+      const x = w + ((i + 0.5) / LABEL_GRID) * (e - w);
+      const y = s + ((j + 0.5) / LABEL_GRID) * (n - s);
+      if (!insideRing(ring, x, y)) continue;
+      let distance = Infinity;
+      for (let k = 0; k < ring.length; k += 2)
+        distance = Math.min(distance, Math.hypot(ring[k] - x, ring[k + 1] - y));
+      if (distance > bestDistance) {
+        bestDistance = distance;
+        best = [x, y];
+      }
+    }
+  return best;
+}
+
+const labelPoints = new Map<number, [number, number]>();
+
+export function labelPoint(
+  place: GazetteerPlace,
+  outlines: Record<string, number[][]>,
+): [number, number] {
+  const cached = labelPoints.get(place.id);
+  if (cached) return cached;
+  const rings =
+    place.kind === 'area'
+      ? drawnRings(place)
+      : place.kind === 'city'
+        ? []
+        : (outlines[place.id] ?? []);
+  const [w, s, e, n] = place.bounds;
+  const point =
+    rings.length > 0
+      ? interiorPoint(
+          rings.reduce((a, b) => (ringArea(b) > ringArea(a) ? b : a)),
+        )
+      : ([(w + e) / 2, (s + n) / 2] as [number, number]);
+  labelPoints.set(place.id, point);
+  return point;
+}
+
+export function nearbyPlaces(
+  index: IndexedPlace[],
+  kind: string,
+  [west, south, east, north]: [number, number, number, number],
+  outlines: Record<string, number[][]>,
+  accept: (place: GazetteerPlace) => boolean,
+): { place: GazetteerPlace; point: [number, number] }[] {
+  const candidates = index
+    .map(({ place }) => place)
+    .filter(
+      (place) =>
+        place.kind === kind &&
+        place.bounds[0] <= east &&
+        place.bounds[2] >= west &&
+        place.bounds[1] <= north &&
+        place.bounds[3] >= south &&
+        accept(place),
+    )
+    .sort((a, b) => b.rank - a.rank);
+  const nearby: { place: GazetteerPlace; point: [number, number] }[] = [];
+  for (const place of candidates) {
+    if (nearby.length >= MAX_NEARBY) break;
+    const point = labelPoint(place, outlines);
+    if (
+      point[0] >= west &&
+      point[0] <= east &&
+      point[1] >= south &&
+      point[1] <= north
+    )
+      nearby.push({ place, point });
+  }
+  return nearby;
+}
+
 export function loadFrameBounds(
   place: GazetteerPlace,
 ): Promise<GazetteerPlace['bounds']> {
   if (place.kind !== 'city') return Promise.resolve(place.bounds);
-  return loadCityShapes()
-    .then((shapes) => {
-      const shape = shapes.get(place.id);
-      return shape ? ringBounds(shape) : place.bounds;
-    })
-    .catch(() => place.bounds);
+  return loadOutline(place).then((rings) =>
+    rings.length > 0 ? ringBounds(rings.flat()) : place.bounds,
+  );
 }
 
 export function citiesIn(

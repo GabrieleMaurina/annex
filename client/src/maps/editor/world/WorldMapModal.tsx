@@ -5,7 +5,7 @@ import {
   type OsmDetail,
   type OsmGeneratedMap,
 } from 'engine';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Form, Modal, ProgressBar } from 'react-bootstrap';
 import Help from '../../../common/tooltips/Help';
 import {
@@ -14,8 +14,13 @@ import {
 } from '../../../lobby/settings/settingsHelp';
 import {
   citiesIn,
+  drawnArea,
+  labelPoint,
+  loadFocusRings,
   loadFrameBounds,
   loadGazetteer,
+  loadOutlines,
+  nearbyPlaces,
   type GazetteerIndex,
   type GazetteerPlace,
 } from './gazetteer';
@@ -29,7 +34,7 @@ import {
   mercatorY,
   type WorldFrame,
 } from './tileCover';
-import WorldMap, { type EarthView } from './WorldMap';
+import WorldMap, { type EarthView, type PlaceChoice } from './WorldMap';
 import type { WorldFocus, WorldMapProgress } from './worldTypes';
 
 const DETAIL_LABELS: Record<OsmDetail, string> = {
@@ -55,10 +60,16 @@ const ASPECTS: [MapAspect, string][] = [
   ['square', '1:1'],
 ];
 
-const FOCUSABLE_KINDS = ['country', 'state', 'city'];
+const PLACE_KINDS = ['country', 'state', 'city'];
+const DRAWN_KIND = 'area';
+const FOCUSABLE_KINDS = [...PLACE_KINDS, DRAWN_KIND];
 const WIDE_FIT_MIN_RATIO = 4 / 3;
 const MIN_PLACE_OVERLAP = 0.5;
 const MAX_ZOOM_OUT = 3;
+const MAX_BADGE_NAMES = 3;
+const EARTH_CIRCUMFERENCE_KM = 40075;
+const COUNTRY_VIEW_KM = 1500;
+const STATE_VIEW_KM = 150;
 const PANEL_WIDTH = 300;
 const PANEL_INSET = PANEL_WIDTH + 16;
 
@@ -70,6 +81,7 @@ interface EarthSession {
   timed: boolean;
   place: GazetteerPlace | null;
   placeBounds: GazetteerPlace['bounds'] | null;
+  extras: GazetteerPlace[];
   collapsed: boolean;
   view: EarthView;
 }
@@ -82,6 +94,7 @@ const session: EarthSession = {
   timed: false,
   place: null,
   placeBounds: null,
+  extras: [],
   collapsed: false,
   view: { center: [10, 30], zoom: 1.5, bearing: 0 },
 };
@@ -125,6 +138,7 @@ function lonLatBounds(frame: WorldFrame): [number, number, number, number] {
 function placeInFrame(
   [w, s, e, n]: GazetteerPlace['bounds'],
   frame: WorldFrame,
+  zoomOutLimit: boolean,
 ): boolean {
   const box = frameBounds(frame);
   const shift = Math.round((box.x0 + box.x1) / 2 - ((w + e) / 2 + 180) / 360);
@@ -139,7 +153,7 @@ function placeInFrame(
   const frameArea = (box.x1 - box.x0) * (box.y1 - box.y0);
   return (
     overlap >= MIN_PLACE_OVERLAP * Math.min(placeArea, frameArea) &&
-    box.x1 - box.x0 <= MAX_ZOOM_OUT * (x1 - x0)
+    (!zoomOutLimit || box.x1 - box.x0 <= MAX_ZOOM_OUT * (x1 - x0))
   );
 }
 
@@ -154,17 +168,38 @@ function bestAspect(
   return ratio >= WIDE_FIT_MIN_RATIO ? 'wide' : 'square';
 }
 
-function focusOf(place: GazetteerPlace): WorldFocus | null {
-  if (!FOCUSABLE_KINDS.includes(place.kind)) return null;
+function focusOf(place: GazetteerPlace, rings: number[][]): WorldFocus {
   const [w, s, e, n] = place.bounds;
   return {
-    id: place.id,
     kind: place.kind,
     name: place.name,
     lon: (w + e) / 2,
     lat: (s + n) / 2,
     population: place.kind === 'city' ? place.rank : 0,
+    rings,
   };
+}
+
+function viewKind([west, south, east, north]: [
+  number,
+  number,
+  number,
+  number,
+]): string {
+  const widthKm =
+    ((east - west) / 360) *
+    EARTH_CIRCUMFERENCE_KM *
+    Math.cos((((south + north) / 2) * Math.PI) / 180);
+  if (widthKm >= COUNTRY_VIEW_KM) return 'country';
+  if (widthKm >= STATE_VIEW_KM) return 'state';
+  return 'city';
+}
+
+function focusLabel(names: string[]): string {
+  const shown = names.slice(0, MAX_BADGE_NAMES).join(', ');
+  return names.length > MAX_BADGE_NAMES
+    ? `${shown} +${names.length - MAX_BADGE_NAMES}`
+    : shown;
 }
 
 function progressText(progress: WorldMapProgress | null): string {
@@ -183,12 +218,18 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
   const [target, setTarget] = useState<GazetteerPlace | null>(null);
   const [place, setPlace] = useState(session.place);
   const [placeBounds, setPlaceBounds] = useState(session.placeBounds);
+  const [extras, setExtras] = useState(session.extras);
+  const [outlines, setOutlines] = useState<Record<string, number[][]> | null>(
+    null,
+  );
   const selecting = useRef<GazetteerPlace | null>(null);
   const [job, setJob] = useState<WorldMapJob | null>(null);
   const [progress, setProgress] = useState<WorldMapProgress | null>(null);
   const [error, setError] = useState('');
   const [mapError, setMapError] = useState('');
   const [collapsed, setCollapsed] = useState(session.collapsed);
+  const [locating, setLocating] = useState(false);
+  const [drawing, setDrawing] = useState(false);
   const [index, setIndex] = useState<GazetteerIndex | null>(null);
 
   useEffect(() => {
@@ -200,9 +241,16 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
       timed,
       place,
       placeBounds,
+      extras,
       collapsed,
     });
   });
+
+  useEffect(() => {
+    loadOutlines()
+      .then(setOutlines)
+      .catch(() => setOutlines({}));
+  }, []);
 
   useEffect(() => {
     loadGazetteer()
@@ -217,28 +265,131 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
   const chosenDetail =
     detail === 'auto' || available.includes(detail) ? detail : 'auto';
   const problem = frameProblem(frame);
-  const placeInView =
-    place && placeBounds && frame && placeInFrame(placeBounds, frame)
-      ? place
-      : null;
-  const focus = placeInView ? focusOf(placeInView) : null;
+  const selected = useMemo(
+    () => (place ? [place, ...extras] : []),
+    [place, extras],
+  );
+  const focusActive =
+    !!place &&
+    !!placeBounds &&
+    !!frame &&
+    (placeInFrame(placeBounds, frame, place.kind !== DRAWN_KIND) ||
+      extras.some((extra) =>
+        placeInFrame(extra.bounds, frame, extra.kind !== DRAWN_KIND),
+      ));
+  const focusPlaces = focusActive
+    ? selected.filter((one) => FOCUSABLE_KINDS.includes(one.kind))
+    : [];
+  const highlights = useMemo(
+    () => (focusActive ? selected : []),
+    [focusActive, selected],
+  );
+  const choices = useMemo<PlaceChoice[]>(() => {
+    if (job || !index || !outlines || !frame) return [];
+    const view = lonLatBounds(frame);
+    if (!focusActive)
+      return nearbyPlaces(index, viewKind(view), view, outlines, (one) =>
+        placeInFrame(one.bounds, frame, true),
+      ).map((nearby) => ({ ...nearby, added: false }));
+    if (!place) return [];
+    const selectedIds = new Set(selected.map((one) => one.id));
+    return [
+      ...nearbyPlaces(
+        index,
+        PLACE_KINDS.includes(place.kind) ? place.kind : viewKind(view),
+        view,
+        outlines,
+        (one) => !selectedIds.has(one.id),
+      ).map((nearby) => ({ ...nearby, added: false })),
+      ...selected.map((one) => ({
+        place: one,
+        point: labelPoint(one, outlines),
+        added: true,
+      })),
+    ];
+  }, [focusActive, job, index, outlines, frame, place, selected]);
+
+  function select(chosen: GazetteerPlace, fly: boolean) {
+    selecting.current = chosen;
+    setLocating(true);
+    loadFrameBounds(chosen).then((bounds) => {
+      if (selecting.current !== chosen) return;
+      setLocating(false);
+      if (fly) {
+        setAspect(bestAspect(bounds, session.view.bearing));
+        setTarget({ ...chosen, bounds });
+      }
+      setPlace(chosen);
+      setPlaceBounds(bounds);
+      setExtras([]);
+    });
+  }
+
+  function removePlace(removed: GazetteerPlace) {
+    if (removed.id !== place?.id) {
+      setExtras((current) => current.filter((one) => one.id !== removed.id));
+      return;
+    }
+    const [next, ...rest] = extras;
+    if (!next) {
+      setPlace(null);
+      return;
+    }
+    selecting.current = next;
+    setLocating(true);
+    loadFrameBounds(next).then((bounds) => {
+      if (selecting.current !== next) return;
+      setLocating(false);
+      setPlace(next);
+      setPlaceBounds(bounds);
+      setExtras(rest);
+    });
+  }
+
+  function addDrawn(ring: number[]) {
+    const area = drawnArea(ring);
+    setDrawing(false);
+    if (focusActive) {
+      setExtras((current) => [...current, area]);
+      return;
+    }
+    selecting.current = area;
+    setLocating(false);
+    setPlace(area);
+    setPlaceBounds(area.bounds);
+    setExtras([]);
+  }
+
+  function toggleChoice(chosen: GazetteerPlace) {
+    if (!focusActive) select(chosen, false);
+    else if (selected.some((one) => one.id === chosen.id)) removePlace(chosen);
+    else setExtras((current) => [...current, chosen]);
+  }
 
   function generate() {
     if (!frame || problem || job) return;
     setError('');
     setProgress(null);
     const next = generateWorldMap(
-      {
+      Promise.all(
+        focusPlaces.map((one) =>
+          loadFocusRings(one).then((rings) => focusOf(one, rings)),
+        ),
+      ).then((focus) => ({
+        type: 'map',
         frame,
         size,
         aspect,
         detail: chosenDetail,
         seas,
         timed,
-        name: placeInView?.name ?? '',
+        name:
+          focus.length > 0 && place && place.kind !== DRAWN_KIND
+            ? place.name
+            : '',
         focus,
         cities: index ? citiesIn(index, lonLatBounds(frame)) : [],
-      },
+      })),
       setProgress,
     );
     setJob(next);
@@ -266,7 +417,12 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
           aspect={image.width / image.height}
           rightInset={collapsed ? 0 : PANEL_INSET}
           target={target}
-          highlight={place}
+          highlights={highlights}
+          choices={choices}
+          onToggleChoice={toggleChoice}
+          drawing={drawing && !job}
+          onToggleDrawing={job ? undefined : () => setDrawing((on) => !on)}
+          onDrawn={addDrawn}
           initialView={session.view}
           onFrameChange={setFrame}
           onViewChange={(view) => {
@@ -304,26 +460,28 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
             </div>
             <SearchBox
               initialQuery={session.place?.name ?? ''}
-              onSelect={(selected) => {
-                selecting.current = selected;
-                loadFrameBounds(selected).then((bounds) => {
-                  if (selecting.current !== selected) return;
-                  setAspect(bestAspect(bounds, session.view.bearing));
-                  setTarget({ ...selected, bounds });
-                  setPlace(selected);
-                  setPlaceBounds(bounds);
-                });
-              }}
+              onSelect={(chosen) => select(chosen, true)}
             />
-            {focus && (
-              <div className="badge text-bg-primary d-flex align-items-center justify-content-between gap-2">
-                Only {focus.name}
+            {drawing && !job && (
+              <div className="small text-muted">
+                Drag on the map to outline an area.
+              </div>
+            )}
+            {locating && (
+              <div className="small text-muted">Finding the borders…</div>
+            )}
+            {focusPlaces.length > 0 && (
+              <div className="badge text-bg-primary text-wrap d-flex align-items-center justify-content-between gap-2">
+                Only {focusLabel(focusPlaces.map((one) => one.name))}
                 <button
                   type="button"
                   className="btn-close btn-close-white"
                   aria-label="Include the surroundings"
                   disabled={!!job}
-                  onClick={() => setPlace(null)}
+                  onClick={() => {
+                    setPlace(null);
+                    setExtras([]);
+                  }}
                 />
               </div>
             )}

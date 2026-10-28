@@ -421,6 +421,7 @@ export function fitRegions(
   targetArea: number,
   [min, max]: [number, number],
   width: number,
+  alwaysBalance: boolean,
 ): FittedRegions {
   const set = buildRegionSet(atoms, levels.components[cutIndex]);
   const parentComponent = levels.components[parentIndex];
@@ -433,7 +434,7 @@ export function fitRegions(
     edgeAtoms(atoms, width),
     targetArea * EDGE_FRAGMENT_SHARE,
   );
-  const balance = set.atomsOf.size < min;
+  const balance = alwaysBalance || set.atomsOf.size < min;
   if (balance) mergeDown(set, parentOf, targetArea * MERGE_SHARE, max);
   splitByFinerLevels(
     set,

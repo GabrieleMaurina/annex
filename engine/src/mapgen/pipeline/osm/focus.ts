@@ -16,15 +16,12 @@ const LABEL_CLASSES = [
   'village',
 ];
 
-function byOutline(
+export function matchComponents(
   atoms: Atoms,
   levels: CutLevels,
-  rings: number[][],
-  width: number,
-  height: number,
+  inside: Uint8Array,
+  thresholds: number[],
 ): Uint8Array | null {
-  const inside = new Uint8Array(width * height);
-  fillRings(inside, width, height, rings, 1);
   const insideArea = new Float64Array(atoms.count);
   let outlineArea = 0;
   for (let i = 0; i < inside.length; i++) {
@@ -36,7 +33,7 @@ function byOutline(
   if (outlineArea === 0) return null;
   let best: Uint8Array | null = null;
   let bestOverlap = MIN_OVERLAP;
-  for (const threshold of FOCUS_LEVELS) {
+  for (const threshold of thresholds) {
     const component = levels.components[levels.thresholds.indexOf(threshold)];
     const area = componentAreas(atoms, component);
     const within = new Map<number, number>();
@@ -61,6 +58,18 @@ function byOutline(
     }
   }
   return best;
+}
+
+function byOutline(
+  atoms: Atoms,
+  levels: CutLevels,
+  rings: number[][],
+  width: number,
+  height: number,
+): Uint8Array | null {
+  const inside = new Uint8Array(width * height);
+  fillRings(inside, width, height, rings, 1);
+  return matchComponents(atoms, levels, inside, FOCUS_LEVELS);
 }
 
 function byPoint(
@@ -112,12 +121,21 @@ function byPoint(
 export function focusAtoms(
   atoms: Atoms,
   levels: CutLevels,
-  focus: OsmFocus,
+  focus: OsmFocus[],
   places: OsmPlace[],
   width: number,
   height: number,
 ): Uint8Array | null {
-  return focus.rings.length > 0
-    ? byOutline(atoms, levels, focus.rings, width, height)
-    : byPoint(atoms, levels, focus, places, width, height);
+  let union: Uint8Array | null = null;
+  for (const one of focus) {
+    const kept =
+      one.rings.length > 0
+        ? byOutline(atoms, levels, one.rings, width, height)
+        : byPoint(atoms, levels, one, places, width, height);
+    if (!kept) continue;
+    if (!union) union = kept;
+    else
+      for (let atom = 0; atom < kept.length; atom++) union[atom] |= kept[atom];
+  }
+  return union;
 }

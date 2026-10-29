@@ -3,6 +3,7 @@ import {
   Game,
   ReplayAnimation,
   ReplayPlayerState,
+  ReplayPlayerStats,
   ReplayTerritory,
 } from '../types';
 import { aliasesOf, aliasOf } from './aliases';
@@ -121,6 +122,21 @@ function viewPlayerState(game: Game, s: ReplayPlayerState): ReplayPlayerState {
   });
 }
 
+function viewPlayerStats(game: Game, s: ReplayPlayerStats): ReplayPlayerStats {
+  return complete<ReplayPlayerStats>({
+    playerId: aliasOf(game, s.playerId),
+    troopsGained: s.troopsGained,
+    troopsKilled: s.troopsKilled,
+    troopsLost: s.troopsLost,
+    territoriesConquered: s.territoriesConquered,
+    territoriesLost: s.territoriesLost,
+    capitalsConquered: s.capitalsConquered,
+    capitalsLost: s.capitalsLost,
+    cardsGained: s.cardsGained,
+    setsPlayed: s.setsPlayed,
+  });
+}
+
 function viewAction(game: Game, e: ActionEntry): ActionEntry {
   return complete<ActionEntry>({
     kind: e.kind,
@@ -152,6 +168,7 @@ function viewAction(game: Game, e: ActionEntry): ActionEntry {
       }),
     ),
     playerStates: e.playerStates.map((s) => viewPlayerState(game, s)),
+    statsDelta: e.statsDelta.map((s) => viewPlayerStats(game, s)),
     animation: viewAnimation(game, e.animation),
   });
 }

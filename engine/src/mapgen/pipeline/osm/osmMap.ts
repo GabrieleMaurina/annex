@@ -4,13 +4,19 @@ import {
   TERRITORY_COUNT_RANGES,
 } from '../../core/params';
 import { createRng } from '../../core/rng';
-import { MOUNTAIN_VOID } from '../../render/gif';
+import {
+  GREEN_VOID,
+  MOUNTAIN_VOID,
+  RANGE_VOID,
+  RIVER_VOID,
+  WATER_VOID,
+} from '../../render/gif';
 import {
   RIVER_BORDER_COLOR,
   TERRITORY_STROKE_COLOR,
 } from '../../render/palette';
 import { enforceContiguity } from '../contiguity';
-import { cleanLandMask } from '../islands';
+import { cleanLandMask, MIN_COMPONENT_AREA_RATIO } from '../islands';
 import { finishTerrainMap } from '../terrain/terrainGraph';
 import { buildAdjacency } from '../tessellate';
 import { carveRegions } from './carve';
@@ -21,12 +27,17 @@ import { groupByParent } from './groups';
 import { mapTitle, nameMap } from './names';
 import { DETAIL_RANKS, lineRank, LOCAL_ZOOM, RIVER_RANK } from './ranks';
 import {
+  carveLargeAreas,
   cutRiverBorders,
-  keepLakes,
+  greenMask,
   lakeMask,
+  largeLandAreas,
+  longRivers,
   mountainMask,
+  riverLines,
 } from './raster/nature';
 import { extendLine, fillRings, strokeLine } from './raster/rasterize';
+import { reliefMap, ruggedMask } from './raster/relief';
 import { smoothBorders, smoothCoast } from './raster/smooth';
 import { Atoms, buildAtoms } from './regions';
 import {
@@ -38,10 +49,11 @@ import {
 
 const SPECK_AREA_RATIO = 0.1;
 const FINE_SPECK_AREA_RATIO = 0.3;
-const ISLAND_AREA_RATIO = 0.005;
+const ISLAND_AREA_RATIO = 0.05;
 const STATE_CUT = 90;
 const SEA_AREA_MULTIPLIER = 16;
 const LAKE_AREA_RATIO = 0.1;
+const NATURAL_AREA_RATIO = 0.1;
 const BORDER_OVERSHOOT = 12;
 const WATER_CLASSES = ['ocean', 'lake'];
 const LIMIT_LEVELS = [8, 7, 6, 5, 4];
@@ -208,6 +220,33 @@ function countLand(land: Uint8Array): number {
   return cells;
 }
 
+function clearMask(land: Uint8Array, mask: Uint8Array): void {
+  for (let i = 0; i < land.length; i++) if (mask[i]) land[i] = 0;
+}
+
+function naturalAreas(
+  params: OsmMapParams,
+  width: number,
+  height: number,
+  middle: number,
+): ((land: Uint8Array) => Uint8Array) | null {
+  const minArea = (land: Uint8Array) =>
+    (countLand(land) / middle) * NATURAL_AREA_RATIO;
+  if (params.zoom >= LOCAL_ZOOM) {
+    const green = greenMask(params.features, width, height);
+    return (land) => largeLandAreas(green, land, width, minArea(land));
+  }
+  if (!params.mountains || !params.elevation) return null;
+  const relief = reliefMap(params.elevation, width, height);
+  return (land) =>
+    largeLandAreas(
+      ruggedMask(relief, land, width, height),
+      land,
+      width,
+      minArea(land),
+    );
+}
+
 function majorityParents(
   labelGrid: Int16Array,
   atomOf: Int32Array,
@@ -242,7 +281,9 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   const rawLand = landMask(params, width, height);
   if (countLand(rawLand) === 0) throw new Error('no land in the selected area');
   smoothCoast(rawLand, width, height);
-  const mountains = mountainMask(features, width, height);
+  const mountains = params.mountains
+    ? mountainMask(features, width, height)
+    : new Uint8Array(width * height);
   for (let i = 0; i < mountains.length; i++) if (mountains[i]) rawLand[i] = 0;
   const lakes = lakeMask(features, width, height);
   const barrier = barrierMask(params, width, height);
@@ -255,15 +296,38 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     expectedTerritoryArea,
     ISLAND_AREA_RATIO,
   );
-  keepLakes(land, lakes, width, expectedTerritoryArea * LAKE_AREA_RATIO);
+  carveLargeAreas(land, lakes, width, expectedTerritoryArea * LAKE_AREA_RATIO);
   let atoms = buildAtoms(land, barrier, width, height);
   if (atoms.count === 0) throw new Error('no land in the selected area');
   const focused = focusedLand(params, land, atoms, width, height);
-  if (focused) {
-    expectedTerritoryArea = countLand(focused.land) / middle;
-    land = cleanLandMask(focused.land, width, height, expectedTerritoryArea);
-    keepLakes(land, lakes, width, expectedTerritoryArea * LAKE_AREA_RATIO);
-    for (let i = 0; i < land.length; i++) if (land[i]) focused.voidMask[i] = 0;
+  const usable = focused?.land ?? land;
+  const natural = naturalAreas(params, width, height, middle);
+  const naturalKind = params.zoom >= LOCAL_ZOOM ? GREEN_VOID : RANGE_VOID;
+  const scenery = natural && focused ? natural(land) : null;
+  const found = natural && natural(usable);
+  const removed = found?.includes(1) ? found : null;
+  if (focused || removed) {
+    if (removed) clearMask(usable, removed);
+    expectedTerritoryArea = countLand(usable) / middle;
+    land = cleanLandMask(usable, width, height, expectedTerritoryArea);
+    if (removed) {
+      clearMask(land, removed);
+      land = largeLandAreas(
+        land,
+        land,
+        width,
+        expectedTerritoryArea * MIN_COMPONENT_AREA_RATIO,
+      );
+    }
+    carveLargeAreas(
+      land,
+      lakes,
+      width,
+      expectedTerritoryArea * LAKE_AREA_RATIO,
+    );
+    if (focused)
+      for (let i = 0; i < land.length; i++)
+        if (land[i]) focused.voidMask[i] = 0;
     atoms = buildAtoms(land, barrier, width, height);
     if (atoms.count === 0) throw new Error('no land in the selected area');
   }
@@ -284,9 +348,8 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     parentIndex,
     minArea,
     expectedTerritoryArea,
-    range,
+    range[1],
     width,
-    params.focus.length > 1,
   );
   const carved = carveRegions(
     fitted,
@@ -311,12 +374,25 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   const { adjacency } = buildAdjacency(labelGrid, width, height);
   for (let t = 0; t < landCount; t++)
     if (!adjacency.has(t)) adjacency.set(t, new Set());
-  const rivers = cutRiverBorders(features, labelGrid, width, height, adjacency);
+  const riverMask = params.rivers ? longRivers(features, width, height) : null;
+  const rivers = riverMask
+    ? cutRiverBorders(riverMask, labelGrid, width, height, adjacency)
+    : { rivers: [], bridges: [] };
   const voidMask = focused?.voidMask ?? new Uint8Array(land.length);
   for (let i = 0; i < voidMask.length; i++)
     if (rawLand[i] && visibleLand[i] && labelGrid[i] < 0) voidMask[i] = 1;
   for (let i = 0; i < voidMask.length; i++)
     if (mountains[i] && !land[i]) voidMask[i] = MOUNTAIN_VOID;
+  const riverPixels = riverMask
+    ? riverLines(riverMask, width, height)
+    : new Uint8Array(width * height);
+  for (let i = 0; i < voidMask.length; i++) {
+    if (labelGrid[i] >= 0) continue;
+    if (removed?.[i] || (voidMask[i] === 1 && scenery?.[i]))
+      voidMask[i] = naturalKind;
+    if (voidMask[i] && riverPixels[i]) voidMask[i] = RIVER_VOID;
+    if (voidMask[i] && lakes[i]) voidMask[i] = WATER_VOID;
+  }
   const parentOf = majorityParents(
     labelGrid,
     atoms.atomOf,

@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
@@ -16,6 +16,7 @@ import type { Account, GameState, PlayerResultStats } from '../lib/types';
 interface Props {
   game: GameState;
   results: Map<number, PlayerResultStats> | null;
+  storedGameId: string | null;
   selfId: number | null;
   account: Account | null;
   navigate: (path: string) => void;
@@ -28,6 +29,7 @@ interface Props {
 function EndPage({
   game,
   results,
+  storedGameId,
   selfId,
   account,
   navigate,
@@ -39,6 +41,7 @@ function EndPage({
   const [view, setView] = useState<'results' | 'replay'>('results');
   const [replay, setReplay] = useState<FoldedReplay | null>(null);
   const [replayFailed, setReplayFailed] = useState(false);
+  const replayRequestedRef = useRef(false);
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const {
     emojiPickerFor,
@@ -57,7 +60,8 @@ function EndPage({
   }));
 
   useEffect(() => {
-    if (view !== 'replay' || replay || replayFailed) return;
+    if (replayRequestedRef.current) return;
+    replayRequestedRef.current = true;
     connector.replay((res) => {
       if (res.ok)
         setReplay(
@@ -69,7 +73,7 @@ function EndPage({
         );
       else setReplayFailed(true);
     });
-  }, [view, replay, replayFailed, game.players]);
+  }, [game.players]);
 
   return (
     <>
@@ -106,6 +110,7 @@ function EndPage({
         }}
         onRowClick={handleRowClick}
         showMuted
+        shareGameId={storedGameId}
         belowTable={
           tableEmojiEnabled && (
             <div className="d-flex justify-content-start mt-1">

@@ -8,6 +8,7 @@ import {
   shuffle,
   teamCount,
 } from '../game/mechanics';
+import { initializeContinentBonuses } from '../game/progression/bonuses';
 import { buildCardDeck } from '../game/progression/cards';
 import { assignMissions } from '../game/progression/missions';
 import { initializeHills } from '../game/progression/points';
@@ -75,6 +76,7 @@ export function startGame(playerId: number): GameResponse {
   initializeRadiation(game);
   game.replayInitialRadiation = [...game.radiationTerritoryIds];
   initializePortals(game);
+  initializeContinentBonuses(game);
   initializeContinent(game);
   initializeHills(game);
   if (game.placement === 'random') {

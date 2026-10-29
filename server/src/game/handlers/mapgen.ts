@@ -147,6 +147,12 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
       const aspect = input.aspect ?? 'wide';
       if (!(MAP_ASPECT_VALUES as unknown[]).includes(aspect))
         return callback({ ok: false, error: 'invalid aspect' });
+      const mountains = input.mountains ?? false;
+      if (typeof mountains !== 'boolean')
+        return callback({ ok: false, error: 'invalid mountains' });
+      const rivers = input.rivers ?? false;
+      if (typeof rivers !== 'boolean')
+        return callback({ ok: false, error: 'invalid rivers' });
 
       engine.generateMap(
         playerId,
@@ -160,6 +166,8 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           timed: input.timed,
           unlockable: input.unlockable,
           aspect: aspect as MapAspect,
+          mountains,
+          rivers,
         },
         (response) => callback(viewResponse(playerId, response)),
       );

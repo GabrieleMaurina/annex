@@ -20,6 +20,8 @@ export interface WorldMapRequest {
   detail: OsmDetail;
   seas: boolean;
   timed: boolean;
+  mountains: boolean;
+  rivers: boolean;
   name: string;
   focus: WorldFocus[];
   cities: [string, number, number, number][];

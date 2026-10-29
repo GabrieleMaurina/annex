@@ -139,6 +139,8 @@ export function randomMapParams(
     seas: rng() < 0.5,
     timed: rng() < 0.2,
     aspect: 'wide' as const,
+    mountains: true,
+    rivers: true,
   };
   const unlockable = params.type === 'tile' && rng() < 0.1;
   return unlockable
@@ -213,7 +215,7 @@ export function randomGameSettings(
     ] as const),
     toxins: weightedOff(rng, 0.25, ['temporary', 'permanent'] as const),
     alliances: alliancesAllowed && rng() < 0.25 ? 'on' : 'off',
-    continents: rng() < 0.25 ? 'off' : 'on',
+    continents: rng() < 0.25 ? 'off' : '1x',
   };
 
   let teams: number[] | null = null;

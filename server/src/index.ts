@@ -44,7 +44,11 @@ import {
   registerTroopHandlers,
 } from './game/handlers';
 import { getGameMeta, isGamePublic, reconcileGameMeta } from './gameMeta';
-import { persistFinishedGame } from './games';
+import {
+  persistFinishedGame,
+  reconcileStoredGames,
+  storedGameId,
+} from './games';
 import { registerHomeHandlers } from './home';
 import { createHttpApp } from './http/app';
 import { LiveGameRow, SeatProfile } from './http/liveGames';
@@ -64,6 +68,7 @@ function listVisibleGames(): LiveGameRow[] {
   const names = new Set(summaries.map((game) => game.name));
   reconcileGameMeta(names);
   reconcileGameElos(names);
+  reconcileStoredGames(names);
   return summaries
     .filter((game) => isGamePublic(game.name))
     .map((game) => ({
@@ -171,12 +176,19 @@ const callbacks: EngineCallbacks = {
       userId: userIdByPlayerId(s.id) ?? null,
       ...elos.get(s.id),
     }));
-    emitTo(io, playerId, 'game:results', { stats });
+    emitTo(io, playerId, 'game:results', {
+      stats,
+      gameId: storedGameId(gameName),
+    });
   },
   onGameEnded: (payload) => {
     const participants = gameParticipants(payload.gameName);
     const elos = handleGameEnded(payload);
-    persistFinishedGame(engine, payload, participants, elos);
+    persistFinishedGame(engine, payload, participants, elos)
+      .then(() => {
+        if (storedGameId(payload.gameName)) resendResults(payload.gameName);
+      })
+      .catch(console.error);
     elos.then(() => resendResults(payload.gameName));
   },
   onCardSetPlayed: relay('onCardSetPlayed', 'game:cardSetPlayed'),

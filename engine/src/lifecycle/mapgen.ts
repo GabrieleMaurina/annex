@@ -37,7 +37,18 @@ export function generateMap(
 
   const gameName = game.name;
   const hostId = player.id;
-  const { size, type, fill, tile, seas, timed, unlockable, aspect } = input;
+  const {
+    size,
+    type,
+    fill,
+    tile,
+    seas,
+    timed,
+    unlockable,
+    aspect,
+    mountains,
+    rivers,
+  } = input;
 
   generateMapAsync({ ...input, seed: trimmedSeed }, (res) => {
     const current = games.get(gameName);
@@ -65,6 +76,8 @@ export function generateMap(
       timed,
       unlockable,
       aspect,
+      mountains,
+      rivers,
     };
 
     for (const viewerId of [...current.playerIds, ...current.spectatorIds]) {

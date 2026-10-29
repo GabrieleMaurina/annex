@@ -3,6 +3,7 @@ import {
   ReplayAnimation,
   ReplayHand,
   ReplayPlayerState,
+  ReplayPlayerStats,
   ReplaySeaShips,
   ReplayTerritory,
   ReplayToxinTerritory,
@@ -70,9 +71,29 @@ function snapshotPlayerStates(game: Game): ReplayPlayerState[] {
   });
 }
 
+function snapshotPlayerStats(game: Game): ReplayPlayerStats[] {
+  return game.playerIds.map((playerId) => {
+    const s = game.stats.get(playerId);
+    return {
+      playerId,
+      troopsGained: s?.troopsGained ?? 0,
+      troopsKilled: s?.troopsKilled ?? 0,
+      troopsLost: s?.troopsLost ?? 0,
+      territoriesConquered: s?.territoriesConquered ?? 0,
+      territoriesLost: s?.territoriesLost ?? 0,
+      capitalsConquered: s?.capitalsConquered ?? 0,
+      capitalsLost: s?.capitalsLost ?? 0,
+      cardsGained: s?.cardsGained ?? 0,
+      setsPlayed: s?.setsPlayed ?? 0,
+    };
+  });
+}
+
 export function refreshLastReplayPlayerStates(game: Game) {
   const lastFrame = game.replayFrames[game.replayFrames.length - 1];
-  if (lastFrame) lastFrame.playerStates = snapshotPlayerStates(game);
+  if (!lastFrame) return;
+  lastFrame.playerStates = snapshotPlayerStates(game);
+  lastFrame.playerStats = snapshotPlayerStats(game);
 }
 
 export function recordReplayFrame(game: Game, animation: ReplayAnimation) {
@@ -84,6 +105,7 @@ export function recordReplayFrame(game: Game, animation: ReplayAnimation) {
     seaShips: snapshotSeaShips(game),
     hands: snapshotHands(game),
     playerStates: snapshotPlayerStates(game),
+    playerStats: snapshotPlayerStats(game),
     turnPhase: game.turnPhase,
     animation,
     roundNumber: game.roundNumber,

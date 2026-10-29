@@ -13,10 +13,6 @@ function colorBound(game: Game) {
   return Math.min(COLOR_COUNT, game.playerIds.length + 3);
 }
 
-export function maxTeam(game: Game) {
-  return Math.max(0, game.playerIds.length - 1);
-}
-
 export function supremacyTerritoriesToWin(game: Game): number | null {
   const fraction =
     game.gameMode === 'supremacy 3/4'
@@ -358,24 +354,16 @@ export function territoryIncome(game: Game, territoryCount: number): number {
   );
 }
 
-export function calculateDeployTroopsBreakdown(
-  game: Game,
-  playerId: number,
-): DeployTroopsBreakdown {
-  const map = getGameMap(game);
-  const territoryCount = [...game.territoryOwners.values()].filter(
-    (ownerId) => ownerId === playerId,
-  ).length;
-  const territories = territoryIncome(game, territoryCount);
-
+export function heldContinentIds(game: Game, playerId: number): number[] {
   const continents = new Map<number, number[]>();
-  for (const territory of map.territories) {
+  for (const territory of getGameMap(game).territories) {
+    if (territory.continentId < 0) continue;
     const list = continents.get(territory.continentId);
     if (list) list.push(territory.id);
     else continents.set(territory.continentId, [territory.id]);
   }
 
-  let bonuses = 0;
+  const held: number[] = [];
   for (const [continentId, territoryIds] of continents) {
     const owners = territoryIds
       .filter(
@@ -387,7 +375,24 @@ export function calculateDeployTroopsBreakdown(
     const controlsContinent =
       owned * 2 > owners.length &&
       owners.every((ownerId) => ownerId === undefined || ownerId === playerId);
-    if (controlsContinent && game.continents === 'on')
+    if (controlsContinent) held.push(continentId);
+  }
+  return held;
+}
+
+export function calculateDeployTroopsBreakdown(
+  game: Game,
+  playerId: number,
+): DeployTroopsBreakdown {
+  const map = getGameMap(game);
+  const territoryCount = [...game.territoryOwners.values()].filter(
+    (ownerId) => ownerId === playerId,
+  ).length;
+  const territories = territoryIncome(game, territoryCount);
+
+  let bonuses = 0;
+  if (game.continents !== 'off') {
+    for (const continentId of heldContinentIds(game, playerId))
       bonuses += map.bonuses[continentId] ?? 0;
   }
 

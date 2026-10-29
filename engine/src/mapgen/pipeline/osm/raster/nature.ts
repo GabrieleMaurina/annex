@@ -3,8 +3,10 @@ import { fillRings, strokeLine } from './rasterize';
 import { smoothCoast } from './smooth';
 
 const MOUNTAIN_CLASSES = ['rock', 'ice'];
+const GREEN_CLASSES = ['wood', 'grass', 'farmland', 'wetland'];
 const RIVER_LENGTH_RATIO = 0.25;
 const RIVER_REACH = 4;
+const RIVER_LINE_REACH = 1;
 const RIVER_SHARE = 0.6;
 const MIN_RIVER_BORDER = 12;
 const PAIR_KEY_BASE = 65536;
@@ -44,16 +46,16 @@ export function lakeMask(
   return areaMask(features.water, ['lake'], width, height);
 }
 
-export function keepLakes(
+export function carveLargeAreas(
   land: Uint8Array,
-  lakes: Uint8Array,
+  areas: Uint8Array,
   width: number,
   minArea: number,
 ): void {
-  const seen = new Uint8Array(lakes.length);
+  const seen = new Uint8Array(areas.length);
   const stack: number[] = [];
-  for (let start = 0; start < lakes.length; start++) {
-    if (!lakes[start] || seen[start]) continue;
+  for (let start = 0; start < areas.length; start++) {
+    if (!areas[start] || seen[start]) continue;
     const cells: number[] = [];
     seen[start] = 1;
     stack.push(start);
@@ -67,7 +69,7 @@ export function keepLakes(
         c - width,
         c + width,
       ])
-        if (n >= 0 && n < lakes.length && lakes[n] && !seen[n]) {
+        if (n >= 0 && n < areas.length && areas[n] && !seen[n]) {
           seen[n] = 1;
           stack.push(n);
         }
@@ -76,7 +78,31 @@ export function keepLakes(
   }
 }
 
-function riverMask(
+export function greenMask(
+  features: OsmFeatures,
+  width: number,
+  height: number,
+): Uint8Array {
+  return areaMask(features.landcover, GREEN_CLASSES, width, height);
+}
+
+export function largeLandAreas(
+  areas: Uint8Array,
+  land: Uint8Array,
+  width: number,
+  minArea: number,
+): Uint8Array {
+  const kept = land.slice();
+  carveLargeAreas(
+    kept,
+    Uint8Array.from(areas, (inside, i) => inside & land[i]),
+    width,
+    minArea,
+  );
+  return Uint8Array.from(land, (inside, i) => (inside && !kept[i] ? 1 : 0));
+}
+
+export function longRivers(
   features: OsmFeatures,
   width: number,
   height: number,
@@ -99,12 +125,21 @@ function riverMask(
   for (const { name, points } of rivers)
     if (lengths.get(name)! >= minLength)
       strokeLine(mask, width, height, points, 1);
+  return mask;
+}
+
+function dilate(
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  reach: number,
+): Uint8Array {
   const near = new Uint8Array(mask.length);
   for (let y = 0; y < height; y++)
     for (let x = 0; x < width; x++) {
       if (!mask[y * width + x]) continue;
-      for (let dy = -RIVER_REACH; dy <= RIVER_REACH; dy++)
-        for (let dx = -RIVER_REACH; dx <= RIVER_REACH; dx++) {
+      for (let dy = -reach; dy <= reach; dy++)
+        for (let dx = -reach; dx <= reach; dx++) {
           const nx = x + dx;
           const ny = y + dy;
           if (nx >= 0 && ny >= 0 && nx < width && ny < height)
@@ -112,6 +147,14 @@ function riverMask(
         }
     }
   return near;
+}
+
+export function riverLines(
+  lines: Uint8Array,
+  width: number,
+  height: number,
+): Uint8Array {
+  return dilate(lines, width, height, RIVER_LINE_REACH);
 }
 
 function connected(
@@ -134,13 +177,13 @@ function connected(
 }
 
 export function cutRiverBorders(
-  features: OsmFeatures,
+  lines: Uint8Array,
   labelGrid: Int16Array,
   width: number,
   height: number,
   adjacency: Map<number, Set<number>>,
 ): RiverBorders {
-  const river = riverMask(features, width, height);
+  const river = dilate(lines, width, height, RIVER_REACH);
   const border = new Map<number, { river: number; pixels: number[] }>();
   const count = (i: number, j: number) => {
     const a = labelGrid[i];

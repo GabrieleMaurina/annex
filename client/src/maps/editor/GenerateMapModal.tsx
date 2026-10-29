@@ -16,6 +16,8 @@ import type {
   TileShape,
 } from '../../lib/types';
 import {
+  MOUNTAINS_HELP,
+  RIVERS_HELP,
   SEAS_HELP,
   TIMED_CONNECTIONS_HELP,
   UNLOCKABLE_HELP,
@@ -57,6 +59,8 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
   const [seas, setSeas] = useState(false);
   const [timed, setTimed] = useState(false);
   const [unlockable, setUnlockable] = useState(false);
+  const [mountains, setMountains] = useState(false);
+  const [rivers, setRivers] = useState(false);
   const tileUnlockable = type === 'tile' && unlockable;
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -81,7 +85,10 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
       (type !== 'tile' || lastGenerated.tile === tile) &&
       lastGenerated.seas === seas &&
       lastGenerated.timed === timed &&
-      lastGenerated.unlockable === tileUnlockable
+      lastGenerated.unlockable === tileUnlockable &&
+      (type !== 'terrain' ||
+        (lastGenerated.mountains === mountains &&
+          lastGenerated.rivers === rivers))
     ) {
       effectiveSeed = randomSeed();
       setSeed(effectiveSeed);
@@ -99,6 +106,8 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
       seas,
       timed,
       unlockable: tileUnlockable,
+      mountains,
+      rivers,
     };
     generateMap(input)
       .then((map) => {
@@ -241,6 +250,28 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
             />
             <Help>{UNLOCKABLE_HELP}</Help>
           </div>
+        )}
+        {type === 'terrain' && (
+          <>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                type="checkbox"
+                label="Mountains"
+                checked={mountains}
+                onChange={(e) => setMountains(e.target.checked)}
+              />
+              <Help>{MOUNTAINS_HELP}</Help>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                type="checkbox"
+                label="Rivers"
+                checked={rivers}
+                onChange={(e) => setRivers(e.target.checked)}
+              />
+              <Help>{RIVERS_HELP}</Help>
+            </div>
+          </>
         )}
         {error && <div className="text-danger small">{error}</div>}
         <p className="text-muted small mb-0">

@@ -5,7 +5,6 @@ const MERGE_SHARE = 0.5;
 const GROUP_SHARE = 0.25;
 const EDGE_FRAGMENT_SHARE = 0.5;
 const BALANCE_SPLIT_RATIO = 1.5;
-export const GIANT_RATIO = 6;
 
 interface RegionSet {
   regionOfAtom: Int32Array;
@@ -18,7 +17,6 @@ interface RegionSet {
 export interface FittedRegions {
   grid: Int32Array;
   count: number;
-  balance: boolean;
 }
 
 function rebuildBorders(set: RegionSet, atoms: Atoms): void {
@@ -371,7 +369,6 @@ function splitByFinerLevels(
   cutIndex: number,
   targetArea: number,
   max: number,
-  minRatio: number,
 ): void {
   const done = new Set<number>();
   for (;;) {
@@ -379,7 +376,7 @@ function splitByFinerLevels(
     for (const [region, area] of set.area)
       if (
         !done.has(region) &&
-        area / targetArea >= minRatio &&
+        area / targetArea >= BALANCE_SPLIT_RATIO &&
         (target === null || area > set.area.get(target)!)
       )
         target = region;
@@ -419,9 +416,8 @@ export function fitRegions(
   parentIndex: number,
   minArea: number,
   targetArea: number,
-  [min, max]: [number, number],
+  max: number,
   width: number,
-  alwaysBalance: boolean,
 ): FittedRegions {
   const set = buildRegionSet(atoms, levels.components[cutIndex]);
   const parentComponent = levels.components[parentIndex];
@@ -434,17 +430,8 @@ export function fitRegions(
     edgeAtoms(atoms, width),
     targetArea * EDGE_FRAGMENT_SHARE,
   );
-  const balance = alwaysBalance || set.atomsOf.size < min;
-  if (balance) mergeDown(set, parentOf, targetArea * MERGE_SHARE, max);
-  splitByFinerLevels(
-    set,
-    atoms,
-    levels,
-    cutIndex,
-    targetArea,
-    max,
-    balance ? BALANCE_SPLIT_RATIO : GIANT_RATIO,
-  );
+  mergeDown(set, parentOf, targetArea * MERGE_SHARE, max);
+  splitByFinerLevels(set, atoms, levels, cutIndex, targetArea, max);
   const dense = new Map<number, number>();
   for (const region of set.atomsOf.keys()) dense.set(region, dense.size);
   const grid = new Int32Array(atoms.atomOf.length).fill(-1);
@@ -452,5 +439,5 @@ export function fitRegions(
     const atom = atoms.atomOf[i];
     if (atom >= 0) grid[i] = dense.get(set.regionOfAtom[atom])!;
   }
-  return { grid, count: dense.size, balance };
+  return { grid, count: dense.size };
 }

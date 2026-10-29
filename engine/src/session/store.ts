@@ -6,11 +6,12 @@ import {
   HUMANS_ABANDONED_GRACE_MS,
 } from '../game/end';
 import { addHostCandidate, recomputeHost } from '../game/host';
-import { assignRandomColor, maxTeam } from '../game/mechanics';
+import { assignRandomColor } from '../game/mechanics';
 import { gameResultsStats, gameState, gameSummary } from '../game/state';
 import { clearTurnTimer } from '../game/turns';
 import { filterGameStateForViewer } from '../game/world/visibility';
 import { canTakeSeat } from '../lifecycle/eligibility';
+import { openTeam } from '../lifecycle/teams';
 import { getGameMap } from '../maps/maps';
 import { Game, HOME_ROOM, Player } from '../types';
 import { playersById } from './players';
@@ -161,8 +162,8 @@ export function removePlayerFromGame(game: Game, playerId: number) {
       : -1;
   if (promotedIndex !== -1) {
     const promotedId = game.spectatorIds.splice(promotedIndex, 1)[0];
+    game.playerTeams.set(promotedId, openTeam(game));
     game.playerIds.splice(idx, 0, promotedId);
-    game.playerTeams.set(promotedId, 0);
     assignRandomColor(game, promotedId);
     addHostCandidate(game, promotedId);
   }
@@ -171,11 +172,6 @@ export function removePlayerFromGame(game: Game, playerId: number) {
     clearTurnTimer(game.name);
     games.delete(game.name);
     return;
-  }
-
-  const cap = maxTeam(game);
-  for (const id of game.playerIds) {
-    if ((game.playerTeams.get(id) ?? 0) > cap) game.playerTeams.set(id, 0);
   }
 
   recomputeHost(game);
@@ -240,6 +236,7 @@ export function reclaimSubstitutedSeat(game: Game, ownerId: number) {
   if (idx === -1) return;
 
   game.playerIds[idx] = ownerId;
+  game.playerTeams.set(ownerId, game.playerTeams.get(substituteId) ?? 0);
   game.playerTeams.delete(substituteId);
   game.playerColors.delete(substituteId);
   game.spectatorIds.unshift(substituteId);

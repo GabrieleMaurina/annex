@@ -2,7 +2,7 @@ import { Rng } from '../../core/rng';
 import { createWarpField, warpAt } from '../../core/warp';
 import { enforceContiguity } from '../contiguity';
 import { GridPoint, placeTerritoryCenters } from '../placement';
-import { FittedRegions, GIANT_RATIO } from './fit';
+import { FittedRegions } from './fit';
 import { comparePlaces } from './ranks';
 import { OsmPlace } from './types';
 
@@ -205,10 +205,7 @@ export function carveRegions(
       if (
         !unsplittable.has(r) &&
         area[r] >= 2 * minArea &&
-        (needMore ||
-          (fitted.balance
-            ? Math.round(area[r] / targetArea) >= 2
-            : area[r] >= GIANT_RATIO * targetArea)) &&
+        (needMore || Math.round(area[r] / targetArea) >= 2) &&
         (target < 0 || area[r] > area[target])
       )
         target = r;

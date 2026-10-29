@@ -10,6 +10,7 @@ import { GameResponse } from '../session/context';
 import { createBotPlayer, playersById } from '../session/players';
 import { games, respondGameState } from '../session/store';
 import { Game, Player } from '../types';
+import { hasRoom, openTeam } from './teams';
 
 function requireLobbyHost(
   playerId: number,
@@ -36,13 +37,14 @@ export function addBot(
   playerId: number,
   difficulty: unknown,
   personality: unknown,
+  team?: unknown,
 ): GameResponse {
   const ctx = requireLobbyHost(playerId);
   if ('ok' in ctx) return ctx;
   const { game, player } = ctx;
 
-  if (game.playerIds.length >= game.slots)
-    return { ok: false, error: 'no open slots' };
+  const seatTeam = team === undefined ? openTeam(game) : team;
+  if (!hasRoom(game, seatTeam)) return { ok: false, error: 'no open slots' };
 
   if (!isDifficultyInput(difficulty))
     return { ok: false, error: 'invalid difficulty' };
@@ -53,7 +55,7 @@ export function addBot(
   const bot = createBotPlayer(botDisplayName(profile), profile);
   bot.gameName = game.name;
   game.playerIds.push(bot.id);
-  game.playerTeams.set(bot.id, 0);
+  game.playerTeams.set(bot.id, seatTeam);
   assignRandomColor(game, bot.id);
   addHostCandidate(game, bot.id);
 

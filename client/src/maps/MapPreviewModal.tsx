@@ -59,6 +59,8 @@ function MapPreviewModal({
                 {preview.generation.seas && ', seas'}
                 {preview.generation.timed && ', timed connections'}
                 {preview.generation.unlockable && ', unlockable'}
+                {preview.generation.mountains && ', mountains'}
+                {preview.generation.rivers && ', rivers'}
                 {preview.generation.aspect === 'square' && ', 1:1'} · seed{' '}
                 {preview.generation.seed}
               </p>

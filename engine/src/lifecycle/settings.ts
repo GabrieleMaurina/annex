@@ -2,7 +2,7 @@ import { isDifficultyInput, isPersonalityInput } from '../bots/randomProfile';
 import { callbacks } from '../callbacks';
 import { MAX_DICE } from '../game/combat/dice';
 import { addHostCandidate } from '../game/host';
-import { assignRandomColor, maxTeam } from '../game/mechanics';
+import { assignRandomColor } from '../game/mechanics';
 import {
   defaultMaxPoints,
   MAX_HILLS,
@@ -52,6 +52,14 @@ import {
   MIN_GAMES_VALUES,
   MIN_RANK_VALUES,
 } from './eligibility';
+import {
+  MAX_SLOTS,
+  MIN_SLOTS,
+  openTeam,
+  resetTeams,
+  resizeTeams,
+  setTeams,
+} from './teams';
 
 const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
 const ANONYMOUS_VALUES: Anonymous[] = ['off', 'on'];
@@ -72,7 +80,20 @@ const PROGRESSIVE_CARDS_VALUES: CardsMode[] = [
   'linear per player',
   'exponential per player',
 ];
-const CONTINENTS_VALUES: Continents[] = ['off', 'on'];
+const CONTINENTS_VALUES: Continents[] = [
+  '1x',
+  '2x',
+  '3x',
+  '5x',
+  '10x',
+  'shuffle',
+  'random',
+  'linear',
+  'exponential',
+  'linear per continent',
+  'exponential per continent',
+  'off',
+];
 const DICE_TIES_VALUES: DiceTies[] = ['defence', 'attack', 'tie'];
 const ENTRENCHMENTS_VALUES: Entrenchments[] = ['off', 'on'];
 const FOG_OF_WAR_VALUES: FogOfWar[] = ['off', 'on'];
@@ -160,6 +181,20 @@ function hideHostInGameName(game: Game, hostName: string) {
   do name = `Game with ${Math.floor(Math.random() * 10000)}`;
   while (games.has(name));
   renameGame(game, name);
+}
+
+function promoteSpectators(game: Game) {
+  while (game.playerIds.length < game.slots) {
+    const idx = game.spectatorIds.findIndex(
+      (id) => playersById.get(id)?.connected && canTakeSeat(game, id),
+    );
+    if (idx === -1) break;
+    const promotedId = game.spectatorIds.splice(idx, 1)[0];
+    game.playerTeams.set(promotedId, openTeam(game));
+    game.playerIds.push(promotedId);
+    assignRandomColor(game, promotedId);
+    addHostCandidate(game, promotedId);
+  }
 }
 
 export function updateSettings(
@@ -351,6 +386,11 @@ export function updateSettings(
     const maxPoints = defaultMaxPoints(game.gameMode);
     if (game.gameMode !== previousGameMode && maxPoints !== undefined)
       game.maxPoints = maxPoints;
+    if (
+      (game.gameMode === 'team deathmatch') !==
+      (previousGameMode === 'team deathmatch')
+    )
+      resetTeams(game);
   }
 
   if (settings.hills !== undefined) {
@@ -438,27 +478,6 @@ export function updateSettings(
     game.placement = settings.placement as Placement;
   }
 
-  if (settings.playerTeam !== undefined) {
-    const playerTeam = settings.playerTeam;
-    if (typeof playerTeam !== 'object' || playerTeam === null)
-      return { ok: false, error: 'invalid team' };
-
-    const { playerId: teamPlayerId, team } = playerTeam as Record<
-      string,
-      unknown
-    >;
-    if (
-      !isInteger(teamPlayerId) ||
-      !game.playerIds.includes(teamPlayerId) ||
-      !isInteger(team) ||
-      team < 0 ||
-      team > maxTeam(game)
-    ) {
-      return { ok: false, error: 'invalid team' };
-    }
-    game.playerTeams.set(teamPlayerId, team);
-  }
-
   if (settings.portals !== undefined) {
     if (!(PORTALS_VALUES as unknown[]).includes(settings.portals))
       return { ok: false, error: 'invalid portals' };
@@ -480,25 +499,15 @@ export function updateSettings(
   if (settings.slots !== undefined) {
     if (
       !isInteger(settings.slots) ||
-      settings.slots < 2 ||
+      settings.slots < MIN_SLOTS ||
       settings.slots < game.playerIds.length ||
-      settings.slots > 20
+      settings.slots > MAX_SLOTS ||
+      !resizeTeams(game, settings.slots)
     ) {
       return { ok: false, error: 'invalid slots' };
     }
     game.slots = settings.slots;
-
-    while (game.playerIds.length < game.slots) {
-      const idx = game.spectatorIds.findIndex(
-        (id) => playersById.get(id)?.connected && canTakeSeat(game, id),
-      );
-      if (idx === -1) break;
-      const promotedId = game.spectatorIds.splice(idx, 1)[0];
-      game.playerIds.push(promotedId);
-      game.playerTeams.set(promotedId, 0);
-      assignRandomColor(game, promotedId);
-      addHostCandidate(game, promotedId);
-    }
+    promoteSpectators(game);
   }
 
   if (settings.starvation !== undefined) {
@@ -511,6 +520,12 @@ export function updateSettings(
     if (!(SUPPLY_LINES_VALUES as unknown[]).includes(settings.supplyLines))
       return { ok: false, error: 'invalid supply lines' };
     game.supplyLines = settings.supplyLines as SupplyLines;
+  }
+
+  if (settings.teams !== undefined) {
+    if (!setTeams(game, settings.teams))
+      return { ok: false, error: 'invalid teams' };
+    promoteSpectators(game);
   }
 
   if (settings.toxins !== undefined) {

@@ -181,6 +181,33 @@ const playerState = object(
   },
 );
 
+const playerStats = object(
+  [
+    'playerId',
+    'troopsGained',
+    'troopsKilled',
+    'troopsLost',
+    'territoriesConquered',
+    'territoriesLost',
+    'capitalsConquered',
+    'capitalsLost',
+    'cardsGained',
+    'setsPlayed',
+  ],
+  {
+    playerId: int,
+    troopsGained: int,
+    troopsKilled: int,
+    troopsLost: int,
+    territoriesConquered: int,
+    territoriesLost: int,
+    capitalsConquered: int,
+    capitalsLost: int,
+    cardsGained: int,
+    setsPlayed: int,
+  },
+);
+
 const animation = { bsonType: 'object' };
 
 const actionFrame = object(
@@ -210,6 +237,7 @@ const actionFrame = object(
     seaShipsDelta: array(seaShipsDelta),
     hands: array(hand),
     playerStates: array(playerState),
+    statsDelta: array(playerStats),
     animation,
   },
 );
@@ -409,6 +437,8 @@ const schema = {
             timed: bool,
             unlockable: bool,
             aspect: { enum: MAP_ASPECTS },
+            mountains: bool,
+            rivers: bool,
           },
         },
         playerMapId: { bsonType: ['string', 'null'] },
@@ -419,6 +449,7 @@ const schema = {
         playerCount: int,
         capitalTerritoryIds: array(int),
         hillTerritoryIds: array(int),
+        continentBonuses: array(int),
         results: array(result),
         serverLog: array(
           object(['type', 'payload', 'afterFrame'], {

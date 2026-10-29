@@ -9,6 +9,7 @@ import {
   ReplayFrame,
   ReplayLogEntry,
   ReplayPlayerState,
+  ReplayPlayerStats,
   ReplaySeaShips,
   ReplayTerritory,
   TurnPhase,
@@ -50,6 +51,7 @@ export type ReplayEntry =
       seaShipsDelta: ReplaySeaShipsDelta[];
       hands: ReplayHandExport[];
       playerStates: ReplayPlayerState[];
+      statsDelta: ReplayPlayerStats[];
       animation: ReplayAnimation;
     }
   | { kind: 'turn'; roundNumber: number; playerId: number }
@@ -95,6 +97,8 @@ export interface GameExport {
     timed: boolean;
     unlockable: boolean;
     aspect: string;
+    mountains: boolean;
+    rivers: boolean;
   } | null;
   playerMapId: string | null;
   originalHostId: number;
@@ -155,6 +159,7 @@ export interface GameExport {
   playerCount: number;
   capitalTerritoryIds: number[];
   hillTerritoryIds: number[];
+  continentBonuses: number[];
   results: GameResultExport[];
   serverLog: ReplayLogEntry[];
   replay: {
@@ -224,10 +229,33 @@ function seaShipsDelta(
   return delta;
 }
 
+function playerStatsDelta(
+  previous: ReplayPlayerStats[],
+  current: ReplayPlayerStats[],
+): ReplayPlayerStats[] {
+  const before = new Map(previous.map((s) => [s.playerId, s]));
+  return current.filter((s) => {
+    const prev = before.get(s.playerId);
+    return (
+      !prev ||
+      prev.troopsGained !== s.troopsGained ||
+      prev.troopsKilled !== s.troopsKilled ||
+      prev.troopsLost !== s.troopsLost ||
+      prev.territoriesConquered !== s.territoriesConquered ||
+      prev.territoriesLost !== s.territoriesLost ||
+      prev.capitalsConquered !== s.capitalsConquered ||
+      prev.capitalsLost !== s.capitalsLost ||
+      prev.cardsGained !== s.cardsGained ||
+      prev.setsPlayed !== s.setsPlayed
+    );
+  });
+}
+
 function actionEntry(
   frame: ReplayFrame,
   previous: ReplayTerritory[],
   previousSeaShips: ReplaySeaShips[],
+  previousStats: ReplayPlayerStats[],
 ): ReplayEntry {
   return {
     kind: 'action',
@@ -241,6 +269,7 @@ function actionEntry(
     seaShipsDelta: seaShipsDelta(previousSeaShips, frame.seaShips),
     hands: frame.hands,
     playerStates: frame.playerStates,
+    statsDelta: playerStatsDelta(previousStats, frame.playerStats),
     animation: frame.animation,
   };
 }
@@ -290,7 +319,10 @@ function buildFrames(game: Game): ReplayEntry[] {
       const previous =
         k === 0 ? game.replayInitial : game.replayFrames[k - 1].territories;
       const previousSeaShips = k === 0 ? [] : game.replayFrames[k - 1].seaShips;
-      entries.push(actionEntry(frame, previous, previousSeaShips));
+      const previousStats = k === 0 ? [] : game.replayFrames[k - 1].playerStats;
+      entries.push(
+        actionEntry(frame, previous, previousSeaShips, previousStats),
+      );
     }
   }
   return entries;
@@ -354,6 +386,8 @@ export function exportGame(gameName: string): GameExport | null {
           timed: game.generatedMap.timed,
           unlockable: game.generatedMap.unlockable,
           aspect: game.generatedMap.aspect,
+          mountains: game.generatedMap.mountains,
+          rivers: game.generatedMap.rivers,
         }
       : null,
     playerMapId: game.playerMap?.id ?? null,
@@ -418,6 +452,7 @@ export function exportGame(gameName: string): GameExport | null {
     endedAt: game.endedAt,
     capitalTerritoryIds: [...game.capitalTerritoryIds],
     hillTerritoryIds: [...game.hillTerritoryIds],
+    continentBonuses: [...game.continentBonuses],
     results,
     serverLog: game.replayLog,
     replay: buildReplay(game),

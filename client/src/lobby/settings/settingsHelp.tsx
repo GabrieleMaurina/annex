@@ -78,6 +78,18 @@ export const TIMED_CONNECTIONS_HELP =
 export const UNLOCKABLE_HELP =
   'Tile maps only, not with Seas or Timed connections. Removes every connection drawn across the void, so islands may start disconnected. Instead, the empty slots between tiles become locked tiles. During your attack phase, the locked tiles you can unlock are marked with a dot: a territory next to one can unlock it for 5 troops (Constant or Off cards) or 25% of the value of the next card set, paid from the attacking territory, which must keep at least 1 troop. The tile then becomes an empty territory you can move into straight away or conquer later. Unlocking never earns a card.';
 
+export const MOUNTAINS_HELP =
+  'Terrain maps only. The highest land becomes mountains, drawn as peaks with snow on the tallest ones. Mountains are not territories, so they leave gaps between the territories around them. Sparse maps have no mountains.';
+
+export const RIVERS_HELP =
+  'Terrain maps only. Rivers run downhill from high ground towards the sea or a lake. Territories end at a river, so it separates the territories on its two sides.';
+
+export const EARTH_MOUNTAINS_HELP =
+  'Rock, glaciers and, above city level, the most rugged real-world mountains become mountains, drawn as peaks. Mountains are not territories, so they leave gaps between the territories around them.';
+
+export const EARTH_RIVERS_HELP =
+  'Large named rivers separate the territories on their two banks, drawn as blue borders, unless that would cut the map in two. Rivers are also drawn across land outside the territories.';
+
 export const BLITZ_HELP = (
   <>
     How an all-out attack (&quot;blitz&quot;) resolves a battle instantly
@@ -154,14 +166,42 @@ export const MIN_TROOPS_HELP = (
 
 export const CONTINENTS_HELP = (
   <>
-    Whether holding a whole continent pays off in troops.
+    How many troops holding a whole continent gives you at the start of each of
+    your turns. You hold it when you own more than half of its territories and
+    no other player owns any of the rest.
     <ul className="mb-0 ps-3">
-      <li>Off: no continent bonuses, and the bonuses panel is hidden.</li>
+      <li>1x: each continent gives the bonus set by the map.</li>
       <li>
-        On: holding a continent gives its bonus troops at the start of each of
-        your turns. You hold it when you own more than half of its territories
-        and no other player owns any of the rest.
+        2x, 3x, 5x, 10x: each continent gives its map bonus times 2, 3, 5, or
+        10.
       </li>
+      <li>
+        Shuffle: the map&apos;s bonuses are shuffled among its continents at the
+        start of the game.
+      </li>
+      <li>
+        Random: each continent gets a random bonus from 1 to 10 at the start of
+        the game, usually around 5.
+      </li>
+      <li>
+        Linear: every continent is worth the same, starting at 1, and each bonus
+        paid, to anyone, raises the value of every continent by 1.
+      </li>
+      <li>
+        Exponential: every continent is worth the same, starting at 3, and each
+        bonus paid, to anyone, multiplies the value of every continent by 1.1
+        (rounded to the nearest whole number).
+      </li>
+      <li>
+        Linear Per Continent: same as Linear, but each continent has its own
+        progression: a continent paying its bonus only raises its own value.
+      </li>
+      <li>
+        Exponential Per Continent: same as Exponential, but each continent has
+        its own progression: a continent paying its bonus only raises its own
+        value.
+      </li>
+      <li>Off: no continent bonuses, and the bonuses panel is hidden.</li>
     </ul>
   </>
 );

@@ -75,22 +75,28 @@ function isStatic(game: Game, base: GameMap): boolean {
   return base.timedConnections.length === 0 && game.unlockedTileIds.size === 0;
 }
 
+function withContinentBonuses(game: Game, map: GameMap): GameMap {
+  return game.state === 'lobby'
+    ? map
+    : { ...map, bonuses: game.continentBonuses };
+}
+
 export function gameMapAtRound(game: Game, round: number): GameMap {
   const base = baseGameMap(game);
-  if (isStatic(game, base)) return base;
-  return {
+  if (isStatic(game, base)) return withContinentBonuses(game, base);
+  return withContinentBonuses(game, {
     ...base,
     territories: withUnlockedTiles(
       withOpenConnections(base.territories, base.timedConnections, round),
       base.lockedTiles,
       game.unlockedTileIds,
     ),
-  };
+  });
 }
 
 export function getGameMap(game: Game): GameMap {
   const base = baseGameMap(game);
-  if (isStatic(game, base)) return base;
+  if (isStatic(game, base)) return withContinentBonuses(game, base);
   const cached = openMaps.get(game);
   const unlockedCount = game.unlockedTileIds.size;
   if (
@@ -99,7 +105,7 @@ export function getGameMap(game: Game): GameMap {
     cached.territories === base.territories &&
     cached.unlockedCount === unlockedCount
   )
-    return cached.open;
+    return withContinentBonuses(game, cached.open);
   const round = game.roundNumber;
   const open = gameMapAtRound(game, round);
   openMaps.set(game, {
@@ -134,6 +140,8 @@ export interface ArchivedMap {
     timed: boolean;
     unlockable: boolean;
     aspect: MapAspect;
+    mountains: boolean;
+    rivers: boolean;
   } | null;
 }
 
@@ -175,6 +183,8 @@ export function getArchivedMap(game: Game): ArchivedMap {
           timed: generated.timed,
           unlockable: generated.unlockable,
           aspect: generated.aspect,
+          mountains: generated.mountains,
+          rivers: generated.rivers,
         }
       : null,
   };

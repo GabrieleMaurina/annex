@@ -1,4 +1,3 @@
-import { deployableTroops } from 'engine';
 import { useEffect, useReducer } from 'react';
 import { useWhiteIcon } from '../../common/icon';
 import PlayersPanel from '../panels/PlayersPanel';
@@ -8,6 +7,7 @@ import {
   computeTooltipLabels,
   getScales,
   getTerritoryScreenPos,
+  maxDeployTroops,
   unclaimedTerritoryIds,
 } from './helpers';
 import { useAttackSeaFlow } from './hooks/sea/useAttackSeaFlow';
@@ -422,12 +422,9 @@ function GameMap({
     setGame,
   });
 
-  const deployMaxTroops = Math.max(
-    0,
-    deployableTroops(
-      troopsToDeploy,
-      ownerById.get(selectedTerritoryId ?? -1)?.troops ?? 0,
-    ),
+  const deployMaxTroops = maxDeployTroops(
+    troopsToDeploy,
+    ownerById.get(selectedTerritoryId ?? -1)?.troops ?? 0,
   );
   const deployTroopsPanelOpen =
     cardsFlow.deployPanelOpen &&
@@ -693,7 +690,8 @@ function GameMap({
       cardsOpen: cardsOpen,
       selectedCombo: cardsFlow.selectedCombo,
       cardImagesRef,
-      bonuses,
+      bonuses:
+        game.continentBonuses.length > 0 ? game.continentBonuses : bonuses,
       forcedWraps,
       regions,
       timedLinks,

@@ -1,8 +1,10 @@
 import {
   generateOsmMap,
   mapImageSize,
+  OSM_LOCAL_ZOOM,
   osmAreaMask,
   osmPlaceMask,
+  type OsmElevation,
   type OsmFocus,
   type OsmPlace,
 } from 'engine';
@@ -18,6 +20,7 @@ import {
   budgetCover,
   mercatorY,
   tileCover,
+  type TileCover,
   type WorldFrame,
 } from './tileCover';
 import {
@@ -52,9 +55,16 @@ const FOCUS_LEVELS: Record<string, number> = {
   country: 100,
   state: 90,
   city: 70,
+  metro: 70,
   area: 70,
 };
-const EXACT_KINDS = ['city', 'area'];
+const EXACT_KINDS = ['city', 'metro', 'area'];
+const TERRAIN_URL =
+  'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+const TERRAIN_MAX_ZOOM = 10;
+const TERRAIN_TILE_BUDGET = 64;
+const TERRAIN_PIXELS = 256;
+const TERRARIUM_OFFSET = 32768;
 
 function reply(message: WorldMapReply): void {
   self.postMessage(message);
@@ -89,6 +99,8 @@ function downloadTiles(
   template: string,
   zoom: number,
   tiles: [number, number][],
+  before = 0,
+  total = tiles.length,
 ): Promise<ArrayBuffer[]> {
   const n = 2 ** zoom;
   const buffers: ArrayBuffer[] = new Array(tiles.length);
@@ -105,7 +117,12 @@ function downloadTiles(
     return fetchBuffer(url, RETRIES).then((buffer) => {
       buffers[index] = buffer;
       done++;
-      reply({ type: 'progress', stage: 'download', done, total: tiles.length });
+      reply({
+        type: 'progress',
+        stage: 'download',
+        done: before + done,
+        total,
+      });
       return work();
     });
   };
@@ -151,6 +168,15 @@ function cityPlaces(
   });
 }
 
+function kmPerPixel({ frame, imageWidth }: Projection, lat: number): number {
+  return (
+    (Math.hypot(frame.ux, frame.uy) *
+      EARTH_CIRCUMFERENCE_KM *
+      Math.cos((lat * Math.PI) / 180)) /
+    imageWidth
+  );
+}
+
 function osmFocus(focus: WorldFocus, projection: Projection): OsmFocus | null {
   const level = FOCUS_LEVELS[focus.kind];
   if (!level) return null;
@@ -161,13 +187,10 @@ function osmFocus(focus: WorldFocus, projection: Projection): OsmFocus | null {
     return points;
   });
   const [x, y] = lonLatToImage(projection, focus.lon, focus.lat);
-  const { ux, uy } = projection.frame;
-  const kmPerPixel =
-    (Math.hypot(ux, uy) *
-      EARTH_CIRCUMFERENCE_KM *
-      Math.cos((focus.lat * Math.PI) / 180)) /
-    projection.imageWidth;
-  const minArea = focus.population / CITY_MAX_DENSITY / kmPerPixel ** 2;
+  const minArea =
+    focus.population /
+    CITY_MAX_DENSITY /
+    kmPerPixel(projection, focus.lat) ** 2;
   return {
     rings,
     exact: EXACT_KINDS.includes(focus.kind) && rings.length > 0,
@@ -270,6 +293,63 @@ function simplifyLoop(loop: number[]): number[] {
   return loop.filter((_, i) => keep[Math.floor(i / 2)]);
 }
 
+function decodeTerrain(buffer: ArrayBuffer): Promise<Uint8ClampedArray> {
+  return createImageBitmap(new Blob([buffer]), {
+    colorSpaceConversion: 'none',
+    premultiplyAlpha: 'none',
+  }).then((bitmap) => {
+    const canvas = new OffscreenCanvas(TERRAIN_PIXELS, TERRAIN_PIXELS);
+    const context = canvas.getContext('2d')!;
+    context.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return context.getImageData(0, 0, TERRAIN_PIXELS, TERRAIN_PIXELS).data;
+  });
+}
+
+function loadElevation(
+  projection: Projection,
+  { zoom, tiles }: TileCover,
+  before: number,
+  total: number,
+): Promise<OsmElevation | null> {
+  const { frame, imageWidth, imageHeight } = projection;
+  const [left, top] = tiles[0];
+  const columns = tiles[tiles.length - 1][0] - left + 1;
+  const rows = tiles[tiles.length - 1][1] - top + 1;
+  const n = 2 ** zoom;
+  return downloadTiles(TERRAIN_URL, zoom, tiles, before, total)
+    .then((buffers) => Promise.all(buffers.map(decodeTerrain)))
+    .then((pixels) => {
+      const heights = new Float32Array(imageWidth * imageHeight);
+      for (let py = 0; py < imageHeight; py++)
+        for (let px = 0; px < imageWidth; px++) {
+          const u = (px + 0.5) / imageWidth;
+          const v = (py + 0.5) / imageHeight;
+          const tx = (frame.x0 + u * frame.ux + v * frame.vx) * n;
+          const ty = (frame.y0 + u * frame.uy + v * frame.vy) * n;
+          const column = Math.floor(tx) - left;
+          const row = Math.floor(ty) - top;
+          if (column < 0 || row < 0 || column >= columns || row >= rows)
+            continue;
+          const data = pixels[row * columns + column];
+          const ix = Math.floor((tx - Math.floor(tx)) * TERRAIN_PIXELS);
+          const iy = Math.floor((ty - Math.floor(ty)) * TERRAIN_PIXELS);
+          const o = (iy * TERRAIN_PIXELS + ix) * 4;
+          heights[py * imageWidth + px] = Math.max(
+            0,
+            data[o] * 256 + data[o + 1] + data[o + 2] / 256 - TERRARIUM_OFFSET,
+          );
+        }
+      const [, lat] = imageToLonLat(
+        projection,
+        imageWidth / 2,
+        imageHeight / 2,
+      );
+      return { heights, pixelKm: kmPerPixel(projection, lat) };
+    })
+    .catch(() => null);
+}
+
 function limitRings(mask: Uint8Array, projection: Projection): number[][] {
   const labels = Int16Array.from(mask, (inside) => (inside ? 0 : -1));
   return traceOuterLoops(labels, LIMITS_IMAGE, LIMITS_IMAGE).map((loop) => {
@@ -354,33 +434,49 @@ function buildMap(request: WorldMapRequest): void {
     imageWidth: image.width,
     imageHeight: image.height,
   };
-  reply({ type: 'progress', stage: 'download', done: 0, total: tiles.length });
+  const terrain =
+    request.mountains && zoom < OSM_LOCAL_ZOOM
+      ? budgetCover(request.frame, TERRAIN_MAX_ZOOM, TERRAIN_TILE_BUDGET)
+      : null;
+  const total = tiles.length + (terrain?.tiles.length ?? 0);
+  reply({ type: 'progress', stage: 'download', done: 0, total });
   Promise.all([tileTemplate(), loadRegions()])
     .then(([template, regions]) =>
-      downloadTiles(template, zoom, tiles).then((buffers) => {
-        reply({ type: 'progress', stage: 'build', done: 0, total: 1 });
-        const features = decodeTiles(buffers, tiles, projection);
-        features.places.push(
-          ...countyPlaces(regions, projection),
-          ...cityPlaces(request.cities, projection),
-        );
-        const map = generateOsmMap({
-          seed: seedOf(request),
-          size: request.size,
-          detail: request.detail,
-          seas: request.seas,
-          timed: request.timed,
-          name: request.name,
-          zoom,
-          aspect: request.aspect,
-          focus: request.focus
-            .filter((one) => one.kind !== 'city' || one.rings.length > 0)
-            .map((one) => osmFocus(one, projection))
-            .filter((one): one is OsmFocus => one !== null),
-          features,
-        });
-        reply({ type: 'done', map });
-      }),
+      downloadTiles(template, zoom, tiles, 0, total).then((buffers) =>
+        (terrain
+          ? loadElevation(projection, terrain, tiles.length, total)
+          : Promise.resolve(null)
+        ).then((elevation) => {
+          reply({ type: 'progress', stage: 'build', done: 0, total: 1 });
+          const features = decodeTiles(buffers, tiles, projection);
+          features.places.push(
+            ...countyPlaces(regions, projection),
+            ...cityPlaces(request.cities, projection),
+          );
+          const map = generateOsmMap({
+            seed: seedOf(request),
+            size: request.size,
+            detail: request.detail,
+            seas: request.seas,
+            timed: request.timed,
+            mountains: request.mountains,
+            rivers: request.rivers,
+            name: request.name,
+            zoom,
+            aspect: request.aspect,
+            focus: request.focus
+              .filter(
+                (one) =>
+                  !EXACT_KINDS.includes(one.kind) || one.rings.length > 0,
+              )
+              .map((one) => osmFocus(one, projection))
+              .filter((one): one is OsmFocus => one !== null),
+            features,
+            elevation,
+          });
+          reply({ type: 'done', map });
+        }),
+      ),
     )
     .catch(fail);
 }

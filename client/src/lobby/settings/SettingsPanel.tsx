@@ -80,7 +80,7 @@ const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   bounties: 'off',
   capitalRefund: 'off',
   cards: 'constant',
-  continents: 'on',
+  continents: '1x',
   defenceDice: 2,
   attackDice: 3,
   diceTies: 'defence',

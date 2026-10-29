@@ -23,7 +23,7 @@ export type GazetteerIndex = IndexedPlace[];
 
 interface CityShapesFile {
   shapes: number[][];
-  cities: [number, number][];
+  cities: number[][];
 }
 
 interface GazetteerFile {
@@ -33,7 +33,15 @@ interface GazetteerFile {
   aliases: [number, string][];
 }
 
-const KIND_ORDER = ['country', 'state', 'city', 'region', 'lake', 'sea'];
+const KIND_ORDER = [
+  'country',
+  'state',
+  'metro',
+  'city',
+  'region',
+  'lake',
+  'sea',
+];
 const MIN_QUERY_LENGTH = 2;
 const MIN_PREFIX_ALIAS_LENGTH = 4;
 const MAX_RESULTS = 8;
@@ -194,7 +202,12 @@ export const loadOutlines = cachedJson(
 const loadCityShapes = cachedJson(
   citiesUrl,
   (file: CityShapesFile) =>
-    new Map(file.cities.map(([id, shape]) => [id, file.shapes[shape]])),
+    new Map(
+      file.cities.map(([id, ...shapes]) => [
+        id,
+        shapes.map((shape) => file.shapes[shape]),
+      ]),
+    ),
 );
 
 const cityLimits = new Map<number, Promise<number[][]>>();
@@ -239,9 +252,16 @@ function drawnRings(place: GazetteerPlace): number[][] {
   return ring ? [ring] : [];
 }
 
+function loadCityShape(place: GazetteerPlace): Promise<number[][]> {
+  return loadCityShapes()
+    .then((shapes) => shapes.get(place.id) ?? [])
+    .catch(() => []);
+}
+
 export function loadFocusRings(place: GazetteerPlace): Promise<number[][]> {
   if (place.kind === 'area') return Promise.resolve(drawnRings(place));
   if (place.kind === 'city') return loadCityLimits(place);
+  if (place.kind === 'metro') return loadCityShape(place);
   return loadOutlines()
     .then((outlines) => outlines[place.id] ?? [])
     .catch(() => []);
@@ -250,14 +270,7 @@ export function loadFocusRings(place: GazetteerPlace): Promise<number[][]> {
 export function loadOutline(place: GazetteerPlace): Promise<number[][]> {
   if (place.kind !== 'city') return loadFocusRings(place);
   return loadCityLimits(place).then((limits) =>
-    limits.length > 0
-      ? limits
-      : loadCityShapes()
-          .then((shapes) => {
-            const shape = shapes.get(place.id);
-            return shape ? [shape] : [];
-          })
-          .catch(() => []),
+    limits.length > 0 ? limits : loadCityShape(place),
   );
 }
 

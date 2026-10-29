@@ -66,6 +66,7 @@ function buildGameState(
     mapGeneration: doc.mapGeneration,
     playerMapId: doc.playerMapId ?? null,
     slots: s.slots,
+    teamSlots: [s.slots],
     hostId: doc.originalHostId ?? -1,
     originalHostId: doc.originalHostId ?? -1,
     state: 'ended',
@@ -77,6 +78,7 @@ function buildGameState(
     capitalRefund: s.capitalRefund,
     cards: s.cards,
     continents: s.continents,
+    continentBonuses: doc.continentBonuses ?? [],
     defenceDice: s.defenceDice,
     attackDice: s.attackDice,
     diceTies: s.diceTies,
@@ -329,6 +331,7 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
           </div>
         )
       }
+      shareGameId={id}
       navigate={navigate}
       onViewChange={onViewChange}
       settingsMenuOpen={settingsMenuOpen}

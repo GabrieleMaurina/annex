@@ -14,6 +14,7 @@ type Properties = VectorTileFeature['properties'];
 
 const LINE_LAYERS = ['boundary', 'waterway', 'transportation'];
 const MOUNTAIN_CLASSES = ['rock', 'ice'];
+const GREEN_CLASSES = ['wood', 'grass', 'farmland', 'wetland'];
 const PLACE_LAYERS: [string, string][] = [
   ['place', 'place'],
   ['peak', 'mountain_peak'],
@@ -106,9 +107,13 @@ export function addTileFeatures(
     }),
   );
 
+  const landcoverClasses =
+    projection.zoom >= OSM_LOCAL_ZOOM
+      ? [...MOUNTAIN_CLASSES, ...GREEN_CLASSES]
+      : MOUNTAIN_CLASSES;
   each('landcover', (feature, extent) => {
     const cls = text(feature.properties, 'class');
-    if (MOUNTAIN_CLASSES.includes(cls))
+    if (landcoverClasses.includes(cls))
       features.landcover.push({
         cls,
         rings: feature.loadGeometry().map((ring) => flatten(ring, extent)),

@@ -144,6 +144,8 @@ export function runSimGame(
     timed: mapParams.timed,
     unlockable: mapParams.unlockable,
     aspect: mapParams.aspect,
+    mountains: mapParams.mountains,
+    rivers: mapParams.rivers,
   };
 
   const { settings, teams } = randomGameSettings(rng, ROSTER_SIZE);

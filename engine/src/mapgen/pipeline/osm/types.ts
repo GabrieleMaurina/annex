@@ -51,6 +51,11 @@ export interface OsmFeatures {
   places: OsmPlace[];
 }
 
+export interface OsmElevation {
+  heights: Float32Array;
+  pixelKm: number;
+}
+
 export interface OsmMapParams {
   seed: string;
   size: MapSize;
@@ -62,6 +67,9 @@ export interface OsmMapParams {
   aspect: MapAspect;
   focus: OsmFocus[];
   features: OsmFeatures;
+  elevation: OsmElevation | null;
+  mountains: boolean;
+  rivers: boolean;
 }
 
 export interface OsmPlaceParams {

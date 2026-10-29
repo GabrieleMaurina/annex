@@ -80,6 +80,8 @@ export function gameSummary(game: Game) {
           timed: game.generatedMap.timed,
           unlockable: game.generatedMap.unlockable,
           aspect: game.generatedMap.aspect,
+          mountains: game.generatedMap.mountains,
+          rivers: game.generatedMap.rivers,
         }
       : null,
     hostName: isAnonymousPlaying(game)
@@ -220,10 +222,13 @@ export function gameState(game: Game) {
           timed: game.generatedMap.timed,
           unlockable: game.generatedMap.unlockable,
           aspect: game.generatedMap.aspect,
+          mountains: game.generatedMap.mountains,
+          rivers: game.generatedMap.rivers,
         }
       : null,
     playerMapId: game.playerMap?.id ?? null,
     slots: game.slots,
+    teamSlots: [...game.teamSlots],
     hostId: game.hostId,
     originalHostId: anonymousPlaying ? 0 : game.originalHostId,
     state: game.state,
@@ -239,6 +244,7 @@ export function gameState(game: Game) {
     capitalRefund: game.capitalRefund,
     cards: game.cards,
     continents: game.continents,
+    continentBonuses: [...game.continentBonuses],
     defenceDice: game.defenceDice,
     attackDice: game.attackDice,
     diceTies: game.diceTies,

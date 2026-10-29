@@ -147,6 +147,8 @@ export const MAP_PROPERTIES = {
       timed: { bsonType: 'bool' },
       unlockable: { bsonType: 'bool' },
       aspect: { enum: MAP_ASPECT_VALUES },
+      mountains: { bsonType: 'bool' },
+      rivers: { bsonType: 'bool' },
     },
   },
   image: { bsonType: 'binData' },

@@ -162,8 +162,8 @@ export const connector = {
     return consumeConvertedFromOnline();
   },
 
-  addLocalPlayer(name: string): void {
-    if (isOffline()) offlineAddLocalPlayer(name);
+  addLocalPlayer(name: string, team?: number): void {
+    if (isOffline()) offlineAddLocalPlayer(name, team);
   },
 
   removeLocalPlayer(playerId: number): void {
@@ -658,7 +658,7 @@ export const connector = {
   },
 
   addBot(
-    data: { difficulty: string; personality: string },
+    data: { difficulty: string; personality: string; team?: number },
     cb: AckCallback,
   ): void {
     route('game:addBot', data, cb);

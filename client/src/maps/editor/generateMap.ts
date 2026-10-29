@@ -20,6 +20,8 @@ export interface GenerateInput {
   timed: boolean;
   unlockable: boolean;
   aspect: MapAspect;
+  mountains: boolean;
+  rivers: boolean;
 }
 
 export interface GeneratedNames {

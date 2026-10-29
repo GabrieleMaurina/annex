@@ -12,6 +12,7 @@ import {
 import { getGeneratedMapData } from '../../game/mapData';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
 import type { EarthMapInput, GameState } from '../../lib/types';
+import { moveToTeam } from '../../lobby/roster/teamLayout';
 import { publish } from '../inbound';
 import { browserWorkerPort } from './browserWorkerPort';
 import { loadPlayerMap } from './maps';
@@ -44,6 +45,7 @@ interface OfflineSeed {
   playerMapId: string | null;
   earthMap: (PlayerGameMap & { name: string }) | null;
   slots: number;
+  teamSlots: number[];
   teams: number[] | null;
   bots: { difficulty: string; personality: string }[];
 }
@@ -99,6 +101,7 @@ export function seedOffline(state: GameState): void {
     playerMapId: state.playerMapId,
     earthMap: earthMap ? { ...earthMap, id: null, name: state.mapName } : null,
     slots: state.slots,
+    teamSlots: state.teamSlots,
     teams:
       state.gameMode === 'team deathmatch'
         ? [host?.team ?? 0, ...bots.map((b) => b.team)]
@@ -127,12 +130,21 @@ function applySeed(s: OfflineSeed): void {
   let resp = engine.updateSettings(id, { ...s.settings, slots: s.slots });
   for (const bot of s.bots)
     resp = engine.addBot(id, bot.difficulty, bot.personality);
-  if (s.teams && resp.ok)
-    resp.game.players.forEach((p, i) => {
-      engine?.updateSettings(id, {
-        playerTeam: { playerId: p.id, team: s.teams?.[i] ?? 0 },
-      });
+  if (s.teams && resp.ok) {
+    const players = resp.game.players;
+    const seated = [
+      players.find((p) => !p.isBot),
+      ...players.filter((p) => p.isBot),
+    ];
+    engine.updateSettings(id, {
+      teams: s.teamSlots.map((slots, team) => ({
+        slots,
+        playerIds: seated
+          .filter((_, i) => s.teams?.[i] === team)
+          .map((p) => p?.id),
+      })),
     });
+  }
   const finish = () => {
     engine?.startGame(id);
     flushQueue();
@@ -389,10 +401,10 @@ export function cycleLocalPlayerColor(playerId: number): void {
   if (currentActorId !== null) engine.requestState(currentActorId);
 }
 
-export function addLocalPlayer(name: string): void {
+export function addLocalPlayer(name: string, team?: number): void {
   if (!active) return;
   if (!ready) {
-    queue.push(() => addLocalPlayer(name));
+    queue.push(() => addLocalPlayer(name, team));
     return;
   }
   if (!engine || hostId === null) return;
@@ -402,8 +414,11 @@ export function addLocalPlayer(name: string): void {
     engine.updateSettings(hostId, { slots: summary.playerCount + 1 });
   const seatName = name.trim() || `Player ${summary.playerCount + 1}`;
   const seatId = engine.addPlayer(seatName).id;
-  engine.joinGame(seatId, gameName);
+  const resp = engine.joinGame(seatId, gameName);
   localPlayerIds.push(seatId);
+  if (team === undefined || !resp.ok) return;
+  engine.updateSettings(hostId, { teams: moveToTeam(resp.game, seatId, team) });
+  if (currentActorId !== null) engine.requestState(currentActorId);
 }
 
 export function removeLocalPlayer(playerId: number): void {
@@ -487,6 +502,8 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
           timed: d.timed as boolean,
           unlockable: d.unlockable as boolean,
           aspect: (d.aspect as MapAspect | undefined) ?? 'wide',
+          mountains: (d.mountains as boolean | undefined) ?? false,
+          rivers: (d.rivers as boolean | undefined) ?? false,
         },
         cb ?? (() => {}),
       );
@@ -509,7 +526,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     }
     case 'game:addBot':
-      cb?.(engine.addBot(id, d.difficulty, d.personality));
+      cb?.(engine.addBot(id, d.difficulty, d.personality, d.team));
       return;
     case 'game:setBotProfile':
       cb?.(

@@ -1,6 +1,7 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
+import SharePageButton from '../../common/menus/SharePageButton';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import type { ResultRow } from '../../common/ResultsTable';
 import { contrastTextColor, playerColor } from '../../lib/palette';
@@ -32,6 +33,7 @@ interface Props {
   onPanelOpenChange?: (open: boolean) => void;
   onViewChange?: (view: 'results' | 'replay') => void;
   showMuted?: boolean;
+  shareGameId?: string | null;
 }
 
 function GameReplayView({
@@ -54,6 +56,7 @@ function GameReplayView({
   onPanelOpenChange,
   onViewChange,
   showMuted,
+  shareGameId,
 }: Props) {
   const [view, setView] = useState<'results' | 'replay'>('results');
   const [replayIndex, setReplayIndex] = useState(0);
@@ -92,8 +95,22 @@ function GameReplayView({
         rowRef={rowRef}
         nameRef={nameRef}
         onRowClick={onRowClick}
-        belowTable={belowTable}
+        belowTable={
+          <>
+            {belowTable}
+            {shareGameId && (
+              <div className="d-flex justify-content-center mt-3">
+                <SharePageButton
+                  title={game.name}
+                  path={`/games/replay/${shareGameId}`}
+                  tooltip="Share this game with friends"
+                />
+              </div>
+            )}
+          </>
+        }
         overlay={overlay}
+        replay={replay}
         showMuted={showMuted}
       />
     );
@@ -134,15 +151,26 @@ function GameReplayView({
         settingsMenuOpen={settingsMenuOpen ?? false}
         navigate={navigate}
       />
-      <Button
-        variant="secondary"
-        size="sm"
-        className="position-fixed bottom-0 end-0 m-3"
+      <div
+        className="position-fixed bottom-0 end-0 m-3 d-flex gap-2"
         style={{ zIndex: 5 }}
-        onClick={() => setView('results')}
       >
-        Results
-      </Button>
+        {shareGameId && (
+          <SharePageButton
+            title={game.name}
+            path={`/games/replay/${shareGameId}`}
+            tooltip="Share this game with friends"
+            size="sm"
+          />
+        )}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setView('results')}
+        >
+          Results
+        </Button>
+      </div>
       {(shownChat.length > 0 || shownEmoji.length > 0) && (
         <div
           className="position-fixed bottom-0 start-0 m-3 p-2 rounded small"

@@ -84,6 +84,8 @@ export interface GameSummary {
     timed: boolean;
     unlockable: boolean;
     aspect: MapAspect;
+    mountains: boolean;
+    rivers: boolean;
   } | null;
   hostName: string;
   playerCount: number;
@@ -160,7 +162,19 @@ export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
 export type Radiations = 'off' | 'static' | 'dynamic' | 'expanding';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
-export type Continents = 'off' | 'on';
+export type Continents =
+  | '1x'
+  | '2x'
+  | '3x'
+  | '5x'
+  | '10x'
+  | 'shuffle'
+  | 'random'
+  | 'linear'
+  | 'exponential'
+  | 'linear per continent'
+  | 'exponential per continent'
+  | 'off';
 export type RoundTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
 export type CapitalRefund = 'off' | 'on';
@@ -255,6 +269,7 @@ export interface GameState {
   mapGeneration: GenerateMapInput | null;
   playerMapId: string | null;
   slots: number;
+  teamSlots: number[];
   hostId: number;
   originalHostId: number;
   state: 'lobby' | 'playing' | 'ended';
@@ -270,6 +285,7 @@ export interface GameState {
   capitalRefund: CapitalRefund;
   cards: CardsMode;
   continents: Continents;
+  continentBonuses: number[];
   defenceDice: number;
   attackDice: number;
   diceTies: DiceTies;
@@ -411,6 +427,7 @@ export interface PlayerResultStats {
 
 export interface GameResults {
   stats: PlayerResultStats[];
+  gameId?: string;
 }
 
 export interface GameSettingsInput {
@@ -444,12 +461,12 @@ export interface GameSettingsInput {
   name?: string;
   password?: string | null;
   placement?: Placement;
-  playerTeam?: { playerId: number; team: number };
   portals?: Portals;
   radiations?: Radiations;
   slots?: number;
   starvation?: Starvation;
   supplyLines?: SupplyLines;
+  teams?: { slots: number; playerIds: number[] }[];
   toxins?: Toxins;
   turnDuration?: TurnDuration;
   attackIncrement?: number;
@@ -519,6 +536,8 @@ export interface GenerateMapInput {
   timed: boolean;
   unlockable: boolean;
   aspect: MapAspect;
+  mountains: boolean;
+  rivers: boolean;
 }
 
 export interface ChatMessage {
@@ -624,6 +643,19 @@ export interface ReplayPlayerState {
   nukeProjects: NukeProject[];
 }
 
+export interface ReplayPlayerStats {
+  playerId: number;
+  troopsGained: number;
+  troopsKilled: number;
+  troopsLost: number;
+  territoriesConquered: number;
+  territoriesLost: number;
+  capitalsConquered: number;
+  capitalsLost: number;
+  cardsGained: number;
+  setsPlayed: number;
+}
+
 export interface ReplayLogEntry {
   afterFrame: number;
   type: string;
@@ -638,6 +670,7 @@ export interface ReplayFrame {
   seaShips: ReplaySeaShips[];
   hands: ReplayHand[];
   playerStates: ReplayPlayerState[];
+  playerStats: ReplayPlayerStats[];
   turnPhase: TurnPhase;
   animation: ReplayAnimation;
   roundNumber: number;
@@ -665,6 +698,7 @@ export type ReplayEntry =
       seaShipsDelta: ReplaySeaShips[];
       hands: ReplayHand[];
       playerStates: ReplayPlayerState[];
+      statsDelta?: ReplayPlayerStats[];
       animation: ReplayAnimation;
     }
   | { kind: 'turn'; roundNumber: number; playerId: number }
@@ -751,6 +785,7 @@ export interface StoredGame {
   winnerIds: number[];
   capitalTerritoryIds: number[];
   hillTerritoryIds?: number[];
+  continentBonuses?: number[];
   settings: StoredGameSettings;
   players: {
     playerId: number;

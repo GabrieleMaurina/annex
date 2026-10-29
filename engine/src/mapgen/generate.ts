@@ -23,8 +23,19 @@ export interface GeneratedMap {
 }
 
 export function generateMap(params: GenerateMapParams): GeneratedMap {
-  const { seed, size, type, fill, tile, seas, timed, unlockable, aspect } =
-    params;
+  const {
+    seed,
+    size,
+    type,
+    fill,
+    tile,
+    seas,
+    timed,
+    unlockable,
+    aspect,
+    mountains,
+    rivers,
+  } = params;
   const key = `${seed}::${size}::${type}::${fill}${type === 'tile' ? `::${tile}` : ''}${aspect === 'square' ? '::square' : ''}`;
   const rng = createRng(key);
   const timedRng = timed ? createRng(`${key}::timed`) : null;
@@ -46,12 +57,15 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
               unlockable,
               timedRng,
             )
-          : generateTerrain(rng, fill, size, dims, seas, timedRng);
+          : generateTerrain(rng, fill, size, dims, seas, timedRng, {
+              mountains,
+              rivers,
+            });
 
   return {
     name: generatedMapName(params),
     lockedTiles: [],
     ...built,
-    borderColors: generatedBorderColors(type),
+    borderColors: generatedBorderColors(type, rivers),
   };
 }

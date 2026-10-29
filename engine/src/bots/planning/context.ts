@@ -276,7 +276,7 @@ export function buildContext(
 ): PlanContext {
   const gameMap = getGameMap(game);
   const map =
-    game.continents === 'on'
+    game.continents !== 'off'
       ? gameMap
       : { ...gameMap, bonuses: gameMap.bonuses.map(() => 0) };
   const topology =

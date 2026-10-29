@@ -1,3 +1,4 @@
+import { deployableTroops } from 'engine';
 import type { PlaceNames, Territory } from '../mapData';
 import {
   getScales as computeScales,
@@ -88,6 +89,13 @@ export function unclaimedTerritoryIds(
       .filter((t) => !ownerById.has(t.id) && !radiationById.has(t.id))
       .map((t) => t.id),
   );
+}
+
+export function maxDeployTroops(
+  troopsToDeploy: number,
+  territoryTroops: number,
+): number {
+  return Math.max(0, deployableTroops(troopsToDeploy, territoryTroops));
 }
 
 const ARC_STEP = Math.PI / 10;

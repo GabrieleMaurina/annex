@@ -51,6 +51,8 @@ function runOnce(
     timed: false,
     unlockable: false,
     aspect: 'wide',
+    mountains: true,
+    rivers: true,
   });
   const total = performance.now() - start;
   const steps = stopBench();

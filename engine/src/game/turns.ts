@@ -25,6 +25,7 @@ import {
   turnOrderBonus,
 } from './mechanics';
 import { hasReadyNuke } from './nukes/nukes';
+import { payContinentBonuses } from './progression/bonuses';
 import {
   counterKey,
   pickBestSet,
@@ -519,6 +520,7 @@ function startDeployPhase(game: Game, playerId: number) {
   snapshotCapitalRefunds(game, playerId);
   game.deployCardMandate = (game.playerCards.get(playerId)?.length ?? 0) >= 5;
   const breakdown = calculateDeployTroopsBreakdown(game, playerId);
+  payContinentBonuses(game, playerId);
   const earned =
     breakdown.territories +
     breakdown.bonuses +

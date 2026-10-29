@@ -1,4 +1,4 @@
-const MIN_COMPONENT_AREA_RATIO = 0.4;
+export const MIN_COMPONENT_AREA_RATIO = 0.4;
 const MAX_CLEAN_PASSES = 8;
 
 export function cleanLandMask(

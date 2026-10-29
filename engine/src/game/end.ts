@@ -61,6 +61,7 @@ export function endAbandonedGame(game: Game): void {
   if (game.state !== 'playing') return;
   game.state = 'ended';
   game.endedAt = Date.now();
+  refreshLastReplayPlayerStates(game);
   revealBotProfiles(game);
   if (!game.earlyWin) game.finalRanking = computeFinalRanking(game);
   emitGameEnded(game);

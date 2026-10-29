@@ -6,6 +6,7 @@ import type {
   ReplayFrame,
   ReplayHand,
   ReplayLogEntry,
+  ReplayPlayerStats,
   ReplaySeaShips,
   ReplayTerritory,
   StoredGame,
@@ -59,6 +60,7 @@ export interface FoldedReplay {
   turnMarkers: ReplayTurnMarker[];
   chat: ReplayChatMessage[];
   emoji: ReplayEmoji[];
+  hasStats: boolean;
 }
 
 export function foldStoredReplay(
@@ -71,6 +73,8 @@ export function foldStoredReplay(
     replay.initialTerritories.map((t) => [t.id, { ...t }]),
   );
   const seaShipsById = new Map<number, Map<number, number>>();
+  const statsById = new Map<number, ReplayPlayerStats>();
+  let hasStats = false;
   const frames: ReplayFrame[] = [];
   const turnMarkers: ReplayTurnMarker[] = [];
   const chat: ReplayChatMessage[] = [];
@@ -90,6 +94,9 @@ export function foldStoredReplay(
         if (byPlayer.size === 0) seaShipsById.delete(shipDelta.seaTerritoryId);
         else seaShipsById.set(shipDelta.seaTerritoryId, byPlayer);
       }
+      if (entry.statsDelta) hasStats = true;
+      for (const stats of entry.statsDelta ?? [])
+        statsById.set(stats.playerId, stats);
       const animation =
         entry.animation.type === 'attack' && entry.animation.defenderId == null
           ? { ...entry.animation, defenderId: undefined }
@@ -109,6 +116,7 @@ export function foldStoredReplay(
         ),
         hands: entry.hands ?? [],
         playerStates: entry.playerStates ?? [],
+        playerStats: [...statsById.values()],
         turnPhase: entry.turnPhase,
         animation,
         roundNumber: entry.roundNumber,
@@ -147,6 +155,7 @@ export function foldStoredReplay(
     turnMarkers,
     chat,
     emoji,
+    hasStats,
   };
 }
 

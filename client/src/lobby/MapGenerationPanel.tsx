@@ -21,6 +21,8 @@ import type {
 } from '../lib/types';
 import { DEFAULT_MAP_GENERATION, randomSeed } from '../maps/randomMap';
 import {
+  MOUNTAINS_HELP,
+  RIVERS_HELP,
   SEAS_HELP,
   TIMED_CONNECTIONS_HELP,
   UNLOCKABLE_HELP,
@@ -86,6 +88,12 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
     const [genUnlockable, setGenUnlockable] = useState(
       saved?.unlockable ?? DEFAULT_MAP_GENERATION.unlockable,
     );
+    const [genMountains, setGenMountains] = useState(
+      saved?.mountains ?? DEFAULT_MAP_GENERATION.mountains,
+    );
+    const [genRivers, setGenRivers] = useState(
+      saved?.rivers ?? DEFAULT_MAP_GENERATION.rivers,
+    );
     const unlockable = genType === 'tile' && genUnlockable;
     const [generating, setGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState<GenerateMapInput | null>(
@@ -111,7 +119,10 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         (genType !== 'tile' || lastGenerated.tile === genTile) &&
         lastGenerated.seas === genSeas &&
         lastGenerated.timed === genTimed &&
-        lastGenerated.unlockable === unlockable
+        lastGenerated.unlockable === unlockable &&
+        (genType !== 'terrain' ||
+          ((lastGenerated.mountains ?? false) === genMountains &&
+            (lastGenerated.rivers ?? false) === genRivers))
       ) {
         effectiveSeed = randomSeed();
         setSeed(effectiveSeed);
@@ -127,6 +138,8 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
         timed: genTimed,
         unlockable,
         aspect: genAspect,
+        mountains: genMountains,
+        rivers: genRivers,
       };
       setGenerating(true);
       generateMap(input, (ok) => {
@@ -279,6 +292,28 @@ const MapGenerationPanel = forwardRef<MapGenerationPanelHandle, Props>(
                   />
                   <Help>{UNLOCKABLE_HELP}</Help>
                 </div>
+              )}
+              {genType === 'terrain' && (
+                <>
+                  <div className="d-flex align-items-center gap-2">
+                    <Form.Check
+                      type="checkbox"
+                      label="Mountains"
+                      checked={genMountains}
+                      onChange={(e) => setGenMountains(e.target.checked)}
+                    />
+                    <Help>{MOUNTAINS_HELP}</Help>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <Form.Check
+                      type="checkbox"
+                      label="Rivers"
+                      checked={genRivers}
+                      onChange={(e) => setGenRivers(e.target.checked)}
+                    />
+                    <Help>{RIVERS_HELP}</Help>
+                  </div>
+                </>
               )}
               <div>
                 <Button

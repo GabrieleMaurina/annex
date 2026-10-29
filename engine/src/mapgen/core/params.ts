@@ -15,6 +15,8 @@ export interface GenerateMapParams {
   timed: boolean;
   unlockable: boolean;
   aspect: MapAspect;
+  mountains: boolean;
+  rivers: boolean;
 }
 
 export const MAP_SIZE_VALUES: MapSize[] = [

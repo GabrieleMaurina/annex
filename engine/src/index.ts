@@ -166,6 +166,7 @@ export { LOCAL_ZOOM as OSM_LOCAL_ZOOM } from './mapgen/pipeline/osm/ranks';
 export {
   OsmAreaParams,
   OsmDetail,
+  OsmElevation,
   OsmFeatures,
   OsmFocus,
   OsmGeneratedMap,

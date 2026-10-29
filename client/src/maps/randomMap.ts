@@ -14,6 +14,8 @@ export const DEFAULT_MAP_GENERATION = {
   timed: false,
   unlockable: false,
   aspect: 'wide',
+  mountains: false,
+  rivers: false,
 } as const;
 
 export function randomSeed(): string {

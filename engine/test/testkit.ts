@@ -115,6 +115,7 @@ function baseGame(name: string): Game {
     generatedMap: null,
     playerMap: null,
     slots: 6,
+    teamSlots: [6],
     hostId: 1,
     originalHostId: 1,
     offline: true,
@@ -133,7 +134,9 @@ function baseGame(name: string): Game {
     bounties: 'off',
     capitalRefund: 'off',
     cards: 'constant',
-    continents: 'on',
+    continents: '1x',
+    continentBonuses: [],
+    continentPayouts: [],
     defenceDice: 2,
     attackDice: 3,
     diceTies: 'defence',
@@ -251,6 +254,8 @@ export function buildGame(spec: ScenarioSpec): {
   loadMaps([map]);
 
   const game = baseGame(name);
+  game.continentBonuses = [...map.bonuses];
+  game.continentPayouts = map.bonuses.map(() => 0);
   game.cards = spec.cards ?? 'constant';
   game.playerIds = [...spec.players];
   const botId = spec.botId ?? spec.players[0];

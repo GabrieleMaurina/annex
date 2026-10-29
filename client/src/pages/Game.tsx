@@ -58,6 +58,7 @@ function Game({
   const [results, setResults] = useState<Map<number, PlayerResultStats> | null>(
     null,
   );
+  const [storedGameId, setStoredGameId] = useState<string | null>(null);
   const showMap =
     game?.state === 'playing' || (game?.state === 'ended' && endReplaying);
   const receivedFirstStateRef = useRef(false);
@@ -169,6 +170,7 @@ function Game({
   useEffect(() => {
     function onResults(payload: GameResults) {
       setResults(new Map(payload.stats.map((s) => [s.id, s])));
+      setStoredGameId(payload.gameId ?? null);
     }
     connector.on('game:results', onResults);
     connector.requestResults();
@@ -371,6 +373,7 @@ function Game({
         <EndPage
           game={game}
           results={results}
+          storedGameId={storedGameId}
           selfId={selfId}
           account={account}
           navigate={navigate}

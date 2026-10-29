@@ -27,6 +27,8 @@ export interface GameSettings {
     timed: boolean;
     unlockable: boolean;
     aspect: string;
+    mountains: boolean;
+    rivers: boolean;
   } | null;
   playerMapId: string | null;
   slots: number;
@@ -119,7 +121,20 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   defenceDice: [2, 1, ...Array.from({ length: 8 }, (_, i) => i + 3)],
   attackDice: [3, 1, 2, ...Array.from({ length: 7 }, (_, i) => i + 4)],
   diceTies: ['defence', 'attack', 'tie'],
-  continents: ['on', 'off'],
+  continents: [
+    '1x',
+    '2x',
+    '3x',
+    '5x',
+    '10x',
+    'shuffle',
+    'random',
+    'linear',
+    'exponential',
+    'linear per continent',
+    'exponential per continent',
+    'off',
+  ],
   initialTroops: [3, 1, 2, ...Array.from({ length: 97 }, (_, i) => i + 4)],
   minTroops: [3, 0, 1, 2, ...Array.from({ length: 97 }, (_, i) => i + 4)],
   troopsPerTerritory: [
@@ -232,7 +247,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   defenceDice: 2,
   attackDice: 3,
   diceTies: 'defence',
-  continents: 'on',
+  continents: '1x',
   initialTroops: 3,
   minTroops: 3,
   troopsPerTerritory: 1 / 3,
@@ -356,6 +371,8 @@ export const preferencesSchemaProperties = {
           timed: { bsonType: 'bool' },
           unlockable: { bsonType: 'bool' },
           aspect: { enum: MAP_ASPECTS },
+          mountains: { bsonType: 'bool' },
+          rivers: { bsonType: 'bool' },
         },
       },
       slots: { bsonType: 'number', minimum: 2, maximum: 20 },
@@ -499,6 +516,8 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
     aspect: MAP_ASPECTS.includes(r.aspect as string)
       ? (r.aspect as string)
       : MAP_ASPECTS[0],
+    mountains: r.mountains === true,
+    rivers: r.rivers === true,
   };
 }
 

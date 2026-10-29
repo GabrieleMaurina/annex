@@ -74,6 +74,8 @@ export interface GeneratedGameMap {
   timed: boolean;
   unlockable: boolean;
   aspect: MapAspect;
+  mountains: boolean;
+  rivers: boolean;
 }
 
 export interface Player {
@@ -146,7 +148,19 @@ export type Toxins = 'off' | 'temporary' | 'permanent';
 export type Portals = 'off' | 'static' | 'dynamic';
 export type Radiations = 'off' | 'static' | 'dynamic' | 'expanding';
 export type Starvation = 'off' | 'territory' | 'total' | 'percent';
-export type Continents = 'off' | 'on';
+export type Continents =
+  | '1x'
+  | '2x'
+  | '3x'
+  | '5x'
+  | '10x'
+  | 'shuffle'
+  | 'random'
+  | 'linear'
+  | 'exponential'
+  | 'linear per continent'
+  | 'exponential per continent'
+  | 'off';
 export type RoundTroops = 'off' | 'on';
 export type Bounties = 'off' | 'on';
 export type CapitalRefund = 'off' | 'on';
@@ -280,6 +294,19 @@ export interface ReplayPlayerState {
   nukeProjects: NukeProject[];
 }
 
+export interface ReplayPlayerStats {
+  playerId: number;
+  troopsGained: number;
+  troopsKilled: number;
+  troopsLost: number;
+  territoriesConquered: number;
+  territoriesLost: number;
+  capitalsConquered: number;
+  capitalsLost: number;
+  cardsGained: number;
+  setsPlayed: number;
+}
+
 export interface ReplaySeaShips {
   seaTerritoryId: number;
   playerId: number;
@@ -294,6 +321,7 @@ export interface ReplayFrame {
   seaShips: ReplaySeaShips[];
   hands: ReplayHand[];
   playerStates: ReplayPlayerState[];
+  playerStats: ReplayPlayerStats[];
   turnPhase: TurnPhase;
   animation: ReplayAnimation;
   roundNumber: number;
@@ -367,6 +395,7 @@ export interface Game {
   generatedMap: GeneratedGameMap | null;
   playerMap: PlayerGameMap | null;
   slots: number;
+  teamSlots: number[];
   hostId: number;
   originalHostId: number;
   offline: boolean;
@@ -386,6 +415,8 @@ export interface Game {
   capitalRefund: CapitalRefund;
   cards: CardsMode;
   continents: Continents;
+  continentBonuses: number[];
+  continentPayouts: number[];
   defenceDice: number;
   attackDice: number;
   diceTies: DiceTies;

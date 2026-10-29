@@ -24,7 +24,12 @@ export function continentEarthTone(continentId: number): string {
 
 export const SEA_COLOR = '#3d6b8a';
 export const VOID_LAND_COLOR = '#45453f';
-export const MOUNTAIN_COLOR = '#cfc8bb';
+export const GREEN_LAND_COLOR = '#3f8f3a';
+export const MOUNTAIN_RANGE_COLOR = '#5c5b59';
+export const PEAK_ROCK_COLOR = '#a3a29f';
+export const PEAK_ROCK_SHADE_COLOR = '#706f6c';
+export const PEAK_SNOW_COLOR = '#f4f4f2';
+export const PEAK_SNOW_SHADE_COLOR = '#c9ccd2';
 export const RIVER_BORDER_COLOR = '#4a90d9';
 export const TERRITORY_STROKE_COLOR = '#000000';
 
@@ -100,12 +105,16 @@ export const TILE_SEAM_COLOR = '#1e9bff';
 
 export const DEFAULT_BORDER_COLORS = [TERRITORY_STROKE_COLOR];
 
-export function generatedBorderColors(type: GenerationType): string[] {
+export function generatedBorderColors(
+  type: GenerationType,
+  rivers: boolean,
+): string[] {
   if (type === 'dungeon')
     return [DUNGEON_VOID_COLOR, DUNGEON_WALL_COLOR, DUNGEON_SEAM_COLOR];
   if (type === 'temple')
     return [TEMPLE_VOID_COLOR, TEMPLE_WALL_COLOR, TEMPLE_SEAM_COLOR];
   if (type === 'tile')
     return [TILE_VOID_COLOR, TILE_WALL_COLOR, TILE_SEAM_COLOR];
+  if (rivers) return [TERRITORY_STROKE_COLOR, RIVER_BORDER_COLOR];
   return [TERRITORY_STROKE_COLOR];
 }

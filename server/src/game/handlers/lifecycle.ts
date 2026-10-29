@@ -22,7 +22,7 @@ function settingsFromClient(
   playerId: number,
   settings: Record<string, unknown>,
 ): Record<string, unknown> | null {
-  const { bannedPlayerIds, playerTeam } = settings;
+  const { bannedPlayerIds, teams } = settings;
   const bannedIds = Array.isArray(bannedPlayerIds)
     ? bannedPlayerIds.map((id) => fromClient(playerId, id))
     : bannedPlayerIds;
@@ -30,9 +30,16 @@ function settingsFromClient(
   return {
     ...settings,
     bannedPlayerIds: bannedIds,
-    playerTeam: isObject(playerTeam)
-      ? { ...playerTeam, playerId: fromClient(playerId, playerTeam.playerId) }
-      : playerTeam,
+    teams: Array.isArray(teams)
+      ? teams.map((team) =>
+          isObject(team) && Array.isArray(team.playerIds)
+            ? {
+                ...team,
+                playerIds: team.playerIds.map((id) => fromClient(playerId, id)),
+              }
+            : team,
+        )
+      : teams,
   };
 }
 

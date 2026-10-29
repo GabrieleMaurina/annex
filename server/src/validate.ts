@@ -294,6 +294,8 @@ export interface MapGeneration {
   timed: boolean;
   unlockable: boolean;
   aspect: MapAspect;
+  mountains: boolean;
+  rivers: boolean;
 }
 
 const MAX_SEED_LENGTH = 20;
@@ -307,6 +309,8 @@ export function validateMapGeneration(
   if (!isObject(raw)) return { ok: false, error: 'invalid generation' };
   const { seed, size, type, fill, tile, seas, timed, unlockable } = raw;
   const aspect = raw.aspect ?? 'wide';
+  const mountains = raw.mountains ?? false;
+  const rivers = raw.rivers ?? false;
   if (
     typeof seed !== 'string' ||
     seed.length < 1 ||
@@ -319,6 +323,8 @@ export function validateMapGeneration(
     typeof timed !== 'boolean' ||
     typeof unlockable !== 'boolean' ||
     (unlockable && (type !== 'tile' || seas || timed)) ||
+    typeof mountains !== 'boolean' ||
+    typeof rivers !== 'boolean' ||
     !(MAP_ASPECT_VALUES as unknown[]).includes(aspect)
   )
     return { ok: false, error: 'invalid generation' };
@@ -334,6 +340,8 @@ export function validateMapGeneration(
       timed,
       unlockable,
       aspect: aspect as MapAspect,
+      mountains,
+      rivers,
     },
   };
 }

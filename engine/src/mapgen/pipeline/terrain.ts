@@ -46,7 +46,7 @@ export function buildLandMask(
   rng: Rng,
   fill: Fill,
   dims: GridDimensions,
-): Uint8Array {
+): { land: Uint8Array; heights: Float32Array } {
   const perlin = new Perlin2D(rng);
   const threshold = FILL_THRESHOLDS[fill];
   const { frequency, octaves } = TERRAIN_PARAMS[fill];
@@ -73,11 +73,13 @@ export function buildLandMask(
     carveIslandBorder(heights, dims, min, range);
   }
   const land = new Uint8Array(width * gridHeight);
+  const normalized = new Float32Array(width * gridHeight);
   for (let gy = 0; gy < gridHeight; gy++) {
     for (let gx = 0; gx < width; gx++) {
+      normalized[gy * width + gx] = (heights[gy][gx] - min) / range;
       if ((heights[gy][gx] - min) / range > threshold)
         land[gy * width + gx] = 1;
     }
   }
-  return land;
+  return { land, heights: normalized };
 }

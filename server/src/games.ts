@@ -8,18 +8,31 @@ interface GameEndedPayload {
   roundNumber: number;
 }
 
+const storedIdByGame = new Map<string, string>();
+
+export function storedGameId(gameName: string): string | undefined {
+  return storedIdByGame.get(gameName);
+}
+
+export function reconcileStoredGames(existing: Set<string>): void {
+  for (const name of [...storedIdByGame.keys()]) {
+    if (!existing.has(name)) storedIdByGame.delete(name);
+  }
+}
+
 export function persistFinishedGame(
   engine: Engine,
   payload: GameEndedPayload,
   participants: Map<number, string>,
   elos: Promise<Map<number, GameElo>>,
-): void {
-  if (payload.roundNumber < 1) return;
+): Promise<void> {
+  storedIdByGame.delete(payload.gameName);
+  if (payload.roundNumber < 1) return Promise.resolve();
 
   const bundle = engine.exportGame(payload.gameName);
-  if (!bundle) return;
+  if (!bundle) return Promise.resolve();
 
-  Promise.all([persistGameMap(engine, payload.gameName), elos])
+  return Promise.all([persistGameMap(engine, payload.gameName), elos])
     .then(([mapId, gameElos]) => {
       if (!mapId) return;
       return storeGame({
@@ -35,6 +48,7 @@ export function persistFinishedGame(
         playerCount: bundle.playerCount,
         capitalTerritoryIds: bundle.capitalTerritoryIds,
         hillTerritoryIds: bundle.hillTerritoryIds,
+        continentBonuses: bundle.continentBonuses,
         results: bundle.results,
         serverLog: bundle.serverLog,
         replay: bundle.replay,
@@ -51,6 +65,8 @@ export function persistFinishedGame(
             eloPenalty: elo?.eloPenalty ?? null,
           };
         }),
+      }).then((id) => {
+        storedIdByGame.set(payload.gameName, id);
       });
     })
     .catch((error) => console.error('failed to store game', error));

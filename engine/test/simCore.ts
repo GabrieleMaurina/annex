@@ -140,6 +140,8 @@ export function runGame(
     timed: false,
     unlockable: false,
     aspect: 'wide',
+    mountains: true,
+    rivers: true,
   };
   updateSettings(host.id, { slots: roster.length, ...settings });
   for (let i = 1; i < roster.length; i++)

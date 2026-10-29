@@ -1,5 +1,5 @@
 import { addHostCandidate, recomputeHost } from '../game/host';
-import { assignRandomColor, maxTeam } from '../game/mechanics';
+import { assignRandomColor } from '../game/mechanics';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
 import {
@@ -9,6 +9,7 @@ import {
   sendGeneratedMapIfAny,
 } from '../session/store';
 import { canTakeSeat } from './eligibility';
+import { hasRoom, openTeam } from './teams';
 
 export function joinGame(playerId: number, gameName: string): GameResponse {
   const player = playersById.get(playerId);
@@ -27,7 +28,6 @@ export function joinGame(playerId: number, gameName: string): GameResponse {
     game.playerIds.length < game.slots &&
     canTakeSeat(game, player.id)
   ) {
-    game.playerIds.push(player.id);
     const departed = game.lobbyDeparted.get(player.id);
     game.lobbyDeparted.delete(player.id);
     const colorTaken =
@@ -35,8 +35,9 @@ export function joinGame(playerId: number, gameName: string): GameResponse {
       [...game.playerColors.values()].includes(departed.color);
     game.playerTeams.set(
       player.id,
-      departed ? Math.min(departed.team, maxTeam(game)) : 0,
+      departed && hasRoom(game, departed.team) ? departed.team : openTeam(game),
     );
+    game.playerIds.push(player.id);
     if (departed && !colorTaken)
       game.playerColors.set(player.id, departed.color);
     else assignRandomColor(game, player.id);

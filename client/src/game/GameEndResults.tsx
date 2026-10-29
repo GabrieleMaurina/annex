@@ -6,6 +6,8 @@ import ResultsTable from '../common/ResultsTable';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/settings/SettingsPanel';
+import GameStatsChart from './replay/GameStatsChart';
+import type { FoldedReplay } from './replay/replay';
 
 function formatDuration(ms: number): string {
   const totalMinutes = Math.max(0, Math.round(ms / 60000));
@@ -27,6 +29,7 @@ interface Props {
   onRowClick?: (playerId: number) => void;
   belowTable?: ReactNode;
   overlay?: ReactNode;
+  replay?: FoldedReplay | null;
   showMuted?: boolean;
 }
 
@@ -43,11 +46,14 @@ function GameEndResults({
   onRowClick,
   belowTable,
   overlay,
+  replay,
   showMuted,
 }: Props) {
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
   const won = selfId !== null && game.winnerIds.includes(selfId);
   const isTeamDeathmatch = game.gameMode === 'team deathmatch';
+  const isCapitals = game.gameMode === 'capitals';
+  const pointsMode = isPointsMode(game.gameMode);
   const duration =
     game.startedAt !== null && game.endedAt !== null
       ? formatDuration(game.endedAt - game.startedAt)
@@ -87,8 +93,8 @@ function GameEndResults({
         results={results}
         originalHostId={game.originalHostId}
         roundNumber={game.roundNumber}
-        isCapitals={game.gameMode === 'capitals'}
-        isPointsMode={isPointsMode(game.gameMode)}
+        isCapitals={isCapitals}
+        isPointsMode={pointsMode}
         selfId={selfId}
         showYouLabel={showYouLabel ?? selfId !== null}
         rowClickable={rowClickable}
@@ -107,6 +113,17 @@ function GameEndResults({
           Watch Replay
         </Button>
       </div>
+
+      {replay && (
+        <div className="mt-4">
+          <GameStatsChart
+            players={game.players}
+            replay={replay}
+            isCapitals={isCapitals}
+            isPointsMode={pointsMode}
+          />
+        </div>
+      )}
 
       <div className="mt-4">
         <SettingsPanel

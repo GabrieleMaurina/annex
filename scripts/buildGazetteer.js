@@ -11,7 +11,7 @@ const NE =
   'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/';
 const GEONAMES = 'https://download.geonames.org/export/dump/';
 
-const KINDS = ['country', 'state', 'city', 'lake', 'sea', 'region'];
+const KINDS = ['country', 'state', 'city', 'lake', 'sea', 'region', 'metro'];
 const MIN_PART_SHARE = 0.005;
 const BIG_PART_SHARE = 0.25;
 const REACH_RATIO = 0.5;
@@ -39,6 +39,9 @@ const MIN_URBAN_SPAN_RATIO = 0.5;
 const MAX_URBAN_SPAN_RATIO = 3;
 const URBAN_CLIP_RADIUS = 1.5;
 const CLIP_SIDES = 64;
+const MIN_METRO_CITIES = 2;
+const MIN_METRO_POPULATION = 1000000;
+const METRO_REACH_KM = 0.035;
 
 function download(url) {
   return fetch(url, { headers: { 'User-Agent': UA } })
@@ -314,6 +317,43 @@ function urbanAreaAt({ areas, cells }, point) {
   return nearest;
 }
 
+function boxesNear(a, b) {
+  const dLat = MAX_URBAN_GAP_KM / KM_PER_DEGREE;
+  const midLat = (((a[1] + a[3]) / 2) * Math.PI) / 180;
+  const dLon = dLat / Math.max(0.1, Math.cos(midLat));
+  return (
+    a[0] - dLon <= b[2] &&
+    b[0] - dLon <= a[2] &&
+    a[1] - dLat <= b[3] &&
+    b[1] - dLat <= a[3]
+  );
+}
+
+function ringsNear(a, b) {
+  return a.some((from) =>
+    b.some((to) => distanceKm(from, to) <= MAX_URBAN_GAP_KM),
+  );
+}
+
+function urbanNeighbours({ areas, cells }) {
+  const neighbours = areas.map(() => new Set());
+  for (const indices of cells.values())
+    for (let i = 0; i < indices.length; i++)
+      for (let j = i + 1; j < indices.length; j++) {
+        const a = indices[i];
+        const b = indices[j];
+        if (neighbours[a].has(b)) continue;
+        if (
+          boxesNear(areas[a].box, areas[b].box) &&
+          ringsNear(areas[a].ring, areas[b].ring)
+        ) {
+          neighbours[a].add(b);
+          neighbours[b].add(a);
+        }
+      }
+  return neighbours;
+}
+
 function boxSpanKm([west, south, east, north]) {
   const midLat = (((south + north) / 2) * Math.PI) / 180;
   return (
@@ -503,9 +543,18 @@ function buildGazetteer(files) {
     if (cols.length > 1) admin1Names.set(cols[0], cols[1]);
   }
   const urban = urbanIndex(readJson(files.urban).features);
+  const neighbours = urbanNeighbours(urban);
   const shapeOfArea = new Map();
   const cityShapes = { shapes: [], cities: [] };
+  const shapeOf = (area) => {
+    if (!shapeOfArea.has(area)) {
+      shapeOfArea.set(area, cityShapes.shapes.length);
+      cityShapes.shapes.push(urbanRing(urban.areas[area].ring));
+    }
+    return shapeOfArea.get(area);
+  };
   const admin1Boxes = new Map();
+  const homes = [];
   for (const line of unzipEntry(files.cities, 'cities15000.txt').split('\n')) {
     const cols = line.split('\t');
     if (cols.length < 15) continue;
@@ -525,17 +574,22 @@ function buildGazetteer(files) {
     if (index >= 0 && abbreviations.length > 0)
       aliases.push([index, abbreviations.join('|')]);
     const area = index >= 0 ? urbanAreaAt(urban, [lon, lat]) : -1;
+    if (area >= 0)
+      homes.push({
+        name: cols[1],
+        context,
+        population,
+        abbreviations,
+        area,
+        point: [lon, lat],
+      });
     const spanRatio =
       area >= 0 ? boxSpanKm(urban.areas[area].box) / boxSpanKm(box) : 0;
     if (
       spanRatio >= MIN_URBAN_SPAN_RATIO &&
       spanRatio <= MAX_URBAN_SPAN_RATIO
     ) {
-      if (!shapeOfArea.has(area)) {
-        shapeOfArea.set(area, cityShapes.shapes.length);
-        cityShapes.shapes.push(urbanRing(urban.areas[area].ring));
-      }
-      cityShapes.cities.push([index, shapeOfArea.get(area)]);
+      cityShapes.cities.push([index, shapeOf(area)]);
     } else if (spanRatio > MAX_URBAN_SPAN_RATIO) {
       const clipped = clipToDisc(
         urban.areas[area].ring,
@@ -559,6 +613,56 @@ function buildGazetteer(files) {
           ]
         : box,
     );
+  }
+  const homesOf = new Map();
+  for (const home of homes)
+    homesOf.set(home.area, [...(homesOf.get(home.area) ?? []), home]);
+  const claims = new Map();
+  homes.sort((a, b) => b.population - a.population);
+  for (const owner of homes) {
+    const claimed = (claims.get(owner.area) ?? []).some(
+      (claim) => distanceKm(claim.point, owner.point) <= claim.reach,
+    );
+    if (claimed) continue;
+    const reach = METRO_REACH_KM * Math.sqrt(owner.population);
+    const members = [owner.area, ...neighbours[owner.area]];
+    for (const area of members)
+      claims.set(area, [
+        ...(claims.get(area) ?? []),
+        { point: owner.point, reach },
+      ]);
+    const residents = members
+      .flatMap((area) => homesOf.get(area) ?? [])
+      .filter((home) => distanceKm(owner.point, home.point) <= reach);
+    const population = residents.reduce(
+      (sum, home) => sum + home.population,
+      0,
+    );
+    if (
+      residents.length < MIN_METRO_CITIES ||
+      population < MIN_METRO_POPULATION
+    )
+      continue;
+    const rings = members
+      .map((area) => clipToDisc(urban.areas[area].ring, owner.point, reach))
+      .filter((ring) => ring.length >= 3);
+    const name = `${owner.name} metropolitan area`;
+    const index = add(
+      name,
+      'metro',
+      owner.context,
+      ringBox(rings.flat()),
+      population,
+    );
+    aliases.push([
+      index,
+      aliasesOf(name, [owner.name, ...owner.abbreviations]).join('|'),
+    ]);
+    const shapes = rings.map((ring) => {
+      cityShapes.shapes.push(urbanRing(ring));
+      return cityShapes.shapes.length - 1;
+    });
+    cityShapes.cities.push([index, ...shapes]);
   }
   for (const [admin1, box] of admin1Boxes) {
     const name = admin1Names.get(admin1);
@@ -610,7 +714,7 @@ Object.entries(sources)
   .then((files) => {
     const { gazetteer, regions, cityShapes } = buildGazetteer(files);
     console.log(
-      `${gazetteer.places.length} places, ${gazetteer.aliases.length} with aliases, ${Object.keys(regions.outlines).length} outlines, ${regions.counties.length} counties, ${cityShapes.cities.length} cities with ${cityShapes.shapes.length} shapes`,
+      `${gazetteer.places.length} places, ${gazetteer.aliases.length} with aliases, ${Object.keys(regions.outlines).length} outlines, ${regions.counties.length} counties, ${cityShapes.cities.length} cities and metros with ${cityShapes.shapes.length} shapes`,
     );
     write(GAZETTEER_OUT, gazetteer);
     write(REGIONS_OUT, regions);

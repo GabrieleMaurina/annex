@@ -3,12 +3,18 @@ import { GridPoint } from '../pipeline/placement';
 import { hexToRgb, paletteGif } from './encodeGif';
 import {
   continentEarthTone,
-  MOUNTAIN_COLOR,
+  GREEN_LAND_COLOR,
+  MOUNTAIN_RANGE_COLOR,
+  PEAK_ROCK_COLOR,
+  PEAK_ROCK_SHADE_COLOR,
+  PEAK_SNOW_COLOR,
+  PEAK_SNOW_SHADE_COLOR,
   RIVER_BORDER_COLOR,
   SEA_COLOR,
   TERRITORY_STROKE_COLOR,
   VOID_LAND_COLOR,
 } from './palette';
+import { drawPeaks } from './peaks';
 import { repairSplitTerritories } from './splitRepair';
 
 const BORDER_RADIUS = 2;
@@ -18,6 +24,10 @@ const PAIR_KEY_BASE = 65536;
 const BRIDGE_RADIUS = 7;
 
 export const MOUNTAIN_VOID = 2;
+export const GREEN_VOID = 3;
+export const RANGE_VOID = 4;
+export const WATER_VOID = 5;
+export const RIVER_VOID = 6;
 
 export interface SeaRenderLayer {
   seaLabelGrid: Int16Array;
@@ -81,12 +91,16 @@ function rasterize(
     index(hexToRgb(continentEarthTone(c))),
   );
   const voidColor = voidMask ? index(hexToRgb(VOID_LAND_COLOR)) : sea;
-  const mountainColor = voidMask ? index(hexToRgb(MOUNTAIN_COLOR)) : sea;
+  const greenColor = voidMask ? index(hexToRgb(GREEN_LAND_COLOR)) : sea;
+  const rangeColor = voidMask ? index(hexToRgb(MOUNTAIN_RANGE_COLOR)) : sea;
   const pairKey = (a: number, b: number) =>
     Math.min(a, b) * PAIR_KEY_BASE + Math.max(a, b);
   const riverKeys = new Set(riverPairs.map(([a, b]) => pairKey(a, b)));
+  const hasRivers = !!voidMask?.includes(RIVER_VOID);
   const river =
-    riverKeys.size > 0 ? index(hexToRgb(RIVER_BORDER_COLOR)) : stroke;
+    riverKeys.size > 0 || hasRivers
+      ? index(hexToRgb(RIVER_BORDER_COLOR))
+      : stroke;
 
   const size = width * height;
   const r = BORDER_RADIUS;
@@ -102,9 +116,15 @@ function rasterize(
     : labelGrid;
 
   const thin = new Uint8Array(size);
-  const riverThin = riverKeys.size > 0 ? new Uint8Array(size) : null;
-  const isRiver = (a: number, b: number) =>
-    a >= 0 && b >= 0 && riverKeys.has(pairKey(a, b));
+  const riverThin =
+    riverKeys.size > 0 || hasRivers ? new Uint8Array(size) : null;
+  const isRiver = (i: number, j: number) =>
+    labelGrid[i] !== labelGrid[j] &&
+    ((labelGrid[i] >= 0 &&
+      labelGrid[j] >= 0 &&
+      riverKeys.has(pairKey(labelGrid[i], labelGrid[j]))) ||
+      voidMask?.[i] === RIVER_VOID ||
+      voidMask?.[j] === RIVER_VOID);
   for (let i = 0; i < size; i++) {
     const label = combinedLabel[i];
     const x = i % width;
@@ -115,8 +135,8 @@ function rasterize(
       thin[i] = 1;
     if (
       riverThin &&
-      ((x + 1 < width && isRiver(labelGrid[i], labelGrid[i + 1])) ||
-        (i + width < size && isRiver(labelGrid[i], labelGrid[i + width])))
+      ((x + 1 < width && isRiver(i, i + 1)) ||
+        (i + width < size && isRiver(i, i + width)))
     )
       riverThin[i] = 1;
   }
@@ -162,12 +182,35 @@ function rasterize(
         : stroke
       : label >= 0
         ? territoryColor[label]
-        : voidMask?.[i] === MOUNTAIN_VOID
-          ? mountainColor
-          : voidMask?.[i]
-            ? voidColor
-            : sea;
+        : voidMask?.[i] === MOUNTAIN_VOID || voidMask?.[i] === RANGE_VOID
+          ? rangeColor
+          : voidMask?.[i] === GREEN_VOID
+            ? greenColor
+            : voidMask?.[i] === RIVER_VOID
+              ? river
+              : voidMask?.[i] === WATER_VOID
+                ? sea
+                : voidMask?.[i]
+                  ? voidColor
+                  : sea;
   }
+  if (voidMask)
+    drawPeaks(
+      indices,
+      (i) =>
+        (voidMask[i] === RANGE_VOID || voidMask[i] === MOUNTAIN_VOID) &&
+        labelGrid[i] < 0 &&
+        !seam[i],
+      (i) => voidMask[i] === MOUNTAIN_VOID,
+      width,
+      height,
+      {
+        rock: index(hexToRgb(PEAK_ROCK_COLOR)),
+        rockShade: index(hexToRgb(PEAK_ROCK_SHADE_COLOR)),
+        snow: index(hexToRgb(PEAK_SNOW_COLOR)),
+        snowShade: index(hexToRgb(PEAK_SNOW_SHADE_COLOR)),
+      },
+    );
 
   for (const { a, b } of specialEdges) {
     const from = centroids[a];

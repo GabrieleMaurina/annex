@@ -30,6 +30,7 @@ import {
 import BannedList from './BannedList';
 import Header from './Header';
 import PlayerRoster from './PlayerRoster';
+import type { TeamLayout } from './roster/teamLayout';
 import SettingsPanel from './settings/SettingsPanel';
 import SpectatorList from './SpectatorList';
 
@@ -119,7 +120,6 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
 
   const isHost = game.hostId === selfId;
   const isTeamDeathmatch = game.gameMode === 'team deathmatch';
-  const maxTeams = game.players.length;
   const teamCount = new Set(game.players.map((p) => p.team)).size;
   const hasMap = !!game.mapName;
   const canStart =
@@ -134,18 +134,17 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     applySettings({ bannedPlayerIds: bannedIdsRef.current });
   }
 
-  function removeSlot(index: number) {
-    const player = game.players[index];
-    if (player) {
-      if (connector.isOffline()) connector.removeLocalPlayer(player.id);
-      else banId(player.id);
-    } else {
-      applySettings({ slots: game.slots - 1 });
-    }
+  function removePlayer(playerId: number) {
+    if (connector.isOffline()) connector.removeLocalPlayer(playerId);
+    else banId(playerId);
   }
 
-  function setPlayerTeam(playerId: number, team: number) {
-    applySettings({ playerTeam: { playerId, team } });
+  function removeEmptySlot() {
+    applySettings({ slots: game.slots - 1 });
+  }
+
+  function setTeams(teams: TeamLayout) {
+    applySettings({ teams });
   }
 
   function cycleColor() {
@@ -181,12 +180,12 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
       );
   }
 
-  function addBot() {
+  function addBot(team?: number) {
     const lastBot = [...game.players].reverse().find((p) => p.isBot);
     const difficulty = lastBot?.botDifficulty ?? 'easy';
     const personality = lastBot?.botPersonality ?? 'random';
     const knownBotIds = new Set(game.players.map((p) => p.id));
-    connector.addBot({ difficulty, personality }, (res: Ack) => {
+    connector.addBot({ difficulty, personality, team }, (res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);
         return;
@@ -361,16 +360,18 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
         game={game}
         isHost={isHost}
         isTeamDeathmatch={isTeamDeathmatch}
-        maxTeams={maxTeams}
         selfId={selfId}
-        setPlayerTeam={setPlayerTeam}
+        setTeams={setTeams}
         cycleColor={cycleColor}
         cycleBotColor={cycleBotColor}
-        removeSlot={removeSlot}
+        removePlayer={removePlayer}
+        removeEmptySlot={removeEmptySlot}
         addSlot={addSlot}
         addBot={addBot}
         addLocalPlayer={
-          connector.isOffline() ? () => connector.addLocalPlayer('') : undefined
+          connector.isOffline()
+            ? (team) => connector.addLocalPlayer('', team)
+            : undefined
         }
         setLocalPlayerName={
           connector.isOffline()

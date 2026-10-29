@@ -9,6 +9,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Form, Modal, ProgressBar } from 'react-bootstrap';
 import Help from '../../../common/tooltips/Help';
 import {
+  EARTH_MOUNTAINS_HELP,
+  EARTH_RIVERS_HELP,
   SEAS_HELP,
   TIMED_CONNECTIONS_HELP,
 } from '../../../lobby/settings/settingsHelp';
@@ -61,8 +63,9 @@ const ASPECTS: [MapAspect, string][] = [
 ];
 
 const PLACE_KINDS = ['country', 'state', 'city'];
+const METRO_KIND = 'metro';
 const DRAWN_KIND = 'area';
-const FOCUSABLE_KINDS = [...PLACE_KINDS, DRAWN_KIND];
+const FOCUSABLE_KINDS = [...PLACE_KINDS, METRO_KIND, DRAWN_KIND];
 const WIDE_FIT_MIN_RATIO = 4 / 3;
 const MIN_PLACE_OVERLAP = 0.5;
 const MAX_ZOOM_OUT = 3;
@@ -79,6 +82,8 @@ interface EarthSession {
   detail: OsmDetail;
   seas: boolean;
   timed: boolean;
+  mountains: boolean;
+  rivers: boolean;
   place: GazetteerPlace | null;
   placeBounds: GazetteerPlace['bounds'] | null;
   extras: GazetteerPlace[];
@@ -92,6 +97,8 @@ const session: EarthSession = {
   detail: 'auto',
   seas: false,
   timed: false,
+  mountains: false,
+  rivers: false,
   place: null,
   placeBounds: null,
   extras: [],
@@ -100,7 +107,7 @@ const session: EarthSession = {
 };
 
 const CREDITS =
-  'Map data © OpenStreetMap contributors · © OpenMapTiles · OpenFreeMap · Search data: GeoNames (CC BY 4.0), Natural Earth';
+  'Map data © OpenStreetMap contributors · © OpenMapTiles · OpenFreeMap · Elevation: Mapzen Terrain Tiles (SRTM, GMTED, ETOPO1 and others) · Search data: GeoNames (CC BY 4.0), Natural Earth';
 
 const ERROR_TEXT: Record<string, string> = {
   'no land in the selected area': 'There is no land inside the frame.',
@@ -235,6 +242,8 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
   const [detail, setDetail] = useState(session.detail);
   const [seas, setSeas] = useState(session.seas);
   const [timed, setTimed] = useState(session.timed);
+  const [mountains, setMountains] = useState(session.mountains);
+  const [rivers, setRivers] = useState(session.rivers);
   const [frame, setFrame] = useState<WorldFrame | null>(null);
   const [target, setTarget] = useState<GazetteerPlace | null>(null);
   const [place, setPlace] = useState(session.place);
@@ -261,6 +270,8 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
       detail,
       seas,
       timed,
+      mountains,
+      rivers,
       place,
       placeBounds,
       extras,
@@ -324,7 +335,9 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
     return [
       ...nearbyPlaces(
         index,
-        PLACE_KINDS.includes(place.kind) ? place.kind : viewKind(view),
+        [...PLACE_KINDS, METRO_KIND].includes(place.kind)
+          ? place.kind
+          : viewKind(view),
         view,
         outlines,
         (one) => !selectedIds.has(one.id),
@@ -411,6 +424,8 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
         detail: chosenDetail,
         seas,
         timed,
+        mountains,
+        rivers,
         name:
           focus.length > 0 && place && place.kind !== DRAWN_KIND
             ? place.name
@@ -585,6 +600,26 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
                 onChange={(e) => setTimed(e.target.checked)}
               />
               <Help>{TIMED_CONNECTIONS_HELP}</Help>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                type="checkbox"
+                label="Mountains"
+                checked={mountains}
+                disabled={!!job}
+                onChange={(e) => setMountains(e.target.checked)}
+              />
+              <Help>{EARTH_MOUNTAINS_HELP}</Help>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                type="checkbox"
+                label="Rivers"
+                checked={rivers}
+                disabled={!!job}
+                onChange={(e) => setRivers(e.target.checked)}
+              />
+              <Help>{EARTH_RIVERS_HELP}</Help>
             </div>
             {job && (
               <>

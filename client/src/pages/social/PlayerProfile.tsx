@@ -7,6 +7,7 @@ import EloChart from '../../common/charts/EloChart';
 import { formatError } from '../../common/formatError';
 import FriendshipButton from '../../common/FriendshipButton';
 import { useWhiteIcon } from '../../common/icon';
+import SharePageButton from '../../common/menus/SharePageButton';
 import { PANEL_BG_CLASS } from '../../common/panelStyle';
 import { connector } from '../../connector';
 import {
@@ -207,6 +208,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   const canManageFriend =
     !!account &&
     account.username.toLowerCase() !== profile.username.toLowerCase();
+  const isOwnProfile = !!account && !canManageFriend;
   const canReport = canManageFriend && !!profile.picture;
   const profileId = profile.id;
 
@@ -259,6 +261,17 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
         {reportMessage && (
           <span className="small text-muted">{formatError(reportMessage)}</span>
         )}
+        <div className="mt-2">
+          <SharePageButton
+            title={profile.username}
+            path={`/players/${encodeURIComponent(profile.username)}`}
+            tooltip={
+              isOwnProfile
+                ? 'Share your profile with friends'
+                : 'Share this profile with friends'
+            }
+          />
+        </div>
       </div>
 
       {reportMenu && (

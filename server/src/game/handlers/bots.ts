@@ -5,7 +5,7 @@ import { registerGameAction } from '../handlerHelpers';
 
 export function registerBotLobbyHandlers(socket: Socket, engine: Engine) {
   registerGameAction(socket, 'game:addBot', (playerId, data) =>
-    engine.addBot(playerId, data.difficulty, data.personality),
+    engine.addBot(playerId, data.difficulty, data.personality, data.team),
   );
 
   registerGameAction(socket, 'game:setBotProfile', (playerId, data) => {

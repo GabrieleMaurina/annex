@@ -1,5 +1,5 @@
-import { Form } from 'react-bootstrap';
 import { useNumberInput } from '../../../common/inputs/useNumberInput';
+import NumberOdometer from '../../../ui/forms/NumberOdometer';
 
 interface Props {
   value: number;
@@ -9,18 +9,10 @@ interface Props {
   className?: string;
 }
 
-function NumberCell({
-  value,
-  min,
-  max,
-  onChange,
-  className = 'text-center',
-}: Props) {
+function NumberCell({ value, min, max, onChange, className }: Props) {
   const numberInput = useNumberInput({ value, min, max, onChange });
   return (
-    <Form.Control
-      type="number"
-      size="sm"
+    <NumberOdometer
       className={className}
       min={min}
       max={max}
@@ -31,7 +23,6 @@ function NumberCell({
         )
       }
       {...numberInput}
-      style={numberInput.style}
     />
   );
 }

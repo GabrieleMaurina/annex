@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Form, ListGroup } from 'react-bootstrap';
-import { FIELD_LABEL_CLASS } from '../panelStyle';
+import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
 
 export interface SearchSelectItem {
   id: string;

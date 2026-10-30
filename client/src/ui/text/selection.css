@@ -1,0 +1,4 @@
+::selection {
+  background: rgba(var(--bs-primary-rgb), 0.35);
+  color: var(--bs-emphasis-color);
+}

@@ -1,7 +1,7 @@
 import { Badge, Button, ListGroup } from 'react-bootstrap';
 import PanelHeader from '../../common/PanelHeader';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import type { Card } from '../../lib/types';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import { comboKey, sortForDisplay, type EvaluatedCombo } from '../logic/cards';
 
 interface Props {

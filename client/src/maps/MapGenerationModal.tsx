@@ -8,7 +8,6 @@ import {
 import type { ReactNode } from 'react';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { Button, Form, InputGroup, Modal, Spinner } from 'react-bootstrap';
-import WhiteIcon from '../common/icons/WhiteIcon';
 import Help from '../common/tooltips/Help';
 import Tip from '../common/tooltips/Tip';
 import type {
@@ -26,6 +25,8 @@ import {
   TIMED_CONNECTIONS_HELP,
   UNLOCKABLE_HELP,
 } from '../lobby/settings/settingsHelp';
+import SpinningGears from '../ui/buttons/SpinningGears';
+import Selector from '../ui/forms/Selector';
 import { DEFAULT_MAP_GENERATION, randomSeed } from './randomMap';
 
 export interface MapGenerationModalHandle {
@@ -179,9 +180,10 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                     <Button
                       variant="outline-secondary"
                       className="d-flex align-items-center"
+                      aria-label="Random seed"
                       onClick={() => setSeed(randomSeed())}
                     >
-                      <WhiteIcon path="/icons/refresh.svg" alt="Random seed" />
+                      <SpinningGears />
                     </Button>
                   </Tip>
                 </InputGroup>
@@ -193,18 +195,18 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                 <Form.Label className="mb-0 flex-shrink-0" style={LABEL_STYLE}>
                   Type
                 </Form.Label>
-                <Form.Select
+                <Selector
                   value={type}
-                  onChange={(e) => {
-                    setType(e.target.value as GenerationType);
-                    if (e.target.value !== 'tile') setUnlockableChecked(false);
+                  onChange={(value) => {
+                    setType(value as GenerationType);
+                    if (value !== 'tile') setUnlockableChecked(false);
                   }}
                 >
                   <option value="terrain">Terrain</option>
                   <option value="dungeon">Dungeon</option>
                   <option value="temple">Temple</option>
                   <option value="tile">Tile</option>
-                </Form.Select>
+                </Selector>
               </div>
               {type === 'tile' && (
                 <div className="d-flex align-items-center gap-2">
@@ -214,55 +216,55 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                   >
                     Tile
                   </Form.Label>
-                  <Form.Select
+                  <Selector
                     value={tile}
-                    onChange={(e) => setTile(e.target.value as TileShape)}
+                    onChange={(value) => setTile(value as TileShape)}
                   >
                     {TILE_SHAPE_VALUES.map((value) => (
                       <option key={value} value={value}>
                         {tileShapeLabel(value)}
                       </option>
                     ))}
-                  </Form.Select>
+                  </Selector>
                 </div>
               )}
               <div className="d-flex align-items-center gap-2">
                 <Form.Label className="mb-0 flex-shrink-0" style={LABEL_STYLE}>
                   Fill
                 </Form.Label>
-                <Form.Select
+                <Selector
                   value={fill}
-                  onChange={(e) => setFill(e.target.value as Fill)}
+                  onChange={(value) => setFill(value as Fill)}
                 >
                   <option value="full">Full</option>
                   <option value="mixed">Mixed</option>
                   <option value="sparse">Sparse</option>
-                </Form.Select>
+                </Selector>
               </div>
               <div className="d-flex align-items-center gap-2">
                 <Form.Label className="mb-0 flex-shrink-0" style={LABEL_STYLE}>
                   Size
                 </Form.Label>
-                <Form.Select
+                <Selector
                   value={size}
-                  onChange={(e) => setSize(e.target.value as MapSize)}
+                  onChange={(value) => setSize(value as MapSize)}
                 >
                   <option value="small">Small</option>
                   <option value="medium">Medium</option>
                   <option value="large">Large</option>
                   <option value="xlarge">Extra Large</option>
-                </Form.Select>
-                <Form.Select
+                </Selector>
+                <Selector
                   className="w-auto"
                   value={aspect}
-                  onChange={(e) => setAspect(e.target.value as MapAspect)}
+                  onChange={(value) => setAspect(value as MapAspect)}
                 >
                   {MAP_ASPECT_VALUES.map((value) => (
                     <option key={value} value={value}>
                       {aspectLabel(value)}
                     </option>
                   ))}
-                </Form.Select>
+                </Selector>
               </div>
               <div className="d-flex align-items-center gap-2 mt-1">
                 <Form.Check

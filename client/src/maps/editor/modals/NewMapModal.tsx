@@ -2,6 +2,7 @@ import { aspectLabel, MAP_ASPECT_VALUES } from 'engine';
 import { useState } from 'react';
 import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import type { MapAspect, MapSize } from '../../../lib/types';
+import Selector from '../../../ui/forms/Selector';
 
 interface Props {
   show: boolean;
@@ -29,26 +30,26 @@ function NewMapModal({ show, onHide, dirty, onCreate }: Props) {
           <Form.Label className="mb-0" style={{ minWidth: 50 }}>
             Size
           </Form.Label>
-          <Form.Select
+          <Selector
             value={size}
-            onChange={(e) => setSize(e.target.value as MapSize)}
+            onChange={(value) => setSize(value as MapSize)}
           >
             <option value="small">Small</option>
             <option value="medium">Medium</option>
             <option value="large">Large</option>
             <option value="xlarge">Extra Large</option>
-          </Form.Select>
-          <Form.Select
+          </Selector>
+          <Selector
             className="w-auto"
             value={aspect}
-            onChange={(e) => setAspect(e.target.value as MapAspect)}
+            onChange={(value) => setAspect(value as MapAspect)}
           >
             {MAP_ASPECT_VALUES.map((value) => (
               <option key={value} value={value}>
                 {aspectLabel(value)}
               </option>
             ))}
-          </Form.Select>
+          </Selector>
         </Form.Group>
       </Modal.Body>
       <Modal.Footer>

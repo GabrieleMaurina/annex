@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { playSound } from '../../lib/sounds';
-import { FIELD_LABEL_CLASS } from '../panelStyle';
+import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
+import NumberOdometer from '../../ui/forms/NumberOdometer';
+import Selector from '../../ui/forms/Selector';
 import { useNumberInput } from './useNumberInput';
 
 function clampInt(
@@ -71,9 +73,7 @@ export function RangeField({
     <Field label={label}>
       <div className="d-flex align-items-center gap-2">
         <span className="small text-muted">From</span>
-        <Form.Control
-          size="sm"
-          type="number"
+        <NumberOdometer
           min={min}
           max={max}
           value={lo}
@@ -88,12 +88,9 @@ export function RangeField({
             )
           }
           {...loNumberInput}
-          style={{ ...loNumberInput.style, minWidth: 0 }}
         />
         <span className="small text-muted">To</span>
-        <Form.Control
-          size="sm"
-          type="number"
+        <NumberOdometer
           min={min}
           max={max}
           value={hi}
@@ -108,7 +105,6 @@ export function RangeField({
             )
           }
           {...hiNumberInput}
-          style={{ ...hiNumberInput.style, minWidth: 0 }}
         />
       </div>
     </Field>
@@ -133,14 +129,14 @@ export function SortSelect({
     >
       <Form.Group className="d-flex align-items-center gap-2">
         <Form.Label className="mb-0 small">Sort</Form.Label>
-        <Form.Select
+        <Selector
           size="sm"
           className="w-auto"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
         >
           {children}
-        </Form.Select>
+        </Selector>
       </Form.Group>
       {after}
     </Form>
@@ -163,13 +159,13 @@ export function FilterDetails({
         setOpen(e.currentTarget.open);
       }}
     >
-      <summary className="fw-bold py-2 position-relative">
+      <summary className="collapsible-summary">
         Filters
         {open && (
           <Button
             size="sm"
             variant="outline-secondary"
-            className="position-absolute top-50 end-0 translate-middle-y"
+            className="position-absolute top-50 end-0 translate-middle-y me-2"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

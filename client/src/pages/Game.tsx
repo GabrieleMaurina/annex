@@ -133,6 +133,7 @@ function Game({
     return () => {
       connector.off('game:state', applyGameState);
       setMusicMapType(null);
+      if (receivedFirstStateRef.current) changeMusic();
     };
   }, [applyGameState]);
 

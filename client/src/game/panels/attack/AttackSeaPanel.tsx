@@ -1,11 +1,12 @@
 import type { RefObject } from 'react';
-import { Button, Form } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
 import PercentageToggle from '../../../common/inputs/PercentageToggle';
 import { useTroopsInput } from '../../../common/inputs/useTroopsInput';
-import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import { contrastTextColor, playerColor } from '../../../lib/palette';
 import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
+import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
+import NumberOdometer from '../../../ui/forms/NumberOdometer';
 import { attackOptionStyle, formatProbability } from './attackOptionStyle';
 import { DiceRollDisplay, type AttackType, type DiceRoll } from './AttackPanel';
 
@@ -122,12 +123,10 @@ function AttackSeaPanel({
           >
             <div className="d-flex align-items-center gap-1">
               <span>Ships</span>
-              <Form.Control
-                type="number"
-                size="sm"
+              <NumberOdometer
                 onClick={(e) => e.stopPropagation()}
                 {...regularShipsInput}
-                style={{ ...regularShipsInput.style, width: 60 }}
+                style={{ minWidth: 60 }}
               />
             </div>
           </div>
@@ -141,12 +140,10 @@ function AttackSeaPanel({
             >
               <div className="d-flex align-items-center gap-1">
                 <span>Blitz</span>
-                <Form.Control
-                  type="number"
-                  size="sm"
+                <NumberOdometer
                   onClick={(e) => e.stopPropagation()}
                   {...blitzShipsInput}
-                  style={{ ...blitzShipsInput.style, width: 60 }}
+                  style={{ minWidth: 60 }}
                 />
                 <span className="small">
                   {blitzOutcome

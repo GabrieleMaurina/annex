@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { CURSOR_POINTER } from '../../../ui/cursors/cursors';
 
 export function formatProbability(probability: number): string {
   return `${Math.round(probability * 100)}%`;
@@ -6,7 +7,7 @@ export function formatProbability(probability: number): string {
 
 export function attackOptionStyle(selected: boolean): CSSProperties {
   return {
-    cursor: 'pointer',
+    cursor: CURSOR_POINTER,
     borderRadius: 4,
     padding: '2px 8px',
     border: selected ? '2px solid currentColor' : '2px solid transparent',

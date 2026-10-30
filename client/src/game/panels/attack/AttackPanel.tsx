@@ -6,16 +6,17 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Button, Form } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
 import PercentageToggle from '../../../common/inputs/PercentageToggle';
 import {
   modifierStep,
   wheelDirection,
 } from '../../../common/inputs/useNumberInput';
 import { useTroopsInput } from '../../../common/inputs/useTroopsInput';
-import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
+import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
+import NumberOdometer from '../../../ui/forms/NumberOdometer';
 import {
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
@@ -275,12 +276,7 @@ function AttackPanel({
           style={{ whiteSpace: 'nowrap' }}
         >
           <span>Move troops:</span>
-          <Form.Control
-            type="number"
-            size="sm"
-            {...moveTroopsInput}
-            style={{ ...moveTroopsInput.style, width: 70 }}
-          />
+          <NumberOdometer {...moveTroopsInput} style={{ minWidth: 70 }} />
           <Button size="sm" onClick={onConfirmMove}>
             Confirm
           </Button>
@@ -319,12 +315,10 @@ function AttackPanel({
             >
               <div className="d-flex align-items-center gap-1">
                 <span>Blitz</span>
-                <Form.Control
-                  type="number"
-                  size="sm"
+                <NumberOdometer
                   onClick={(e) => e.stopPropagation()}
                   {...blitzTroopsInput}
-                  style={{ ...blitzTroopsInput.style, width: 60 }}
+                  style={{ minWidth: 60 }}
                 />
                 <span className="small">
                   {blitzOutcome

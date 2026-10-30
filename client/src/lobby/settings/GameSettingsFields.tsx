@@ -8,7 +8,6 @@ import {
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { FIELD_LABEL_CLASS } from '../../common/panelStyle';
 import Help from '../../common/tooltips/Help';
 import { connector } from '../../connector';
 import { playSound } from '../../lib/sounds';
@@ -19,6 +18,11 @@ import type {
   GameState,
   Visibility,
 } from '../../lib/types';
+import {
+  FIELD_LABEL_CLASS,
+  SECTION_CLASS,
+} from '../../ui/containers/panelStyle';
+import Selector from '../../ui/forms/Selector';
 import {
   defaultSettingValue,
   GAME_SETTING_SECTIONS,
@@ -81,8 +85,6 @@ function GameSettingsFields({
         Number(value) > game.attackDice ||
         (Number(value) >= MAX_DICE && game.entrenchments === 'on')
       );
-    if (def.key === 'gameMode')
-      return value === 'team deathmatch' && game.alliances === 'on';
     if (def.key === 'minRank')
       return !meetsMinRank(option, account?.elo ?? null);
     if (def.key === 'minGames')
@@ -107,17 +109,13 @@ function GameSettingsFields({
           <Help>{def.help}</Help>
         </Form.Label>
         {isHost ? (
-          <Form.Select
+          <Selector
             className={changed ? 'border-primary' : undefined}
-            style={SHRINK_STYLE}
             value={String(value)}
             disabled={disabledKeys.has(def.key)}
-            onChange={(e) =>
+            onChange={(next) =>
               applySettings(
-                settingUpdate(
-                  def.key,
-                  def.numeric ? Number(e.target.value) : e.target.value,
-                ),
+                settingUpdate(def.key, def.numeric ? Number(next) : next),
               )
             }
           >
@@ -130,7 +128,7 @@ function GameSettingsFields({
                 {o.label}
               </option>
             ))}
-          </Form.Select>
+          </Selector>
         ) : (
           <span
             className={changed ? 'text-primary fw-semibold' : undefined}
@@ -160,7 +158,7 @@ function GameSettingsFields({
         return (
           <div
             key={section}
-            className={`border rounded p-2${last ? '' : ' mb-2'}`}
+            className={`${SECTION_CLASS} p-2${last ? '' : ' mb-2'}`}
           >
             <div className="fw-bold text-muted small mb-2">{section}</div>
             <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
@@ -173,23 +171,22 @@ function GameSettingsFields({
                       <Help>{VISIBILITY_HELP}</Help>
                     </Form.Label>
                     {isHost ? (
-                      <Form.Select
+                      <Selector
                         className={
                           gameMeta.visibility === 'private'
                             ? 'border-primary'
                             : undefined
                         }
-                        style={SHRINK_STYLE}
                         value={gameMeta.visibility}
-                        onChange={(e) =>
+                        onChange={(value) =>
                           applySettings({
-                            visibility: e.target.value as Visibility,
+                            visibility: value as Visibility,
                           })
                         }
                       >
                         <option value="public">Public</option>
                         <option value="private">Private</option>
-                      </Form.Select>
+                      </Selector>
                     ) : (
                       <span
                         className={

@@ -13,6 +13,7 @@ import {
 import { connector } from '../../connector';
 import { rankForElo } from '../../lib/ranks';
 import type { PlayerRow, PlayersPage, PlayersQuery } from '../../lib/types';
+import { SECTION_CLASS } from '../../ui/containers/panelStyle';
 
 const PAGE_SIZE = 20;
 
@@ -50,7 +51,7 @@ function PlayerRowView({
 }) {
   const rank = rankForElo(row.elo);
   return (
-    <tr role="button" style={{ cursor: 'pointer' }} onClick={onOpen}>
+    <tr role="button" onClick={onOpen}>
       <td>
         <div className="d-flex align-items-center gap-2">
           <RankIcon elo={row.elo} size={24} />
@@ -149,7 +150,7 @@ function Players() {
       </SortSelect>
 
       <FilterDetails onClear={clearFilters}>
-        <div className="border rounded p-2 mb-2">
+        <div className={`${SECTION_CLASS} p-2 mb-2`}>
           <div className="row g-3">
             <Field label="Username">
               <Form.Control

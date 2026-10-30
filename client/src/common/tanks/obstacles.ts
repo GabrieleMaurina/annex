@@ -65,7 +65,12 @@ export function isBackground(
   if (!(target instanceof Element) || target.closest(INTERACTIVE)) {
     return false;
   }
-  if (!['auto', 'default'].includes(getComputedStyle(target).cursor)) {
+  const backgroundCursors = [
+    'auto',
+    'default',
+    getComputedStyle(document.documentElement).cursor,
+  ];
+  if (!backgroundCursors.includes(getComputedStyle(target).cursor)) {
     return false;
   }
   const { clientX: x, clientY: y } = event;

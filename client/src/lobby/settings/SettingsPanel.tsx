@@ -3,7 +3,6 @@ import type { CSSProperties, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button, Dropdown, Form, Modal } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
-import { FIELD_LABEL_CLASS } from '../../common/panelStyle';
 import Help from '../../common/tooltips/Help';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
@@ -26,6 +25,9 @@ import MapBrowser from '../../maps/MapBrowser';
 import MapGenerationModal, {
   type MapGenerationModalHandle,
 } from '../../maps/MapGenerationModal';
+import SpinningGears from '../../ui/buttons/SpinningGears';
+import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
+import Selector from '../../ui/forms/Selector';
 import MapLikeButton from '../MapLikeButton';
 import {
   DEFAULT_GAME_SETTINGS,
@@ -48,6 +50,7 @@ const MAP_TOOLTIP_POPPER = {
     },
   ],
 };
+const MAP_MENU_POPPER = { strategy: 'fixed' as const };
 
 const WorldMapModal = lazy(
   () => import('../../maps/editor/world/WorldMapModal'),
@@ -210,8 +213,8 @@ function SettingsPanel({
     <Dropdown.Toggle
       as="button"
       type="button"
-      bsPrefix="form-select"
-      className="w-auto d-flex align-items-center gap-2"
+      bsPrefix="selector-toggle"
+      className="w-auto gap-2"
     >
       {currentImageSrc && (
         <img
@@ -237,7 +240,7 @@ function SettingsPanel({
     />
   );
 
-  function settingsAction(label: string, onClick: () => void) {
+  function settingsAction(label: ReactNode, onClick: () => void) {
     return (
       <Button
         size="sm"
@@ -261,7 +264,13 @@ function SettingsPanel({
           ...(connector.isOffline() ? { anonymous: undefined } : {}),
         }),
       )}
-      {settingsAction('Randomize', () => applySettings(randomGameSettings()))}
+      {settingsAction(
+        <>
+          <SpinningGears className="me-1" />
+          Randomize
+        </>,
+        () => applySettings(randomGameSettings()),
+      )}
     </>
   );
 
@@ -274,18 +283,22 @@ function SettingsPanel({
             <Help>{GAME_MODE_HELP}</Help>
           </Form.Label>
           {isHost ? (
-            <Form.Select
+            <Selector
               value={game.gameMode}
-              onChange={(e) =>
-                applySettings({ gameMode: e.target.value as GameMode })
+              onChange={(value) =>
+                applySettings({ gameMode: value as GameMode })
               }
             >
               {GAME_MODES.map((m) => (
-                <option key={m} value={m}>
+                <option
+                  key={m}
+                  value={m}
+                  disabled={m === 'team deathmatch' && game.alliances === 'on'}
+                >
                   {titleCase(m)}
                 </option>
               ))}
-            </Form.Select>
+            </Selector>
           ) : (
             <span>{titleCase(game.gameMode)}</span>
           )}
@@ -332,11 +345,15 @@ function SettingsPanel({
                     {mapToggle}
                   </Tip>
                 )}
-                <Dropdown.Menu className="rounded-0 p-0">
+                <Dropdown.Menu
+                  className="selector-menu"
+                  popperConfig={MAP_MENU_POPPER}
+                >
                   <Dropdown.Item
                     as="button"
                     eventKey={GENERATE_MAP_OPTION}
-                    className="d-flex align-items-center gap-2 text-nowrap"
+                    className="selector-option text-nowrap"
+                    style={{ '--selector-row': 0 } as CSSProperties}
                   >
                     <img
                       src={whiteMapIcon ?? '/icons/map.svg'}
@@ -349,7 +366,8 @@ function SettingsPanel({
                   <Dropdown.Item
                     as="button"
                     eventKey={LIBRARY_MAP_OPTION}
-                    className="d-flex align-items-center gap-2 text-nowrap"
+                    className="selector-option text-nowrap"
+                    style={{ '--selector-row': 1 } as CSSProperties}
                   >
                     <img
                       src={whiteMapIcon ?? '/icons/map.svg'}
@@ -363,7 +381,8 @@ function SettingsPanel({
                     <Dropdown.Item
                       as="button"
                       eventKey={EARTH_MAP_OPTION}
-                      className="d-flex align-items-center gap-2 text-nowrap"
+                      className="selector-option text-nowrap"
+                      style={{ '--selector-row': 2 } as CSSProperties}
                     >
                       <img
                         src={whiteGlobeIcon ?? '/icons/globe.svg'}
@@ -386,7 +405,6 @@ function SettingsPanel({
                 <span
                   className="d-flex align-items-center gap-2"
                   role={currentSeed ? 'button' : undefined}
-                  style={currentSeed ? { cursor: 'pointer' } : undefined}
                   onClick={currentSeed ? copySeed : undefined}
                 >
                   {currentImageSrc && (
@@ -465,10 +483,10 @@ function SettingsPanel({
             setSettingsOpen(e.currentTarget.open);
           }}
         >
-          <summary className="fw-bold py-2 position-relative">
+          <summary className="collapsible-summary">
             Settings
             {settingsOpen && (
-              <div className="position-absolute top-50 end-0 translate-middle-y d-flex gap-2">
+              <div className="position-absolute top-50 end-0 translate-middle-y me-2 d-flex gap-2">
                 {settingsActions}
               </div>
             )}

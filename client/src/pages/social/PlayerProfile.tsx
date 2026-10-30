@@ -8,7 +8,6 @@ import { formatError } from '../../common/formatError';
 import FriendshipButton from '../../common/FriendshipButton';
 import { useWhiteIcon } from '../../common/icon';
 import SharePageButton from '../../common/menus/SharePageButton';
-import { PANEL_BG_CLASS } from '../../common/panelStyle';
 import { connector } from '../../connector';
 import {
   contrastTextColor,
@@ -29,6 +28,7 @@ import type {
 import { titleCase } from '../../lobby/settings/gameSettings';
 import MapBrowser from '../../maps/MapBrowser';
 import MapPreviewModal from '../../maps/MapPreviewModal';
+import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
 
 const PAGE_SIZE = 20;
 
@@ -42,7 +42,7 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
   const endedAt = new Date(row.endedAt);
   return (
-    <tr role="button" style={{ cursor: 'pointer' }} onClick={onOpen}>
+    <tr role="button" onClick={onOpen}>
       <td>{endedAt.toLocaleDateString()}</td>
       <td>{endedAt.toLocaleTimeString()}</td>
       <td>{row.name}</td>

@@ -1,0 +1,171 @@
+:root {
+  --button-fx-color: #c9d2dc;
+  --button-fx-glow: #8a95a3;
+}
+
+.btn {
+  --button-lip: color-mix(in srgb, var(--bs-btn-border-color) 65%, #000);
+  --button-shine: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --button-pressed: inset 0 2px 5px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 4px 0 var(--button-lip),
+    var(--button-shine);
+  transition:
+    color 0.15s ease-in-out,
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out,
+    box-shadow 70ms,
+    transform 70ms;
+}
+
+.btn[class*='btn-outline-'] {
+  --button-shine: 0 0 0 transparent;
+}
+
+.btn:focus-visible {
+  box-shadow:
+    0 4px 0 var(--button-lip),
+    var(--button-shine),
+    var(--bs-btn-focus-box-shadow);
+}
+
+.btn:active,
+.btn.active {
+  box-shadow: var(--button-pressed);
+  filter: brightness(0.82) saturate(1.15);
+}
+
+.btn:active {
+  transform: translateY(4px);
+}
+
+.btn:active:focus-visible,
+.btn.active:focus-visible {
+  box-shadow: var(--button-pressed), var(--bs-btn-focus-box-shadow);
+}
+
+.btn-link {
+  --button-lip: transparent;
+  --button-shine: 0 0 0 transparent;
+  --button-pressed: 0 0 0 transparent;
+}
+
+.btn-link:active {
+  transform: none;
+}
+
+.btn-primary,
+.btn-outline-primary {
+  --button-fx-color: var(--bs-primary);
+  --button-fx-glow: #ffcf5a;
+}
+
+.btn-danger,
+.btn-outline-danger {
+  --button-fx-color: #ff5a4a;
+  --button-fx-glow: #ff9a5a;
+}
+
+.btn-success,
+.btn-outline-success {
+  --button-fx-color: #5fd08a;
+  --button-fx-glow: #c8f5d8;
+}
+
+.btn-warning,
+.btn-outline-warning {
+  --button-fx-color: #ff9a3a;
+  --button-fx-glow: #ffd36b;
+}
+
+.btn-info,
+.btn-outline-info {
+  --button-fx-color: #5cc2ff;
+  --button-fx-glow: #d6f0ff;
+}
+
+.button-fx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.button-fx-particle {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.button-fx-ring {
+  width: 24px;
+  height: 24px;
+  margin: -12px;
+  border: 2px solid var(--button-fx-color);
+}
+
+.button-fx-flash {
+  width: 60px;
+  height: 60px;
+  margin: -30px;
+  background: radial-gradient(
+    circle,
+    #fff 0 15%,
+    var(--button-fx-glow) 35%,
+    transparent 70%
+  );
+}
+
+.button-fx-spark {
+  width: 4px;
+  height: 4px;
+  margin: -2px;
+}
+
+.button-fx-spark-white {
+  background: #fff8e8;
+}
+
+.button-fx-spark-glow {
+  background: var(--button-fx-glow);
+}
+
+.button-fx-spark-color {
+  background: var(--button-fx-color);
+}
+
+.button-fx-smoke {
+  width: 24px;
+  height: 24px;
+  margin: -12px;
+  background: rgba(130, 138, 150, 0.45);
+  filter: blur(3px);
+}
+
+.spinning-gears {
+  position: relative;
+  display: inline-block;
+  width: 1.7em;
+  height: 1.46em;
+  vertical-align: middle;
+}
+
+.spinning-gears svg {
+  position: absolute;
+}
+
+.spinning-gears-big {
+  left: 0;
+  top: 0;
+  width: 1.2em;
+  height: 1.2em;
+  fill: var(--bs-primary);
+}
+
+.spinning-gears-small {
+  left: 0.91em;
+  top: 0.71em;
+  width: 0.75em;
+  height: 0.75em;
+  fill: currentColor;
+}

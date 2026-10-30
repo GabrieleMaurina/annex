@@ -62,7 +62,6 @@ function Header({ game, isHost, applySettings }: Props) {
             style={{
               fontSize: 'clamp(1.25rem, 7vw, 2.5rem)',
               minWidth: 0,
-              ...(isHost ? { cursor: 'pointer' } : {}),
             }}
             onClick={isHost ? () => setEditingName(true) : undefined}
           >

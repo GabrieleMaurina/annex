@@ -1,7 +1,7 @@
 import PanelHeader from '../../common/PanelHeader';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import type { GameState } from '../../lib/types';
 import SettingsPanel from '../../lobby/settings/SettingsPanel';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 
 interface Props {
   game: GameState;

@@ -10,6 +10,7 @@ import type {
   TurnDuration,
   TurnPhase,
 } from '../../../lib/types';
+import Fuse from '../../../ui/themed/Fuse';
 import AttackPanel, {
   type AttackType,
   type DiceRoll,
@@ -18,7 +19,6 @@ import AttackSeaPanel from '../../panels/attack/AttackSeaPanel';
 import ConfirmPanel from '../../panels/ConfirmPanel';
 import TroopPanel from '../../panels/TroopPanel';
 import TurnPanel from '../../panels/TurnPanel';
-import TurnProgressBar from '../../panels/TurnProgressBar';
 import { useCameraTransform, type Camera } from '../camera';
 import { CAPITAL_PHASE_DURATION, PLACEMENT_PHASE_DURATION } from '../helpers';
 import { usePanelStyles, type PanelAnchors } from '../hooks/useMiscUiState';
@@ -242,16 +242,16 @@ export default function TurnActionPanels({
       {!gameEnded && (
         <>
           {paused && pausedAt !== null ? (
-            <TurnProgressBar
-              turnStartedAt={pausedAt}
-              turnDuration={ONLINE_PAUSE_SECONDS}
+            <Fuse
+              startedAt={pausedAt}
+              duration={ONLINE_PAUSE_SECONDS}
               color="var(--bs-gray-500)"
               paused={false}
             />
           ) : (
-            <TurnProgressBar
-              turnStartedAt={turnStartedAt}
-              turnDuration={
+            <Fuse
+              startedAt={turnStartedAt}
+              duration={
                 turnPhase === 'capital' ||
                 (turnPhase === 'territory' && placement === 'single')
                   ? CAPITAL_PHASE_DURATION

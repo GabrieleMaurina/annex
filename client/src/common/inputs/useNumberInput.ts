@@ -32,6 +32,7 @@ export function useNumberInput({
 }: Options) {
   const dragRef = useRef<{
     pointerId: number;
+    startX: number;
     startY: number;
     steps: number;
     dragging: boolean;
@@ -103,6 +104,7 @@ export function useNumberInput({
     pointerStepRef.current = modifierStep(e);
     dragRef.current = {
       pointerId: e.pointerId,
+      startX: e.clientX,
       startY: e.clientY,
       steps: 0,
       dragging: false,
@@ -112,15 +114,16 @@ export function useNumberInput({
   function onPointerMove(e: React.PointerEvent<HTMLElement>) {
     const drag = dragRef.current;
     if (!drag || e.pointerId !== drag.pointerId) return;
+    const dx = e.clientX - drag.startX;
     const dy = drag.startY - e.clientY;
     if (!drag.dragging) {
-      if (Math.abs(dy) < DRAG_THRESHOLD) return;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < DRAG_THRESHOLD) return;
       drag.dragging = true;
       e.currentTarget.setPointerCapture(drag.pointerId);
       e.currentTarget.blur();
     }
     e.preventDefault();
-    const steps = Math.round(dy / PIXELS_PER_STEP);
+    const steps = Math.round((dx + dy) / PIXELS_PER_STEP);
     if (steps === drag.steps) return;
     step((steps - drag.steps) * modifierStep(e));
     drag.steps = steps;
@@ -142,6 +145,5 @@ export function useNumberInput({
     onPointerMove,
     onPointerUp: endDrag,
     onPointerCancel: endDrag,
-    style: { touchAction: 'none' as const },
   };
 }

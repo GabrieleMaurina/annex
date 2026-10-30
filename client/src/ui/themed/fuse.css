@@ -1,0 +1,136 @@
+.fuse {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 4px;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    -60deg,
+    var(--fuse-color) 0 4px,
+    color-mix(in srgb, var(--fuse-color) 55%, #000) 4px 7px
+  );
+  box-shadow: 0 1px 0 var(--ui-ink);
+}
+
+.fuse-burned {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: repeating-linear-gradient(-60deg, #2a211b 0 4px, #14100c 4px 7px);
+}
+
+.fuse-head {
+  position: absolute;
+  inset: 0;
+}
+
+.fuse-heat {
+  position: absolute;
+  left: 0;
+  top: 50%;
+}
+
+.fuse-spark {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #fff 0 18%,
+    #ffd36b 36%,
+    rgba(255, 120, 30, 0.55) 58%,
+    transparent 72%
+  );
+}
+
+:root:not(.animations-off) .fuse-spark {
+  animation: fuse-flicker 0.12s steps(2) infinite alternate;
+}
+
+:root:not(.animations-off) .fuse-spark::before,
+:root:not(.animations-off) .fuse-spark::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #ffcf5a;
+  animation: fuse-ember 0.6s ease-out infinite;
+}
+
+.fuse-spark::before {
+  --ember-x: 5px;
+}
+
+.fuse-spark::after {
+  --ember-x: -6px;
+}
+
+:root:not(.animations-off) .fuse-spark::after {
+  animation-delay: 0.3s;
+}
+
+:root.animations-off .fuse-heat {
+  animation: none !important;
+}
+
+@keyframes fuse-burn {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes fuse-travel {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fuse-heat {
+  from {
+    scale: 1;
+    filter: none;
+  }
+  8% {
+    scale: 1.7;
+    filter: hue-rotate(-25deg) saturate(1.5);
+  }
+  to {
+    scale: 2.3;
+    filter: hue-rotate(-35deg) saturate(1.8);
+  }
+}
+
+@keyframes fuse-flicker {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fuse-ember {
+  from {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate(var(--ember-x), 10px);
+    opacity: 0;
+  }
+}

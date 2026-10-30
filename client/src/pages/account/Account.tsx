@@ -159,14 +159,13 @@ function AccountPage({ account, onCountryChange }: Props) {
               height={200}
               className="rounded"
               role="button"
-              style={{ cursor: 'pointer' }}
               onClick={() => fileInput.current?.click()}
             />
           ) : (
             <div
               className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50"
               role="button"
-              style={{ width: 200, height: 200, cursor: 'pointer' }}
+              style={{ width: 200, height: 200 }}
               onClick={() => fileInput.current?.click()}
             >
               No picture

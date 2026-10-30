@@ -53,7 +53,9 @@ function RotateDeviceOverlay() {
           animation: 'annexRotateHint 2s ease-in-out infinite alternate',
         }}
       />
-      <h4 className="mb-0">Rotate your device to landscape to play</h4>
+      <h4 className="mb-0 text-center">
+        Rotate your device to landscape to play
+      </h4>
     </div>
   );
 }

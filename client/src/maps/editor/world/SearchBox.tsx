@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Form, ListGroup } from 'react-bootstrap';
 import { titleCase } from '../../../lobby/settings/gameSettings';
+import SpinningGears from '../../../ui/buttons/SpinningGears';
 import {
   loadGazetteer,
   randomPlace,
@@ -110,6 +111,7 @@ function SearchBox({ initialQuery, onSelect }: Props) {
         disabled={!index}
         onClick={chooseRandom}
       >
+        <SpinningGears className="me-1" />
         Random location
       </Button>
     </div>

@@ -5,12 +5,12 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { initUiClickSounds, preloadSounds } from './lib/sounds';
-import './scrollbar.css';
-import './theme.scss';
-import './tooltip.css';
+import { initButtonEffects } from './ui/buttons/buttonEffects';
+import './ui/styles';
 
 preloadSounds();
 initUiClickSounds();
+initButtonEffects();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

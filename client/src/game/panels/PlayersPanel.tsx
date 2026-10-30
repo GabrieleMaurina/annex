@@ -8,7 +8,6 @@ import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsi
 import { useWhiteIcon } from '../../common/icon';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import { isPlayerMuted } from '../../common/mutedPlayers';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { contrastTextColor, playerColor } from '../../lib/palette';
@@ -26,6 +25,7 @@ import type {
   TurnPhase,
 } from '../../lib/types';
 import { titleCase } from '../../lobby/settings/gameSettings';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import { ALLIANCE_CELL_LABELS, ALLIANCE_ICONS } from '../logic/alliance';
 import {
   EMOJI_POP_DURATION,
@@ -274,7 +274,6 @@ function PlayersPanel({
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') setCollapsed(true);
         }}
-        style={{ cursor: 'pointer' }}
       >
         <div className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold">
           <span>{titleCase(gameMode)}</span>
@@ -337,7 +336,7 @@ function PlayersPanel({
         <Table
           size="sm"
           borderless
-          className="mb-0"
+          className="mb-0 table-flat"
           style={{ tableLayout: 'fixed', width: '100%' }}
         >
           <thead>
@@ -463,11 +462,8 @@ function PlayersPanel({
                   data-no-click-sound
                   onClick={() => rowClickable && onRowClick(p.id)}
                   style={{
-                    cursor: rowClickable
-                      ? emojiTargeting
-                        ? 'crosshair'
-                        : 'pointer'
-                      : undefined,
+                    cursor:
+                      rowClickable && emojiTargeting ? 'crosshair' : undefined,
                     animation: pop
                       ? `annexEmojiHighlight${pop.id % 2 === 0 ? '' : 'Alt'} ${EMOJI_POP_DURATION}ms ease-out forwards`
                       : undefined,

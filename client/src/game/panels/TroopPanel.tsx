@@ -1,8 +1,9 @@
 import type { RefObject } from 'react';
-import { Button, Form } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
 import PercentageToggle from '../../common/inputs/PercentageToggle';
 import { useTroopsInput } from '../../common/inputs/useTroopsInput';
-import { PANEL_BG_CLASS } from '../../common/panelStyle';
+import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
+import NumberOdometer from '../../ui/forms/NumberOdometer';
 
 interface Props {
   label: string;
@@ -48,12 +49,7 @@ function TroopPanel({
     >
       <div className="d-flex align-items-center gap-2">
         <span>{label}</span>
-        <Form.Control
-          type="number"
-          size="sm"
-          {...troopsInput}
-          style={{ ...troopsInput.style, width: 70 }}
-        />
+        <NumberOdometer {...troopsInput} style={{ minWidth: 70 }} />
         <Button size="sm" onClick={onConfirm}>
           {buttonLabel}
         </Button>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from 'react-bootstrap';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import Tip from '../../common/tooltips/Tip';
+import { SECTION_CLASS } from '../../ui/containers/panelStyle';
 import type { RosterProps } from '../PlayerRoster';
 import RosterTable from './RosterTable';
 import {
@@ -48,7 +49,7 @@ function TeamRoster({ roster }: { roster: RosterProps }) {
         return (
           <div
             key={team}
-            className={`border rounded mb-2 ${dropTeam === team ? 'border-primary' : ''}`}
+            className={`${SECTION_CLASS} mb-2 ${dropTeam === team ? 'border-primary' : ''}`}
             onDragOver={
               isHost
                 ? (e) => {

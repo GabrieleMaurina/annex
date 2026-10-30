@@ -5,8 +5,8 @@ import {
 } from 'engine';
 import { Badge, Button, ListGroup, ProgressBar } from 'react-bootstrap';
 import PanelHeader from '../../common/PanelHeader';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import type { Arsenal, NukeProject } from '../../lib/types';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 
 interface Props {
   arsenal: Arsenal;

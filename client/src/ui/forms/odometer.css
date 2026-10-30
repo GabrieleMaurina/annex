@@ -1,0 +1,113 @@
+.odometer {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  padding: 3px 5px;
+  border: 1px solid var(--ui-ink);
+  border-radius: var(--bs-border-radius-sm);
+  background: var(--ui-steel-bright);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  font-family: var(--ui-display-font);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.odometer:focus-within {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+.odometer-window {
+  position: relative;
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 3px;
+  background: var(--ui-ink);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.odometer-window::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.75),
+    transparent 32%,
+    rgba(255, 255, 255, 0.07) 50%,
+    transparent 68%,
+    rgba(0, 0, 0, 0.75)
+  );
+}
+
+.odometer-drum {
+  width: 0.62em;
+  height: 1.2em;
+  overflow: hidden;
+  background: var(--ui-drum);
+}
+
+.odometer-strip {
+  display: block;
+  transform: translateY(calc(var(--odometer-digit) * -10%));
+}
+
+.odometer-strip span {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2em;
+  text-align: center;
+  color: var(--ui-cream);
+}
+
+:root:not(.animations-off) .odometer-strip {
+  transition: transform 0.38s var(--ui-clunk);
+}
+
+:root:not(.animations-off) .odometer-drum {
+  animation: odometer-drum-in 0.2s ease-out;
+}
+
+@keyframes odometer-drum-in {
+  from {
+    width: 0;
+  }
+}
+
+.odometer-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font: inherit;
+  text-align: center;
+  cursor: move;
+  touch-action: none;
+  appearance: textfield;
+}
+
+.odometer-input:focus {
+  outline: none;
+}
+
+.odometer-input::-webkit-inner-spin-button,
+.odometer-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.odometer-typing .odometer-input {
+  background: var(--ui-ink);
+  color: var(--ui-cream);
+  caret-color: var(--bs-primary);
+  cursor: text;
+}

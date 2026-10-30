@@ -19,10 +19,10 @@ import { getPlayerName, subscribePlayerName } from '../../lib/player';
 import { useToggleSound } from '../../lib/sounds';
 import type { Account } from '../../lib/types';
 import { setLoginReturnPath } from '../../pages/account/loginReturn';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import Flag from '../badges/Flag';
 import RankIcon from '../badges/RankIcon';
 import { useWhiteIcon } from '../icon';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../panelStyle';
 import ShortcutsPanel from './shortcuts/ShortcutsPanel';
 
 const LINKS: { label: string; path: string }[] = [

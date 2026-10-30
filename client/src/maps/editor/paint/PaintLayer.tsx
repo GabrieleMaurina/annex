@@ -1,6 +1,7 @@
 import type { MutableRefObject } from 'react';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { playSound } from '../../../lib/sounds';
+import { CURSOR_GRAB, CURSOR_GRABBING } from '../../../ui/cursors/cursors';
 import {
   drawCurve,
   drawFreehand,
@@ -333,7 +334,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   }
 
   function resolveCursor(): string {
-    if (ctrlHeldRef.current) return 'grab';
+    if (ctrlHeldRef.current) return CURSOR_GRAB;
     if (onCurveHandle()) return 'move';
     if (!BRUSH_TOOLS.includes(tool)) return 'crosshair';
     const scale = viewportRef.current.scaleX || 1;
@@ -670,7 +671,7 @@ const PaintLayer = forwardRef<PaintLayerHandle, Props>(function PaintLayer(
   function startForcePan(e: React.PointerEvent) {
     forcePanRef.current = true;
     if (overlayRef.current) overlayRef.current.style.display = 'none';
-    applyCursor('grabbing');
+    applyCursor(CURSOR_GRABBING);
     onPanStart(e.clientX, e.clientY);
   }
 

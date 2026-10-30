@@ -1,0 +1,21 @@
+:root {
+  --ui-ink: #0b0f14;
+  --ui-well: #11161d;
+  --ui-pressed: #151b23;
+  --ui-drum: #1b2028;
+  --ui-cream: #f0e3c4;
+  --ui-steel: linear-gradient(#2f3845, #262e39);
+  --ui-steel-bright: linear-gradient(#4c5766, #262d37);
+  --ui-lip: color-mix(in srgb, var(--bs-border-color) 65%, #000);
+  --ui-shine: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --ui-sunken: inset 0 2px 4px rgba(0, 0, 0, 0.55);
+  --ui-selected:
+    inset 3px 0 0 var(--bs-primary), inset 0 2px 5px rgba(0, 0, 0, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  --ui-hover: rgba(var(--bs-primary-rgb), 0.1);
+  --ui-drop: var(--bs-box-shadow);
+  --ui-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1 3.5 L6 8.5 L11 3.5' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
+  --ui-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 3L13 13M13 3L3 13' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  --ui-display-font: 'Barlow Condensed', var(--bs-font-sans-serif);
+  --ui-clunk: cubic-bezier(0.3, 1.45, 0.55, 1);
+}

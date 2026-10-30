@@ -132,7 +132,6 @@ function ResultsTable({
             const rowStyle = {
               backgroundColor: bg,
               color: fg,
-              cursor: rowClick ? 'pointer' : 'default',
             };
             const isDark = fg === '#ffffff';
             const rowIcon = (white: string | undefined, path: string) =>

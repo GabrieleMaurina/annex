@@ -230,8 +230,8 @@ const MAX_FILTER_PLAYERS = 10;
 export const DEFAULT_CLIENT_SETTINGS: ClientSettings = {
   muted: false,
   volume: 0.5,
-  effectsVolume: 1,
-  musicVolume: 1,
+  effectsVolume: 0.5,
+  musicVolume: 0.5,
   animationsDisabled: false,
   troopsPercentage: false,
 };

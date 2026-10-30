@@ -1,0 +1,6 @@
+.spinner-border {
+  border: 0;
+  border-radius: 0;
+  background-color: currentColor;
+  mask: url('./gear.svg') center / contain no-repeat;
+}

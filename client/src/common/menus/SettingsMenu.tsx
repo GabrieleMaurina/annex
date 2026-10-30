@@ -29,8 +29,8 @@ import {
   useToggleSound,
 } from '../../lib/sounds';
 import { titleCase } from '../../lobby/settings/gameSettings';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import { useWhiteIcon } from '../icon';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../panelStyle';
 import Tip from '../tooltips/Tip';
 import SharePageButton from './SharePageButton';
 
@@ -40,7 +40,14 @@ interface VolumeRangeProps {
   onChange: (value: number) => void;
 }
 
+const VOLUME_SNAP = 0.04;
+
+function snapToMiddle(value: number): number {
+  return Math.abs(value - 0.5) <= VOLUME_SNAP ? 0.5 : value;
+}
+
 function VolumeRange({ tip, value, onChange }: VolumeRangeProps) {
+  const keyboardRef = useRef(false);
   return (
     <Tip text={tip}>
       <Form.Range
@@ -49,7 +56,16 @@ function VolumeRange({ tip, value, onChange }: VolumeRangeProps) {
         max={1}
         step={0.01}
         value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onKeyDown={() => {
+          keyboardRef.current = true;
+        }}
+        onPointerDown={() => {
+          keyboardRef.current = false;
+        }}
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          onChange(keyboardRef.current ? next : snapToMiddle(next));
+        }}
         style={
           {
             '--annex-volume-progress': `${value * 100}%`,
@@ -360,7 +376,7 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
             {currentTrack && (
               <>
                 <Tip text={trackTitle(currentTrack)}>
-                  <div className="small text-truncate">
+                  <div className="small text-truncate text-center">
                     {trackTitle(currentTrack)}
                   </div>
                 </Tip>

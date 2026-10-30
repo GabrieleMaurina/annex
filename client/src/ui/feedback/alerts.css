@@ -1,0 +1,5 @@
+.alert {
+  box-shadow:
+    var(--ui-shine),
+    0 4px 0 color-mix(in srgb, var(--bs-alert-border-color) 65%, #000);
+}

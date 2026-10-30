@@ -1,0 +1,13 @@
+.toast {
+  --bs-toast-bg: var(--bs-tertiary-bg);
+  --bs-toast-border-color: var(--bs-border-color);
+  box-shadow:
+    var(--ui-shine),
+    0 4px 0 var(--ui-lip),
+    var(--ui-drop);
+}
+
+.toast-header {
+  background-image: var(--ui-steel);
+  border-bottom-color: var(--ui-ink);
+}

@@ -1,0 +1,19 @@
+.form-control {
+  background-color: var(--ui-well);
+  border-color: var(--ui-ink);
+  box-shadow:
+    var(--ui-sunken),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.form-control:focus {
+  background-color: var(--ui-well);
+  box-shadow:
+    var(--ui-sunken),
+    0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.input-group-text {
+  background-image: var(--ui-steel);
+  border-color: var(--ui-ink);
+}

@@ -35,6 +35,7 @@ import type {
   Conversation,
   PlayerSearchResult,
 } from '../../lib/types';
+import { SECTION_CLASS } from '../../ui/containers/panelStyle';
 
 const MAX_LENGTH = 1000;
 
@@ -252,10 +253,10 @@ function Messages({ account }: Props) {
 
           {blocked.length > 0 && (
             <details className="mt-4" onToggle={() => playSound('click')}>
-              <summary className="fw-bold py-2">
+              <summary className="collapsible-summary">
                 Blocked players ({blocked.length})
               </summary>
-              <ListGroup className="mt-2">
+              <ListGroup>
                 {blocked.map((b) => (
                   <ListGroup.Item
                     key={b.userId}
@@ -318,7 +319,7 @@ function Messages({ account }: Props) {
               </div>
 
               <div
-                className="d-flex flex-column gap-2 border rounded p-2 mb-3"
+                className={`d-flex flex-column gap-2 ${SECTION_CLASS} p-2 mb-3`}
                 style={{ height: '60vh', overflowY: 'auto' }}
               >
                 {conversation.messages.length === 0 ? (

@@ -1,4 +1,4 @@
-import { Badge, Button, Form, Table } from 'react-bootstrap';
+import { Badge, Button, Table } from 'react-bootstrap';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import { useWhiteIcon } from '../../common/icon';
@@ -9,6 +9,12 @@ import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import type { BotDifficulty, BotPersonality, GameState } from '../../lib/types';
+import {
+  CURSOR_DEFAULT,
+  CURSOR_GRAB,
+  CURSOR_POINTER,
+} from '../../ui/cursors/cursors';
+import Selector from '../../ui/forms/Selector';
 import {
   BOT_DIFFICULTIES,
   BOT_DIFFICULTY_LABELS,
@@ -62,7 +68,13 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
 
   return (
     <div className="table-responsive">
-      <Table striped borderless hover size="sm" className="mb-0">
+      <Table
+        striped
+        borderless
+        hover
+        size="sm"
+        className={`mb-0${team !== undefined ? ' table-flat' : ''}`}
+      >
         <thead>
           <tr>
             <th style={{ width: '1%' }} className="text-nowrap"></th>
@@ -82,10 +94,10 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                   backgroundColor: playerColor(p.color),
                   color: contrastTextColor(playerColor(p.color)),
                   cursor: onRowClick
-                    ? 'pointer'
+                    ? CURSOR_POINTER
                     : draggable
-                      ? 'grab'
-                      : 'default',
+                      ? CURSOR_GRAB
+                      : CURSOR_DEFAULT,
                 }
               : undefined;
             return (
@@ -210,15 +222,15 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                   >
                     {p?.isBot &&
                       (isHost ? (
-                        <Form.Select
+                        <Selector
                           size="sm"
                           className="w-auto"
                           value={p.botPersonality ?? 'random'}
-                          onChange={(e) =>
+                          onChange={(value) =>
                             setBotProfile(
                               p.id,
                               p.botDifficulty ?? 'easy',
-                              e.target.value as BotPersonality | 'random',
+                              value as BotPersonality | 'random',
                             )
                           }
                         >
@@ -227,7 +239,7 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                               {BOT_PERSONALITY_LABELS[value]}
                             </option>
                           ))}
-                        </Form.Select>
+                        </Selector>
                       ) : (
                         p.botPersonality &&
                         BOT_PERSONALITY_LABELS[p.botPersonality]
@@ -242,14 +254,14 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                   >
                     {p?.isBot &&
                       (isHost ? (
-                        <Form.Select
+                        <Selector
                           size="sm"
                           className="w-auto"
                           value={p.botDifficulty ?? 'easy'}
-                          onChange={(e) =>
+                          onChange={(value) =>
                             setBotProfile(
                               p.id,
-                              e.target.value as BotDifficulty | 'random',
+                              value as BotDifficulty | 'random',
                               p.botPersonality ?? 'random',
                             )
                           }
@@ -259,7 +271,7 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                               {BOT_DIFFICULTY_LABELS[value]}
                             </option>
                           ))}
-                        </Form.Select>
+                        </Selector>
                       ) : (
                         p.botDifficulty &&
                         BOT_DIFFICULTY_LABELS[p.botDifficulty]

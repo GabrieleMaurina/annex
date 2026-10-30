@@ -56,11 +56,7 @@ function PlayerNameEditor({ player, onNameChange }: Props) {
           }}
         />
       ) : (
-        <span
-          role="button"
-          style={{ cursor: 'pointer' }}
-          onClick={() => setEditing(true)}
-        >
+        <span role="button" onClick={() => setEditing(true)}>
           {player.name}
         </span>
       )}

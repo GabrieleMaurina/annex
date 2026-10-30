@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
-import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import type { AllianceViewState } from '../../../lib/types';
+import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
 import AlliancePopupButtons from '../AlliancePopupButtons';
 
 export default function AlliancePopupOverlay({

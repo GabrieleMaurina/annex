@@ -14,9 +14,10 @@ import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsi
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import { useNumberInput } from '../../common/inputs/useNumberInput';
 import PanelHeader from '../../common/PanelHeader';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor } from '../../lib/palette';
 import { titleCase } from '../../lobby/settings/gameSettings';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import NumberOdometer from '../../ui/forms/NumberOdometer';
 import { useSmoothEdges } from './canvas/smoothEdges';
 import {
   allPlaceNames,
@@ -679,10 +680,7 @@ function Panel(props: Props) {
             </div>
             <div className="d-flex align-items-center gap-2 mb-1">
               <Form.Label className="small mb-0">Size</Form.Label>
-              <Form.Control
-                type="number"
-                size="sm"
-                className="text-center"
+              <NumberOdometer
                 min={MIN_BRUSH}
                 max={MAX_BRUSH}
                 value={brushSize}
@@ -690,7 +688,7 @@ function Panel(props: Props) {
                   setBrushSize(clampBrush(e.target.value, brushSize))
                 }
                 {...brushNumberInput}
-                style={{ ...brushNumberInput.style, width: 64 }}
+                style={{ minWidth: 64 }}
               />
               <span className="small text-muted">px</span>
             </div>

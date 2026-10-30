@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <g id="hand">
+      <rect x="8.5" y="8" width="4" height="7" rx="2" />
+      <rect x="12.7" y="7" width="4" height="7" rx="2" />
+      <rect x="16.9" y="7" width="4" height="7" rx="2" />
+      <rect x="21.1" y="8" width="3.8" height="6.5" rx="1.9" />
+      <rect x="8" y="11" width="17" height="11" rx="5" />
+      <rect x="4.5" y="13" width="8" height="4.5" rx="2.25" transform="rotate(15 8.5 15.25)" />
+    </g>
+    <rect id="cuff" x="9" y="21" width="15" height="5" rx="1.5" />
+  </defs>
+  <g transform="translate(1 2)" fill="#0b0f14" stroke="#0b0f14" stroke-width="3" stroke-linejoin="round">
+    <use href="#hand" />
+    <use href="#cuff" />
+  </g>
+  <g fill="#0b0f14" stroke="#0b0f14" stroke-width="3" stroke-linejoin="round">
+    <use href="#hand" />
+    <use href="#cuff" />
+  </g>
+  <use href="#hand" fill="#e3a33b" />
+  <use href="#cuff" fill="#a8741f" />
+  <path d="M12.6 9.5L12.6 13M16.8 9L16.8 13M21 9.5L21 13" stroke="#a8741f" stroke-width="1" />
+  <path d="M10 10L13.5 9.3" stroke="#ffd98a" stroke-width="1.2" stroke-linecap="round" />
+</svg>

@@ -6,8 +6,8 @@ import { isTypingTarget } from '../game/GameMap/helpers';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../ui/containers/panelStyle';
 import { useDismissOnOutsideClick } from './dismiss/useDismissOnOutsideClick';
-import { PANEL_BG_CLASS, PANEL_CLASS } from './panelStyle';
 
 interface Props {
   nameById: Map<number, string>;

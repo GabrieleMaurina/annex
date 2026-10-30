@@ -1,0 +1,14 @@
+.panel-surface {
+  background-color: var(--bs-tertiary-bg);
+  box-shadow:
+    var(--ui-shine),
+    0 4px 0 var(--ui-lip),
+    var(--ui-drop);
+}
+
+.panel-section {
+  background-color: var(--bs-tertiary-bg);
+  box-shadow:
+    var(--ui-shine),
+    0 4px 0 var(--ui-lip);
+}

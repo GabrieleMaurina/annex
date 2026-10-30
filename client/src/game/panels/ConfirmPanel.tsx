@@ -1,5 +1,5 @@
 import { Button } from 'react-bootstrap';
-import { PANEL_BG_CLASS } from '../../common/panelStyle';
+import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
 
 interface Props {
   label: string;

@@ -23,6 +23,8 @@ import type {
   PlayerMapsQuery,
   TileShape,
 } from '../lib/types';
+import { SECTION_CLASS } from '../ui/containers/panelStyle';
+import Selector from '../ui/forms/Selector';
 import { mapImageUrl } from './mapUrl';
 
 const PAGE_SIZE = 24;
@@ -189,7 +191,7 @@ function MapBrowser({
       </SortSelect>
 
       <FilterDetails onClear={clearFilters}>
-        <div className="border rounded p-2 mb-2">
+        <div className={`${SECTION_CLASS} p-2 mb-2`}>
           <div className="row g-3">
             <Field label="Search">
               <Form.Control
@@ -214,41 +216,39 @@ function MapBrowser({
             />
             {account && mode !== 'mine' && !authorId && (
               <Field label="Owner">
-                <Form.Select
+                <Selector
                   size="sm"
                   value={owner}
-                  onChange={(e) =>
-                    resetPage(setOwner)(e.target.value as OwnerFilter)
+                  onChange={(value) =>
+                    resetPage(setOwner)(value as OwnerFilter)
                   }
                 >
                   <option value="">Anyone</option>
                   <option value="mine">My maps</option>
                   <option value="notMine">Not my maps</option>
-                </Form.Select>
+                </Selector>
               </Field>
             )}
             {account && (
               <Field label="Likes">
-                <Form.Select
+                <Selector
                   size="sm"
                   value={like}
-                  onChange={(e) =>
-                    resetPage(setLike)(e.target.value as LikeFilter)
-                  }
+                  onChange={(value) => resetPage(setLike)(value as LikeFilter)}
                 >
                   <option value="">Any</option>
                   <option value="liked">Liked</option>
                   <option value="notLiked">Not liked</option>
-                </Form.Select>
+                </Selector>
               </Field>
             )}
             <Field label="Generated type">
-              <Form.Select
+              <Selector
                 size="sm"
                 value={genType}
-                onChange={(e) => {
-                  resetPage(setGenType)(e.target.value as GenerationType | '');
-                  if (e.target.value !== 'tile') setGenTile('');
+                onChange={(value) => {
+                  resetPage(setGenType)(value as GenerationType | '');
+                  if (value !== 'tile') setGenTile('');
                 }}
               >
                 <option value="">Any</option>
@@ -256,15 +256,15 @@ function MapBrowser({
                 <option value="dungeon">Dungeon</option>
                 <option value="temple">Temple</option>
                 <option value="tile">Tile</option>
-              </Form.Select>
+              </Selector>
             </Field>
             {genType === 'tile' && (
               <Field label="Generated tile">
-                <Form.Select
+                <Selector
                   size="sm"
                   value={genTile}
-                  onChange={(e) =>
-                    resetPage(setGenTile)(e.target.value as TileShape | '')
+                  onChange={(value) =>
+                    resetPage(setGenTile)(value as TileShape | '')
                   }
                 >
                   <option value="">Any</option>
@@ -273,29 +273,27 @@ function MapBrowser({
                       {tileShapeLabel(value)}
                     </option>
                   ))}
-                </Form.Select>
+                </Selector>
               </Field>
             )}
             <Field label="Generated fill">
-              <Form.Select
+              <Selector
                 size="sm"
                 value={genFill}
-                onChange={(e) =>
-                  resetPage(setGenFill)(e.target.value as Fill | '')
-                }
+                onChange={(value) => resetPage(setGenFill)(value as Fill | '')}
               >
                 <option value="">Any</option>
                 <option value="full">Full</option>
                 <option value="mixed">Mixed</option>
                 <option value="sparse">Sparse</option>
-              </Form.Select>
+              </Selector>
             </Field>
             <Field label="Generated size">
-              <Form.Select
+              <Selector
                 size="sm"
                 value={genSize}
-                onChange={(e) =>
-                  resetPage(setGenSize)(e.target.value as MapSize | '')
+                onChange={(value) =>
+                  resetPage(setGenSize)(value as MapSize | '')
                 }
               >
                 <option value="">Any</option>
@@ -303,40 +301,40 @@ function MapBrowser({
                 <option value="medium">Medium</option>
                 <option value="large">Large</option>
                 <option value="xlarge">Extra Large</option>
-              </Form.Select>
+              </Selector>
             </Field>
             <Field label="Generated seas">
-              <Form.Select
+              <Selector
                 size="sm"
                 value={genSeas}
-                onChange={(e) => resetPage(setGenSeas)(e.target.value)}
+                onChange={(value) => resetPage(setGenSeas)(value)}
               >
                 <option value="">Any</option>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
-              </Form.Select>
+              </Selector>
             </Field>
             <Field label="Generated timed connections">
-              <Form.Select
+              <Selector
                 size="sm"
                 value={genTimed}
-                onChange={(e) => resetPage(setGenTimed)(e.target.value)}
+                onChange={(value) => resetPage(setGenTimed)(value)}
               >
                 <option value="">Any</option>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
-              </Form.Select>
+              </Selector>
             </Field>
             <Field label="Generated unlockable">
-              <Form.Select
+              <Selector
                 size="sm"
                 value={genUnlockable}
-                onChange={(e) => resetPage(setGenUnlockable)(e.target.value)}
+                onChange={(value) => resetPage(setGenUnlockable)(value)}
               >
                 <option value="">Any</option>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
-              </Form.Select>
+              </Selector>
             </Field>
           </div>
         </div>
@@ -369,7 +367,6 @@ function MapBrowser({
                   <tr
                     key={row.id}
                     role={onRowClick ? 'button' : undefined}
-                    style={onRowClick ? { cursor: 'pointer' } : undefined}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >
                     <td>

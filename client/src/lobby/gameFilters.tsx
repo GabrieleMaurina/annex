@@ -1,11 +1,12 @@
 import { TILE_SHAPE_VALUES, tileShapeLabel } from 'engine';
-import { Form } from 'react-bootstrap';
 import { Field } from '../common/inputs/filterControls';
 import SearchMultiSelect, {
   type SearchSelectItem,
 } from '../common/inputs/SearchMultiSelect';
 import { connector } from '../connector';
 import type { Fill, GenerationType, MapSize } from '../lib/types';
+import { SECTION_CLASS } from '../ui/containers/panelStyle';
+import Selector from '../ui/forms/Selector';
 import {
   GAME_SETTING_SECTIONS,
   GAME_SETTINGS,
@@ -103,11 +104,10 @@ export function MapFilterFields({
   return (
     <>
       <Field label="Map">
-        <Form.Select
+        <Selector
           size="sm"
           value={mapName}
-          onChange={(e) => {
-            const value = e.target.value;
+          onChange={(value) => {
             onMapName(value);
             if (value !== GENERATED_MAP_VALUE) {
               onSize('');
@@ -122,31 +122,27 @@ export function MapFilterFields({
         >
           <option value="">Any</option>
           <option value={GENERATED_MAP_VALUE}>Generated</option>
-        </Form.Select>
+        </Selector>
       </Field>
       {mapName === GENERATED_MAP_VALUE && (
         <>
           <Field label="Generated map size">
-            <Form.Select
-              size="sm"
-              value={size}
-              onChange={(e) => onSize(e.target.value)}
-            >
+            <Selector size="sm" value={size} onChange={onSize}>
               <option value="">Any</option>
               {MAP_GENERATION_SIZES.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </Form.Select>
+            </Selector>
           </Field>
           <Field label="Generated map type">
-            <Form.Select
+            <Selector
               size="sm"
               value={type}
-              onChange={(e) => {
-                onType(e.target.value);
-                if (e.target.value !== 'tile') onTile('');
+              onChange={(value) => {
+                onType(value);
+                if (value !== 'tile') onTile('');
               }}
             >
               <option value="">Any</option>
@@ -155,70 +151,50 @@ export function MapFilterFields({
                   {o.label}
                 </option>
               ))}
-            </Form.Select>
+            </Selector>
           </Field>
           {type === 'tile' && (
             <Field label="Generated map tile">
-              <Form.Select
-                size="sm"
-                value={tile}
-                onChange={(e) => onTile(e.target.value)}
-              >
+              <Selector size="sm" value={tile} onChange={onTile}>
                 <option value="">Any</option>
                 {TILE_SHAPE_VALUES.map((value) => (
                   <option key={value} value={value}>
                     {tileShapeLabel(value)}
                   </option>
                 ))}
-              </Form.Select>
+              </Selector>
             </Field>
           )}
           <Field label="Generated map fill">
-            <Form.Select
-              size="sm"
-              value={fill}
-              onChange={(e) => onFill(e.target.value)}
-            >
+            <Selector size="sm" value={fill} onChange={onFill}>
               <option value="">Any</option>
               {MAP_GENERATION_FILLS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </Form.Select>
+            </Selector>
           </Field>
           <Field label="Generated map seas">
-            <Form.Select
-              size="sm"
-              value={seas}
-              onChange={(e) => onSeas(e.target.value)}
-            >
+            <Selector size="sm" value={seas} onChange={onSeas}>
               <option value="">Any</option>
               <option value="yes">Yes</option>
               <option value="no">No</option>
-            </Form.Select>
+            </Selector>
           </Field>
           <Field label="Generated map timed connections">
-            <Form.Select
-              size="sm"
-              value={timed}
-              onChange={(e) => onTimed(e.target.value)}
-            >
+            <Selector size="sm" value={timed} onChange={onTimed}>
               <option value="">Any</option>
               <option value="yes">Yes</option>
               <option value="no">No</option>
-            </Form.Select>
+            </Selector>
           </Field>
           <Field label="Generated map unlockable">
-            <Form.Select
-              size="sm"
-              value={unlockable}
-              onChange={(e) => onUnlockable(e.target.value)}
-            >
+            <Selector size="sm" value={unlockable} onChange={onUnlockable}>
               <option value="">Any</option>
               <option value="yes">Yes</option>
               <option value="no">No</option>
-            </Form.Select>
+            </Selector>
           </Field>
         </>
       )}
@@ -239,15 +215,15 @@ export function SettingFilterSections({
         const defs = GAME_SETTINGS.filter((s) => s.section === section);
         if (defs.length === 0) return null;
         return (
-          <div key={section} className="border rounded p-2 mb-2">
+          <div key={section} className={`${SECTION_CLASS} p-2 mb-2`}>
             <div className="fw-bold text-muted small mb-2">{section}</div>
             <div className="row g-3">
               {defs.map((def) => (
                 <Field key={def.key} label={def.label}>
-                  <Form.Select
+                  <Selector
                     size="sm"
                     value={settings[def.key] ?? ''}
-                    onChange={(e) => onChange(def.key, e.target.value)}
+                    onChange={(value) => onChange(def.key, value)}
                   >
                     <option value="">Any</option>
                     {def.options.map((o) => (
@@ -255,7 +231,7 @@ export function SettingFilterSections({
                         {o.label}
                       </option>
                     ))}
-                  </Form.Select>
+                  </Selector>
                 </Field>
               ))}
             </div>

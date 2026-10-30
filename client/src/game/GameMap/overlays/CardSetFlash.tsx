@@ -1,5 +1,5 @@
-import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import type { Card } from '../../../lib/types';
+import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
 import { CARD_SET_FLASH_DURATION } from '../../animations';
 import { CardFace } from '../../panels/CardsPanel';
 

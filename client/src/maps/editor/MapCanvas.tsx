@@ -11,7 +11,12 @@ import {
 import { drawMapBorder, mapBorder } from '../../game/mapBorder';
 import type { WrapAxes } from '../../game/mapMath';
 import { playSound } from '../../lib/sounds';
-import { hitVertex, NO_WRAP, wrapAxesOf } from './canvas/canvasGeometry';
+import {
+  canvasCursor,
+  hitVertex,
+  NO_WRAP,
+  wrapAxesOf,
+} from './canvas/canvasGeometry';
 import { drawGraph } from './canvas/drawGraph';
 import { drawSmoothPaint, useSmoothEdges } from './canvas/smoothEdges';
 import type { ClickableCheck } from './canvas/useClickableCheck';
@@ -984,12 +989,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         display: 'block',
         width: size.w,
         height: size.h,
-        cursor:
-          hoveredVertexId !== null
-            ? 'pointer'
-            : isDragging
-              ? 'grabbing'
-              : 'grab',
+        cursor: canvasCursor(hoveredVertexId !== null, isDragging),
       }}
     />
   );

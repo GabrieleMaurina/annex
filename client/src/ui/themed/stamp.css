@@ -1,0 +1,38 @@
+.stamp {
+  position: absolute;
+  top: 0;
+  right: 6%;
+  padding: 0.15em 0.5em;
+  border: 0.12em solid currentColor;
+  border-radius: 0.15em;
+  outline: 0.05em solid currentColor;
+  outline-offset: 0.08em;
+  font-family: var(--ui-display-font);
+  font-size: clamp(1.5rem, 6vw, 3rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.9;
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+
+.stamp-victory {
+  color: var(--bs-primary);
+}
+
+.stamp-defeat {
+  color: var(--bs-danger);
+}
+
+:root:not(.animations-off) .stamp {
+  animation: stamp-slam 0.35s cubic-bezier(0.5, 0, 0.75, 0) 0.4s both;
+}
+
+@keyframes stamp-slam {
+  from {
+    opacity: 0;
+    transform: rotate(-20deg) scale(2.6);
+  }
+}

@@ -19,7 +19,6 @@ function PanelHeader({ title, onClose, right }: Props) {
           onClose();
         }
       }}
-      style={{ cursor: 'pointer' }}
     >
       <span>{title}</span>
       {right}

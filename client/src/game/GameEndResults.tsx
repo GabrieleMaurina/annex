@@ -6,6 +6,7 @@ import ResultsTable from '../common/ResultsTable';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/settings/SettingsPanel';
+import Stamp from '../ui/themed/Stamp';
 import GameStatsChart from './replay/GameStatsChart';
 import type { FoldedReplay } from './replay/replay';
 
@@ -61,7 +62,13 @@ function GameEndResults({
 
   return (
     <Container fluid className="pt-5 pb-5 px-2 px-sm-4 bg-body min-vh-100">
-      <div className="text-center mb-4 mt-4 mt-sm-0">
+      <div className="position-relative text-center mb-4 mt-4 mt-sm-0">
+        {selfId !== null && (
+          <Stamp
+            text={won ? 'Annexed' : 'Defeated'}
+            tone={won ? 'victory' : 'defeat'}
+          />
+        )}
         <h1 className="mb-4">{won ? 'You Win!' : 'Game Over'}</h1>
         {isTeamDeathmatch ? (
           <p className="fs-4 mb-0">

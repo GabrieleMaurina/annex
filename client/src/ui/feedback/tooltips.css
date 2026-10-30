@@ -1,0 +1,18 @@
+.tooltip {
+  --bs-tooltip-bg: #2b3440;
+  --bs-tooltip-color: #fff;
+}
+
+.tooltip-inner {
+  background-image: var(--ui-steel);
+  border: 1px solid var(--ui-ink);
+  box-shadow: var(--ui-shine), var(--ui-drop);
+}
+
+.help-tooltip {
+  --bs-tooltip-max-width: 480px;
+}
+
+.help-tooltip .tooltip-inner {
+  text-align: left;
+}

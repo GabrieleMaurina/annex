@@ -6,9 +6,9 @@ import {
   GLOBAL_TARGET_ID,
 } from '../../game/logic/emoji';
 import type { EmojiValue, GameState } from '../../lib/types';
+import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
 import { useWhiteIcon } from '../icon';
 import { isPlayerMuted, toggleMutePlayer } from '../mutedPlayers';
-import { PANEL_BG_CLASS } from '../panelStyle';
 import Tip from '../tooltips/Tip';
 import type { TableEmojiPop } from './useTableEmojiReactions';
 

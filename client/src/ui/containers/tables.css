@@ -1,0 +1,58 @@
+.table:not(.table-flat) {
+  --bs-table-bg: var(--bs-tertiary-bg);
+  --bs-table-hover-bg: var(--ui-hover);
+  --bs-table-hover-color: var(--bs-emphasis-color);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  box-shadow: 0 4px 0 var(--ui-lip);
+}
+
+.table:not(.table-flat) > thead > tr > th {
+  background-image: var(--ui-steel);
+  border-bottom: var(--bs-border-width) solid var(--ui-ink);
+  color: var(--bs-secondary-color);
+  font-family: var(--ui-display-font);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.table:not(.table-flat) > tbody > tr:last-child > * {
+  border-bottom-width: 0;
+}
+
+.table-responsive {
+  padding-bottom: 4px;
+}
+
+.table > tbody > tr[role='button'] > :first-child {
+  position: relative;
+}
+
+.table > tbody > tr[role='button']:hover > :first-child::before,
+.table > tbody > tr[role='button']:focus-visible > :first-child::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 50%;
+  margin-top: -4px;
+  border: 4px solid transparent;
+  border-left: 6px solid var(--bs-primary);
+}
+
+.table > tbody > tr[role='button']:active > * {
+  color: var(--bs-primary) !important;
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 9999px var(--ui-pressed);
+}
+
+.table > tbody > tr[role='button']:active > :first-child {
+  box-shadow:
+    inset 3px 0 0 var(--bs-primary),
+    inset 0 2px 5px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 9999px var(--ui-pressed);
+}

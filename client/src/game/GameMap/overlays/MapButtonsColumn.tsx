@@ -1,8 +1,8 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { Badge, Button } from 'react-bootstrap';
-import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import Tip from '../../../common/tooltips/Tip';
 import type { Card, GameState, TurnPhase } from '../../../lib/types';
+import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
 import { comboKey, type EvaluatedCombo } from '../../logic/cards';
 import type { LogEntry } from '../../logs/useGameLogs';
 import CardsPanel, { CardFace } from '../../panels/CardsPanel';

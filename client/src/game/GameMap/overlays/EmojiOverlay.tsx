@@ -1,9 +1,9 @@
 import type { RefObject } from 'react';
 import { isPlayerMuted, toggleMutePlayer } from '../../../common/mutedPlayers';
-import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import Tip from '../../../common/tooltips/Tip';
 import { contrastTextColor } from '../../../lib/palette';
 import type { EmojiValue, GameState } from '../../../lib/types';
+import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
 import {
   ATTACK_EMOJI,
   EMOJI_LABELS,

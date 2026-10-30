@@ -1,5 +1,10 @@
 import { useEffect, useReducer } from 'react';
 import { useWhiteIcon } from '../../common/icon';
+import {
+  CURSOR_GRAB,
+  CURSOR_GRABBING,
+  CURSOR_POINTER,
+} from '../../ui/cursors/cursors';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
 import { loadHourglassIcons } from './draw/drawTimedLinks';
@@ -725,10 +730,10 @@ function GameMap({
           cursor: emojiUI.pendingAttackEmoji
             ? 'crosshair'
             : interactions.hoveredId !== null
-              ? 'pointer'
+              ? CURSOR_POINTER
               : interactions.isDragging
-                ? 'grabbing'
-                : 'grab',
+                ? CURSOR_GRABBING
+                : CURSOR_GRAB,
         }}
       />
       <TerritoryTooltip

@@ -1,3 +1,4 @@
+import { CURSOR_GRAB } from '../../../ui/cursors/cursors';
 import { drawPolygon, type Point } from './paintTools';
 
 export type ShapeKind =
@@ -205,7 +206,7 @@ export function insideShape(s: Shape, p: Point): boolean {
 }
 
 export function handleCursor(s: Shape, handle: number): string {
-  if (handle === ROTATE_HANDLE) return 'grab';
+  if (handle === ROTATE_HANDLE) return CURSOR_GRAB;
   const angle = HANDLE_ANGLES[handle] + (s.rotation * 180) / Math.PI;
   const step = Math.round(angle / 45) % 4;
   return RESIZE_CURSORS[(step + 4) % 4];

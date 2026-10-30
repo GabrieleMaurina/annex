@@ -29,6 +29,8 @@ import {
   SettingFilterSections,
 } from '../lobby/gameFilters';
 import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
+import { SECTION_CLASS } from '../ui/containers/panelStyle';
+import Selector from '../ui/forms/Selector';
 
 const PAGE_SIZE = 20;
 
@@ -98,7 +100,7 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
   const endedAt = new Date(row.endedAt);
   return (
-    <tr role="button" style={{ cursor: 'pointer' }} onClick={onOpen}>
+    <tr role="button" onClick={onOpen}>
       <td>{endedAt.toLocaleDateString()}</td>
       <td>{endedAt.toLocaleTimeString()}</td>
       <td>{row.name}</td>
@@ -393,7 +395,7 @@ function Games({ account }: Props) {
       </SortSelect>
 
       <FilterDetails onClear={clearFilters}>
-        <div className="border rounded p-2 mb-2">
+        <div className={`${SECTION_CLASS} p-2 mb-2`}>
           <div className="fw-bold text-muted small mb-2">Match</div>
           <div className="row g-3">
             <PlayerFilter
@@ -410,31 +412,27 @@ function Games({ account }: Props) {
               />
             </Field>
             <Field label="Mode">
-              <Form.Select
-                size="sm"
-                value={mode}
-                onChange={(e) => resetPage(setMode)(e.target.value)}
-              >
+              <Selector size="sm" value={mode} onChange={resetPage(setMode)}>
                 <option value="">Any</option>
                 {GAME_MODES.map((m) => (
                   <option key={m} value={m}>
                     {titleCase(m)}
                   </option>
                 ))}
-              </Form.Select>
+              </Selector>
             </Field>
             <Field label="Bots">
-              <Form.Select
+              <Selector
                 size="sm"
                 value={hasBots}
-                onChange={(e) =>
-                  resetPage(setHasBots)(e.target.value as '' | 'yes' | 'no')
+                onChange={(value) =>
+                  resetPage(setHasBots)(value as '' | 'yes' | 'no')
                 }
               >
                 <option value="">Any</option>
                 <option value="yes">Has bots</option>
                 <option value="no">No bots</option>
-              </Form.Select>
+              </Selector>
             </Field>
             <DateRangeField
               label="Started"
@@ -498,23 +496,23 @@ function Games({ account }: Props) {
             )}
             {account && (
               <Field label="Result">
-                <Form.Select
+                <Selector
                   size="sm"
                   value={outcome}
-                  onChange={(e) =>
-                    resetPage(setOutcome)(e.target.value as '' | 'won' | 'lost')
+                  onChange={(value) =>
+                    resetPage(setOutcome)(value as '' | 'won' | 'lost')
                   }
                 >
                   <option value="">Any</option>
                   <option value="won">Won</option>
                   <option value="lost">Lost</option>
-                </Form.Select>
+                </Selector>
               </Field>
             )}
           </div>
         </div>
 
-        <div className="border rounded p-2 mb-2">
+        <div className={`${SECTION_CLASS} p-2 mb-2`}>
           <div className="fw-bold text-muted small mb-2">Map</div>
           <div className="row g-3">
             <MapFilterFields

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <path id="arrow" d="M3 2L3 23L8 18L12 26L15 24.5L11 16.5L17.5 16.5Z" />
+  </defs>
+  <use href="#arrow" transform="translate(1 2)" fill="#0b0f14" stroke="#0b0f14" stroke-width="2" stroke-linejoin="round" />
+  <use href="#arrow" fill="#e3a33b" stroke="#0b0f14" stroke-width="1.5" stroke-linejoin="round" />
+  <path d="M4.6 6L4.6 18.5" stroke="#ffd98a" stroke-width="1.2" stroke-linecap="round" />
+</svg>

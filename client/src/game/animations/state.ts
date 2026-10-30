@@ -231,6 +231,7 @@ export function areAnimationsDisabled(): boolean {
 export function setAnimationsDisabled(value: boolean) {
   disabled = value;
   if (disabled) animations = [];
+  document.documentElement.classList.toggle('animations-off', value);
   toggleListeners.forEach((listener) => listener());
 }
 

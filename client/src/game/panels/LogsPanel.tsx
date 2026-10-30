@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import { Table } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
 import PanelHeader from '../../common/PanelHeader';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor } from '../../lib/palette';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import type { LogColorRange } from '../logs/logFormat';
 
 interface LogEntry {
@@ -168,7 +168,12 @@ function LogsPanel({ logs, stats, top, onClose }: Props) {
           style={{ overflowY: 'auto', minHeight: 0 }}
           onWheel={(e) => e.stopPropagation()}
         >
-          <Table size="sm" bordered className="mb-0" style={{ width: '100%' }}>
+          <Table
+            size="sm"
+            bordered
+            className="mb-0 table-flat"
+            style={{ width: '100%' }}
+          >
             <tbody>
               {newestFirst.map((log) => {
                 const rowForeground = contrastTextColor(log.color);

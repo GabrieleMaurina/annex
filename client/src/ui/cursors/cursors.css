@@ -1,0 +1,49 @@
+:root {
+  --cursor-default: url('./default.svg') 3 2, default;
+  --cursor-pointer: url('./pointer.svg') 12 2, pointer;
+  --cursor-grab: url('./grab.svg') 16 14, grab;
+  --cursor-grabbing: url('./grabbing.svg') 16 14, grabbing;
+}
+
+html {
+  cursor: var(--cursor-default);
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  cursor: text;
+}
+
+[role='button'],
+button:not(:disabled),
+[type='button']:not(:disabled),
+[type='reset']:not(:disabled),
+[type='submit']:not(:disabled),
+summary,
+a[href],
+.btn,
+.form-check-input:not(:disabled),
+.form-control[type='file']:not(:disabled):not([readonly]),
+.form-control-color:not(:disabled):not([readonly]),
+.form-range,
+.list-group-item-action,
+.nav-link,
+.page-link,
+.btn-close {
+  cursor: var(--cursor-pointer);
+}
+
+.form-range::-webkit-slider-runnable-track {
+  cursor: var(--cursor-pointer);
+}
+
+.form-range::-moz-range-track {
+  cursor: var(--cursor-pointer);
+}
+
+:disabled,
+.disabled,
+.form-check-input:disabled ~ .form-check-label {
+  cursor: var(--cursor-default);
+}

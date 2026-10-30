@@ -1,0 +1,72 @@
+.modal-content {
+  box-shadow:
+    var(--ui-shine),
+    0 6px 0 var(--ui-lip),
+    0 1.5rem 3rem rgba(0, 0, 0, 0.6);
+}
+
+.modal-header {
+  background-image: var(--ui-steel);
+  border-bottom-color: var(--ui-ink);
+}
+
+.modal-title {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.modal-footer {
+  border-top-color: var(--ui-ink);
+  box-shadow: var(--ui-shine);
+}
+
+:root:not(.animations-off) .modal.show .modal-content::before,
+:root:not(.animations-off) .modal.show .modal-content::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+  pointer-events: none;
+  background:
+    radial-gradient(
+        circle,
+        #9aa5b2 0 1.5px,
+        var(--ui-ink) 2px,
+        transparent 2.5px
+      )
+      right 6px top 4px / 10px 22px repeat-y,
+    var(--ui-steel-bright);
+  animation: blast-door-open 0.55s 0.1s cubic-bezier(0.7, 0, 0.3, 1) both;
+}
+
+:root:not(.animations-off) .modal.show .modal-content::before {
+  left: 0;
+  border-radius: var(--bs-modal-inner-border-radius) 0 0
+    var(--bs-modal-inner-border-radius);
+  box-shadow: inset -3px 0 0 var(--ui-ink);
+}
+
+:root:not(.animations-off) .modal.show .modal-content::after {
+  right: 0;
+  border-radius: 0 var(--bs-modal-inner-border-radius)
+    var(--bs-modal-inner-border-radius) 0;
+  background-position:
+    left 6px top 4px,
+    0 0;
+  box-shadow: inset 3px 0 0 var(--ui-ink);
+}
+
+:root:not(.animations-off) .modal.show .modal-fullscreen .modal-content::before,
+:root:not(.animations-off) .modal.show .modal-fullscreen .modal-content::after {
+  border-radius: 0;
+}
+
+@keyframes blast-door-open {
+  from {
+    width: 50%;
+  }
+  to {
+    width: 0;
+  }
+}

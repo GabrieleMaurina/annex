@@ -46,6 +46,8 @@ import {
   SettingFilterSections,
 } from '../lobby/gameFilters';
 import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
+import { SECTION_CLASS } from '../ui/containers/panelStyle';
+import Selector from '../ui/forms/Selector';
 
 const MAX_GAME_NAME_LENGTH = 20;
 const POLL_MS = 5000;
@@ -487,7 +489,7 @@ function Home({
           </SortSelect>
 
           <FilterDetails onClear={clearFilters}>
-            <div className="border rounded p-2 mb-2">
+            <div className={`${SECTION_CLASS} p-2 mb-2`}>
               <div className="fw-bold text-muted small mb-2">Match</div>
               <div className="row g-3">
                 <PlayerFilter
@@ -504,10 +506,10 @@ function Home({
                   />
                 </Field>
                 <Field label="Mode">
-                  <Form.Select
+                  <Selector
                     size="sm"
                     value={mode}
-                    onChange={(e) => resetPage(setMode)(e.target.value)}
+                    onChange={resetPage(setMode)}
                   >
                     <option value="">Any</option>
                     {GAME_MODES.map((m) => (
@@ -515,51 +517,47 @@ function Home({
                         {titleCase(m)}
                       </option>
                     ))}
-                  </Form.Select>
+                  </Selector>
                 </Field>
                 <Field label="State">
-                  <Form.Select
+                  <Selector
                     size="sm"
                     value={phase}
-                    onChange={(e) =>
-                      resetPage(setPhase)(
-                        e.target.value as '' | GameSummary['state'],
-                      )
+                    onChange={(value) =>
+                      resetPage(setPhase)(value as '' | GameSummary['state'])
                     }
                   >
                     <option value="">Any</option>
                     <option value="lobby">Lobby</option>
                     <option value="playing">Playing</option>
                     <option value="ended">Ended</option>
-                  </Form.Select>
+                  </Selector>
                 </Field>
                 <Field label="Password">
-                  <Form.Select
+                  <Selector
                     size="sm"
                     value={password}
-                    onChange={(e) =>
-                      resetPage(setPassword)(
-                        e.target.value as '' | 'yes' | 'no',
-                      )
+                    onChange={(value) =>
+                      resetPage(setPassword)(value as '' | 'yes' | 'no')
                     }
                   >
                     <option value="">Any</option>
                     <option value="yes">Yes</option>
                     <option value="no">No</option>
-                  </Form.Select>
+                  </Selector>
                 </Field>
                 <Field label="Bots">
-                  <Form.Select
+                  <Selector
                     size="sm"
                     value={hasBots}
-                    onChange={(e) =>
-                      resetPage(setHasBots)(e.target.value as '' | 'yes' | 'no')
+                    onChange={(value) =>
+                      resetPage(setHasBots)(value as '' | 'yes' | 'no')
                     }
                   >
                     <option value="">Any</option>
                     <option value="yes">Has bots</option>
                     <option value="no">No bots</option>
-                  </Form.Select>
+                  </Selector>
                 </Field>
                 <RangeField
                   label="Player count"
@@ -586,7 +584,7 @@ function Home({
               </div>
             </div>
 
-            <div className="border rounded p-2 mb-2">
+            <div className={`${SECTION_CLASS} p-2 mb-2`}>
               <div className="fw-bold text-muted small mb-2">Map</div>
               <div className="row g-3">
                 <MapFilterFields
@@ -663,7 +661,6 @@ function Home({
                       key={g.name}
                       role="button"
                       onClick={() => navigate(gamePath(g.name))}
-                      style={{ cursor: 'pointer' }}
                     >
                       <td style={rowStyle} className="text-center px-1">
                         {g.hasPassword && (

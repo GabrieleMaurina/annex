@@ -9,7 +9,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Form, Modal, ProgressBar } from 'react-bootstrap';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
 import PanelHeader from '../../../common/PanelHeader';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../../../common/panelStyle';
 import Help from '../../../common/tooltips/Help';
 import {
   EARTH_MOUNTAINS_HELP,
@@ -17,6 +16,8 @@ import {
   SEAS_HELP,
   TIMED_CONNECTIONS_HELP,
 } from '../../../lobby/settings/settingsHelp';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../../ui/containers/panelStyle';
+import Selector from '../../../ui/forms/Selector';
 import {
   citiesIn,
   drawnArea,
@@ -529,41 +530,41 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
               <Form.Label className="small mb-0" style={{ minWidth: 45 }}>
                 Size
               </Form.Label>
-              <Form.Select
+              <Selector
                 size="sm"
                 value={size}
                 disabled={!!job}
-                onChange={(e) => setSize(e.target.value as MapSize)}
+                onChange={(value) => setSize(value as MapSize)}
               >
                 {SIZES.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
-              </Form.Select>
-              <Form.Select
+              </Selector>
+              <Selector
                 size="sm"
                 className="w-auto"
                 value={aspect}
                 disabled={!!job}
-                onChange={(e) => setAspect(e.target.value as MapAspect)}
+                onChange={(value) => setAspect(value as MapAspect)}
               >
                 {ASPECTS.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
-              </Form.Select>
+              </Selector>
             </Form.Group>
             <Form.Group className="d-flex align-items-center gap-2">
               <Form.Label className="small mb-0" style={{ minWidth: 45 }}>
                 Detail
               </Form.Label>
-              <Form.Select
+              <Selector
                 size="sm"
                 value={chosenDetail}
                 disabled={!!job}
-                onChange={(e) => setDetail(e.target.value as OsmDetail)}
+                onChange={(value) => setDetail(value as OsmDetail)}
               >
                 {(Object.keys(DETAIL_LABELS) as OsmDetail[]).map((value) => (
                   <option
@@ -574,7 +575,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
                     {DETAIL_LABELS[value]}
                   </option>
                 ))}
-              </Form.Select>
+              </Selector>
             </Form.Group>
             <div className="d-flex align-items-center gap-2">
               <Form.Check

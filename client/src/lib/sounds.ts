@@ -24,8 +24,8 @@ declare const __MUSIC_TRACKS__: string[];
 const audioByName = new Map<string, HTMLAudioElement>();
 let muted = false;
 let volume = 0.5;
-let effectsVolume = 1;
-let musicVolume = 1;
+let effectsVolume = 0.5;
+let musicVolume = 0.5;
 const CLICK_DEDUPE_MS = 120;
 let lastClickAt = -Infinity;
 const VOLUME_RANGE_DB = 40;
@@ -294,9 +294,8 @@ export function setMusicVolume(value: number) {
 }
 
 const CLICK_SOUND_SELECTOR =
-  'button, a, input[type="checkbox"], input[type="radio"], input[type="range"], input[type="color"], select, [role="button"]';
-const CHANGE_SOUND_SELECTOR =
-  'select, input[type="range"], input[type="color"]';
+  'button, a, input[type="checkbox"], input[type="radio"], input[type="range"], input[type="color"], [role="button"]';
+const CHANGE_SOUND_SELECTOR = 'input[type="range"], input[type="color"]';
 
 export function initUiClickSounds() {
   document.addEventListener(

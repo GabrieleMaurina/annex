@@ -1,5 +1,10 @@
 import type { WrapAxes } from '../../../game/mapMath';
 import {
+  CURSOR_GRAB,
+  CURSOR_GRABBING,
+  CURSOR_POINTER,
+} from '../../../ui/cursors/cursors';
+import {
   edgeKey,
   pointToSegmentDistance,
   segmentsProperlyIntersect,
@@ -33,6 +38,10 @@ export function wrapAxesOf(e: {
 
 export function wrapOf(t: Territory, otherId: number): WrapAxes | undefined {
   return t.wraps.find((w) => w.id === otherId);
+}
+
+export function canvasCursor(hovered: boolean, dragging: boolean): string {
+  return hovered ? CURSOR_POINTER : dragging ? CURSOR_GRABBING : CURSOR_GRAB;
 }
 
 export function getVertexRadius(imgW: number, imgH: number): number {

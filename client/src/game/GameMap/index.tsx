@@ -1,25 +1,17 @@
 import { useEffect, useReducer } from 'react';
 import { useWhiteIcon } from '../../common/icon';
-import {
-  CURSOR_GRAB,
-  CURSOR_GRABBING,
-  CURSOR_POINTER,
-} from '../../ui/cursors/cursors';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
 import { loadHourglassIcons } from './draw/drawTimedLinks';
+import GameCanvas from './GameCanvas';
 import {
-  computeTooltipLabels,
   getScales,
   getTerritoryScreenPos,
   maxDeployTroops,
   unclaimedTerritoryIds,
 } from './helpers';
-import { useAttackSeaFlow } from './hooks/sea/useAttackSeaFlow';
 import { useDeploySeaFlow } from './hooks/sea/useDeploySeaFlow';
-import { useSailFlow } from './hooks/sea/useSailFlow';
 import { useAllianceUI } from './hooks/useAllianceUI';
-import { useAttackFlow } from './hooks/useAttackFlow';
 import { useCardsAndDeploy } from './hooks/useCardsAndDeploy';
 import { useEmojiUI } from './hooks/useEmojiUI';
 import { useGameSocketEvents } from './hooks/useGameSocketEvents';
@@ -34,7 +26,7 @@ import {
   useSupplyLineOverlay,
 } from './hooks/useMiscUiState';
 import { usePanelsUI } from './hooks/usePanelsUI';
-import { useTurnActionFlows } from './hooks/useTurnActionFlows';
+import { useActionFlows } from './hooks/view/useActionFlows';
 import { useDisplayedGame } from './hooks/view/useDisplayedGame';
 import { useGameCanvasInteractions } from './hooks/view/useGameCanvasInteractions';
 import { useMapGraph } from './hooks/view/useMapGraph';
@@ -45,8 +37,8 @@ import CardSetFlash from './overlays/CardSetFlash';
 import EmojiOverlay from './overlays/EmojiOverlay';
 import GameToasts from './overlays/GameToasts';
 import MapButtonsColumn from './overlays/MapButtonsColumn';
-import TerritoryTooltip from './overlays/TerritoryTooltip';
 import TurnActionPanels from './overlays/TurnActionPanels';
+import { turnActionPanelsProps } from './overlays/turnActionPanelsProps';
 import type { GameMapProps } from './props';
 import { useGameToasts } from './useGameToasts';
 
@@ -284,57 +276,17 @@ function GameMap({
       getScales(size.w, size.h, camera.get().zoom, imgDims).scaleX;
   });
 
-  const attackFlow = useAttackFlow({
+  const { attackFlow, sailFlow, attackSeaFlow, turnFlow } = useActionFlows({
     attackStartTerritoryId,
     attackEndTerritoryId,
     attackConquestMinTroops,
-    territories,
-    seaTerritories,
-    seas,
-    ownerById,
-    selfId,
-    portalTerritoryIds,
-    portalsEnabled,
-    unusableTerritoryById,
-    turnPhase,
-    isMyTurn,
-    paused,
-    blitzEnabled: game.blitz !== 'off',
-    attackDice: game.attackDice,
-    closedTiles,
-    cards,
-    nextSetBaseValues,
-    setGame,
-  });
-
-  const sailFlow = useSailFlow({
     sailStartTerritoryId,
     sailEndTerritoryId,
-    seaTerritories,
-    seas,
-    selfId,
-    turnPhase,
-    isMyTurn,
-    paused,
-    setGame,
-  });
-
-  const attackSeaFlow = useAttackSeaFlow({
     attackSeaTerritoryId,
     attackSeaDefenderId,
-    seaTerritories,
-    seas,
-    selfId,
-    turnPhase,
-    isMyTurn,
-    paused,
-    attackDice: game.attackDice,
-    setGame,
-  });
-
-  const turnFlow = useTurnActionFlows({
     fortifyStartTerritoryId,
     fortifyEndTerritoryId,
+    selectedTerritoryId,
     territories,
     seaTerritories,
     seas,
@@ -343,17 +295,16 @@ function GameMap({
     fortification,
     portalTerritoryIds,
     portalsEnabled,
+    unusableTerritoryById,
+    upcomingUnusableTerritoryById,
     turnPhase,
     isMyTurn,
     paused,
-    selectedTerritoryId,
+    game,
     toxins,
-    hillTerritoryIds: game.hillTerritoryIds,
+    closedTiles,
     cards,
     nextSetBaseValues,
-    blockedById: unusableTerritoryById,
-    upcomingBlockedById: upcomingUnusableTerritoryById,
-    closedTiles,
     setGame,
   });
 
@@ -481,13 +432,6 @@ function GameMap({
     turnPhase !== 'troop' &&
     turnPhase !== 'capital' &&
     (turnPhase !== 'deploy' || (troopsToDeploy <= 0 && !cardsFlow.mustPlaySet));
-  const nextPhaseEndsTurn =
-    turnPhase === 'toxins' ||
-    (turnPhase === 'entrench' &&
-      (toxins === 'off' || turnFlow.toxinsCandidates.size === 0)) ||
-    (turnPhase === 'fortify' &&
-      (entrenchments !== 'on' || turnFlow.entrenchCandidates.size === 0) &&
-      (toxins === 'off' || turnFlow.toxinsCandidates.size === 0));
 
   const interactions = useGameCanvasInteractions({
     canvasRef,
@@ -542,16 +486,6 @@ function GameMap({
     emojiUI,
     allianceUI,
   });
-
-  const tooltipLabels = computeTooltipLabels(
-    interactions.tooltipTerritoryId,
-    portalTerritoryIds,
-    radiationById,
-    visibleTerritoryById,
-    ownerById,
-    toxinById,
-    placeNames,
-  );
 
   useAutoAdvancePhase({
     isMyTurn,
@@ -613,22 +547,6 @@ function GameMap({
     seaTerritories,
     startAnimationLoop,
   });
-
-  const panelAnchors = {
-    territories,
-    seaTerritories,
-    size,
-    imgDims,
-    VERTEX_RADIUS,
-    selectedTerritoryId,
-    fortifyEndTerritoryId,
-    attackEndTerritoryId,
-    attackDiceRollTerritoryId: attackFlow.attackDiceRoll?.territoryId,
-    sailEndTerritoryId,
-    attackSeaTerritoryId,
-    attackSeaDiceRollTerritoryId: attackSeaFlow.attackSeaDiceRoll?.territoryId,
-    deploySeaTerritoryId: deploySeaFlow.deploySeaTerritoryId,
-  };
 
   useEffect(
     () => camera.subscribe(startAnimationLoop),
@@ -710,41 +628,21 @@ function GameMap({
 
   return (
     <div className="position-fixed top-0 bottom-0 start-0 end-0 overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        onMouseDown={interactions.handleMouseDown}
-        onMouseMove={interactions.handleMouseMove}
-        onMouseUp={interactions.handleMouseUp}
-        onMouseLeave={interactions.handleMouseLeave}
-        onContextMenu={interactions.handleContextMenu}
-        onAuxClick={interactions.handleAuxClick}
-        onTouchStart={interactions.handleTouchStart}
-        onTouchMove={interactions.handleTouchMove}
-        onTouchEnd={interactions.handleTouchEnd}
-        onTouchCancel={interactions.handleTouchCancel}
-        style={{
-          display: 'block',
-          width: size.w,
-          height: size.h,
-          touchAction: 'none',
-          cursor: emojiUI.pendingAttackEmoji
-            ? 'crosshair'
-            : interactions.hoveredId !== null
-              ? CURSOR_POINTER
-              : interactions.isDragging
-                ? CURSOR_GRABBING
-                : CURSOR_GRAB,
-        }}
-      />
-      <TerritoryTooltip
+      <GameCanvas
+        canvasRef={canvasRef}
+        interactions={interactions}
+        pendingAttackEmoji={emojiUI.pendingAttackEmoji}
         camera={camera}
-        territory={territories.find(
-          (t) => t.id === interactions.tooltipTerritoryId,
-        )}
-        labels={tooltipLabels}
+        territories={territories}
         size={size}
         imgDims={imgDims}
         VERTEX_RADIUS={VERTEX_RADIUS}
+        portalTerritoryIds={portalTerritoryIds}
+        radiationById={radiationById}
+        visibleTerritoryById={visibleTerritoryById}
+        ownerById={ownerById}
+        toxinById={toxinById}
+        placeNames={placeNames}
       />
       <MapButtonsColumn
         cardsButtonsTop={cardsButtonsTop}
@@ -888,101 +786,44 @@ function GameMap({
         />
       )}
       <TurnActionPanels
-        camera={camera}
-        anchors={panelAnchors}
-        currentTurnPlayer={currentTurnPlayer}
-        gameEnded={gameEnded}
-        turnPhase={turnPhase}
-        placement={game.placement}
-        turnDuration={turnDuration}
-        paused={paused}
-        pausedAt={pausedAt}
-        turnStartedAt={turnStartedAt}
-        turnExtension={turnExtension}
-        isMyTurn={isMyTurn}
-        troopsToDeploy={troopsToDeploy}
-        deployMaxTroops={deployMaxTroops}
-        mustPlaySet={cardsFlow.mustPlaySet}
-        setGame={setGame}
-        nextPhaseEndsTurn={nextPhaseEndsTurn}
-        tankFireId={tankFireId}
-        deployPanelOpen={deployTroopsPanelOpen}
-        deployTroops={cardsFlow.deployTroops}
-        deployInputRef={cardsFlow.deployInputRef}
-        setDeployTroops={cardsFlow.setDeployTroops}
-        submitDeploy={cardsFlow.submitDeploy}
-        deploySeaPanelOpen={deploySeaFlow.deploySeaPanelOpen}
-        deploySeaComboActive={deploySeaFlow.comboActive}
-        deploySeaShips={deploySeaFlow.deploySeaShips}
-        deploySeaMaxShips={deploySeaFlow.deploySeaMaxShips}
-        deploySeaInputRef={deploySeaFlow.deploySeaInputRef}
-        setDeploySeaShips={deploySeaFlow.setDeploySeaShips}
-        submitDeploySea={deploySeaFlow.submitDeploySea}
-        sailPanelOpen={sailFlow.sailPanelOpen}
-        sailShips={sailFlow.sailShips}
-        sailMaxShips={sailFlow.sailMaxShips}
-        sailInputRef={sailFlow.sailInputRef}
-        setSailShips={sailFlow.setSailShips}
-        submitSail={sailFlow.submitSail}
-        fortifyPanelOpen={turnFlow.fortifyPanelOpen}
-        fortifyTroops={turnFlow.fortifyTroops}
-        fortifyMaxTroops={turnFlow.fortifyMaxTroops}
-        fortifyInputRef={turnFlow.fortifyInputRef}
-        setFortifyTroops={turnFlow.setFortifyTroops}
-        submitFortify={turnFlow.submitFortify}
-        entrenchPanelOpen={turnFlow.entrenchPanelOpen}
-        entrenchTroops={turnFlow.entrenchTroops}
-        entrenchMaxTroops={turnFlow.entrenchMaxTroops}
-        entrenchCurrentTurns={turnFlow.entrenchCurrentTurns}
-        entrenchInputRef={turnFlow.entrenchInputRef}
-        setEntrenchTroops={turnFlow.setEntrenchTroops}
-        submitEntrench={turnFlow.submitEntrench}
-        toxinsPanelOpen={turnFlow.toxinsPanelOpen}
-        toxinsWastedTroops={turnFlow.toxinsWastedTroops}
-        submitToxins={turnFlow.submitToxins}
-        attackPanelOpen={attackFlow.attackPanelOpen}
-        attackDisplay={attackFlow.attackDisplay}
-        blitzEnabled={game.blitz !== 'off'}
-        attackDice={game.attackDice}
-        diceTies={game.diceTies}
-        blitzInputRef={attackFlow.blitzInputRef}
-        attackDiceRoll={attackFlow.attackDiceRoll}
-        setAttackDiceRoll={attackFlow.setAttackDiceRoll}
-        setAttackSelectedType={attackFlow.setAttackSelectedType}
-        setAttackRegularTroops={attackFlow.setAttackRegularTroops}
-        setAttackBlitzTroops={attackFlow.setAttackBlitzTroops}
-        maxBlitzTroops={attackFlow.maxBlitzTroops}
-        attackRevealing={attackFlow.attackRevealing}
-        attackDiceOnly={attackFlow.attackDiceOnly}
-        attackShowPendingConquest={attackFlow.attackShowPendingConquest}
-        attackMoveTroops={attackFlow.attackMoveTroops}
-        attackMoveMinTroops={attackFlow.attackMoveMinTroops}
-        attackMoveMaxTroops={attackFlow.attackMoveMaxTroops}
-        attackMoveInputRef={attackFlow.attackMoveInputRef}
-        setAttackMoveTroops={attackFlow.setAttackMoveTroops}
-        submitAttackMove={attackFlow.submitAttackMove}
-        submitAttack={attackFlow.submitAttack}
-        attackSeaPanelOpen={attackSeaFlow.attackSeaPanelOpen}
-        attackSeaDefenders={attackSeaFlow.attackSeaDefenders}
-        attackSeaDefenderId={attackSeaDefenderId}
-        selectAttackSeaDefender={attackSeaFlow.selectAttackSeaDefender}
-        attackSeaSelectedType={attackSeaFlow.attackSeaSelectedType}
-        setAttackSeaSelectedType={attackSeaFlow.setAttackSeaSelectedType}
-        attackSeaRegularShips={attackSeaFlow.attackSeaRegularShips}
-        setAttackSeaRegularShips={attackSeaFlow.setAttackSeaRegularShips}
-        attackSeaBlitzShips={attackSeaFlow.attackSeaBlitzShips}
-        setAttackSeaBlitzShips={attackSeaFlow.setAttackSeaBlitzShips}
-        attackSeaMaxRegularShips={attackSeaFlow.attackSeaMaxRegularShips}
-        attackSeaMaxBlitzShips={attackSeaFlow.attackSeaMaxBlitzShips}
-        attackSeaWinProbabilities={attackSeaFlow.attackSeaWinProbabilities}
-        attackSeaBlitzOutcomes={attackSeaFlow.attackSeaBlitzOutcomes}
-        attackSeaInputRef={attackSeaFlow.attackSeaInputRef}
-        attackSeaBlitzInputRef={attackSeaFlow.attackSeaBlitzInputRef}
-        attackSeaDiceRoll={attackSeaFlow.attackSeaDiceRoll}
-        attackSeaRevealing={attackSeaFlow.attackSeaRevealing}
-        attackSeaDiceOnly={attackSeaFlow.attackSeaDiceOnly}
-        submitAttackSea={attackSeaFlow.submitAttackSea}
-        players={players}
+        {...turnActionPanelsProps({
+          camera,
+          territories,
+          seaTerritories,
+          size,
+          imgDims,
+          VERTEX_RADIUS,
+          selectedTerritoryId,
+          fortifyEndTerritoryId,
+          attackEndTerritoryId,
+          sailEndTerritoryId,
+          attackSeaTerritoryId,
+          attackSeaDefenderId,
+          currentTurnPlayer,
+          gameEnded,
+          turnPhase,
+          game,
+          toxins,
+          entrenchments,
+          turnDuration,
+          paused,
+          pausedAt,
+          turnStartedAt,
+          turnExtension,
+          isMyTurn,
+          troopsToDeploy,
+          deployMaxTroops,
+          setGame,
+          tankFireId,
+          deployPanelOpen: deployTroopsPanelOpen,
+          players,
+          cardsFlow,
+          deploySeaFlow,
+          sailFlow,
+          turnFlow,
+          attackFlow,
+          attackSeaFlow,
+        })}
       />
       <GameToasts
         paused={paused}

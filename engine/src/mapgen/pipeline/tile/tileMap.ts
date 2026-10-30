@@ -226,15 +226,19 @@ function growIslands(
   islandCount: number,
 ): Uint8Array {
   const kept = new Uint8Array(neighbors.length);
+  const islandOf = new Int32Array(neighbors.length).fill(-1);
   const seeds = pickSeeds(rng, neighbors, islandCount);
   const frontiers: number[][] = seeds.map(() => []);
   const weights = seeds.map(() => randomFloat(rng, ...ISLAND_WEIGHT_RANGE));
   let keptCount = 0;
   const keep = (tile: number, island: number) => {
     kept[tile] = 1;
+    islandOf[tile] = island;
     keptCount++;
     for (const n of neighbors[tile]) if (!kept[n]) frontiers[island].push(n);
   };
+  const touchesOtherIsland = (tile: number, island: number) =>
+    neighbors[tile].some((n) => islandOf[n] >= 0 && islandOf[n] !== island);
   seeds.forEach((seed, island) => keep(seed, island));
 
   while (keptCount < keepCount) {
@@ -256,7 +260,7 @@ function growIslands(
     const tile = frontier[index];
     frontier[index] = frontier[frontier.length - 1];
     frontier.pop();
-    if (!kept[tile]) keep(tile, island);
+    if (!kept[tile] && !touchesOtherIsland(tile, island)) keep(tile, island);
   }
   return kept;
 }

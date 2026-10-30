@@ -2,9 +2,8 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { playSound } from '../../lib/sounds';
+import { FIELD_LABEL_CLASS } from '../panelStyle';
 import { useNumberInput } from './useNumberInput';
-
-const LABEL_STYLE = { minWidth: 120, flexShrink: 0 };
 
 function clampInt(
   value: number,
@@ -27,11 +26,9 @@ export function Field({
 }) {
   return (
     <div
-      className={`${wide ? 'col-12 col-md-8 col-xl-6' : 'col-12 col-sm-6 col-md-4 col-xl-3'} d-flex align-items-center gap-2`}
+      className={`${wide ? 'col-12 col-md-8 col-xl-6' : 'col-12 col-sm-6 col-md-4 col-xl-3'} d-flex flex-column`}
     >
-      <Form.Label className="mb-0" style={LABEL_STYLE}>
-        {label}
-      </Form.Label>
+      <Form.Label className={FIELD_LABEL_CLASS}>{label}</Form.Label>
       {children}
     </div>
   );
@@ -71,8 +68,8 @@ export function RangeField({
     onChange: setHi,
   });
   return (
-    <Field label={label} wide>
-      <div className="d-flex align-items-center gap-1 flex-wrap flex-sm-nowrap">
+    <Field label={label}>
+      <div className="d-flex align-items-center gap-2">
         <span className="small text-muted">From</span>
         <Form.Control
           size="sm"
@@ -91,7 +88,7 @@ export function RangeField({
             )
           }
           {...loNumberInput}
-          style={{ ...loNumberInput.style, width: 76 }}
+          style={{ ...loNumberInput.style, minWidth: 0 }}
         />
         <span className="small text-muted">To</span>
         <Form.Control
@@ -111,7 +108,7 @@ export function RangeField({
             )
           }
           {...hiNumberInput}
-          style={{ ...hiNumberInput.style, width: 76 }}
+          style={{ ...hiNumberInput.style, minWidth: 0 }}
         />
       </div>
     </Field>

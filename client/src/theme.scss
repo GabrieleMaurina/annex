@@ -1,0 +1,73 @@
+$primary: #e3a33b;
+$secondary: #3a4452;
+$success: #3a9a5d;
+$info: #3a9bd5;
+$warning: #ef8a3a;
+$danger: #d64545;
+$light: #e3e8ee;
+$dark: #0b0f14;
+$min-contrast-ratio: 4.3;
+
+$body-bg-dark: #10151c;
+$body-color-dark: #e3e8ee;
+$body-secondary-bg-dark: #232c38;
+$body-tertiary-bg-dark: #18202a;
+$border-color-dark: #2e3947;
+
+$font-family-sans-serif:
+  'Inter Variable',
+  system-ui,
+  -apple-system,
+  'Segoe UI',
+  Roboto,
+  'Helvetica Neue',
+  Arial,
+  sans-serif,
+  'Apple Color Emoji',
+  'Segoe UI Emoji',
+  'Segoe UI Symbol',
+  'Noto Color Emoji';
+$headings-font-family: 'Barlow Condensed', $font-family-sans-serif;
+$headings-font-weight: 700;
+$font-size-base: 0.9375rem;
+
+$border-radius: 0.5rem;
+$border-radius-sm: 0.375rem;
+$border-radius-lg: 0.75rem;
+$box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.45);
+$box-shadow-sm: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.35);
+
+$component-active-color: $dark;
+$btn-font-weight: 600;
+
+$card-bg: var(--bs-tertiary-bg);
+$dropdown-bg: var(--bs-tertiary-bg);
+$modal-content-bg: var(--bs-tertiary-bg);
+$tooltip-opacity: 1;
+$toast-background-color: var(--bs-tertiary-bg);
+
+@import 'bootstrap/scss/bootstrap';
+
+.btn-secondary {
+  @include button-variant(
+    $secondary,
+    $secondary,
+    $hover-background: tint-color($secondary, 12%),
+    $hover-border: tint-color($secondary, 12%),
+    $active-background: tint-color($secondary, 20%),
+    $active-border: tint-color($secondary, 20%)
+  );
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--bs-body-color);
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-color: var(--bs-emphasis-color);
+  --bs-btn-hover-bg: var(--bs-secondary-bg);
+  --bs-btn-hover-border-color: var(--bs-border-color);
+  --bs-btn-active-color: var(--bs-emphasis-color);
+  --bs-btn-active-bg: #{tint-color($secondary, 12%)};
+  --bs-btn-active-border-color: #{tint-color($secondary, 12%)};
+  --bs-btn-disabled-color: var(--bs-secondary-color);
+  --bs-btn-disabled-border-color: var(--bs-border-color);
+}

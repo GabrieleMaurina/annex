@@ -55,7 +55,6 @@ export function PlayerFilter({
       <SearchMultiSelect
         label="Players"
         placeholder="Name"
-        inputWidth="10ch"
         maxLength={10}
         maxSelected={MAX_SELECTED_PLAYERS}
         search={searchPlayers}
@@ -106,7 +105,6 @@ export function MapFilterFields({
       <Field label="Map">
         <Form.Select
           size="sm"
-          className="w-auto"
           value={mapName}
           onChange={(e) => {
             const value = e.target.value;
@@ -131,7 +129,6 @@ export function MapFilterFields({
           <Field label="Generated map size">
             <Form.Select
               size="sm"
-              className="w-auto"
               value={size}
               onChange={(e) => onSize(e.target.value)}
             >
@@ -146,7 +143,6 @@ export function MapFilterFields({
           <Field label="Generated map type">
             <Form.Select
               size="sm"
-              className="w-auto"
               value={type}
               onChange={(e) => {
                 onType(e.target.value);
@@ -165,7 +161,6 @@ export function MapFilterFields({
             <Field label="Generated map tile">
               <Form.Select
                 size="sm"
-                className="w-auto"
                 value={tile}
                 onChange={(e) => onTile(e.target.value)}
               >
@@ -181,7 +176,6 @@ export function MapFilterFields({
           <Field label="Generated map fill">
             <Form.Select
               size="sm"
-              className="w-auto"
               value={fill}
               onChange={(e) => onFill(e.target.value)}
             >
@@ -196,7 +190,6 @@ export function MapFilterFields({
           <Field label="Generated map seas">
             <Form.Select
               size="sm"
-              className="w-auto"
               value={seas}
               onChange={(e) => onSeas(e.target.value)}
             >
@@ -208,7 +201,6 @@ export function MapFilterFields({
           <Field label="Generated map timed connections">
             <Form.Select
               size="sm"
-              className="w-auto"
               value={timed}
               onChange={(e) => onTimed(e.target.value)}
             >
@@ -220,7 +212,6 @@ export function MapFilterFields({
           <Field label="Generated map unlockable">
             <Form.Select
               size="sm"
-              className="w-auto"
               value={unlockable}
               onChange={(e) => onUnlockable(e.target.value)}
             >
@@ -255,7 +246,6 @@ export function SettingFilterSections({
                 <Field key={def.key} label={def.label}>
                   <Form.Select
                     size="sm"
-                    className="w-auto"
                     value={settings[def.key] ?? ''}
                     onChange={(e) => onChange(def.key, e.target.value)}
                   >

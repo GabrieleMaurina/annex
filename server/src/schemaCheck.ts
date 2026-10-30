@@ -4,12 +4,15 @@ import { connectDb } from './db';
 import { replaceGamesMapId } from './db/games';
 import { REPLAY_MAPS, replayMapId } from './db/maps/replayMaps';
 import { getCollection, getDb } from './db/mongo';
+import { DEFAULT_CLIENT_SETTINGS } from './db/users/preferences';
 
 type Node = Record<string, unknown>;
 
 const NUMERIC = ['number', 'int', 'long', 'double', 'decimal'];
 const FIELD_DEFAULTS: Record<string, unknown> = {
   borderColors: DEFAULT_BORDER_COLORS,
+  effectsVolume: DEFAULT_CLIENT_SETTINGS.effectsVolume,
+  musicVolume: DEFAULT_CLIENT_SETTINGS.musicVolume,
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {

@@ -388,12 +388,7 @@ function App() {
 
   return (
     <>
-      {!inGame && (
-        <SettingsMenu
-          shareUrl={window.location.href}
-          onOpenChange={setSettingsMenuOpen}
-        />
-      )}
+      {!inGame && <SettingsMenu onOpenChange={setSettingsMenuOpen} />}
       {!onGameMap && !onReplayMap && !onMapEditor && (
         <RollingTanks spawnInitial={pathname === '/'} />
       )}

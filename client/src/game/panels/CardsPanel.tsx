@@ -17,7 +17,7 @@ interface Props {
   title?: string;
 }
 
-const SELECTED_BORDER_COLOR = '#0d6efd';
+const SELECTED_BORDER_COLOR = 'var(--bs-primary)';
 
 export function CardFace({
   card,
@@ -173,7 +173,11 @@ function CardsPanel({
             <div className="fw-bold lh-1 mb-2 mt-2">Next Sets</div>
             <div className="d-flex gap-2 mb-2">
               {upcomingSetValues.map((value, i) => (
-                <Badge key={i} bg={i === 0 ? 'primary' : 'secondary'}>
+                <Badge
+                  key={i}
+                  bg={i === 0 ? 'primary' : 'secondary'}
+                  text={i === 0 ? 'dark' : undefined}
+                >
                   +{value}
                 </Badge>
               ))}

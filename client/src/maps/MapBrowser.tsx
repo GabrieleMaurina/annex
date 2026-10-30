@@ -216,7 +216,6 @@ function MapBrowser({
               <Field label="Owner">
                 <Form.Select
                   size="sm"
-                  className="w-auto"
                   value={owner}
                   onChange={(e) =>
                     resetPage(setOwner)(e.target.value as OwnerFilter)
@@ -232,7 +231,6 @@ function MapBrowser({
               <Field label="Likes">
                 <Form.Select
                   size="sm"
-                  className="w-auto"
                   value={like}
                   onChange={(e) =>
                     resetPage(setLike)(e.target.value as LikeFilter)
@@ -247,7 +245,6 @@ function MapBrowser({
             <Field label="Generated type">
               <Form.Select
                 size="sm"
-                className="w-auto"
                 value={genType}
                 onChange={(e) => {
                   resetPage(setGenType)(e.target.value as GenerationType | '');
@@ -265,7 +262,6 @@ function MapBrowser({
               <Field label="Generated tile">
                 <Form.Select
                   size="sm"
-                  className="w-auto"
                   value={genTile}
                   onChange={(e) =>
                     resetPage(setGenTile)(e.target.value as TileShape | '')
@@ -283,7 +279,6 @@ function MapBrowser({
             <Field label="Generated fill">
               <Form.Select
                 size="sm"
-                className="w-auto"
                 value={genFill}
                 onChange={(e) =>
                   resetPage(setGenFill)(e.target.value as Fill | '')
@@ -298,7 +293,6 @@ function MapBrowser({
             <Field label="Generated size">
               <Form.Select
                 size="sm"
-                className="w-auto"
                 value={genSize}
                 onChange={(e) =>
                   resetPage(setGenSize)(e.target.value as MapSize | '')
@@ -314,7 +308,6 @@ function MapBrowser({
             <Field label="Generated seas">
               <Form.Select
                 size="sm"
-                className="w-auto"
                 value={genSeas}
                 onChange={(e) => resetPage(setGenSeas)(e.target.value)}
               >
@@ -326,7 +319,6 @@ function MapBrowser({
             <Field label="Generated timed connections">
               <Form.Select
                 size="sm"
-                className="w-auto"
                 value={genTimed}
                 onChange={(e) => resetPage(setGenTimed)(e.target.value)}
               >
@@ -338,7 +330,6 @@ function MapBrowser({
             <Field label="Generated unlockable">
               <Form.Select
                 size="sm"
-                className="w-auto"
                 value={genUnlockable}
                 onChange={(e) => resetPage(setGenUnlockable)(e.target.value)}
               >

@@ -82,7 +82,7 @@ export default function EmojiOverlay({
         >
           <style>{`
             .annex-emoji-btn:hover {
-              background-color: rgba(127, 127, 127, 0.35) !important;
+              background-color: var(--bs-border-color) !important;
               border-radius: 4px;
             }
           `}</style>
@@ -112,11 +112,10 @@ export default function EmojiOverlay({
             >
               <button
                 type="button"
-                className="annex-emoji-btn border-0 border-start d-inline-flex align-items-center justify-content-center lh-1"
+                className="annex-emoji-btn border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
                 style={{
                   fontSize: 24,
                   padding: '3px 2px 5px 2px',
-                  backgroundColor: 'rgba(180, 180, 180, 0.35)',
                   borderRadius: 4,
                 }}
                 onClick={() => {
@@ -144,11 +143,10 @@ export default function EmojiOverlay({
             <Tip text="View profile" placement="bottom">
               <button
                 type="button"
-                className="annex-emoji-btn border-0 border-start d-inline-flex align-items-center justify-content-center lh-1"
+                className="annex-emoji-btn border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
                 style={{
                   fontSize: 24,
                   padding: '3px 2px 5px 2px',
-                  backgroundColor: 'rgba(180, 180, 180, 0.35)',
                   borderRadius: 4,
                 }}
                 onClick={() =>

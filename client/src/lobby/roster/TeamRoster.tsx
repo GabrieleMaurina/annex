@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from 'react-bootstrap';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import Tip from '../../common/tooltips/Tip';
 import type { RosterProps } from '../PlayerRoster';
 import RosterTable from './RosterTable';
@@ -75,7 +76,7 @@ function TeamRoster({ roster }: { roster: RosterProps }) {
                     }
                     disabled={!canRemove}
                   >
-                    ✕
+                    <WhiteIcon path="/icons/close.svg" size={12} />
                   </Button>
                 </Tip>
               )}

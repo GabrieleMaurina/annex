@@ -1,3 +1,4 @@
+import { CANVAS_FONT_FAMILY } from '../GameMap/helpers';
 import { pseudoRandom, regularPolygonPath } from './state';
 
 const TOXIN_CLOUD_SCALE = 1.4;
@@ -132,7 +133,7 @@ export function drawToxinCloud(
 
   if (!permanent) {
     ctx.save();
-    ctx.font = `bold ${Math.max(10, radius * 0.8)}px sans-serif`;
+    ctx.font = `bold ${Math.max(10, radius * 0.8)}px ${CANVAS_FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const tx = x + cloudRadius * 0.7;

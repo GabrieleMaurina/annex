@@ -64,7 +64,7 @@ export const TERRAIN_MAX_LAND_NEIGHBORS_PER_SEA: Record<MapSize, number> = {
 };
 
 export const FILL_THRESHOLDS: Record<Fill, number> = {
-  full: 0.36,
+  full: 0.3,
   mixed: 0.48,
   sparse: 0.62,
 };

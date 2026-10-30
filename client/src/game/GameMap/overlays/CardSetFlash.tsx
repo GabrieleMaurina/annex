@@ -1,3 +1,4 @@
+import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import type { Card } from '../../../lib/types';
 import { CARD_SET_FLASH_DURATION } from '../../animations';
 import { CardFace } from '../../panels/CardsPanel';
@@ -5,7 +6,7 @@ import { CardFace } from '../../panels/CardsPanel';
 export default function CardSetFlash({ cards }: { cards: Card[] }) {
   return (
     <div
-      className="position-fixed top-50 start-50 d-flex gap-3 bg-body bg-opacity-75 border rounded p-3"
+      className={`position-fixed top-50 start-50 d-flex gap-3 ${PANEL_BG_CLASS} border rounded p-3`}
       style={{
         zIndex: 4,
         pointerEvents: 'none',

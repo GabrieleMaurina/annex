@@ -14,6 +14,7 @@ const HEIGHT = 280;
 const MARGIN = { top: 10, right: 12, bottom: 22, left: 44 };
 const Y_TICKS = 4;
 const MAX_ROUND_LABELS = 10;
+const DASH = 6;
 
 interface Sample {
   territories: ReplayTerritory[];
@@ -152,14 +153,49 @@ function GameStatsChart({ players, replay, isCapitals, isPointsMode }: Props) {
       ),
     [frames],
   );
+  const positions = useMemo(
+    () => [
+      0,
+      ...roundStarts.flatMap(({ index }, k) => {
+        const count = (roundStarts[k + 1]?.index ?? frames.length) - index;
+        return Array.from({ length: count }, (_, j) => k + (j + 1) / count);
+      }),
+    ],
+    [roundStarts, frames.length],
+  );
+  const runs = useMemo(() => {
+    const groups = Array.from({ length: samples.length - 1 }, (_, s) =>
+      series.map(({ values }) =>
+        series.flatMap((other, j) =>
+          other.values[s] === values[s] && other.values[s + 1] === values[s + 1]
+            ? [j]
+            : [],
+        ),
+      ),
+    );
+    return series.flatMap(({ player, values }, p) => {
+      const starts = groups.flatMap((group, s) =>
+        s === 0 || group[p].join() !== groups[s - 1][p].join() ? [s] : [],
+      );
+      return starts.map((start, k) => ({
+        player,
+        values,
+        start,
+        end: starts[k + 1] ?? groups.length,
+        rank: groups[start][p].indexOf(p),
+        size: groups[start][p].length,
+      }));
+    });
+  }, [samples.length, series]);
 
   const maxValue = Math.max(1, ...series.flatMap((s) => s.values));
   const yStep = Math.ceil(maxValue / Y_TICKS);
   const yMax = yStep * Y_TICKS;
   const plotWidth = WIDTH - MARGIN.left - MARGIN.right;
   const plotHeight = HEIGHT - MARGIN.top - MARGIN.bottom;
-  const x = (index: number) =>
-    MARGIN.left + (index / Math.max(1, samples.length - 1)) * plotWidth;
+  const xAt = (position: number) =>
+    MARGIN.left + (position / Math.max(1, roundStarts.length)) * plotWidth;
+  const x = (sample: number) => xAt(positions[sample]);
   const y = (value: number) => MARGIN.top + (1 - value / yMax) * plotHeight;
   const labelEvery = Math.ceil(roundStarts.length / MAX_ROUND_LABELS);
 
@@ -209,31 +245,37 @@ function GameStatsChart({ players, replay, isCapitals, isPointsMode }: Props) {
             </g>
           ),
         )}
-        {roundStarts
-          .filter((_, i) => i % labelEvery === 0)
-          .map(({ index, round }) => (
-            <text
-              key={`r${round}`}
-              x={x(index)}
-              y={HEIGHT - 6}
-              textAnchor="middle"
-              fontSize={11}
-              fill="currentColor"
-              className="text-body-secondary"
-            >
-              Round {round}
-            </text>
-          ))}
-        {series.map(({ player, values }) => (
+        {roundStarts.map(
+          ({ round }, k) =>
+            k % labelEvery === 0 && (
+              <text
+                key={`r${round}`}
+                x={xAt(k + 0.5)}
+                y={HEIGHT - 6}
+                textAnchor="middle"
+                fontSize={11}
+                fill="currentColor"
+                className="text-body-secondary"
+              >
+                Round {round}
+              </text>
+            ),
+        )}
+        {runs.map(({ player, values, start, end, rank, size }) => (
           <path
-            key={player.id}
+            key={`${player.id}-${start}`}
             d={values
-              .map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(v)}`)
+              .slice(start, end + 1)
+              .map((v, k) => `${k === 0 ? 'M' : 'L'}${x(start + k)},${y(v)}`)
               .join(' ')}
             fill="none"
             stroke={playerColor(player.color)}
             strokeWidth={2}
             strokeLinejoin="round"
+            strokeDasharray={
+              size > 1 ? `${DASH} ${(size - 1) * DASH}` : undefined
+            }
+            strokeDashoffset={-rank * DASH}
           >
             <title>{player.name}</title>
           </path>

@@ -3,7 +3,7 @@ import {
   battleStatistics,
   defenceDiceFor,
   distortProbability,
-  expectedRoundLosses,
+  expectedRollLosses,
   fairBlitz,
   gameDiceRules,
   trueWinProb,
@@ -20,7 +20,7 @@ const BASE_TROOPS_PER_DEFENDER = 0.95;
 const BASE_FORTIFIED_TROOPS_PER_DEFENDER = 1.4;
 
 export function lossRatio(dice: DiceRules): number {
-  const { attackLosses, defenceLosses } = expectedRoundLosses(dice);
+  const { attackLosses, defenceLosses } = expectedRollLosses(dice);
   return attackLosses / defenceLosses;
 }
 

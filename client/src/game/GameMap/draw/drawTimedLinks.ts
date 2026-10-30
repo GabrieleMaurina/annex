@@ -12,6 +12,7 @@ import {
   regionAt,
   type ClickableRegions,
 } from '../../regions/clickableRegions';
+import { CANVAS_FONT_FAMILY } from '../helpers';
 import type { TimedLink } from '../hooks/view/useTimedConnections';
 
 const HOURGLASS_SRC = '/icons/hourglass.svg';
@@ -243,7 +244,7 @@ function drawCount(
   scale: number,
 ) {
   ctx.save();
-  ctx.font = `bold ${fontSize}px sans-serif`;
+  ctx.font = `bold ${fontSize}px ${CANVAS_FONT_FAMILY}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';

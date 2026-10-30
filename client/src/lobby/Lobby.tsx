@@ -348,7 +348,12 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
           selectEarthMap={selectEarthMap}
           headerActions={
             isHost && (
-              <Button disabled={!canStart} onClick={startGame}>
+              <Button
+                size="lg"
+                className="px-5"
+                disabled={!canStart}
+                onClick={startGame}
+              >
                 Start
               </Button>
             )

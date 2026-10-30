@@ -7,6 +7,9 @@ import {
 } from 'engine';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Form, Modal, ProgressBar } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
+import PanelHeader from '../../../common/PanelHeader';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../../common/panelStyle';
 import Help from '../../../common/tooltips/Help';
 import {
   EARTH_MOUNTAINS_HELP,
@@ -477,30 +480,21 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
           <Button
             variant="secondary"
             size="sm"
-            className="position-absolute top-0 end-0 m-2 z-2"
+            className="position-absolute top-0 end-0 m-3 z-2 d-flex align-items-center justify-content-center"
+            style={{ width: 28, height: 28, padding: 0 }}
             onClick={() => setCollapsed(false)}
           >
-            ☰
+            <WhiteIcon path="/icons/menu.svg" alt="Menu" />
           </Button>
         ) : (
           <div
-            className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column gap-2 overflow-y-auto overflow-x-hidden no-scrollbar z-2"
+            className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3 d-flex flex-column gap-2 overflow-y-auto overflow-x-hidden no-scrollbar z-2`}
             style={{
-              width: `min(${PANEL_WIDTH}px, calc(100vw - 1rem))`,
-              maxHeight: 'calc(100dvh - 1rem)',
+              width: `min(${PANEL_WIDTH}px, calc(100vw - 2rem))`,
+              maxHeight: 'calc(100dvh - 2rem)',
             }}
           >
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => setCollapsed(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') setCollapsed(true);
-              }}
-              className="fw-bold text-center"
-            >
-              Earth
-            </div>
+            <PanelHeader title="Earth" onClose={() => setCollapsed(true)} />
             <SearchBox
               key={searchKey}
               initialQuery={place?.name ?? ''}
@@ -519,7 +513,8 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
                 Only {focusLabel(focusPlaces.map((one) => one.name))}
                 <button
                   type="button"
-                  className="btn-close btn-close-white"
+                  className="btn-close"
+                  data-bs-theme="light"
                   aria-label="Include the surroundings"
                   disabled={!!job}
                   onClick={() => {
@@ -662,7 +657,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
           </div>
         )}
         <div
-          className="position-absolute bottom-0 end-0 m-2 px-2 bg-body bg-opacity-75 rounded small text-muted text-end z-1"
+          className={`position-absolute bottom-0 end-0 m-2 px-2 ${PANEL_BG_CLASS} rounded small text-muted text-end z-1`}
           style={{ maxWidth: 'calc(100% - 1rem)' }}
         >
           {CREDITS}

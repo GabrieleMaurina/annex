@@ -7,17 +7,16 @@ import { contrastTextColor, playerColor } from '../lib/palette';
 import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
 import { useDismissOnOutsideClick } from './dismiss/useDismissOnOutsideClick';
-import { PANEL_CLASS } from './panelStyle';
+import { PANEL_BG_CLASS, PANEL_CLASS } from './panelStyle';
 
 interface Props {
   nameById: Map<number, string>;
   colorById: Map<number, number>;
-  transparent?: boolean;
   open: boolean;
   setOpen: (open: boolean) => void;
 }
 
-function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
+function Chat({ nameById, colorById, open, setOpen }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [hasProfanity, setHasProfanity] = useState(false);
@@ -82,9 +81,7 @@ function Chat({ nameById, colorById, transparent, open, setOpen }: Props) {
     <div
       ref={containerRef}
       className={`position-fixed bottom-0 start-0 m-3 ${
-        open
-          ? `${PANEL_CLASS} bg-body${transparent ? ' bg-opacity-75' : ''}`
-          : ''
+        open ? `${PANEL_CLASS} ${PANEL_BG_CLASS}` : ''
       }`}
       style={{ zIndex: 1 }}
     >

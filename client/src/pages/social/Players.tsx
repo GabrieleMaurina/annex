@@ -140,8 +140,8 @@ function Players() {
         value={sortOption}
         onChange={(v) => resetPage(setSortOption)(v as SortOption)}
       >
-        <option value="highestElo">Highest elo</option>
-        <option value="lowestElo">Lowest elo</option>
+        <option value="highestElo">Highest Elo</option>
+        <option value="lowestElo">Lowest Elo</option>
         <option value="nameAsc">Name A-Z</option>
         <option value="nameDesc">Name Z-A</option>
         <option value="mostGames">Most games</option>
@@ -154,7 +154,6 @@ function Players() {
             <Field label="Username">
               <Form.Control
                 size="sm"
-                style={{ width: '10ch' }}
                 maxLength={10}
                 value={username}
                 onChange={(e) => resetPage(setUsername)(e.target.value)}

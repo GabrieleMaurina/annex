@@ -18,6 +18,7 @@ import {
 } from '../common/inputs/filterControls';
 import type { SearchSelectItem } from '../common/inputs/SearchMultiSelect';
 import InstallButton from '../common/InstallButton';
+import SharePageButton from '../common/menus/SharePageButton';
 import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { GAME_STATE_COLORS, contrastTextColor } from '../lib/palette';
@@ -461,6 +462,11 @@ function Home({
           >
             Create Offline
           </Button>
+          <SharePageButton
+            title="Annex"
+            path="/"
+            tooltip="Share Annex with friends"
+          />
         </div>
       </div>
 
@@ -491,7 +497,6 @@ function Home({
                 <Field label="Name">
                   <Form.Control
                     size="sm"
-                    className="w-auto"
                     placeholder="Game name"
                     maxLength={MAX_GAME_NAME_LENGTH}
                     value={name}
@@ -501,7 +506,6 @@ function Home({
                 <Field label="Mode">
                   <Form.Select
                     size="sm"
-                    className="w-auto"
                     value={mode}
                     onChange={(e) => resetPage(setMode)(e.target.value)}
                   >
@@ -516,7 +520,6 @@ function Home({
                 <Field label="State">
                   <Form.Select
                     size="sm"
-                    className="w-auto"
                     value={phase}
                     onChange={(e) =>
                       resetPage(setPhase)(
@@ -533,7 +536,6 @@ function Home({
                 <Field label="Password">
                   <Form.Select
                     size="sm"
-                    className="w-auto"
                     value={password}
                     onChange={(e) =>
                       resetPage(setPassword)(
@@ -549,7 +551,6 @@ function Home({
                 <Field label="Bots">
                   <Form.Select
                     size="sm"
-                    className="w-auto"
                     value={hasBots}
                     onChange={(e) =>
                       resetPage(setHasBots)(e.target.value as '' | 'yes' | 'no')
@@ -561,7 +562,7 @@ function Home({
                   </Form.Select>
                 </Field>
                 <RangeField
-                  label="Players"
+                  label="Player count"
                   min={PLAYERS_MIN}
                   max={PLAYERS_MAX}
                   lo={playersMin}

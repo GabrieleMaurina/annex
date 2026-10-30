@@ -1,3 +1,4 @@
+import { CANVAS_FONT_FAMILY } from '../GameMap/helpers';
 import { makeEntrenchParticles } from './entrench';
 import { makeExplosionParticles } from './nukes/explosion';
 import { type DustPuff, makeUnlockEffect, type RockPiece } from './unlock';
@@ -308,7 +309,7 @@ export function drawLabel(
   const x = p.x;
   const y = p.y - radius - (LABEL_GAP + labelProgress * LABEL_RISE) * scale;
   ctx.save();
-  ctx.font = `bold ${radius}px sans-serif`;
+  ctx.font = `bold ${radius}px ${CANVAS_FONT_FAMILY}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   ctx.lineWidth = radius * 0.15;

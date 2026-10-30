@@ -3,12 +3,14 @@ import type { CSSProperties, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button, Dropdown, Form, Modal } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
+import { FIELD_LABEL_CLASS } from '../../common/panelStyle';
 import Help from '../../common/tooltips/Help';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { getGeneratedMapData, loadGameMap } from '../../game/mapData';
 import { loadClickableRegions } from '../../game/regions/clickableRegions';
 import { isRegeneratingMap } from '../../lib/gameSetup';
+import { getGameSettings } from '../../lib/player';
 import { playSound, useToggleSound } from '../../lib/sounds';
 import type {
   Account,
@@ -21,17 +23,19 @@ import type {
 import { GAME_MODES } from '../../lib/types';
 import EarthErrorBoundary from '../../maps/editor/world/EarthErrorBoundary';
 import MapBrowser from '../../maps/MapBrowser';
-import MapGenerationPanel, {
-  type MapGenerationPanelHandle,
-} from '../MapGenerationPanel';
+import MapGenerationModal, {
+  type MapGenerationModalHandle,
+} from '../../maps/MapGenerationModal';
 import MapLikeButton from '../MapLikeButton';
-import { randomGameSettings, titleCase } from './gameSettings';
+import {
+  DEFAULT_GAME_SETTINGS,
+  randomGameSettings,
+  titleCase,
+} from './gameSettings';
 import GameSettingsFields from './GameSettingsFields';
 import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
 
-const LABEL_STYLE = { minWidth: 130, flexShrink: 0 };
-const MAP_TEXT_COLOR = 'rgb(222, 226, 230)';
-const MAP_TEXT_HOVER_COLOR = 'rgb(59, 59, 59)';
+const HEADER_FIELD_STYLE = { minWidth: 220 };
 const MAP_TOOLTIP_STYLE = {
   '--bs-tooltip-max-width': '500px',
 } as CSSProperties;
@@ -73,45 +77,6 @@ interface Props {
   collapsible?: boolean;
 }
 
-const DEFAULT_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
-  alliances: 'off',
-  anonymous: 'off',
-  blitz: 'balanced',
-  bounties: 'off',
-  capitalRefund: 'off',
-  cards: 'constant',
-  continents: '1x',
-  defenceDice: 2,
-  attackDice: 3,
-  diceTies: 'defence',
-  disconnectBotDifficulty: 'random',
-  disconnectBotPersonality: 'random',
-  entrenchments: 'off',
-  fogOfWar: 'off',
-  fortification: 'connected',
-  gameMode: 'supremacy',
-  initialTroops: 3,
-  minTroops: 3,
-  troopsPerTerritory: 1 / 3,
-  maxPoints: 20,
-  hills: 3,
-  minRank: 'private',
-  minGames: 0,
-  minAccountAge: 'none',
-  password: null,
-  placement: 'random',
-  portals: 'off',
-  radiations: 'off',
-  nukes: 'off',
-  starvation: 'off',
-  supplyLines: 'off',
-  toxins: 'off',
-  turnDuration: 120,
-  attackIncrement: 0,
-  roundTroops: 'off',
-  visibility: 'public',
-};
-
 function SettingsPanel({
   game,
   gameMeta = null,
@@ -141,7 +106,7 @@ function SettingsPanel({
   const [earthUploading, setEarthUploading] = useState(false);
   const [mapRegenerating, setMapRegenerating] = useState(isRegeneratingMap);
   const [seedCopied, setSeedCopied] = useState(false);
-  const mapGenRef = useRef<MapGenerationPanelHandle>(null);
+  const mapGenRef = useRef<MapGenerationModalHandle>(null);
   const whiteMapIcon = useWhiteIcon('/icons/map.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
 
@@ -247,7 +212,6 @@ function SettingsPanel({
       type="button"
       bsPrefix="form-select"
       className="w-auto d-flex align-items-center gap-2"
-      style={{ color: MAP_TEXT_COLOR }}
     >
       {currentImageSrc && (
         <img
@@ -293,55 +257,46 @@ function SettingsPanel({
     <>
       {settingsAction('Reset', () =>
         applySettings({
-          ...DEFAULT_SETTINGS,
+          ...DEFAULT_GAME_SETTINGS,
           ...(connector.isOffline() ? { anonymous: undefined } : {}),
         }),
       )}
-      {settingsAction('Randomize', () =>
-        applySettings(randomGameSettings(DEFAULT_SETTINGS)),
-      )}
+      {settingsAction('Randomize', () => applySettings(randomGameSettings()))}
     </>
   );
 
   return (
     <div className="flex-grow-1">
-      <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-1">
-        <div className="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2 flex-grow-1 align-self-stretch">
-          <div className="col d-flex align-items-center flex-wrap gap-2">
-            <Form.Label
-              className="mb-0 d-flex align-items-center gap-1"
-              style={LABEL_STYLE}
+      <div className="d-flex flex-wrap align-items-end gap-3 mb-2">
+        <div className="d-flex flex-column" style={HEADER_FIELD_STYLE}>
+          <Form.Label className={FIELD_LABEL_CLASS}>
+            Game Mode
+            <Help>{GAME_MODE_HELP}</Help>
+          </Form.Label>
+          {isHost ? (
+            <Form.Select
+              value={game.gameMode}
+              onChange={(e) =>
+                applySettings({ gameMode: e.target.value as GameMode })
+              }
             >
-              Game Mode
-              <Help>{GAME_MODE_HELP}</Help>
-            </Form.Label>
-            {isHost ? (
-              <Form.Select
-                className="w-auto"
-                value={game.gameMode}
-                onChange={(e) =>
-                  applySettings({ gameMode: e.target.value as GameMode })
-                }
-              >
-                {GAME_MODES.map((m) => (
-                  <option key={m} value={m}>
-                    {titleCase(m)}
-                  </option>
-                ))}
-              </Form.Select>
-            ) : (
-              <span>{titleCase(game.gameMode)}</span>
-            )}
-          </div>
+              {GAME_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {titleCase(m)}
+                </option>
+              ))}
+            </Form.Select>
+          ) : (
+            <span>{titleCase(game.gameMode)}</span>
+          )}
+        </div>
 
-          <div className="col d-flex align-items-center flex-wrap gap-2">
-            <Form.Label
-              className="mb-0 d-flex align-items-center gap-1"
-              style={LABEL_STYLE}
-            >
-              Map
-              <Help>{MAP_HELP}</Help>
-            </Form.Label>
+        <div className="d-flex flex-column" style={HEADER_FIELD_STYLE}>
+          <Form.Label className={FIELD_LABEL_CLASS}>
+            Map
+            <Help>{MAP_HELP}</Help>
+          </Form.Label>
+          <div className="d-flex align-items-center gap-2">
             {isHost ? (
               <Dropdown
                 onToggle={() => playSound('click')}
@@ -377,16 +332,7 @@ function SettingsPanel({
                     {mapToggle}
                   </Tip>
                 )}
-                <Dropdown.Menu
-                  className="rounded-0 p-0"
-                  style={
-                    {
-                      '--bs-dropdown-link-color': MAP_TEXT_COLOR,
-                      '--bs-dropdown-link-hover-bg': 'rgb(153, 200, 255)',
-                      '--bs-dropdown-link-hover-color': MAP_TEXT_HOVER_COLOR,
-                    } as CSSProperties
-                  }
-                >
+                <Dropdown.Menu className="rounded-0 p-0">
                   <Dropdown.Item
                     as="button"
                     eventKey={GENERATE_MAP_OPTION}
@@ -461,16 +407,17 @@ function SettingsPanel({
           </div>
         </div>
 
-        {headerActions}
+        {headerActions && <div className="ms-auto">{headerActions}</div>}
       </div>
 
       {isHost && (
-        <MapGenerationPanel
+        <MapGenerationModal
           ref={mapGenRef}
-          open={mapGenOpen}
-          currentMapName={game.mapName}
+          show={mapGenOpen}
           onHide={() => setMapGenOpen(false)}
-          generateMap={generateMap}
+          initial={getGameSettings().mapGeneration}
+          preview={getGeneratedMapData(game.mapName) ?? null}
+          generate={generateMap}
         />
       )}
 

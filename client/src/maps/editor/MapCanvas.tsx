@@ -492,7 +492,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    ctx.fillStyle = '#212529';
+    ctx.fillStyle = '#10151c';
     ctx.fillRect(0, 0, size.w, size.h);
 
     const { zoom } = transform;

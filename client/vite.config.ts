@@ -2,12 +2,23 @@ import { defineConfig, normalizePath } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
+import { readdirSync } from 'node:fs'
 
 const engineDist = normalizePath(
   fileURLToPath(new URL('../engine/dist', import.meta.url)),
 )
 
+const musicTracks = readdirSync(
+  fileURLToPath(new URL('./public/music', import.meta.url)),
+  { recursive: true, encoding: 'utf8' },
+)
+  .filter(file => file.endsWith('.mp3'))
+  .map(normalizePath)
+
 export default defineConfig({
+  define: {
+    __MUSIC_TRACKS__: JSON.stringify(musicTracks),
+  },
   plugins: [
     react(),
     {
@@ -22,6 +33,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
+        globPatterns: ['**/*.{js,wasm,css,html,woff2}'],
         globIgnores: [
           '**/WorldMapModal-*',
           '**/maplibre-gl-worker-*.js',
@@ -37,8 +49,8 @@ export default defineConfig({
         start_url: '/',
         display: 'standalone',
         orientation: 'landscape',
-        background_color: '#212529',
-        theme_color: '#212529',
+        background_color: '#10151c',
+        theme_color: '#10151c',
         icons: [
           {
             src: '/favicon.svg',
@@ -49,6 +61,14 @@ export default defineConfig({
       },
     }),
   ],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        quietDeps: true,
+        silenceDeprecations: ['import'],
+      },
+    },
+  },
   build: {
     rolldownOptions: {
       output: {

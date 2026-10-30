@@ -1,5 +1,6 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { Badge, Button } from 'react-bootstrap';
+import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import Tip from '../../../common/tooltips/Tip';
 import type { Card, GameState, TurnPhase } from '../../../lib/types';
 import { comboKey, type EvaluatedCombo } from '../../logic/cards';
@@ -311,7 +312,7 @@ export default function MapButtonsColumn({
           {awardedCards.map(({ id, card }) => (
             <div
               key={id}
-              className="bg-body bg-opacity-75 border rounded p-2 d-flex align-items-center gap-2"
+              className={`${PANEL_BG_CLASS} border rounded p-2 d-flex align-items-center gap-2`}
             >
               <CardFace card={card} size={36} />
               <span className="small">New card!</span>

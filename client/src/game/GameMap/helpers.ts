@@ -36,6 +36,7 @@ export const TOP_BUTTON_GAP = 16;
 export const DEFAULT_CARDS_BUTTONS_TOP = 63;
 export const PLACEMENT_PHASE_DURATION = 10;
 export const CAPITAL_PHASE_DURATION = 60;
+export const CANVAS_FONT_FAMILY = "'Inter Variable', sans-serif";
 
 export const UNCLAIMED_TERRITORY_COLOR = '#6c757d';
 export const HILL_FILL = '#8b5a2b';

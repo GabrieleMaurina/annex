@@ -11,6 +11,8 @@ import {
 export interface ClientSettings {
   muted: boolean;
   volume: number;
+  effectsVolume: number;
+  musicVolume: number;
   animationsDisabled: boolean;
   troopsPercentage: boolean;
 }
@@ -228,6 +230,8 @@ const MAX_FILTER_PLAYERS = 10;
 export const DEFAULT_CLIENT_SETTINGS: ClientSettings = {
   muted: false,
   volume: 0.5,
+  effectsVolume: 1,
+  musicVolume: 1,
   animationsDisabled: false,
   troopsPercentage: false,
 };
@@ -305,11 +309,20 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
 export const preferencesSchemaProperties = {
   clientSettings: {
     bsonType: 'object',
-    required: ['muted', 'volume', 'animationsDisabled', 'troopsPercentage'],
+    required: [
+      'muted',
+      'volume',
+      'effectsVolume',
+      'musicVolume',
+      'animationsDisabled',
+      'troopsPercentage',
+    ],
     additionalProperties: false,
     properties: {
       muted: { bsonType: 'bool' },
       volume: { bsonType: 'number', minimum: 0, maximum: 1 },
+      effectsVolume: { bsonType: 'number', minimum: 0, maximum: 1 },
+      musicVolume: { bsonType: 'number', minimum: 0, maximum: 1 },
       animationsDisabled: { bsonType: 'bool' },
       troopsPercentage: { bsonType: 'bool' },
     },
@@ -471,15 +484,26 @@ export const preferencesSchemaProperties = {
   },
 };
 
+function sanitizeVolume(value: unknown, fallback: number): number {
+  return typeof value === 'number' && value >= 0 && value <= 1
+    ? value
+    : fallback;
+}
+
 export function sanitizeClientSettings(raw: unknown): ClientSettings {
   const r = (raw ?? {}) as Record<string, unknown>;
   return {
     muted:
       typeof r.muted === 'boolean' ? r.muted : DEFAULT_CLIENT_SETTINGS.muted,
-    volume:
-      typeof r.volume === 'number' && r.volume >= 0 && r.volume <= 1
-        ? r.volume
-        : DEFAULT_CLIENT_SETTINGS.volume,
+    volume: sanitizeVolume(r.volume, DEFAULT_CLIENT_SETTINGS.volume),
+    effectsVolume: sanitizeVolume(
+      r.effectsVolume,
+      DEFAULT_CLIENT_SETTINGS.effectsVolume,
+    ),
+    musicVolume: sanitizeVolume(
+      r.musicVolume,
+      DEFAULT_CLIENT_SETTINGS.musicVolume,
+    ),
     animationsDisabled:
       typeof r.animationsDisabled === 'boolean'
         ? r.animationsDisabled

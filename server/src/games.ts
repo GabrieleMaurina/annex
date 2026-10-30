@@ -5,7 +5,6 @@ import { persistGameMap } from './maps';
 
 interface GameEndedPayload {
   gameName: string;
-  roundNumber: number;
 }
 
 const storedIdByGame = new Map<string, string>();
@@ -27,7 +26,6 @@ export function persistFinishedGame(
   elos: Promise<Map<number, GameElo>>,
 ): Promise<void> {
   storedIdByGame.delete(payload.gameName);
-  if (payload.roundNumber < 1) return Promise.resolve();
 
   const bundle = engine.exportGame(payload.gameName);
   if (!bundle) return Promise.resolve();

@@ -1,7 +1,11 @@
 import type { PlaceNames, SeaTerritory, Territory } from '../../mapData';
-import { SEA_SIZE_MULTIPLIER, type Point } from '../helpers';
+import {
+  CANVAS_FONT_FAMILY,
+  SEA_SIZE_MULTIPLIER,
+  type Point,
+} from '../helpers';
 
-const FONT = 'bold 12px sans-serif';
+const FONT = `bold 12px ${CANVAS_FONT_FAMILY}`;
 const PAD_X = 4;
 const BOX_H = 16;
 const GAP = 4;

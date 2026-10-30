@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Form, ListGroup } from 'react-bootstrap';
+import { FIELD_LABEL_CLASS } from '../panelStyle';
 
 export interface SearchSelectItem {
   id: string;
@@ -9,7 +10,6 @@ export interface SearchSelectItem {
 interface Props {
   label: string;
   placeholder: string;
-  inputWidth?: string;
   maxLength?: number;
   maxSelected?: number;
   search: (query: string, cb: (items: SearchSelectItem[]) => void) => void;
@@ -22,7 +22,6 @@ const DEBOUNCE_MS = 300;
 function SearchMultiSelect({
   label,
   placeholder,
-  inputWidth,
   maxLength,
   maxSelected,
   search,
@@ -70,15 +69,9 @@ function SearchMultiSelect({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="d-flex align-items-center gap-2 flex-wrap"
-    >
-      <Form.Label className="mb-0 small flex-shrink-0">{label}</Form.Label>
-      <div
-        className="position-relative flex-grow-1"
-        style={inputWidth ? { maxWidth: inputWidth } : undefined}
-      >
+    <div ref={containerRef}>
+      <Form.Label className={FIELD_LABEL_CLASS}>{label}</Form.Label>
+      <div className="position-relative">
         <Form.Control
           size="sm"
           placeholder={atLimit ? 'Limit reached' : placeholder}
@@ -104,22 +97,26 @@ function SearchMultiSelect({
           </ListGroup>
         )}
       </div>
-      {selected.map((item) => (
-        <Badge
-          key={item.id}
-          bg="secondary"
-          className="d-inline-flex align-items-center gap-1"
-        >
-          {item.label}
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            style={{ fontSize: '0.55em' }}
-            aria-label="Remove"
-            onClick={() => remove(item.id)}
-          />
-        </Badge>
-      ))}
+      {selected.length > 0 && (
+        <div className="d-flex flex-wrap gap-1 mt-1">
+          {selected.map((item) => (
+            <Badge
+              key={item.id}
+              bg="secondary"
+              className="d-inline-flex align-items-center gap-1"
+            >
+              {item.label}
+              <button
+                type="button"
+                className="btn-close btn-close-white"
+                style={{ fontSize: '0.55em' }}
+                aria-label="Remove"
+                onClick={() => remove(item.id)}
+              />
+            </Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Container, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { useToggleSound } from '../lib/sounds';
@@ -44,7 +45,7 @@ function MyMaps({ account }: { account: Account | null }) {
               variant="success"
               onClick={() => navigate('/maps/editor')}
             >
-              +
+              <WhiteIcon path="/icons/plus.svg" size={14} />
             </Button>
           </Tip>
         }
@@ -56,7 +57,7 @@ function MyMaps({ account }: { account: Account | null }) {
               style={{ width: 24, height: 24, padding: 0 }}
               onClick={() => setConfirmRow(row)}
             >
-              ✕
+              <WhiteIcon path="/icons/close.svg" size={12} />
             </Button>
           </Tip>
         )}

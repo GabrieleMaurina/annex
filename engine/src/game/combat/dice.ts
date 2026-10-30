@@ -196,7 +196,7 @@ function lossDistribution(
   return cached;
 }
 
-export function expectedRoundLosses(dice: DiceRules): {
+export function expectedRollLosses(dice: DiceRules): {
   attackLosses: number;
   defenceLosses: number;
 } {
@@ -269,7 +269,7 @@ function scaledTroops(
     defendingTroops === 0
   )
     return { attackingTroops, defendingTroops, lossRatio: 1, spread: 1 };
-  const { attackLosses, defenceLosses } = expectedRoundLosses(dice);
+  const { attackLosses, defenceLosses } = expectedRollLosses(dice);
   const lossRatio = attackLosses / defenceLosses;
   const lead =
     (attackingTroops - lossRatio * defendingTroops) /

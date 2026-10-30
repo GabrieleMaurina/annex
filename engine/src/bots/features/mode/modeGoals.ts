@@ -39,7 +39,7 @@ export interface ModeGoal {
   holdIds: number[];
   holdSet: Set<number>;
   roundLimit: number;
-  turnsLeft: number;
+  roundsLeft: number;
   incomeFactor: number;
   expand: boolean;
   assassinId: number | null;
@@ -85,7 +85,7 @@ function neutralGoal(ctx: PlanContext): ModeGoal {
     holdIds: [],
     holdSet: new Set(),
     roundLimit: 0,
-    turnsLeft: 0,
+    roundsLeft: 0,
     incomeFactor: 1,
     expand: false,
     assassinId: null,
@@ -113,8 +113,8 @@ function setHold(goal: ModeGoal, ids: number[]): void {
 
 function setRounds(ctx: PlanContext, goal: ModeGoal, limit: number): void {
   goal.roundLimit = limit;
-  goal.turnsLeft = Math.max(1, limit - ctx.game.roundNumber);
-  goal.incomeFactor = Math.min(1, Math.max(0, (goal.turnsLeft - 1) / 2));
+  goal.roundsLeft = Math.max(1, limit - ctx.game.roundNumber);
+  goal.incomeFactor = Math.min(1, Math.max(0, (goal.roundsLeft - 1) / 2));
   goal.expand = true;
 }
 

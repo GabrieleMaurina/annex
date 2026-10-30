@@ -51,7 +51,7 @@ export function regionFillLayer(
   return layer.canvas;
 }
 
-const UNLOCKED_TILE_COLOR = '#262626';
+const UNLOCKED_TILE_COLOR = '#4a4f58';
 const tileLayers = new WeakMap<
   ClickableRegions,
   { key: string; canvas: HTMLCanvasElement }

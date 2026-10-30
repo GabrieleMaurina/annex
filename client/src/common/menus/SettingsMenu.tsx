@@ -1,5 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Button, Form, Toast, ToastContainer } from 'react-bootstrap';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { Button, Form } from 'react-bootstrap';
 import {
   areAnimationsDisabled,
   toggleAnimationsDisabled,
@@ -7,30 +13,92 @@ import {
 import { isTypingTarget } from '../../game/GameMap/helpers';
 import { pushSettings } from '../../lib/player';
 import {
+  getCurrentTrack,
+  getEffectsVolume,
+  getMusicVersion,
+  getMusicVolume,
   getSoundVolume,
   isSoundMuted,
+  nextTrack,
+  previousTrack,
+  setEffectsVolume,
+  setMusicVolume,
   setSoundVolume,
+  subscribeMusic,
   toggleSoundMuted,
   useToggleSound,
 } from '../../lib/sounds';
+import { titleCase } from '../../lobby/settings/gameSettings';
 import { useWhiteIcon } from '../icon';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../panelStyle';
 import Tip from '../tooltips/Tip';
-import ShareButton from './ShareButton';
+import SharePageButton from './SharePageButton';
+
+interface VolumeRangeProps {
+  tip: string;
+  value: number;
+  onChange: (value: number) => void;
+}
+
+function VolumeRange({ tip, value, onChange }: VolumeRangeProps) {
+  return (
+    <Tip text={tip}>
+      <Form.Range
+        className="annex-volume-range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={
+          {
+            '--annex-volume-progress': `${value * 100}%`,
+          } as React.CSSProperties
+        }
+      />
+    </Tip>
+  );
+}
+
+interface IconButtonProps {
+  tip: string;
+  icon: string;
+  active?: boolean;
+  onClick: () => void;
+}
+
+function IconButton({ tip, icon, active, onClick }: IconButtonProps) {
+  const whiteIcon = useWhiteIcon(icon);
+  return (
+    <Tip text={tip}>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="d-flex align-items-center justify-content-center"
+        active={active}
+        onClick={onClick}
+      >
+        <img src={whiteIcon ?? icon} width={16} height={16} alt={tip} />
+      </Button>
+    </Tip>
+  );
+}
+
+function trackTitle(track: string): string {
+  const file = track.slice(track.lastIndexOf('/') + 1).replace(/\.mp3$/, '');
+  return file
+    .split('_')
+    .map((part) => titleCase(part.replaceAll('-', ' ')))
+    .join(' - ');
+}
 
 interface Props {
-  shareUrl: string;
   hidden?: boolean;
   onOpenChange?: (open: boolean) => void;
   lockScrollOnFullscreen?: boolean;
 }
 
-function SettingsMenu({
-  shareUrl,
-  hidden,
-  onOpenChange,
-  lockScrollOnFullscreen,
-}: Props) {
+function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
   const [open, setOpen] = useState(false);
   useToggleSound(open);
 
@@ -38,7 +106,9 @@ function SettingsMenu({
     onOpenChange?.(open);
   }, [open, onOpenChange]);
   const [, forceUpdate] = useState(0);
-  const [copied, setCopied] = useState(false);
+  const [mixerOpen, setMixerOpen] = useState(false);
+  useSyncExternalStore(subscribeMusic, getMusicVersion);
+  const currentTrack = getCurrentTrack();
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRowRef = useRef<HTMLDivElement>(null);
   const [buttonRowWidth, setButtonRowWidth] = useState<number>();
@@ -84,6 +154,14 @@ function SettingsMenu({
         })
         .catch(() => {});
     }
+  }
+
+  function changeVolume(setVolume: (value: number) => void) {
+    return (value: number) => {
+      setVolume(value);
+      pushSettings();
+      forceUpdate((n) => n + 1);
+    };
   }
 
   useEffect(() => {
@@ -222,13 +300,18 @@ function SettingsMenu({
                 />
               </Button>
             </Tip>
-            <ShareButton url={shareUrl} onCopied={() => setCopied(true)} />
+            <SharePageButton
+              title={document.title}
+              path={`${window.location.pathname}${window.location.search}`}
+              tooltip="Share Annex with friends"
+              size="sm"
+            />
           </div>
           <style>{`
             .annex-volume-range::-webkit-slider-runnable-track {
               background: linear-gradient(
                 to right,
-                #0d6efd var(--annex-volume-progress),
+                var(--bs-primary) var(--annex-volume-progress),
                 var(--bs-secondary-bg) var(--annex-volume-progress)
               );
             }
@@ -237,46 +320,67 @@ function SettingsMenu({
             }
             .annex-volume-range::-moz-range-progress {
               height: 0.5rem;
-              background: #0d6efd;
+              background: var(--bs-primary);
               border-radius: 1rem;
             }
           `}</style>
-          <Tip text="Sound volume">
-            <Form.Range
-              className="annex-volume-range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={getSoundVolume()}
-              onChange={(e) => {
-                setSoundVolume(Number(e.target.value));
-                pushSettings();
-                forceUpdate((n) => n + 1);
-              }}
-              style={
-                {
-                  width: buttonRowWidth ?? 0,
-                  '--annex-volume-progress': `${getSoundVolume() * 100}%`,
-                } as React.CSSProperties
-              }
-            />
-          </Tip>
+          <div
+            className="d-flex flex-column gap-1"
+            style={{ width: buttonRowWidth ?? 0 }}
+          >
+            <div className="d-flex align-items-center gap-2">
+              <VolumeRange
+                tip="Master volume"
+                value={getSoundVolume()}
+                onChange={changeVolume(setSoundVolume)}
+              />
+              <IconButton
+                tip={mixerOpen ? 'Hide volume mixer' : 'Show volume mixer'}
+                icon="/icons/sliders.svg"
+                active={mixerOpen}
+                onClick={() => setMixerOpen((prev) => !prev)}
+              />
+            </div>
+            {mixerOpen && (
+              <>
+                <div className="small">Sound effects</div>
+                <VolumeRange
+                  tip="Sound effects volume"
+                  value={getEffectsVolume()}
+                  onChange={changeVolume(setEffectsVolume)}
+                />
+                <div className="small">Music</div>
+                <VolumeRange
+                  tip="Music volume"
+                  value={getMusicVolume()}
+                  onChange={changeVolume(setMusicVolume)}
+                />
+              </>
+            )}
+            {currentTrack && (
+              <>
+                <Tip text={trackTitle(currentTrack)}>
+                  <div className="small text-truncate">
+                    {trackTitle(currentTrack)}
+                  </div>
+                </Tip>
+                <div className="d-flex justify-content-center gap-2">
+                  <IconButton
+                    tip="Previous song"
+                    icon="/icons/skip-back.svg"
+                    onClick={previousTrack}
+                  />
+                  <IconButton
+                    tip="Next song"
+                    icon="/icons/skip-forward.svg"
+                    onClick={nextTrack}
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
-      <ToastContainer
-        position="top-center"
-        className="position-fixed p-3"
-        style={{ zIndex: 3 }}
-      >
-        <Toast
-          show={copied}
-          onClose={() => setCopied(false)}
-          autohide
-          delay={3000}
-        >
-          <Toast.Body>Link copied to clipboard!</Toast.Body>
-        </Toast>
-      </ToastContainer>
     </div>
   );
 }

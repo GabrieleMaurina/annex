@@ -1,4 +1,5 @@
 import { Button } from 'react-bootstrap';
+import { PANEL_BG_CLASS } from '../../common/panelStyle';
 
 interface Props {
   label: string;
@@ -11,7 +12,7 @@ interface Props {
 function ConfirmPanel({ label, buttonLabel, onConfirm, style, extra }: Props) {
   return (
     <div
-      className="p-2 px-3 border rounded bg-body bg-opacity-75 d-flex flex-column gap-1"
+      className={`p-2 px-3 border rounded ${PANEL_BG_CLASS} d-flex flex-column gap-1`}
       data-no-click-sound
       style={{
         ...style,

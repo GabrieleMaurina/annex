@@ -95,7 +95,7 @@ function NukesPanel({
           <div className="fw-bold lh-1 mb-2 mt-2">Under construction</div>
           <ListGroup className="mb-2">
             {projects.map((project, index) => {
-              const advancedThisTurn = project.lastPaidRound >= roundNumber;
+              const advancedThisRound = project.lastPaidRound >= roundNumber;
               return (
                 <ListGroup.Item
                   key={index}
@@ -118,12 +118,12 @@ function NukesPanel({
                     className="ms-1"
                     disabled={
                       !canBuild ||
-                      advancedThisTurn ||
+                      advancedThisRound ||
                       troopsToDeploy < cost(project.kind)
                     }
                     onClick={() => onAdvance(index)}
                   >
-                    {advancedThisTurn
+                    {advancedThisRound
                       ? 'Paid'
                       : `Advance (${cost(project.kind)})`}
                   </Button>

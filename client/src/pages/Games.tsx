@@ -32,7 +32,7 @@ import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
 
 const PAGE_SIZE = 20;
 
-const ROUNDS_MIN = 1;
+const ROUNDS_MIN = 0;
 const ROUNDS_MAX = 1000;
 const PLAYERS_MIN = 2;
 const PLAYERS_MAX = 20;
@@ -403,7 +403,6 @@ function Games({ account }: Props) {
             <Field label="Name">
               <Form.Control
                 size="sm"
-                className="w-auto"
                 placeholder="Game name"
                 maxLength={20}
                 value={name}
@@ -413,7 +412,6 @@ function Games({ account }: Props) {
             <Field label="Mode">
               <Form.Select
                 size="sm"
-                className="w-auto"
                 value={mode}
                 onChange={(e) => resetPage(setMode)(e.target.value)}
               >
@@ -428,7 +426,6 @@ function Games({ account }: Props) {
             <Field label="Bots">
               <Form.Select
                 size="sm"
-                className="w-auto"
                 value={hasBots}
                 onChange={(e) =>
                   resetPage(setHasBots)(e.target.value as '' | 'yes' | 'no')
@@ -465,7 +462,7 @@ function Games({ account }: Props) {
               setHi={resetPage(setDurationMax)}
             />
             <RangeField
-              label="Players"
+              label="Player count"
               min={PLAYERS_MIN}
               max={PLAYERS_MAX}
               lo={playersMin}
@@ -503,7 +500,6 @@ function Games({ account }: Props) {
               <Field label="Result">
                 <Form.Select
                   size="sm"
-                  className="w-auto"
                   value={outcome}
                   onChange={(e) =>
                     resetPage(setOutcome)(e.target.value as '' | 'won' | 'lost')

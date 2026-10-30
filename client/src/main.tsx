@@ -1,10 +1,12 @@
-import 'bootstrap/dist/css/bootstrap.min.css';
+import '@fontsource-variable/inter';
+import '@fontsource/barlow-condensed/700.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { initUiClickSounds, preloadSounds } from './lib/sounds';
 import './scrollbar.css';
+import './theme.scss';
 import './tooltip.css';
 
 preloadSounds();

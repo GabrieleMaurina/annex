@@ -39,6 +39,7 @@ import type { RailEdge } from '../../supplyLines';
 import { drawSupplyLines } from '../../supplyLines';
 import type { Camera } from '../camera';
 import {
+  CANVAS_FONT_FAMILY,
   ENTRENCHED_OCTAGON_FILL,
   ENTRENCHED_OCTAGON_STROKE,
   getScales,
@@ -204,7 +205,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  ctx.fillStyle = '#212529';
+  ctx.fillStyle = '#10151c';
   ctx.fillRect(0, 0, size.w, size.h);
 
   const transform = camera.get();
@@ -587,7 +588,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ctx.restore();
 
       ctx.fillStyle = contrastTextColor(fillColor);
-      ctx.font = `bold ${circleRadius}px sans-serif`;
+      ctx.font = `bold ${circleRadius}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
       const text = String(ship.ships);
@@ -769,7 +770,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
                     : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
         const fullyClickable = shape && !owner.isCapital;
         ctx.fillStyle = contrastTextColor(fillColor);
-        ctx.font = `bold ${VERTEX_RADIUS * scaleX * (fullyClickable ? 1.25 : 1)}px sans-serif`;
+        ctx.font = `bold ${VERTEX_RADIUS * scaleX * (fullyClickable ? 1.25 : 1)}px ${CANVAS_FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
         const text = formatTroops(troops);
@@ -797,7 +798,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         } else {
           ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * scaleX, 0, Math.PI * 2);
         }
-        ctx.strokeStyle = '#0d6efd';
+        ctx.strokeStyle = '#e3a33b';
         ctx.lineWidth = 3 * zoom;
         ctx.stroke();
       }
@@ -837,7 +838,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           );
 
           ctx.fillStyle = '#000000';
-          ctx.font = `bold ${textHeight}px sans-serif`;
+          ctx.font = `bold ${textHeight}px ${CANVAS_FONT_FAMILY}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'alphabetic';
           ctx.fillText(
@@ -848,7 +849,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
 
           if (cardOwned) {
             const pillText = '+2';
-            ctx.font = `bold ${10 * zoom}px sans-serif`;
+            ctx.font = `bold ${10 * zoom}px ${CANVAS_FONT_FAMILY}`;
             const pillWidth = ctx.measureText(pillText).width + 6 * zoom;
             const pillHeight = 12 * zoom;
             const pillX = cx + badgeW / 2;
@@ -872,7 +873,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
 
     if (bonusesOpen) {
       const idText = `#${t.id + 1}`;
-      ctx.font = `bold ${11 * zoom}px sans-serif`;
+      ctx.font = `bold ${11 * zoom}px ${CANVAS_FONT_FAMILY}`;
       const padX = 4 * zoom;
       const boxW = ctx.measureText(idText).width + padX * 2;
       const boxH = 15 * zoom;
@@ -934,8 +935,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       const text = `${label}:+${bonuses[continentGroupId] ?? 0}`;
       const owned = group.filter((t) => ownedTerritoryIds.has(t.id)).length;
       const statsText = `${owned}/${group.length} (${Math.round((owned / group.length) * 100)}%)`;
-      const mainFont = `bold ${34 * zoom}px sans-serif`;
-      const statsFont = `bold ${13 * zoom}px sans-serif`;
+      const mainFont = `bold ${34 * zoom}px ${CANVAS_FONT_FAMILY}`;
+      const statsFont = `bold ${13 * zoom}px ${CANVAS_FONT_FAMILY}`;
 
       ctx.font = mainFont;
       const mainWidth = ctx.measureText(text).width;

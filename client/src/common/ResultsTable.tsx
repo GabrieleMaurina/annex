@@ -32,7 +32,7 @@ const PENALTY_LABELS: Record<EloPenalty, string> = {
 function formatElo(row: ResultRow): string {
   if (row.elo == null || row.eloDelta == null) return '-';
   const sign = row.eloDelta > 0 ? '+' : '';
-  return `${row.elo} (${sign}${row.eloDelta})`;
+  return `${row.elo + row.eloDelta} (${sign}${row.eloDelta})`;
 }
 
 const EMPTY_ROW: ResultRow = {
@@ -185,7 +185,7 @@ function ResultsTable({
                       </Tip>
                     )}
                     {p.id === originalHostId && (
-                      <Badge bg="primary" className="flex-shrink-0">
+                      <Badge bg="primary" text="dark" className="flex-shrink-0">
                         Host
                       </Badge>
                     )}

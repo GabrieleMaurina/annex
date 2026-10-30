@@ -8,6 +8,7 @@ import {
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
+import { FIELD_LABEL_CLASS } from '../../common/panelStyle';
 import Help from '../../common/tooltips/Help';
 import { connector } from '../../connector';
 import { playSound } from '../../lib/sounds';
@@ -19,6 +20,7 @@ import type {
   Visibility,
 } from '../../lib/types';
 import {
+  defaultSettingValue,
   GAME_SETTING_SECTIONS,
   GAME_SETTINGS,
   type GameSettingDef,
@@ -26,7 +28,6 @@ import {
 } from './gameSettings';
 import { PASSWORD_HELP, VISIBILITY_HELP } from './settingsHelp';
 
-const LABEL_STYLE = { minWidth: 130, flexShrink: 0 };
 const SHRINK_STYLE = { minWidth: 0 };
 const TRUNCATE_STYLE: CSSProperties = {
   minWidth: 0,
@@ -93,22 +94,21 @@ function GameSettingsFields({
 
   function field(def: GameSettingDef) {
     const value = game[def.key as keyof GameState];
+    const changed =
+      String(value) !== String(defaultSettingValue(def.key, game.gameMode));
     return (
       <div
         key={def.key}
-        className="col d-flex align-items-center gap-2"
+        className="col d-flex flex-column"
         style={SHRINK_STYLE}
       >
-        <Form.Label
-          className="mb-0 d-flex align-items-center gap-1"
-          style={LABEL_STYLE}
-        >
+        <Form.Label className={FIELD_LABEL_CLASS}>
           {def.label}
           <Help>{def.help}</Help>
         </Form.Label>
         {isHost ? (
           <Form.Select
-            className="w-auto"
+            className={changed ? 'border-primary' : undefined}
             style={SHRINK_STYLE}
             value={String(value)}
             disabled={disabledKeys.has(def.key)}
@@ -132,7 +132,12 @@ function GameSettingsFields({
             ))}
           </Form.Select>
         ) : (
-          <span style={TRUNCATE_STYLE}>{optionLabel(def, value)}</span>
+          <span
+            className={changed ? 'text-primary fw-semibold' : undefined}
+            style={TRUNCATE_STYLE}
+          >
+            {optionLabel(def, value)}
+          </span>
         )}
       </div>
     );
@@ -158,24 +163,22 @@ function GameSettingsFields({
             className={`border rounded p-2${last ? '' : ' mb-2'}`}
           >
             <div className="fw-bold text-muted small mb-2">{section}</div>
-            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-2">
+            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
               {defs.map(field)}
               {section === 'Session' && gameMeta && (
                 <>
-                  <div
-                    className="col d-flex align-items-center gap-2"
-                    style={SHRINK_STYLE}
-                  >
-                    <Form.Label
-                      className="mb-0 d-flex align-items-center gap-1"
-                      style={LABEL_STYLE}
-                    >
+                  <div className="col d-flex flex-column" style={SHRINK_STYLE}>
+                    <Form.Label className={FIELD_LABEL_CLASS}>
                       Visibility
                       <Help>{VISIBILITY_HELP}</Help>
                     </Form.Label>
                     {isHost ? (
                       <Form.Select
-                        className="w-auto"
+                        className={
+                          gameMeta.visibility === 'private'
+                            ? 'border-primary'
+                            : undefined
+                        }
                         style={SHRINK_STYLE}
                         value={gameMeta.visibility}
                         onChange={(e) =>
@@ -188,7 +191,14 @@ function GameSettingsFields({
                         <option value="private">Private</option>
                       </Form.Select>
                     ) : (
-                      <span style={TRUNCATE_STYLE}>
+                      <span
+                        className={
+                          gameMeta.visibility === 'private'
+                            ? 'text-primary fw-semibold'
+                            : undefined
+                        }
+                        style={TRUNCATE_STYLE}
+                      >
                         {gameMeta.visibility === 'private'
                           ? 'Private'
                           : 'Public'}
@@ -196,14 +206,8 @@ function GameSettingsFields({
                     )}
                   </div>
 
-                  <div
-                    className="col d-flex align-items-center gap-2"
-                    style={SHRINK_STYLE}
-                  >
-                    <Form.Label
-                      className="mb-0 d-flex align-items-center gap-1"
-                      style={LABEL_STYLE}
-                    >
+                  <div className="col d-flex flex-column" style={SHRINK_STYLE}>
+                    <Form.Label className={FIELD_LABEL_CLASS}>
                       Password
                       <Help>{PASSWORD_HELP}</Help>
                     </Form.Label>
@@ -211,9 +215,10 @@ function GameSettingsFields({
                       <div className="d-flex align-items-center gap-2">
                         <Form.Control
                           type="text"
-                          className="w-auto"
+                          className={
+                            gameMeta.hasPassword ? 'border-primary' : undefined
+                          }
                           style={SHRINK_STYLE}
-                          htmlSize={13}
                           placeholder={
                             gameMeta.hasPassword
                               ? 'Change password'
@@ -244,7 +249,14 @@ function GameSettingsFields({
                         )}
                       </div>
                     ) : (
-                      <span style={TRUNCATE_STYLE}>
+                      <span
+                        className={
+                          gameMeta.hasPassword
+                            ? 'text-primary fw-semibold'
+                            : undefined
+                        }
+                        style={TRUNCATE_STYLE}
+                      >
                         {gameMeta.hasPassword
                           ? 'Password protected'
                           : 'No password'}

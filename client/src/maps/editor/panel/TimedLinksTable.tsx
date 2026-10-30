@@ -1,6 +1,7 @@
 import { MAX_TIMED_VALUE } from 'engine';
 import type { Dispatch, SetStateAction } from 'react';
 import { Button, Form, Table } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import Help from '../../../common/tooltips/Help';
 import type { EditorTerritory as Territory } from '../model/editorTypes';
 import NumberCell from './NumberCell';
@@ -108,7 +109,7 @@ function TimedLinksTable({
                     size="sm"
                     onClick={() => removeLink(link.a, link.b)}
                   >
-                    ✕
+                    <WhiteIcon path="/icons/close.svg" size={12} />
                   </Button>
                 </td>
               </tr>

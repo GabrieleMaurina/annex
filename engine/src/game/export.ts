@@ -365,7 +365,7 @@ function buildResults(game: Game): GameResultExport[] {
 
 export function exportGame(gameName: string): GameExport | null {
   const game = games.get(gameName);
-  if (!game || game.state !== 'ended' || game.roundNumber < 1) return null;
+  if (!game || game.state !== 'ended') return null;
   if (game.startedAt === null || game.endedAt === null) return null;
 
   const results = buildResults(game);

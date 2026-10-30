@@ -2,6 +2,7 @@ import { Badge, Button, Form, Table } from 'react-bootstrap';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import { useWhiteIcon } from '../../common/icon';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import PlayerNameEditor from '../../common/inputs/PlayerNameEditor';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import Tip from '../../common/tooltips/Tip';
@@ -169,7 +170,11 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                           />
                         </Tip>
                       )}
-                      {p.id === game.hostId && <Badge bg="primary">Host</Badge>}
+                      {p.id === game.hostId && (
+                        <Badge bg="primary" text="dark">
+                          Host
+                        </Badge>
+                      )}
                     </span>
                   ) : isHost ? (
                     <span
@@ -296,7 +301,7 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                               (team !== undefined && rows.length <= 1))
                           }
                         >
-                          ✕
+                          <WhiteIcon path="/icons/close.svg" size={12} />
                         </Button>
                       </Tip>
                     )}
@@ -318,7 +323,7 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                     onClick={addSlot}
                     disabled={game.slots >= MAX_SLOTS}
                   >
-                    +
+                    <WhiteIcon path="/icons/plus.svg" size={14} />
                   </Button>
                 </Tip>
               </td>

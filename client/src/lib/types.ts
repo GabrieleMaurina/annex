@@ -12,6 +12,8 @@ export interface ClientSettings {
   muted: boolean;
   animationsDisabled: boolean;
   volume: number;
+  effectsVolume: number;
+  musicVolume: number;
   troopsPercentage: boolean;
 }
 
@@ -958,43 +960,5 @@ export interface PlayerProfile {
   picture: string | null;
 }
 
-export interface Friend {
-  id: string;
-  username: string;
-  elo: number;
-  country: string;
-}
-
-export interface FriendsOverview {
-  friends: Friend[];
-  incoming: Friend[];
-  outgoing: Friend[];
-}
-
-export interface ConversationMessage {
-  fromMe: boolean;
-  text: string;
-  createdAt: number;
-}
-
-export interface Conversation {
-  userId: string;
-  username: string;
-  elo: number;
-  country: string;
-  messages: ConversationMessage[];
-}
-
-export interface BlockedPlayer {
-  userId: string;
-  username: string;
-  elo: number;
-  country: string;
-}
-
-export interface MessagesOverview {
-  conversations: Conversation[];
-  blocked: BlockedPlayer[];
-}
-
 export * from '../maps/mapTypes';
+export * from '../pages/social/socialTypes';

@@ -54,7 +54,7 @@ function ReplayPanel({
         .replay-range::-webkit-slider-runnable-track {
           background: linear-gradient(
             to right,
-            #0d6efd var(--replay-progress),
+            var(--bs-primary) var(--replay-progress),
             var(--bs-secondary-bg) var(--replay-progress)
           );
         }
@@ -63,7 +63,7 @@ function ReplayPanel({
         }
         .replay-range::-moz-range-progress {
           height: 0.5rem;
-          background: #0d6efd;
+          background: var(--bs-primary);
           border-radius: 1rem;
         }
       `}</style>

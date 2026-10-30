@@ -276,7 +276,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
 
       {reportMenu && (
         <div
-          className={`${PANEL_BG_CLASS} border rounded shadow position-fixed p-1`}
+          className={`${PANEL_BG_CLASS} border rounded position-fixed p-1`}
           style={{
             left: reportMenu.x,
             top: reportMenu.y,

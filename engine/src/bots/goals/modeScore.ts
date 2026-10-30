@@ -50,7 +50,7 @@ function roundRace(ctx: PlanContext, goal: ModeGoal, state: SimState): number {
     if (count >= own) leads = 0;
   }
   const urgency =
-    ROUND_BASE + ROUND_GAIN * (1 - goal.turnsLeft / goal.roundLimit);
+    ROUND_BASE + ROUND_GAIN * (1 - goal.roundsLeft / goal.roundLimit);
   return urgency * (rivalsBeaten + leads);
 }
 

@@ -71,6 +71,51 @@ export type GameSettingSection = (typeof GAME_SETTING_SECTIONS)[number];
 
 export const GENERATED_MAP_VALUE = 'generated';
 
+export const DEFAULT_GAME_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
+  alliances: 'off',
+  anonymous: 'off',
+  blitz: 'balanced',
+  bounties: 'off',
+  capitalRefund: 'off',
+  cards: 'constant',
+  continents: '1x',
+  defenceDice: 2,
+  attackDice: 3,
+  diceTies: 'defence',
+  disconnectBotDifficulty: 'random',
+  disconnectBotPersonality: 'random',
+  entrenchments: 'off',
+  fogOfWar: 'off',
+  fortification: 'connected',
+  gameMode: 'supremacy',
+  initialTroops: 3,
+  minTroops: 3,
+  troopsPerTerritory: 1 / 3,
+  maxPoints: 20,
+  hills: 3,
+  minRank: 'private',
+  minGames: 0,
+  minAccountAge: 'none',
+  password: null,
+  placement: 'random',
+  portals: 'off',
+  radiations: 'off',
+  nukes: 'off',
+  starvation: 'off',
+  supplyLines: 'off',
+  toxins: 'off',
+  turnDuration: 120,
+  attackIncrement: 0,
+  roundTroops: 'off',
+  visibility: 'public',
+};
+
+export function defaultSettingValue(key: string, gameMode: GameMode): unknown {
+  return key === 'maxPoints'
+    ? (defaultMaxPoints(gameMode) ?? DEFAULT_GAME_SETTINGS.maxPoints)
+    : DEFAULT_GAME_SETTINGS[key as keyof typeof DEFAULT_GAME_SETTINGS];
+}
+
 export interface GameSettingOption {
   value: string;
   label: string;
@@ -104,8 +149,27 @@ function options(...values: string[]): GameSettingOption[] {
   return values.map((value) => ({ value, label: value }));
 }
 
+const MINOR_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'at',
+  'by',
+  'for',
+  'in',
+  'of',
+  'or',
+  'per',
+  'the',
+  'to',
+]);
+
 export function titleCase(value: string): string {
-  return value.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+  return value.replace(/\b[a-z]+/g, (word, offset: number) =>
+    offset > 0 && MINOR_WORDS.has(word)
+      ? word
+      : word[0].toUpperCase() + word.slice(1),
+  );
 }
 
 function caps(...values: string[]): GameSettingOption[] {
@@ -217,7 +281,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
   },
   {
     key: 'troopsPerTerritory',
-    label: 'Troops Per Territory',
+    label: 'Troops per Territory',
     section: 'Reinforcements',
     numeric: true,
     options: [
@@ -326,7 +390,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
   },
   {
     key: 'fogOfWar',
-    label: 'Fog Of War',
+    label: 'Fog of War',
     section: 'Players',
     options: onOff(),
     help: FOG_OF_WAR_HELP,
@@ -439,21 +503,14 @@ function pickNearDefault(
   return options[defaultIndex];
 }
 
-export function randomGameSettings(
-  defaults: GameSettingsInput,
-): GameSettingsInput {
+export function randomGameSettings(): GameSettingsInput {
   const gameMode = pick(GAME_MODES);
   const settings: Record<string, string | number> = { gameMode };
   for (const def of GAME_SETTINGS) {
     if (def.key === 'anonymous' || SEAT_REQUIREMENT_KEYS.includes(def.key))
       continue;
     const { value } = def.numeric
-      ? pickNearDefault(
-          def.options,
-          def.key === 'maxPoints'
-            ? (defaultMaxPoints(gameMode) ?? defaults.maxPoints)
-            : defaults[def.key as keyof GameSettingsInput],
-        )
+      ? pickNearDefault(def.options, defaultSettingValue(def.key, gameMode))
       : pick(def.options);
     settings[def.key] = def.numeric ? Number(value) : value;
   }

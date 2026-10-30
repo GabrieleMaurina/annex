@@ -80,28 +80,28 @@ export const TEMPLE_WALL_COLOR = '#1b2444';
 export const TEMPLE_SEAM_COLOR = '#7fd8ff';
 
 export const TILE_TONES = [
-  '#0d2466',
-  '#06402f',
-  '#141b56',
-  '#073d63',
-  '#102a7a',
-  '#0a4a3a',
-  '#0b3570',
-  '#1a1f70',
-  '#05405a',
-  '#0b3a24',
-  '#0f3388',
-  '#083a4e',
+  '#7a92b0',
+  '#86a892',
+  '#a89a80',
+  '#9a8cb0',
+  '#7aa3a8',
+  '#b0948a',
+  '#8e9cc0',
+  '#9aac80',
+  '#a888a0',
+  '#80a0b8',
+  '#b0a078',
+  '#8aa898',
 ];
 
 export function continentTileTone(continentId: number): string {
   return TILE_TONES[continentId % TILE_TONES.length];
 }
 
-export const TILE_VOID_COLOR = '#000000';
-export const TILE_SEA_COLOR = '#000011';
-export const TILE_WALL_COLOR = '#39ff7a';
-export const TILE_SEAM_COLOR = '#1e9bff';
+export const TILE_VOID_COLOR = '#2a2d33';
+export const TILE_SEA_COLOR = '#2a2b44';
+export const TILE_WALL_COLOR = '#121417';
+export const TILE_SEAM_COLOR = '#55606e';
 
 export const DEFAULT_BORDER_COLORS = [TERRITORY_STROKE_COLOR];
 

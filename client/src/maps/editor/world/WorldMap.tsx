@@ -13,7 +13,8 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
-import ToolIcon from '../panel/ToolIcon';
+import { loadWhiteIcon } from '../../../common/icon';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import { loadOutline, type GazetteerPlace } from './gazetteer';
 import type { WorldFrame } from './tileCover';
 
@@ -159,10 +160,19 @@ function choiceButton(
 ): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = `btn btn-sm ${choice.added ? 'btn-light' : 'btn-outline-light'} rounded-circle p-0 d-flex align-items-center justify-content-center fw-bold lh-1`;
+  button.className = `btn btn-sm ${choice.added ? 'btn-light' : 'btn-secondary'} rounded-circle p-0 d-flex align-items-center justify-content-center`;
   button.style.width = CHOICE_SIZE;
   button.style.height = CHOICE_SIZE;
-  button.textContent = choice.added ? '−' : '+';
+  const icon = document.createElement('img');
+  icon.width = 12;
+  icon.height = 12;
+  icon.alt = '';
+  icon.src = choice.added ? '/icons/minus.svg' : '/icons/plus.svg';
+  if (!choice.added)
+    loadWhiteIcon('/icons/plus.svg').then((src) => {
+      icon.src = src;
+    });
+  button.append(icon);
   button.title = `${choice.added ? 'Remove' : 'Add'} ${choice.place.name}`;
   button.setAttribute('aria-label', button.title);
   button.addEventListener('click', () => onToggle(choice.place));
@@ -478,7 +488,7 @@ function WorldMap({
           disabled={!onToggleDrawing}
           onClick={onToggleDrawing}
         >
-          <ToolIcon path="/icons/pencil.svg" />
+          <WhiteIcon path="/icons/pencil.svg" />
         </Button>
       </div>
     </div>

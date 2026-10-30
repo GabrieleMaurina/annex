@@ -33,7 +33,6 @@ export interface EngineCallbacks {
   onGameEnded?(payload: {
     gameName: string;
     gameMode: string;
-    roundNumber: number;
     ranking: {
       playerId: number;
       team: number;

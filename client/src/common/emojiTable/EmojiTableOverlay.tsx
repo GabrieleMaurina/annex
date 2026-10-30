@@ -85,11 +85,10 @@ function EmojiTableOverlay({
                 <Tip text={muted ? 'Unmute' : 'Mute'} placement="bottom">
                   <button
                     type="button"
-                    className="border-0 border-start d-inline-flex align-items-center justify-content-center lh-1"
+                    className="border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
                     style={{
                       fontSize: 24,
                       padding: '3px 2px 5px 2px',
-                      backgroundColor: 'rgba(180, 180, 180, 0.35)',
                       borderRadius: 4,
                     }}
                     onClick={() => {
@@ -113,11 +112,10 @@ function EmojiTableOverlay({
                 <Tip text="View profile" placement="bottom">
                   <button
                     type="button"
-                    className="border-0 border-start d-inline-flex align-items-center justify-content-center lh-1"
+                    className="border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
                     style={{
                       fontSize: 24,
                       padding: '3px 2px 5px 2px',
-                      backgroundColor: 'rgba(180, 180, 180, 0.35)',
                       borderRadius: 4,
                     }}
                     onClick={() =>

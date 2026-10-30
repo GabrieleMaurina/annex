@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import PercentageToggle from '../../../common/inputs/PercentageToggle';
 import { useTroopsInput } from '../../../common/inputs/useTroopsInput';
+import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import { contrastTextColor, playerColor } from '../../../lib/palette';
 import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
@@ -85,7 +86,7 @@ function AttackSeaPanel({
 
   return (
     <div
-      className="p-2 px-3 border rounded bg-body bg-opacity-75 d-flex flex-column gap-2"
+      className={`p-2 px-3 border rounded ${PANEL_BG_CLASS} d-flex flex-column gap-2`}
       data-no-click-sound
       style={{ ...style, zIndex: 1, whiteSpace: 'nowrap' }}
     >

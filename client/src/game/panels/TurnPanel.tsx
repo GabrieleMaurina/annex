@@ -3,7 +3,7 @@ import { Button } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
-import { contrastTextColor, withAlpha } from '../../lib/palette';
+import { contrastTextColor } from '../../lib/palette';
 import type { Ack, GameState, TurnPhase } from '../../lib/types';
 
 const SPARK_BASE_ANGLES = [-50, -35, -20, -7, 7, 20, 35, 50];
@@ -99,7 +99,7 @@ function TurnPanel({
       data-no-click-sound
       style={{
         zIndex: 1,
-        backgroundColor: withAlpha(color, 0.75),
+        backgroundColor: color,
         color: contrastTextColor(color),
       }}
     >

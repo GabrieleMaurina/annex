@@ -1,6 +1,7 @@
 import { Button, Table } from 'react-bootstrap';
 import Flag from '../common/badges/Flag';
 import RankIcon from '../common/badges/RankIcon';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import type { GameState } from '../lib/types';
 
 interface Props {
@@ -43,7 +44,7 @@ function SpectatorList({ spectators, isHost, banId }: Props) {
                     variant="danger"
                     onClick={() => banId(s.id)}
                   >
-                    ✕
+                    <WhiteIcon path="/icons/close.svg" size={12} alt="Ban" />
                   </Button>
                 </td>
               )}

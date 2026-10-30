@@ -6,6 +6,7 @@ import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useWhiteIcon } from '../../common/icon';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import Tip from '../../common/tooltips/Tip';
@@ -229,10 +230,11 @@ function PlayersPanel({
       <Button
         variant="secondary"
         size="sm"
-        className="position-absolute top-0 end-0 m-3"
+        className="position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center"
+        style={{ width: 28, height: 28, padding: 0 }}
         onClick={() => setCollapsed(false)}
       >
-        ☰
+        <WhiteIcon path="/icons/menu.svg" alt="Menu" />
       </Button>
     );
   }
@@ -243,7 +245,7 @@ function PlayersPanel({
       className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3 d-flex flex-column`}
       style={{
         width:
-          270 +
+          300 +
           (isTeamDeathmatch ? 40 : 0) +
           (isCapitals ? 40 : 0) +
           (showPoints ? 40 : 0) +

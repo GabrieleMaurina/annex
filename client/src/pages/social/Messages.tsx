@@ -337,7 +337,7 @@ function Messages({ account }: Props) {
                       <div
                         className={`rounded px-2 py-1 ${
                           m.fromMe
-                            ? 'bg-primary text-white'
+                            ? 'text-bg-primary'
                             : 'bg-secondary-subtle border'
                         }`}
                         style={{ whiteSpace: 'pre-wrap' }}

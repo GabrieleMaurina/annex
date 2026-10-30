@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import SharePageButton from '../../common/menus/SharePageButton';
 import { isPlayerMuted } from '../../common/mutedPlayers';
+import { PANEL_BG_CLASS } from '../../common/panelStyle';
 import type { ResultRow } from '../../common/ResultsTable';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import { playSound } from '../../lib/sounds';
@@ -173,14 +174,12 @@ function GameReplayView({
       </div>
       {(shownChat.length > 0 || shownEmoji.length > 0) && (
         <div
-          className="position-fixed bottom-0 start-0 m-3 p-2 rounded small"
+          className={`position-fixed bottom-0 start-0 m-3 p-2 border rounded small ${PANEL_BG_CLASS}`}
           style={{
             zIndex: 5,
             maxWidth: 280,
             maxHeight: '40vh',
             overflowY: 'auto',
-            background: 'rgba(0,0,0,0.6)',
-            color: '#fff',
           }}
         >
           {shownChat.map((message, i) => (

@@ -1,4 +1,5 @@
 import { drawTerritoryNames } from '../../../game/GameMap/draw/drawNames';
+import { CANVAS_FONT_FAMILY } from '../../../game/GameMap/helpers';
 import type { PlaceNames } from '../../../game/mapData';
 import type { WrapAxes } from '../../../game/mapMath';
 import { contrastTextColor } from '../../../lib/palette';
@@ -213,7 +214,7 @@ export function drawGraph({
     ctx.fillStyle = contrastTextColor(
       t.isSea ? SEA_MARKER_COLOR : continentColor(t.continentId),
     );
-    ctx.font = `bold ${labelRadius}px sans-serif`;
+    ctx.font = `bold ${labelRadius}px ${CANVAS_FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     const text = String(t.id + 1);

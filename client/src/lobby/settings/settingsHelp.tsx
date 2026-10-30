@@ -111,7 +111,7 @@ export const BLITZ_HELP = (
       <li>
         Off: all-out attacks are disabled, on land and at sea. Every battle is
         fought exchange by exchange. Not available with Round Troops on, with
-        any Cards mode other than Constant and Off, with Troops Per Territory 1
+        any Cards mode other than Constant and Off, with Troops per Territory 1
         or higher, or with Initial Troops or Min Troops above 10.
       </li>
     </ul>
@@ -193,11 +193,11 @@ export const CONTINENTS_HELP = (
         (rounded to the nearest whole number).
       </li>
       <li>
-        Linear Per Continent: same as Linear, but each continent has its own
+        Linear per Continent: same as Linear, but each continent has its own
         progression: a continent paying its bonus only raises its own value.
       </li>
       <li>
-        Exponential Per Continent: same as Exponential, but each continent has
+        Exponential per Continent: same as Exponential, but each continent has
         its own progression: a continent paying its bonus only raises its own
         value.
       </li>
@@ -225,11 +225,11 @@ export const CARDS_HELP = (
         set&apos;s value: starts at 5, then ×1.3 (rounded up) after every set.
       </li>
       <li>
-        Linear Per Player: same as Linear, but each player has their own
+        Linear per Player: same as Linear, but each player has their own
         progression: playing a set only raises the value of your own next set.
       </li>
       <li>
-        Exponential Per Player: same as Exponential, but each player has their
+        Exponential per Player: same as Exponential, but each player has their
         own progression: playing a set only raises the value of your own next
         set.
       </li>
@@ -523,7 +523,7 @@ export const ALLIANCES_HELP = (
       <li>
         On: players can offer, accept, and terminate alliances with each other.
         Allies can always send each other direct emojis (others can&apos;t),
-        and, with Fog Of War on, see each other&apos;s vision as if it were
+        and, with Fog of War on, see each other&apos;s vision as if it were
         their own. Not available in Team Deathmatch, where teammates already get
         these benefits automatically.
       </li>

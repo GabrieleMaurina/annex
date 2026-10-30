@@ -4,10 +4,15 @@ import {
 } from '../game/animations';
 import { httpSend } from './http';
 import {
+  getEffectsVolume,
+  getMusicVolume,
   getSoundVolume,
   isSoundMuted,
+  setEffectsVolume,
+  setMusicVolume,
   setSoundMuted,
   setSoundVolume,
+  startMusic,
 } from './sounds';
 import type {
   ClientSettings,
@@ -72,6 +77,8 @@ function currentClientSettings(): ClientSettings {
     muted: isSoundMuted(),
     animationsDisabled: areAnimationsDisabled(),
     volume: getSoundVolume(),
+    effectsVolume: getEffectsVolume(),
+    musicVolume: getMusicVolume(),
     troopsPercentage,
   };
 }
@@ -87,8 +94,13 @@ export function applyServerSettings(
     setSoundMuted(!!client.muted);
     setAnimationsDisabled(!!client.animationsDisabled);
     if (typeof client.volume === 'number') setSoundVolume(client.volume);
+    if (typeof client.effectsVolume === 'number')
+      setEffectsVolume(client.effectsVolume);
+    if (typeof client.musicVolume === 'number')
+      setMusicVolume(client.musicVolume);
     setTroopsPercentage(!!client.troopsPercentage);
   }
+  startMusic();
   if (game) {
     const { slots, bots, localPlayers, ...rest } = game;
     gameSettings = rest;

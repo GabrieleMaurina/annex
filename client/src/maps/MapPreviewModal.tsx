@@ -48,7 +48,8 @@ function MapPreviewModal({
             <p className="mb-1">
               By <strong>{preview.authorName}</strong> ·{' '}
               {preview.territoryCount} territories · {preview.continentCount}{' '}
-              continents · {preview.likeCount} likes
+              {preview.continentCount === 1 ? 'continent' : 'continents'} ·{' '}
+              {preview.likeCount} {preview.likeCount === 1 ? 'like' : 'likes'}
             </p>
             {preview.generation && (
               <p className="mb-1 text-muted small">

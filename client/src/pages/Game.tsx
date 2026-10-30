@@ -9,7 +9,7 @@ import { gameMapDataProps } from '../game/gameMapProps';
 import { useGameLogs } from '../game/logs/useGameLogs';
 import OfflineHandoffGate from '../game/OfflineHandoffGate';
 import RotateDeviceOverlay from '../game/RotateDeviceOverlay';
-import { playSound } from '../lib/sounds';
+import { changeMusic, playSound, setMusicMapType } from '../lib/sounds';
 import type {
   Account,
   Ack,
@@ -82,13 +82,19 @@ function Game({
   const applyGameState = useCallback(
     (state: GameState) => {
       playEliminationSound(state);
+      setMusicMapType(
+        state.state === 'playing' ? (state.mapGeneration?.type ?? null) : null,
+      );
       if (!receivedFirstStateRef.current) {
         receivedFirstStateRef.current = true;
+        if (state.state === 'lobby') playSound('join');
+        if (state.state === 'lobby' || state.state === 'playing') changeMusic();
       } else if (
         prevStateRef.current === 'lobby' &&
         state.state === 'playing'
       ) {
         playSound('start');
+        changeMusic();
       } else if (
         prevStateRef.current === 'playing' &&
         state.state === 'ended'
@@ -126,6 +132,7 @@ function Game({
     connector.requestState();
     return () => {
       connector.off('game:state', applyGameState);
+      setMusicMapType(null);
     };
   }, [applyGameState]);
 
@@ -353,7 +360,6 @@ function Game({
   return (
     <>
       <SettingsMenu
-        shareUrl={window.location.href}
         hidden={showMap && gamePanelOpen}
         onOpenChange={setSettingsMenuOpen}
         lockScrollOnFullscreen={showMap}
@@ -411,7 +417,6 @@ function Game({
           }
           nameById={nameById}
           colorById={colorById}
-          transparent={showMap}
           open={chatOpen}
           setOpen={setChatOpen}
         />

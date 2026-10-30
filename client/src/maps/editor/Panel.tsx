@@ -11,7 +11,10 @@ import {
 } from 'react-bootstrap';
 import { flushSync } from 'react-dom';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import { useNumberInput } from '../../common/inputs/useNumberInput';
+import PanelHeader from '../../common/PanelHeader';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../common/panelStyle';
 import { contrastTextColor } from '../../lib/palette';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import { useSmoothEdges } from './canvas/smoothEdges';
@@ -29,7 +32,6 @@ import PlaceNameInput from './panel/PlaceNameInput';
 import ShapeIcon from './panel/ShapeIcon';
 import TerritorySizeRange from './panel/TerritorySizeRange';
 import TimedLinksTable from './panel/TimedLinksTable';
-import ToolIcon from './panel/ToolIcon';
 
 const MIN_CONTINENTS = 0;
 const MAX_CONTINENTS = 20;
@@ -234,10 +236,10 @@ function Panel(props: Props) {
   useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
 
   const undoRedo = (
-    <div className="d-flex gap-1 mb-2">
+    <div className="d-flex gap-2 mb-2">
       <Button
         size="sm"
-        variant="outline-secondary"
+        variant="secondary"
         className="flex-grow-1"
         disabled={!canUndo}
         onClick={onUndo}
@@ -246,7 +248,7 @@ function Panel(props: Props) {
       </Button>
       <Button
         size="sm"
-        variant="outline-secondary"
+        variant="secondary"
         className="flex-grow-1"
         disabled={!canRedo}
         onClick={onRedo}
@@ -309,10 +311,11 @@ function Panel(props: Props) {
       <Button
         variant="secondary"
         size="sm"
-        className="position-absolute top-0 end-0 m-2"
+        className="position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center"
+        style={{ width: 28, height: 28, padding: 0 }}
         onClick={() => setCollapsed(false)}
       >
-        ☰
+        <WhiteIcon path="/icons/menu.svg" alt="Menu" />
       </Button>
     );
   }
@@ -320,24 +323,13 @@ function Panel(props: Props) {
   return (
     <div
       ref={panelRef}
-      className="position-absolute top-0 end-0 bg-body bg-opacity-75 border rounded p-3 m-2 d-flex flex-column overflow-y-auto overflow-x-hidden no-scrollbar"
+      className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3 d-flex flex-column overflow-y-auto overflow-x-hidden no-scrollbar`}
       style={{
-        width: 'min(300px, calc(100vw - 1rem))',
-        maxHeight: 'calc(100dvh - 1rem)',
+        width: 'min(300px, calc(100vw - 2rem))',
+        maxHeight: 'calc(100dvh - 2rem)',
       }}
     >
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setCollapsed(true)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') setCollapsed(true);
-        }}
-        className="fw-bold text-center mb-2"
-        style={{ cursor: 'pointer' }}
-      >
-        Map editor
-      </div>
+      <PanelHeader title="Map editor" onClose={() => setCollapsed(true)} />
 
       <div className="d-flex gap-2 mb-2">
         <Button variant="secondary" size="sm" className="w-100" onClick={onNew}>
@@ -449,7 +441,7 @@ function Panel(props: Props) {
                 className="d-inline-block rounded border"
                 style={{ width: 14, height: 14, backgroundColor: c }}
               />
-              ×
+              <WhiteIcon path="/icons/close.svg" size={10} />
             </Button>
           ))}
           {borderPick === null ? (
@@ -487,7 +479,7 @@ function Panel(props: Props) {
                   setBorderPick(null);
                 }}
               >
-                ✓
+                <WhiteIcon path="/icons/check.svg" size={12} />
               </Button>
               <Button
                 size="sm"
@@ -495,7 +487,7 @@ function Panel(props: Props) {
                 className="py-0"
                 onClick={() => setBorderPick(null)}
               >
-                ✕
+                <WhiteIcon path="/icons/close.svg" size={12} />
               </Button>
             </>
           )}
@@ -663,7 +655,7 @@ function Panel(props: Props) {
                     onClick={() => setTool(tool === t.key ? null : t.key)}
                     className="d-flex align-items-center gap-1"
                   >
-                    {t.icon && <ToolIcon path={t.icon} />}
+                    {t.icon && <WhiteIcon path={t.icon} />}
                     {t.label}
                   </Button>
                 ),
@@ -706,7 +698,7 @@ function Panel(props: Props) {
               .annex-brush-range::-webkit-slider-runnable-track {
                 background: linear-gradient(
                   to right,
-                  #0d6efd var(--annex-brush-progress),
+                  var(--bs-primary) var(--annex-brush-progress),
                   var(--bs-secondary-bg) var(--annex-brush-progress)
                 );
               }
@@ -715,7 +707,7 @@ function Panel(props: Props) {
               }
               .annex-brush-range::-moz-range-progress {
                 height: 0.5rem;
-                background: #0d6efd;
+                background: var(--bs-primary);
                 border-radius: 1rem;
               }
             `}</style>
@@ -876,7 +868,7 @@ function Panel(props: Props) {
                         onClick={() => deleteContinent(i)}
                         disabled={continentCount <= MIN_CONTINENTS}
                       >
-                        ✕
+                        <WhiteIcon path="/icons/close.svg" size={12} />
                       </Button>
                     </td>
                   </tr>
@@ -889,7 +881,7 @@ function Panel(props: Props) {
                       onClick={addContinent}
                       disabled={continentCount >= MAX_CONTINENTS}
                     >
-                      +
+                      <WhiteIcon path="/icons/plus.svg" size={14} />
                     </Button>
                   </td>
                 </tr>

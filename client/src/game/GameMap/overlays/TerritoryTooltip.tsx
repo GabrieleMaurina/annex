@@ -26,12 +26,11 @@ export default function TerritoryTooltip({
     VERTEX_RADIUS * getScales(size.w, size.h, transform.zoom, imgDims).scaleX;
   return (
     <div
-      className="position-absolute px-2 py-1 rounded text-white small"
+      className="position-absolute px-2 py-1 rounded text-white small bg-black"
       style={{
         left: position.x,
         top: position.y - offset - 8,
         transform: 'translate(-50%, -100%)',
-        background: 'rgba(0, 0, 0, 0.85)',
         whiteSpace: 'nowrap',
         pointerEvents: 'none',
         zIndex: 3,

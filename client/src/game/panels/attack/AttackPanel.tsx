@@ -13,6 +13,7 @@ import {
   wheelDirection,
 } from '../../../common/inputs/useNumberInput';
 import { useTroopsInput } from '../../../common/inputs/useTroopsInput';
+import { PANEL_BG_CLASS } from '../../../common/panelStyle';
 import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
 import {
@@ -261,7 +262,7 @@ function AttackPanel({
 
   return (
     <div
-      className="p-2 px-3 border rounded bg-body bg-opacity-75 d-flex flex-column gap-2"
+      className={`p-2 px-3 border rounded ${PANEL_BG_CLASS} d-flex flex-column gap-2`}
       data-no-click-sound
       style={{
         ...style,

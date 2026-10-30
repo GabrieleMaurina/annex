@@ -52,7 +52,6 @@ function emitGameEnded(game: Game): void {
   callbacks.onGameEnded?.({
     gameName: game.name,
     gameMode: game.gameMode,
-    roundNumber: game.roundNumber,
     ranking,
   });
 }

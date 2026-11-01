@@ -109,6 +109,9 @@ interface Props {
   onSurrender: () => void;
   earlyWin: boolean;
   onEndGame: () => void;
+  drawOffersOpen: boolean;
+  drawVoteIds: number[];
+  onToggleDraw: () => void;
   roundNumber: number;
   turnPhase: TurnPhase;
   turnPlayerId: number | null;
@@ -162,6 +165,9 @@ function PlayersPanel({
   onSurrender,
   earlyWin,
   onEndGame,
+  drawOffersOpen,
+  drawVoteIds,
+  onToggleDraw,
   roundNumber,
   turnPhase,
   turnPlayerId,
@@ -195,6 +201,8 @@ function PlayersPanel({
     !!self &&
     !self.eliminated &&
     !self.surrendered;
+  const canOfferDraw = canSurrender && !earlyWin && drawOffersOpen;
+  const drawOffered = selfId !== null && drawVoteIds.includes(selfId);
   const canLeave =
     isSpectator ||
     (!!self && (gameEnded || self.surrendered || self.eliminated));
@@ -252,6 +260,7 @@ function PlayersPanel({
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
+  const whiteDrawIcon = useWhiteIcon('/icons/draw.svg');
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteTargetIcon = useWhiteIcon('/icons/target.svg');
   const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
@@ -259,6 +268,9 @@ function PlayersPanel({
   const whiteStepForwardIcon = useWhiteIcon('/icons/step-forward.svg');
   const whiteSkipForwardIcon = useWhiteIcon('/icons/skip-forward.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
+  const whiteDotIcon = useWhiteIcon('/icons/dot.svg');
+  const whiteYouIcon = useWhiteIcon('/icons/you.svg');
+  const whitePlayerIcon = useWhiteIcon('/icons/player.svg');
 
   if (collapsed) {
     return (
@@ -504,7 +516,20 @@ function PlayersPanel({
                     }}
                   >
                     <td className="align-middle text-center" style={rowStyle}>
-                      {p.id === turnPlayerId && '●'}
+                      {p.id === turnPlayerId && (
+                        <Tip text="Current turn">
+                          <img
+                            src={
+                              isDark
+                                ? (whiteDotIcon ?? '/icons/dot.svg')
+                                : '/icons/dot.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Current turn"
+                          />
+                        </Tip>
+                      )}
                     </td>
                     {showAllianceColumn && (
                       <td
@@ -540,17 +565,49 @@ function PlayersPanel({
                         <RankIcon elo={p.elo} />
                         <Flag country={p.country} />
                         {p.isBot && (
-                          <img
-                            src={
-                              isDark
-                                ? (whiteBotIcon ?? '/icons/bot.svg')
-                                : '/icons/bot.svg'
-                            }
-                            width={12}
-                            height={12}
-                            alt="Bot"
-                            className="flex-shrink-0"
-                          />
+                          <Tip text="Bot">
+                            <img
+                              src={
+                                isDark
+                                  ? (whiteBotIcon ?? '/icons/bot.svg')
+                                  : '/icons/bot.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Bot"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
+                        )}
+                        {p.id === selfId && (
+                          <Tip text="You">
+                            <img
+                              src={
+                                isDark
+                                  ? (whiteYouIcon ?? '/icons/you.svg')
+                                  : '/icons/you.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="You"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
+                        )}
+                        {p.id !== selfId && !p.isBot && (
+                          <Tip text="Player">
+                            <img
+                              src={
+                                isDark
+                                  ? (whitePlayerIcon ?? '/icons/player.svg')
+                                  : '/icons/player.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Player"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
                         )}
                         {p.id !== selfId && isPlayerMuted(p.id) && (
                           <Tip text="Muted">
@@ -593,6 +650,21 @@ function PlayersPanel({
                               width={12}
                               height={12}
                               alt="Surrendered"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
+                        )}
+                        {drawVoteIds.includes(p.id) && (
+                          <Tip text="Offered a draw">
+                            <img
+                              src={
+                                isDark
+                                  ? (whiteDrawIcon ?? '/icons/draw.svg')
+                                  : '/icons/draw.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Offered a draw"
                               className="flex-shrink-0"
                             />
                           </Tip>
@@ -782,7 +854,7 @@ function PlayersPanel({
         )}
         {(canSurrender || canLeave) && (
           <div
-            className={`d-flex mt-2 ${canSurrender && canLeave ? 'justify-content-between' : 'justify-content-end'}`}
+            className={`d-flex gap-2 mt-2 ${canSurrender && canLeave ? 'justify-content-between' : 'justify-content-end'}`}
           >
             {canSurrender && earlyWin && (
               <Tip
@@ -791,6 +863,31 @@ function PlayersPanel({
               >
                 <Button variant="success" size="sm" onClick={onEndGame}>
                   End game
+                </Button>
+              </Tip>
+            )}
+            {canOfferDraw && (
+              <Tip
+                text={
+                  drawOffered
+                    ? 'Withdraw your draw offer'
+                    : 'Offer a draw. The game ends in a draw once every remaining human player offers one'
+                }
+                placement="bottom"
+              >
+                <Button
+                  variant={drawOffered ? 'success' : 'secondary'}
+                  size="sm"
+                  className="d-flex align-items-center gap-1"
+                  onClick={onToggleDraw}
+                >
+                  <img
+                    src={whiteDrawIcon ?? '/icons/draw.svg'}
+                    width={14}
+                    height={14}
+                    alt=""
+                  />
+                  Draw
                 </Button>
               </Tip>
             )}

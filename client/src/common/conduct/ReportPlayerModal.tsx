@@ -1,16 +1,33 @@
+import type { ReportReason } from 'engine';
 import { REPORT_REASONS } from 'engine';
 import { useId, useState } from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
 import { useToggleSound } from '../../lib/sounds';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import { formatError } from '../formatError';
+import Tip from '../tooltips/Tip';
 
 const PICTURE_REASON = 'offensive picture';
+
+const REASON_DESCRIPTIONS: Record<ReportReason, string> = {
+  collusion:
+    'Secretly teaming up with another player, or playing several accounts in the same game',
+  'stream sniping':
+    "Watching another player's stream to see hidden information",
+  'verbal abuse': 'Insults, harassment, hate speech or threats in chat',
+  'fake botting':
+    'Pretending to be idle or disconnected so others ignore them, then coming back to play',
+  stalling:
+    'Deliberately wasting time, using the full turn timer on purpose or dragging out a decided game',
+  'offensive picture':
+    'A profile picture that is sexual, violent, hateful or otherwise inappropriate',
+};
 
 export type ConductAck = { ok: true } | { ok: false; error: string };
 
 interface Props {
   show: boolean;
+  playerName: string;
   includePicture: boolean;
   initialReason?: string;
   onHide: () => void;
@@ -20,6 +37,7 @@ interface Props {
 
 function ReportPlayerModal({
   show,
+  playerName,
   includePicture,
   initialReason,
   onHide,
@@ -63,22 +81,34 @@ function ReportPlayerModal({
   }
 
   return (
-    <Modal show={show} onHide={close} centered>
-      <Modal.Header closeButton>
-        <Modal.Title>Report player</Modal.Title>
+    <Modal
+      show={show}
+      onHide={close}
+      centered
+      dialogClassName="modal-fit mx-auto"
+    >
+      <Modal.Header closeButton className="gap-3">
+        <Modal.Title>Report {playerName}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <Form>
+        <Form className="d-flex flex-column align-items-start">
           {reasons.map((value) => (
-            <Form.Check
+            <Tip
               key={value}
-              type="radio"
-              id={`${idPrefix}-${value.replaceAll(' ', '-')}`}
-              name={idPrefix}
-              label={titleCase(value)}
-              checked={selected === value}
-              onChange={() => setReason(value)}
-            />
+              text={REASON_DESCRIPTIONS[value]}
+              placement="right"
+            >
+              <div>
+                <Form.Check
+                  type="radio"
+                  id={`${idPrefix}-${value.replaceAll(' ', '-')}`}
+                  name={idPrefix}
+                  label={titleCase(value)}
+                  checked={selected === value}
+                  onChange={() => setReason(value)}
+                />
+              </div>
+            </Tip>
           ))}
         </Form>
         {error && <div className="small text-danger mt-2">{error}</div>}

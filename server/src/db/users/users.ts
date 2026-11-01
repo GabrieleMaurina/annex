@@ -14,6 +14,12 @@ import {
   sanitizeGameSettings,
   sanitizeHomeFilters,
 } from './preferences';
+import {
+  DEFAULT_PRESETS,
+  Preset,
+  presetsSchemaProperties,
+  sanitizePresets,
+} from './presets';
 
 const NAME = 'users';
 
@@ -54,6 +60,7 @@ interface UserDoc {
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
+  presets: (Preset | null)[];
   picture: PictureDoc | null;
 }
 
@@ -98,6 +105,7 @@ const schema = {
         'clientSettings',
         'gameSettings',
         'homeFilters',
+        'presets',
         'picture',
       ],
       additionalProperties: false,
@@ -145,6 +153,7 @@ const schema = {
         password: { bsonType: 'string' },
         validated_email: { bsonType: 'bool' },
         ...preferencesSchemaProperties,
+        ...presetsSchemaProperties,
       },
     },
   },
@@ -188,7 +197,7 @@ export function findUserByUsername(username: string): Promise<User | null> {
   return collection()
     .findOne(
       { username_lower: normalizeUsername(username) },
-      { projection: { picture: 0 } },
+      { projection: { picture: 0, presets: 0 } },
     )
     .then((doc) => (doc ? toUser(doc) : null));
 }
@@ -197,14 +206,17 @@ export function findUserByEmail(email: string): Promise<User | null> {
   return collection()
     .findOne(
       { email_normalized: normalizeEmail(email) },
-      { projection: { picture: 0 } },
+      { projection: { picture: 0, presets: 0 } },
     )
     .then((doc) => (doc ? toUser(doc) : null));
 }
 
 export function findUserById(id: string): Promise<User | null> {
   return collection()
-    .findOne({ _id: new ObjectId(id) }, { projection: { picture: 0 } })
+    .findOne(
+      { _id: new ObjectId(id) },
+      { projection: { picture: 0, presets: 0 } },
+    )
     .then((doc) => (doc ? toUser(doc) : null));
 }
 
@@ -288,6 +300,7 @@ export function insertUser(data: {
       clientSettings: { ...DEFAULT_CLIENT_SETTINGS },
       gameSettings: { ...DEFAULT_GAME_SETTINGS },
       homeFilters: { ...DEFAULT_HOME_FILTERS },
+      presets: [...DEFAULT_PRESETS],
       picture: null,
     })
     .then((res) => ({ id: res.insertedId.toString() }))
@@ -364,6 +377,22 @@ export function saveSettings(
     .then(() => undefined);
 }
 
+export function getUserPresets(userId: string): Promise<(Preset | null)[]> {
+  return collection()
+    .findOne({ _id: new ObjectId(userId) }, { projection: { presets: 1 } })
+    .then((doc) => sanitizePresets(doc?.presets));
+}
+
+export function saveUserPresets(
+  userId: string,
+  raw: unknown,
+): Promise<(Preset | null)[]> {
+  const presets = sanitizePresets(raw);
+  return collection()
+    .updateOne({ _id: new ObjectId(userId) }, { $set: { presets } })
+    .then(() => presets);
+}
+
 export function searchUsers(
   query: string,
   limit: number,
@@ -435,7 +464,17 @@ function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-interface GameStats {
+export interface CareerTotals {
+  playersKilled: number;
+  troopsGained: number;
+  troopsKilled: number;
+  troopsLost: number;
+  territoriesConquered: number;
+  capitalsConquered: number;
+  setsPlayed: number;
+}
+
+interface GameStats extends CareerTotals {
   gamesPlayed: number;
   placingSum: number;
   wins: number;
@@ -449,30 +488,19 @@ interface GamesCollectionDoc {
 function computeGameStats(userIds: string[]): Promise<Map<string, GameStats>> {
   if (userIds.length === 0) return Promise.resolve(new Map());
   return getCollection<GamesCollectionDoc>('games')
-    .aggregate<{
-      _id: string;
-      gamesPlayed: number;
-      placingSum: number;
-      wins: number;
-    }>([
+    .aggregate<GameStats & { _id: string }>([
       { $match: { 'players.userId': { $in: userIds } } },
-      { $project: { players: 1, results: 1 } },
+      { $project: { players: 1, results: 1, draw: 1 } },
       { $unwind: '$players' },
       { $match: { 'players.userId': { $in: userIds } } },
       {
         $addFields: {
-          _rank: {
+          _result: {
             $first: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$results',
-                    as: 'r',
-                    cond: { $eq: ['$$r.playerId', '$players.playerId'] },
-                  },
-                },
+              $filter: {
+                input: '$results',
                 as: 'r',
-                in: '$$r.rank',
+                cond: { $eq: ['$$r.playerId', '$players.playerId'] },
               },
             },
           },
@@ -482,25 +510,32 @@ function computeGameStats(userIds: string[]): Promise<Map<string, GameStats>> {
         $group: {
           _id: '$players.userId',
           gamesPlayed: { $sum: 1 },
-          placingSum: { $sum: '$_rank' },
-          wins: { $sum: { $cond: [{ $eq: ['$_rank', 0] }, 1, 0] } },
+          placingSum: { $sum: '$_result.rank' },
+          wins: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [{ $eq: ['$_result.rank', 0] }, { $not: ['$draw'] }],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          playersKilled: {
+            $sum: { $size: { $ifNull: ['$_result.playersKilled', []] } },
+          },
+          troopsGained: { $sum: '$_result.troopsGained' },
+          troopsKilled: { $sum: '$_result.troopsKilled' },
+          troopsLost: { $sum: '$_result.troopsLost' },
+          territoriesConquered: { $sum: '$_result.territoriesConquered' },
+          capitalsConquered: { $sum: '$_result.capitalsConquered' },
+          setsPlayed: { $sum: '$_result.setsPlayed' },
         },
       },
     ])
     .toArray()
-    .then(
-      (rows) =>
-        new Map(
-          rows.map((r) => [
-            r._id,
-            {
-              gamesPlayed: r.gamesPlayed,
-              placingSum: r.placingSum,
-              wins: r.wins,
-            },
-          ]),
-        ),
-    );
+    .then((rows) => new Map(rows.map(({ _id, ...stats }) => [_id, stats])));
 }
 
 function averagePlacing(stats: GameStats | undefined): number | null {
@@ -535,7 +570,7 @@ export interface PlayersPage {
   pageSize: number;
 }
 
-export interface PlayerProfile {
+export interface PlayerProfile extends CareerTotals {
   id: string;
   username: string;
   elo: number;
@@ -609,7 +644,10 @@ export function getPlayerProfile(
   username: string,
 ): Promise<PlayerProfile | null> {
   return collection()
-    .findOne({ username_lower: normalizeUsername(username) })
+    .findOne(
+      { username_lower: normalizeUsername(username) },
+      { projection: { presets: 0 } },
+    )
     .then((doc) => {
       if (!doc) return null;
       const elo = doc.elo;
@@ -628,6 +666,13 @@ export function getPlayerProfile(
           gamesPlayed: stats?.gamesPlayed ?? 0,
           wins: stats?.wins ?? 0,
           averagePlacing: averagePlacing(stats),
+          playersKilled: stats?.playersKilled ?? 0,
+          troopsGained: stats?.troopsGained ?? 0,
+          troopsKilled: stats?.troopsKilled ?? 0,
+          troopsLost: stats?.troopsLost ?? 0,
+          territoriesConquered: stats?.territoriesConquered ?? 0,
+          capitalsConquered: stats?.capitalsConquered ?? 0,
+          setsPlayed: stats?.setsPlayed ?? 0,
           percentile: total > 1 ? Math.round((lower / (total - 1)) * 100) : 100,
           createdAt: doc._id.getTimestamp().getTime(),
           reputation: effectiveReputation(

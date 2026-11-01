@@ -46,7 +46,7 @@ interface Props {
 
 const MAX_SEED_LENGTH = 20;
 const PRINTABLE_ASCII = /^[\x20-\x7e]+$/;
-const LABEL_STYLE = { width: 48 };
+const LABEL_STYLE = { width: 56 };
 
 function seedError(seed: string): string | null {
   if (
@@ -254,8 +254,12 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                   <option value="large">Large</option>
                   <option value="xlarge">Extra Large</option>
                 </Selector>
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <Form.Label className="mb-0 flex-shrink-0" style={LABEL_STYLE}>
+                  Aspect
+                </Form.Label>
                 <Selector
-                  className="w-auto"
                   value={aspect}
                   onChange={(value) => setAspect(value as MapAspect)}
                 >
@@ -270,35 +274,34 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                 <Form.Check
                   type="checkbox"
                   id="map-generation-seas"
-                  label="Seas"
+                  label={<Help tip={SEAS_HELP}>Seas</Help>}
                   checked={seas}
                   disabled={unlockable}
                   onChange={(e) => setSeas(e.target.checked)}
                 />
-                <Help>{SEAS_HELP}</Help>
               </div>
               <div className="d-flex align-items-center gap-2">
                 <Form.Check
                   type="checkbox"
                   id="map-generation-timed"
-                  label="Timed connections"
+                  label={
+                    <Help tip={TIMED_CONNECTIONS_HELP}>Timed connections</Help>
+                  }
                   checked={timed}
                   disabled={unlockable}
                   onChange={(e) => setTimed(e.target.checked)}
                 />
-                <Help>{TIMED_CONNECTIONS_HELP}</Help>
               </div>
               {type === 'tile' && (
                 <div className="d-flex align-items-center gap-2">
                   <Form.Check
                     type="checkbox"
                     id="map-generation-unlockable"
-                    label="Unlockable"
+                    label={<Help tip={UNLOCKABLE_HELP}>Unlockable</Help>}
                     checked={unlockable}
                     disabled={seas || timed}
                     onChange={(e) => setUnlockableChecked(e.target.checked)}
                   />
-                  <Help>{UNLOCKABLE_HELP}</Help>
                 </div>
               )}
               {type === 'terrain' && (
@@ -307,21 +310,19 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                     <Form.Check
                       type="checkbox"
                       id="map-generation-mountains"
-                      label="Mountains"
+                      label={<Help tip={MOUNTAINS_HELP}>Mountains</Help>}
                       checked={mountains}
                       onChange={(e) => setMountains(e.target.checked)}
                     />
-                    <Help>{MOUNTAINS_HELP}</Help>
                   </div>
                   <div className="d-flex align-items-center gap-2">
                     <Form.Check
                       type="checkbox"
                       id="map-generation-rivers"
-                      label="Rivers"
+                      label={<Help tip={RIVERS_HELP}>Rivers</Help>}
                       checked={rivers}
                       onChange={(e) => setRivers(e.target.checked)}
                     />
-                    <Help>{RIVERS_HELP}</Help>
                   </div>
                 </>
               )}
@@ -358,7 +359,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
             {confirm ? 'Cancel' : 'Close'}
           </Button>
           <Button
-            variant={confirm ? 'outline-secondary' : 'primary'}
+            variant={confirm ? 'outline-primary' : 'primary'}
             disabled={generating || !!seedMessage}
             onClick={handleGenerate}
           >

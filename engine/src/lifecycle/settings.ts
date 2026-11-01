@@ -147,7 +147,23 @@ export const TROOPS_PER_TERRITORY_VALUES = [
   ...Array.from({ length: 100 }, (_, i) => i + 1),
 ];
 
+export const MIN_STARTING_CAPITALS = 1;
+export const MAX_STARTING_CAPITALS = 10;
+export const MIN_STALEMATE_ROUNDS = 20;
+export const MAX_STALEMATE_ROUNDS = 5000;
+export const MAX_DURATION_VALUES = [
+  30, 60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 540, 600,
+];
+
 const MAX_BLITZ_OFF_TROOPS = 10;
+
+function isStalemateRound(value: unknown): value is number {
+  return (
+    isInteger(value) &&
+    value >= MIN_STALEMATE_ROUNDS &&
+    value <= MAX_STALEMATE_ROUNDS
+  );
+}
 
 export function isBlitzOffAllowed(settings: {
   roundTroops: unknown;
@@ -358,6 +374,12 @@ export function updateSettings(
     game.disconnectBotPersonality = settings.disconnectBotPersonality;
   }
 
+  if (settings.drawOfferRound !== undefined) {
+    if (!isStalemateRound(settings.drawOfferRound))
+      return { ok: false, error: 'invalid draw offer round' };
+    game.drawOfferRound = settings.drawOfferRound;
+  }
+
   if (settings.entrenchments !== undefined) {
     if (!(ENTRENCHMENTS_VALUES as unknown[]).includes(settings.entrenchments))
       return { ok: false, error: 'invalid entrenchments' };
@@ -415,10 +437,22 @@ export function updateSettings(
     game.initialTroops = settings.initialTroops;
   }
 
+  if (settings.maxDuration !== undefined) {
+    if (!MAX_DURATION_VALUES.includes(settings.maxDuration as number))
+      return { ok: false, error: 'invalid max duration' };
+    game.maxDuration = settings.maxDuration as number;
+  }
+
   if (settings.maxPoints !== undefined) {
     if (!(MAX_POINTS_VALUES as unknown[]).includes(settings.maxPoints))
       return { ok: false, error: 'invalid max points' };
     game.maxPoints = settings.maxPoints as number;
+  }
+
+  if (settings.maxRounds !== undefined) {
+    if (!isStalemateRound(settings.maxRounds))
+      return { ok: false, error: 'invalid max rounds' };
+    game.maxRounds = settings.maxRounds;
   }
 
   if (settings.minAccountAge !== undefined) {
@@ -520,6 +554,16 @@ export function updateSettings(
     }
     game.slots = settings.slots;
     promoteSpectators(game);
+  }
+
+  if (settings.startingCapitals !== undefined) {
+    if (
+      !isInteger(settings.startingCapitals) ||
+      settings.startingCapitals < MIN_STARTING_CAPITALS ||
+      settings.startingCapitals > MAX_STARTING_CAPITALS
+    )
+      return { ok: false, error: 'invalid starting capitals' };
+    game.startingCapitals = settings.startingCapitals;
   }
 
   if (settings.starvation !== undefined) {

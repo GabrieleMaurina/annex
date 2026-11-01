@@ -51,6 +51,8 @@ const SPECK_AREA_RATIO = 0.1;
 const FINE_SPECK_AREA_RATIO = 0.3;
 const ISLAND_AREA_RATIO = 0.05;
 const STATE_CUT = 90;
+const COUNTRY_LEVEL = 100;
+const WHOLE_STATES_COUNTRY = 'United States of America';
 const SEA_AREA_MULTIPLIER = 16;
 const LAKE_AREA_RATIO = 0.1;
 const NATURAL_AREA_RATIO = 0.1;
@@ -341,6 +343,11 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
       ? SPECK_AREA_RATIO
       : FINE_SPECK_AREA_RATIO);
   const parentIndex = parentCutIndex(atoms, levels, cutIndex, minArea);
+  const keepWhole =
+    levels.thresholds[cutIndex] === STATE_CUT &&
+    params.focus.length === 1 &&
+    params.focus[0].level === COUNTRY_LEVEL &&
+    params.focus[0].name === WHOLE_STATES_COUNTRY;
   const fitted = fitRegions(
     atoms,
     levels,
@@ -350,6 +357,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     expectedTerritoryArea,
     range[1],
     width,
+    keepWhole,
   );
   const carved = carveRegions(
     fitted,
@@ -360,6 +368,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     expectedTerritoryArea,
     range,
     rng,
+    keepWhole,
   );
   const raw = denseLabels(carved.grid, width, height, carved.seedNames);
   smoothBorders(raw.labelGrid, width, height);

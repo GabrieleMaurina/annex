@@ -89,10 +89,12 @@ function Friends({ account }: Props) {
   const friends = overview?.friends ?? [];
   const incoming = overview?.incoming ?? [];
   const outgoing = overview?.outgoing ?? [];
+  const blocked = overview?.blocked ?? [];
   const relationship = new Map<string, string>([
     ...friends.map((f): [string, string] => [f.id, 'Friends']),
     ...outgoing.map((f): [string, string] => [f.id, 'Requested']),
     ...incoming.map((f): [string, string] => [f.id, 'Wants to be friends']),
+    ...blocked.map((f): [string, string] => [f.id, 'Blocked']),
   ]);
 
   return (
@@ -141,6 +143,7 @@ function Friends({ account }: Props) {
                 ) : (
                   <Button
                     size="sm"
+                    variant="success"
                     onClick={() =>
                       run(
                         connector.sendFriendRequest,
@@ -172,6 +175,7 @@ function Friends({ account }: Props) {
                 >
                   <Button
                     size="sm"
+                    variant="success"
                     onClick={() =>
                       run(
                         connector.acceptFriendRequest,
@@ -252,6 +256,33 @@ function Friends({ account }: Props) {
                     }
                   >
                     Remove
+                  </Button>
+                </PersonRow>
+              ))}
+            </ListGroup>
+          )}
+        </Col>
+
+        <Col md={4}>
+          <h2 className="h5">Blocked players</h2>
+          {blocked.length === 0 ? (
+            <p className="text-muted">No blocked players.</p>
+          ) : (
+            <ListGroup>
+              {blocked.map((person) => (
+                <PersonRow
+                  key={person.id}
+                  person={person}
+                  onOpen={() => open(person.username)}
+                >
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() =>
+                      run(connector.unblockUser, person.id, 'Player unblocked.')
+                    }
+                  >
+                    Unblock
                   </Button>
                 </PersonRow>
               ))}

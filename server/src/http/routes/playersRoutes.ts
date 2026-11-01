@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  getEloHistory,
+  getPlayerHistory,
   getPlayerProfile,
   listPlayers,
   PlayersQuery,
@@ -59,8 +59,8 @@ playersRouter.get('/players', (req, res) => {
     .catch(() => res.json({ players: [], total: 0, page, pageSize }));
 });
 
-playersRouter.get('/players/:username/elo-history', (req, res) => {
-  getEloHistory(req.params.username)
+playersRouter.get('/players/:username/history', (req, res) => {
+  getPlayerHistory(req.params.username)
     .then((history) => res.json(history))
     .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
 });

@@ -316,7 +316,9 @@ function normalized(values: Map<number, number>): Map<number, number> {
 }
 
 export function chooseCapital(game: Game, botId: number): number | null {
-  const owned = ownedTerritoryIds(game, botId);
+  const owned = ownedTerritoryIds(game, botId).filter(
+    (id) => !game.capitalTerritoryIds.has(id),
+  );
   if (owned.length === 0) return null;
   const links = landLinks(game);
   const protection = bonusProtection(game, botId, continentsOf(game));

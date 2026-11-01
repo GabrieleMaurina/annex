@@ -97,6 +97,7 @@ export function turnActionPanelsProps({
       deploySeaTerritoryId: deploySeaFlow.deploySeaTerritoryId,
     },
     placement: game.placement,
+    startingCapitals: game.startingCapitals,
     mustPlaySet: cardsFlow.mustPlaySet,
     nextPhaseEndsTurn:
       turnPhase === 'toxins' ||

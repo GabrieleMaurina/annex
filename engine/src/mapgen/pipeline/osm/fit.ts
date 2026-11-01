@@ -418,6 +418,7 @@ export function fitRegions(
   targetArea: number,
   max: number,
   width: number,
+  keepWhole: boolean,
 ): FittedRegions {
   const set = buildRegionSet(atoms, levels.components[cutIndex]);
   const parentComponent = levels.components[parentIndex];
@@ -430,8 +431,10 @@ export function fitRegions(
     edgeAtoms(atoms, width),
     targetArea * EDGE_FRAGMENT_SHARE,
   );
-  mergeDown(set, parentOf, targetArea * MERGE_SHARE, max);
-  splitByFinerLevels(set, atoms, levels, cutIndex, targetArea, max);
+  if (!keepWhole) {
+    mergeDown(set, parentOf, targetArea * MERGE_SHARE, max);
+    splitByFinerLevels(set, atoms, levels, cutIndex, targetArea, max);
+  }
   const dense = new Map<number, number>();
   for (const region of set.atomsOf.keys()) dense.set(region, dense.size);
   const grid = new Int32Array(atoms.atomOf.length).fill(-1);

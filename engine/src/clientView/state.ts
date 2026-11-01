@@ -72,6 +72,7 @@ export function viewGameStateFor(
     blitz: s.blitz,
     bounties: s.bounties,
     capitalRefund: s.capitalRefund,
+    startingCapitals: s.startingCapitals,
     cards: s.cards,
     continents: s.continents,
     continentBonuses: s.continentBonuses,
@@ -112,6 +113,9 @@ export function viewGameStateFor(
     turnDuration: s.turnDuration,
     attackIncrement: s.attackIncrement,
     roundTroops: s.roundTroops,
+    maxRounds: s.maxRounds,
+    maxDuration: s.maxDuration,
+    drawOfferRound: s.drawOfferRound,
     territoryTroopsCap: s.territoryTroopsCap,
     totalTroopsCap: s.totalTroopsCap,
     leaderTerritoryCount: s.leaderTerritoryCount,
@@ -146,6 +150,14 @@ export function viewGameStateFor(
         : aliasOf(game, s.attackSeaDefenderId),
     winnerIds: aliasesOf(game, s.winnerIds),
     earlyWin: s.earlyWin,
+    drawVoteIds: aliasesOf(game, s.drawVoteIds),
+    draw:
+      s.draw === null
+        ? null
+        : {
+            reason: s.draw.reason,
+            playerIds: aliasesOf(game, s.draw.playerIds),
+          },
     nextSetBaseValues: s.nextSetBaseValues,
     upcomingSetValues: s.upcomingSetValues,
     finalRanking: aliasesOf(game, s.finalRanking),

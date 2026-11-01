@@ -221,6 +221,14 @@ export function registerGameHandlers(
     callback(viewResponse(playerId, engine.endGame(playerId)));
   });
 
+  socket.on('game:toggleDraw', (callback: (response: GameResponse) => void) => {
+    if (typeof callback !== 'function') return;
+    const playerId = playerIdBySocketId.get(socket.id);
+    if (playerId === undefined)
+      return callback({ ok: false, error: 'not in a game' });
+    callback(viewResponse(playerId, engine.toggleDraw(playerId)));
+  });
+
   socket.on('game:chat', (data: unknown) => {
     const playerId = playerIdBySocketId.get(socket.id);
     if (playerId === undefined) return;

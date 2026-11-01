@@ -13,7 +13,7 @@ import {
   hasAnyToxin,
 } from './combat/autoSkip';
 import { moveIntoConquest, snapshotCapitalRefunds } from './combat/conquest';
-import { checkGameEnd } from './end';
+import { checkGameEnd, checkStalemate } from './end';
 import {
   MAX_TERRITORY_TROOPS,
   addTroopsCapped,
@@ -22,6 +22,7 @@ import {
   deployTargetIds,
   ownedTerritoryIds,
   ownsAnyTerritory,
+  startingPoolBonus,
   turnOrderBonus,
 } from './mechanics';
 import { hasReadyNuke } from './nukes/nukes';
@@ -89,6 +90,7 @@ function scheduleTurnTimer(game: Game) {
   game.turnStartedAt = Date.now();
   game.turnExtension = 0;
   if (game.paused) {
+    game.pausedMs += Date.now() - (game.pausedAt ?? Date.now());
     game.pausedAt = Date.now();
     return;
   }
@@ -127,6 +129,7 @@ export function resumeTurnTimer(game: Game) {
   autoResumeTimers.delete(game);
   const pausedDuration = Date.now() - (game.pausedAt ?? Date.now());
   game.turnStartedAt += pausedDuration;
+  game.pausedMs += pausedDuration;
   game.paused = false;
   game.pausedAt = null;
 
@@ -272,35 +275,63 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
   return deposits;
 }
 
-function pickRandomOwnedTerritory(game: Game, playerId: number): number | null {
-  const territoryIds = ownedTerritoryIds(game, playerId);
+function capitalCandidateIds(game: Game, playerId: number): number[] {
+  return ownedTerritoryIds(game, playerId).filter(
+    (id) => !game.capitalTerritoryIds.has(id),
+  );
+}
+
+function pickRandomCapitalCandidate(
+  game: Game,
+  playerId: number,
+): number | null {
+  const territoryIds = capitalCandidateIds(game, playerId);
   if (territoryIds.length === 0) return null;
   return territoryIds[Math.floor(Math.random() * territoryIds.length)];
 }
 
-export function assignCapital(game: Game, territoryId: number) {
+function capitalsPlaced(game: Game, playerId: number): number {
+  return [...game.capitalTerritoryIds].filter(
+    (id) => game.territoryOwners.get(id) === playerId,
+  ).length;
+}
+
+function firstCapitalBonus(game: Game): number {
+  const playerId = game.playerIds[game.turnPlayerIndex];
+  return capitalsPlaced(game, playerId) === 0
+    ? turnOrderBonus(game.turnPlayerIndex)
+    : 0;
+}
+
+function needsCapital(game: Game, playerId: number): boolean {
+  if (
+    game.deathOrder.includes(playerId) ||
+    capitalsPlaced(game, playerId) >= game.startingCapitals
+  )
+    return false;
+  return game.placement === 'single'
+    ? game.territoryOwners.size < totalTerritoryCount(game)
+    : capitalCandidateIds(game, playerId).length > 0;
+}
+
+export function assignCapital(game: Game, territoryId: number): number {
+  const troops = 3 + firstCapitalBonus(game);
   game.capitalTerritoryIds.add(territoryId);
   game.territoryTroops.set(
     territoryId,
-    (game.territoryTroops.get(territoryId) ?? 0) + 3,
+    (game.territoryTroops.get(territoryId) ?? 0) + troops,
   );
   const ownerId = game.territoryOwners.get(territoryId);
-  if (ownerId !== undefined) bumpStat(game, ownerId, 'troopsGained', 3);
+  if (ownerId !== undefined) bumpStat(game, ownerId, 'troopsGained', troops);
+  return troops;
 }
 
 export function advanceCapitalPlacement(game: Game) {
-  let index = game.turnPlayerIndex + 1;
-  while (
-    index < game.playerIds.length &&
-    game.deathOrder.includes(game.playerIds[index])
-  )
-    index++;
+  const index = nextIndexMatching(game, game.turnPlayerIndex, (id) =>
+    needsCapital(game, id),
+  );
 
-  if (
-    index >= game.playerIds.length ||
-    (game.placement === 'single' &&
-      game.territoryOwners.size >= totalTerritoryCount(game))
-  ) {
+  if (index === null) {
     if (game.placement === 'single') eliminatePlayersWithoutTerritory(game);
     beginNextSpecialPhase(game);
   } else {
@@ -411,7 +442,7 @@ export function startTroopPhase(game: Game) {
     const count = territoryCounts.get(id) ?? 0;
     game.placementTroopPools.set(
       id,
-      count * (game.initialTroops - 1) + turnOrderBonus(i),
+      count * (game.initialTroops - 1) + startingPoolBonus(game, i),
     );
   });
   const startIndex = nextTroopIndexFrom(game, -1);
@@ -449,8 +480,10 @@ export function claimTerritory(
   game: Game,
   playerId: number,
   territoryId: number,
+  bonusTroops = 0,
 ) {
-  const troops = game.placement === 'single' ? game.initialTroops : 1;
+  const troops =
+    (game.placement === 'single' ? game.initialTroops : 1) + bonusTroops;
   game.territoryOwners.set(territoryId, playerId);
   game.territoryTroops.set(territoryId, troops);
   recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
@@ -471,7 +504,7 @@ export function claimCapital(
   playerId: number,
   territoryId: number,
 ) {
-  claimTerritory(game, playerId, territoryId);
+  claimTerritory(game, playerId, territoryId, firstCapitalBonus(game));
   game.capitalTerritoryIds.add(territoryId);
 }
 
@@ -526,7 +559,8 @@ function startDeployPhase(game: Game, playerId: number) {
     breakdown.bonuses +
     breakdown.capitals +
     breakdown.roundTroops +
-    breakdown.bounties;
+    breakdown.bounties +
+    breakdown.turnOrder;
   game.troopsToDeploy = 0;
   const awarded = awardDeployTroops(game, playerId, earned);
   const turnStartedPayload = {
@@ -537,6 +571,7 @@ function startDeployPhase(game: Game, playerId: number) {
     troopsFromCapitals: breakdown.capitals,
     troopsFromRoundTroops: breakdown.roundTroops,
     troopsFromBounties: breakdown.bounties,
+    troopsFromTurnOrder: breakdown.turnOrder,
     troopsWithheld: earned - awarded,
   };
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
@@ -630,19 +665,19 @@ export function forceEndTurnImpl(game: Game, skipDeploy = false) {
   }
 
   if (game.turnPhase === 'capital') {
-    const territoryId = pickRandomOwnedTerritory(game, playerId);
+    const territoryId = pickRandomCapitalCandidate(game, playerId);
     if (territoryId !== null) {
-      assignCapital(game, territoryId);
+      const troops = assignCapital(game, territoryId);
       recordReplayFrame(game, {
         type: 'deploy',
         territoryId,
-        troops: 3,
+        troops,
         playerId,
       });
       fogFilterEmit(game, 'game:deployed', callbacks.onDeployed, (viewerId) => {
         const visible = visibleTerritoryIdsOrAll(game, viewerId);
         if (visible !== null && !visible.has(territoryId)) return null;
-        return { territoryId, troops: 3, playerId };
+        return { territoryId, troops, playerId };
       });
     }
     advanceCapitalPlacement(game);
@@ -823,6 +858,7 @@ export function advanceToNextPlayer(game: Game) {
   awardTurnPoints(game, game.playerIds[nextIndex]);
   checkGameEnd(game, true);
   if (game.state === 'ended') return;
+  if (checkStalemate(game)) return;
 
   if (game.roundNumber !== previousRoundNumber) updatePortalsForNewRound(game);
 

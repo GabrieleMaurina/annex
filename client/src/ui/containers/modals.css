@@ -5,6 +5,10 @@
     0 1.5rem 3rem rgba(0, 0, 0, 0.6);
 }
 
+.modal-fit {
+  width: fit-content;
+}
+
 .modal-header {
   background-image: var(--ui-steel);
   border-bottom-color: var(--ui-ink);

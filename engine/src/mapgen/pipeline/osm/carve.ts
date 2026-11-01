@@ -191,6 +191,7 @@ export function carveRegions(
   targetArea: number,
   [min, max]: [number, number],
   rng: Rng,
+  keepWhole: boolean,
 ): CarvedRegions {
   const grid = fitted.grid;
   let count = fitted.count;
@@ -205,7 +206,7 @@ export function carveRegions(
       if (
         !unsplittable.has(r) &&
         area[r] >= 2 * minArea &&
-        (needMore || Math.round(area[r] / targetArea) >= 2) &&
+        (needMore || (!keepWhole && Math.round(area[r] / targetArea) >= 2)) &&
         (target < 0 || area[r] > area[target])
       )
         target = r;

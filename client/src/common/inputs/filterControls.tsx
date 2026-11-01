@@ -5,6 +5,7 @@ import { playSound } from '../../lib/sounds';
 import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
 import NumberOdometer from '../../ui/forms/NumberOdometer';
 import Selector from '../../ui/forms/Selector';
+import Help from '../tooltips/Help';
 import { useNumberInput } from './useNumberInput';
 
 function clampInt(
@@ -19,10 +20,12 @@ function clampInt(
 
 export function Field({
   label,
+  help,
   children,
   wide,
 }: {
   label: string;
+  help?: ReactNode;
   children: ReactNode;
   wide?: boolean;
 }) {
@@ -30,7 +33,9 @@ export function Field({
     <div
       className={`${wide ? 'col-12 col-md-8 col-xl-6' : 'col-12 col-sm-6 col-md-4 col-xl-3'} d-flex flex-column`}
     >
-      <Form.Label className={FIELD_LABEL_CLASS}>{label}</Form.Label>
+      <Form.Label className={FIELD_LABEL_CLASS}>
+        {help ? <Help tip={help}>{label}</Help> : label}
+      </Form.Label>
       {children}
     </div>
   );

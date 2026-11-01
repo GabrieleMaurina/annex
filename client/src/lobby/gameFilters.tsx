@@ -1,4 +1,5 @@
 import { TILE_SHAPE_VALUES, tileShapeLabel } from 'engine';
+import { Button } from 'react-bootstrap';
 import { Field } from '../common/inputs/filterControls';
 import SearchMultiSelect, {
   type SearchSelectItem,
@@ -8,10 +9,20 @@ import type { Fill, GenerationType, MapSize } from '../lib/types';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import Selector from '../ui/forms/Selector';
 import {
+  DEFAULT_GAME_SETTINGS,
   GAME_SETTING_SECTIONS,
   GAME_SETTINGS,
   GENERATED_MAP_VALUE,
+  type GameSettingDef,
 } from './settings/gameSettings';
+import SettingOdometer from './settings/SettingOdometer';
+import {
+  MAP_GEN_HELP,
+  MAP_HELP,
+  SEAS_HELP,
+  TIMED_CONNECTIONS_HELP,
+  UNLOCKABLE_HELP,
+} from './settings/settingsHelp';
 
 const MAX_SELECTED_PLAYERS = 10;
 
@@ -103,7 +114,7 @@ export function MapFilterFields({
 }) {
   return (
     <>
-      <Field label="Map">
+      <Field label="Map" help={MAP_HELP}>
         <Selector
           size="sm"
           value={mapName}
@@ -126,7 +137,7 @@ export function MapFilterFields({
       </Field>
       {mapName === GENERATED_MAP_VALUE && (
         <>
-          <Field label="Generated map size">
+          <Field label="Generated map size" help={MAP_GEN_HELP}>
             <Selector size="sm" value={size} onChange={onSize}>
               <option value="">Any</option>
               {MAP_GENERATION_SIZES.map((o) => (
@@ -136,7 +147,7 @@ export function MapFilterFields({
               ))}
             </Selector>
           </Field>
-          <Field label="Generated map type">
+          <Field label="Generated map type" help={MAP_GEN_HELP}>
             <Selector
               size="sm"
               value={type}
@@ -154,7 +165,7 @@ export function MapFilterFields({
             </Selector>
           </Field>
           {type === 'tile' && (
-            <Field label="Generated map tile">
+            <Field label="Generated map tile" help={MAP_GEN_HELP}>
               <Selector size="sm" value={tile} onChange={onTile}>
                 <option value="">Any</option>
                 {TILE_SHAPE_VALUES.map((value) => (
@@ -165,7 +176,7 @@ export function MapFilterFields({
               </Selector>
             </Field>
           )}
-          <Field label="Generated map fill">
+          <Field label="Generated map fill" help={MAP_GEN_HELP}>
             <Selector size="sm" value={fill} onChange={onFill}>
               <option value="">Any</option>
               {MAP_GENERATION_FILLS.map((o) => (
@@ -175,21 +186,24 @@ export function MapFilterFields({
               ))}
             </Selector>
           </Field>
-          <Field label="Generated map seas">
+          <Field label="Generated map seas" help={SEAS_HELP}>
             <Selector size="sm" value={seas} onChange={onSeas}>
               <option value="">Any</option>
               <option value="yes">Yes</option>
               <option value="no">No</option>
             </Selector>
           </Field>
-          <Field label="Generated map timed connections">
+          <Field
+            label="Generated map timed connections"
+            help={TIMED_CONNECTIONS_HELP}
+          >
             <Selector size="sm" value={timed} onChange={onTimed}>
               <option value="">Any</option>
               <option value="yes">Yes</option>
               <option value="no">No</option>
             </Selector>
           </Field>
-          <Field label="Generated map unlockable">
+          <Field label="Generated map unlockable" help={UNLOCKABLE_HELP}>
             <Selector size="sm" value={unlockable} onChange={onUnlockable}>
               <option value="">Any</option>
               <option value="yes">Yes</option>
@@ -199,6 +213,44 @@ export function MapFilterFields({
         </>
       )}
     </>
+  );
+}
+
+function RangeSettingFilter({
+  def,
+  range,
+  value,
+  onChange,
+}: {
+  def: GameSettingDef;
+  range: { min: number; max: number };
+  value: string;
+  onChange: (key: string, value: string) => void;
+}) {
+  const fallback = Number(
+    DEFAULT_GAME_SETTINGS[def.key as keyof typeof DEFAULT_GAME_SETTINGS],
+  );
+  return (
+    <div className="d-flex align-items-center gap-2">
+      <SettingOdometer
+        className={value === '' ? 'opacity-50' : undefined}
+        value={value === '' ? fallback : Number(value)}
+        min={range.min}
+        max={range.max}
+        onChange={(next) => onChange(def.key, String(next))}
+      />
+      {value === '' ? (
+        <span className="small text-muted">Any</span>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline-secondary"
+          onClick={() => onChange(def.key, '')}
+        >
+          Any
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -219,19 +271,28 @@ export function SettingFilterSections({
             <div className="fw-bold text-muted small mb-2">{section}</div>
             <div className="row g-3">
               {defs.map((def) => (
-                <Field key={def.key} label={def.label}>
-                  <Selector
-                    size="sm"
-                    value={settings[def.key] ?? ''}
-                    onChange={(value) => onChange(def.key, value)}
-                  >
-                    <option value="">Any</option>
-                    {def.options.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Selector>
+                <Field key={def.key} label={def.label} help={def.help}>
+                  {def.range ? (
+                    <RangeSettingFilter
+                      def={def}
+                      range={def.range}
+                      value={settings[def.key] ?? ''}
+                      onChange={onChange}
+                    />
+                  ) : (
+                    <Selector
+                      size="sm"
+                      value={settings[def.key] ?? ''}
+                      onChange={(value) => onChange(def.key, value)}
+                    >
+                      <option value="">Any</option>
+                      {def.options.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </Selector>
+                  )}
                 </Field>
               ))}
             </div>

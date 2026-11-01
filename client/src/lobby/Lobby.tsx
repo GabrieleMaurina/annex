@@ -6,6 +6,7 @@ import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReacti
 import { formatError } from '../common/formatError';
 import BurgerMenu from '../common/menus/BurgerMenu';
 import { connector } from '../connector';
+import { applyPreset, uploadEarthMap } from '../lib/gameSetup';
 import {
   getGameLocalPlayers,
   getRestoredBotInput,
@@ -22,15 +23,18 @@ import type {
   GenerateMapInput,
   SavedBot,
 } from '../lib/types';
-import {
-  decodeToSurface,
-  loadImage,
-  surfaceToDataUrl,
-} from '../maps/editor/paint/surface';
+import type { EarthRecipe } from '../maps/editor/world/generateWorldMap';
 import BannedList from './BannedList';
 import Header from './Header';
 import PlayerRoster from './PlayerRoster';
 import type { TeamLayout } from './roster/teamLayout';
+import PresetBar from './settings/PresetBar';
+import {
+  earthRecipeFor,
+  rememberEarthRecipe,
+  type Preset,
+  type PresetSettings,
+} from './settings/presets';
 import SettingsPanel from './settings/SettingsPanel';
 import SpectatorList from './SpectatorList';
 
@@ -100,22 +104,29 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     });
   }
 
-  function selectEarthMap(map: OsmGeneratedMap, onSettled: () => void) {
-    const { imageSrc, ...rest } = map;
-    loadImage(imageSrc).then((img) =>
-      connector.selectEarthMap(
-        { ...rest, wraps: [], image: surfaceToDataUrl(decodeToSurface(img)) },
-        (res: Ack) => {
-          onSettled();
-          if (!res.ok) {
-            setSettingsError(res.error);
-            return;
-          }
-          setSettingsError('');
-          setGame(res.game);
-        },
-      ),
-    );
+  function selectEarthMap(
+    map: OsmGeneratedMap,
+    recipe: EarthRecipe,
+    onSettled: () => void,
+  ) {
+    uploadEarthMap(map, (res: Ack) => {
+      onSettled();
+      if (!res.ok) {
+        setSettingsError(res.error);
+        return;
+      }
+      setSettingsError('');
+      rememberEarthRecipe(res.game.mapName, recipe);
+      setGame(res.game);
+    });
+  }
+
+  function applyPresetToLobby(preset: Preset) {
+    setSettingsError('');
+    applyPreset(preset, game, (res: Ack) => {
+      if (res.ok) setGame(res.game);
+      else setSettingsError(res.error);
+    });
   }
 
   const isHost = game.hostId === selfId;
@@ -237,6 +248,68 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     applySettings({ bannedPlayerIds: bannedIdsRef.current });
   }
 
+  function ruleSettings(state: GameState) {
+    return {
+      gameMode: state.gameMode,
+      blitz: state.blitz,
+      defenceDice: state.defenceDice,
+      attackDice: state.attackDice,
+      diceTies: state.diceTies,
+      continents: state.continents,
+      initialTroops: state.initialTroops,
+      minTroops: state.minTroops,
+      troopsPerTerritory: state.troopsPerTerritory,
+      maxPoints: state.maxPoints,
+      hills: state.hills,
+      minRank: state.minRank,
+      minGames: state.minGames,
+      minAccountAge: state.minAccountAge,
+      minReputation: state.minReputation,
+      cards: state.cards,
+      placement: state.placement,
+      fortification: state.fortification,
+      entrenchments: state.entrenchments,
+      toxins: state.toxins,
+      portals: state.portals,
+      radiations: state.radiations,
+      nukes: state.nukes,
+      starvation: state.starvation,
+      roundTroops: state.roundTroops,
+      bounties: state.bounties,
+      capitalRefund: state.capitalRefund,
+      startingCapitals: state.startingCapitals,
+      supplyLines: state.supplyLines,
+      fogOfWar: state.fogOfWar,
+      alliances: state.alliances,
+      anonymous: state.anonymous,
+      turnDuration: state.turnDuration,
+      attackIncrement: state.attackIncrement,
+      maxRounds: state.maxRounds,
+      maxDuration: state.maxDuration,
+      drawOfferRound: state.drawOfferRound,
+      disconnectBotDifficulty: state.disconnectBotDifficulty,
+      disconnectBotPersonality: state.disconnectBotPersonality,
+      ...(gameMeta ? { visibility: gameMeta.visibility } : {}),
+    };
+  }
+
+  function currentPreset(name: string): Preset {
+    const isEarth = !game.mapGeneration && !game.playerMapId && !!game.mapName;
+    const settings: PresetSettings = {
+      mapName: game.mapName,
+      mapGeneration: game.mapGeneration,
+      playerMapId: game.mapGeneration ? null : game.playerMapId,
+      ...ruleSettings(game),
+      slots: game.slots,
+      bots: savedBots(game),
+    };
+    return {
+      name,
+      settings,
+      earth: isEarth ? earthRecipeFor(game.mapName) : null,
+    };
+  }
+
   function persistSettings(state: GameState) {
     saveGameSettings(
       {
@@ -245,42 +318,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
           : state.playerMapId
             ? { playerMapId: state.playerMapId, mapName: state.mapName }
             : { mapName: state.mapName }),
-        gameMode: state.gameMode,
-        blitz: state.blitz,
-        defenceDice: state.defenceDice,
-        attackDice: state.attackDice,
-        diceTies: state.diceTies,
-        continents: state.continents,
-        initialTroops: state.initialTroops,
-        minTroops: state.minTroops,
-        troopsPerTerritory: state.troopsPerTerritory,
-        maxPoints: state.maxPoints,
-        hills: state.hills,
-        minRank: state.minRank,
-        minGames: state.minGames,
-        minAccountAge: state.minAccountAge,
-        minReputation: state.minReputation,
-        cards: state.cards,
-        placement: state.placement,
-        fortification: state.fortification,
-        entrenchments: state.entrenchments,
-        toxins: state.toxins,
-        portals: state.portals,
-        radiations: state.radiations,
-        nukes: state.nukes,
-        starvation: state.starvation,
-        roundTroops: state.roundTroops,
-        bounties: state.bounties,
-        capitalRefund: state.capitalRefund,
-        supplyLines: state.supplyLines,
-        fogOfWar: state.fogOfWar,
-        alliances: state.alliances,
-        anonymous: state.anonymous,
-        turnDuration: state.turnDuration,
-        attackIncrement: state.attackIncrement,
-        disconnectBotDifficulty: state.disconnectBotDifficulty,
-        disconnectBotPersonality: state.disconnectBotPersonality,
-        ...(gameMeta ? { visibility: gameMeta.visibility } : {}),
+        ...ruleSettings(state),
       },
       state.slots,
       savedBots(state),
@@ -338,6 +376,13 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
       )}
 
       <div className="mb-1">
+        {isHost && account && (
+          <PresetBar
+            currentPreset={currentPreset}
+            applyPreset={applyPresetToLobby}
+            onError={setSettingsError}
+          />
+        )}
         <SettingsPanel
           game={game}
           gameMeta={gameMeta}

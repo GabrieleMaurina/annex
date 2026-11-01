@@ -48,13 +48,15 @@ export function selectCapital(
   }
   if (game.territoryOwners.get(territoryId) !== playerId)
     return { ok: false, error: 'territory not owned' };
+  if (game.capitalTerritoryIds.has(territoryId))
+    return { ok: false, error: 'already a capital' };
 
-  assignCapital(game, territoryId);
-  recordReplayFrame(game, { type: 'deploy', territoryId, troops: 3, playerId });
+  const troops = assignCapital(game, territoryId);
+  recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
   fogFilterEmit(game, 'game:deployed', callbacks.onDeployed, (viewerId) => {
     const visible = visibleTerritoryIdsOrAll(game, viewerId);
     if (visible !== null && !visible.has(territoryId)) return null;
-    return { territoryId, troops: 3, playerId };
+    return { territoryId, troops, playerId };
   });
   advanceCapitalPlacement(game);
 

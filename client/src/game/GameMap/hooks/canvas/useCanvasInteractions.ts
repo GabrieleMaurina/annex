@@ -207,7 +207,8 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     if (turnPhase === 'capital')
       return (
         territoryClaimCandidates.has(t.id) ||
-        ownerById.get(t.id)?.ownerId === selfId
+        (ownerById.get(t.id)?.ownerId === selfId &&
+          !ownerById.get(t.id)?.isCapital)
       );
     if (turnPhase === 'deploy' || turnPhase === 'troop') {
       if (seaIdSet.has(t.id))

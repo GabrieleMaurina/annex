@@ -1,4 +1,6 @@
 import type { OsmGeneratedMap } from 'engine';
+import { citiesIn, loadGazetteer } from './gazetteer';
+import { lonLatBounds } from './tileCover';
 import type {
   CityLimitsRequest,
   WorldMapProgress,
@@ -10,6 +12,8 @@ export interface WorldMapJob {
   promise: Promise<OsmGeneratedMap>;
   cancel: () => void;
 }
+
+export type EarthRecipe = Omit<WorldMapRequest, 'type' | 'cities'>;
 
 function startWorker(): Worker {
   return new Worker(new URL('./osmWorker.ts', import.meta.url), {
@@ -58,9 +62,28 @@ export function generateWorldMap(
   worker.addEventListener('error', () =>
     settle?.(new Error('map generation failed')),
   );
-  request.then((ready) => worker.postMessage(ready));
+  request.then(
+    (ready) => worker.postMessage(ready),
+    (error: Error) => settle?.(error),
+  );
   return {
     promise,
     cancel: () => settle?.(new Error('cancelled')),
   };
+}
+
+export function generateEarthMap(
+  recipe: Promise<EarthRecipe>,
+  onProgress: (progress: WorldMapProgress) => void,
+): WorldMapJob {
+  return generateWorldMap(
+    Promise.all([recipe, loadGazetteer().catch(() => [])]).then(
+      ([ready, index]) => ({
+        type: 'map',
+        ...ready,
+        cities: citiesIn(index, lonLatBounds(ready.frame)),
+      }),
+    ),
+    onProgress,
+  );
 }

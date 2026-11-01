@@ -43,6 +43,7 @@ export function persistFinishedGame(
         endedAt: bundle.endedAt,
         settings: bundle.settings,
         winnerIds: bundle.winnerIds,
+        draw: bundle.draw,
         roundNumber: bundle.roundNumber,
         playerCount: bundle.playerCount,
         capitalTerritoryIds: bundle.capitalTerritoryIds,

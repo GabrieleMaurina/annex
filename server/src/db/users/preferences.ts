@@ -3,10 +3,15 @@ import {
   isBlitzOffAllowed,
   MAP_ASPECT_VALUES,
   MAX_DICE,
+  MAX_DURATION_VALUES,
+  MAX_STALEMATE_ROUNDS,
+  MAX_STARTING_CAPITALS,
   MIN_ACCOUNT_AGE_VALUES,
   MIN_GAMES_VALUES,
   MIN_RANK_VALUES,
   MIN_REPUTATION_VALUES,
+  MIN_STALEMATE_ROUNDS,
+  MIN_STARTING_CAPITALS,
   TILE_SHAPE_VALUES,
 } from 'engine';
 
@@ -61,12 +66,16 @@ export interface GameSettings {
   roundTroops: string;
   bounties: string;
   capitalRefund: string;
+  startingCapitals: number;
   supplyLines: string;
   fogOfWar: string;
   alliances: string;
   anonymous: string;
   turnDuration: number;
   attackIncrement: number;
+  maxRounds: number;
+  maxDuration: number;
+  drawOfferRound: number;
   disconnectBotDifficulty: string;
   disconnectBotPersonality: string;
   minRank: string;
@@ -104,6 +113,16 @@ export const FILL_VALUES = ['full', 'mixed', 'sparse'];
 export const GENERATION_TYPES = ['terrain', 'dungeon', 'temple', 'tile'];
 export const TILE_SHAPES: string[] = TILE_SHAPE_VALUES;
 export const MAP_ASPECTS: string[] = MAP_ASPECT_VALUES;
+
+function stalemateRounds(defaultValue: number): number[] {
+  return [
+    defaultValue,
+    ...Array.from(
+      { length: MAX_STALEMATE_ROUNDS - MIN_STALEMATE_ROUNDS + 1 },
+      (_, i) => MIN_STALEMATE_ROUNDS + i,
+    ).filter((value) => value !== defaultValue),
+  ];
+}
 
 export const GAME_ENUMS: Record<string, unknown[]> = {
   gameMode: [
@@ -173,12 +192,19 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   roundTroops: ['off', 'on'],
   bounties: ['off', 'on'],
   capitalRefund: ['off', 'on'],
+  startingCapitals: Array.from(
+    { length: MAX_STARTING_CAPITALS - MIN_STARTING_CAPITALS + 1 },
+    (_, i) => MIN_STARTING_CAPITALS + i,
+  ),
   supplyLines: ['off', 'on'],
   fogOfWar: ['off', 'on'],
   alliances: ['off', 'on'],
   anonymous: ['off', 'on'],
   turnDuration: [120, 30, 60, 90, 150, 180, 300],
   attackIncrement: Array.from({ length: 16 }, (_, i) => i),
+  maxRounds: stalemateRounds(1000),
+  maxDuration: [180, ...MAX_DURATION_VALUES.filter((value) => value !== 180)],
+  drawOfferRound: stalemateRounds(500),
   disconnectBotDifficulty: ['idle', 'easy', 'medium', 'hard', 'random'],
   disconnectBotPersonality: [
     'balanced',
@@ -273,12 +299,16 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   roundTroops: 'off',
   bounties: 'off',
   capitalRefund: 'off',
+  startingCapitals: 1,
   supplyLines: 'off',
   fogOfWar: 'off',
   alliances: 'off',
   anonymous: 'off',
   turnDuration: 120,
   attackIncrement: 0,
+  maxRounds: 1000,
+  maxDuration: 180,
+  drawOfferRound: 500,
   disconnectBotDifficulty: 'random',
   disconnectBotPersonality: 'random',
   minRank: 'private',

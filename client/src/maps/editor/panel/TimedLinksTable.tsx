@@ -69,11 +69,10 @@ function TimedLinksTable({
         <Form.Check
           type="switch"
           id="editor-timed-links"
-          label="Timed links"
+          label={<Help tip={TIMED_LINKS_HELP}>Timed links</Help>}
           checked={timedMode}
           onChange={(e) => setTimedMode(e.target.checked)}
         />
-        <Help>{TIMED_LINKS_HELP}</Help>
       </div>
       {links.length > 0 && (
         <Table size="sm" borderless className="mb-2 text-center align-middle">

@@ -5,6 +5,7 @@ import {
   EmojiAttackTarget,
   EmojiValue,
   Game,
+  GameDraw,
   ReplayAnimation,
   ReplayFrame,
   ReplayLogEntry,
@@ -129,6 +130,7 @@ export interface GameExport {
     roundTroops: string;
     bounties: string;
     capitalRefund: string;
+    startingCapitals: number;
     supplyLines: string;
     fogOfWar: string;
     alliances: string;
@@ -136,6 +138,9 @@ export interface GameExport {
     nukes: string;
     turnDuration: number;
     attackIncrement: number;
+    maxRounds: number;
+    maxDuration: number;
+    drawOfferRound: number;
     disconnectBotDifficulty: string;
     disconnectBotPersonality: string;
     minRank: string;
@@ -156,6 +161,7 @@ export interface GameExport {
     won: boolean;
   }[];
   winnerIds: number[];
+  draw: GameDraw | null;
   roundNumber: number;
   playerCount: number;
   capitalTerritoryIds: number[];
@@ -417,6 +423,7 @@ export function exportGame(gameName: string): GameExport | null {
       roundTroops: game.roundTroops,
       bounties: game.bounties,
       capitalRefund: game.capitalRefund,
+      startingCapitals: game.startingCapitals,
       supplyLines: game.supplyLines,
       fogOfWar: game.fogOfWar,
       alliances: game.alliances,
@@ -424,6 +431,9 @@ export function exportGame(gameName: string): GameExport | null {
       nukes: game.nukes,
       turnDuration: game.turnDuration,
       attackIncrement: game.attackIncrement,
+      maxRounds: game.maxRounds,
+      maxDuration: game.maxDuration,
+      drawOfferRound: game.drawOfferRound,
       disconnectBotDifficulty: game.disconnectBotDifficulty,
       disconnectBotPersonality: game.disconnectBotPersonality,
       minRank: game.minRank,
@@ -447,6 +457,7 @@ export function exportGame(gameName: string): GameExport | null {
       };
     }),
     winnerIds: game.winnerIds,
+    draw: game.draw,
     roundNumber: game.roundNumber,
     playerCount: game.playerIds.length,
     originalHostId: game.originalHostId,

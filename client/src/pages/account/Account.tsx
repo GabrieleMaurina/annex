@@ -7,7 +7,7 @@ import {
   InputGroup,
   Spinner,
 } from 'react-bootstrap';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import CountrySelect from '../../common/badges/CountrySelect';
 import { formatError } from '../../common/formatError';
 import ImageCropper from '../../common/inputs/ImageCropper';
@@ -22,6 +22,7 @@ interface Props {
 }
 
 function AccountPage({ account, onCountryChange }: Props) {
+  const navigate = useNavigate();
   const [details, setDetails] = useState<AccountResult | null>(null);
   const [countryError, setCountryError] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -125,7 +126,18 @@ function AccountPage({ account, onCountryChange }: Props) {
 
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
-      <h1 className="text-center mb-4">Account</h1>
+      <h1 className="text-center mb-3">Account</h1>
+      <div className="d-flex justify-content-center mb-4">
+        <Button
+          size="sm"
+          variant="info"
+          onClick={() =>
+            navigate(`/players/${encodeURIComponent(account.username)}`)
+          }
+        >
+          View Profile
+        </Button>
+      </div>
       <div className="d-flex flex-column flex-lg-row justify-content-center align-items-center align-items-lg-start gap-5 py-lg-5">
         <div className="d-flex flex-column gap-3">
           <div>

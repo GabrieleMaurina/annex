@@ -29,6 +29,7 @@ import {
   SettingFilterSections,
 } from '../lobby/gameFilters';
 import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
+import { GAME_MODE_HELP } from '../lobby/settings/settingsHelp';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import Selector from '../ui/forms/Selector';
 
@@ -87,7 +88,7 @@ interface Filters {
   mapGenerationUnlockable: string;
   settings: Record<string, string>;
   hasBots: '' | 'yes' | 'no';
-  outcome: '' | 'won' | 'lost';
+  outcome: '' | 'won' | 'draw' | 'lost';
   roundsMin: number;
   roundsMax: number;
   playersMin: number;
@@ -134,7 +135,7 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
           ))}
         </div>
       </td>
-      <td>{row.winnerNames.join(', ')}</td>
+      <td>{row.draw ? 'Draw' : row.winnerNames.join(', ')}</td>
       <td>{row.roundNumber}</td>
       <td>{row.yourRank === null ? '-' : row.yourRank + 1}</td>
     </tr>
@@ -202,7 +203,7 @@ function Games({ account }: Props) {
   const [mapGenerationUnlockable, setMapGenerationUnlockable] = useState('');
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [hasBots, setHasBots] = useState<'' | 'yes' | 'no'>('');
-  const [outcome, setOutcome] = useState<'' | 'won' | 'lost'>('');
+  const [outcome, setOutcome] = useState<'' | 'won' | 'draw' | 'lost'>('');
   const [roundsMin, setRoundsMin] = useState(ROUNDS_MIN);
   const [roundsMax, setRoundsMax] = useState(ROUNDS_MAX);
   const [playersMin, setPlayersMin] = useState(PLAYERS_MIN);
@@ -411,7 +412,7 @@ function Games({ account }: Props) {
                 onChange={(e) => resetPage(setName)(e.target.value)}
               />
             </Field>
-            <Field label="Mode">
+            <Field label="Mode" help={GAME_MODE_HELP}>
               <Selector size="sm" value={mode} onChange={resetPage(setMode)}>
                 <option value="">Any</option>
                 {GAME_MODES.map((m) => (
@@ -500,11 +501,12 @@ function Games({ account }: Props) {
                   size="sm"
                   value={outcome}
                   onChange={(value) =>
-                    resetPage(setOutcome)(value as '' | 'won' | 'lost')
+                    resetPage(setOutcome)(value as '' | 'won' | 'draw' | 'lost')
                   }
                 >
                   <option value="">Any</option>
                   <option value="won">Won</option>
+                  <option value="draw">Draw</option>
                   <option value="lost">Lost</option>
                 </Selector>
               </Field>

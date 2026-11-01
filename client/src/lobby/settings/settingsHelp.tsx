@@ -66,6 +66,9 @@ export const GAME_MODE_HELP = (
 
 export const MAP_HELP = 'Which territory layout the game is played on.';
 
+export const PRESETS_HELP =
+  'Up to five saved lobby setups: every setting, the open slots, the bots and the map. Click a preset to apply it, or an empty slot to save the current settings there. Drag a preset onto another slot to move it. Earth maps are rebuilt from the same area, so they can differ slightly once the map data is updated.';
+
 export const MAP_GEN_HELP =
   'Procedurally generate a new map instead of picking an existing one. The same seed and settings always produce the same map. Type picks the layout style (Terrain islands, a Dungeon maze, a Temple maze, or a Tile grid of regular polygons), Tile picks the polygon shape, Size roughly determines the territory count, and Fill controls how much of the map is playable territory versus sea or inaccessible space.';
 
@@ -282,6 +285,9 @@ export const HILLS_HELP = (
     hold scores 1 point at the start of each of your turns.
   </>
 );
+
+export const STARTING_CAPITALS_HELP =
+  'How many capitals each player places at the start of the game. Players pick one capital at a time, taking turns around the table, until everyone has placed them all. Each capital gets 3 extra troops.';
 
 export const CAPITAL_REFUND_HELP = (
   <>
@@ -558,6 +564,15 @@ export const TURN_DURATION_HELP =
 
 export const ATTACK_INCREMENT_HELP =
   'Seconds added to the remaining time of your turn every time you conquer a territory, once your troops have moved in. This never extends the remaining time beyond 3 minutes.';
+
+export const MAX_ROUNDS_HELP =
+  'If the game reaches this many rounds without a winner, it ends in a stalemate: nobody wins and every remaining player draws. Players who were eliminated, surrendered or are disconnected still lose.';
+
+export const MAX_DURATION_HELP =
+  'If the game lasts this long without a winner, it ends in a stalemate at the end of the current turn: nobody wins and every remaining player draws. Time spent paused does not count. Players who were eliminated, surrendered or are disconnected still lose.';
+
+export const DRAW_OFFER_ROUND_HELP =
+  'From this round on, remaining players can toggle the Draw button. If every remaining player has it on at the same time, the game ends immediately in a draw. Bots never vote, but they still share the draw.';
 
 export const PASSWORD_HELP =
   'If set, players must enter this password to join. Players already in the game are unaffected by changing it, and it is never sent to any client.';

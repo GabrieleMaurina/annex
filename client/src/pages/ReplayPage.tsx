@@ -81,6 +81,7 @@ function buildGameState(
     blitz: s.blitz,
     bounties: s.bounties,
     capitalRefund: s.capitalRefund,
+    startingCapitals: s.startingCapitals,
     cards: s.cards,
     continents: s.continents,
     continentBonuses: doc.continentBonuses ?? [],
@@ -121,6 +122,9 @@ function buildGameState(
     turnDuration: s.turnDuration,
     attackIncrement: s.attackIncrement,
     roundTroops: s.roundTroops,
+    maxRounds: s.maxRounds,
+    maxDuration: s.maxDuration,
+    drawOfferRound: s.drawOfferRound,
     territoryTroopsCap: 30,
     totalTroopsCap: 9999,
     leaderTerritoryCount:
@@ -163,6 +167,8 @@ function buildGameState(
     attackSeaDefenderId: null,
     winnerIds: doc.winnerIds,
     earlyWin: false,
+    drawVoteIds: [],
+    draw: doc.draw ?? null,
     finalRanking: [...doc.results]
       .sort((a, b) => a.rank - b.rank)
       .map((r) => r.playerId),
@@ -332,7 +338,7 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
         mapSavable && (
           <div className="d-flex flex-column align-items-center mt-3">
             <Button
-              variant="outline-primary"
+              variant="primary"
               disabled={mapSave !== 'idle'}
               onClick={saveMap}
             >

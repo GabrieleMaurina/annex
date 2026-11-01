@@ -196,7 +196,7 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                       {addLocalPlayer && (
                         <Button
                           size="sm"
-                          variant="outline-secondary"
+                          variant="success"
                           onClick={() => addLocalPlayer(team)}
                         >
                           Add Player
@@ -204,7 +204,7 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                       )}
                       <Button
                         size="sm"
-                        variant="outline-secondary"
+                        variant="success"
                         onClick={() => addBot(team)}
                       >
                         Add Bot

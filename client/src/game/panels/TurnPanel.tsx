@@ -42,6 +42,8 @@ interface Props {
   isMyTurn: boolean;
   troopsToDeploy: number;
   troopsRemaining: number;
+  capitalsPlaced: number;
+  startingCapitals: number;
   canLeaveDeploy: boolean;
   paused: boolean;
   setGame: (game: GameState) => void;
@@ -56,6 +58,8 @@ function TurnPanel({
   isMyTurn,
   troopsToDeploy,
   troopsRemaining,
+  capitalsPlaced,
+  startingCapitals,
   canLeaveDeploy,
   paused,
   setGame,
@@ -120,6 +124,11 @@ function TurnPanel({
       <span className="text-capitalize fw-bold" style={{ fontSize: '1.4em' }}>
         {turnPhase}
       </span>
+      {turnPhase === 'capital' && startingCapitals > 1 && (
+        <span>
+          {capitalsPlaced + 1}/{startingCapitals}
+        </span>
+      )}
       {(turnPhase === 'deploy' || turnPhase === 'troop') && (
         <span className="d-flex align-items-center gap-1">
           {turnPhase === 'troop' && (

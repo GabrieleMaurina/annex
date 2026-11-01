@@ -66,6 +66,22 @@ export function frameBounds(frame: WorldFrame) {
   };
 }
 
+function latitudeOf(y: number): number {
+  return (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI;
+}
+
+export function lonLatBounds(
+  frame: WorldFrame,
+): [number, number, number, number] {
+  const box = frameBounds(frame);
+  return [
+    box.x0 * 360 - 180,
+    latitudeOf(box.y1),
+    box.x1 * 360 - 180,
+    latitudeOf(box.y0),
+  ];
+}
+
 function tileRange(frame: WorldFrame, zoom: number) {
   const n = 2 ** zoom;
   const bounds = frameBounds(frame);

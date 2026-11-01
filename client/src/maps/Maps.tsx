@@ -20,8 +20,12 @@ function Maps({
       <h1 className="text-center mb-3">Maps</h1>
       {(account || serverUnreachable) && (
         <div className="d-flex justify-content-center gap-2 mb-4">
-          <Button onClick={() => navigate('/maps/editor')}>Create a map</Button>
-          <Button onClick={() => navigate('/maps/mine')}>My maps</Button>
+          <Button variant="success" onClick={() => navigate('/maps/editor')}>
+            Create a map
+          </Button>
+          <Button variant="secondary" onClick={() => navigate('/maps/mine')}>
+            My maps
+          </Button>
         </div>
       )}
 

@@ -628,7 +628,7 @@ function GameMap({
     startAnimationLoop();
   });
 
-  const { surrender, endGame } = useGameEndActions(setGame);
+  const { surrender, endGame, toggleDraw } = useGameEndActions(setGame);
 
   return (
     <div className="position-fixed top-0 bottom-0 start-0 end-0 overflow-hidden">
@@ -732,6 +732,9 @@ function GameMap({
         onSurrender={surrender}
         earlyWin={game.earlyWin}
         onEndGame={endGame}
+        drawOffersOpen={game.roundNumber + 1 >= game.drawOfferRound}
+        drawVoteIds={game.drawVoteIds}
+        onToggleDraw={toggleDraw}
         gameEnded={gameEnded}
         collapsed={panelCollapsed}
         setCollapsed={setPanelCollapsed}

@@ -33,6 +33,7 @@ function PanelPlayerDetails({
         <PlayerConductActions
           live={conduct.live}
           playerId={player.id}
+          name={name}
           userId={userId}
           gameId={conduct.gameId}
           allowFriend={conduct.allowFriend}

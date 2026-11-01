@@ -74,7 +74,8 @@ export function enumerateCombos(
     if (b.totalValue !== a.totalValue) return b.totalValue - a.totalValue;
     const wildsA = a.cards.filter((c) => c.symbol === null).length;
     const wildsB = b.cards.filter((c) => c.symbol === null).length;
-    return wildsA - wildsB;
+    if (wildsA !== wildsB) return wildsA - wildsB;
+    return Number(a.setKind === 'mixed') - Number(b.setKind === 'mixed');
   });
   return results;
 }

@@ -67,6 +67,7 @@ export function seedOffline(state: GameState): void {
       blitz: state.blitz,
       bounties: state.bounties,
       capitalRefund: state.capitalRefund,
+      startingCapitals: state.startingCapitals,
       cards: state.cards,
       continents: state.continents,
       defenceDice: state.defenceDice,
@@ -97,6 +98,9 @@ export function seedOffline(state: GameState): void {
       turnDuration: state.turnDuration,
       attackIncrement: state.attackIncrement,
       roundTroops: state.roundTroops,
+      maxRounds: state.maxRounds,
+      maxDuration: state.maxDuration,
+      drawOfferRound: state.drawOfferRound,
     },
     mapGeneration: state.mapGeneration,
     playerMapId: state.playerMapId,
@@ -486,6 +490,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     case 'game:endGame':
       cb?.(engine.endGame(id));
+      return;
+    case 'game:toggleDraw':
+      cb?.(engine.toggleDraw(id));
       return;
     case 'game:chat':
       engine.sendChat(id, d.message as string);

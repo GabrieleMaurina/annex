@@ -171,6 +171,12 @@ export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
 export type Anonymous = 'off' | 'on';
 export type Nukes = 'off' | 'on';
+export type DrawReason = 'max rounds' | 'max duration' | 'agreed';
+
+export interface GameDraw {
+  reason: DrawReason;
+  playerIds: number[];
+}
 
 export interface NukeProject {
   kind: 'nuke' | 'antiNuke';
@@ -415,6 +421,7 @@ export interface Game {
   blitz: Blitz;
   bounties: Bounties;
   capitalRefund: CapitalRefund;
+  startingCapitals: number;
   cards: CardsMode;
   continents: Continents;
   continentBonuses: number[];
@@ -457,6 +464,11 @@ export interface Game {
   turnDuration: TurnDuration;
   attackIncrement: number;
   roundTroops: RoundTroops;
+  maxRounds: number;
+  maxDuration: number;
+  drawOfferRound: number;
+  drawVoteIds: Set<number>;
+  draw: GameDraw | null;
   roundNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
@@ -467,6 +479,7 @@ export interface Game {
   turnExtension: number;
   paused: boolean;
   pausedAt: number | null;
+  pausedMs: number;
   pauseUsed: boolean;
   botSpeed: BotSpeed;
   humansAbandonedAt: number | null;

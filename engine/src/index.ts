@@ -42,6 +42,7 @@ import {
   requestResults,
   requestState,
   surrender,
+  toggleDraw,
 } from './lifecycle/misc';
 import { updateSettings } from './lifecycle/settings';
 import { startGame } from './lifecycle/start';
@@ -150,7 +151,14 @@ export {
   newAccountAllowance,
   RANKS,
 } from './lifecycle/eligibility';
-export { isBlitzOffAllowed } from './lifecycle/settings';
+export {
+  isBlitzOffAllowed,
+  MAX_DURATION_VALUES,
+  MAX_STALEMATE_ROUNDS,
+  MAX_STARTING_CAPITALS,
+  MIN_STALEMATE_ROUNDS,
+  MIN_STARTING_CAPITALS,
+} from './lifecycle/settings';
 export {
   aspectLabel,
   expectedTerritoryArea,
@@ -270,6 +278,7 @@ export function createEngine(
     cycleBotSpeed,
     surrender,
     endGame,
+    toggleDraw,
     sendChat,
 
     generateMap,

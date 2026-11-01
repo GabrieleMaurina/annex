@@ -21,8 +21,14 @@ function NumberOdometer({
   ...inputProps
 }: ComponentProps<'input'>) {
   const [typing, setTyping] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
   const pointerDown = useRef(false);
   const digits = String(value ?? '').replace(/\D/g, '') || '0';
+
+  function stopTyping() {
+    setTyping(false);
+    setDraft(null);
+  }
 
   return (
     <span
@@ -40,9 +46,9 @@ function NumberOdometer({
       onClickCapture={(e) => {
         if (e.target === document.activeElement) setTyping(true);
       }}
-      onWheelCapture={() => setTyping(false)}
+      onWheelCapture={stopTyping}
       onKeyDownCapture={(e) => {
-        if (STOP_TYPING_KEYS.includes(e.key)) setTyping(false);
+        if (STOP_TYPING_KEYS.includes(e.key)) stopTyping();
       }}
     >
       <span className="odometer-window" aria-hidden="true">
@@ -63,17 +69,18 @@ function NumberOdometer({
         {...inputProps}
         type="number"
         className="odometer-input"
-        value={value}
+        value={draft ?? value}
         onFocus={(e) => {
           if (!pointerDown.current) setTyping(true);
           onFocus?.(e);
         }}
         onBlur={(e) => {
-          setTyping(false);
+          stopTyping();
           onBlur?.(e);
         }}
         onChange={(e) => {
           setTyping(true);
+          if ((e.nativeEvent as InputEvent).inputType) setDraft(e.target.value);
           onChange?.(e);
         }}
       />

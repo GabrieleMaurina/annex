@@ -1,6 +1,7 @@
 import type { gameResultsStats, gameState } from './game/state';
 import {
   Card,
+  DrawReason,
   EmojiAttackTarget,
   EmojiValue,
   GameLogEvent,
@@ -38,6 +39,7 @@ export interface EngineCallbacks {
       team: number;
       surrenderRound: number | null;
       disconnected: boolean;
+      drawn: boolean;
     }[];
   }): void;
   onCardSetPlayed(
@@ -102,6 +104,7 @@ export interface EngineCallbacks {
       troopsFromCapitals: number;
       troopsFromRoundTroops: number;
       troopsFromBounties: number;
+      troopsFromTurnOrder: number;
       troopsWithheld: number;
     },
     gameName: string,
@@ -288,7 +291,7 @@ export interface EngineCallbacks {
   ): void;
   onGameOver(
     playerId: number,
-    payload: { winnerIds: number[] },
+    payload: { winnerIds: number[]; drawReason: DrawReason | null },
     gameName: string,
   ): void;
   onSelected(

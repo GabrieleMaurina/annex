@@ -1,0 +1,240 @@
+import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Button, ButtonGroup, Dropdown, Form } from 'react-bootstrap';
+import Help from '../../common/tooltips/Help';
+import Tip from '../../common/tooltips/Tip';
+import { playSound } from '../../lib/sounds';
+import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
+import {
+  exportPreset,
+  loadPresets,
+  MAX_PRESET_NAME_LENGTH,
+  readPresetFile,
+  savePresets,
+  type Preset,
+  type Presets,
+} from './presets';
+import { PRESETS_HELP } from './settingsHelp';
+
+const MENU_POPPER = { strategy: 'fixed' as const };
+const SLOT_STYLE = { minWidth: 140 };
+const EMPTY_ACTIONS = [
+  ['save', 'Save current settings'],
+  ['import', 'Import'],
+];
+const PRESET_ACTIONS = [
+  ['save', 'Overwrite with current settings'],
+  ['rename', 'Rename'],
+  ['export', 'Export'],
+  ['import', 'Import'],
+  ['delete', 'Delete'],
+];
+
+interface Props {
+  currentPreset: (name: string) => Preset;
+  applyPreset: (preset: Preset) => void;
+  onError: (error: string) => void;
+}
+
+function PresetBar({ currentPreset, applyPreset, onError }: Props) {
+  const [presets, setPresets] = useState<Presets | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const dragFrom = useRef<number | null>(null);
+  const importIndex = useRef(0);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const saveVersion = useRef(0);
+
+  useEffect(() => {
+    loadPresets()
+      .then((res) => {
+        if (res.ok) setPresets(res.presets);
+        else onError(res.error);
+      })
+      .catch(() => onError('server error'));
+  }, [onError]);
+
+  if (!presets) return null;
+  const slots = presets;
+
+  function save(next: Presets) {
+    const version = ++saveVersion.current;
+    savePresets(next)
+      .then((res) => {
+        if (version !== saveVersion.current) return;
+        if (res.ok) setPresets(res.presets);
+        else onError(res.error);
+      })
+      .catch(() => onError('server error'));
+  }
+
+  function commit(next: Presets) {
+    setPresets(next);
+    save(next);
+  }
+
+  function replace(index: number, preset: Preset | null) {
+    commit(slots.map((one, i) => (i === index ? preset : one)));
+  }
+
+  function saveCurrent(index: number) {
+    const existing = slots[index];
+    replace(index, currentPreset(existing?.name ?? `Preset ${index + 1}`));
+    if (!existing) setEditing(index);
+  }
+
+  function rename(index: number, name: string) {
+    setEditing(null);
+    const preset = slots[index];
+    const trimmed = name.trim();
+    if (preset && trimmed && trimmed !== preset.name)
+      replace(index, { ...preset, name: trimmed });
+  }
+
+  function move(from: number, to: number) {
+    if (from === to) return;
+    const next = [...slots];
+    [next[from], next[to]] = [next[to], next[from]];
+    commit(next);
+  }
+
+  function startImport(index: number) {
+    importIndex.current = index;
+    fileInput.current?.click();
+  }
+
+  function importFile(file: File) {
+    readPresetFile(file)
+      .then((preset) =>
+        save(slots.map((one, i) => (i === importIndex.current ? preset : one))),
+      )
+      .catch(() => onError('invalid preset file'));
+  }
+
+  function runAction(action: string, index: number) {
+    const preset = slots[index];
+    if (action === 'save') saveCurrent(index);
+    if (action === 'rename') setEditing(index);
+    if (action === 'export' && preset) exportPreset(preset);
+    if (action === 'import') startImport(index);
+    if (action === 'delete') replace(index, null);
+  }
+
+  return (
+    <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <span className={FIELD_LABEL_CLASS}>
+        <Help tip={PRESETS_HELP}>Presets</Help>
+      </span>
+      {slots.map((preset, index) => (
+        <div
+          key={index}
+          className={`rounded p-1 ${dropIndex === index ? 'bg-primary-subtle' : ''}`}
+          draggable={!!preset && editing !== index}
+          onDragStart={(e) => {
+            dragFrom.current = index;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(index));
+          }}
+          onDragEnd={() => {
+            dragFrom.current = null;
+            setDropIndex(null);
+          }}
+          onDragOver={(e) => {
+            if (dragFrom.current === null) return;
+            e.preventDefault();
+            setDropIndex(index);
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node))
+              setDropIndex(null);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDropIndex(null);
+            if (dragFrom.current !== null) move(dragFrom.current, index);
+            dragFrom.current = null;
+          }}
+        >
+          {editing === index ? (
+            <Form.Control
+              size="sm"
+              style={SLOT_STYLE}
+              autoFocus
+              maxLength={MAX_PRESET_NAME_LENGTH}
+              defaultValue={preset?.name ?? ''}
+              onFocus={(e) => e.currentTarget.select()}
+              onBlur={(e) => rename(index, e.currentTarget.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== 'Escape') return;
+                playSound('click');
+                if (e.key === 'Escape')
+                  e.currentTarget.value = preset?.name ?? '';
+                e.currentTarget.blur();
+              }}
+            />
+          ) : (
+            <Dropdown
+              as={ButtonGroup}
+              size="sm"
+              onSelect={(key) => key && runAction(key, index)}
+            >
+              <Tip
+                text={
+                  preset
+                    ? 'Apply this preset. Drag it onto another slot to move it.'
+                    : 'Save the current settings in this slot.'
+                }
+              >
+                <Button
+                  variant={preset ? 'outline-primary' : 'outline-secondary'}
+                  className="text-truncate"
+                  style={SLOT_STYLE}
+                  onClick={() =>
+                    preset ? applyPreset(preset) : saveCurrent(index)
+                  }
+                >
+                  {preset ? preset.name : `${index + 1}. Empty`}
+                </Button>
+              </Tip>
+              <Dropdown.Toggle
+                split
+                variant={preset ? 'outline-primary' : 'outline-secondary'}
+              />
+              <Dropdown.Menu
+                className="selector-menu"
+                popperConfig={MENU_POPPER}
+              >
+                {(preset ? PRESET_ACTIONS : EMPTY_ACTIONS).map(
+                  ([action, label], row) => (
+                    <Dropdown.Item
+                      key={action}
+                      as="button"
+                      eventKey={action}
+                      className="selector-option text-nowrap"
+                      style={{ '--selector-row': row } as CSSProperties}
+                    >
+                      {label}
+                    </Dropdown.Item>
+                  ),
+                )}
+              </Dropdown.Menu>
+            </Dropdown>
+          )}
+        </div>
+      ))}
+      <input
+        ref={fileInput}
+        type="file"
+        accept="application/json,.json"
+        className="d-none"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) importFile(file);
+        }}
+      />
+    </div>
+  );
+}
+
+export default PresetBar;

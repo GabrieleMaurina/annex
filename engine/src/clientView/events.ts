@@ -161,6 +161,7 @@ export const EVENT_VIEWS: EventViews = {
       troopsFromCapitals: p.troopsFromCapitals,
       troopsFromRoundTroops: p.troopsFromRoundTroops,
       troopsFromBounties: p.troopsFromBounties,
+      troopsFromTurnOrder: p.troopsFromTurnOrder,
       troopsWithheld: p.troopsWithheld,
     }),
   onDeployed: (game, _viewerId, p) =>
@@ -303,6 +304,7 @@ export const EVENT_VIEWS: EventViews = {
   onGameOver: (game, _viewerId, p) =>
     complete<EventPayload<'onGameOver'>>({
       winnerIds: aliasesOf(game, p.winnerIds),
+      drawReason: p.drawReason,
     }),
   onSelected: (_game, _viewerId, p) =>
     complete<EventPayload<'onSelected'>>({ territoryId: p.territoryId }),

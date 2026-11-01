@@ -2,6 +2,7 @@ import { startTakeover } from '../bots/takeover';
 import { nextBotSpeed } from '../bots/thinkTime';
 import { callbacks } from '../callbacks';
 import { isAnonymous } from '../game/anonymous';
+import { drawOffersOpen, drawVoterIds } from '../game/draw';
 import { checkGameEnd, finishGame } from '../game/end';
 import { recomputeHost } from '../game/host';
 import {
@@ -166,6 +167,24 @@ export function endGame(playerId: number): GameResponse {
     return { ok: false, error: 'game not won' };
 
   finishGame(game, game.winnerIds);
+  return respondGameState(game, player.id);
+}
+
+export function toggleDraw(playerId: number): GameResponse {
+  const player = playersById.get(playerId);
+  if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
+
+  const game = games.get(player.gameName);
+  if (!game) return { ok: false, error: 'game not found' };
+  if (game.state !== 'playing') return { ok: false, error: 'game not started' };
+  if (!drawOffersOpen(game))
+    return { ok: false, error: 'draw offers not open' };
+  if (!drawVoterIds(game).includes(player.id))
+    return { ok: false, error: 'not a remaining player' };
+
+  if (game.drawVoteIds.has(player.id)) game.drawVoteIds.delete(player.id);
+  else game.drawVoteIds.add(player.id);
+  checkGameEnd(game);
   return respondGameState(game, player.id);
 }
 

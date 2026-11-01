@@ -11,6 +11,7 @@ import type { EmojiValue, FriendsOverview, GameState } from '../../lib/types';
 import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
 import PlayerConductActions from '../conduct/PlayerConductActions';
 import { useWhiteIcon } from '../icon';
+import WhiteIcon from '../icons/WhiteIcon';
 import { isPlayerMuted, toggleMutePlayer } from '../mutedPlayers';
 import Tip from '../tooltips/Tip';
 import type { TableEmojiPop } from './useTableEmojiReactions';
@@ -27,11 +28,12 @@ interface TableConduct {
 
 interface ConductMenuProps {
   playerId: number;
+  name: string;
   userId: string;
   conduct: TableConduct;
 }
 
-function ConductMenu({ playerId, userId, conduct }: ConductMenuProps) {
+function ConductMenu({ playerId, name, userId, conduct }: ConductMenuProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -46,7 +48,7 @@ function ConductMenu({ playerId, userId, conduct }: ConductMenuProps) {
           }}
           onClick={() => setOpen((prev) => !prev)}
         >
-          ⋯
+          <WhiteIcon path="/icons/more.svg" size={20} alt="More" />
         </button>
       </Tip>
       {open && (
@@ -54,6 +56,7 @@ function ConductMenu({ playerId, userId, conduct }: ConductMenuProps) {
           <PlayerConductActions
             live
             playerId={playerId}
+            name={name}
             userId={userId}
             allowFriend
             allowReport={conduct.allowReport}
@@ -188,6 +191,7 @@ function EmojiTableOverlay({
                 <ConductMenu
                   key={pickerPlayer.id}
                   playerId={pickerPlayer.id}
+                  name={pickerPlayer.name}
                   userId={pickerPlayer.userId}
                   conduct={conduct}
                 />

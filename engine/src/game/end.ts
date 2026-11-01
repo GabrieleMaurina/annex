@@ -2,7 +2,13 @@ import { revealBotProfiles } from '../bots/reveal';
 import { callbacks } from '../callbacks';
 import { playersById } from '../session/players';
 import { broadcastGameResults, broadcastHomeGames } from '../session/store';
-import { Game } from '../types';
+import { DrawReason, Game } from '../types';
+import {
+  drawAgreed,
+  drawCandidateIds,
+  isLobbyBot,
+  stalemateReason,
+} from './draw';
 import { ownsAnyTerritory, supremacyTerritoriesToWin } from './mechanics';
 import { missionAccomplished } from './progression/missions';
 import { isPointsMode, pointsWinner } from './progression/points';
@@ -30,6 +36,7 @@ function emitGameEnded(game: Game): void {
     team: number;
     surrenderRound: number | null;
     disconnected: boolean;
+    drawn: boolean;
   }[] = [];
   for (const id of game.finalRanking) {
     if (seen.has(id)) continue;
@@ -45,9 +52,13 @@ function emitGameEnded(game: Game): void {
         game.autoSurrenderedIds.has(id) ||
         game.eliminatedWhileAwayIds.has(id) ||
         (aliveAndAway && !lockedWinner),
+      drawn: game.draw?.playerIds.includes(id) ?? false,
     });
   }
-  const payload = { winnerIds: game.winnerIds };
+  const payload = {
+    winnerIds: game.winnerIds,
+    drawReason: game.draw?.reason ?? null,
+  };
   for (const viewerId of [...game.playerIds, ...game.spectatorIds])
     callbacks.onGameOver(viewerId, payload, game.name);
   recordLogForAll(game, 'game:gameOver', payload);
@@ -95,10 +106,6 @@ export function computeGameEndWinnerIds(game: Game): number[] | null {
 
 function isPlayerEliminated(game: Game, id: number): boolean {
   return game.deathOrder.includes(id);
-}
-
-function isLobbyBot(id: number): boolean {
-  return id < 0;
 }
 
 function noHumanPlayersLeft(game: Game) {
@@ -170,6 +177,24 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
 
   const winnerIds = resolveWinnerIds(game);
   if (winnerIds !== null) finishGame(game, winnerIds, turnAlreadyEnded);
+  else if (drawAgreed(game)) finishDraw(game, 'agreed', turnAlreadyEnded);
+}
+
+export function checkStalemate(game: Game): boolean {
+  const reason = stalemateReason(game);
+  if (reason === null) return false;
+  if (game.earlyWin) finishGame(game, game.winnerIds, true);
+  else finishDraw(game, reason, true);
+  return true;
+}
+
+function finishDraw(
+  game: Game,
+  reason: DrawReason,
+  turnAlreadyEnded: boolean,
+): void {
+  game.draw = { reason, playerIds: drawCandidateIds(game) };
+  finishGame(game, [], turnAlreadyEnded);
 }
 
 export function finishGame(

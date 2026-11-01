@@ -373,7 +373,7 @@ function Panel(props: Props) {
       </div>
       <div className="d-flex gap-2 mb-2">
         <Button
-          variant="secondary"
+          variant="primary"
           size="sm"
           className="w-100"
           onClick={onSave}

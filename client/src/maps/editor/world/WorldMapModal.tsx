@@ -19,7 +19,6 @@ import {
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../../ui/containers/panelStyle';
 import Selector from '../../../ui/forms/Selector';
 import {
-  citiesIn,
   drawnArea,
   labelPoint,
   loadFocusRings,
@@ -30,13 +29,18 @@ import {
   type GazetteerIndex,
   type GazetteerPlace,
 } from './gazetteer';
-import { generateWorldMap, type WorldMapJob } from './generateWorldMap';
+import {
+  generateEarthMap,
+  type EarthRecipe,
+  type WorldMapJob,
+} from './generateWorldMap';
 import SearchBox from './SearchBox';
 import {
   availableDetails,
   frameBounds,
   frameCorners,
   frameWidth,
+  lonLatBounds,
   mercatorY,
   type WorldFrame,
 } from './tileCover';
@@ -121,7 +125,7 @@ const ERROR_TEXT: Record<string, string> = {
 
 interface Props {
   onHide: () => void;
-  onGenerated: (map: OsmGeneratedMap) => void;
+  onGenerated: (map: OsmGeneratedMap, recipe: EarthRecipe) => void;
 }
 
 function frameProblem(frame: WorldFrame | null): string {
@@ -130,20 +134,6 @@ function frameProblem(frame: WorldFrame | null): string {
   if (frameCorners(frame).some(([, y]) => y < 0 || y > 1))
     return 'Move the frame away from the poles.';
   return '';
-}
-
-function latitudeOf(y: number): number {
-  return (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI;
-}
-
-function lonLatBounds(frame: WorldFrame): [number, number, number, number] {
-  const box = frameBounds(frame);
-  return [
-    box.x0 * 360 - 180,
-    latitudeOf(box.y1),
-    box.x1 * 360 - 180,
-    latitudeOf(box.y0),
-  ];
 }
 
 function frameOverlap(
@@ -415,35 +405,31 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
     if (!frame || problem || job) return;
     setError('');
     setProgress(null);
-    const next = generateWorldMap(
-      Promise.all(
-        focusPlaces.map((one) =>
-          loadFocusRings(one).then((rings) => focusOf(one, rings)),
-        ),
-      ).then((focus) => ({
-        type: 'map',
-        frame,
-        size,
-        aspect,
-        detail: chosenDetail,
-        seas,
-        timed,
-        mountains,
-        rivers,
-        name:
-          focus.length > 0 && place && place.kind !== DRAWN_KIND
-            ? place.name
-            : '',
-        focus,
-        cities: index ? citiesIn(index, lonLatBounds(frame)) : [],
-      })),
-      setProgress,
-    );
+    const recipe: Promise<EarthRecipe> = Promise.all(
+      focusPlaces.map((one) =>
+        loadFocusRings(one).then((rings) => focusOf(one, rings)),
+      ),
+    ).then((focus) => ({
+      frame,
+      size,
+      aspect,
+      detail: chosenDetail,
+      seas,
+      timed,
+      mountains,
+      rivers,
+      name:
+        focus.length > 0 && place && place.kind !== DRAWN_KIND
+          ? place.name
+          : '',
+      focus,
+    }));
+    const next = generateEarthMap(recipe, setProgress);
     setJob(next);
-    next.promise
-      .then((map) => {
+    Promise.all([next.promise, recipe])
+      .then(([map, ready]) => {
         setJob(null);
-        onGenerated(map);
+        onGenerated(map, ready);
         onHide();
       })
       .catch((e: Error) => {
@@ -580,42 +566,40 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
             <div className="d-flex align-items-center gap-2">
               <Form.Check
                 type="checkbox"
-                label="Seas"
+                label={<Help tip={SEAS_HELP}>Seas</Help>}
                 checked={seas}
                 disabled={!!job}
                 onChange={(e) => setSeas(e.target.checked)}
               />
-              <Help>{SEAS_HELP}</Help>
             </div>
             <div className="d-flex align-items-center gap-2">
               <Form.Check
                 type="checkbox"
-                label="Timed connections"
+                label={
+                  <Help tip={TIMED_CONNECTIONS_HELP}>Timed connections</Help>
+                }
                 checked={timed}
                 disabled={!!job}
                 onChange={(e) => setTimed(e.target.checked)}
               />
-              <Help>{TIMED_CONNECTIONS_HELP}</Help>
             </div>
             <div className="d-flex align-items-center gap-2">
               <Form.Check
                 type="checkbox"
-                label="Mountains"
+                label={<Help tip={EARTH_MOUNTAINS_HELP}>Mountains</Help>}
                 checked={mountains}
                 disabled={!!job}
                 onChange={(e) => setMountains(e.target.checked)}
               />
-              <Help>{EARTH_MOUNTAINS_HELP}</Help>
             </div>
             <div className="d-flex align-items-center gap-2">
               <Form.Check
                 type="checkbox"
-                label="Rivers"
+                label={<Help tip={EARTH_RIVERS_HELP}>Rivers</Help>}
                 checked={rivers}
                 disabled={!!job}
                 onChange={(e) => setRivers(e.target.checked)}
               />
-              <Help>{EARTH_RIVERS_HELP}</Help>
             </div>
             {job && (
               <>

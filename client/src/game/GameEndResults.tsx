@@ -50,6 +50,7 @@ function GameEndResults({
   showMuted,
 }: Props) {
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
+  const draw = game.draw;
   const won = selfId !== null && game.winnerIds.includes(selfId);
   const isTeamDeathmatch = game.gameMode === 'team deathmatch';
   const isCapitals = game.gameMode === 'capitals';
@@ -62,8 +63,24 @@ function GameEndResults({
   return (
     <Container fluid className="pt-5 pb-5 px-2 px-sm-4 bg-body min-vh-100">
       <div className="text-center mb-4 mt-4 mt-sm-0">
-        <h1 className="mb-4">{won ? 'You Win!' : 'Game Over'}</h1>
-        {isTeamDeathmatch ? (
+        <h1 className="mb-4">
+          {draw
+            ? draw.reason === 'agreed'
+              ? 'Draw'
+              : 'Stalemate'
+            : won
+              ? 'You Win!'
+              : 'Game Over'}
+        </h1>
+        {draw ? (
+          <p className="fs-4 mb-0">
+            {draw.reason === 'max rounds'
+              ? `Stalemate reached after ${game.maxRounds} rounds. Nobody wins.`
+              : draw.reason === 'max duration'
+                ? `Stalemate reached after ${formatDuration(game.maxDuration * 60000)}. Nobody wins.`
+                : 'All remaining players agreed to a draw. Nobody wins.'}
+          </p>
+        ) : isTeamDeathmatch ? (
           <p className="fs-4 mb-0">
             Team {(winners[0]?.team ?? 0) + 1} wins:{' '}
             {winners.map((w) => w.name).join(', ')}
@@ -90,6 +107,7 @@ function GameEndResults({
       <ResultsTable
         players={game.players}
         ranking={game.finalRanking}
+        drawnIds={draw?.playerIds ?? []}
         results={results}
         originalHostId={game.originalHostId}
         roundNumber={game.roundNumber}
@@ -109,7 +127,7 @@ function GameEndResults({
       {overlay}
 
       <div className="d-flex justify-content-center mt-3">
-        <Button variant="primary" onClick={onWatchReplay}>
+        <Button variant="info" onClick={onWatchReplay}>
           Watch Replay
         </Button>
       </div>

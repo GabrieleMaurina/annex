@@ -99,7 +99,7 @@ function Messages({ account }: Props) {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { conversations, blocked } = overview;
+  const { conversations } = overview;
 
   const conversation: ActiveConversation | null = useMemo(() => {
     const partner =
@@ -253,37 +253,6 @@ function Messages({ account }: Props) {
               })}
             </ListGroup>
           )}
-
-          {blocked.length > 0 && (
-            <details className="mt-4" onToggle={() => playSound('click')}>
-              <summary className="collapsible-summary">
-                Blocked players ({blocked.length})
-              </summary>
-              <ListGroup>
-                {blocked.map((b) => (
-                  <ListGroup.Item
-                    key={b.userId}
-                    className="d-flex align-items-center gap-2"
-                  >
-                    <RankIcon elo={b.elo} />
-                    <Flag country={b.country} />
-                    <span className="flex-grow-1 text-truncate">
-                      {b.username}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline-secondary"
-                      onClick={() =>
-                        connector.unblockUser(b.userId, () => refreshMessages())
-                      }
-                    >
-                      Unblock
-                    </Button>
-                  </ListGroup.Item>
-                ))}
-              </ListGroup>
-            </details>
-          )}
         </Col>
 
         <Col md={8} lg={9}>
@@ -310,11 +279,7 @@ function Messages({ account }: Props) {
                 <div className="flex-grow-1" />
                 <Button
                   size="sm"
-                  variant={
-                    conversation.blocked
-                      ? 'outline-secondary'
-                      : 'outline-danger'
-                  }
+                  variant="danger"
                   onClick={() => setBlocked(!conversation.blocked)}
                 >
                   {conversation.blocked ? 'Unblock' : 'Block'}

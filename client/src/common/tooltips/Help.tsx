@@ -4,21 +4,22 @@ import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { useToggleSound } from '../../lib/sounds';
 
 interface Props {
+  tip: ReactNode;
   children: ReactNode;
 }
 
-function Help({ children }: Props) {
+function Help({ tip, children }: Props) {
   const id = useId();
   const [pinned, setPinned] = useState(false);
   useToggleSound(pinned);
   const [hovering, setHovering] = useState(false);
-  const iconRef = useRef<HTMLSpanElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!pinned) return;
     function onPointerDown(e: MouseEvent) {
       const target = e.target as HTMLElement;
-      if (iconRef.current?.contains(target)) return;
+      if (labelRef.current?.contains(target)) return;
       if (target.closest?.('.tooltip')) return;
       setPinned(false);
     }
@@ -44,19 +45,21 @@ function Help({ children }: Props) {
       placement="auto"
       overlay={
         <Tooltip id={id} className="help-tooltip">
-          {children}
+          {tip}
         </Tooltip>
       }
     >
       <span
-        ref={iconRef}
+        ref={labelRef}
         role="button"
         tabIndex={0}
-        aria-label="Help"
         aria-describedby={id}
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
-        onClick={toggle}
+        onClick={(e) => {
+          e.preventDefault();
+          toggle();
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           toggle();
@@ -64,10 +67,9 @@ function Help({ children }: Props) {
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') toggle();
         }}
-        className="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center fw-bold flex-shrink-0"
-        style={{ width: 16, height: 16, fontSize: 11, cursor: 'help' }}
+        style={{ cursor: 'help' }}
       >
-        ?
+        {children}
       </span>
     </OverlayTrigger>
   );

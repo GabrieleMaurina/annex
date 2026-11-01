@@ -144,7 +144,13 @@ export function interleaveTeams(game: Game): number[] {
 }
 
 export function turnOrderBonus(index: number): number {
-  return index >= 3 ? Math.min(index - 2, 6) : 0;
+  if (index < 3) return 0;
+  if (index < 5) return index - 2;
+  return 3 + Math.floor((index - 5) / 4);
+}
+
+export function startingPoolBonus(game: Game, index: number): number {
+  return game.gameMode === 'capitals' ? 0 : turnOrderBonus(index);
 }
 
 function splitTerritoriesAmongPlayers(game: Game): number[][] {
@@ -184,7 +190,7 @@ export function assignTerritories(game: Game) {
   game.playerIds.forEach((_, i) => {
     const owned = groups[i];
     let remainingTroops =
-      owned.length * (game.initialTroops - 1) + turnOrderBonus(i);
+      owned.length * (game.initialTroops - 1) + startingPoolBonus(game, i);
     while (remainingTroops > 0) {
       const territoryId = owned[Math.floor(Math.random() * owned.length)];
       game.territoryTroops.set(
@@ -345,6 +351,7 @@ export interface DeployTroopsBreakdown {
   capitals: number;
   roundTroops: number;
   bounties: number;
+  turnOrder: number;
 }
 
 export function territoryIncome(game: Game, territoryCount: number): number {
@@ -411,7 +418,12 @@ export function calculateDeployTroopsBreakdown(
       ? (game.stats.get(playerId)?.playersKilled.length ?? 0) * 10
       : 0;
 
-  return { territories, bonuses, capitals, roundTroops, bounties };
+  const turnOrder =
+    game.placement === 'single' && game.roundNumber === 0
+      ? startingPoolBonus(game, game.playerIds.indexOf(playerId))
+      : 0;
+
+  return { territories, bonuses, capitals, roundTroops, bounties, turnOrder };
 }
 
 export function assignRandomColor(game: Game, playerId: number) {

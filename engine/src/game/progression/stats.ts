@@ -203,6 +203,16 @@ function computeTeamRanking(game: Game): number[] {
 }
 
 export function computeFinalRanking(game: Game): number[] {
+  const ranking = computeDecisiveRanking(game);
+  if (!game.draw) return ranking;
+  const drawnIds = game.draw.playerIds;
+  return [
+    ...ranking.filter((id) => drawnIds.includes(id)),
+    ...ranking.filter((id) => !drawnIds.includes(id)),
+  ];
+}
+
+function computeDecisiveRanking(game: Game): number[] {
   if (game.gameMode === 'team deathmatch') return computeTeamRanking(game);
   if (game.gameMode === 'player kills' || game.gameMode === 'troop kills') {
     const comparator = killsComparator(game);

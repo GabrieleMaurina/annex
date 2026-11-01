@@ -90,6 +90,7 @@ export function handleGameEnded(payload: {
     team: number;
     surrenderRound: number | null;
     disconnected: boolean;
+    drawn: boolean;
   }[];
 }): Promise<Map<number, GameElo>> {
   const participants = participantsByGame.get(payload.gameName);
@@ -111,6 +112,7 @@ export function handleGameEnded(payload: {
         rank,
         playerId: entry.playerId,
         team: entry.team,
+        drawn: entry.drawn,
         penalty,
         eloPenalty: reason,
         userId: participants.get(entry.playerId),
@@ -123,6 +125,7 @@ export function handleGameEnded(payload: {
         rank: number;
         playerId: number;
         team: number;
+        drawn: boolean;
         penalty: number;
         eloPenalty: EloPenalty | null;
         userId: string;
@@ -152,9 +155,14 @@ export function handleGameEnded(payload: {
           const opponentRating = ratings.get(opponent.userId) ?? DEFAULT_ELO;
           const expected =
             1 / (1 + Math.pow(10, (opponentRating - rating) / 400));
-          const score = player.rank < opponent.rank ? 1 : 0;
-          delta +=
-            score === 1 ? K * (1 - expected) : -K * expected * lossDamp(rating);
+          const score =
+            player.drawn && opponent.drawn
+              ? 0.5
+              : player.rank < opponent.rank
+                ? 1
+                : 0;
+          const change = K * (score - expected);
+          delta += change < 0 ? change * lossDamp(rating) : change;
           opponents += 1;
         }
         if (opponents === 0) continue;

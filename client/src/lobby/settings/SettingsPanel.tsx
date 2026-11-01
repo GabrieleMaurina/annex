@@ -22,6 +22,7 @@ import type {
 } from '../../lib/types';
 import { GAME_MODES } from '../../lib/types';
 import EarthErrorBoundary from '../../maps/editor/world/EarthErrorBoundary';
+import type { EarthRecipe } from '../../maps/editor/world/generateWorldMap';
 import MapBrowser from '../../maps/MapBrowser';
 import MapGenerationModal, {
   type MapGenerationModalHandle,
@@ -76,7 +77,11 @@ interface Props {
     onSettled?: (ok: boolean, mapName?: string) => void,
   ) => void;
   selectPlayerMap?: (mapId: string) => void;
-  selectEarthMap?: (map: OsmGeneratedMap, onSettled: () => void) => void;
+  selectEarthMap?: (
+    map: OsmGeneratedMap,
+    recipe: EarthRecipe,
+    onSettled: () => void,
+  ) => void;
   headerActions?: ReactNode;
   collapsible?: boolean;
 }
@@ -283,8 +288,7 @@ function SettingsPanel({
       <div className="d-flex flex-wrap align-items-end gap-3 mb-2">
         <div className="d-flex flex-column" style={HEADER_FIELD_STYLE}>
           <Form.Label className={FIELD_LABEL_CLASS}>
-            Game Mode
-            <Help>{GAME_MODE_HELP}</Help>
+            <Help tip={GAME_MODE_HELP}>Game Mode</Help>
           </Form.Label>
           {isHost ? (
             <Selector
@@ -310,8 +314,7 @@ function SettingsPanel({
 
         <div className="d-flex flex-column" style={HEADER_FIELD_STYLE}>
           <Form.Label className={FIELD_LABEL_CLASS}>
-            Map
-            <Help>{MAP_HELP}</Help>
+            <Help tip={MAP_HELP}>Map</Help>
           </Form.Label>
           <div className="d-flex align-items-center gap-2">
             {isHost ? (
@@ -470,9 +473,9 @@ function SettingsPanel({
           <Suspense fallback={null}>
             <WorldMapModal
               onHide={() => setEarthOpen(false)}
-              onGenerated={(map) => {
+              onGenerated={(map, recipe) => {
                 setEarthUploading(true);
-                selectEarthMap(map, () => setEarthUploading(false));
+                selectEarthMap(map, recipe, () => setEarthUploading(false));
               }}
             />
           </Suspense>

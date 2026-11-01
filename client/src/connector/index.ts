@@ -10,7 +10,6 @@ import type {
   Ack,
   ClientSettings,
   EarthMapInput,
-  EloHistoryPoint,
   FriendsOverview,
   GameSettingsInput,
   GamesPage,
@@ -21,6 +20,7 @@ import type {
   HomeGamesQuery,
   IdentifyResult,
   MessagesOverview,
+  PlayerHistoryPoint,
   PlayerMapDetail,
   PlayerMapSaveBody,
   PlayerMapsPage,
@@ -121,9 +121,9 @@ function appendGameFilterParams(
   if (query.playersMax !== undefined)
     params.set('playersMax', String(query.playersMax));
   if (query.minRounds !== undefined)
-    params.set('minRounds', String(query.minRounds));
+    params.set('roundsMin', String(query.minRounds));
   if (query.maxRounds !== undefined)
-    params.set('maxRounds', String(query.maxRounds));
+    params.set('roundsMax', String(query.maxRounds));
   for (const [key, value] of Object.entries(query.settings ?? {}))
     if (value) params.set(key, value);
   if (query.hasBots !== undefined)
@@ -420,12 +420,12 @@ export const connector = {
       .catch(() => cb(empty));
   },
 
-  getEloHistory(
+  getPlayerHistory(
     username: string,
-    cb: (history: EloHistoryPoint[]) => void,
+    cb: (history: PlayerHistoryPoint[]) => void,
   ): void {
-    httpGet<EloHistoryPoint[]>(
-      '/players/' + encodeURIComponent(username) + '/elo-history',
+    httpGet<PlayerHistoryPoint[]>(
+      '/players/' + encodeURIComponent(username) + '/history',
     )
       .then((history) => cb(Array.isArray(history) ? history : []))
       .catch(() => cb([]));
@@ -441,7 +441,12 @@ export const connector = {
   },
 
   listFriends(cb: (overview: FriendsOverview) => void): void {
-    const empty: FriendsOverview = { friends: [], incoming: [], outgoing: [] };
+    const empty: FriendsOverview = {
+      friends: [],
+      incoming: [],
+      outgoing: [],
+      blocked: [],
+    };
     httpGet<FriendsOverview>('/friends')
       .then(cb)
       .catch(() => cb(empty));
@@ -648,6 +653,10 @@ export const connector = {
 
   endGame(cb: AckCallback): void {
     route('game:endGame', undefined, cb);
+  },
+
+  toggleDraw(cb: AckCallback): void {
+    route('game:toggleDraw', undefined, cb);
   },
 
   chat(data: { message: string }): void {

@@ -51,6 +51,7 @@ const EMPTY_ROW: ResultRow = {
 interface Props {
   players: GameState['players'];
   ranking: number[];
+  drawnIds: number[];
   results: Map<number, ResultRow> | null;
   originalHostId: number;
   roundNumber: number;
@@ -69,6 +70,7 @@ interface Props {
 function ResultsTable({
   players,
   ranking,
+  drawnIds,
   results,
   originalHostId,
   roundNumber,
@@ -88,6 +90,7 @@ function ResultsTable({
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
+  const whiteWarningIcon = useWhiteIcon('/icons/warning.svg');
 
   const playerById = new Map(players.map((p) => [p.id, p]));
   const rankedPlayers = ranking
@@ -152,7 +155,9 @@ function ResultsTable({
                   outlineOffset: p.id === selfId ? '-2px' : undefined,
                 }}
               >
-                <td style={rowStyle}>{index + 1}</td>
+                <td style={rowStyle}>
+                  {drawnIds.includes(p.id) ? 1 : index + 1}
+                </td>
                 <td className="text-start" style={rowStyle}>
                   <div
                     ref={nameRef?.(p.id)}
@@ -164,13 +169,15 @@ function ResultsTable({
                       {p.id === selfId && showYouLabel ? 'You' : p.name}
                     </span>
                     {p.isBot && (
-                      <img
-                        src={rowIcon(whiteBotIcon, '/icons/bot.svg')}
-                        width={12}
-                        height={12}
-                        alt="Bot"
-                        className="flex-shrink-0"
-                      />
+                      <Tip text="Bot">
+                        <img
+                          src={rowIcon(whiteBotIcon, '/icons/bot.svg')}
+                          width={12}
+                          height={12}
+                          alt="Bot"
+                          className="flex-shrink-0"
+                        />
+                      </Tip>
                     )}
                     {showMuted && p.id !== selfId && isPlayerMuted(p.id) && (
                       <Tip text="Muted">
@@ -228,7 +235,13 @@ function ResultsTable({
                     {formatElo(stats)}
                     {stats.eloPenalty && (
                       <Tip text={PENALTY_LABELS[stats.eloPenalty]}>
-                        <span className="ms-1 fw-bold">!</span>
+                        <img
+                          src={rowIcon(whiteWarningIcon, '/icons/warning.svg')}
+                          width={14}
+                          height={14}
+                          alt="Penalty"
+                          className="ms-1"
+                        />
                       </Tip>
                     )}
                   </td>

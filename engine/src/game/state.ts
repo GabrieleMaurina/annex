@@ -3,6 +3,7 @@ import { playersById } from '../session/players';
 import { AllianceViewState, Game, Player } from '../types';
 import { anonymousName, isAnonymous, isAnonymousPlaying } from './anonymous';
 import { attackFullPath } from './combat/seaBridge';
+import { activeDrawVoteIds } from './draw';
 import { supremacyTerritoriesToWin } from './mechanics';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats } from './progression/stats';
@@ -124,12 +125,16 @@ export function gameSummary(game: Game) {
       roundTroops: game.roundTroops,
       bounties: game.bounties,
       capitalRefund: game.capitalRefund,
+      startingCapitals: game.startingCapitals,
       supplyLines: game.supplyLines,
       fogOfWar: game.fogOfWar,
       alliances: game.alliances,
       anonymous: game.anonymous,
       turnDuration: game.turnDuration,
       attackIncrement: game.attackIncrement,
+      maxRounds: game.maxRounds,
+      maxDuration: game.maxDuration,
+      drawOfferRound: game.drawOfferRound,
       disconnectBotDifficulty: game.disconnectBotDifficulty,
       disconnectBotPersonality: game.disconnectBotPersonality,
       minRank: game.minRank,
@@ -243,6 +248,7 @@ export function gameState(game: Game) {
     blitz: game.blitz,
     bounties: game.bounties,
     capitalRefund: game.capitalRefund,
+    startingCapitals: game.startingCapitals,
     cards: game.cards,
     continents: game.continents,
     continentBonuses: [...game.continentBonuses],
@@ -287,6 +293,9 @@ export function gameState(game: Game) {
     turnDuration: game.turnDuration,
     attackIncrement: game.attackIncrement,
     roundTroops: game.roundTroops,
+    maxRounds: game.maxRounds,
+    maxDuration: game.maxDuration,
+    drawOfferRound: game.drawOfferRound,
     territoryTroopsCap: TERRITORY_CAP,
     totalTroopsCap: totalTroopsCap(game),
     leaderTerritoryCount:
@@ -329,6 +338,8 @@ export function gameState(game: Game) {
     attackSeaDefenderId: game.attackSeaDefenderId,
     winnerIds: game.winnerIds,
     earlyWin: game.earlyWin,
+    drawVoteIds: activeDrawVoteIds(game),
+    draw: game.draw,
     nextSetBaseValues: nextSetBaseValues(game, turnPlayerId),
     upcomingSetValues: upcomingSetValues(game, turnPlayerId, 3),
     finalRanking: game.finalRanking,

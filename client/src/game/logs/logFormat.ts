@@ -306,6 +306,8 @@ export function createLogFormatter() {
         const winnerIds = p.winnerIds as number[];
         const b = buildText();
         b.append('Game over');
+        if (p.drawReason === 'agreed') b.append(', draw agreed');
+        else if (p.drawReason) b.append(`, stalemate (${p.drawReason})`);
         winnerIds.forEach((id, index) => {
           b.append(
             index === 0
@@ -343,6 +345,7 @@ export function createLogFormatter() {
         source('troopsFromCapitals', 'capitals');
         source('troopsFromRoundTroops', 'round troops');
         source('troopsFromBounties', 'bounties');
+        source('troopsFromTurnOrder', 'turn order');
         if (n('troopsWithheld') > 0)
           push(
             color,

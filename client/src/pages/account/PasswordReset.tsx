@@ -11,12 +11,17 @@ interface Props {
 
 function PasswordReset({ code, navigate }: Props) {
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<'form' | 'ok'>('form');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError('passwords do not match');
+      return;
+    }
     const problem = passwordProblem(password);
     if (problem) {
       setError(problem);
@@ -47,6 +52,13 @@ function PasswordReset({ code, navigate }: Props) {
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+          />
+          <Form.Control
+            type="password"
+            placeholder="Confirm password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
           />
           {error && (
             <Alert variant="danger" className="py-1 px-2 mb-0 small">

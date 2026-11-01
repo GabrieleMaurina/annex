@@ -30,6 +30,7 @@ export default function TurnActionPanels({
   gameEnded,
   turnPhase,
   placement,
+  startingCapitals,
   turnDuration,
   paused,
   pausedAt,
@@ -126,6 +127,7 @@ export default function TurnActionPanels({
   gameEnded: boolean;
   turnPhase: TurnPhase;
   placement: Placement;
+  startingCapitals: number;
   turnDuration: TurnDuration;
   paused: boolean;
   pausedAt: number | null;
@@ -270,6 +272,8 @@ export default function TurnActionPanels({
             isMyTurn={isMyTurn}
             troopsToDeploy={troopsToDeploy}
             troopsRemaining={currentTurnPlayer.troopsRemaining}
+            capitalsPlaced={currentTurnPlayer.capitalCount}
+            startingCapitals={startingCapitals}
             canLeaveDeploy={troopsToDeploy <= 0 && !mustPlaySet}
             paused={paused}
             setGame={setGame}

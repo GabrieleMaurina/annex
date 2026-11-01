@@ -7,6 +7,12 @@ import type {
   TileShape,
   TimedConnection,
 } from 'engine';
+import type {
+  ReplayEntry,
+  ReplayLogEntry,
+  ReplayTerritory,
+  ReplayToxinTerritory,
+} from '../game/replay/replayTypes';
 
 export interface ClientSettings {
   muted: boolean;
@@ -188,6 +194,12 @@ export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
 export type Anonymous = 'off' | 'on';
 export type Nukes = 'off' | 'on';
+export type DrawReason = 'max rounds' | 'max duration' | 'agreed';
+
+export interface GameDraw {
+  reason: DrawReason;
+  playerIds: number[];
+}
 
 export interface NukeProject {
   kind: 'nuke' | 'antiNuke';
@@ -288,6 +300,7 @@ export interface GameState {
   blitz: Blitz;
   bounties: Bounties;
   capitalRefund: CapitalRefund;
+  startingCapitals: number;
   cards: CardsMode;
   continents: Continents;
   continentBonuses: number[];
@@ -328,6 +341,9 @@ export interface GameState {
   turnDuration: TurnDuration;
   attackIncrement: number;
   roundTroops: RoundTroops;
+  maxRounds: number;
+  maxDuration: number;
+  drawOfferRound: number;
   territoryTroopsCap: number;
   totalTroopsCap: number;
   leaderTerritoryCount: number | null;
@@ -359,6 +375,8 @@ export interface GameState {
   attackSeaDefenderId: number | null;
   winnerIds: number[];
   earlyWin: boolean;
+  drawVoteIds: number[];
+  draw: GameDraw | null;
   finalRanking: number[];
   nextSetBaseValues: Record<SetKind, number>;
   upcomingSetValues: number[];
@@ -443,6 +461,7 @@ export interface GameSettingsInput {
   blitz?: Blitz;
   bounties?: Bounties;
   capitalRefund?: CapitalRefund;
+  startingCapitals?: number;
   cards?: CardsMode;
   continents?: Continents;
   defenceDice?: number;
@@ -478,6 +497,9 @@ export interface GameSettingsInput {
   turnDuration?: TurnDuration;
   attackIncrement?: number;
   roundTroops?: RoundTroops;
+  maxRounds?: number;
+  maxDuration?: number;
+  drawOfferRound?: number;
   visibility?: Visibility;
 }
 
@@ -488,6 +510,7 @@ export type GameRulesSettings = Pick<
   | 'blitz'
   | 'bounties'
   | 'capitalRefund'
+  | 'startingCapitals'
   | 'cards'
   | 'continents'
   | 'defenceDice'
@@ -519,6 +542,9 @@ export type GameRulesSettings = Pick<
   | 'turnDuration'
   | 'attackIncrement'
   | 'roundTroops'
+  | 'maxRounds'
+  | 'maxDuration'
+  | 'drawOfferRound'
   | 'visibility'
 > & { mapGeneration?: GenerateMapInput; playerMapId?: string | null };
 
@@ -554,137 +580,6 @@ export interface ChatMessage {
   message: string;
 }
 
-export interface ReplayTerritory {
-  id: number;
-  ownerId: number;
-  troops: number;
-  entrenchedTurns: number;
-}
-
-export interface ReplayToxinTerritory {
-  id: number;
-  permanent: boolean;
-  roundsRemaining: number;
-}
-
-export interface ReplaySeaShips {
-  seaTerritoryId: number;
-  playerId: number;
-  ships: number;
-}
-
-export type ReplayAnimation =
-  | { type: 'deploy'; territoryId: number; troops: number; playerId: number }
-  | {
-      type: 'fortify';
-      fromTerritoryId: number;
-      toTerritoryId: number;
-      troops: number;
-      troopsRefunded?: number;
-      playerId: number;
-    }
-  | {
-      type: 'attack';
-      attackingTerritoryId: number;
-      defendingTerritoryId: number;
-      attackerId: number;
-      defenderId: number | undefined;
-      attackLosses: number;
-      defenceLosses: number;
-      troopsRefunded?: number;
-    }
-  | { type: 'entrench'; territoryId: number; troops: number; playerId: number }
-  | { type: 'starve'; territoryId: number; troops: number; playerId: number }
-  | { type: 'toxins'; territoryId: number; playerId: number }
-  | {
-      type: 'unlock';
-      fromTerritoryId: number;
-      tileId: number;
-      cost: number;
-      playerId: number;
-    }
-  | {
-      type: 'nuke';
-      fromTerritoryId: number;
-      targetTerritoryId: number;
-      intercepted: boolean;
-      interceptFromTerritoryId: number | null;
-      playerId: number;
-    }
-  | {
-      type: 'buyShips';
-      sourceTerritoryId: number;
-      seaTerritoryId: number;
-      ships: number;
-      fromPool: boolean;
-      playerId: number;
-    }
-  | {
-      type: 'sail';
-      fromSeaTerritoryId: number;
-      toSeaTerritoryId: number;
-      ships: number;
-      playerId: number;
-    }
-  | {
-      type: 'attackSea';
-      seaTerritoryId: number;
-      attackerId: number;
-      defenderId: number;
-      attackLosses: number;
-      defenceLosses: number;
-    };
-
-export interface ReplayHand {
-  playerId: number;
-  cards: Card[];
-}
-
-export interface ReplayPlayerState {
-  playerId: number;
-  eliminated: boolean;
-  surrendered: boolean;
-  killedPlayerIds: number[];
-  points?: number;
-  nukes: number;
-  antiNukes: number;
-  nukeProjects: NukeProject[];
-}
-
-export interface ReplayPlayerStats {
-  playerId: number;
-  troopsGained: number;
-  troopsKilled: number;
-  troopsLost: number;
-  territoriesConquered: number;
-  territoriesLost: number;
-  capitalsConquered: number;
-  capitalsLost: number;
-  cardsGained: number;
-  setsPlayed: number;
-}
-
-export interface ReplayLogEntry {
-  afterFrame: number;
-  type: string;
-  payload: unknown;
-}
-
-export interface ReplayFrame {
-  territories: ReplayTerritory[];
-  toxinTerritories: ReplayToxinTerritory[];
-  radiationTerritories: number[];
-  radiationUpcoming: number[];
-  seaShips: ReplaySeaShips[];
-  hands: ReplayHand[];
-  playerStates: ReplayPlayerState[];
-  playerStats: ReplayPlayerStats[];
-  turnPhase: TurnPhase;
-  animation: ReplayAnimation;
-  roundNumber: number;
-  playerId: number;
-}
-
 export type ReplayAck =
   | {
       ok: true;
@@ -692,32 +587,6 @@ export type ReplayAck =
       serverLog: ReplayLogEntry[];
     }
   | { ok: false; error: string };
-
-export type ReplayEntry =
-  | {
-      kind: 'action';
-      roundNumber: number;
-      turnPhase: TurnPhase;
-      playerId: number;
-      mapDelta: ReplayTerritory[];
-      toxinTerritories: ReplayToxinTerritory[];
-      radiationTerritories: number[];
-      radiationUpcoming: number[];
-      seaShipsDelta: ReplaySeaShips[];
-      hands: ReplayHand[];
-      playerStates: ReplayPlayerState[];
-      statsDelta?: ReplayPlayerStats[];
-      animation: ReplayAnimation;
-    }
-  | { kind: 'turn'; roundNumber: number; playerId: number }
-  | { kind: 'chat'; senderId: number; name: string; message: string }
-  | {
-      kind: 'emoji';
-      senderId: number;
-      targetPlayerId: number | null;
-      emoji: string;
-      attackTarget: EmojiAttackTarget | null;
-    };
 
 export interface StoredGameResult {
   playerId: number;
@@ -764,6 +633,7 @@ export interface StoredGameSettings {
   roundTroops: RoundTroops;
   bounties: Bounties;
   capitalRefund: CapitalRefund;
+  startingCapitals: number;
   supplyLines: SupplyLines;
   fogOfWar: FogOfWar;
   alliances: Alliances;
@@ -771,6 +641,9 @@ export interface StoredGameSettings {
   nukes: Nukes;
   turnDuration: TurnDuration;
   attackIncrement: number;
+  maxRounds: number;
+  maxDuration: number;
+  drawOfferRound: number;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';
   minRank: string;
@@ -792,6 +665,7 @@ export interface StoredGame {
   roundNumber: number;
   playerCount: number;
   winnerIds: number[];
+  draw?: GameDraw | null;
   capitalTerritoryIds: number[];
   hillTerritoryIds?: number[];
   continentBonuses?: number[];
@@ -822,11 +696,22 @@ export interface StoredGame {
   };
 }
 
-export interface EloHistoryPoint {
+export interface CareerTotals {
+  playersKilled: number;
+  troopsGained: number;
+  troopsKilled: number;
+  troopsLost: number;
+  territoriesConquered: number;
+  capitalsConquered: number;
+  setsPlayed: number;
+}
+
+export interface PlayerHistoryPoint extends CareerTotals {
   startedAt: number;
   endedAt: number;
   elo: number;
   eloDelta: number;
+  won: boolean;
 }
 
 export interface GameHistoryRow {
@@ -840,6 +725,7 @@ export interface GameHistoryRow {
   playerCount: number;
   winnerIds: number[];
   winnerNames: string[];
+  draw: boolean;
   yourRank: number | null;
   settings: StoredGameSettings;
   players: { name: string; isBot: boolean; color: number; team: number }[];
@@ -872,7 +758,7 @@ export interface GamesQuery {
   maxRounds?: number;
   hasBots?: boolean;
   settings?: Record<string, string>;
-  outcome?: 'won' | 'lost';
+  outcome?: 'won' | 'draw' | 'lost';
   positionMin?: number;
   positionMax?: number;
   mine?: boolean;
@@ -954,7 +840,7 @@ export interface PlayersPage {
   pageSize: number;
 }
 
-export interface PlayerProfile {
+export interface PlayerProfile extends CareerTotals {
   id: string;
   username: string;
   elo: number;
@@ -968,5 +854,6 @@ export interface PlayerProfile {
   picture: string | null;
 }
 
+export * from '../game/replay/replayTypes';
 export * from '../maps/mapTypes';
 export * from '../pages/social/socialTypes';

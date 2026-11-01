@@ -109,8 +109,8 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
       mapGenerationUnlockable: optBoolParam(q.mapGenerationUnlockable),
       playersMin: optIntParam(q.playersMin, 1, 100),
       playersMax: optIntParam(q.playersMax, 1, 100),
-      minRounds: optIntParam(q.minRounds, 0, 100000),
-      maxRounds: optIntParam(q.maxRounds, 0, 100000),
+      minRounds: optIntParam(q.roundsMin, 0, 100000),
+      maxRounds: optIntParam(q.roundsMax, 0, 100000),
       settings: parseSettings(q),
       phase:
         q.phase === 'lobby' || q.phase === 'playing' || q.phase === 'ended'

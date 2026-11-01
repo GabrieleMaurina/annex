@@ -1,5 +1,11 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { connector } from '../../../connector';
 import type { Ack, Card, GameState } from '../../../lib/types';
 import { CARD_SET_FLASH_DURATION } from '../../animations';
@@ -65,6 +71,12 @@ export function useCardsAndDeploy({
     combos.find((c) => comboKey(c) === selectedComboKey) ?? combos[0];
   const hasSetToPlay = combos.length > 0;
   const mustPlaySet = hand.length >= 5;
+  const autoOpenCards =
+    turnPhase === 'deploy' && isMyTurn && !paused && mustPlaySet;
+
+  useLayoutEffect(() => {
+    if (autoOpenCards) setOpenPanel('cards');
+  }, [autoOpenCards, setOpenPanel]);
 
   const cardByTerritoryId =
     gameEnded && !cardsOpen
@@ -102,6 +114,10 @@ export function useCardsAndDeploy({
       const cb = (res: Ack) => {
         if (!res.ok) return;
         setGame(res.game);
+        if (turnPhase !== 'deploy' || res.game.turnPhase !== 'attack') return;
+        connector.attackSelectStart({ territoryId }, (selectRes: Ack) => {
+          if (selectRes.ok) setGame(selectRes.game);
+        });
       };
       if (turnPhase === 'troop') connector.placeTroop(payload, cb);
       else connector.deploy(payload, cb);

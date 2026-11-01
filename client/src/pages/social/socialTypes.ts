@@ -9,6 +9,7 @@ export interface FriendsOverview {
   friends: Friend[];
   incoming: Friend[];
   outgoing: Friend[];
+  blocked: Friend[];
 }
 
 export interface ConversationMessage {

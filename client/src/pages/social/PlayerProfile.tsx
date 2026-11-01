@@ -4,12 +4,12 @@ import { Button, Container, Spinner, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
-import EloChart from '../../common/charts/EloChart';
+import CareerChart from '../../common/charts/CareerChart';
 import ReportPlayerModal from '../../common/conduct/ReportPlayerModal';
 import { formatError } from '../../common/formatError';
-import FriendshipButton from '../../common/FriendshipButton';
 import { useWhiteIcon } from '../../common/icon';
 import SharePageButton from '../../common/menus/SharePageButton';
+import ProfileActions from '../../common/ProfileActions';
 import { connector } from '../../connector';
 import {
   contrastTextColor,
@@ -20,17 +20,17 @@ import { rankForElo } from '../../lib/ranks';
 import { useToggleSound } from '../../lib/sounds';
 import type {
   Account,
-  EloHistoryPoint,
   GameHistoryRow,
   GamesPage,
   GameSummary,
+  PlayerHistoryPoint,
   PlayerMapRow,
   PlayerProfile,
 } from '../../lib/types';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import MapBrowser from '../../maps/MapBrowser';
 import MapPreviewModal from '../../maps/MapPreviewModal';
-import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
+import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 
 const PAGE_SIZE = 20;
 
@@ -78,7 +78,7 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
           ))}
         </div>
       </td>
-      <td>{row.winnerNames.join(', ')}</td>
+      <td>{row.draw ? 'Draw' : row.winnerNames.join(', ')}</td>
       <td>{row.roundNumber}</td>
       <td>{row.yourRank === null ? '-' : row.yourRank + 1}</td>
     </tr>
@@ -96,7 +96,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   const [openedAt] = useState(() => Date.now());
   const [result, setResult] = useState<GamesPage | null>(null);
   const [mapTotal, setMapTotal] = useState<number | null>(null);
-  const [eloHistory, setEloHistory] = useState<EloHistoryPoint[]>([]);
+  const [history, setHistory] = useState<PlayerHistoryPoint[]>([]);
   const [liveGame, setLiveGame] = useState<GameSummary | null>(null);
   const [reportMenu, setReportMenu] = useState<{ x: number; y: number } | null>(
     null,
@@ -149,8 +149,8 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   useEffect(() => {
     if (!profile) return;
     let stale = false;
-    connector.getEloHistory(profile.username, (history) => {
-      if (!stale) setEloHistory(history);
+    connector.getPlayerHistory(profile.username, (points) => {
+      if (!stale) setHistory(points);
     });
     return () => {
       stale = true;
@@ -237,21 +237,51 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
     : 1;
   const rows = result?.games ?? [];
 
+  const winRate =
+    profile.gamesPlayed === 0
+      ? '-'
+      : `${Math.round((profile.wins / profile.gamesPlayed) * 100)}%`;
+  const careerStats: { label: string; value: string }[] = [
+    { label: 'Games', value: profile.gamesPlayed.toLocaleString() },
+    { label: 'Wins', value: profile.wins.toLocaleString() },
+    { label: 'Win rate', value: winRate },
+    {
+      label: 'Average placing',
+      value:
+        profile.averagePlacing === null
+          ? '-'
+          : profile.averagePlacing.toFixed(2),
+    },
+    { label: 'Troops gained', value: profile.troopsGained.toLocaleString() },
+    { label: 'Troops killed', value: profile.troopsKilled.toLocaleString() },
+    { label: 'Troops lost', value: profile.troopsLost.toLocaleString() },
+    {
+      label: 'Territories conquered',
+      value: profile.territoriesConquered.toLocaleString(),
+    },
+    {
+      label: 'Players eliminated',
+      value: profile.playersKilled.toLocaleString(),
+    },
+    {
+      label: 'Capitals conquered',
+      value: profile.capitalsConquered.toLocaleString(),
+    },
+    { label: 'Sets played', value: profile.setsPlayed.toLocaleString() },
+  ];
+
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
-      <h1 className="d-flex justify-content-center align-items-center gap-2 mb-2">
-        <Flag country={profile.country} height={30} />
-        {profile.username}
-      </h1>
-
-      <div className="d-flex flex-column align-items-center gap-1 mb-4">
+      <div
+        className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex flex-column flex-md-row align-items-center gap-4 mt-3 mb-4`}
+      >
         {profile.picture ? (
           <img
             src={profile.picture}
             alt={profile.username}
             width={120}
             height={120}
-            className="rounded"
+            className="rounded flex-shrink-0"
             onContextMenu={
               canReport
                 ? (e) => {
@@ -264,16 +294,25 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
           />
         ) : (
           <div
-            className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50"
+            className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50 flex-shrink-0"
             style={{ width: 120, height: 120 }}
           >
             No picture
           </div>
         )}
-        {reportMessage && (
-          <span className="small text-muted">{formatError(reportMessage)}</span>
-        )}
-        <div className="mt-2">
+        <div className="d-flex flex-column align-items-center align-items-md-start gap-2">
+          <h1 className="d-flex align-items-center gap-2 mb-0">
+            <Flag country={profile.country} height={30} />
+            {profile.username}
+          </h1>
+          <div className="small text-muted">
+            Member since {new Date(profile.createdAt).toLocaleDateString()}
+          </div>
+          {reportMessage && (
+            <span className="small text-muted">
+              {formatError(reportMessage)}
+            </span>
+          )}
           <SharePageButton
             title={profile.username}
             path={`/players/${encodeURIComponent(profile.username)}`}
@@ -284,7 +323,41 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
             }
           />
         </div>
+        <div
+          className={`d-flex flex-wrap flex-grow-1 justify-content-center ${canManageFriend ? '' : 'justify-content-md-end'} align-items-center gap-4`}
+        >
+          <div className="d-flex align-items-center gap-2">
+            <RankIcon elo={profile.elo} size={40} />
+            <span className="fs-5">{rank.name}</span>
+          </div>
+          <div className="text-center">
+            <div className="small text-muted">Elo</div>
+            <div className="fs-5">{profile.elo}</div>
+          </div>
+          <div className="text-center">
+            <div className="small text-muted">Percentile</div>
+            <div className="fs-5">{profile.percentile}%</div>
+          </div>
+          <div className="text-center">
+            <div className="small text-muted">Reputation</div>
+            <div className="fs-5">{profile.reputation}</div>
+          </div>
+        </div>
+        {canManageFriend && (
+          <ProfileActions
+            userId={profile.id}
+            username={profile.username}
+            onReport={() => openReport()}
+          />
+        )}
       </div>
+
+      {allowance > 0 && profile.reputation >= 0 && (
+        <p className="small text-muted text-center">
+          New account bonus: +{allowance} reputation when joining games (ends in{' '}
+          {allowance} {allowance === 1 ? 'day' : 'days'})
+        </p>
+      )}
 
       {reportMenu && (
         <div
@@ -311,72 +384,9 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
           </Button>
         </div>
       )}
-
-      <div className="d-flex flex-wrap justify-content-evenly gap-5 mb-4 w-100">
-        <div className="d-flex align-items-center gap-2">
-          <RankIcon elo={profile.elo} size={40} />
-          <span className="fs-5">{rank.name}</span>
-        </div>
-        <div className="text-center">
-          <div className="small text-muted">Elo</div>
-          <div className="fs-5">{profile.elo}</div>
-        </div>
-        <div className="text-center">
-          <div className="small text-muted">Percentile</div>
-          <div className="fs-5">{profile.percentile}%</div>
-        </div>
-        <div className="text-center">
-          <div className="small text-muted">Total games</div>
-          <div className="fs-5">{profile.gamesPlayed}</div>
-        </div>
-        <div className="text-center">
-          <div className="small text-muted">Wins</div>
-          <div className="fs-5">{profile.wins}</div>
-        </div>
-        <div className="text-center">
-          <div className="small text-muted">Average placing</div>
-          <div className="fs-5">
-            {profile.averagePlacing === null
-              ? '-'
-              : profile.averagePlacing.toFixed(2)}
-          </div>
-        </div>
-        <div className="text-center">
-          <div className="small text-muted">Reputation</div>
-          <div className="fs-5">{profile.reputation}</div>
-          {allowance > 0 && profile.reputation >= 0 && (
-            <div className="small text-muted">
-              New account bonus: +{allowance} when joining games (ends in{' '}
-              {allowance} {allowance === 1 ? 'day' : 'days'})
-            </div>
-          )}
-        </div>
-        <div className="text-center">
-          <div className="small text-muted">Member since</div>
-          <div className="fs-5">
-            {new Date(profile.createdAt).toLocaleDateString()}
-          </div>
-        </div>
-        {canManageFriend && (
-          <div className="d-flex flex-column align-items-stretch gap-2">
-            <FriendshipButton userId={profile.id} username={profile.username} />
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() =>
-                navigate(`/messages?to=${encodeURIComponent(profile.username)}`)
-              }
-            >
-              Send message
-            </Button>
-            <Button size="sm" variant="danger" onClick={() => openReport()}>
-              Report
-            </Button>
-          </div>
-        )}
-      </div>
       <ReportPlayerModal
         show={reportOpen}
+        playerName={profile.username}
         includePicture={!!profile.picture}
         initialReason={reportReason}
         onHide={() => setReportOpen(false)}
@@ -386,10 +396,25 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
         onReported={() => setReportMessage('report submitted')}
       />
 
-      {profile.elo > 0 && eloHistory.length >= 2 && (
+      <div className="row row-cols-2 row-cols-sm-3 row-cols-lg-4 row-cols-xl-6 g-2 justify-content-center mb-4">
+        {careerStats.map((stat) => (
+          <div key={stat.label} className="col">
+            <div className="border rounded p-2 text-center h-100">
+              <div className="small text-muted">{stat.label}</div>
+              <div className="fs-5">{stat.value}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {history.length > 0 && (
         <div className="mb-4">
-          <div className="small text-muted mb-1">Elo over time</div>
-          <EloChart history={eloHistory} />
+          <h4 className="mb-3">Stats over time</h4>
+          <CareerChart
+            key={profile.id}
+            history={history}
+            includeElo={profile.elo > 0}
+          />
         </div>
       )}
 

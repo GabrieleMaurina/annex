@@ -12,6 +12,7 @@ import {
   IndexSpec,
 } from './db/mongo';
 import { DEFAULT_CLIENT_SETTINGS } from './db/users/preferences';
+import { DEFAULT_PRESETS } from './db/users/presets';
 
 type Node = Record<string, unknown>;
 
@@ -28,6 +29,7 @@ const FIELD_DEFAULTS: Record<string, unknown> = {
   effectsVolume: DEFAULT_CLIENT_SETTINGS.effectsVolume,
   musicVolume: DEFAULT_CLIENT_SETTINGS.musicVolume,
   minReputation: DEFAULT_MIN_REPUTATION,
+  presets: DEFAULT_PRESETS,
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {

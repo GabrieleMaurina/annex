@@ -72,7 +72,7 @@ function MapPreviewModal({
       <Modal.Footer>
         {account && !preview?.mine && (
           <Button
-            variant="outline-danger"
+            variant="danger"
             size="sm"
             disabled={reported}
             onClick={report}

@@ -31,6 +31,7 @@ export interface FriendsOverview {
   friends: FriendSummary[];
   incoming: FriendSummary[];
   outgoing: FriendSummary[];
+  blocked: FriendSummary[];
 }
 
 const schema = {
@@ -90,7 +91,7 @@ export function getFriendsOverview(userId: string): Promise<FriendsOverview> {
         doc.requesterId.equals(me) ||
         !blocked.has(otherOf(doc)),
     );
-    const ids = docs.map(otherOf);
+    const ids = [...docs.map(otherOf), ...blockedIds];
     return Promise.all([
       getUsernamesByIds(ids),
       getElosByIds(ids),
@@ -106,6 +107,7 @@ export function getFriendsOverview(userId: string): Promise<FriendsOverview> {
         friends: [],
         incoming: [],
         outgoing: [],
+        blocked: blockedIds.map(summary),
       };
       for (const doc of docs) {
         const person = summary(otherOf(doc));

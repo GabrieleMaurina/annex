@@ -46,6 +46,7 @@ import {
   SettingFilterSections,
 } from '../lobby/gameFilters';
 import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
+import { GAME_MODE_HELP, PASSWORD_HELP } from '../lobby/settings/settingsHelp';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import Selector from '../ui/forms/Selector';
 
@@ -505,7 +506,7 @@ function Home({
                     onChange={(e) => resetPage(setName)(e.target.value)}
                   />
                 </Field>
-                <Field label="Mode">
+                <Field label="Mode" help={GAME_MODE_HELP}>
                   <Selector
                     size="sm"
                     value={mode}
@@ -533,7 +534,7 @@ function Home({
                     <option value="ended">Ended</option>
                   </Selector>
                 </Field>
-                <Field label="Password">
+                <Field label="Password" help={PASSWORD_HELP}>
                   <Selector
                     size="sm"
                     value={password}

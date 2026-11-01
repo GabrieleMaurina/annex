@@ -80,7 +80,9 @@ gameHistoryRouter.get('/games/history', (req, res) => {
   const mapGenerationTimed = optBoolParam(q.mapGenerationTimed);
   const mapGenerationUnlockable = optBoolParam(q.mapGenerationUnlockable);
   const outcome =
-    q.outcome === 'won' || q.outcome === 'lost' ? q.outcome : undefined;
+    q.outcome === 'won' || q.outcome === 'draw' || q.outcome === 'lost'
+      ? q.outcome
+      : undefined;
   const hasBots =
     q.hasBots === '1' ? true : q.hasBots === '0' ? false : undefined;
   const sort = q.sort === 'rounds' || q.sort === 'position' ? q.sort : 'newest';
@@ -109,8 +111,8 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     mapGenerationUnlockable,
     playersMin: optIntParam(q.playersMin, 1, 100),
     playersMax: optIntParam(q.playersMax, 1, 100),
-    minRounds: optIntParam(q.minRounds, 0, 100000),
-    maxRounds: optIntParam(q.maxRounds, 0, 100000),
+    minRounds: optIntParam(q.roundsMin, 0, 100000),
+    maxRounds: optIntParam(q.roundsMax, 0, 100000),
     hasBots,
     settings: parseSettings(q),
     outcome,

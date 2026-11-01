@@ -15,12 +15,20 @@ const TILES_UNIT = 1;
 const LABELS_UNIT = 2;
 const PALETTE_UNIT = 3;
 const FIELD_UNIT = 4;
+const AXIS_UNIT = 5;
+const DIAGONAL_UNIT = 6;
 const SAMPLERS: [string, number][] = [
   ['u_image', IMAGE_UNIT],
   ['u_tiles', TILES_UNIT],
   ['u_labels', LABELS_UNIT],
   ['u_palette', PALETTE_UNIT],
   ['u_field', FIELD_UNIT],
+  ['u_axis', AXIS_UNIT],
+  ['u_diagonal', DIAGONAL_UNIT],
+];
+const CROSS_PASSES: [number, number[], number[]][] = [
+  [AXIS_UNIT, [-1, 1, 0, 0], [0, 0, -1, 1]],
+  [DIAGONAL_UNIT, [-1, 1, -1, 1], [-1, -1, 1, 1]],
 ];
 
 const VERTEX_SHADER = `
@@ -59,6 +67,14 @@ bool sameColor(vec4 a, vec4 b) {
   vec4 d = abs(a - b);
   return max(max(d.r, d.g), max(d.b, d.a)) < 0.002;
 }
+
+bool sameIdentity(vec4 a, float la, vec4 b, float lb) {
+  return la == lb && sameColor(a, b);
+}
+
+float weightOf(vec2 offset) {
+  return exp(-dot(offset, offset) / ${(2 * SIGMA * SIGMA).toFixed(4)});
+}
 `;
 
 const FIELD_SHADER = `${SOURCE_SHADER}
@@ -70,27 +86,90 @@ void main() {
   vec2 cell = floor(gl_FragCoord.xy);
   vec4 color = baseColor(cell);
   float label = labelOf(cell);
+  vec4 otherColor = color;
+  float otherLabel = label;
+  bool mixed = false;
   float own = 0.0;
   float total = 0.0;
   for (int dy = -${RADIUS}; dy <= ${RADIUS}; dy++) {
     for (int dx = -${RADIUS}; dx <= ${RADIUS}; dx++) {
       vec2 offset = vec2(float(dx), float(dy));
-      float weight = exp(-dot(offset, offset) / ${(2 * SIGMA * SIGMA).toFixed(4)});
+      float weight = weightOf(offset);
       total += weight;
-      if (sameAs(cell + offset, color, label)) own += weight;
+      vec4 tapColor = baseColor(cell + offset);
+      float tapLabel = labelOf(cell + offset);
+      if (sameIdentity(tapColor, tapLabel, color, label)) {
+        own += weight;
+      } else if (sameIdentity(otherColor, otherLabel, color, label)) {
+        otherColor = tapColor;
+        otherLabel = tapLabel;
+      } else if (!sameIdentity(tapColor, tapLabel, otherColor, otherLabel)) {
+        mixed = true;
+      }
     }
   }
   float share = own / total;
-  bool thinX = !sameAs(cell + vec2(-1.0, 0.0), color, label) && !sameAs(cell + vec2(1.0, 0.0), color, label);
-  bool thinY = !sameAs(cell + vec2(0.0, -1.0), color, label) && !sameAs(cell + vec2(0.0, 1.0), color, label);
+  bool left = sameAs(cell + vec2(-1.0, 0.0), color, label);
+  bool right = sameAs(cell + vec2(1.0, 0.0), color, label);
+  bool up = sameAs(cell + vec2(0.0, -1.0), color, label);
+  bool down = sameAs(cell + vec2(0.0, 1.0), color, label);
+  bool upLeft = sameAs(cell + vec2(-1.0, -1.0), color, label);
+  bool upRight = sameAs(cell + vec2(1.0, -1.0), color, label);
+  bool downLeft = sameAs(cell + vec2(-1.0, 1.0), color, label);
+  bool downRight = sameAs(cell + vec2(1.0, 1.0), color, label);
+  bool thinX = !left && !right && (upLeft || up || upRight) == (downLeft || down || downRight);
+  bool thinY = !up && !down && (upLeft || left || downLeft) == (upRight || right || downRight);
   if (thinX || thinY) share = max(share, ${THIN_FLOOR.toFixed(2)});
-  gl_FragColor = vec4(share, 0.0, 0.0, 1.0);
+  gl_FragColor = vec4(share, mixed ? 1.0 : 0.0, 0.0, 1.0);
+}
+`;
+
+const CROSS_SHADER = `${SOURCE_SHADER}
+uniform sampler2D u_field;
+uniform vec4 u_dx;
+uniform vec4 u_dy;
+
+void main() {
+  vec2 cell = floor(gl_FragCoord.xy);
+  if (texture2D(u_field, (cell + 0.5) / u_size).g < 0.5) {
+    gl_FragColor = vec4(1.0);
+    return;
+  }
+  vec2 n0 = cell + vec2(u_dx.x, u_dy.x);
+  vec2 n1 = cell + vec2(u_dx.y, u_dy.y);
+  vec2 n2 = cell + vec2(u_dx.z, u_dy.z);
+  vec2 n3 = cell + vec2(u_dx.w, u_dy.w);
+  vec4 c0 = baseColor(n0);
+  vec4 c1 = baseColor(n1);
+  vec4 c2 = baseColor(n2);
+  vec4 c3 = baseColor(n3);
+  vec4 labels = vec4(labelOf(n0), labelOf(n1), labelOf(n2), labelOf(n3));
+  vec4 shares = vec4(0.0);
+  float total = 0.0;
+  for (int dy = -${RADIUS}; dy <= ${RADIUS}; dy++) {
+    for (int dx = -${RADIUS}; dx <= ${RADIUS}; dx++) {
+      vec2 offset = vec2(float(dx), float(dy));
+      float weight = weightOf(offset);
+      total += weight;
+      vec4 color = baseColor(cell + offset);
+      float label = labelOf(cell + offset);
+      shares += weight * vec4(
+        float(sameIdentity(color, label, c0, labels.x)),
+        float(sameIdentity(color, label, c1, labels.y)),
+        float(sameIdentity(color, label, c2, labels.z)),
+        float(sameIdentity(color, label, c3, labels.w))
+      );
+    }
+  }
+  gl_FragColor = shares / total;
 }
 `;
 
 const DRAW_SHADER = `${SOURCE_SHADER}
 uniform sampler2D u_palette;
 uniform sampler2D u_field;
+uniform sampler2D u_axis;
+uniform sampler2D u_diagonal;
 uniform vec2 u_paletteSize;
 uniform vec2 u_origin;
 uniform float u_scale;
@@ -111,8 +190,8 @@ vec4 maskOf(vec4 color, float label) {
   );
 }
 
-vec3 score(vec4 mask) {
-  vec4 value = mask * shares + (1.0 - mask) * (1.0 - shares);
+vec3 score(vec4 mask, vec4 others) {
+  vec4 value = mask * shares + (1.0 - mask) * min(others, 1.0 - shares);
   return vec3(dot(value, w), dot(value, wx), dot(value, wy));
 }
 
@@ -125,8 +204,16 @@ vec4 shown(vec4 color, float label) {
   return color;
 }
 
-float shareAt(vec2 cell) {
-  return texture2D(u_field, (cell + 0.5) / u_size).r;
+vec4 fieldAt(vec2 cell) {
+  return texture2D(u_field, (cell + 0.5) / u_size);
+}
+
+vec4 axisAt(vec2 cell) {
+  return texture2D(u_axis, (cell + 0.5) / u_size);
+}
+
+vec4 diagonalAt(vec2 cell) {
+  return texture2D(u_diagonal, (cell + 0.5) / u_size);
 }
 
 void main() {
@@ -145,7 +232,11 @@ void main() {
   c2 = baseColor(cell + down);
   c3 = baseColor(cell + right + down);
   labels = vec4(labelOf(cell), labelOf(cell + right), labelOf(cell + down), labelOf(cell + right + down));
-  shares = vec4(shareAt(cell), shareAt(cell + right), shareAt(cell + down), shareAt(cell + right + down));
+  vec4 f0 = fieldAt(cell);
+  vec4 f1 = fieldAt(cell + right);
+  vec4 f2 = fieldAt(cell + down);
+  vec4 f3 = fieldAt(cell + right + down);
+  shares = vec4(f0.r, f1.r, f2.r, f3.r);
   w = vec4((1.0 - f.x) * (1.0 - f.y), f.x * (1.0 - f.y), (1.0 - f.x) * f.y, f.x * f.y);
   wx = vec4(f.y - 1.0, 1.0 - f.y, -f.y, f.y);
   wy = vec4(f.x - 1.0, -f.x, 1.0 - f.x, f.x);
@@ -154,10 +245,28 @@ void main() {
   vec4 m1 = maskOf(c1, labels.y);
   vec4 m2 = maskOf(c2, labels.z);
   vec4 m3 = maskOf(c3, labels.w);
-  vec3 s0 = score(m0);
-  vec3 s1 = score(m1);
-  vec3 s2 = score(m2);
-  vec3 s3 = score(m3);
+  vec4 a0 = vec4(1.0);
+  vec4 a1 = vec4(1.0);
+  vec4 a2 = vec4(1.0);
+  vec4 a3 = vec4(1.0);
+  vec4 g0 = vec4(1.0);
+  vec4 g1 = vec4(1.0);
+  vec4 g2 = vec4(1.0);
+  vec4 g3 = vec4(1.0);
+  if (max(max(f0.g, f1.g), max(f2.g, f3.g)) > 0.5) {
+    a0 = axisAt(cell);
+    a1 = axisAt(cell + right);
+    a2 = axisAt(cell + down);
+    a3 = axisAt(cell + right + down);
+    g0 = diagonalAt(cell);
+    g1 = diagonalAt(cell + right);
+    g2 = diagonalAt(cell + down);
+    g3 = diagonalAt(cell + right + down);
+  }
+  vec3 s0 = score(m0, vec4(1.0, a1.x, a2.z, g3.x));
+  vec3 s1 = score(m1, vec4(a0.y, 1.0, g2.y, a3.z));
+  vec3 s2 = score(m2, vec4(a0.w, g1.z, 1.0, a3.x));
+  vec3 s3 = score(m3, vec4(g0.w, a1.w, a2.y, 1.0));
   vec4 best = shown(c0, labels.x);
   vec4 bestMask = m0;
   vec3 sBest = s0;
@@ -183,7 +292,9 @@ void main() {
 interface Smoother {
   gl: WebGLRenderingContext;
   field: WebGLProgram;
+  cross: WebGLProgram;
   draw: WebGLProgram;
+  textures: WebGLTexture[];
   framebuffer: WebGLFramebuffer;
   maxSize: number;
   image: HTMLImageElement | HTMLCanvasElement | null;
@@ -223,8 +334,9 @@ function createSmoother(): Smoother | null {
     .getContext('webgl', { antialias: false, depth: false });
   if (!gl) return null;
   const field = link(gl, FIELD_SHADER);
+  const cross = link(gl, CROSS_SHADER);
   const draw = link(gl, DRAW_SHADER);
-  if (!field || !draw) return null;
+  if (!field || !cross || !draw) return null;
 
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
   gl.bufferData(
@@ -245,22 +357,14 @@ function createSmoother(): Smoother | null {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     return texture;
   });
-  const framebuffer = gl.createFramebuffer()!;
-  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-  gl.framebufferTexture2D(
-    gl.FRAMEBUFFER,
-    gl.COLOR_ATTACHMENT0,
-    gl.TEXTURE_2D,
-    textures[FIELD_UNIT],
-    0,
-  );
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   return {
     gl,
     field,
+    cross,
     draw,
-    framebuffer,
+    textures,
+    framebuffer: gl.createFramebuffer()!,
     maxSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
     image: null,
     revision: 0,
@@ -363,6 +467,18 @@ function selectProgram(
   gl.uniform2f(gl.getUniformLocation(program, 'u_size'), width, height);
 }
 
+function renderTo(s: Smoother, unit: number) {
+  const { gl } = s;
+  gl.framebufferTexture2D(
+    gl.FRAMEBUFFER,
+    gl.COLOR_ATTACHMENT0,
+    gl.TEXTURE_2D,
+    s.textures[unit],
+    0,
+  );
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
 function computeField(
   s: Smoother,
   source: SmoothSource,
@@ -372,13 +488,21 @@ function computeField(
   const { gl } = s;
   if (width !== s.fieldWidth || height !== s.fieldHeight) {
     uploadPixels(s, FIELD_UNIT, gl.RGBA, width, height, null);
+    for (const [unit] of CROSS_PASSES)
+      uploadPixels(s, unit, gl.RGBA, width, height, null);
     s.fieldWidth = width;
     s.fieldHeight = height;
   }
-  selectProgram(s, s.field, source, width, height);
   gl.bindFramebuffer(gl.FRAMEBUFFER, s.framebuffer);
   gl.viewport(0, 0, width, height);
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  selectProgram(s, s.field, source, width, height);
+  renderTo(s, FIELD_UNIT);
+  selectProgram(s, s.cross, source, width, height);
+  for (const [unit, dx, dy] of CROSS_PASSES) {
+    gl.uniform4fv(gl.getUniformLocation(s.cross, 'u_dx'), dx);
+    gl.uniform4fv(gl.getUniformLocation(s.cross, 'u_dy'), dy);
+    renderTo(s, unit);
+  }
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 

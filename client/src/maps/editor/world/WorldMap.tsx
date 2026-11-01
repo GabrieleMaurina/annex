@@ -474,10 +474,10 @@ function WorldMap({
           }
         >
           <span
-            className="d-inline-block"
+            className="d-inline-flex"
             style={{ transform: `rotate(${-bearing}deg)` }}
           >
-            ↑N
+            <WhiteIcon path="/icons/north.svg" />
           </span>
         </Button>
         <Button

@@ -3,12 +3,17 @@ import {
   defaultMaxPoints,
   isBlitzOffAllowed,
   MAX_DICE,
+  MAX_DURATION_VALUES,
   MAX_HILLS,
   MAX_POINTS_VALUES,
+  MAX_STALEMATE_ROUNDS,
+  MAX_STARTING_CAPITALS,
   MIN_ACCOUNT_AGE_VALUES,
   MIN_GAMES_VALUES,
   MIN_HILLS,
   MIN_REPUTATION_VALUES,
+  MIN_STALEMATE_ROUNDS,
+  MIN_STARTING_CAPITALS,
   RANKS,
 } from 'engine';
 import type { ReactNode } from 'react';
@@ -37,12 +42,15 @@ import {
   DICE_TIES_HELP,
   DISCONNECT_BOT_DIFFICULTY_HELP,
   DISCONNECT_BOT_PERSONALITY_HELP,
+  DRAW_OFFER_ROUND_HELP,
   ENTRENCHMENTS_HELP,
   FOG_OF_WAR_HELP,
   FORTIFICATION_HELP,
   HILLS_HELP,
   INITIAL_TROOPS_HELP,
+  MAX_DURATION_HELP,
   MAX_POINTS_HELP,
+  MAX_ROUNDS_HELP,
   MIN_ACCOUNT_AGE_HELP,
   MIN_GAMES_HELP,
   MIN_RANK_HELP,
@@ -53,6 +61,7 @@ import {
   PORTALS_HELP,
   RADIATIONS_HELP,
   ROUND_TROOPS_HELP,
+  STARTING_CAPITALS_HELP,
   STARVATION_HELP,
   SUPPLY_LINES_HELP,
   TOXINS_HELP,
@@ -67,6 +76,7 @@ export const GAME_SETTING_SECTIONS = [
   'Hazards',
   'Players',
   'Bots',
+  'Stalemate Prevention',
   'Session',
 ] as const;
 
@@ -80,6 +90,7 @@ export const DEFAULT_GAME_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   blitz: 'balanced',
   bounties: 'off',
   capitalRefund: 'off',
+  startingCapitals: 1,
   cards: 'constant',
   continents: '1x',
   defenceDice: 2,
@@ -111,6 +122,9 @@ export const DEFAULT_GAME_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   turnDuration: 120,
   attackIncrement: 0,
   roundTroops: 'off',
+  maxRounds: 1000,
+  maxDuration: 180,
+  drawOfferRound: 500,
   visibility: 'public',
 };
 
@@ -130,6 +144,7 @@ export interface GameSettingDef {
   label: string;
   section: GameSettingSection;
   numeric?: boolean;
+  range?: { min: number; max: number };
   modes?: GameMode[];
   options: GameSettingOption[];
   help: ReactNode;
@@ -140,6 +155,13 @@ export function formatDuration(seconds: number): string {
   const sec = seconds % 60;
   if (min === 0) return `${sec} sec`;
   return sec === 0 ? `${min} min` : `${min} min ${sec} sec`;
+}
+
+function formatMinutes(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 }
 
 function onOff(): GameSettingOption[] {
@@ -189,6 +211,14 @@ const HILLS = Array.from(
   (_, i) => MIN_HILLS + i,
 );
 const MIN_TROOPS = Array.from({ length: 101 }, (_, i) => i);
+const STARTING_CAPITALS = Array.from(
+  { length: MAX_STARTING_CAPITALS - MIN_STARTING_CAPITALS + 1 },
+  (_, i) => MIN_STARTING_CAPITALS + i,
+);
+const STALEMATE_ROUNDS = {
+  min: MIN_STALEMATE_ROUNDS,
+  max: MAX_STALEMATE_ROUNDS,
+};
 const TROOPS_PER_TERRITORY_FRACTIONS = [5, 4, 3, 2].map((d) => ({
   value: String(1 / d),
   label: `1/${d}`,
@@ -245,6 +275,15 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     modes: ['capitals'],
     options: onOff(),
     help: CAPITAL_REFUND_HELP,
+  },
+  {
+    key: 'startingCapitals',
+    label: 'Starting Capitals',
+    section: 'Setup',
+    numeric: true,
+    modes: ['capitals'],
+    options: options(...STARTING_CAPITALS.map(String)),
+    help: STARTING_CAPITALS_HELP,
   },
   {
     key: 'blitz',
@@ -434,6 +473,33 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     help: DISCONNECT_BOT_DIFFICULTY_HELP,
   },
   {
+    key: 'maxRounds',
+    label: 'Max Rounds',
+    section: 'Stalemate Prevention',
+    range: STALEMATE_ROUNDS,
+    options: [],
+    help: MAX_ROUNDS_HELP,
+  },
+  {
+    key: 'maxDuration',
+    label: 'Max Duration',
+    section: 'Stalemate Prevention',
+    numeric: true,
+    options: MAX_DURATION_VALUES.map((minutes) => ({
+      value: String(minutes),
+      label: formatMinutes(minutes),
+    })),
+    help: MAX_DURATION_HELP,
+  },
+  {
+    key: 'drawOfferRound',
+    label: 'Draw Offer Round',
+    section: 'Stalemate Prevention',
+    range: STALEMATE_ROUNDS,
+    options: [],
+    help: DRAW_OFFER_ROUND_HELP,
+  },
+  {
     key: 'turnDuration',
     label: 'Turn Duration',
     section: 'Session',
@@ -529,6 +595,10 @@ export function randomGameSettings(): GameSettingsInput {
   for (const def of GAME_SETTINGS) {
     if (def.key === 'anonymous' || SEAT_REQUIREMENT_KEYS.includes(def.key))
       continue;
+    if (def.range) {
+      settings[def.key] = defaultSettingValue(def.key, gameMode) as number;
+      continue;
+    }
     const { value } = def.numeric
       ? pickNearDefault(def.options, defaultSettingValue(def.key, gameMode))
       : pick(def.options);

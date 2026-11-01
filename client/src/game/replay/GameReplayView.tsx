@@ -129,7 +129,9 @@ function GameReplayView({
     return replayFailed ? (
       <div className="d-flex flex-column align-items-center gap-3 py-5">
         <p>Replay unavailable.</p>
-        <Button onClick={() => setView('results')}>Results</Button>
+        <Button variant="info" onClick={() => setView('results')}>
+          Results
+        </Button>
       </div>
     ) : (
       <ReplayLoading />
@@ -176,11 +178,7 @@ function GameReplayView({
             size="sm"
           />
         )}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setView('results')}
-        >
+        <Button variant="info" size="sm" onClick={() => setView('results')}>
           Results
         </Button>
       </div>

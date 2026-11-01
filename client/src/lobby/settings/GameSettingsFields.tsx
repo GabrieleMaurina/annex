@@ -31,6 +31,7 @@ import {
   type GameSettingDef,
   SEAT_REQUIREMENT_KEYS,
 } from './gameSettings';
+import SettingOdometer from './SettingOdometer';
 import { PASSWORD_HELP, VISIBILITY_HELP } from './settingsHelp';
 
 const SHRINK_STYLE = { minWidth: 0 };
@@ -116,10 +117,17 @@ function GameSettingsFields({
         style={SHRINK_STYLE}
       >
         <Form.Label className={FIELD_LABEL_CLASS}>
-          {def.label}
-          <Help>{def.help}</Help>
+          <Help tip={def.help}>{def.label}</Help>
         </Form.Label>
-        {isHost ? (
+        {isHost && def.range ? (
+          <SettingOdometer
+            className={changed ? 'border-primary' : undefined}
+            value={Number(value)}
+            min={def.range.min}
+            max={def.range.max}
+            onChange={(next) => applySettings(settingUpdate(def.key, next))}
+          />
+        ) : isHost ? (
           <Selector
             className={changed ? 'border-primary' : undefined}
             value={String(value)}
@@ -178,8 +186,7 @@ function GameSettingsFields({
                 <>
                   <div className="col d-flex flex-column" style={SHRINK_STYLE}>
                     <Form.Label className={FIELD_LABEL_CLASS}>
-                      Visibility
-                      <Help>{VISIBILITY_HELP}</Help>
+                      <Help tip={VISIBILITY_HELP}>Visibility</Help>
                     </Form.Label>
                     {isHost ? (
                       <Selector
@@ -216,8 +223,7 @@ function GameSettingsFields({
 
                   <div className="col d-flex flex-column" style={SHRINK_STYLE}>
                     <Form.Label className={FIELD_LABEL_CLASS}>
-                      Password
-                      <Help>{PASSWORD_HELP}</Help>
+                      <Help tip={PASSWORD_HELP}>Password</Help>
                     </Form.Label>
                     {isHost ? (
                       <div className="d-flex align-items-center gap-2">

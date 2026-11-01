@@ -11,6 +11,7 @@ import {
   TILE_SHAPES,
 } from './users/preferences';
 import {
+  CareerTotals,
   findUserByUsername,
   getCountriesByIds,
   getUsernamesByIds,
@@ -35,11 +36,12 @@ export interface GamePlayerDoc {
   eloPenalty: 'disconnected' | 'surrender' | null;
 }
 
-export interface EloHistoryPoint {
+export interface PlayerHistoryPoint extends CareerTotals {
   startedAt: number;
   endedAt: number;
   elo: number;
   eloDelta: number;
+  won: boolean;
 }
 
 export type GameDoc = Omit<GameExport, 'players' | 'mapName'> & {
@@ -58,6 +60,7 @@ export interface GameHistoryRow {
   playerCount: number;
   winnerIds: number[];
   winnerNames: string[];
+  draw: boolean;
   yourRank: number | null;
   settings: GameDoc['settings'];
   players: { name: string; isBot: boolean; color: number; team: number }[];
@@ -90,7 +93,7 @@ export interface GamesQuery {
   maxRounds?: number;
   hasBots?: boolean;
   settings?: Record<string, string | number>;
-  outcome?: 'won' | 'lost';
+  outcome?: 'won' | 'draw' | 'lost';
   positionMin?: number;
   positionMax?: number;
   userId?: string;
@@ -329,6 +332,7 @@ export const SETTINGS_ENUM_KEYS = [
   'roundTroops',
   'bounties',
   'capitalRefund',
+  'startingCapitals',
   'supplyLines',
   'fogOfWar',
   'alliances',
@@ -336,6 +340,9 @@ export const SETTINGS_ENUM_KEYS = [
   'nukes',
   'turnDuration',
   'attackIncrement',
+  'maxRounds',
+  'maxDuration',
+  'drawOfferRound',
   'disconnectBotDifficulty',
   'disconnectBotPersonality',
   'minRank',
@@ -446,6 +453,15 @@ const schema = {
         settings,
         players: array(player),
         winnerIds: array(int),
+        draw: {
+          bsonType: ['object', 'null'],
+          required: ['reason', 'playerIds'],
+          additionalProperties: false,
+          properties: {
+            reason: { enum: ['max rounds', 'max duration', 'agreed'] },
+            playerIds: array(int),
+          },
+        },
         roundNumber: int,
         playerCount: int,
         capitalTerritoryIds: array(int),
@@ -607,25 +623,47 @@ export function getGameById(id: string): Promise<ResolvedGameDoc | null> {
     });
 }
 
-export function getEloHistory(username: string): Promise<EloHistoryPoint[]> {
+export function getPlayerHistory(
+  username: string,
+): Promise<PlayerHistoryPoint[]> {
   return findUserByUsername(username).then((user) => {
     if (!user) return [];
     return collection()
       .find(
         { 'players.userId': user.id },
         {
-          projection: { startedAt: 1, endedAt: 1, 'players.$': 1 },
+          projection: {
+            startedAt: 1,
+            endedAt: 1,
+            'players.$': 1,
+            results: 1,
+            draw: 1,
+          },
           sort: { endedAt: 1 },
         },
       )
       .toArray()
       .then((docs) =>
-        docs.map((doc) => ({
-          startedAt: doc.startedAt,
-          endedAt: doc.endedAt,
-          elo: doc.players[0].elo,
-          eloDelta: doc.players[0].eloDelta,
-        })),
+        docs.map((doc) => {
+          const player = doc.players[0];
+          const result = doc.results.find(
+            (r) => r.playerId === player.playerId,
+          );
+          return {
+            startedAt: doc.startedAt,
+            endedAt: doc.endedAt,
+            elo: player.elo,
+            eloDelta: player.eloDelta,
+            won: !doc.draw && result?.rank === 0,
+            playersKilled: result?.playersKilled.length ?? 0,
+            troopsGained: result?.troopsGained ?? 0,
+            troopsKilled: result?.troopsKilled ?? 0,
+            troopsLost: result?.troopsLost ?? 0,
+            territoriesConquered: result?.territoriesConquered ?? 0,
+            capitalsConquered: result?.capitalsConquered ?? 0,
+            setsPlayed: result?.setsPlayed ?? 0,
+          };
+        }),
       );
   });
 }
@@ -654,6 +692,7 @@ function toRow(
     playerCount: doc.playerCount ?? doc.players.length,
     winnerIds: doc.winnerIds,
     winnerNames: doc.winnerIds.map((id) => nameById.get(id) ?? '?'),
+    draw: !!doc.draw,
     yourRank: yourResult ? yourResult.rank : null,
     settings: doc.settings,
     players: doc.players.map((p) => ({
@@ -763,8 +802,10 @@ function queryGames(
       query.sort === 'position');
 
   const relMatch: Record<string, unknown> = {};
-  if (viewer !== undefined && query.outcome !== undefined)
+  if (viewer !== undefined && query.outcome !== undefined) {
     relMatch._myWon = query.outcome === 'won';
+    relMatch._myDrawn = query.outcome === 'draw';
+  }
   if (
     viewer !== undefined &&
     (query.positionMin !== undefined || query.positionMax !== undefined)
@@ -823,6 +864,9 @@ function queryGames(
           },
         },
         _myWon: { $in: ['$_mePid', { $ifNull: ['$winnerIds', []] }] },
+        _myDrawn: {
+          $in: ['$_mePid', { $ifNull: ['$draw.playerIds', []] }],
+        },
       },
     });
     if (Object.keys(relMatch).length > 0) pipeline.push({ $match: relMatch });

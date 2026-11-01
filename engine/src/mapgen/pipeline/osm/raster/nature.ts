@@ -10,6 +10,7 @@ const RIVER_LINE_REACH = 1;
 const RIVER_SHARE = 0.6;
 const MIN_RIVER_BORDER = 12;
 const PAIR_KEY_BASE = 65536;
+const STROKE_WIDTH = 2;
 
 export interface RiverBorders {
   rivers: [number, number][];
@@ -108,10 +109,11 @@ export function longRivers(
   height: number,
 ): Uint8Array {
   const rivers = features.lines.filter(
-    (line) => line.layer === 'waterway' && line.cls === 'river' && line.name,
+    (line) => line.layer === 'waterway' && line.cls === 'river',
   );
+  const named = rivers.filter((line) => line.name);
   const lengths = new Map<string, number>();
-  for (const { name, points } of rivers) {
+  for (const { name, points } of named) {
     let length = 0;
     for (let i = 0; i + 3 < points.length; i += 2)
       length += Math.hypot(
@@ -121,8 +123,16 @@ export function longRivers(
     lengths.set(name, (lengths.get(name) ?? 0) + length);
   }
   const minLength = RIVER_LENGTH_RATIO * Math.sqrt(width * height);
-  const mask = new Uint8Array(width * height);
+  const unnamed = new Uint8Array(width * height);
   for (const { name, points } of rivers)
+    if (!name) strokeLine(unnamed, width, height, points, 1);
+  const mask = largeLandAreas(
+    unnamed,
+    unnamed,
+    width,
+    minLength * STROKE_WIDTH,
+  );
+  for (const { name, points } of named)
     if (lengths.get(name)! >= minLength)
       strokeLine(mask, width, height, points, 1);
   return mask;

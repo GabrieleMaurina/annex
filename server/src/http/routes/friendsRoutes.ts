@@ -17,7 +17,7 @@ function targetId(req: { body: unknown }): string {
 
 friendsRouter.get('/friends', (_req, res) => {
   const { session } = identityOf(res);
-  const empty = { friends: [], incoming: [], outgoing: [] };
+  const empty = { friends: [], incoming: [], outgoing: [], blocked: [] };
   if (!session) {
     res.json(empty);
     return;

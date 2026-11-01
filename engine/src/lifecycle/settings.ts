@@ -48,9 +48,11 @@ import {
   meetsMinAccountAge,
   meetsMinGames,
   meetsMinRank,
+  meetsMinReputation,
   MIN_ACCOUNT_AGE_VALUES,
   MIN_GAMES_VALUES,
   MIN_RANK_VALUES,
+  MIN_REPUTATION_VALUES,
 } from './eligibility';
 import {
   MAX_SLOTS,
@@ -451,6 +453,16 @@ export function updateSettings(
     game.minRank = settings.minRank as string;
   }
 
+  if (settings.minReputation !== undefined) {
+    if (
+      !MIN_REPUTATION_VALUES.includes(settings.minReputation as number) ||
+      (!game.offline &&
+        !meetsMinReputation(settings.minReputation as number, player))
+    )
+      return { ok: false, error: 'invalid min reputation' };
+    game.minReputation = settings.minReputation as number;
+  }
+
   if (settings.minTroops !== undefined) {
     if (
       !isInteger(settings.minTroops) ||
@@ -559,10 +571,11 @@ export function updateSettings(
   if (
     settings.minAccountAge !== undefined ||
     settings.minGames !== undefined ||
-    settings.minRank !== undefined
+    settings.minRank !== undefined ||
+    settings.minReputation !== undefined
   ) {
     for (const id of [...game.playerIds]) {
-      if (canTakeSeat(game, id)) continue;
+      if (id === player.id || canTakeSeat(game, id)) continue;
       removePlayerFromGame(game, id);
       game.spectatorIds.push(id);
     }

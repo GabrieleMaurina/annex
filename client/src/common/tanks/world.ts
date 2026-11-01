@@ -13,13 +13,18 @@ export const MARK_LIFE_MS = 5000;
 export const EXPLOSION_LIFE_MS = 600;
 export const SOUND_GAIN = 0.3;
 export const STUCK_TIME = 4;
+export const BARRIER_SIZE = 30;
 
 const SPAWN_ATTEMPTS = 50;
 const TANK_EXPLOSION_SIZE = 30;
 const SHELL_EXPLOSION_SIZE = 10;
 const BLAST_SIZE = 24;
+const BARRIER_EXPLOSION_SIZE = 24;
+
+export type TankKind = 'cannon' | 'gun';
 
 export interface Tank {
+  kind: TankKind;
   x: number;
   y: number;
   vx: number;
@@ -71,6 +76,7 @@ export interface World {
   shells: Shell[];
   marks: Mark[];
   explosions: Explosion[];
+  barriers: DOMRect[];
   spawned: number;
 }
 
@@ -108,8 +114,9 @@ export function blocked(
   );
 }
 
-export function spawnTank(world: World, x: number, y: number) {
+export function spawnTank(world: World, x: number, y: number, kind: TankKind) {
   world.tanks.push({
+    kind,
     x,
     y,
     vx: 0,
@@ -131,6 +138,50 @@ export function spawnTank(world: World, x: number, y: number) {
   world.spawned += 1;
 }
 
+function overlaps(a: DOMRect, b: DOMRect): boolean {
+  return (
+    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+  );
+}
+
+export function spawnBarrier(
+  world: World,
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  const center = { x: Math.round(x), y: Math.round(y) };
+  const barrier = new DOMRect(
+    center.x - BARRIER_SIZE / 2,
+    center.y - BARRIER_SIZE / 2,
+    BARRIER_SIZE,
+    BARRIER_SIZE,
+  );
+  if (!world.barriers.some((other) => overlaps(other, barrier))) {
+    world.barriers.push(barrier);
+  }
+  return center;
+}
+
+export function extendBarrierLine(
+  world: World,
+  from: { x: number; y: number },
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  const dx = x - from.x;
+  const dy = y - from.y;
+  const reach = Math.max(Math.abs(dx), Math.abs(dy));
+  let end = from;
+  for (let step = BARRIER_SIZE; step <= reach; step += BARRIER_SIZE) {
+    end = spawnBarrier(
+      world,
+      from.x + (dx / reach) * step,
+      from.y + (dy / reach) * step,
+    );
+  }
+  return end;
+}
+
 export function createWorld(
   width: number,
   height: number,
@@ -145,13 +196,14 @@ export function createWorld(
     shells: [],
     marks: [],
     explosions: [],
+    barriers: [],
     spawned: 0,
   };
   for (let i = 0; i < SPAWN_ATTEMPTS && world.tanks.length < tankCount; i++) {
     const x = random(0, width);
     const y = random(0, height);
     if (!blocked(world, world.obstacles, x, y, TANK_RADIUS)) {
-      spawnTank(world, x, y);
+      spawnTank(world, x, y, 'cannon');
     }
   }
   return world;
@@ -166,12 +218,23 @@ function addExplosion(
 ) {
   const spikes = Array.from({ length: 10 }, () => random(0.6, 1));
   world.explosions.push({ x, y, size, time: now, spikes });
-  playSound('explode', SOUND_GAIN);
+  playSound('tankExplosion', SOUND_GAIN);
 }
 
 export function destroyTank(world: World, tank: Tank, now: number) {
   world.tanks = world.tanks.filter((other) => other !== tank);
   addExplosion(world, tank.x, tank.y, TANK_EXPLOSION_SIZE, now);
+}
+
+export function destroyBarrier(world: World, barrier: DOMRect, now: number) {
+  world.barriers = world.barriers.filter((other) => other !== barrier);
+  addExplosion(
+    world,
+    barrier.x + barrier.width / 2,
+    barrier.y + barrier.height / 2,
+    BARRIER_EXPLOSION_SIZE,
+    now,
+  );
 }
 
 export function shellExplosion(world: World, shell: Shell, now: number) {
@@ -183,6 +246,9 @@ export function blast(world: World, x: number, y: number, now: number) {
   world.tanks
     .filter((tank) => Math.hypot(tank.x - x, tank.y - y) < BLAST_SIZE)
     .forEach((tank) => destroyTank(world, tank, now));
+  world.barriers
+    .filter((barrier) => insideRect(barrier, x, y, BLAST_SIZE / 2))
+    .forEach((barrier) => destroyBarrier(world, barrier, now));
 }
 
 export function clampTanks(world: World) {

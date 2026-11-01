@@ -42,7 +42,9 @@ function emitGameEnded(game: Game): void {
       team: game.playerTeams.get(id) ?? 0,
       surrenderRound: game.surrenderRounds.get(id) ?? null,
       disconnected:
-        game.autoSurrenderedIds.has(id) || (aliveAndAway && !lockedWinner),
+        game.autoSurrenderedIds.has(id) ||
+        game.eliminatedWhileAwayIds.has(id) ||
+        (aliveAndAway && !lockedWinner),
     });
   }
   const payload = { winnerIds: game.winnerIds };

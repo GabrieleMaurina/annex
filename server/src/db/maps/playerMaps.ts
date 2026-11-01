@@ -8,7 +8,7 @@ import {
 } from 'engine';
 import { Binary, ObjectId } from 'mongodb';
 import { MapGeneration } from '../../validate';
-import { ensureCollection, getCollection } from '../mongo';
+import { CollectionSpec, getCollection } from '../mongo';
 import { getUsernamesByIds, searchUsers } from '../users/users';
 import { likedMapIds } from './mapLikes';
 import { MAP_PROPERTIES, MAP_REQUIRED } from './mapSchema';
@@ -101,22 +101,22 @@ function isDuplicateName(error: unknown): boolean {
   );
 }
 
-export function ensurePlayerMaps(): Promise<unknown> {
-  return ensureCollection(NAME, schema).then(() =>
-    Promise.all([
-      collection().createIndex(
-        { authorId: 1, name: 1 },
-        { unique: true, collation: NAME_COLLATION },
-      ),
-      collection().createIndex({ likeCount: -1 }),
-      collection().createIndex(
-        { name: 1 },
-        { name: 'name_collated', collation: NAME_COLLATION },
-      ),
-      collection().createIndex({ territoryCount: 1 }),
-    ]),
-  );
-}
+export const PLAYER_MAPS_COLLECTION: CollectionSpec = {
+  name: NAME,
+  schema,
+  indexes: [
+    {
+      key: { authorId: 1, name: 1 },
+      options: { unique: true, collation: NAME_COLLATION },
+    },
+    { key: { likeCount: -1 } },
+    {
+      key: { name: 1 },
+      options: { name: 'name_collated', collation: NAME_COLLATION },
+    },
+    { key: { territoryCount: 1 } },
+  ],
+};
 
 export function listPlayerMapNames(authorId: string): Promise<string[]> {
   if (!ObjectId.isValid(authorId)) return Promise.resolve([]);
@@ -321,10 +321,13 @@ export function setLikeCount(mapId: string, likeCount: number): Promise<void> {
     .then(() => undefined);
 }
 
-export function markPlayerMapDangerous(mapId: string): Promise<void> {
+export function markPlayerMapDangerous(mapId: string): Promise<boolean> {
   return collection()
-    .updateOne({ _id: new ObjectId(mapId) }, { $set: { dangerous: true } })
-    .then(() => undefined);
+    .updateOne(
+      { _id: new ObjectId(mapId), dangerous: false },
+      { $set: { dangerous: true } },
+    )
+    .then((res) => res.modifiedCount === 1);
 }
 
 export function playerMapExists(mapId: string): Promise<boolean> {

@@ -18,11 +18,13 @@ export interface ClientSettings {
 }
 
 export interface Account {
+  id: string;
   username: string;
   elo: number;
   country: string;
   gamesPlayed: number;
   createdAt: number;
+  reputation: number;
 }
 
 export type AccountResult =
@@ -101,6 +103,7 @@ export interface GameSummary {
   minRank: string;
   minGames: number;
   minAccountAge: string;
+  minReputation: number;
 }
 
 export type CardSymbol = 'soldier' | 'humvee' | 'tank';
@@ -305,6 +308,7 @@ export interface GameState {
   minRank: string;
   minGames: number;
   minAccountAge: string;
+  minReputation: number;
   hillTerritoryIds: number[];
   continentId: number | null;
   placement: Placement;
@@ -458,6 +462,7 @@ export interface GameSettingsInput {
   minRank?: string;
   minGames?: number;
   minAccountAge?: string;
+  minReputation?: number;
   nukes?: Nukes;
   mapName?: string;
   name?: string;
@@ -502,6 +507,7 @@ export type GameRulesSettings = Pick<
   | 'minRank'
   | 'minGames'
   | 'minAccountAge'
+  | 'minReputation'
   | 'nukes'
   | 'mapName'
   | 'placement'
@@ -770,6 +776,7 @@ export interface StoredGameSettings {
   minRank: string;
   minGames: number;
   minAccountAge: string;
+  minReputation: number;
 }
 
 export interface StoredGame {
@@ -957,6 +964,7 @@ export interface PlayerProfile {
   averagePlacing: number | null;
   percentile: number;
   createdAt: number;
+  reputation: number;
   picture: string | null;
 }
 

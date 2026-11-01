@@ -1,5 +1,6 @@
 export { registerAllianceHandlers } from './alliance';
 export { registerBotLobbyHandlers } from './bots';
+export { registerConductHandlers } from './conduct';
 export { registerEmojiHandlers } from './emoji';
 export { registerGameHandlers } from './lifecycle';
 export { registerMapGenHandlers } from './mapgen';

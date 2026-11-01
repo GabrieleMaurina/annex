@@ -20,6 +20,7 @@ function Blackout({
   onClick?: () => void;
 }) {
   const background = playerColor(color);
+  const textColor = contrastTextColor(background);
   return (
     <div
       role={onClick ? 'button' : undefined}
@@ -28,10 +29,17 @@ function Blackout({
       style={{
         zIndex: 3000,
         backgroundColor: background,
-        color: contrastTextColor(background),
+        color: textColor,
       }}
     >
-      <h1 className="mb-3">{title}</h1>
+      <h1
+        className="mb-3"
+        style={{
+          textShadow: textColor === '#000000' ? '0 2px 0 #ffffff' : undefined,
+        }}
+      >
+        {title}
+      </h1>
       <p className="opacity-75">{subtitle}</p>
     </div>
   );

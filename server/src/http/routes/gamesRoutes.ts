@@ -1,4 +1,17 @@
+import { joinReputation } from 'engine';
 import { Router } from 'express';
+import { resolveSession } from '../../auth/auth';
+import { isSessionToken, parseCookies } from '../../auth/cookies';
+import {
+  loadBlockPeers,
+  peerGames,
+  warmBlockPeers,
+} from '../../conduct/blockPeers';
+import {
+  cachedReputation,
+  cachedUserId,
+  claimWarmUp,
+} from '../../conduct/viewerCache';
 import {
   countGamesPlayed,
   FILL_VALUES,
@@ -11,6 +24,7 @@ import {
   filterLiveGames,
   LiveGameRow,
   LiveGamesQuery,
+  LiveViewer,
   SeatProfile,
 } from '../liveGames';
 import { identityOf } from '../middleware';
@@ -24,6 +38,30 @@ import {
 
 const GAME_MODES = GAME_ENUMS.gameMode as string[];
 const MAX_SELECTED_PLAYERS = 10;
+const GUEST_VIEWER: LiveViewer = { reputation: 0, excludedGames: new Set() };
+
+function liveViewer(cookieHeader: string | undefined): LiveViewer {
+  const token = parseCookies(cookieHeader).anx;
+  if (!isSessionToken(token)) return GUEST_VIEWER;
+  const userId = cachedUserId(token);
+  const cached = userId === undefined ? undefined : cachedReputation(userId);
+  if (userId === undefined || !cached) {
+    if (claimWarmUp(token)) resolveSession(token).catch(console.error);
+    return GUEST_VIEWER;
+  }
+  warmBlockPeers(userId);
+  return {
+    reputation: joinReputation(
+      {
+        reputation: cached.reputation,
+        reputationRecoveryFrom: cached.recoveryFrom,
+        accountCreatedAt: cached.createdAt,
+      },
+      Date.now(),
+    ),
+    excludedGames: peerGames(userId),
+  };
+}
 
 export function gamesRouter(getGames: () => LiveGameRow[]): Router {
   const router = Router();
@@ -91,7 +129,9 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
           : 'newest',
       sortDir: q.sortDir === 'asc' ? 'asc' : 'desc',
     };
-    res.json(filterLiveGames(getGames(), query));
+    res.json(
+      filterLiveGames(getGames(), query, liveViewer(req.headers.cookie)),
+    );
   });
   return router;
 }
@@ -106,14 +146,21 @@ export function randomGameRouter(
   const router = Router();
   router.get('/games/random', (_req, res, next) => {
     const { token, session } = identityOf(res);
-    (session ? countGamesPlayed(session.userId) : Promise.resolve(null))
-      .then((gamesPlayed) => {
+    Promise.all([
+      session ? countGamesPlayed(session.userId) : null,
+      session ? loadBlockPeers(session.userId) : null,
+    ])
+      .then(([gamesPlayed]) => {
         res.json({
           ok: true,
           gameName: randomGame(token, session ? session.userId : null, {
             elo: session ? session.elo : null,
             gamesPlayed,
             accountCreatedAt: session ? session.createdAt : null,
+            reputation: session ? session.reputation : null,
+            reputationRecoveryFrom: session
+              ? session.reputationRecoveryFrom
+              : null,
           }),
         });
       })

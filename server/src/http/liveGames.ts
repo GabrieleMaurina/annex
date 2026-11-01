@@ -8,18 +8,26 @@ export type LiveGameSummary = Omit<
   minRank: string;
   minGames: number;
   minAccountAge: string;
+  minReputation: number;
 };
 
 export interface SeatProfile {
   elo: number | null;
   gamesPlayed: number | null;
   accountCreatedAt: number | null;
+  reputation: number | null;
+  reputationRecoveryFrom: number | null;
 }
 
 export type LiveGameRow = GameSummary & {
   hasPassword: boolean;
   playerUserIds: string[];
 };
+
+export interface LiveViewer {
+  reputation: number;
+  excludedGames: Set<string>;
+}
 
 export interface LiveGamesQuery {
   page: number;
@@ -151,14 +159,21 @@ function toSummary(row: LiveGameRow): LiveGameSummary {
     minRank: row.settings.minRank,
     minGames: row.settings.minGames,
     minAccountAge: row.settings.minAccountAge,
+    minReputation: row.settings.minReputation,
   };
 }
 
 export function filterLiveGames(
   all: LiveGameRow[],
   query: LiveGamesQuery,
+  viewer: LiveViewer,
 ): LiveGamesPage {
-  const matched = all.filter((game) => matches(game, query));
+  const matched = all.filter(
+    (game) =>
+      !viewer.excludedGames.has(game.name) &&
+      viewer.reputation >= game.settings.minReputation &&
+      matches(game, query),
+  );
   const dir = query.sortDir === 'asc' ? 1 : -1;
   matched.sort((a, b) => dir * compare(a, b, query.sort));
   const start = (query.page - 1) * query.pageSize;

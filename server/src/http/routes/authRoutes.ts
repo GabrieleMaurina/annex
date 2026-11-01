@@ -19,6 +19,7 @@ import {
   loginLockedOut,
   recordLoginFailure,
 } from '../../auth/rateLimit';
+import { forgetToken } from '../../conduct/viewerCache';
 import { isObject } from '../../validate';
 import { identityOf, rateLimited } from '../middleware';
 
@@ -114,6 +115,7 @@ export function authRouter(inLiveGame: InLiveGame): Router {
         }
         const newToken = randomToken();
         return attachSession(newToken, result.userId).then(() => {
+          forgetToken(token);
           res.setHeader(
             'Set-Cookie',
             serializeSessionCookie(

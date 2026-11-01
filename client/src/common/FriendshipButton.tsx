@@ -37,7 +37,7 @@ function FriendshipButton({ userId, username }: Props) {
   }
 
   return (
-    <div className="d-flex flex-column align-items-center gap-1">
+    <div className="d-flex flex-column align-items-stretch text-center gap-1">
       {state === 'none' && (
         <Button
           size="sm"
@@ -51,7 +51,7 @@ function FriendshipButton({ userId, username }: Props) {
           <span className="small text-muted">Friend request sent</span>
           <Button
             size="sm"
-            variant="outline-secondary"
+            variant="warning"
             onClick={() => connector.removeFriend(userId, done)}
           >
             Cancel request
@@ -76,7 +76,7 @@ function FriendshipButton({ userId, username }: Props) {
           <span className="small text-muted">Friends</span>
           <Button
             size="sm"
-            variant="outline-secondary"
+            variant="warning"
             onClick={() => connector.removeFriend(userId, done)}
           >
             Remove friend

@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { ensureCollection, getCollection } from './mongo';
+import { CollectionSpec, getCollection } from './mongo';
 
 const NAME = 'email_confirmations';
 const TTL_MS = 24 * 60 * 60 * 1000;
@@ -32,14 +32,14 @@ function collection() {
   return getCollection<CodeDoc>(NAME);
 }
 
-export function ensureEmailConfirmations(): Promise<unknown> {
-  return ensureCollection(NAME, schema).then(() =>
-    Promise.all([
-      collection().createIndex({ codeHash: 1 }, { unique: true }),
-      collection().createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 }),
-    ]),
-  );
-}
+export const EMAIL_CONFIRMATIONS_COLLECTION: CollectionSpec = {
+  name: NAME,
+  schema,
+  indexes: [
+    { key: { codeHash: 1 }, options: { unique: true } },
+    { key: { expireAt: 1 }, options: { expireAfterSeconds: 0 } },
+  ],
+};
 
 export function createEmailConfirmation(
   userId: string,

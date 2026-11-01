@@ -1,9 +1,11 @@
 import { isPointsMode, ONLINE_PAUSE_SECONDS } from 'engine';
 import type { MutableRefObject, ReactNode } from 'react';
-import { memo, useRef } from 'react';
-import { Button, ListGroup, Table } from 'react-bootstrap';
+import { Fragment, memo, useReducer, useRef, useState } from 'react';
+import { Button, Collapse, ListGroup, Table } from 'react-bootstrap';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
+import { panelConduct } from '../../common/conduct/panelConduct';
+import PanelPlayerDetails from '../../common/conduct/PanelPlayerDetails';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useWhiteIcon } from '../../common/icon';
 import WhiteIcon from '../../common/icons/WhiteIcon';
@@ -17,6 +19,7 @@ import type {
   BotSpeed,
   Bounties,
   CardsMode,
+  FriendsOverview,
   GameMode,
   GameState,
   Mission,
@@ -123,6 +126,12 @@ interface Props {
   allianceCellRefs: MutableRefObject<Map<number, HTMLElement>>;
   onAllianceCellClick: (playerId: number) => void;
   allianceCooldownIds: Set<number>;
+  storedGameId?: string;
+  endedAt: number | null;
+  conductFriends?: FriendsOverview;
+  conductBlockedUserIds?: string[];
+  onConductChange?: () => void;
+  anonymous: boolean;
 }
 
 function PlayersPanel({
@@ -170,6 +179,12 @@ function PlayersPanel({
   allianceCellRefs,
   onAllianceCellClick,
   allianceCooldownIds,
+  storedGameId,
+  endedAt,
+  conductFriends,
+  conductBlockedUserIds,
+  onConductChange,
+  anonymous,
 }: Props) {
   const isSpectator = spectators.some((s) => s.id === selfId);
   const self = players.find((p) => p.id === selfId);
@@ -205,6 +220,26 @@ function PlayersPanel({
 
   const panelRef = useRef<HTMLDivElement>(null);
   useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [, bumpConductVersion] = useReducer((c: number) => c + 1, 0);
+  const conduct = panelConduct(
+    players,
+    selfId,
+    storedGameId,
+    endedAt,
+    gameEnded,
+    anonymous,
+  );
+  const columnCount =
+    4 +
+    [
+      showAllianceColumn,
+      isTeamDeathmatch,
+      isCapitals,
+      showPoints,
+      bounties === 'on',
+      cards !== 'off',
+    ].filter(Boolean).length;
 
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
   const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
@@ -243,17 +278,7 @@ function PlayersPanel({
     <div
       ref={panelRef}
       className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3 d-flex flex-column`}
-      style={{
-        width:
-          300 +
-          (isTeamDeathmatch ? 40 : 0) +
-          (isCapitals ? 40 : 0) +
-          (showPoints ? 40 : 0) +
-          (bounties === 'on' ? 40 : 0) +
-          (showAllianceColumn ? 24 : 0) -
-          (cards === 'off' ? 34 : 0),
-        maxHeight: 'calc(100vh - 2rem)',
-      }}
+      style={{ maxHeight: 'calc(100vh - 2rem)' }}
     >
       <style>{`
         @keyframes annexEmojiHighlight {
@@ -337,13 +362,13 @@ function PlayersPanel({
           size="sm"
           borderless
           className="mb-0 table-flat"
-          style={{ tableLayout: 'fixed', width: '100%' }}
+          style={{ width: '100%' }}
         >
           <thead>
             <tr>
               <th style={{ width: 16 }}></th>
               {showAllianceColumn && <th style={{ width: 24 }}></th>}
-              <th>Player</th>
+              <th style={{ width: '1%' }}></th>
               {isTeamDeathmatch && (
                 <th className="text-center" style={{ width: 34 }}>
                   <Tip text="Team">
@@ -452,171 +477,199 @@ function PlayersPanel({
                 'none';
               const allianceOnCooldown = allianceCooldownIds.has(p.id);
               return (
-                <tr
-                  key={p.id}
-                  ref={(el) => {
-                    if (el) rowRefs.current.set(p.id, el);
-                    else rowRefs.current.delete(p.id);
-                  }}
-                  role={rowClickable ? 'button' : undefined}
-                  data-no-click-sound
-                  onClick={() => rowClickable && onRowClick(p.id)}
-                  style={{
-                    cursor:
-                      rowClickable && emojiTargeting ? 'crosshair' : undefined,
-                    animation: pop
-                      ? `annexEmojiHighlight${pop.id % 2 === 0 ? '' : 'Alt'} ${EMOJI_POP_DURATION}ms ease-out forwards`
-                      : undefined,
-                    outline: p.id === selfId ? '2px solid #fff' : undefined,
-                    outlineOffset: p.id === selfId ? '-2px' : undefined,
-                  }}
-                >
-                  <td className="align-middle text-center" style={rowStyle}>
-                    {p.id === turnPlayerId && '●'}
-                  </td>
-                  {showAllianceColumn && (
-                    <td
-                      className="align-middle text-center p-0"
-                      style={rowStyle}
-                      ref={(el) => {
-                        if (el) allianceCellRefs.current.set(p.id, el);
-                        else allianceCellRefs.current.delete(p.id);
-                      }}
-                    >
-                      {p.id !== selfId && !p.isBot && (
-                        <Tip text={ALLIANCE_CELL_LABELS[allianceState]}>
-                          <button
-                            type="button"
-                            className="border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
-                            style={{ fontSize: 13, width: '100%' }}
-                            data-no-click-sound
-                            disabled={allianceOnCooldown}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              playSound('click');
-                              onAllianceCellClick(p.id);
+                <Fragment key={p.id}>
+                  <tr
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(p.id, el);
+                      else rowRefs.current.delete(p.id);
+                    }}
+                    role="button"
+                    data-no-click-sound
+                    onClick={() => {
+                      if (!emojiTargeting)
+                        setExpandedId((prev) => (prev === p.id ? null : p.id));
+                      if (rowClickable) onRowClick(p.id);
+                      else if (!emojiTargeting) playSound('click');
+                    }}
+                    style={{
+                      cursor:
+                        rowClickable && emojiTargeting
+                          ? 'crosshair'
+                          : undefined,
+                      animation: pop
+                        ? `annexEmojiHighlight${pop.id % 2 === 0 ? '' : 'Alt'} ${EMOJI_POP_DURATION}ms ease-out forwards`
+                        : undefined,
+                      outline: p.id === selfId ? '2px solid #fff' : undefined,
+                      outlineOffset: p.id === selfId ? '-2px' : undefined,
+                    }}
+                  >
+                    <td className="align-middle text-center" style={rowStyle}>
+                      {p.id === turnPlayerId && '●'}
+                    </td>
+                    {showAllianceColumn && (
+                      <td
+                        className="align-middle text-center p-0"
+                        style={rowStyle}
+                        ref={(el) => {
+                          if (el) allianceCellRefs.current.set(p.id, el);
+                          else allianceCellRefs.current.delete(p.id);
+                        }}
+                      >
+                        {p.id !== selfId && !p.isBot && (
+                          <Tip text={ALLIANCE_CELL_LABELS[allianceState]}>
+                            <button
+                              type="button"
+                              className="border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
+                              style={{ fontSize: 13, width: '100%' }}
+                              data-no-click-sound
+                              disabled={allianceOnCooldown}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playSound('click');
+                                onAllianceCellClick(p.id);
+                              }}
+                            >
+                              {ALLIANCE_ICONS[allianceState]}
+                            </button>
+                          </Tip>
+                        )}
+                      </td>
+                    )}
+                    <td className="align-middle" style={rowStyle}>
+                      <div className="d-flex align-items-center gap-1">
+                        <RankIcon elo={p.elo} />
+                        <Flag country={p.country} />
+                        {p.isBot && (
+                          <img
+                            src={
+                              isDark
+                                ? (whiteBotIcon ?? '/icons/bot.svg')
+                                : '/icons/bot.svg'
+                            }
+                            width={12}
+                            height={12}
+                            alt="Bot"
+                            className="flex-shrink-0"
+                          />
+                        )}
+                        {p.id !== selfId && isPlayerMuted(p.id) && (
+                          <Tip text="Muted">
+                            <img
+                              src={
+                                isDark
+                                  ? (whiteMutedIcon ?? '/icons/muted.svg')
+                                  : '/icons/muted.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Muted"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
+                        )}
+                        {p.eliminated && (
+                          <Tip text="Eliminated">
+                            <img
+                              src={
+                                isDark
+                                  ? (whiteDeathIcon ?? '/icons/death.svg')
+                                  : '/icons/death.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Eliminated"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
+                        )}
+                        {p.surrendered && (
+                          <Tip text="Surrendered">
+                            <img
+                              src={
+                                isDark
+                                  ? (whiteFlagIcon ?? '/icons/flag.svg')
+                                  : '/icons/flag.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Surrendered"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
+                        )}
+                        {!isConnected && !p.eliminated && (
+                          <Tip text="Disconnected">
+                            <img
+                              src={
+                                isDark
+                                  ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
+                                  : '/icons/no-wifi.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Disconnected"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
+                        )}
+                      </div>
+                    </td>
+                    {isTeamDeathmatch && (
+                      <td className="align-middle text-center" style={rowStyle}>
+                        {p.team + 1}
+                      </td>
+                    )}
+                    <td className="align-middle text-center" style={rowStyle}>
+                      {p.eliminated ? '-' : (p.territoryCount ?? '?')}
+                    </td>
+                    {isCapitals && (
+                      <td className="align-middle text-center" style={rowStyle}>
+                        {p.eliminated ? '-' : p.capitalCount}
+                      </td>
+                    )}
+                    {showPoints && (
+                      <td className="align-middle text-center" style={rowStyle}>
+                        {p.points}
+                      </td>
+                    )}
+                    {bounties === 'on' && (
+                      <td className="align-middle text-center" style={rowStyle}>
+                        {p.playersKilled?.length ?? '?'}
+                      </td>
+                    )}
+                    <td className="align-middle text-center" style={rowStyle}>
+                      {p.eliminated ? '-' : (p.troopCount ?? '?')}
+                    </td>
+                    {cards !== 'off' && (
+                      <td className="align-middle text-center" style={rowStyle}>
+                        {p.eliminated ? '-' : p.cardCount}
+                      </td>
+                    )}
+                  </tr>
+                  <tr>
+                    <td colSpan={columnCount} className="p-0">
+                      <Collapse
+                        in={expandedId === p.id}
+                        mountOnEnter
+                        unmountOnExit
+                      >
+                        <div style={{ width: 0, minWidth: '100%' }}>
+                          <PanelPlayerDetails
+                            player={p}
+                            name={p.id === selfId ? 'You' : p.name}
+                            conduct={conduct}
+                            friends={conductFriends}
+                            blockedUserIds={conductBlockedUserIds}
+                            onChange={() => {
+                              bumpConductVersion();
+                              onConductChange?.();
                             }}
-                          >
-                            {ALLIANCE_ICONS[allianceState]}
-                          </button>
-                        </Tip>
-                      )}
-                    </td>
-                  )}
-                  <td className="align-middle" style={rowStyle}>
-                    <div className="d-flex align-items-center gap-1">
-                      <RankIcon elo={p.elo} />
-                      <Flag country={p.country} />
-                      <span className="text-truncate" style={{ minWidth: 0 }}>
-                        {p.id === selfId ? 'You' : p.name}
-                      </span>
-                      {p.isBot && (
-                        <img
-                          src={
-                            isDark
-                              ? (whiteBotIcon ?? '/icons/bot.svg')
-                              : '/icons/bot.svg'
-                          }
-                          width={12}
-                          height={12}
-                          alt="Bot"
-                          className="flex-shrink-0"
-                        />
-                      )}
-                      {p.id !== selfId && isPlayerMuted(p.id) && (
-                        <Tip text="Muted">
-                          <img
-                            src={
-                              isDark
-                                ? (whiteMutedIcon ?? '/icons/muted.svg')
-                                : '/icons/muted.svg'
-                            }
-                            width={12}
-                            height={12}
-                            alt="Muted"
-                            className="flex-shrink-0"
                           />
-                        </Tip>
-                      )}
-                      {p.eliminated && (
-                        <Tip text="Eliminated">
-                          <img
-                            src={
-                              isDark
-                                ? (whiteDeathIcon ?? '/icons/death.svg')
-                                : '/icons/death.svg'
-                            }
-                            width={12}
-                            height={12}
-                            alt="Eliminated"
-                            className="flex-shrink-0"
-                          />
-                        </Tip>
-                      )}
-                      {p.surrendered && (
-                        <Tip text="Surrendered">
-                          <img
-                            src={
-                              isDark
-                                ? (whiteFlagIcon ?? '/icons/flag.svg')
-                                : '/icons/flag.svg'
-                            }
-                            width={12}
-                            height={12}
-                            alt="Surrendered"
-                            className="flex-shrink-0"
-                          />
-                        </Tip>
-                      )}
-                      {!isConnected && !p.eliminated && (
-                        <Tip text="Disconnected">
-                          <img
-                            src={
-                              isDark
-                                ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
-                                : '/icons/no-wifi.svg'
-                            }
-                            width={12}
-                            height={12}
-                            alt="Disconnected"
-                            className="flex-shrink-0"
-                          />
-                        </Tip>
-                      )}
-                    </div>
-                  </td>
-                  {isTeamDeathmatch && (
-                    <td className="align-middle text-center" style={rowStyle}>
-                      {p.team + 1}
+                        </div>
+                      </Collapse>
                     </td>
-                  )}
-                  <td className="align-middle text-center" style={rowStyle}>
-                    {p.eliminated ? '-' : (p.territoryCount ?? '?')}
-                  </td>
-                  {isCapitals && (
-                    <td className="align-middle text-center" style={rowStyle}>
-                      {p.eliminated ? '-' : p.capitalCount}
-                    </td>
-                  )}
-                  {showPoints && (
-                    <td className="align-middle text-center" style={rowStyle}>
-                      {p.points}
-                    </td>
-                  )}
-                  {bounties === 'on' && (
-                    <td className="align-middle text-center" style={rowStyle}>
-                      {p.playersKilled?.length ?? '?'}
-                    </td>
-                  )}
-                  <td className="align-middle text-center" style={rowStyle}>
-                    {p.eliminated ? '-' : (p.troopCount ?? '?')}
-                  </td>
-                  {cards !== 'off' && (
-                    <td className="align-middle text-center" style={rowStyle}>
-                      {p.eliminated ? '-' : p.cardCount}
-                    </td>
-                  )}
-                </tr>
+                  </tr>
+                </Fragment>
               );
             })}
           </tbody>

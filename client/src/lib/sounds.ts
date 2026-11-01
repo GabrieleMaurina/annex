@@ -18,6 +18,11 @@ const SOUND_NAMES = [
   'dice',
   'join',
 ];
+const SOUND_FILES: Record<string, string> = {
+  ...Object.fromEntries(SOUND_NAMES.map((name) => [name, name])),
+  tankShot: 'click',
+  tankExplosion: 'explode',
+};
 
 declare const __MUSIC_TRACKS__: string[];
 
@@ -36,6 +41,7 @@ const THEMED_TRACK_CHANCE = 0.5;
 let musicStarted = false;
 let music: HTMLAudioElement | null = null;
 let fadingMusic: HTMLAudioElement | null = null;
+let pausedMusic: HTMLAudioElement | null = null;
 let fadeTimer: ReturnType<typeof setInterval> | undefined;
 const trackHistory: string[] = [];
 let historyIndex = -1;
@@ -60,8 +66,8 @@ function musicLevel(): number {
 }
 
 export function preloadSounds() {
-  for (const name of SOUND_NAMES) {
-    const audio = new Audio(`/sounds/${name}.mp3`);
+  for (const [name, file] of Object.entries(SOUND_FILES)) {
+    const audio = new Audio(`/sounds/${file}.mp3`);
     audio.preload = 'auto';
     audio.volume = effectsLevel();
     audioByName.set(name, audio);
@@ -150,8 +156,13 @@ function notifyMusic() {
 
 function playTrack(track: string) {
   const audio = new Audio(`/music/${track}`);
-  audio.volume = musicLevel();
   audio.onended = startTrack;
+  playMusic(audio);
+}
+
+function playMusic(audio: HTMLAudioElement) {
+  audio.volume = musicLevel();
+  pausedMusic = null;
   music = audio;
   notifyMusic();
   audio.play().catch(() => playOnNextGesture(audio));
@@ -175,13 +186,21 @@ function stopMusic() {
   fadingMusic = null;
   music?.pause();
   music = null;
+  pausedMusic = null;
   notifyMusic();
+}
+
+function pauseMusic() {
+  const audio = music ?? pausedMusic;
+  stopMusic();
+  pausedMusic = audio;
 }
 
 function updateMusic() {
   const level = musicLevel();
-  if (level === 0) stopMusic();
+  if (level === 0) pauseMusic();
   else if (music) music.volume = level;
+  else if (pausedMusic) playMusic(pausedMusic);
   else if (musicStarted && !fadeTimer) startTrack();
 }
 
@@ -194,6 +213,7 @@ export function changeMusic() {
   if (!musicStarted || fadeTimer) return;
   const audio = music;
   if (!audio) {
+    pausedMusic = null;
     startTrack();
     return;
   }

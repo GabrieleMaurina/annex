@@ -259,6 +259,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
         minRank: state.minRank,
         minGames: state.minGames,
         minAccountAge: state.minAccountAge,
+        minReputation: state.minReputation,
         cards: state.cards,
         placement: state.placement,
         fortification: state.fortification,

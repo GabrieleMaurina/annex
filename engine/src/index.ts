@@ -3,7 +3,9 @@ import { EngineCallbacks, setCallbacks } from './callbacks';
 import { addPlayer as addEnginePlayer } from './session/players';
 import {
   disconnect,
+  isGameMember,
   listGameSummaries,
+  occupiedGames,
   playerGameName,
   playerGameState,
   resyncPlayer,
@@ -11,6 +13,7 @@ import {
   setBotTurnHook,
   setExperience,
   setName,
+  setReputation,
 } from './session/store';
 import { setWorkerConfig } from './workers/registry';
 import { EngineWorkerConfig } from './workers/types';
@@ -100,6 +103,8 @@ export { EngineCallbacks } from './callbacks';
 export { EventKey, EventPayload } from './clientView/events';
 export {
   fromClient,
+  isActorAnonymous,
+  toClient,
   ViewableResponse,
   viewEvent,
   viewReplay,
@@ -128,6 +133,11 @@ export {
 export { GameSummary } from './game/state';
 export { ONLINE_PAUSE_SECONDS } from './game/turns';
 export {
+  DAY_MS,
+  DEFAULT_MIN_REPUTATION,
+  effectiveReputation,
+  joinReputation,
+  MAX_REPUTATION,
   meetsMinAccountAge,
   meetsMinGames,
   meetsMinRank,
@@ -135,6 +145,9 @@ export {
   MIN_ACCOUNT_AGE_VALUES,
   MIN_GAMES_VALUES,
   MIN_RANK_VALUES,
+  MIN_REPUTATION,
+  MIN_REPUTATION_VALUES,
+  newAccountAllowance,
   RANKS,
 } from './lifecycle/eligibility';
 export { isBlitzOffAllowed } from './lifecycle/settings';
@@ -209,6 +222,7 @@ export {
   withOpenConnections,
 } from './maps/timedConnections';
 export { randomPlayerName } from './session/players';
+export { REPORT_REASONS, ReportReason } from './social/reports';
 export { GameMap, LockedTile, PlayerGameMap, TimedConnection } from './types';
 export { containsProfanity } from './util/profanity';
 export {
@@ -235,9 +249,12 @@ export function createEngine(
     setName,
     setBadges,
     setExperience,
+    setReputation,
     disconnect,
     listGameSummaries,
     playerGameName,
+    isGameMember,
+    occupiedGames,
     playerGameState,
     mapForGame,
 

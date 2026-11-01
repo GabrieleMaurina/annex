@@ -1,4 +1,5 @@
 import type { OsmGeneratedMap } from 'engine';
+import { DEFAULT_MIN_REPUTATION, MIN_REPUTATION } from 'engine';
 import type { CSSProperties, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button, Dropdown, Form, Modal } from 'react-bootstrap';
@@ -262,6 +263,9 @@ function SettingsPanel({
         applySettings({
           ...DEFAULT_GAME_SETTINGS,
           ...(connector.isOffline() ? { anonymous: undefined } : {}),
+          ...((account?.reputation ?? 0) < DEFAULT_MIN_REPUTATION
+            ? { minReputation: MIN_REPUTATION }
+            : {}),
         }),
       )}
       {settingsAction(

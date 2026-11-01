@@ -86,6 +86,7 @@ export function seedOffline(state: GameState): void {
       minRank: state.minRank,
       minGames: state.minGames,
       minAccountAge: state.minAccountAge,
+      minReputation: state.minReputation,
       placement: state.placement,
       portals: state.portals,
       radiations: state.radiations,
@@ -677,6 +678,11 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     case 'game:terminateAlliance':
       engine.terminateAlliance(id, d.targetPlayerId as number);
+      return;
+    case 'game:block':
+    case 'game:unblock':
+    case 'game:report':
+      cb?.({ ok: false, error: 'offline' });
       return;
     default:
       cb?.({ ok: false, error: `unsupported offline event: ${event}` });

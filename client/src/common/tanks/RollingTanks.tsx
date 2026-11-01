@@ -2,12 +2,23 @@ import { useEffect, useRef } from 'react';
 import { drawWorld } from './draw';
 import { isBackground, scanObstacles } from './obstacles';
 import { updateWorld } from './tank';
-import { blast, clampTanks, createWorld, spawnTank } from './world';
+import type { TankKind } from './world';
+import {
+  BARRIER_SIZE,
+  blast,
+  clampTanks,
+  createWorld,
+  extendBarrierLine,
+  spawnBarrier,
+  spawnTank,
+} from './world';
 
 const MAX_DT = 0.1;
 const SCAN_MS = 200;
 const RESCAN_MS = 1000;
 const INITIAL_TANKS = 3;
+const HOLD_DELAY_MS = 250;
+const REPEAT_MS = 100;
 
 interface Props {
   spawnInitial: boolean;
@@ -21,6 +32,7 @@ function RollingTanks({ spawnInitial }: Props) {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
     let dirty = false;
+    let redraw = true;
     const world = createWorld(
       window.innerWidth,
       window.innerHeight,
@@ -37,19 +49,112 @@ function RollingTanks({ spawnInitial }: Props) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       clampTanks(world);
       dirty = true;
+      redraw = true;
     }
     resize();
 
     let pressedOnBackground = false;
-    let touchedBackground = false;
+    let blockSelection = false;
+    let hold: {
+      event: PointerEvent;
+      tank: boolean;
+      next: number;
+      moved: boolean;
+      onBackground: boolean;
+    } | null = null;
+    let barrierHold = false;
+    let barrierAnchor: { x: number; y: number } | null = null;
+    let ctrlDown = false;
 
-    function onPointerDown(event: PointerEvent) {
-      pressedOnBackground = isBackground(event, canvas);
-      touchedBackground = pressedOnBackground && event.pointerType === 'touch';
+    function tankKind(ctrl: boolean): TankKind {
+      return ctrl ? 'gun' : 'cannon';
     }
 
-    function onSelectStart(event: Event) {
-      if (touchedBackground) event.preventDefault();
+    function onKey(event: KeyboardEvent) {
+      ctrlDown = event.ctrlKey;
+    }
+
+    function addTank(x: number, y: number, kind: TankKind) {
+      spawnTank(world, x, y, kind);
+      clampTanks(world);
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      ctrlDown = event.ctrlKey;
+      pressedOnBackground = isBackground(event, canvas);
+      const mouse = event.pointerType === 'mouse';
+      blockSelection =
+        pressedOnBackground && (mouse || event.pointerType === 'touch');
+      hold =
+        pressedOnBackground &&
+        mouse &&
+        (event.button === 0 || event.button === 2)
+          ? {
+              event,
+              tank: event.button === 2,
+              next: performance.now() + HOLD_DELAY_MS,
+              moved: false,
+              onBackground: true,
+            }
+          : null;
+      barrierHold = pressedOnBackground && mouse && event.button === 1;
+      barrierAnchor = null;
+      if (barrierHold) layBarriers(event);
+    }
+
+    function layBarriers(event: PointerEvent) {
+      const { clientX: x, clientY: y } = event;
+      if (
+        barrierAnchor &&
+        Math.max(Math.abs(x - barrierAnchor.x), Math.abs(y - barrierAnchor.y)) <
+          BARRIER_SIZE
+      ) {
+        return;
+      }
+      if (!isBackground(event, canvas)) barrierAnchor = null;
+      else if (barrierAnchor) {
+        barrierAnchor = extendBarrierLine(world, barrierAnchor, x, y);
+      } else barrierAnchor = spawnBarrier(world, x, y);
+      redraw = true;
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      ctrlDown = event.ctrlKey;
+      if (barrierHold) layBarriers(event);
+      if (!hold) return;
+      hold.event = event;
+      hold.moved = true;
+    }
+
+    function onPointerUp(event: PointerEvent) {
+      endHold();
+      if (event.pointerType === 'mouse') blockSelection = false;
+    }
+
+    function endHold() {
+      hold = null;
+      barrierHold = false;
+    }
+
+    function repeatHold(now: number) {
+      if (!hold || now < hold.next) return;
+      hold.next = now + REPEAT_MS;
+      if (hold.moved) {
+        hold.onBackground = isBackground(hold.event, canvas);
+        hold.moved = false;
+      }
+      if (!hold.onBackground) return;
+      const { clientX: x, clientY: y } = hold.event;
+      if (hold.tank) addTank(x, y, tankKind(ctrlDown));
+      else blast(world, x, y, now);
+    }
+
+    function onMouseDown(event: MouseEvent) {
+      if (event.button === 1 && pressedOnBackground) event.preventDefault();
+    }
+
+    function preventSelection(event: Event) {
+      if (blockSelection) event.preventDefault();
     }
 
     function releasedOnBackground(event: MouseEvent) {
@@ -66,8 +171,7 @@ function RollingTanks({ spawnInitial }: Props) {
     function onContextMenu(event: MouseEvent) {
       if (!releasedOnBackground(event)) return;
       event.preventDefault();
-      spawnTank(world, event.clientX, event.clientY);
-      clampTanks(world);
+      addTank(event.clientX, event.clientY, tankKind(event.ctrlKey));
     }
 
     function markDirty() {
@@ -89,11 +193,13 @@ function RollingTanks({ spawnInitial }: Props) {
         lastScan = now;
         dirty = false;
       }
+      repeatHold(now);
       updateWorld(world, dt, now);
       const visible =
         busy || world.marks.length > 0 || world.explosions.length > 0;
-      if (visible || drawn) drawWorld(ctx, world, now);
+      if (visible || drawn || redraw) drawWorld(ctx, world, now);
       drawn = visible;
+      redraw = false;
       frame = requestAnimationFrame(step);
     }
     frame = requestAnimationFrame(step);
@@ -108,18 +214,34 @@ function RollingTanks({ spawnInitial }: Props) {
     window.addEventListener('scroll', markDirty, true);
     window.addEventListener('resize', resize);
     window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('pointermove', onPointerMove, true);
+    window.addEventListener('pointerup', onPointerUp, true);
+    window.addEventListener('pointercancel', endHold, true);
+    window.addEventListener('blur', endHold);
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('keyup', onKey, true);
+    window.addEventListener('mousedown', onMouseDown, true);
     window.addEventListener('click', onClick);
     window.addEventListener('contextmenu', onContextMenu);
-    document.addEventListener('selectstart', onSelectStart);
+    document.addEventListener('selectstart', preventSelection);
+    document.addEventListener('dragstart', preventSelection);
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener('scroll', markDirty, true);
       window.removeEventListener('resize', resize);
       window.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('pointermove', onPointerMove, true);
+      window.removeEventListener('pointerup', onPointerUp, true);
+      window.removeEventListener('pointercancel', endHold, true);
+      window.removeEventListener('blur', endHold);
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('keyup', onKey, true);
+      window.removeEventListener('mousedown', onMouseDown, true);
       window.removeEventListener('click', onClick);
       window.removeEventListener('contextmenu', onContextMenu);
-      document.removeEventListener('selectstart', onSelectStart);
+      document.removeEventListener('selectstart', preventSelection);
+      document.removeEventListener('dragstart', preventSelection);
     };
   }, []);
 

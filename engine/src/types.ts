@@ -85,6 +85,8 @@ export interface Player {
   elo: number | null;
   gamesPlayed: number | null;
   accountCreatedAt: number | null;
+  reputation: number | null;
+  reputationRecoveryFrom: number | null;
   gameName: string | null;
   connected: boolean;
   isBot: boolean;
@@ -434,6 +436,7 @@ export interface Game {
   minRank: string;
   minGames: number;
   minAccountAge: string;
+  minReputation: number;
   hillTerritoryIds: number[];
   points: Map<number, number>;
   continentId: number | null;
@@ -500,6 +503,7 @@ export interface Game {
   disconnectedTurns: Map<number, number>;
   surrenderRounds: Map<number, number>;
   autoSurrenderedIds: Set<number>;
+  eliminatedWhileAwayIds: Set<number>;
   winnerIds: number[];
   deck: Card[];
   playerCards: Map<number, Card[]>;

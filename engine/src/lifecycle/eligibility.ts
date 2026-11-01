@@ -35,6 +35,62 @@ export const MIN_ACCOUNT_AGE_VALUES = [
   '1 year',
 ];
 
+export const MIN_REPUTATION = -100;
+export const MAX_REPUTATION = 100;
+export const MIN_REPUTATION_VALUES = Array.from(
+  { length: 21 },
+  (_, i) => MIN_REPUTATION + i * 10,
+);
+export const DEFAULT_MIN_REPUTATION = -50;
+export const NEW_ACCOUNT_ALLOWANCE = 30;
+export const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function effectiveReputation(
+  stored: number,
+  recoveryFrom: number | null,
+  now: number,
+): number {
+  if (stored >= 0 || recoveryFrom === null) return stored;
+  return Math.min(0, stored + Math.floor((now - recoveryFrom) / DAY_MS));
+}
+
+export function newAccountAllowance(
+  accountCreatedAt: number | null,
+  now: number,
+): number {
+  if (accountCreatedAt === null) return 0;
+  return Math.max(
+    0,
+    NEW_ACCOUNT_ALLOWANCE - Math.floor((now - accountCreatedAt) / DAY_MS),
+  );
+}
+
+export function joinReputation(
+  player: Pick<
+    Player,
+    'reputation' | 'reputationRecoveryFrom' | 'accountCreatedAt'
+  >,
+  now: number,
+): number {
+  const reputation = effectiveReputation(
+    player.reputation ?? 0,
+    player.reputationRecoveryFrom,
+    now,
+  );
+  if (reputation < 0) return reputation;
+  return reputation + newAccountAllowance(player.accountCreatedAt, now);
+}
+
+export function meetsMinReputation(
+  minReputation: number,
+  player: Pick<
+    Player,
+    'reputation' | 'reputationRecoveryFrom' | 'accountCreatedAt'
+  >,
+): boolean {
+  return joinReputation(player, Date.now()) >= minReputation;
+}
+
 export function meetsMinRank(minRank: string, elo: number | null): boolean {
   const minElo = RANKS[MIN_RANK_VALUES.indexOf(minRank)].minElo;
   return minElo === 0 || (elo !== null && elo >= minElo);
@@ -64,13 +120,24 @@ export function meetsMinAccountAge(
 }
 
 export function meetsRequirements(
-  requirements: Pick<Game, 'minRank' | 'minGames' | 'minAccountAge'>,
-  profile: Pick<Player, 'elo' | 'gamesPlayed' | 'accountCreatedAt'>,
+  requirements: Pick<
+    Game,
+    'minRank' | 'minGames' | 'minAccountAge' | 'minReputation'
+  >,
+  profile: Pick<
+    Player,
+    | 'elo'
+    | 'gamesPlayed'
+    | 'accountCreatedAt'
+    | 'reputation'
+    | 'reputationRecoveryFrom'
+  >,
 ): boolean {
   return (
     meetsMinRank(requirements.minRank, profile.elo) &&
     meetsMinGames(requirements.minGames, profile.gamesPlayed) &&
-    meetsMinAccountAge(requirements.minAccountAge, profile.accountCreatedAt)
+    meetsMinAccountAge(requirements.minAccountAge, profile.accountCreatedAt) &&
+    meetsMinReputation(requirements.minReputation, profile)
   );
 }
 

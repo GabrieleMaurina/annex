@@ -165,8 +165,14 @@ function Messages({ account }: Props) {
   function setBlocked(block: boolean) {
     if (!conversation) return;
     const action = block ? connector.blockUser : connector.unblockUser;
-    action(conversation.userId, () => refreshMessages());
-    if (block) setSelected(null);
+    action(conversation.userId, (res) => {
+      if (!res.ok) {
+        setNotice(formatError(res.error));
+        return;
+      }
+      refreshMessages();
+      if (block) setSelected(null);
+    });
   }
 
   return (
@@ -186,10 +192,7 @@ function Messages({ account }: Props) {
           {results.length > 0 && (
             <ListGroup className="mt-2">
               {results
-                .filter(
-                  (r) =>
-                    r.username.toLowerCase() !== account.username.toLowerCase(),
-                )
+                .filter((r) => r.id !== account.id)
                 .map((r) => (
                   <ListGroup.Item
                     key={r.id}

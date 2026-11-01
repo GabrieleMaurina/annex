@@ -1,8 +1,8 @@
 import { ObjectId } from 'mongodb';
-import { ensureCollection, getCollection } from './mongo';
+import { CollectionSpec, getCollection } from './mongo';
 
 const NAME = 'sessions';
-const TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const ABSOLUTE_MS = 180 * 24 * 60 * 60 * 1000;
 
 interface SessionDoc {
@@ -36,21 +36,21 @@ function collection() {
 }
 
 function expiry(): Date {
-  return new Date(Date.now() + TTL_MS);
+  return new Date(Date.now() + SESSION_TTL_MS);
 }
 
-export function ensureSessions(): Promise<unknown> {
-  return ensureCollection(NAME, schema).then(() =>
-    Promise.all([
-      collection().createIndex({ tokenHash: 1 }, { unique: true }),
-      collection().createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 }),
-      collection().createIndex(
-        { createdAt: 1 },
-        { expireAfterSeconds: ABSOLUTE_MS / 1000 },
-      ),
-    ]),
-  );
-}
+export const SESSIONS_COLLECTION: CollectionSpec = {
+  name: NAME,
+  schema,
+  indexes: [
+    { key: { tokenHash: 1 }, options: { unique: true } },
+    { key: { expireAt: 1 }, options: { expireAfterSeconds: 0 } },
+    {
+      key: { createdAt: 1 },
+      options: { expireAfterSeconds: ABSOLUTE_MS / 1000 },
+    },
+  ],
+};
 
 export function touchSession(tokenHash: string): Promise<string | null> {
   const now = new Date();
@@ -61,7 +61,7 @@ export function touchSession(tokenHash: string): Promise<string | null> {
         expireAt: { $gt: now },
         createdAt: { $gt: new Date(now.getTime() - ABSOLUTE_MS) },
       },
-      { $set: { expireAt: new Date(now.getTime() + TTL_MS) } },
+      { $set: { expireAt: new Date(now.getTime() + SESSION_TTL_MS) } },
     )
     .then((doc) => (doc ? doc.userId.toString() : null));
 }

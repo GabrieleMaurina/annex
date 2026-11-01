@@ -3,6 +3,11 @@ import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
 import { broadcastHomeGames, games, respondGameState } from '../session/store';
 import { Game, HOME_ROOM, OFFLINE_ROOM } from '../types';
+import {
+  DEFAULT_MIN_REPUTATION,
+  joinReputation,
+  MIN_REPUTATION,
+} from './eligibility';
 
 const MAX_GAME_NAME_LENGTH = 20;
 
@@ -82,6 +87,10 @@ export function createGame(
     minRank: 'private',
     minGames: 0,
     minAccountAge: 'none',
+    minReputation:
+      joinReputation(player, Date.now()) < DEFAULT_MIN_REPUTATION
+        ? MIN_REPUTATION
+        : DEFAULT_MIN_REPUTATION,
     hillTerritoryIds: [],
     points: new Map(),
     continentId: null,
@@ -148,6 +157,7 @@ export function createGame(
     disconnectedTurns: new Map(),
     surrenderRounds: new Map(),
     autoSurrenderedIds: new Set(),
+    eliminatedWhileAwayIds: new Set(),
     winnerIds: [],
     deck: [],
     playerCards: new Map(),

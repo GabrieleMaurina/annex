@@ -6,7 +6,7 @@ import { isPlayerMuted } from '../../common/mutedPlayers';
 import type { ResultRow } from '../../common/ResultsTable';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import { playSound } from '../../lib/sounds';
-import type { GameState } from '../../lib/types';
+import type { FriendsOverview, GameState } from '../../lib/types';
 import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
 import GameEndResults from '../GameEndResults';
 import GameMap from '../GameMap';
@@ -35,6 +35,10 @@ interface Props {
   onViewChange?: (view: 'results' | 'replay') => void;
   showMuted?: boolean;
   shareGameId?: string | null;
+  storedGameId?: string;
+  conductFriends?: FriendsOverview;
+  conductBlockedUserIds?: string[];
+  onConductChange?: () => void;
 }
 
 function GameReplayView({
@@ -58,6 +62,10 @@ function GameReplayView({
   onViewChange,
   showMuted,
   shareGameId,
+  storedGameId,
+  conductFriends,
+  conductBlockedUserIds,
+  onConductChange,
 }: Props) {
   const [view, setView] = useState<'results' | 'replay'>('results');
   const [replayIndex, setReplayIndex] = useState(0);
@@ -151,6 +159,10 @@ function GameReplayView({
         logs={[]}
         settingsMenuOpen={settingsMenuOpen ?? false}
         navigate={navigate}
+        storedGameId={storedGameId}
+        conductFriends={conductFriends}
+        conductBlockedUserIds={conductBlockedUserIds}
+        onConductChange={onConductChange}
       />
       <div
         className="position-fixed bottom-0 end-0 m-3 d-flex gap-2"

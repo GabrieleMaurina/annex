@@ -1,10 +1,12 @@
 import {
+  DEFAULT_MIN_REPUTATION,
   isBlitzOffAllowed,
   MAP_ASPECT_VALUES,
   MAX_DICE,
   MIN_ACCOUNT_AGE_VALUES,
   MIN_GAMES_VALUES,
   MIN_RANK_VALUES,
+  MIN_REPUTATION_VALUES,
   TILE_SHAPE_VALUES,
 } from 'engine';
 
@@ -70,6 +72,7 @@ export interface GameSettings {
   minRank: string;
   minGames: number;
   minAccountAge: string;
+  minReputation: number;
   visibility: string;
 }
 
@@ -190,6 +193,7 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   minRank: MIN_RANK_VALUES,
   minGames: MIN_GAMES_VALUES,
   minAccountAge: MIN_ACCOUNT_AGE_VALUES,
+  minReputation: MIN_REPUTATION_VALUES,
   visibility: ['public', 'private'],
 };
 
@@ -280,6 +284,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   minRank: 'private',
   minGames: 0,
   minAccountAge: 'none',
+  minReputation: DEFAULT_MIN_REPUTATION,
   visibility: 'public',
 };
 

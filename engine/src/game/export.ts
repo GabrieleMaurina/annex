@@ -141,6 +141,7 @@ export interface GameExport {
     minRank: string;
     minGames: number;
     minAccountAge: string;
+    minReputation: number;
   };
   players: {
     playerId: number;
@@ -428,6 +429,7 @@ export function exportGame(gameName: string): GameExport | null {
       minRank: game.minRank,
       minGames: game.minGames,
       minAccountAge: game.minAccountAge,
+      minReputation: game.minReputation,
     },
     players: game.playerIds.map((playerId, turnOrder) => {
       const member = playersById.get(playerId);

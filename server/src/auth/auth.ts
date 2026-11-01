@@ -1,5 +1,13 @@
 import { createHash, randomBytes } from 'crypto';
 import { containsProfanity } from 'engine';
+import { warmBlockPeers } from '../conduct/blockPeers';
+import { catchUpRecovery, recoveredState } from '../conduct/reputation';
+import {
+  cachedReputation,
+  cacheViewer,
+  forgetToken,
+  forgetUser,
+} from '../conduct/viewerCache';
 import { isSelectableCountry } from '../countries';
 import {
   ClientSettings,
@@ -40,6 +48,8 @@ export interface SessionInfo {
   elo: number;
   country: string;
   createdAt: number;
+  reputation: number;
+  reputationRecoveryFrom: number | null;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
@@ -219,7 +229,10 @@ export function resetPassword(
       .then((hash) => setPassword(userId, hash))
       .then(() => markEmailValidated(userId))
       .then(() => deleteUserSessions(userId))
-      .then(() => ({ ok: true as const }));
+      .then(() => {
+        forgetUser(userId);
+        return { ok: true as const };
+      });
   });
 }
 
@@ -257,21 +270,43 @@ export function login(data: {
 
 export function resolveSession(token: string): Promise<SessionInfo | null> {
   return touchSession(sha256(token)).then((userId) => {
-    if (!userId) return null;
-    return findUserById(userId).then((user) =>
-      user
-        ? {
-            userId: user.id,
-            username: user.username,
-            elo: user.elo,
-            country: user.country,
-            createdAt: user.createdAt,
-            clientSettings: user.clientSettings,
-            gameSettings: user.gameSettings,
-            homeFilters: user.homeFilters,
-          }
-        : null,
-    );
+    if (!userId) {
+      forgetToken(token);
+      return null;
+    }
+    const cachedBeforeRead = cachedReputation(userId);
+    return findUserById(userId).then((user) => {
+      if (!user) {
+        forgetToken(token);
+        return null;
+      }
+      const recovered = recoveredState(
+        user.reputation,
+        user.reputationRecoveryFrom,
+        Date.now(),
+      );
+      if (recovered.reputation !== user.reputation)
+        catchUpRecovery(user.id).catch(console.error);
+      cacheViewer(
+        token,
+        user.id,
+        { ...recovered, createdAt: user.createdAt },
+        cachedBeforeRead,
+      );
+      warmBlockPeers(user.id);
+      return {
+        userId: user.id,
+        username: user.username,
+        elo: user.elo,
+        country: user.country,
+        createdAt: user.createdAt,
+        reputation: recovered.reputation,
+        reputationRecoveryFrom: recovered.recoveryFrom,
+        clientSettings: user.clientSettings,
+        gameSettings: user.gameSettings,
+        homeFilters: user.homeFilters,
+      };
+    });
   });
 }
 
@@ -280,6 +315,7 @@ export function attachSession(token: string, userId: string): Promise<void> {
 }
 
 export function destroySession(token: string): Promise<void> {
+  forgetToken(token);
   return deleteSession(sha256(token));
 }
 

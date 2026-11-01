@@ -3,6 +3,7 @@ import { LiveGameRow, SeatProfile } from './liveGames';
 import { corsMiddleware, identityMiddleware } from './middleware';
 import { accountRouter } from './routes/accountRoutes';
 import { authRouter } from './routes/authRoutes';
+import { conductRouter } from './routes/conductRoutes';
 import { friendsRouter } from './routes/friendsRoutes';
 import {
   gameHistoryRouter,
@@ -60,6 +61,7 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   api.use(accountRouter);
   api.use(friendsRouter);
   api.use(messagesRouter);
+  api.use(conductRouter);
   app.use('/api', api);
 
   app.use(errorHandler);

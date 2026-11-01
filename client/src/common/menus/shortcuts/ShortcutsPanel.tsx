@@ -68,6 +68,19 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
       ['Ctrl + drag', 'Paint: pan the map'],
     ],
   },
+  {
+    title: 'Background tanks',
+    shortcuts: [
+      ['Click / tap', 'Explosion'],
+      ['Right-click / long-press', 'Tank'],
+      ['Ctrl + right-click', 'Machine-gun tank'],
+      ['Middle-click', 'Concrete barrier'],
+      ['Hold click', 'Keep spawning explosions'],
+      ['Hold right-click', 'Keep spawning tanks'],
+      ['Hold Ctrl + right-click', 'Keep spawning machine-gun tanks'],
+      ['Middle-drag', 'Line of barriers'],
+    ],
+  },
 ];
 
 function ShortcutsPanel({ onClose }: { onClose: () => void }) {

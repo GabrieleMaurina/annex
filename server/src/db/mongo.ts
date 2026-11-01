@@ -1,4 +1,10 @@
-import { Collection, Db, Document, MongoClient } from 'mongodb';
+import {
+  Collection,
+  CreateIndexesOptions,
+  Db,
+  Document,
+  MongoClient,
+} from 'mongodb';
 
 const { MONGO_USER, MONGO_PASS } = process.env;
 
@@ -30,10 +36,21 @@ export function getDb(): Db {
   return db;
 }
 
-export function ensureCollection(
-  name: string,
-  schema: Record<string, unknown>,
-): Promise<unknown> {
+export interface IndexSpec {
+  key: Record<string, 1 | -1>;
+  options?: CreateIndexesOptions;
+}
+
+export interface CollectionSpec {
+  name: string;
+  schema: Record<string, unknown>;
+  indexes: IndexSpec[];
+}
+
+export function applySchema({
+  name,
+  schema,
+}: CollectionSpec): Promise<unknown> {
   return db
     .listCollections({ name })
     .toArray()
@@ -42,4 +59,14 @@ export function ensureCollection(
         ? db.command({ collMod: name, ...schema })
         : db.createCollection(name, schema),
     );
+}
+
+export function ensureCollection(spec: CollectionSpec): Promise<unknown> {
+  return applySchema(spec).then(() =>
+    Promise.all(
+      spec.indexes.map(({ key, options }) =>
+        db.collection(spec.name).createIndex(key, options),
+      ),
+    ),
+  );
 }

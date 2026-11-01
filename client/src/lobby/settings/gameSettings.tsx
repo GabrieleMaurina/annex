@@ -1,4 +1,5 @@
 import {
+  DEFAULT_MIN_REPUTATION,
   defaultMaxPoints,
   isBlitzOffAllowed,
   MAX_DICE,
@@ -7,6 +8,7 @@ import {
   MIN_ACCOUNT_AGE_VALUES,
   MIN_GAMES_VALUES,
   MIN_HILLS,
+  MIN_REPUTATION_VALUES,
   RANKS,
 } from 'engine';
 import type { ReactNode } from 'react';
@@ -44,6 +46,7 @@ import {
   MIN_ACCOUNT_AGE_HELP,
   MIN_GAMES_HELP,
   MIN_RANK_HELP,
+  MIN_REPUTATION_HELP,
   MIN_TROOPS_HELP,
   NUKES_HELP,
   PLACEMENT_HELP,
@@ -96,6 +99,7 @@ export const DEFAULT_GAME_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   minRank: 'private',
   minGames: 0,
   minAccountAge: 'none',
+  minReputation: DEFAULT_MIN_REPUTATION,
   password: null,
   placement: 'random',
   portals: 'off',
@@ -476,9 +480,25 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     options: caps(...MIN_ACCOUNT_AGE_VALUES),
     help: MIN_ACCOUNT_AGE_HELP,
   },
+  {
+    key: 'minReputation',
+    label: 'Min Reputation',
+    section: 'Session',
+    numeric: true,
+    options: MIN_REPUTATION_VALUES.map((value) => ({
+      value: String(value),
+      label: value > 0 ? `+${value}` : String(value),
+    })),
+    help: MIN_REPUTATION_HELP,
+  },
 ];
 
-export const SEAT_REQUIREMENT_KEYS = ['minRank', 'minGames', 'minAccountAge'];
+export const SEAT_REQUIREMENT_KEYS = [
+  'minRank',
+  'minGames',
+  'minAccountAge',
+  'minReputation',
+];
 
 function pick<T>(values: readonly T[]): T {
   return values[Math.floor(Math.random() * values.length)];

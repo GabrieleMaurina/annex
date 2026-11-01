@@ -1,18 +1,33 @@
-import { DEFAULT_BORDER_COLORS } from 'engine';
+import { DEFAULT_BORDER_COLORS, DEFAULT_MIN_REPUTATION } from 'engine';
 import { Binary, Document, FindCursor, ObjectId } from 'mongodb';
-import { connectDb } from './db';
+import { COLLECTIONS } from './db';
 import { replaceGamesMapId } from './db/games';
 import { REPLAY_MAPS, replayMapId } from './db/maps/replayMaps';
-import { getCollection, getDb } from './db/mongo';
+import {
+  applySchema,
+  CollectionSpec,
+  connect,
+  getCollection,
+  getDb,
+  IndexSpec,
+} from './db/mongo';
 import { DEFAULT_CLIENT_SETTINGS } from './db/users/preferences';
 
 type Node = Record<string, unknown>;
 
 const NUMERIC = ['number', 'int', 'long', 'double', 'decimal'];
+const INDEX_OPTIONS = [
+  'unique',
+  'sparse',
+  'expireAfterSeconds',
+  'partialFilterExpression',
+  'collation',
+];
 const FIELD_DEFAULTS: Record<string, unknown> = {
   borderColors: DEFAULT_BORDER_COLORS,
   effectsVolume: DEFAULT_CLIENT_SETTINGS.effectsVolume,
   musicVolume: DEFAULT_CLIENT_SETTINGS.musicVolume,
+  minReputation: DEFAULT_MIN_REPUTATION,
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -298,8 +313,113 @@ function checkCollection(name: string, schema: Document): Promise<void> {
   });
 }
 
+function indexName(index: IndexSpec): string {
+  return (
+    index.options?.name ??
+    Object.entries(index.key)
+      .map(([field, direction]) => `${field}_${direction}`)
+      .join('_')
+  );
+}
+
+function sameOption(option: string, actual: unknown, wanted: unknown): boolean {
+  if (option === 'collation' && isObject(actual) && isObject(wanted))
+    return Object.entries(wanted).every(
+      ([key, value]) => actual[key] === value,
+    );
+  return JSON.stringify(actual ?? false) === JSON.stringify(wanted ?? false);
+}
+
+function matchesIndex(actual: Document, wanted: IndexSpec): boolean {
+  const options: Document = wanted.options ?? {};
+  return (
+    actual.name === indexName(wanted) &&
+    JSON.stringify(Object.entries(actual.key)) ===
+      JSON.stringify(Object.entries(wanted.key)) &&
+    INDEX_OPTIONS.every((option) =>
+      sameOption(option, actual[option], options[option]),
+    )
+  );
+}
+
+function dropUndeclaredCollections(): Promise<unknown> {
+  const declared = new Set(COLLECTIONS.map((spec) => spec.name));
+  return getDb()
+    .listCollections({}, { nameOnly: true })
+    .toArray()
+    .then((infos) =>
+      Promise.all(
+        infos
+          .filter(
+            (info) =>
+              !declared.has(info.name) && !info.name.startsWith('system.'),
+          )
+          .map((info) =>
+            getDb()
+              .dropCollection(info.name)
+              .then(() =>
+                console.log(
+                  `[schemaCheck] ${info.name}: dropped undeclared collection`,
+                ),
+              ),
+          ),
+      ),
+    );
+}
+
+function dropStaleIndexes(spec: CollectionSpec): Promise<unknown> {
+  const coll = getCollection<Document>(spec.name);
+  return coll
+    .indexes()
+    .then((indexes) =>
+      Promise.all(
+        indexes
+          .filter(
+            (index) =>
+              index.name !== '_id_' &&
+              !spec.indexes.some((wanted) => matchesIndex(index, wanted)),
+          )
+          .map((index) =>
+            coll
+              .dropIndex(String(index.name))
+              .then(() =>
+                console.log(
+                  `[schemaCheck] ${spec.name}: dropped stale index ${index.name}`,
+                ),
+              ),
+          ),
+      ),
+    );
+}
+
+function createMissingIndexes(spec: CollectionSpec): Promise<unknown> {
+  const coll = getCollection<Document>(spec.name);
+  return coll
+    .indexes()
+    .then((indexes) =>
+      Promise.all(
+        spec.indexes
+          .filter(
+            (wanted) => !indexes.some((index) => matchesIndex(index, wanted)),
+          )
+          .map(({ key, options }) =>
+            coll
+              .createIndex(key, options)
+              .then((name) =>
+                console.log(
+                  `[schemaCheck] ${spec.name}: created index ${name}`,
+                ),
+              ),
+          ),
+      ),
+    );
+}
+
 export function checkDbSchema(): Promise<void> {
-  return connectDb()
+  return connect()
+    .then(() => Promise.all(COLLECTIONS.map(applySchema)))
+    .then(dropUndeclaredCollections)
+    .then(() => Promise.all(COLLECTIONS.map(dropStaleIndexes)))
     .then(() => getDb().listCollections({}, { nameOnly: false }).toArray())
     .then((infos) =>
       infos.reduce((chain, info) => {
@@ -311,6 +431,7 @@ export function checkDbSchema(): Promise<void> {
           : chain;
       }, Promise.resolve()),
     )
+    .then(() => Promise.all(COLLECTIONS.map(createMissingIndexes)))
     .then(() => undefined);
 }
 

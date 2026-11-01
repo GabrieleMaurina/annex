@@ -1,6 +1,7 @@
+import { effectiveReputation, MAX_REPUTATION, MIN_REPUTATION } from 'engine';
 import { Binary, ObjectId, WithId } from 'mongodb';
 import { COUNTRY_CODES } from '../../countries';
-import { ensureCollection, getCollection } from '../mongo';
+import { CollectionSpec, getCollection } from '../mongo';
 import {
   ClientSettings,
   DEFAULT_CLIENT_SETTINGS,
@@ -25,6 +26,8 @@ export interface User {
   elo: number;
   country: string;
   createdAt: number;
+  reputation: number;
+  reputationRecoveryFrom: number | null;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
@@ -46,6 +49,8 @@ interface UserDoc {
   validated_email: boolean;
   elo: number;
   country: string;
+  reputation: number;
+  reputationRecoveryFrom: Date | null;
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
@@ -88,6 +93,8 @@ const schema = {
         'validated_email',
         'elo',
         'country',
+        'reputation',
+        'reputationRecoveryFrom',
         'clientSettings',
         'gameSettings',
         'homeFilters',
@@ -98,6 +105,12 @@ const schema = {
         _id: {},
         elo: { bsonType: 'number' },
         country: { enum: COUNTRY_CODES },
+        reputation: {
+          bsonType: 'int',
+          minimum: MIN_REPUTATION,
+          maximum: MAX_REPUTATION,
+        },
+        reputationRecoveryFrom: { bsonType: ['date', 'null'] },
         picture: {
           bsonType: ['object', 'null'],
           required: ['id', 'data', 'mime', 'dangerous'],
@@ -143,15 +156,15 @@ function collection() {
   return getCollection<UserDoc>(NAME);
 }
 
-export function ensureUsers(): Promise<unknown> {
-  return ensureCollection(NAME, schema).then(() =>
-    Promise.all([
-      collection().createIndex({ username_lower: 1 }, { unique: true }),
-      collection().createIndex({ email_normalized: 1 }, { unique: true }),
-      collection().createIndex({ elo: -1 }),
-    ]),
-  );
-}
+export const USERS_COLLECTION: CollectionSpec = {
+  name: NAME,
+  schema,
+  indexes: [
+    { key: { username_lower: 1 }, options: { unique: true } },
+    { key: { email_normalized: 1 }, options: { unique: true } },
+    { key: { elo: -1 } },
+  ],
+};
 
 function toUser(doc: WithId<UserDoc>): User {
   return {
@@ -163,6 +176,8 @@ function toUser(doc: WithId<UserDoc>): User {
     elo: doc.elo,
     country: doc.country,
     createdAt: doc._id.getTimestamp().getTime(),
+    reputation: doc.reputation,
+    reputationRecoveryFrom: doc.reputationRecoveryFrom?.getTime() ?? null,
     clientSettings: sanitizeClientSettings(doc.clientSettings),
     gameSettings: sanitizeGameSettings(doc.gameSettings),
     homeFilters: sanitizeHomeFilters(doc.homeFilters),
@@ -239,13 +254,17 @@ export function unsetUserPicture(userId: string): Promise<void> {
 export function markPictureDangerous(
   userId: string,
   pictureId: string,
-): Promise<void> {
+): Promise<boolean> {
   return collection()
     .updateOne(
-      { _id: new ObjectId(userId), 'picture.id': pictureId },
+      {
+        _id: new ObjectId(userId),
+        'picture.id': pictureId,
+        'picture.dangerous': false,
+      },
       { $set: { 'picture.dangerous': true } },
     )
-    .then(() => undefined);
+    .then((res) => res.modifiedCount === 1);
 }
 
 export function insertUser(data: {
@@ -264,6 +283,8 @@ export function insertUser(data: {
       validated_email: false,
       elo: DEFAULT_ELO,
       country: data.country,
+      reputation: 0,
+      reputationRecoveryFrom: null,
       clientSettings: { ...DEFAULT_CLIENT_SETTINGS },
       gameSettings: { ...DEFAULT_GAME_SETTINGS },
       homeFilters: { ...DEFAULT_HOME_FILTERS },
@@ -293,6 +314,25 @@ export function setPassword(
     .updateOne(
       { _id: new ObjectId(userId) },
       { $set: { password: passwordHash } },
+    )
+    .then(() => undefined);
+}
+
+export function setReputationState(
+  userId: string,
+  reputation: number,
+  recoveryFrom: number | null,
+): Promise<void> {
+  return collection()
+    .updateOne(
+      { _id: new ObjectId(userId) },
+      {
+        $set: {
+          reputation,
+          reputationRecoveryFrom:
+            recoveryFrom === null ? null : new Date(recoveryFrom),
+        },
+      },
     )
     .then(() => undefined);
 }
@@ -505,6 +545,7 @@ export interface PlayerProfile {
   averagePlacing: number | null;
   percentile: number;
   createdAt: number;
+  reputation: number;
   picture: string | null;
 }
 
@@ -589,6 +630,11 @@ export function getPlayerProfile(
           averagePlacing: averagePlacing(stats),
           percentile: total > 1 ? Math.round((lower / (total - 1)) * 100) : 100,
           createdAt: doc._id.getTimestamp().getTime(),
+          reputation: effectiveReputation(
+            doc.reputation,
+            doc.reputationRecoveryFrom?.getTime() ?? null,
+            Date.now(),
+          ),
           picture:
             doc.picture && !doc.picture.dangerous
               ? `data:${doc.picture.mime};base64,${Buffer.from(

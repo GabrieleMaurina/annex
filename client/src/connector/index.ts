@@ -478,14 +478,29 @@ export const connector = {
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
+  listBlocks(cb: (blocked: string[]) => void): void {
+    httpGet<{ blocked: string[] }>('/blocks')
+      .then((res) => cb(res.blocked))
+      .catch(() => cb([]));
+  },
+
   blockUser(userId: string, cb: (res: AuthAck) => void): void {
-    httpSend<AuthAck>('POST', '/messages/block', { userId })
+    httpSend<AuthAck>('POST', '/blocks', { userId })
       .then(cb)
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
   unblockUser(userId: string, cb: (res: AuthAck) => void): void {
-    httpSend<AuthAck>('POST', '/messages/unblock', { userId })
+    httpSend<AuthAck>('POST', '/blocks/remove', { userId })
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  reportPlayer(
+    data: { userId: string; reason: string; gameId?: string },
+    cb: (res: AuthAck) => void,
+  ): void {
+    httpSend<AuthAck>('POST', '/reports', data)
       .then(cb)
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
@@ -572,12 +587,6 @@ export const connector = {
 
   removePicture(cb: (res: AuthAck) => void): void {
     httpSend<AuthAck>('POST', '/account/picture/remove', {})
-      .then(cb)
-      .catch(() => cb({ ok: false, error: 'server error' }));
-  },
-
-  reportPicture(userId: string, cb: (res: AuthAck) => void): void {
-    httpSend<AuthAck>('POST', '/account/report', { userId })
       .then(cb)
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
@@ -884,5 +893,21 @@ export const connector = {
 
   terminateAlliance(data: { targetPlayerId: number }): void {
     route('game:terminateAlliance', data);
+  },
+
+  blockPlayerInGame(playerId: number, cb: (res: AuthAck) => void): void {
+    route('game:block', { playerId }, cb);
+  },
+
+  unblockPlayerInGame(playerId: number, cb: (res: AuthAck) => void): void {
+    route('game:unblock', { playerId }, cb);
+  },
+
+  reportPlayerInGame(
+    playerId: number,
+    reason: string,
+    cb: (res: AuthAck) => void,
+  ): void {
+    route('game:report', { playerId, reason }, cb);
   },
 };

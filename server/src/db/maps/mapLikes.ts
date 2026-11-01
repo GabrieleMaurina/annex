@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { ensureCollection, getCollection } from '../mongo';
+import { CollectionSpec, getCollection } from '../mongo';
 import { playerMapExists, setLikeCount } from './playerMaps';
 
 const NAME = 'map_likes';
@@ -38,14 +38,14 @@ function syncLikeCount(mapId: string): Promise<void> {
     .then((count) => setLikeCount(mapId, count));
 }
 
-export function ensureMapLikes(): Promise<unknown> {
-  return ensureCollection(NAME, schema).then(() =>
-    Promise.all([
-      collection().createIndex({ mapId: 1, userId: 1 }, { unique: true }),
-      collection().createIndex({ userId: 1 }),
-    ]),
-  );
-}
+export const MAP_LIKES_COLLECTION: CollectionSpec = {
+  name: NAME,
+  schema,
+  indexes: [
+    { key: { mapId: 1, userId: 1 }, options: { unique: true } },
+    { key: { userId: 1 } },
+  ],
+};
 
 type Result = { ok: true } | { ok: false; error: string };
 

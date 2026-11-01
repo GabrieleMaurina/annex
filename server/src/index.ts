@@ -16,12 +16,25 @@ import {
   parseCookies,
   serializeSessionCookie,
 } from './auth/cookies';
+import {
+  emitBlockedPlayers,
+  peerGames,
+  setBlockPeersEngine,
+  warmBlockPeers,
+} from './conduct/blockPeers';
+import { endReportableGame, reconcileReportableGames } from './conduct/reports';
+import {
+  handleGameEndedReputation,
+  setReputationEngine,
+} from './conduct/reputation';
+import { cachedBlockPeers } from './conduct/viewerCache';
 import { connectDb } from './db';
 import {
   gameElos,
   gameParticipants,
   handleGameEnded,
   reconcileGameElos,
+  startedGameId,
 } from './elo';
 import {
   registerAllianceHandlers,
@@ -30,6 +43,7 @@ import {
   registerBotLobbyHandlers,
   registerCapitalHandlers,
   registerCardHandlers,
+  registerConductHandlers,
   registerDeployHandlers,
   registerEmojiHandlers,
   registerEntrenchHandlers,
@@ -69,6 +83,7 @@ function listVisibleGames(): LiveGameRow[] {
   reconcileGameMeta(names);
   reconcileGameElos(names);
   reconcileStoredGames(names);
+  reconcileReportableGames(names);
   return summaries
     .filter((game) => isGamePublic(game.name))
     .map((game) => ({
@@ -92,10 +107,12 @@ function randomGame(
   const playerId = playerIdForIdentity(token, userId);
   const currentGame =
     playerId === undefined ? null : engine.playerGameName(playerId);
+  const excluded = userId ? peerGames(userId) : new Set<string>();
   const candidates = listVisibleGames()
     .filter(
       (game) =>
         game.name !== currentGame &&
+        !excluded.has(game.name) &&
         game.state === 'lobby' &&
         !game.hasPassword &&
         emptySlots(game) > 0 &&
@@ -161,6 +178,19 @@ function relay<K extends EventKey>(key: K, event: string) {
   };
 }
 
+function isMuted(recipientId: number, senderId: number): boolean {
+  const recipient = userIdByPlayerId(recipientId);
+  const sender = userIdByPlayerId(senderId);
+  if (recipient === undefined || sender === undefined) return false;
+  const peers = cachedBlockPeers(recipient);
+  if (peers) return peers.blockedByMe.has(sender);
+  warmBlockPeers(recipient);
+  return false;
+}
+
+const relayChat = relay('onChatMessage', 'game:chatMessage');
+const relayEmoji = relay('onEmojiSent', 'game:emojiSent');
+
 const callbacks: EngineCallbacks = {
   onHomeGames: () => {},
   onGameState: relay('onGameState', 'game:state'),
@@ -183,18 +213,28 @@ const callbacks: EngineCallbacks = {
   },
   onGameEnded: (payload) => {
     const participants = gameParticipants(payload.gameName);
+    const gameId = startedGameId(payload.gameName);
     const elos = handleGameEnded(payload);
-    persistFinishedGame(engine, payload, participants, elos)
+    endReportableGame(payload.gameName);
+    handleGameEndedReputation(payload, participants, gameId);
+    persistFinishedGame(engine, payload, participants, elos, gameId)
       .then(() => {
         if (storedGameId(payload.gameName)) resendResults(payload.gameName);
       })
       .catch(console.error);
     elos.then(() => resendResults(payload.gameName));
+    for (const [viewerId, name] of gameNameByPlayerId)
+      if (name === payload.gameName) emitBlockedPlayers(io, viewerId);
   },
   onCardSetPlayed: relay('onCardSetPlayed', 'game:cardSetPlayed'),
   onKicked: (playerId, payload) => emitTo(io, playerId, 'game:kicked', payload),
-  onChatMessage: relay('onChatMessage', 'game:chatMessage'),
-  onEmojiSent: relay('onEmojiSent', 'game:emojiSent'),
+  onChatMessage: (playerId, payload, gameName) => {
+    if (!isMuted(playerId, payload.id)) relayChat(playerId, payload, gameName);
+  },
+  onEmojiSent: (playerId, payload, gameName) => {
+    if (!isMuted(playerId, payload.senderId))
+      relayEmoji(playerId, payload, gameName);
+  },
   onAllianceRequested: relay('onAllianceRequested', 'game:allianceRequested'),
   onAllianceFormed: relay('onAllianceFormed', 'game:allianceFormed'),
   onAllianceDeclined: relay('onAllianceDeclined', 'game:allianceDeclined'),
@@ -241,6 +281,8 @@ export const engine = createEngine(callbacks, {
     poolSize: 2,
   },
 });
+setReputationEngine(engine);
+setBlockPeersEngine(engine);
 
 io.on('connection', (socket) => {
   const game = socket.handshake.query.game;
@@ -264,6 +306,7 @@ io.on('connection', (socket) => {
   registerCardHandlers(socket, engine);
   registerAllianceHandlers(socket, engine);
   registerReplayHandlers(socket, engine);
+  registerConductHandlers(io, socket, engine);
 });
 
 connectDb().catch((error) => {

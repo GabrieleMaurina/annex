@@ -1,4 +1,4 @@
-import { usesAliases } from '../game/anonymous';
+import { isAnonymous, usesAliases } from '../game/anonymous';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
 import { games } from '../session/store';
@@ -12,7 +12,7 @@ import {
   AttackSeaResultResponse,
 } from '../territory/sea/attackSea';
 import { Game } from '../types';
-import { realOf } from './aliases';
+import { aliasOf, realOf } from './aliases';
 import { complete } from './complete';
 import { EVENT_VIEWS, EventKey, EventPayload, viewServerLog } from './events';
 import { viewReplayFor } from './replay';
@@ -98,4 +98,15 @@ export function fromClient(actorId: number, id: unknown): unknown {
   const game = actorGame(actorId);
   if (!game || !usesAliases(game)) return id;
   return realOf(game, id);
+}
+
+export function isActorAnonymous(actorId: number): boolean {
+  const game = actorGame(actorId);
+  return !!game && isAnonymous(game);
+}
+
+export function toClient(actorId: number, id: number): number {
+  const game = actorGame(actorId);
+  if (!game || !usesAliases(game)) return id;
+  return aliasOf(game, id);
 }

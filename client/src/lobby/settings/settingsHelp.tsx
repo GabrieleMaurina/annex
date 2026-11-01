@@ -583,3 +583,6 @@ export const MIN_GAMES_HELP =
 
 export const MIN_ACCOUNT_AGE_HELP =
   'How long ago a player must have created their account to take a seat. Anyone can still join as a spectator. Players without an account only sit with None. Seated players below a newly raised requirement are moved to the spectators.';
+
+export const MIN_REPUTATION_HELP =
+  "Players below this reputation can't join or spectate. Seated players below a newly raised requirement are moved to the spectators.";

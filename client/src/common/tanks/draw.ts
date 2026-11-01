@@ -1,6 +1,7 @@
 import { PLAYER_COLORS } from '../../lib/palette';
 import type { Explosion, Mark, Shell, Tank, World } from './world';
 import {
+  BARRIER_SIZE,
   EXPLOSION_LIFE_MS,
   MARK_LIFE_MS,
   MUZZLE,
@@ -41,6 +42,7 @@ const TURRET_SHADES = [1.25, 1.1, 0.95, 0.85, 0.95, 1.1];
 const TRACK_COLOR = '#262626';
 const TREAD_COLOR = '#4a4a4a';
 const SHELL_COLOR = PLAYER_COLORS[3];
+const GUN_SHELL_COLOR = '#cfcfcf';
 const EXPLOSION_LAYERS: [number, string][] = [
   [1, PLAYER_COLORS[5]],
   [0.55, PLAYER_COLORS[3]],
@@ -48,6 +50,9 @@ const EXPLOSION_LAYERS: [number, string][] = [
 const MARK_ALPHA = 0.18;
 const MARK_LEVELS = 10;
 const MARK_COLOR = '#ffffff';
+const CONCRETE_COLOR = '#a3a39c';
+const BARRIER_HALF = BARRIER_SIZE / 2;
+const RIDGE_HALF = BARRIER_HALF - 6;
 
 const TURRET_TRIANGLES: Point[][] = TURRET_SHADES.map((_, i) => {
   const a = (i * Math.PI) / 3;
@@ -76,6 +81,54 @@ function shade(hex: string, factor: number): string {
     );
   return `rgb(${channel(1)}, ${channel(3)}, ${channel(5)})`;
 }
+
+const BARRIER_FACES: [Point[], string][] = [
+  [
+    [
+      [-BARRIER_HALF, -BARRIER_HALF],
+      [BARRIER_HALF, -BARRIER_HALF],
+      [RIDGE_HALF, -RIDGE_HALF],
+      [-RIDGE_HALF, -RIDGE_HALF],
+    ],
+    shade(CONCRETE_COLOR, 1.15),
+  ],
+  [
+    [
+      [-BARRIER_HALF, BARRIER_HALF],
+      [BARRIER_HALF, BARRIER_HALF],
+      [RIDGE_HALF, RIDGE_HALF],
+      [-RIDGE_HALF, RIDGE_HALF],
+    ],
+    shade(CONCRETE_COLOR, 0.75),
+  ],
+  [
+    [
+      [-BARRIER_HALF, -BARRIER_HALF],
+      [-RIDGE_HALF, -RIDGE_HALF],
+      [-RIDGE_HALF, RIDGE_HALF],
+      [-BARRIER_HALF, BARRIER_HALF],
+    ],
+    shade(CONCRETE_COLOR, 0.95),
+  ],
+  [
+    [
+      [BARRIER_HALF, -BARRIER_HALF],
+      [RIDGE_HALF, -RIDGE_HALF],
+      [RIDGE_HALF, RIDGE_HALF],
+      [BARRIER_HALF, BARRIER_HALF],
+    ],
+    shade(CONCRETE_COLOR, 0.85),
+  ],
+  [
+    [
+      [-RIDGE_HALF, -RIDGE_HALF],
+      [RIDGE_HALF, -RIDGE_HALF],
+      [RIDGE_HALF, RIDGE_HALF],
+      [-RIDGE_HALF, RIDGE_HALF],
+    ],
+    shade(CONCRETE_COLOR, 1.25),
+  ],
+];
 
 function tankPaint(color: string): TankPaint {
   let paint = tankPaints.get(color);
@@ -130,10 +183,20 @@ function drawTank(ctx: CanvasRenderingContext2D, tank: Tank) {
   ctx.translate(TURRET_PIVOT, 0);
   ctx.rotate(tank.turretAngle);
   ctx.fillStyle = paint.barrel;
-  ctx.fillRect(3, -1.5, MUZZLE - 3, 3);
+  if (tank.kind === 'gun') {
+    ctx.fillRect(3, -2.6, MUZZLE - 3, 1.4);
+    ctx.fillRect(3, 1.2, MUZZLE - 3, 1.4);
+  } else ctx.fillRect(3, -1.5, MUZZLE - 3, 3);
   TURRET_TRIANGLES.forEach((triangle, i) =>
     polygon(ctx, triangle, paint.turret[i]),
   );
+  ctx.restore();
+}
+
+function drawBarrier(ctx: CanvasRenderingContext2D, barrier: DOMRect) {
+  ctx.save();
+  ctx.translate(barrier.x + barrier.width / 2, barrier.y + barrier.height / 2);
+  BARRIER_FACES.forEach(([points, color]) => polygon(ctx, points, color));
   ctx.restore();
 }
 
@@ -172,7 +235,11 @@ function drawShell(ctx: CanvasRenderingContext2D, shell: Shell) {
   ctx.save();
   ctx.translate(shell.x, shell.y);
   ctx.rotate(Math.atan2(shell.vy, shell.vx));
-  polygon(ctx, SHELL, SHELL_COLOR);
+  polygon(
+    ctx,
+    SHELL,
+    shell.owner.kind === 'gun' ? GUN_SHELL_COLOR : SHELL_COLOR,
+  );
   ctx.restore();
 }
 
@@ -205,6 +272,7 @@ export function drawWorld(
 ) {
   ctx.clearRect(0, 0, world.width, world.height);
   drawMarks(ctx, world.marks, now);
+  world.barriers.forEach((barrier) => drawBarrier(ctx, barrier));
   world.tanks.forEach((tank) => drawTank(ctx, tank));
   world.shells.forEach((shell) => drawShell(ctx, shell));
   world.explosions.forEach((explosion) => drawExplosion(ctx, explosion, now));

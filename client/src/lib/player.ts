@@ -15,13 +15,14 @@ import {
   startMusic,
 } from './sounds';
 import type {
+  Account,
   ClientSettings,
   GameRulesSettings,
   HomeFilters,
   SavedBot,
 } from './types';
 
-let loggedIn = false;
+let ownAccount: Account | null = null;
 let playerName = '';
 let gameSettings: Record<string, unknown> = {};
 let gameSlots = 2;
@@ -35,7 +36,15 @@ const nameListeners = new Set<() => void>();
 const troopsPercentageListeners = new Set<() => void>();
 
 export function isLoggedIn(): boolean {
-  return loggedIn;
+  return ownAccount !== null;
+}
+
+export function getOwnAccount(): Account | null {
+  return ownAccount;
+}
+
+export function setOwnAccount(account: Account | null): void {
+  ownAccount = account;
 }
 
 export function getPlayerName(): string {
@@ -84,12 +93,10 @@ function currentClientSettings(): ClientSettings {
 }
 
 export function applyServerSettings(
-  hasAccount: boolean,
   client: ClientSettings | undefined,
   game: Record<string, unknown> | undefined,
   home: HomeFilters | undefined,
 ) {
-  loggedIn = hasAccount;
   if (client) {
     setSoundMuted(!!client.muted);
     setAnimationsDisabled(!!client.animationsDisabled);

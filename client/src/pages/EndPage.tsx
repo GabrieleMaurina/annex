@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
@@ -11,7 +11,12 @@ import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import GameReplayView from '../game/replay/GameReplayView';
 import type { FoldedReplay } from '../game/replay/replay';
 import { foldStoredReplay } from '../game/replay/replay';
-import type { Account, GameState, PlayerResultStats } from '../lib/types';
+import type {
+  Account,
+  FriendsOverview,
+  GameState,
+  PlayerResultStats,
+} from '../lib/types';
 
 interface Props {
   game: GameState;
@@ -54,10 +59,32 @@ function EndPage({
   } = useTableEmojiReactions(selfId);
   const tableEmojiEnabled = !connector.isOffline();
   const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
-  const playersWithAccounts = game.players.map((p) => ({
-    ...p,
-    userId: results?.get(p.id)?.userId ?? p.userId,
-  }));
+  const gameWithAccounts = useMemo(
+    () => ({
+      ...game,
+      players: game.players.map((p) => ({
+        ...p,
+        userId: results?.get(p.id)?.userId ?? p.userId,
+      })),
+    }),
+    [game, results],
+  );
+  const playersWithAccounts = gameWithAccounts.players;
+  const conductEnabled = tableEmojiEnabled && account !== null;
+  const [friends, setFriends] = useState<FriendsOverview>();
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>();
+
+  useEffect(() => {
+    if (!conductEnabled) return;
+    connector.listFriends(setFriends);
+    connector.listBlocks(setBlockedUserIds);
+  }, [conductEnabled]);
+
+  function refreshConduct() {
+    connector.listFriends(setFriends);
+    connector.listBlocks(setBlockedUserIds);
+    bumpMuteVersion();
+  }
 
   useEffect(() => {
     if (replayRequestedRef.current) return;
@@ -86,7 +113,10 @@ function EndPage({
         </div>
       )}
       <GameReplayView
-        game={game}
+        game={gameWithAccounts}
+        conductFriends={friends}
+        conductBlockedUserIds={blockedUserIds}
+        onConductChange={refreshConduct}
         results={results}
         selfId={selfId}
         mapRenderName={game.mapName}
@@ -154,6 +184,16 @@ function EndPage({
               players={playersWithAccounts}
               navigate={navigate}
               bumpMuteVersion={bumpMuteVersion}
+              conduct={
+                conductEnabled
+                  ? {
+                      friends,
+                      blockedUserIds,
+                      allowReport: game.players.some((p) => p.id === selfId),
+                      onChange: refreshConduct,
+                    }
+                  : undefined
+              }
             />
           )
         }

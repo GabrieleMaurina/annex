@@ -648,6 +648,8 @@ function Home({
                         elo: account?.elo ?? null,
                         gamesPlayed: account?.gamesPlayed ?? null,
                         accountCreatedAt: account?.createdAt ?? null,
+                        reputation: account?.reputation ?? null,
+                        reputationRecoveryFrom: null,
                       }));
                   const bg = spectateOnly
                     ? GAME_STATE_COLORS.playing

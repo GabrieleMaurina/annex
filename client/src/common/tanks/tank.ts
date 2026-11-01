@@ -1,5 +1,12 @@
 import { playSound } from '../../lib/sounds';
-import type { Tank, World } from './world';
+import type { TankGrid } from './grid';
+import {
+  CELL_SIZE,
+  buildTankGrid,
+  forEachTankInRing,
+  removeFromGrid,
+} from './grid';
+import type { Shell, Tank, World } from './world';
 import {
   EXPLOSION_LIFE_MS,
   MARK_LIFE_MS,
@@ -13,6 +20,7 @@ import {
   TREAD_WIDTH,
   TURRET_PIVOT,
   blocked,
+  destroyBarrier,
   destroyTank,
   insideRect,
   random,
@@ -27,7 +35,8 @@ const LOOKAHEAD = 45;
 const PROBE_ANGLE = 0.5;
 const AVOID_TIME = 0.5;
 const SIGHT = 280;
-const SHELL_SPEED = 220;
+const SHELL_SPEED = 200;
+const GUN_SHELL_SPEED = 100;
 const SHELL_RADIUS = 2;
 const AIM_TOLERANCE = 0.03;
 const AIM_NOISE = 0.07;
@@ -37,6 +46,8 @@ const ESCAPE_DIRECTIONS = 16;
 const PIVOT_ANGLE = 0.5;
 const RELOAD_MIN = 1.5;
 const RELOAD_MAX = 3;
+const GUN_RELOAD_MIN = 0.12;
+const GUN_RELOAD_MAX = 0.2;
 const HIT_RADIUS = 12;
 
 interface Point {
@@ -144,11 +155,15 @@ function turretPivot(tank: Tank): Point {
   };
 }
 
-function intercept(from: Point, target: Tank): Point | null {
+function shellSpeed(tank: Tank): number {
+  return tank.kind === 'gun' ? GUN_SHELL_SPEED : SHELL_SPEED;
+}
+
+function intercept(from: Point, target: Tank, speed: number): Point | null {
   const dx = target.x - from.x;
   const dy = target.y - from.y;
-  const a = target.vx ** 2 + target.vy ** 2 - SHELL_SPEED ** 2;
-  const b = 2 * (dx * target.vx + dy * target.vy - SHELL_SPEED * MUZZLE);
+  const a = target.vx ** 2 + target.vy ** 2 - speed ** 2;
+  const b = 2 * (dx * target.vx + dy * target.vy - speed * MUZZLE);
   const c = dx * dx + dy * dy - MUZZLE * MUZZLE;
   if (c <= 0) return null;
   const time = (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a);
@@ -180,23 +195,25 @@ function clearShot(world: World, from: Point, to: Point): boolean {
   );
 }
 
-function findAim(tank: Tank, world: World): number | null {
+function findAim(tank: Tank, world: World, grid: TankGrid): number | null {
   const from = turretPivot(tank);
   let aim: number | null = null;
   let closest = SIGHT;
-  for (const other of world.tanks) {
-    const distance = Math.hypot(other.x - from.x, other.y - from.y);
-    if (other === tank || distance >= closest) continue;
-    const point = intercept(from, other);
-    if (!point || !clearShot(world, from, point)) continue;
-    aim = Math.atan2(point.y - from.y, point.x - from.x);
-    closest = distance;
+  for (let ring = 0; (ring - 1) * CELL_SIZE < closest; ring++) {
+    forEachTankInRing(grid, from.x, from.y, ring, (other) => {
+      const distance = Math.hypot(other.x - from.x, other.y - from.y);
+      if (other === tank || distance >= closest) return;
+      const point = intercept(from, other, shellSpeed(tank));
+      if (!point || !clearShot(world, from, point)) return;
+      aim = Math.atan2(point.y - from.y, point.x - from.x);
+      closest = distance;
+    });
   }
   return aim;
 }
 
-function aimAndFire(tank: Tank, world: World, dt: number) {
-  const aim = findAim(tank, world);
+function aimAndFire(tank: Tank, world: World, grid: TankGrid, dt: number) {
+  const aim = findAim(tank, world, grid);
   if (aim !== null) tank.turretTarget = angleDiff(aim, tank.angle);
   const diff = angleDiff(tank.turretTarget, tank.turretAngle);
   const rate = aim === null ? TURRET_RATE : AIM_RATE;
@@ -205,17 +222,20 @@ function aimAndFire(tank: Tank, world: World, dt: number) {
   if (aim === null || tank.reload > 0) return;
   if (Math.abs(angleDiff(tank.angle + tank.turretAngle, aim)) > AIM_TOLERANCE)
     return;
-  tank.reload = random(RELOAD_MIN, RELOAD_MAX);
+  tank.reload =
+    tank.kind === 'gun'
+      ? random(GUN_RELOAD_MIN, GUN_RELOAD_MAX)
+      : random(RELOAD_MIN, RELOAD_MAX);
   const from = turretPivot(tank);
   const angle = aim + random(-AIM_NOISE, AIM_NOISE);
   world.shells.push({
     x: from.x + Math.cos(angle) * MUZZLE,
     y: from.y + Math.sin(angle) * MUZZLE,
-    vx: Math.cos(angle) * SHELL_SPEED,
-    vy: Math.sin(angle) * SHELL_SPEED,
+    vx: Math.cos(angle) * shellSpeed(tank),
+    vy: Math.sin(angle) * shellSpeed(tank),
     owner: tank,
   });
-  playSound('click', SOUND_GAIN);
+  playSound('tankShot', SOUND_GAIN);
 }
 
 function isStuck(tank: Tank, dt: number): boolean {
@@ -228,25 +248,35 @@ function isStuck(tank: Tank, dt: number): boolean {
   return moved < STUCK_DISTANCE;
 }
 
-function findFreeSpot(tank: Tank, world: World): Point | null {
+function findFreeSpot(
+  tank: Tank,
+  world: World,
+  obstacles: DOMRect[],
+): Point | null {
   const reach = Math.hypot(world.width, world.height);
   for (let distance = ESCAPE_STEP; distance < reach; distance += ESCAPE_STEP) {
     for (let i = 0; i < ESCAPE_DIRECTIONS; i++) {
       const angle = tank.angle + (i / ESCAPE_DIRECTIONS) * Math.PI * 2;
       const x = tank.x + Math.cos(angle) * distance;
       const y = tank.y + Math.sin(angle) * distance;
-      if (!blocked(world, world.obstacles, x, y, TANK_RADIUS)) return { x, y };
+      if (!blocked(world, obstacles, x, y, TANK_RADIUS)) return { x, y };
     }
   }
   return null;
 }
 
-function escape(tank: Tank, world: World, dt: number, now: number) {
+function escape(
+  tank: Tank,
+  world: World,
+  obstacles: DOMRect[],
+  dt: number,
+  now: number,
+) {
   if (
     !tank.escape ||
-    blocked(world, world.obstacles, tank.escape.x, tank.escape.y, TANK_RADIUS)
+    blocked(world, obstacles, tank.escape.x, tank.escape.y, TANK_RADIUS)
   ) {
-    tank.escape = findFreeSpot(tank, world);
+    tank.escape = findFreeSpot(tank, world, obstacles);
   }
   if (!tank.escape) {
     destroyTank(world, tank, now);
@@ -264,12 +294,19 @@ function escape(tank: Tank, world: World, dt: number, now: number) {
   drive(tank, world, [], dt, now, Math.abs(diff) < PIVOT_ANGLE);
 }
 
-function updateTank(tank: Tank, world: World, dt: number, now: number) {
-  const trapped = world.obstacles.some((rect) =>
+function updateTank(
+  tank: Tank,
+  world: World,
+  obstacles: DOMRect[],
+  grid: TankGrid,
+  dt: number,
+  now: number,
+) {
+  const trapped = obstacles.some((rect) =>
     insideRect(rect, tank.x, tank.y, TANK_RADIUS),
   );
   if (trapped) {
-    escape(tank, world, dt, now);
+    escape(tank, world, obstacles, dt, now);
     return;
   }
   tank.escape = null;
@@ -279,22 +316,42 @@ function updateTank(tank: Tank, world: World, dt: number, now: number) {
   }
   tank.timer -= dt;
   if (tank.timer <= 0) chooseAction(tank);
-  avoidObstacles(tank, world, world.obstacles);
-  drive(tank, world, world.obstacles, dt, now, true);
-  aimAndFire(tank, world, dt);
+  avoidObstacles(tank, world, obstacles);
+  drive(tank, world, obstacles, dt, now, true);
+  aimAndFire(tank, world, grid, dt);
+}
+
+function shellHit(shell: Shell, grid: TankGrid): Tank | undefined {
+  let hit: Tank | undefined;
+  for (let ring = 0; ring <= 1; ring++) {
+    forEachTankInRing(grid, shell.x, shell.y, ring, (tank) => {
+      if (
+        !hit &&
+        tank !== shell.owner &&
+        Math.hypot(tank.x - shell.x, tank.y - shell.y) < HIT_RADIUS
+      )
+        hit = tank;
+    });
+  }
+  return hit;
 }
 
 function updateShells(world: World, dt: number, now: number) {
+  const grid = buildTankGrid(world.tanks);
   world.shells = world.shells.filter((shell) => {
     shell.x += shell.vx * dt;
     shell.y += shell.vy * dt;
-    const hit = world.tanks.find(
-      (tank) =>
-        tank !== shell.owner &&
-        Math.hypot(tank.x - shell.x, tank.y - shell.y) < HIT_RADIUS,
-    );
+    const hit = shellHit(shell, grid);
     if (hit) {
+      removeFromGrid(grid, hit);
       destroyTank(world, hit, now);
+      return false;
+    }
+    const barrier = world.barriers.find((rect) =>
+      insideRect(rect, shell.x, shell.y, SHELL_RADIUS),
+    );
+    if (barrier) {
+      destroyBarrier(world, barrier, now);
       return false;
     }
     if (blocked(world, world.obstacles, shell.x, shell.y, SHELL_RADIUS)) {
@@ -306,7 +363,13 @@ function updateShells(world: World, dt: number, now: number) {
 }
 
 export function updateWorld(world: World, dt: number, now: number) {
-  world.tanks.forEach((tank) => updateTank(tank, world, dt, now));
+  const obstacles = world.barriers.length
+    ? world.obstacles.concat(world.barriers)
+    : world.obstacles;
+  const grid = buildTankGrid(world.tanks);
+  world.tanks.forEach((tank) =>
+    updateTank(tank, world, obstacles, grid, dt, now),
+  );
   updateShells(world, dt, now);
   const alive = world.marks.findIndex((mark) => now - mark.time < MARK_LIFE_MS);
   world.marks.splice(0, alive === -1 ? world.marks.length : alive);

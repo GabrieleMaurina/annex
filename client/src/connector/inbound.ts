@@ -42,6 +42,7 @@ const INBOUND_EVENTS = [
   'game:surrendered',
   'game:pointsScored',
   'game:gameOver',
+  'game:blockedPlayers',
 ];
 
 const listeners = new Map<string, Set<Handler>>();

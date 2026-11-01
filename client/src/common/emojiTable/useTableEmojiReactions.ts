@@ -72,6 +72,7 @@ export function useTableEmojiReactions(selfId: number | null) {
     function handleOutside(e: MouseEvent) {
       const target = e.target as Node;
       if (emojiPickerRef.current?.contains(target)) return;
+      if ((target as Element).closest?.('.modal')) return;
       for (const row of rowRefs.current.values()) {
         if (row.contains(target)) return;
       }

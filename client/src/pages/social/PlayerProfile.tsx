@@ -1,9 +1,11 @@
+import { newAccountAllowance } from 'engine';
 import { useEffect, useState } from 'react';
 import { Button, Container, Spinner, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import EloChart from '../../common/charts/EloChart';
+import ReportPlayerModal from '../../common/conduct/ReportPlayerModal';
 import { formatError } from '../../common/formatError';
 import FriendshipButton from '../../common/FriendshipButton';
 import { useWhiteIcon } from '../../common/icon';
@@ -91,6 +93,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
     undefined,
   );
   const [page, setPage] = useState(1);
+  const [openedAt] = useState(() => Date.now());
   const [result, setResult] = useState<GamesPage | null>(null);
   const [mapTotal, setMapTotal] = useState<number | null>(null);
   const [eloHistory, setEloHistory] = useState<EloHistoryPoint[]>([]);
@@ -100,6 +103,8 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   );
   useToggleSound(reportMenu !== null);
   const [reportMessage, setReportMessage] = useState('');
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<string>();
   const [mapPreview, setMapPreview] = useState<PlayerMapRow | null>(null);
 
   useEffect(() => {
@@ -205,12 +210,19 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
     );
   }
 
-  const canManageFriend =
-    !!account &&
-    account.username.toLowerCase() !== profile.username.toLowerCase();
+  const canManageFriend = !!account && account.id !== profile.id;
   const isOwnProfile = !!account && !canManageFriend;
+  const allowance = isOwnProfile
+    ? newAccountAllowance(profile.createdAt, openedAt)
+    : 0;
   const canReport = canManageFriend && !!profile.picture;
   const profileId = profile.id;
+
+  function openReport(reason?: string) {
+    setReportMessage('');
+    setReportReason(reason);
+    setReportOpen(true);
+  }
 
   const rank = rankForElo(profile.elo);
   const liveGameState: GameSummary['state'] | undefined =
@@ -289,12 +301,10 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
         >
           <Button
             size="sm"
-            variant="outline-danger"
+            variant="danger"
             onClick={() => {
               setReportMenu(null);
-              connector.reportPicture(profileId, (res) =>
-                setReportMessage(res.ok ? 'report submitted' : res.error),
-              );
+              openReport('offensive picture');
             }}
           >
             Report picture
@@ -332,26 +342,49 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
           </div>
         </div>
         <div className="text-center">
+          <div className="small text-muted">Reputation</div>
+          <div className="fs-5">{profile.reputation}</div>
+          {allowance > 0 && profile.reputation >= 0 && (
+            <div className="small text-muted">
+              New account bonus: +{allowance} when joining games (ends in{' '}
+              {allowance} {allowance === 1 ? 'day' : 'days'})
+            </div>
+          )}
+        </div>
+        <div className="text-center">
           <div className="small text-muted">Member since</div>
           <div className="fs-5">
             {new Date(profile.createdAt).toLocaleDateString()}
           </div>
         </div>
         {canManageFriend && (
-          <div className="d-flex flex-column align-items-center gap-2">
+          <div className="d-flex flex-column align-items-stretch gap-2">
             <FriendshipButton userId={profile.id} username={profile.username} />
             <Button
               size="sm"
-              variant="outline-primary"
+              variant="secondary"
               onClick={() =>
                 navigate(`/messages?to=${encodeURIComponent(profile.username)}`)
               }
             >
               Send message
             </Button>
+            <Button size="sm" variant="danger" onClick={() => openReport()}>
+              Report
+            </Button>
           </div>
         )}
       </div>
+      <ReportPlayerModal
+        show={reportOpen}
+        includePicture={!!profile.picture}
+        initialReason={reportReason}
+        onHide={() => setReportOpen(false)}
+        onSubmit={(reason, cb) =>
+          connector.reportPlayer({ userId: profileId, reason }, cb)
+        }
+        onReported={() => setReportMessage('report submitted')}
+      />
 
       {profile.elo > 0 && eloHistory.length >= 2 && (
         <div className="mb-4">

@@ -24,6 +24,7 @@ export function persistFinishedGame(
   payload: GameEndedPayload,
   participants: Map<number, string>,
   elos: Promise<Map<number, GameElo>>,
+  gameId: string | undefined,
 ): Promise<void> {
   storedIdByGame.delete(payload.gameName);
 
@@ -33,7 +34,7 @@ export function persistFinishedGame(
   return Promise.all([persistGameMap(engine, payload.gameName), elos])
     .then(([mapId, gameElos]) => {
       if (!mapId) return;
-      return storeGame({
+      return storeGame(gameId, {
         name: bundle.name,
         mapGeneration: bundle.mapGeneration,
         playerMapId: bundle.playerMapId,

@@ -7,6 +7,7 @@ import type {
   CardsMode,
   Entrenchments,
   Fortification,
+  FriendsOverview,
   GameMode,
   GameState,
   Mission,
@@ -102,4 +103,8 @@ export interface GameMapProps {
   settingsMenuOpen: boolean;
   onPanelOpenChange: (open: boolean) => void;
   navigate: (path: string) => void;
+  storedGameId?: string;
+  conductFriends?: FriendsOverview;
+  conductBlockedUserIds?: string[];
+  onConductChange?: () => void;
 }

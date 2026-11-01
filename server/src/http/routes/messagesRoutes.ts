@@ -1,10 +1,5 @@
 import { Router } from 'express';
-import {
-  blockUser,
-  getMessagesOverview,
-  sendMessage,
-  unblockUser,
-} from '../../db';
+import { getMessagesOverview, sendMessage } from '../../db';
 import { isObject } from '../../validate';
 import { identityOf } from '../middleware';
 
@@ -39,28 +34,6 @@ messagesRouter.post('/messages', (req, res) => {
     return;
   }
   sendMessage(session.userId, targetId(req), targetText(req))
-    .then((result) => res.json(result))
-    .catch(() => res.json({ ok: false, error: 'server error' }));
-});
-
-messagesRouter.post('/messages/block', (req, res) => {
-  const { session } = identityOf(res);
-  if (!session) {
-    res.json({ ok: false, error: 'not logged in' });
-    return;
-  }
-  blockUser(session.userId, targetId(req))
-    .then((result) => res.json(result))
-    .catch(() => res.json({ ok: false, error: 'server error' }));
-});
-
-messagesRouter.post('/messages/unblock', (req, res) => {
-  const { session } = identityOf(res);
-  if (!session) {
-    res.json({ ok: false, error: 'not logged in' });
-    return;
-  }
-  unblockUser(session.userId, targetId(req))
     .then((result) => res.json(result))
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });

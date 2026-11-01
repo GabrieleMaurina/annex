@@ -1,7 +1,7 @@
 import { GameExport } from 'engine';
 import { ObjectId } from 'mongodb';
 import { findMapIdsByName, getMapNamesByIds } from './maps/replayMaps';
-import { ensureCollection, getCollection } from './mongo';
+import { CollectionSpec, getCollection } from './mongo';
 import {
   FILL_VALUES,
   GAME_ENUMS,
@@ -341,6 +341,7 @@ export const SETTINGS_ENUM_KEYS = [
   'minRank',
   'minGames',
   'minAccountAge',
+  'minReputation',
 ];
 
 const settings = object(['continentId', 'slots', ...SETTINGS_ENUM_KEYS], {
@@ -479,27 +480,53 @@ function collection() {
   return getCollection<GameDoc>(NAME);
 }
 
-export function ensureGames(): Promise<unknown> {
-  return ensureCollection(NAME, schema).then(() =>
-    Promise.all([
-      collection().createIndex({ 'players.userId': 1, _id: -1 }),
-      collection().createIndex({ 'players.userId': 1, 'players.rank': 1 }),
-      collection().createIndex({ 'settings.gameMode': 1 }),
-      collection().createIndex({ mapId: 1 }),
-      collection().createIndex({ startedAt: 1 }),
-      collection().createIndex({ endedAt: 1 }),
-    ]),
-  );
-}
+export const GAMES_COLLECTION: CollectionSpec = {
+  name: NAME,
+  schema,
+  indexes: [
+    { key: { 'players.userId': 1, endedAt: -1, _id: -1 } },
+    { key: { 'players.userId': 1, 'players.rank': 1 } },
+    { key: { 'settings.gameMode': 1 } },
+    { key: { mapId: 1 } },
+    { key: { startedAt: 1 } },
+    { key: { endedAt: 1 } },
+  ],
+};
 
-export function storeGame(doc: GameDoc): Promise<string> {
+export function storeGame(
+  id: string | undefined,
+  doc: GameDoc,
+): Promise<string> {
   return collection()
-    .insertOne(doc as GameDoc & { _id?: ObjectId })
+    .insertOne({ ...doc, _id: new ObjectId(id) } as GameDoc & {
+      _id: ObjectId;
+    })
     .then((res) => res.insertedId.toString());
 }
 
 export function countGamesPlayed(userId: string): Promise<number> {
   return collection().countDocuments({ 'players.userId': userId });
+}
+
+export function getGameReportInfo(
+  id: string,
+): Promise<{ userIds: string[]; endedAt: number } | null> {
+  if (!ObjectId.isValid(id)) return Promise.resolve(null);
+  return collection()
+    .findOne(
+      { _id: new ObjectId(id) },
+      { projection: { endedAt: 1, 'players.userId': 1 } },
+    )
+    .then((doc) =>
+      doc
+        ? {
+            userIds: doc.players
+              .map((player) => player.userId)
+              .filter((userId): userId is string => userId !== null),
+            endedAt: doc.endedAt,
+          }
+        : null,
+    );
 }
 
 function playerDisplayName(
@@ -751,10 +778,10 @@ function queryGames(
   const dir: 1 | -1 = query.sortDir === 'asc' ? 1 : -1;
   const sortStage: Record<string, 1 | -1> =
     query.sort === 'position' && viewer !== undefined
-      ? { _myRank: dir, _id: -1 }
+      ? { _myRank: dir, endedAt: -1, _id: -1 }
       : query.sort === 'rounds'
-        ? { roundNumber: dir, _id: -1 }
-        : { _id: dir };
+        ? { roundNumber: dir, endedAt: -1, _id: -1 }
+        : { endedAt: dir, _id: dir };
 
   const pipeline: Record<string, unknown>[] = [{ $match: filter }];
   if (wantsViewerFilter) {

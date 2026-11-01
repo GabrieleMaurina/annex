@@ -8,7 +8,7 @@ import {
   respondGameState,
   sendGeneratedMapIfAny,
 } from '../session/store';
-import { canTakeSeat } from './eligibility';
+import { canTakeSeat, meetsMinReputation } from './eligibility';
 import { hasRoom, openTeam } from './teams';
 
 export function joinGame(playerId: number, gameName: string): GameResponse {
@@ -20,6 +20,12 @@ export function joinGame(playerId: number, gameName: string): GameResponse {
   if (!game) return { ok: false, error: 'game not found' };
   if (game.bannedIds.has(player.id))
     return { ok: false, error: 'banned from this game' };
+  if (
+    !game.playerIds.includes(player.id) &&
+    !game.offline &&
+    !meetsMinReputation(game.minReputation, player)
+  )
+    return { ok: false, error: 'reputation too low' };
 
   if (game.playerIds.includes(player.id)) {
     recomputeHost(game);

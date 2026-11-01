@@ -1,5 +1,6 @@
 import {
   isBlitzOffAllowed,
+  joinReputation,
   MAX_DICE,
   meetsMinAccountAge,
   meetsMinGames,
@@ -65,6 +66,15 @@ function GameSettingsFields({
   applySettings,
 }: Props) {
   const [passwordInput, setPasswordInput] = useState('');
+  const [now] = useState(() => Date.now());
+  const hostReputation = joinReputation(
+    {
+      reputation: account?.reputation ?? null,
+      reputationRecoveryFrom: null,
+      accountCreatedAt: account?.createdAt ?? null,
+    },
+    now,
+  );
 
   const disabledKeys = new Set<string>();
   if (game.defenceDice >= MAX_DICE) disabledKeys.add('entrenchments');
@@ -91,6 +101,7 @@ function GameSettingsFields({
       return !meetsMinGames(value as number, account?.gamesPlayed ?? null);
     if (def.key === 'minAccountAge')
       return !meetsMinAccountAge(option, account?.createdAt ?? null);
+    if (def.key === 'minReputation') return Number(value) > hostReputation;
     return false;
   }
 

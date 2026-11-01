@@ -18,7 +18,11 @@ import {
   type Territory,
 } from './game/mapData';
 import { applySavedGameSettings } from './lib/gameSetup';
-import { applyServerSettings, setPlayerName } from './lib/player';
+import {
+  applyServerSettings,
+  setOwnAccount,
+  setPlayerName,
+} from './lib/player';
 import type {
   Account,
   Ack,
@@ -138,25 +142,32 @@ function App() {
   const onMapEditor = pathname.startsWith('/maps/editor');
   const onGameMap = inGame && gameMapOpen;
 
-  const refreshSession = useCallback(function load() {
-    connector.session((res) => {
-      if (!res.name) {
-        setServerUnreachable(true);
-        setTimeout(load, 1000);
-        return;
-      }
-      setServerUnreachable(false);
-      setAccount(res.account);
-      setPlayerName(res.name);
-      applyServerSettings(
-        !!res.account,
-        res.clientSettings,
-        res.gameSettings,
-        res.homeFilters,
-      );
-      setSessionReady(true);
-    });
+  const updateAccount = useCallback((next: Account | null) => {
+    setAccount(next);
+    setOwnAccount(next);
   }, []);
+
+  const refreshSession = useCallback(
+    function load() {
+      connector.session((res) => {
+        if (!res.name) {
+          setServerUnreachable(true);
+          setTimeout(load, 1000);
+          return;
+        }
+        setServerUnreachable(false);
+        updateAccount(res.account);
+        setPlayerName(res.name);
+        applyServerSettings(
+          res.clientSettings,
+          res.gameSettings,
+          res.homeFilters,
+        );
+        setSessionReady(true);
+      });
+    },
+    [updateAccount],
+  );
 
   useEffect(() => {
     refreshSession();
@@ -415,7 +426,7 @@ function App() {
               clearKickedMessage={() => setKickedMessage('')}
               serverUnreachable={serverUnreachable}
               account={account}
-              onAccountChange={setAccount}
+              onAccountChange={updateAccount}
             />
           }
         />

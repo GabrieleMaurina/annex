@@ -1,5 +1,11 @@
 import { Engine, fromClient, viewResponse } from 'engine';
 import { Server, Socket } from 'socket.io';
+import {
+  emitBlockedPlayers,
+  loadBlockPeers,
+  peerGames,
+} from '../../conduct/blockPeers';
+import { rememberReportableGame } from '../../conduct/reports';
 import { recordGameParticipants } from '../../elo';
 import {
   applyMetaUpdate,
@@ -13,6 +19,7 @@ import {
   gameNameByPlayerId,
   playerIdBySocketId,
   setSocketRoom,
+  userIdBySocketId,
 } from '../../sockets/socketRooms';
 import { isObject } from '../../validate';
 
@@ -81,13 +88,27 @@ export function registerGameHandlers(
       if (!checkGamePassword(gameName, playerId, password))
         return callback({ ok: false, error: 'invalid password' });
 
-      const response = engine.joinGame(playerId, gameName);
-      if (response.ok) {
-        grantGamePasswordExempt(response.game.name, playerId);
-        setSocketRoom(io, playerId, response.game.name);
-        emitGameMeta(io, response.game.name, socket);
-      }
-      callback(viewResponse(playerId, response));
+      const join = () => {
+        const response = engine.joinGame(playerId, gameName);
+        if (response.ok) {
+          grantGamePasswordExempt(response.game.name, playerId);
+          setSocketRoom(io, playerId, response.game.name);
+          emitGameMeta(io, response.game.name, socket);
+        }
+        callback(viewResponse(playerId, response));
+        if (response.ok) emitBlockedPlayers(io, playerId);
+      };
+
+      const userId = userIdBySocketId.get(socket.id);
+      if (!userId || engine.isGameMember(playerId, gameName)) return join();
+      loadBlockPeers(userId)
+        .then(() => {
+          if (playerIdBySocketId.get(socket.id) !== playerId) return;
+          if (peerGames(userId).has(gameName))
+            callback({ ok: false, error: 'game unavailable' });
+          else join();
+        })
+        .catch(() => callback({ ok: false, error: 'server error' }));
     },
   );
 
@@ -135,11 +156,18 @@ export function registerGameHandlers(
     if (playerId === undefined)
       return callback({ ok: false, error: 'not in a game' });
     const response = engine.startGame(playerId);
-    if (response.ok)
-      recordGameParticipants(
-        response.game as { name: string; players: { id: number }[] },
-      );
+    if (response.ok) {
+      const started = response.game as {
+        name: string;
+        players: { id: number }[];
+      };
+      recordGameParticipants(started);
+      rememberReportableGame(started);
+    }
     callback(viewResponse(playerId, response));
+    if (!response.ok) return;
+    for (const [viewerId, name] of gameNameByPlayerId)
+      if (name === response.game.name) emitBlockedPlayers(io, viewerId);
   });
 
   socket.on('game:cycleColor', (callback: (response: GameResponse) => void) => {

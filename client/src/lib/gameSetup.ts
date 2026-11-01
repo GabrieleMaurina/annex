@@ -1,3 +1,8 @@
+import {
+  DEFAULT_MIN_REPUTATION,
+  joinReputation,
+  MIN_REPUTATION_VALUES,
+} from 'engine';
 import { connector } from '../connector';
 import { publish } from '../connector/inbound';
 import { randomMapInput } from '../maps/randomMap';
@@ -6,6 +11,7 @@ import {
   getGameLocalPlayers,
   getGameSettings,
   getGameSlots,
+  getOwnAccount,
   isLoggedIn,
   recordRestoredBotInput,
   resetRestoredBotInputs,
@@ -73,6 +79,23 @@ function seatBots(slots: number, bots: SavedBot[]): void {
   });
 }
 
+function reachableMinReputation(saved: number): number {
+  if (connector.isOffline()) return saved;
+  const account = getOwnAccount();
+  const own = joinReputation(
+    {
+      reputation: account?.reputation ?? null,
+      reputationRecoveryFrom: null,
+      accountCreatedAt: account?.createdAt ?? null,
+    },
+    Date.now(),
+  );
+  const highest = Math.max(
+    ...MIN_REPUTATION_VALUES.filter((value) => value <= own),
+  );
+  return Math.min(saved, highest);
+}
+
 export function applySavedGameSettings(): void {
   const {
     mapGeneration,
@@ -81,6 +104,7 @@ export function applySavedGameSettings(): void {
     minAccountAge,
     minGames,
     minRank,
+    minReputation,
     ...rules
   } = getGameSettings();
   void mapName;
@@ -91,6 +115,14 @@ export function applySavedGameSettings(): void {
   }
   if (Object.keys(rules).length > 0) connector.updateSettings(rules, apply);
   connector.updateSettings({ minAccountAge, minGames, minRank }, apply);
+  connector.updateSettings(
+    {
+      minReputation: reachableMinReputation(
+        minReputation ?? DEFAULT_MIN_REPUTATION,
+      ),
+    },
+    apply,
+  );
   applySavedMap(mapGeneration, playerMapId);
   seatBots(getGameSlots(), getGameBots());
   if (connector.isOffline())

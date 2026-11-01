@@ -1,3 +1,4 @@
+import { playersById } from '../../session/players';
 import { Game, PlayerStats } from '../../types';
 import { ownsAnyTerritory } from '../mechanics';
 import { isPointsMode } from './points';
@@ -31,6 +32,14 @@ export function bumpStat(
   game.stats.get(playerId)![field] += amount;
 }
 
+function recordAwayElimination(game: Game, playerId: number) {
+  if (
+    !playersById.get(playerId)?.connected &&
+    (game.disconnectedTurns.get(playerId) ?? 0) >= 1
+  )
+    game.eliminatedWhileAwayIds.add(playerId);
+}
+
 export function recordElimination(
   game: Game,
   defenderId: number,
@@ -39,6 +48,7 @@ export function recordElimination(
   const eliminated = !ownsAnyTerritory(game, defenderId);
   if (eliminated && !game.deathOrder.includes(defenderId)) {
     game.deathOrder.push(defenderId);
+    recordAwayElimination(game, defenderId);
     if (attackerId !== undefined)
       game.stats.get(attackerId)?.playersKilled.push(defenderId);
     for (const [seaTerritoryId, shipsByPlayer] of game.seaShips) {

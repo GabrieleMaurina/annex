@@ -135,6 +135,7 @@ export function gameSummary(game: Game) {
       minRank: game.minRank,
       minGames: game.minGames,
       minAccountAge: game.minAccountAge,
+      minReputation: game.minReputation,
     },
   };
 }
@@ -262,6 +263,7 @@ export function gameState(game: Game) {
     minRank: game.minRank,
     minGames: game.minGames,
     minAccountAge: game.minAccountAge,
+    minReputation: game.minReputation,
     hillTerritoryIds: game.hillTerritoryIds,
     continentId: game.continentId,
     placement: game.placement,

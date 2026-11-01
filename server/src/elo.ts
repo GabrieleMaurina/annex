@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import { DEFAULT_ELO, getElosByIds, setElos } from './db';
 import { userIdByPlayerId } from './sockets/socketRooms';
 
@@ -13,16 +14,27 @@ function lossDamp(rating: number): number {
 
 export type EloPenalty = 'disconnected' | 'surrender';
 
-interface AbandonEntry {
+export interface AbandonEntry {
   surrenderRound: number | null;
   disconnected: boolean;
 }
 
-function abandonPenalty(entry: AbandonEntry): number {
+export function abandonPenalty(entry: AbandonEntry): number {
   if (entry.disconnected) return ABANDON_PENALTY;
   if (entry.surrenderRound === null) return 0;
   const roundsEarly = Math.max(0, FREE_SURRENDER_ROUND - entry.surrenderRound);
   return (ABANDON_PENALTY * roundsEarly) / FREE_SURRENDER_ROUND;
+}
+
+export function isOpponent(
+  player: { playerId: number; team: number },
+  other: { playerId: number; team: number },
+  gameMode: string,
+): boolean {
+  return (
+    other.playerId !== player.playerId &&
+    (gameMode !== 'team deathmatch' || other.team !== player.team)
+  );
 }
 
 function clampElo(rating: number): number {
@@ -36,6 +48,7 @@ export interface GameElo {
 }
 
 const participantsByGame = new Map<string, Map<number, string>>();
+const gameIdByGame = new Map<string, string>();
 const elosByGame = new Map<string, Map<number, GameElo>>();
 
 export function recordGameParticipants(game: {
@@ -48,10 +61,15 @@ export function recordGameParticipants(game: {
     if (userId !== undefined) byPlayerId.set(player.id, userId);
   }
   participantsByGame.set(game.name, byPlayerId);
+  gameIdByGame.set(game.name, new ObjectId().toString());
 }
 
 export function gameParticipants(gameName: string): Map<number, string> {
   return participantsByGame.get(gameName) ?? new Map();
+}
+
+export function startedGameId(gameName: string): string | undefined {
+  return gameIdByGame.get(gameName);
 }
 
 export function gameElos(gameName: string): Map<number, GameElo> {
@@ -76,11 +94,11 @@ export function handleGameEnded(payload: {
 }): Promise<Map<number, GameElo>> {
   const participants = participantsByGame.get(payload.gameName);
   participantsByGame.delete(payload.gameName);
+  gameIdByGame.delete(payload.gameName);
   elosByGame.delete(payload.gameName);
   const noElos = Promise.resolve(new Map<number, GameElo>());
   if (!participants || participants.size === 0) return noElos;
 
-  const isTeam = payload.gameMode === 'team deathmatch';
   const ranked = payload.ranking
     .map((entry, rank) => {
       const penalty = abandonPenalty(entry);
@@ -130,8 +148,7 @@ export function handleGameEnded(payload: {
         let delta = 0;
         let opponents = 0;
         for (const opponent of ranked) {
-          if (opponent === player) continue;
-          if (isTeam && opponent.team === player.team) continue;
+          if (!isOpponent(player, opponent, payload.gameMode)) continue;
           const opponentRating = ratings.get(opponent.userId) ?? DEFAULT_ELO;
           const expected =
             1 / (1 + Math.pow(10, (opponentRating - rating) / 400));

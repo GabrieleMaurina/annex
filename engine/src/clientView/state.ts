@@ -92,6 +92,7 @@ export function viewGameStateFor(
     minRank: s.minRank,
     minGames: s.minGames,
     minAccountAge: s.minAccountAge,
+    minReputation: s.minReputation,
     hillTerritoryIds: s.hillTerritoryIds,
     continentId: s.continentId,
     placement: s.placement,

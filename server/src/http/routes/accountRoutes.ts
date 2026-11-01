@@ -4,10 +4,8 @@ import { isValidPassword } from '../../auth/auth';
 import { hashPassword, verifyPassword } from '../../auth/password';
 import { isSelectableCountry } from '../../countries';
 import {
-  deleteReportsForPicture,
   findUserById,
   getUserPicture,
-  reportPicture,
   setCountry,
   setPassword,
   setUserPicture,
@@ -25,12 +23,6 @@ const MAX_IMAGE_BYTES = 2_500_000;
 
 function bodyOf(req: { body: unknown }): Record<string, unknown> {
   return isObject(req.body) ? req.body : {};
-}
-
-function clearReports(pictureId: string): Promise<void> {
-  return deleteReportsForPicture(pictureId).catch((error) => {
-    console.error('[account] failed to clear picture reports', error);
-  });
 }
 
 accountRouter.get('/account', (_req, res) => {
@@ -153,12 +145,10 @@ accountRouter.post('/account/picture', (req, res) => {
         res.json({ ok: false, error: 'image rejected' });
         return;
       }
-      return getUserPicture(session.userId).then((previous) => {
-        const id = new ObjectId().toString();
-        return setUserPicture(session.userId, { id, data, mime })
-          .then(() => (previous ? clearReports(previous.id) : undefined))
-          .then(() => res.json({ ok: true }));
-      });
+      const id = new ObjectId().toString();
+      return setUserPicture(session.userId, { id, data, mime }).then(() =>
+        res.json({ ok: true }),
+      );
     })
     .catch((error) => {
       console.error('[account] picture upload failed', error);
@@ -172,24 +162,7 @@ accountRouter.post('/account/picture/remove', (_req, res) => {
     res.json({ ok: false, error: 'not logged in' });
     return;
   }
-  getUserPicture(session.userId)
-    .then((previous) =>
-      unsetUserPicture(session.userId).then(() =>
-        previous ? clearReports(previous.id) : undefined,
-      ),
-    )
+  unsetUserPicture(session.userId)
     .then(() => res.json({ ok: true }))
-    .catch(() => res.json({ ok: false, error: 'server error' }));
-});
-
-accountRouter.post('/account/report', (req, res) => {
-  const { session } = identityOf(res);
-  if (!session) {
-    res.json({ ok: false, error: 'not logged in' });
-    return;
-  }
-  const userId = bodyOf(req).userId;
-  reportPicture(session.userId, typeof userId === 'string' ? userId : '')
-    .then((result) => res.json(result))
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });

@@ -3,6 +3,8 @@ import { Server, Socket } from 'socket.io';
 import { anonNameFor } from './auth/anonName';
 import { randomToken, resolveSession } from './auth/auth';
 import { sessionTokenFromRequest } from './auth/cookies';
+import { emitBlockedPlayers } from './conduct/blockPeers';
+import { cachedReputation } from './conduct/viewerCache';
 import { countGamesPlayed } from './db';
 import { emitGameMeta } from './gameMeta';
 import {
@@ -11,6 +13,7 @@ import {
   playerIdBySocketId,
   playerIdByUserId,
   sessionTokenBySocketId,
+  setPlayerIdForUser,
   setSocketRoom,
   socketIdByPlayerId,
   userIdBySocketId,
@@ -40,7 +43,7 @@ function resolveIdentity(engine: Engine, rawToken: string): Promise<Identity> {
           session.country,
           session.elo,
         ).id;
-        playerIdByUserId.set(session.userId, playerId);
+        setPlayerIdForUser(session.userId, playerId);
       } else {
         engine.setName(playerId, session.username);
         engine.setBadges(playerId, session.country, session.elo);
@@ -48,6 +51,13 @@ function resolveIdentity(engine: Engine, rawToken: string): Promise<Identity> {
       const accountPlayerId = playerId;
       return countGamesPlayed(session.userId).then((gamesPlayed) => {
         engine.setExperience(accountPlayerId, gamesPlayed, session.createdAt);
+        const { reputation, recoveryFrom } = cachedReputation(
+          session.userId,
+        ) ?? {
+          reputation: session.reputation,
+          recoveryFrom: session.reputationRecoveryFrom,
+        };
+        engine.setReputation(accountPlayerId, reputation, recoveryFrom);
         return { playerId: accountPlayerId, token, userId: session.userId };
       });
     }
@@ -91,7 +101,10 @@ export function registerHomeHandlers(
 
         const result = engine.resyncPlayer(identity.playerId, room);
         setSocketRoom(io, identity.playerId, result.gameName);
-        if (result.gameName) emitGameMeta(io, result.gameName, socket);
+        if (result.gameName) {
+          emitGameMeta(io, result.gameName, socket);
+          emitBlockedPlayers(io, identity.playerId);
+        }
 
         callback({
           id: result.id,

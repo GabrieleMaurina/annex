@@ -118,6 +118,10 @@ function GameMap({
   settingsMenuOpen,
   onPanelOpenChange,
   navigate,
+  storedGameId,
+  conductFriends,
+  conductBlockedUserIds,
+  onConductChange,
 }: GameMapProps) {
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteBonusIcon = useWhiteIcon('/icons/bonus.svg');
@@ -742,6 +746,12 @@ function GameMap({
         allianceCellRefs={allianceUI.allianceCellRefs}
         onAllianceCellClick={allianceUI.handleAllianceCellClick}
         allianceCooldownIds={allianceUI.allianceCooldownIds}
+        storedGameId={storedGameId}
+        conductFriends={conductFriends}
+        conductBlockedUserIds={conductBlockedUserIds}
+        anonymous={game.anonymous === 'on'}
+        onConductChange={onConductChange}
+        endedAt={game.endedAt}
       />
       <AlliancePopupOverlay
         alliancePopupFor={allianceUI.alliancePopupFor}

@@ -337,6 +337,33 @@ export function playerGameName(playerId: number): string | null {
   return playersById.get(playerId)?.gameName ?? null;
 }
 
+export function isGameMember(playerId: number, gameName: string): boolean {
+  if (playersById.get(playerId)?.gameName === gameName) return true;
+  const game = games.get(gameName);
+  if (!game) return false;
+  return (
+    game.playerIds.includes(playerId) ||
+    [...game.substituteFor.values()].includes(playerId)
+  );
+}
+
+export function occupiedGames(playerIds: Set<number>): Set<string> {
+  const names = new Set<string>();
+  if (playerIds.size === 0) return names;
+  for (const id of playerIds) {
+    const name = playersById.get(id)?.gameName;
+    if (name) names.add(name);
+  }
+  for (const game of games.values()) {
+    if (
+      game.playerIds.some((id) => playerIds.has(id)) ||
+      [...game.substituteFor.values()].some((id) => playerIds.has(id))
+    )
+      names.add(game.name);
+  }
+  return names;
+}
+
 export function playerGameState(playerId: number): Game['state'] | null {
   const name = playersById.get(playerId)?.gameName;
   if (!name) return null;
@@ -547,6 +574,17 @@ export function setExperience(
   if (!player) return;
   player.gamesPlayed = gamesPlayed;
   player.accountCreatedAt = accountCreatedAt;
+}
+
+export function setReputation(
+  playerId: number,
+  reputation: number,
+  recoveryFrom: number | null,
+): void {
+  const player = playersById.get(playerId);
+  if (!player) return;
+  player.reputation = reputation;
+  player.reputationRecoveryFrom = recoveryFrom;
 }
 
 export function disconnect(playerId: number): void {

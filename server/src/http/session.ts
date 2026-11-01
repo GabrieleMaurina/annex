@@ -19,11 +19,13 @@ export function sessionRouter(
         res.json({
           account: session
             ? {
+                id: session.userId,
                 username: session.username,
                 elo: session.elo,
                 country: session.country,
                 gamesPlayed,
                 createdAt: session.createdAt,
+                reputation: session.reputation,
               }
             : null,
           name: session ? session.username : anonNameFor(token),

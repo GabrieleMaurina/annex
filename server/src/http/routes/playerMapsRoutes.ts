@@ -9,11 +9,11 @@ import {
   TileShape,
 } from 'engine';
 import { Response, Router } from 'express';
+import { addReputation } from '../../conduct/reputation';
 import {
   createPlayerMap,
   deleteLikesForMap,
   deletePlayerMap,
-  deleteReportsForMap,
   getPlayerMapById,
   getPlayerMapImage,
   getPlayerMapOwner,
@@ -43,6 +43,8 @@ const SORTS: PlayerMapSort[] = [
   'nameDesc',
 ];
 
+const DANGEROUS_MAP_PENALTY = 15;
+
 function bodyOf(req: { body: unknown }): Record<string, unknown> {
   return isObject(req.body) ? req.body : {};
 }
@@ -63,6 +65,16 @@ function enumParam<T extends string>(
 
 function moderate(dataUrl: string): Promise<'error' | boolean> {
   return isImageAllowed(dataUrl).catch(() => 'error' as const);
+}
+
+function penalizeMapAuthor(authorId: string, mapId: string): Promise<void> {
+  return addReputation(authorId, -DANGEROUS_MAP_PENALTY, {
+    reason: 'map',
+    refId: mapId,
+  }).then(
+    () => undefined,
+    (error) => console.error('failed to apply map penalty', error),
+  );
 }
 
 playerMapsRouter.get('/player-maps', (req, res) => {
@@ -256,10 +268,9 @@ playerMapsRouter.post('/player-maps/:id/delete', (req, res) => {
         res.json(result);
         return;
       }
-      return Promise.all([
-        deleteLikesForMap(req.params.id),
-        deleteReportsForMap(req.params.id),
-      ]).then(() => res.json({ ok: true }));
+      return deleteLikesForMap(req.params.id).then(() =>
+        res.json({ ok: true }),
+      );
     })
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });
@@ -311,7 +322,18 @@ playerMapsRouter.post('/player-maps/:id/report', (req, res) => {
     res.json({ ok: false, error: 'not logged in' });
     return;
   }
-  reportMap(session.userId, req.params.id)
-    .then((result) => res.json(result))
+  const mapId = req.params.id;
+  reportMap(session.userId, mapId)
+    .then((result) => {
+      if (!result.ok) {
+        res.json(result);
+        return;
+      }
+      return (
+        result.flaggedAuthorId
+          ? penalizeMapAuthor(result.flaggedAuthorId, mapId)
+          : Promise.resolve()
+      ).then(() => res.json({ ok: true }));
+    })
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });

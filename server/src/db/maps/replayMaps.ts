@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import { LockedTile, TimedConnection } from 'engine';
 import { Binary } from 'mongodb';
 import { MapGeneration } from '../../validate';
-import { ensureCollection, getCollection } from '../mongo';
+import { CollectionSpec, getCollection } from '../mongo';
 import { MAP_PROPERTIES, MAP_REQUIRED } from './mapSchema';
 
 export const REPLAY_MAPS = 'replay_maps';
@@ -88,11 +88,11 @@ function collection() {
   return getCollection<MapDoc>(REPLAY_MAPS);
 }
 
-export function ensureReplayMaps(): Promise<unknown> {
-  return ensureCollection(REPLAY_MAPS, schema).then(() =>
-    collection().createIndex({ name: 1 }),
-  );
-}
+export const REPLAY_MAPS_COLLECTION: CollectionSpec = {
+  name: REPLAY_MAPS,
+  schema,
+  indexes: [{ key: { name: 1 } }],
+};
 
 export function storeMap(doc: MapDoc): Promise<void> {
   const { _id, ...rest } = doc;

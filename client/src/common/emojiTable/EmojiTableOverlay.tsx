@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Card } from 'react-bootstrap';
 import {
   ATTACK_EMOJI,
   EMOJI_LABELS,
@@ -5,8 +7,9 @@ import {
   EMOJIS,
   GLOBAL_TARGET_ID,
 } from '../../game/logic/emoji';
-import type { EmojiValue, GameState } from '../../lib/types';
+import type { EmojiValue, FriendsOverview, GameState } from '../../lib/types';
 import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
+import PlayerConductActions from '../conduct/PlayerConductActions';
 import { useWhiteIcon } from '../icon';
 import { isPlayerMuted, toggleMutePlayer } from '../mutedPlayers';
 import Tip from '../tooltips/Tip';
@@ -14,6 +17,57 @@ import type { TableEmojiPop } from './useTableEmojiReactions';
 
 const PICKABLE_EMOJIS = EMOJIS.filter((emoji) => emoji !== ATTACK_EMOJI);
 const NAME_GAP = 8;
+
+interface TableConduct {
+  friends?: FriendsOverview;
+  blockedUserIds?: string[];
+  allowReport: boolean;
+  onChange: () => void;
+}
+
+interface ConductMenuProps {
+  playerId: number;
+  userId: string;
+  conduct: TableConduct;
+}
+
+function ConductMenu({ playerId, userId, conduct }: ConductMenuProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Tip text="More" placement="bottom">
+        <button
+          type="button"
+          className="border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
+          style={{
+            fontSize: 24,
+            padding: '3px 2px 5px 2px',
+            borderRadius: 4,
+          }}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          ⋯
+        </button>
+      </Tip>
+      {open && (
+        <Card className="position-absolute top-100 start-0 mt-1" body>
+          <PlayerConductActions
+            live
+            playerId={playerId}
+            userId={userId}
+            allowFriend
+            allowReport={conduct.allowReport}
+            allowBlock
+            httpBlock
+            friends={conduct.friends}
+            blockedUserIds={conduct.blockedUserIds}
+            onChange={conduct.onChange}
+          />
+        </Card>
+      )}
+    </>
+  );
+}
 
 interface Props {
   emojiPickerFor: number | null;
@@ -25,6 +79,7 @@ interface Props {
   players?: GameState['players'];
   navigate?: (path: string) => void;
   bumpMuteVersion: () => void;
+  conduct?: TableConduct;
 }
 
 function EmojiTableOverlay({
@@ -37,6 +92,7 @@ function EmojiTableOverlay({
   players,
   navigate,
   bumpMuteVersion,
+  conduct,
 }: Props) {
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
@@ -127,6 +183,14 @@ function EmojiTableOverlay({
                     🧑
                   </button>
                 </Tip>
+              )}
+              {conduct && pickerPlayer?.userId && (
+                <ConductMenu
+                  key={pickerPlayer.id}
+                  playerId={pickerPlayer.id}
+                  userId={pickerPlayer.userId}
+                  conduct={conduct}
+                />
               )}
             </div>
           );

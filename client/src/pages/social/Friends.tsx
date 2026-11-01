@@ -121,10 +121,7 @@ function Friends({ account }: Props) {
       {results.length > 0 && (
         <ListGroup className="mt-2">
           {results
-            .filter(
-              (r) =>
-                r.username.toLowerCase() !== account.username.toLowerCase(),
-            )
+            .filter((r) => r.id !== account.id)
             .map((r) => (
               <ListGroup.Item
                 key={r.id}

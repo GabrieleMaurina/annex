@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { ensureCollection, getCollection } from '../mongo';
+import { CollectionSpec, getCollection } from '../mongo';
 import { getPlayerMapOwner, markPlayerMapDangerous } from './playerMaps';
 
 const NAME = 'map_reports';
@@ -33,16 +33,17 @@ function collection() {
   return getCollection<ReportDoc>(NAME);
 }
 
-export function ensureMapReports(): Promise<unknown> {
-  return ensureCollection(NAME, schema).then(() =>
-    Promise.all([
-      collection().createIndex({ mapId: 1, reporterId: 1 }, { unique: true }),
-      collection().createIndex({ mapId: 1 }),
-    ]),
-  );
-}
+export const MAP_REPORTS_COLLECTION: CollectionSpec = {
+  name: NAME,
+  schema,
+  indexes: [
+    { key: { mapId: 1, reporterId: 1 }, options: { unique: true } },
+    { key: { mapId: 1 } },
+  ],
+};
 
-type Result = { ok: true } | { ok: false; error: string };
+type Result =
+  { ok: true; flaggedAuthorId: string | null } | { ok: false; error: string };
 
 export function reportMap(reporterId: string, mapId: string): Promise<Result> {
   if (!ObjectId.isValid(mapId))
@@ -60,9 +61,11 @@ export function reportMap(reporterId: string, mapId: string): Promise<Result> {
       })
       .then(() => collection().countDocuments({ mapId: new ObjectId(mapId) }))
       .then((count) => {
-        if (count < REPORT_THRESHOLD) return { ok: true as const };
-        return markPlayerMapDangerous(mapId).then(() => ({
+        if (count < REPORT_THRESHOLD)
+          return { ok: true as const, flaggedAuthorId: null };
+        return markPlayerMapDangerous(mapId).then((flipped) => ({
           ok: true as const,
+          flaggedAuthorId: flipped ? owner.authorId : null,
         }));
       })
       .catch((error: { code?: number }) => {
@@ -71,10 +74,4 @@ export function reportMap(reporterId: string, mapId: string): Promise<Result> {
         throw error;
       });
   });
-}
-
-export function deleteReportsForMap(mapId: string): Promise<void> {
-  return collection()
-    .deleteMany({ mapId: new ObjectId(mapId) })
-    .then(() => undefined);
 }

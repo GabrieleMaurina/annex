@@ -28,7 +28,7 @@
   padding-bottom: 4px;
 }
 
-.table > tbody > tr[role='button'] > :first-child {
+.table > tbody > tr[role='button'] {
   position: relative;
 }
 
@@ -44,12 +44,11 @@
 }
 
 .table > tbody > tr[role='button']:active > * {
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6);
+  box-shadow: none;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.6), transparent 6px);
   filter: brightness(0.82) saturate(1.15);
 }
 
 .table > tbody > tr[role='button']:active > :first-child {
-  box-shadow:
-    inset 3px 0 0 var(--bs-primary),
-    inset 0 2px 5px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 3px 0 0 var(--bs-primary);
 }

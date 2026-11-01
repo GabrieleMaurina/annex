@@ -4,6 +4,7 @@ import { gameRoomName } from './rooms';
 
 export const playerIdBySessionToken = new Map<string, number>();
 export const playerIdByUserId = new Map<string, number>();
+const userIdOfPlayerId = new Map<number, string>();
 export const socketIdByPlayerId = new Map<number, string>();
 export const playerIdBySocketId = new Map<string, number>();
 export const sessionTokenBySocketId = new Map<string, string>();
@@ -22,11 +23,13 @@ export function emitTo(
   else io.to(socketId).emit(event, payload);
 }
 
+export function setPlayerIdForUser(userId: string, playerId: number) {
+  playerIdByUserId.set(userId, playerId);
+  userIdOfPlayerId.set(playerId, userId);
+}
+
 export function userIdByPlayerId(playerId: number): string | undefined {
-  for (const [userId, id] of playerIdByUserId) {
-    if (id === playerId) return userId;
-  }
-  return undefined;
+  return userIdOfPlayerId.get(playerId);
 }
 
 export function playerIdForIdentity(

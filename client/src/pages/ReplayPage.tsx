@@ -8,7 +8,12 @@ import GameReplayView from '../game/replay/GameReplayView';
 import { foldStoredReplay } from '../game/replay/replay';
 import ReplayLoading from '../game/replay/ReplayLoading';
 import { isLoggedIn } from '../lib/player';
-import type { GameState, ReplayTerritory, StoredGame } from '../lib/types';
+import type {
+  FriendsOverview,
+  GameState,
+  ReplayTerritory,
+  StoredGame,
+} from '../lib/types';
 
 interface Props {
   navigate: (path: string) => void;
@@ -96,6 +101,7 @@ function buildGameState(
     minRank: s.minRank,
     minGames: s.minGames,
     minAccountAge: s.minAccountAge,
+    minReputation: s.minReputation,
     hillTerritoryIds: doc.hillTerritoryIds ?? [],
     continentId: s.continentId,
     placement: s.placement,
@@ -217,6 +223,19 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
   const [notFound, setNotFound] = useState(false);
   const [mapSave, setMapSave] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [mapSaveError, setMapSaveError] = useState('');
+  const [friends, setFriends] = useState<FriendsOverview>();
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>();
+
+  useEffect(() => {
+    if (!isLoggedIn()) return;
+    connector.listFriends(setFriends);
+    connector.listBlocks(setBlockedUserIds);
+  }, []);
+
+  function refreshConduct() {
+    connector.listFriends(setFriends);
+    connector.listBlocks(setBlockedUserIds);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -332,6 +351,10 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
         )
       }
       shareGameId={id}
+      storedGameId={id}
+      conductFriends={friends}
+      conductBlockedUserIds={blockedUserIds}
+      onConductChange={refreshConduct}
       navigate={navigate}
       onViewChange={onViewChange}
       settingsMenuOpen={settingsMenuOpen}

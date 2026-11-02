@@ -17,7 +17,6 @@
 
 .page-gate-door {
   flex: 1;
-  animation: 0.25s 0.05s cubic-bezier(0.7, 0, 0.3, 1) both;
 }
 
 :root:not(.animations-off) .modal.show .modal-content::before,
@@ -76,7 +75,7 @@
 }
 
 .page-gate-left {
-  animation-name: page-gate-left;
+  animation: page-gate-left 0.25s 0.05s cubic-bezier(0.7, 0, 0.3, 1) both;
 }
 
 :root:not(.animations-off) .modal.show .modal-content::after {
@@ -100,7 +99,7 @@
 }
 
 .page-gate-right {
-  animation-name: page-gate-right;
+  animation: page-gate-right 0.25s 0.05s cubic-bezier(0.7, 0, 0.3, 1) both;
 }
 
 :root:not(.animations-off) .modal.show .modal-fullscreen .modal-content::before,

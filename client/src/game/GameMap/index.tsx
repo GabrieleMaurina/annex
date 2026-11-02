@@ -1,5 +1,6 @@
 import { useEffect, useReducer } from 'react';
 import { useWhiteIcon } from '../../common/icon';
+import TutorialHighlight from '../../tutorials/TutorialHighlight';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
 import { loadHourglassIcons } from './draw/drawTimedLinks';
@@ -122,6 +123,7 @@ function GameMap({
   conductFriends,
   conductBlockedUserIds,
   onConductChange,
+  tutorialHighlight,
 }: GameMapProps) {
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteBonusIcon = useWhiteIcon('/icons/bonus.svg');
@@ -139,12 +141,14 @@ function GameMap({
     seaTerritories,
     bonuses,
     timedConnections,
+    directionalConnections,
     lockedTiles,
     forcedWraps,
     regions: mapRegions,
     placeNames,
     camera,
     imgDims,
+    imageLoaded,
     size,
   } = useMapView(mapName, game.playerMapId);
 
@@ -249,15 +253,22 @@ function GameMap({
     replay,
     placeNames,
   });
-  const { territories, openTerritories, regions, closedTiles, timedLinks } =
-    useMapGraph({
-      mapTerritories,
-      mapRegions,
-      timedConnections,
-      lockedTiles,
-      unlockedTileIds: replay.unlockedTileIds ?? game.unlockedTileIds,
-      round: showReplay ? (replay.roundNumber ?? 0) : roundNumber,
-    });
+  const {
+    territories,
+    openTerritories,
+    regions,
+    closedTiles,
+    timedLinks,
+    directionalLinks,
+  } = useMapGraph({
+    mapTerritories,
+    mapRegions,
+    timedConnections,
+    directionalConnections,
+    lockedTiles,
+    unlockedTileIds: replay.unlockedTileIds ?? game.unlockedTileIds,
+    round: showReplay ? (replay.roundNumber ?? 0) : roundNumber,
+  });
   const ownedTerritoryIds = new Set(
     ownership.filter((o) => o.ownerId === selfId).map((o) => o.id),
   );
@@ -307,6 +318,7 @@ function GameMap({
     game,
     toxins,
     closedTiles,
+    links: { timedConnections, directionalConnections },
     cards,
     nextSetBaseValues,
     setGame,
@@ -543,7 +555,7 @@ function GameMap({
     portalsEnabled,
     portalTerritoryIds,
     hasToxinTerritories,
-    hasTimedLinks: timedLinks.length > 0,
+    hasTimedLinks: timedLinks.length + directionalLinks.length > 0,
     radiationById,
     radiationUpcomingById,
     visibleTerritoryIds,
@@ -622,6 +634,7 @@ function GameMap({
       forcedWraps,
       regions,
       timedLinks,
+      directionalLinks,
       unlockTiles: attackFlow.unlockTiles,
       placeNames,
     };
@@ -796,6 +809,19 @@ function GameMap({
           onJumpEnd={replay.jumpToEnd}
           onSeek={replay.seek}
           onCycleSpeed={replay.cycleSpeed}
+        />
+      )}
+      {tutorialHighlight !== undefined && imageLoaded && (
+        <TutorialHighlight
+          target={tutorialHighlight}
+          camera={camera}
+          places={[...territories, ...seaTerritories]}
+          size={size}
+          imgDims={imgDims}
+          VERTEX_RADIUS={VERTEX_RADIUS}
+          cardsButtonRef={cardsButtonRef}
+          cardsButtonsTop={cardsButtonsTop}
+          panelOpen={openPanel !== null}
         />
       )}
       <TurnActionPanels

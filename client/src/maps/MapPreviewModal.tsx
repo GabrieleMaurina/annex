@@ -58,7 +58,8 @@ function MapPreviewModal({
                   ` (${tileShapeLabel(preview.generation.tile)})`}
                 , {preview.generation.fill} fill, {preview.generation.size}
                 {preview.generation.seas && ', seas'}
-                {preview.generation.timed && ', timed connections'}
+                {preview.generation.timed && ', timed links'}
+                {preview.generation.directional && ', directional links'}
                 {preview.generation.unlockable && ', unlockable'}
                 {preview.generation.mountains && ', mountains'}
                 {preview.generation.rivers && ', rivers'}

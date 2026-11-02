@@ -1,6 +1,7 @@
 import { timeStep } from '../../core/bench';
 import { Fill, GridDimensions, mapImageSize, MapSize } from '../../core/params';
 import { randomInt, Rng } from '../../core/rng';
+import { LinkRngs } from '../../links';
 import {
   continentDungeonTone,
   DUNGEON_SEAM_COLOR,
@@ -328,7 +329,7 @@ export function generateDungeon(
   size: MapSize,
   dims: GridDimensions,
   seas: boolean,
-  timedRng: Rng | null,
+  linkRngs: LinkRngs,
 ): MazeMap {
   const densityScale = Math.sqrt(
     (1 - VOID_FRACTION.full) / (1 - VOID_FRACTION[fill]),
@@ -378,6 +379,6 @@ export function generateDungeon(
     },
     fill !== 'full',
     seas,
-    timedRng,
+    linkRngs,
   );
 }

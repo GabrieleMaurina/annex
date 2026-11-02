@@ -8,6 +8,7 @@ import {
   TERRITORY_MERGE_COUNTS,
 } from '../../core/params';
 import { randomInt, Rng } from '../../core/rng';
+import { LinkRngs } from '../../links';
 import { clusterContinents } from '../continents';
 import { cleanLandMask } from '../islands';
 import { mergeTerritories } from '../merge';
@@ -36,7 +37,7 @@ export function generateTerrain(
   size: MapSize,
   dims: GridDimensions,
   seas: boolean,
-  timedRng: Rng | null,
+  linkRngs: LinkRngs,
   toggles: TerrainToggles,
 ): TerrainMap {
   const { width, height } = dims;
@@ -113,7 +114,7 @@ export function generateTerrain(
     landCount: centers.length,
     dims,
     seas,
-    timedRng,
+    linkRngs,
     expectedTerritoryArea,
     maxLandNeighborsPerSea,
     seaAreaMultiplier: TERRAIN_SEA_AREA_MULTIPLIER,

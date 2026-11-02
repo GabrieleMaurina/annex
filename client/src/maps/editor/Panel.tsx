@@ -22,12 +22,14 @@ import { useSmoothEdges } from './canvas/smoothEdges';
 import {
   allPlaceNames,
   NO_CONTINENT,
+  type LinkMode,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
 import type { PaintTool } from './paint/paintTools';
 import { PALETTE_GROUPS } from './paint/paintTools';
 import { SHAPE_KINDS, shapeSides, type ShapeKind } from './paint/shapes';
 import { continentColor } from './palette';
+import DirectionalLinksTable from './panel/DirectionalLinksTable';
 import NumberCell from './panel/NumberCell';
 import PlaceNameInput from './panel/PlaceNameInput';
 import ShapeIcon from './panel/ShapeIcon';
@@ -105,8 +107,8 @@ interface Props {
   setBorderPreview: (value: boolean) => void;
   borderColors: string[];
   setBorderColors: (value: string[]) => void;
-  timedMode: boolean;
-  setTimedMode: (value: boolean) => void;
+  linkMode: LinkMode;
+  setLinkMode: (value: LinkMode) => void;
 }
 
 function clampBrush(raw: string, current: number): number {
@@ -229,8 +231,8 @@ function Panel(props: Props) {
     setBorderPreview,
     borderColors,
     setBorderColors,
-    timedMode,
-    setTimedMode,
+    linkMode,
+    setLinkMode,
   } = props;
 
   const brushNumberInput = useNumberInput({
@@ -606,77 +608,79 @@ function Panel(props: Props) {
       <div>
         {mode === 'paint' ? (
           <>
-            <div className="d-flex flex-wrap gap-1 mb-1">
-              {TOOLS.map((t) =>
-                t.key === 'shape' ? (
-                  <Dropdown
-                    key={t.key}
-                    as={ButtonGroup}
-                    onSelect={(key) => {
-                      if (!key) return;
-                      setShapeKind(key as ShapeKind);
-                      setTool('shape');
-                    }}
-                  >
+            <div className="row row-cols-2 g-1 mb-1">
+              {TOOLS.map((t) => (
+                <div key={t.key} className="col">
+                  {t.key === 'shape' ? (
+                    <Dropdown
+                      as={ButtonGroup}
+                      className="w-100"
+                      onSelect={(key) => {
+                        if (!key) return;
+                        setShapeKind(key as ShapeKind);
+                        setTool('shape');
+                      }}
+                    >
+                      <Button
+                        size="sm"
+                        variant={
+                          tool === 'shape' ? 'primary' : 'outline-secondary'
+                        }
+                        className="d-flex flex-grow-1 align-items-center justify-content-center gap-1"
+                        onClick={() =>
+                          setTool(tool === 'shape' ? null : 'shape')
+                        }
+                      >
+                        <ShapeIcon kind={shapeKind} />
+                        {titleCase(shapeKind)}
+                      </Button>
+                      <Dropdown.Toggle
+                        size="sm"
+                        variant={
+                          tool === 'shape' ? 'primary' : 'outline-secondary'
+                        }
+                        split
+                      >
+                        <span className="visually-hidden">Choose shape</span>
+                      </Dropdown.Toggle>
+                      <Dropdown.Menu>
+                        {SHAPE_KINDS.map((k) => (
+                          <Dropdown.Item
+                            key={k}
+                            as="button"
+                            eventKey={k}
+                            active={tool === 'shape' && shapeKind === k}
+                            className="d-flex align-items-center gap-2"
+                          >
+                            <ShapeIcon kind={k} />
+                            <span className="flex-grow-1">{titleCase(k)}</span>
+                            <span className="small opacity-75">
+                              {shapeSides(k)}
+                            </span>
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown>
+                  ) : t.group ? (
+                    <ToolGroup
+                      label={t.label}
+                      options={t.group}
+                      tool={tool}
+                      setTool={setTool}
+                    />
+                  ) : (
                     <Button
                       size="sm"
-                      variant={
-                        tool === 'shape' ? 'primary' : 'outline-secondary'
-                      }
-                      className="d-flex align-items-center gap-1"
-                      onClick={() => setTool(tool === 'shape' ? null : 'shape')}
+                      variant={tool === t.key ? 'primary' : 'outline-secondary'}
+                      onClick={() => setTool(tool === t.key ? null : t.key)}
+                      className="d-flex w-100 align-items-center justify-content-center gap-1"
                     >
-                      <ShapeIcon kind={shapeKind} />
-                      {titleCase(shapeKind)}
+                      {t.icon && <WhiteIcon path={t.icon} />}
+                      {t.label}
                     </Button>
-                    <Dropdown.Toggle
-                      size="sm"
-                      variant={
-                        tool === 'shape' ? 'primary' : 'outline-secondary'
-                      }
-                      split
-                    >
-                      <span className="visually-hidden">Choose shape</span>
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu>
-                      {SHAPE_KINDS.map((k) => (
-                        <Dropdown.Item
-                          key={k}
-                          as="button"
-                          eventKey={k}
-                          active={tool === 'shape' && shapeKind === k}
-                          className="d-flex align-items-center gap-2"
-                        >
-                          <ShapeIcon kind={k} />
-                          <span className="flex-grow-1">{titleCase(k)}</span>
-                          <span className="small opacity-75">
-                            {shapeSides(k)}
-                          </span>
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  </Dropdown>
-                ) : t.group ? (
-                  <ToolGroup
-                    key={t.key}
-                    label={t.label}
-                    options={t.group}
-                    tool={tool}
-                    setTool={setTool}
-                  />
-                ) : (
-                  <Button
-                    key={t.key}
-                    size="sm"
-                    variant={tool === t.key ? 'primary' : 'outline-secondary'}
-                    onClick={() => setTool(tool === t.key ? null : t.key)}
-                    className="d-flex align-items-center gap-1"
-                  >
-                    {t.icon && <WhiteIcon path={t.icon} />}
-                    {t.label}
-                  </Button>
-                ),
-              )}
+                  )}
+                </div>
+              ))}
             </div>
             <div className="d-flex gap-3 mb-2">
               <Form.Check
@@ -904,8 +908,14 @@ function Panel(props: Props) {
             <TimedLinksTable
               territories={territories}
               setTerritories={setTerritories}
-              timedMode={timedMode}
-              setTimedMode={setTimedMode}
+              linkMode={linkMode}
+              setLinkMode={setLinkMode}
+            />
+            <DirectionalLinksTable
+              territories={territories}
+              setTerritories={setTerritories}
+              linkMode={linkMode}
+              setLinkMode={setLinkMode}
             />
           </>
         )}

@@ -48,6 +48,8 @@ export interface FortifyMove {
 export interface MapTopology {
   neighbors: Map<number, number[]>;
   horizonNeighbors: Map<number, number[]>;
+  attackers: Map<number, number[]>;
+  horizonAttackers: Map<number, number[]>;
   seaLinks: Map<number, number[]>;
   continentTerritories: Map<number, number[]>;
   territoryContinent: Map<number, number>;

@@ -24,6 +24,7 @@ function ToolGroup({ label, options, tool, setTool }: Props) {
   return (
     <Dropdown
       as={ButtonGroup}
+      className="w-100"
       onSelect={(key) => {
         const option = options.find((o) => o.key === key);
         if (option) setTool(option.key);
@@ -32,7 +33,7 @@ function ToolGroup({ label, options, tool, setTool }: Props) {
       <Button
         size="sm"
         variant={variant}
-        className="d-flex align-items-center gap-1"
+        className="d-flex flex-grow-1 align-items-center justify-content-center gap-1"
         onClick={() => setTool(active ? null : chosen.key)}
       >
         <WhiteIcon path={chosen.icon} />

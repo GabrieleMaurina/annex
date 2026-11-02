@@ -126,7 +126,7 @@ function thirdPartyCount(
   ownerId: number,
 ): number {
   const owners = new Set<number>();
-  for (const n of ctx.neighbors.get(endId) ?? []) {
+  for (const n of ctx.attackers.get(endId) ?? []) {
     const neighborOwner = ownerOf(ctx.game, ctx.view, n);
     if (
       neighborOwner !== undefined &&

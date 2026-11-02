@@ -42,17 +42,15 @@ import type {
   GenerateInput,
 } from './editor/generateMap';
 import GenerateMapModal from './editor/GenerateMapModal';
-import {
-  invalidContinentSizes,
-  isConnected,
-  MAX_CONTINENT_SIZE,
-  MIN_CONTINENT_SIZE,
-} from './editor/graph';
+import { graphError } from './editor/graph';
 import MapCanvas, { type MapCanvasHandle } from './editor/MapCanvas';
 import ImportMapModal from './editor/modals/ImportMapModal';
 import LeaveEditorModal from './editor/modals/LeaveEditorModal';
 import NewMapModal from './editor/modals/NewMapModal';
-import type { EditorTerritory as Territory } from './editor/model/editorTypes';
+import type {
+  LinkMode,
+  EditorTerritory as Territory,
+} from './editor/model/editorTypes';
 import { allPlaceNames, toEditorTerritories } from './editor/model/editorTypes';
 import {
   graphKeyOf,
@@ -126,7 +124,7 @@ function MapEditor({ account }: { account: Account | null }) {
   useToggleSound(collapsed);
 
   const [mode, setMode] = useState<'graph' | 'paint'>('graph');
-  const [timedMode, setTimedMode] = useState(false);
+  const [linkMode, setLinkMode] = useState<LinkMode>('normal');
   const [exclusive, setExclusive] = useState(false);
   function handleModeClick(target: 'graph' | 'paint') {
     if (mode === target) setExclusive((e) => !e);
@@ -477,7 +475,7 @@ function MapEditor({ account }: { account: Account | null }) {
           map.territories,
           map.seaTerritories,
           map.wraps,
-          map.timedConnections,
+          map,
           map.territoryNames,
           map.seaNames,
         ),
@@ -661,7 +659,7 @@ function MapEditor({ account }: { account: Account | null }) {
         map.territories,
         map.seaTerritories,
         [],
-        map.timedConnections,
+        map,
         names?.territoryNames ?? null,
         names?.seaNames ?? null,
       ),
@@ -696,7 +694,7 @@ function MapEditor({ account }: { account: Account | null }) {
           map.territories,
           map.seaTerritories,
           map.wraps,
-          map.timedConnections,
+          map,
           map.territoryNames,
           map.seaNames,
         ),
@@ -728,18 +726,9 @@ function MapEditor({ account }: { account: Account | null }) {
       setError('Add at least one territory before saving.');
       return;
     }
-    if (!isConnected(territories, lockedTiles)) {
-      setError('All territories must be connected.');
-      return;
-    }
-    if (territories.some((t) => t.isSea && t.timed.length > 0)) {
-      setError('Timed links can only connect two land territories.');
-      return;
-    }
-    if (invalidContinentSizes(territories, continentCount)) {
-      setError(
-        `Each continent must have ${MIN_CONTINENT_SIZE}-${MAX_CONTINENT_SIZE} territories.`,
-      );
+    const graphProblem = graphError(territories, lockedTiles, continentCount);
+    if (graphProblem) {
+      setError(graphProblem);
       return;
     }
     const placeNames = allPlaceNames(territories, continentNames);
@@ -773,6 +762,7 @@ function MapEditor({ account }: { account: Account | null }) {
       bonuses: sorted.bonuses,
       wraps: sorted.wraps,
       timedConnections: sorted.timedConnections,
+      directionalConnections: sorted.directionalConnections,
       lockedTiles: sorted.lockedTiles,
       image,
       generation,
@@ -856,7 +846,7 @@ function MapEditor({ account }: { account: Account | null }) {
         onViewport={handleViewport}
         clickable={showClickable ? clickable : null}
         borderOverlay={borders.overlay}
-        timedMode={timedMode}
+        linkMode={linkMode}
         onSelect={setSelectedTerritoryId}
       />
 
@@ -950,8 +940,8 @@ function MapEditor({ account }: { account: Account | null }) {
           setBorderPreview={borders.setPreview}
           borderColors={borderColors}
           setBorderColors={handleBorderColorsChange}
-          timedMode={timedMode}
-          setTimedMode={setTimedMode}
+          linkMode={linkMode}
+          setLinkMode={setLinkMode}
         />
       </div>
 

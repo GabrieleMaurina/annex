@@ -76,10 +76,13 @@ export const SEAS_HELP =
   'Splits the water into seas. Players can buy ships, which let them attack across water and attack other ships.';
 
 export const TIMED_CONNECTIONS_HELP =
-  'Turns some of the connections drawn across water or void into timed connections that open and close every round. A timed connection can only be used to attack or move through while it is open. Each one is marked with an hourglass, an X while it is closed, and the number of rounds until it changes.';
+  'Turns some of the links drawn across water or void into timed links that open and close every round. A timed link can only be used to attack or move through while it is open. Each one is marked with an hourglass and the number of rounds until it changes, and its arrows stand still while it is closed.';
+
+export const DIRECTIONAL_CONNECTIONS_HELP =
+  'Turns some of the links drawn across water or void into directional links that only work one way. The moving arrows show the way you can attack, move and see through them. Some flip direction every few rounds and are marked with an hourglass and the number of rounds until they flip, the others never change.';
 
 export const UNLOCKABLE_HELP =
-  'Tile maps only, not with Seas or Timed connections. Removes every connection drawn across the void, so islands may start disconnected. Instead, the empty slots between tiles become locked tiles. During your attack phase, the locked tiles you can unlock are marked with a dot: a territory next to one can unlock it for 5 troops (Constant or Off cards) or 25% of the value of the next card set, paid from the attacking territory, which must keep at least 1 troop. The tile then becomes an empty territory you can move into straight away or conquer later. Unlocking never earns a card.';
+  'Tile maps only, not with Seas, Timed links or Directional links. Removes every link drawn across the void, so islands may start disconnected. Instead, the empty slots between tiles become locked tiles. During your attack phase, the locked tiles you can unlock are marked with a dot: a territory next to one can unlock it for 5 troops (Constant or Off cards) or 25% of the value of the next card set, paid from the attacking territory, which must keep at least 1 troop. The tile then becomes an empty territory you can move into straight away or conquer later. Unlocking never earns a card.';
 
 export const MOUNTAINS_HELP =
   'Terrain maps only. The highest land becomes mountains, drawn as peaks with snow on the tallest ones. Mountains are not territories, so they leave gaps between the territories around them. Sparse maps have no mountains.';

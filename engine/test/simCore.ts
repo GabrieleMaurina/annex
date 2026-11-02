@@ -47,6 +47,7 @@ function buildGridMap(name: string, cols: number, rows: number): GameMap {
     bonuses: Array.from({ length: continents }, () => 3),
     wraps: [],
     timedConnections: [],
+    directionalConnections: [],
     lockedTiles: [],
   };
 }
@@ -128,6 +129,7 @@ export function runGame(
     seaTerritories: [],
     bonuses: map.bonuses,
     timedConnections: [],
+    directionalConnections: [],
     lockedTiles: [],
     imageSrc: '',
     borderColors: [],
@@ -138,6 +140,7 @@ export function runGame(
     tile: 'triangles',
     seas: false,
     timed: false,
+    directional: false,
     unlockable: false,
     aspect: 'wide',
     mountains: true,

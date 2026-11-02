@@ -1,10 +1,11 @@
+import { isStronglyConnected, withSeaHops } from 'engine';
 import type { EditorTerritory as Territory } from './model/editorTypes';
 import type { EditorLockedTile } from './model/lockedTiles';
 
-export const MIN_CONTINENT_SIZE = 2;
-export const MAX_CONTINENT_SIZE = 40;
+const MIN_CONTINENT_SIZE = 2;
+const MAX_CONTINENT_SIZE = 40;
 
-export function isConnected(
+function isStronglyLinked(
   territories: Territory[],
   lockedTiles: EditorLockedTile[],
 ): boolean {
@@ -21,25 +22,25 @@ export function isConnected(
     }
     for (const other of tile.tiles) link(-1 - k, -1 - other);
   });
-  const visited = new Set<number>();
-  const stack = [territories[0].id];
-  while (stack.length > 0) {
-    const id = stack.pop()!;
-    if (visited.has(id)) continue;
-    visited.add(id);
-    const t = byId.get(id);
-    for (const n of [
-      ...(t?.neighbors ?? []),
-      ...(t?.timed.map((m) => m.id) ?? []),
-      ...(tileLinks.get(id) ?? []),
-    ]) {
-      if (!visited.has(n)) stack.push(n);
-    }
-  }
-  return territories.every((t) => visited.has(t.id));
+  const nodes = territories.map((t) => ({
+    id: t.id,
+    neighbors: [
+      ...t.neighbors,
+      ...t.timed.map((m) => m.id),
+      ...t.directional.filter((m) => m.out || m.backward > 0).map((m) => m.id),
+      ...(tileLinks.get(t.id) ?? []),
+    ],
+  }));
+  const seaIds = new Set(territories.filter((t) => t.isSea).map((t) => t.id));
+  const edges = new Map(tileLinks);
+  for (const n of withSeaHops(nodes, seaIds)) edges.set(n.id, n.neighbors);
+  return isStronglyConnected(
+    territories.filter((t) => !t.isSea).map((t) => t.id),
+    edges,
+  );
 }
 
-export function invalidContinentSizes(
+function invalidContinentSizes(
   territories: Territory[],
   continentCount: number,
 ): boolean {
@@ -51,4 +52,25 @@ export function invalidContinentSizes(
     if (n < MIN_CONTINENT_SIZE || n > MAX_CONTINENT_SIZE) return true;
   }
   return false;
+}
+
+export function graphError(
+  territories: Territory[],
+  lockedTiles: EditorLockedTile[],
+  continentCount: number,
+): string | null {
+  if (!isStronglyLinked(territories, lockedTiles))
+    return 'Every territory must be able to reach every other territory.';
+  if (territories.some((t) => t.isSea && t.timed.length > 0))
+    return 'Timed links can only connect two land territories.';
+  if (territories.some((t) => t.isSea && t.directional.length > 0))
+    return 'Directional links can only connect two land territories.';
+  const landIds = new Set(territories.filter((t) => !t.isSea).map((t) => t.id));
+  if (
+    territories.some((t) => t.isSea && !t.neighbors.some((n) => landIds.has(n)))
+  )
+    return 'Every sea must border a land territory.';
+  if (invalidContinentSizes(territories, continentCount))
+    return `Each continent must have ${MIN_CONTINENT_SIZE}-${MAX_CONTINENT_SIZE} territories.`;
+  return null;
 }

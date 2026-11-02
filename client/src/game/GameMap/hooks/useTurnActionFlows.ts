@@ -14,7 +14,11 @@ import {
   getFortifyStartCandidates,
 } from '../../logic/fortify';
 import type { SeaTerritory, Territory } from '../../mapData';
-import { getToxinsCandidates, toxinsCost } from '../../toxins/toxins';
+import {
+  getToxinsCandidates,
+  toxinsCost,
+  type ScheduledLinks,
+} from '../../toxins/toxins';
 
 export function useTurnActionFlows({
   fortifyStartTerritoryId,
@@ -38,6 +42,7 @@ export function useTurnActionFlows({
   blockedById,
   upcomingBlockedById,
   closedTiles,
+  links,
   setGame,
 }: {
   fortifyStartTerritoryId: number | null;
@@ -61,6 +66,7 @@ export function useTurnActionFlows({
   blockedById: Set<number>;
   upcomingBlockedById: Set<number>;
   closedTiles: LockedTile[];
+  links: ScheduledLinks;
   setGame: (game: GameState) => void;
 }) {
   const [fortifyTroops, setFortifyTroops] = useState(1);
@@ -185,20 +191,22 @@ export function useTurnActionFlows({
           (ownerById.get(selectedTerritoryId)?.troops ?? 0) - toxinsCostValue,
         )
       : 0;
-  const toxinsCandidates = isMyTurn
-    ? getToxinsCandidates(
-        territories,
-        seaTerritories,
-        ownerById,
-        selfId,
-        toxinsCostValue,
-        blockedById,
-        upcomingBlockedById,
-        portalTerritoryIds,
-        portalsEnabled,
-        closedTiles,
-      )
-    : new Set<number>();
+  const toxinsCandidates =
+    isMyTurn && ['fortify', 'entrench', 'toxins'].includes(turnPhase)
+      ? getToxinsCandidates(
+          territories,
+          seaTerritories,
+          ownerById,
+          selfId,
+          toxinsCostValue,
+          blockedById,
+          upcomingBlockedById,
+          portalTerritoryIds,
+          portalsEnabled,
+          closedTiles,
+          links,
+        )
+      : new Set<number>();
   if (toxins === 'permanent')
     for (const id of hillTerritoryIds) toxinsCandidates.delete(id);
 

@@ -1,9 +1,23 @@
-import { withUnlockedTiles } from 'engine';
-import type { GameState, LockedTile } from '../../lib/types';
+import {
+  isStronglyConnected,
+  withEventualLinks,
+  withUnlockedTiles,
+} from 'engine';
+import type {
+  DirectionalConnection,
+  GameState,
+  LockedTile,
+  TimedConnection,
+} from '../../lib/types';
 import type { SeaTerritory, Territory } from '../mapData';
 import { withPortalEdges } from '../portals';
 
 type OwnerById = Map<number, GameState['territories'][number]>;
+
+export interface ScheduledLinks {
+  timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
+}
 
 export function toxinsCost(
   toxinsSetting: GameState['toxins'],
@@ -25,6 +39,7 @@ export function wouldSplitMap(
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
   closedTiles: LockedTile[],
+  links: ScheduledLinks,
   candidateTerritoryId: number,
 ): boolean {
   const removed = new Set(blockedById);
@@ -39,30 +54,29 @@ export function wouldSplitMap(
       t.neighbors.filter((n) => !seaIds.has(n)),
     ]),
   );
-  const neighborsById = new Map(
+  const nodes = withEventualLinks(
     withUnlockedTiles(
       territories,
       closedTiles,
       new Set(closedTiles.map((tile) => tile.id)),
-    ).map((t) => [t.id, t.neighbors]),
+    ),
+    links.timedConnections,
+    links.directionalConnections,
   );
-  const visited = new Set<number>([remaining[0].id]);
-  const stack = [remaining[0].id];
-  while (stack.length > 0) {
-    const id = stack.pop()!;
-    const neighbors = withPortalEdges(
-      neighborsById.get(id)!,
-      id,
-      portalTerritoryIds,
-      portalsEnabled,
-    ).flatMap((n) => shoresBySea.get(n) ?? [n]);
-    for (const n of neighbors) {
-      if (removed.has(n) || visited.has(n)) continue;
-      visited.add(n);
-      stack.push(n);
-    }
-  }
-  return remaining.some((t) => !visited.has(t.id));
+  const edges = new Map(
+    nodes
+      .filter((t) => !removed.has(t.id))
+      .map((t) => [
+        t.id,
+        withPortalEdges(t.neighbors, t.id, portalTerritoryIds, portalsEnabled)
+          .flatMap((n) => shoresBySea.get(n) ?? [n])
+          .filter((n) => !removed.has(n)),
+      ]),
+  );
+  return !isStronglyConnected(
+    remaining.map((t) => t.id),
+    edges,
+  );
 }
 
 export function getToxinsCandidates(
@@ -76,6 +90,7 @@ export function getToxinsCandidates(
   portalTerritoryIds: number[],
   portalsEnabled: boolean,
   closedTiles: LockedTile[],
+  links: ScheduledLinks,
 ): Set<number> {
   const candidates = new Set<number>();
   const ownedCount = territories.filter(
@@ -96,6 +111,7 @@ export function getToxinsCandidates(
           portalTerritoryIds,
           portalsEnabled,
           closedTiles,
+          links,
           t.id,
         ),
       )

@@ -50,6 +50,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               bonuses: map.bonuses,
               wraps: map.wraps,
               timedConnections: map.timedConnections,
+              directionalConnections: map.directionalConnections,
               lockedTiles: map.lockedTiles,
               imageSrc: `data:${map.imageMime};base64,${map.image}`,
               borderColors: map.borderColors,
@@ -100,6 +101,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               bonuses: map.bonuses,
               wraps: map.wraps,
               timedConnections: map.timedConnections,
+              directionalConnections: map.directionalConnections,
               lockedTiles: map.lockedTiles,
               imageSrc: map.imageDataUrl,
               borderColors: map.borderColors,
@@ -138,10 +140,13 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
         return callback({ ok: false, error: 'invalid seas' });
       if (typeof input.timed !== 'boolean')
         return callback({ ok: false, error: 'invalid timed' });
+      const directional = input.directional ?? false;
+      if (typeof directional !== 'boolean')
+        return callback({ ok: false, error: 'invalid directional' });
       if (
         typeof input.unlockable !== 'boolean' ||
         (input.unlockable &&
-          (input.type !== 'tile' || input.seas || input.timed))
+          (input.type !== 'tile' || input.seas || input.timed || directional))
       )
         return callback({ ok: false, error: 'invalid unlockable' });
       const aspect = input.aspect ?? 'wide';
@@ -164,6 +169,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           tile: input.tile as TileShape,
           seas: input.seas,
           timed: input.timed,
+          directional,
           unlockable: input.unlockable,
           aspect: aspect as MapAspect,
           mountains,

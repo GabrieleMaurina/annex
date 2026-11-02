@@ -3,7 +3,10 @@ import type { Dispatch, SetStateAction } from 'react';
 import { Button, Form, Table } from 'react-bootstrap';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
 import Help from '../../../common/tooltips/Help';
-import type { EditorTerritory as Territory } from '../model/editorTypes';
+import type {
+  LinkMode,
+  EditorTerritory as Territory,
+} from '../model/editorTypes';
 import NumberCell from './NumberCell';
 
 type TimedKey = 'delay' | 'open' | 'closed';
@@ -15,20 +18,20 @@ const TIMED_KEYS: { key: TimedKey; label: string; min: number }[] = [
 ];
 
 const TIMED_LINKS_HELP =
-  'While on, linking two land territories creates a timed connection instead of a normal one (seas cannot have timed connections). A timed connection is closed for the first Delay rounds, then stays open for Open rounds and closed for Closed rounds, repeating forever.';
+  'While on, linking two land territories creates a timed link instead of a normal one (seas cannot have timed links). A timed link is closed for the first Delay rounds, then stays open for Open rounds and closed for Closed rounds, repeating forever.';
 
 interface Props {
   territories: Territory[];
   setTerritories: Dispatch<SetStateAction<Territory[]>>;
-  timedMode: boolean;
-  setTimedMode: (value: boolean) => void;
+  linkMode: LinkMode;
+  setLinkMode: (value: LinkMode) => void;
 }
 
 function TimedLinksTable({
   territories,
   setTerritories,
-  timedMode,
-  setTimedMode,
+  linkMode,
+  setLinkMode,
 }: Props) {
   const links = territories.flatMap((t) =>
     t.timed.filter((m) => t.id < m.id).map((m) => ({ ...m, a: t.id, b: m.id })),
@@ -70,8 +73,9 @@ function TimedLinksTable({
           type="switch"
           id="editor-timed-links"
           label={<Help tip={TIMED_LINKS_HELP}>Timed links</Help>}
-          checked={timedMode}
-          onChange={(e) => setTimedMode(e.target.checked)}
+          checked={linkMode === 'timed'}
+          disabled={linkMode === 'directional'}
+          onChange={(e) => setLinkMode(e.target.checked ? 'timed' : 'normal')}
         />
       </div>
       {links.length > 0 && (

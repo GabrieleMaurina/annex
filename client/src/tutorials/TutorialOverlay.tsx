@@ -3,11 +3,12 @@ import { Button, Modal } from 'react-bootstrap';
 import { connector } from '../connector';
 import { playSound } from '../lib/sounds';
 import type { Account } from '../lib/types';
-import { PANEL_BG_CLASS, PANEL_CLASS } from '../ui/containers/panelStyle';
+import { PANEL_BG_CLASS } from '../ui/containers/panelStyle';
 import { markTutorialCompleted } from './progress';
 import { nextTutorial, TUTORIALS, type Tutorial } from './tutorials';
 
 const CELEBRATION_DELAY_MS = 1200;
+const SHORT_SCREEN_QUERY = '(max-height: 500px)';
 
 interface Props {
   tutorial: Tutorial;
@@ -17,6 +18,9 @@ interface Props {
 
 function TutorialOverlay({ tutorial, account, navigate }: Props) {
   const [completed, setCompleted] = useState(false);
+  const [instructionOpen, setInstructionOpen] = useState(
+    () => !window.matchMedia(SHORT_SCREEN_QUERY).matches,
+  );
   const accountRef = useRef(account);
   const next = nextTutorial(tutorial);
 
@@ -44,13 +48,24 @@ function TutorialOverlay({ tutorial, account, navigate }: Props) {
     <>
       {!completed && (
         <div
-          className={`${PANEL_BG_CLASS} ${PANEL_CLASS} position-fixed top-0 start-50 translate-middle-x mt-3 col-7 col-md-4 text-center z-2`}
+          className={`${PANEL_BG_CLASS} border rounded p-2 position-fixed top-0 start-50 translate-middle-x mt-2 col-10 col-sm-7 col-lg-4 d-flex align-items-start gap-2 z-2`}
         >
-          <div className="fw-bold">{tutorial.title}</div>
-          <div className="small mb-2">{tutorial.instruction}</div>
+          <details
+            className="flex-grow-1"
+            open={instructionOpen}
+            onToggle={(e) => {
+              if (e.currentTarget.open === instructionOpen) return;
+              playSound('click');
+              setInstructionOpen(e.currentTarget.open);
+            }}
+          >
+            <summary className="collapsible-summary">{tutorial.title}</summary>
+            <div className="small">{tutorial.instruction}</div>
+          </details>
           <Button
             variant="secondary"
             size="sm"
+            className="text-nowrap"
             onClick={() => navigate('/tutorials')}
           >
             Exit tutorial

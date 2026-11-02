@@ -7,6 +7,8 @@ import { games, respondGameState, sendPlayerCards } from '../session/store';
 import { Card } from '../types';
 import { prepareGameStart } from './start';
 
+const SEAT_COLORS = [2, 0, 1];
+
 export interface TutorialScenario {
   territories: {
     id: number;
@@ -38,6 +40,7 @@ export function startTutorial(
   game.tutorial = true;
   prepareGameStart(game);
   game.playerIds = seats;
+  seats.forEach((id, seat) => game.playerColors.set(id, SEAT_COLORS[seat]));
   game.territoryOwners = new Map(
     scenario.territories.map((t) => [t.id, seats[t.seat]]),
   );

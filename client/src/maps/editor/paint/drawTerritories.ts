@@ -56,7 +56,11 @@ export function seedSkeletons(
   };
   for (const site of sites) {
     seedRay(site, site.x, site.y);
-    for (const otherId of [...site.neighbors, ...site.timed.map((m) => m.id)]) {
+    for (const otherId of [
+      ...site.neighbors,
+      ...site.timed.map((m) => m.id),
+      ...site.directional.map((m) => m.id),
+    ]) {
       const other = byId.get(otherId);
       if (!other) continue;
       const segments = wrapEdgeSegments(

@@ -62,6 +62,7 @@ export interface OsmMapParams {
   detail: OsmDetail;
   seas: boolean;
   timed: boolean;
+  directional: boolean;
   name: string;
   zoom: number;
   aspect: MapAspect;

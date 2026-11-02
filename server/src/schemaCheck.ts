@@ -242,6 +242,7 @@ function replayContentId(doc: Document): string {
       bonuses: doc.bonuses,
       wraps: doc.wraps,
       timedConnections: doc.timedConnections,
+      directionalConnections: doc.directionalConnections,
       lockedTiles: doc.lockedTiles,
       imageMime: doc.imageMime,
       borderColors: doc.borderColors,

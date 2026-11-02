@@ -19,20 +19,22 @@ import { wallsInTeammate } from './board';
 import {
   PlanContext,
   SimState,
+  attackersOf,
   botBorderIds,
   cloneState,
   conquerablePath,
   frontierStacks,
+  hostileAttackersOf,
   hostileNeighborsOf,
   isBotBorder,
   isEnemyTerritory,
   isFriendly,
-  neighborsOf,
   ownedChokepoints,
   ownedClusters,
   ownedIds,
   rankedOpponents,
   strongestThreatAt,
+  touchingOf,
   troopsIn,
   troopsPerDefenderAt,
 } from './context';
@@ -130,7 +132,7 @@ function eliminationTargets(
       .sort((a, b) => troopsIn(state, a) - troopsIn(state, b))
       .slice(0, limit);
   const touchesBot = (id: number) =>
-    neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId);
+    attackersOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId);
   return [...ids]
     .sort(
       (a, b) =>
@@ -246,7 +248,7 @@ function enemyThreatExcluding(
   excludedId: number,
 ): number {
   let worst = 0;
-  for (const n of neighborsOf(ctx, territoryId)) {
+  for (const n of attackersOf(ctx, territoryId)) {
     if (n === excludedId || !isEnemyTerritory(ctx, state, n)) continue;
     worst = Math.max(worst, troopsIn(state, n));
   }
@@ -271,7 +273,7 @@ function safeAttacks(
         enemyThreatExcluding(ctx, state, from, to),
       );
       if (garrison < threat) continue;
-      const foreignNeighbors = neighborsOf(ctx, to).filter(
+      const foreignNeighbors = attackersOf(ctx, to).filter(
         (n) => n !== from && state.owners.get(n) !== ctx.botId,
       ).length;
       attacks.push({ from, to, foreignNeighbors, defenders });
@@ -409,7 +411,7 @@ function homeCandidates(
     .filter((id) => isEnemyTerritory(ctx, state, id))
     .sort((a, b) => troopsIn(state, a) - troopsIn(state, b));
   const seed = enemies.find((id) =>
-    neighborsOf(ctx, id).some(
+    attackersOf(ctx, id).some(
       (n) =>
         state.owners.get(n) === ctx.botId &&
         supplyConnected(ctx, n) &&
@@ -554,7 +556,7 @@ function shrinkBorderCandidates(
   const targets = new Set<number>();
   for (const border of botBorderIds(ctx, state)) {
     for (const n of hostileNeighborsOf(ctx, state, border)) {
-      const foreign = neighborsOf(ctx, n).filter(
+      const foreign = touchingOf(ctx, n).filter(
         (m) => state.owners.get(m) !== ctx.botId,
       ).length;
       if (foreign === 0) targets.add(n);
@@ -611,14 +613,14 @@ function neutralizeThreatCandidates(
     stagingTroops: number;
   }[] = [];
   for (const border of botBorderIds(ctx, state)) {
-    for (const enemy of hostileNeighborsOf(ctx, state, border)) {
+    for (const enemy of hostileAttackersOf(ctx, state, border)) {
       if (state.owners.get(enemy) === undefined) continue;
       const enemyTroops = troopsIn(state, enemy);
       const threat = enemyTroops - troopsIn(state, border);
       if (threat < 2) continue;
       let bestStaging = -1;
       let bestStagingTroops = 0;
-      for (const n of neighborsOf(ctx, enemy)) {
+      for (const n of attackersOf(ctx, enemy)) {
         if (state.owners.get(n) !== ctx.botId) continue;
         const t = troopsIn(state, n);
         if (t > bestStagingTroops) {
@@ -677,7 +679,7 @@ function antiLeaderCandidates(
   if (leader.strength < second * 1.25 + 1) return [];
 
   const reachable = ownedIds(state, leader.playerId).filter((id) =>
-    neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId),
+    attackersOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId),
   );
   if (reachable.length === 0) return [];
   const targets = reachable
@@ -721,7 +723,7 @@ function spoilContinentCandidates(
         .filter(
           (id) =>
             state.owners.get(id) === owner &&
-            neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId),
+            attackersOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId),
         )
         .sort((a, b) => troopsIn(state, a) - troopsIn(state, b));
       if (reachTargets.length === 0) continue;

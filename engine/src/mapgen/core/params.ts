@@ -13,6 +13,7 @@ export interface GenerateMapParams {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  directional: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;

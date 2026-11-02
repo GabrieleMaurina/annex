@@ -2,7 +2,9 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { WrapAxes } from '../../../game/mapMath';
 import { wrapEdgeSegments, type Point } from '../mapCanvasGeometry';
 import {
+  DEFAULT_DIRECTIONAL,
   DEFAULT_TIMED,
+  type LinkMode,
   type EditorTerritory as Territory,
   type WrapMark,
 } from '../model/editorTypes';
@@ -17,7 +19,7 @@ export interface VertexLinkContext {
   rejectedTimeoutRef: MutableRefObject<number | null>;
   getViewport: () => Viewport;
   getImageDims: () => { w: number; h: number };
-  timedMode: boolean;
+  linkMode: LinkMode;
 }
 
 function edgeWouldCross(
@@ -64,7 +66,7 @@ export function handleVertexClick(
     selectedVertexId,
     setSelectedVertexId,
     setTerritories,
-    timedMode,
+    linkMode,
   } = ctx;
   if (selectedVertexId === null) {
     setSelectedVertexId(id);
@@ -81,8 +83,16 @@ export function handleVertexClick(
   const timedLinked = fromTerritory
     ? fromTerritory.timed.some((m) => m.id === id)
     : false;
-  const exists = linked || timedLinked;
-  const remove = timedMode ? timedLinked : linked;
+  const directionalLinked = fromTerritory
+    ? fromTerritory.directional.some((m) => m.id === id)
+    : false;
+  const exists = linked || timedLinked || directionalLinked;
+  const remove =
+    linkMode === 'timed'
+      ? timedLinked
+      : linkMode === 'directional'
+        ? directionalLinked
+        : linked;
   if (
     !exists &&
     !allowCrossover &&
@@ -95,7 +105,7 @@ export function handleVertexClick(
     return;
   }
   if (
-    timedMode &&
+    linkMode !== 'normal' &&
     !remove &&
     fromTerritory &&
     toTerritory &&
@@ -109,15 +119,23 @@ export function handleVertexClick(
     !exists && (forced.x || forced.y)
       ? [{ id: otherId, x: forced.x, y: forced.y }]
       : [];
-  const relink = (t: Territory, otherId: number): Territory => ({
+  const relink = (t: Territory, otherId: number, out: boolean): Territory => ({
     ...t,
     neighbors: [
       ...t.neighbors.filter((n) => n !== otherId),
-      ...(!timedMode && !remove ? [otherId] : []),
+      ...(linkMode === 'normal' && !remove ? [otherId] : []),
     ],
     timed: [
       ...t.timed.filter((m) => m.id !== otherId),
-      ...(timedMode && !remove ? [{ id: otherId, ...DEFAULT_TIMED }] : []),
+      ...(linkMode === 'timed' && !remove
+        ? [{ id: otherId, ...DEFAULT_TIMED }]
+        : []),
+    ],
+    directional: [
+      ...t.directional.filter((m) => m.id !== otherId),
+      ...(linkMode === 'directional' && !remove
+        ? [{ id: otherId, out, ...DEFAULT_DIRECTIONAL }]
+        : []),
     ],
     wraps:
       exists && !remove
@@ -126,7 +144,11 @@ export function handleVertexClick(
   });
   setTerritories((ts) =>
     ts.map((t) =>
-      t.id === from ? relink(t, id) : t.id === id ? relink(t, from) : t,
+      t.id === from
+        ? relink(t, id, true)
+        : t.id === id
+          ? relink(t, from, false)
+          : t,
     ),
   );
   setSelectedVertexId(id);

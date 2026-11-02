@@ -28,8 +28,15 @@ export function selectPortalTerritories(
   exclude: Set<number> = new Set(),
 ): number[] {
   const neighborsById = new Map(
-    map.territories.map((t) => [t.id, t.neighbors]),
+    map.territories.map((t) => [t.id, [...t.neighbors]]),
   );
+  for (const { a, b } of [
+    ...map.timedConnections,
+    ...map.directionalConnections,
+  ]) {
+    neighborsById.get(a)?.push(b);
+    neighborsById.get(b)?.push(a);
+  }
   const continentById = new Map(
     map.territories.map((t) => [t.id, continentKey(t)]),
   );

@@ -1,4 +1,9 @@
-import { SeaTerritory, Territory, TimedConnection } from '../../../types';
+import {
+  DirectionalConnection,
+  SeaTerritory,
+  Territory,
+  TimedConnection,
+} from '../../../types';
 import { timeStep } from '../../core/bench';
 import {
   GridDimensions,
@@ -6,12 +11,12 @@ import {
   TERRITORY_COUNT_RANGES,
 } from '../../core/params';
 import { randomInt, Rng } from '../../core/rng';
+import { extractScheduledLinks, LinkRngs } from '../../links';
 import {
   computeWallSeamMasks,
   MazePalette,
   renderMazeImage,
 } from '../../render/maze';
-import { extractTimedConnections } from '../../timed';
 import { computeTerritoryCentroids } from '../centroid';
 import {
   addRedundantBridges,
@@ -37,6 +42,7 @@ export interface MazeMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   imageSrc: string;
 }
 
@@ -268,7 +274,7 @@ export function buildMazeMap(
   palette: MazePalette,
   crop: boolean,
   seas: boolean,
-  timedRng: Rng | null,
+  linkRngs: LinkRngs,
 ): MazeMap {
   const source = layerInput;
   const { cellCount, cellNeighbors } = source;
@@ -551,10 +557,11 @@ export function buildMazeMap(
     bonuses.push(computeBonus(continentSizes.get(i) ?? 0));
   }
 
-  const timedConnections = extractTimedConnections(
-    timedRng,
+  const links = extractScheduledLinks(
+    linkRngs,
     specialEdges,
     combinedAdjacency,
+    territoryCount,
   );
 
   const territories: Territory[] = [];
@@ -604,5 +611,5 @@ export function buildMazeMap(
     ),
   );
 
-  return { territories, seaTerritories, bonuses, timedConnections, imageSrc };
+  return { territories, seaTerritories, bonuses, ...links, imageSrc };
 }

@@ -57,7 +57,11 @@ export function linkTerritories(
   for (const { a, b } of borders.sort((x, y) => y.length - x.length)) {
     const from = byId.get(a)!;
     const to = byId.get(b)!;
-    if (from.neighbors.includes(b) || from.timed.some((m) => m.id === b))
+    if (
+      from.neighbors.includes(b) ||
+      from.timed.some((m) => m.id === b) ||
+      from.directional.some((m) => m.id === b)
+    )
       continue;
     if (added.some(([p, q]) => segmentsProperlyIntersect(from, to, p, q)))
       continue;

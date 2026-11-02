@@ -67,6 +67,7 @@ function MapBrowser({
   const [genTile, setGenTile] = useState<TileShape | ''>('');
   const [genSeas, setGenSeas] = useState('');
   const [genTimed, setGenTimed] = useState('');
+  const [genDirectional, setGenDirectional] = useState('');
   const [genUnlockable, setGenUnlockable] = useState('');
   const [sort, setSort] = useState<PlayerMapSort>('mostLiked');
   const [page, setPage] = useState(1);
@@ -86,6 +87,7 @@ function MapBrowser({
     genTile,
     genSeas,
     genTimed,
+    genDirectional,
     genUnlockable,
   });
 
@@ -108,6 +110,9 @@ function MapBrowser({
       generationTile: genTile || undefined,
       generationSeas: genSeas ? genSeas === 'yes' : undefined,
       generationTimed: genTimed ? genTimed === 'yes' : undefined,
+      generationDirectional: genDirectional
+        ? genDirectional === 'yes'
+        : undefined,
       generationUnlockable: genUnlockable ? genUnlockable === 'yes' : undefined,
       sort,
     };
@@ -173,6 +178,7 @@ function MapBrowser({
     setGenTile('');
     setGenSeas('');
     setGenTimed('');
+    setGenDirectional('');
     setGenUnlockable('');
     setPage(1);
   }
@@ -314,11 +320,22 @@ function MapBrowser({
                 <option value="no">No</option>
               </Selector>
             </Field>
-            <Field label="Generated timed connections">
+            <Field label="Generated timed links">
               <Selector
                 size="sm"
                 value={genTimed}
                 onChange={(value) => resetPage(setGenTimed)(value)}
+              >
+                <option value="">Any</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </Selector>
+            </Field>
+            <Field label="Generated directional links">
+              <Selector
+                size="sm"
+                value={genDirectional}
+                onChange={(value) => resetPage(setGenDirectional)(value)}
               >
                 <option value="">Any</option>
                 <option value="yes">Yes</option>

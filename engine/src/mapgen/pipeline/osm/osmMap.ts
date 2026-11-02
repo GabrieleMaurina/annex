@@ -4,6 +4,7 @@ import {
   TERRITORY_COUNT_RANGES,
 } from '../../core/params';
 import { createRng } from '../../core/rng';
+import { createLinkRngs } from '../../links';
 import {
   GREEN_VOID,
   MOUNTAIN_VOID,
@@ -272,10 +273,11 @@ function majorityParents(
 }
 
 export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
-  const { seed, size, detail, seas, timed, aspect, features } = params;
+  const { seed, size, detail, seas, timed, directional, aspect, features } =
+    params;
   const key = `osm::${seed}::${size}::${detail}::${aspect}`;
   const rng = createRng(key);
-  const timedRng = timed ? createRng(`${key}::timed`) : null;
+  const linkRngs = createLinkRngs(key, timed, directional);
   const dims = mapImageSize(size, aspect);
   const { width, height } = dims;
   const range = TERRITORY_COUNT_RANGES[size];
@@ -416,7 +418,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     landCount,
     dims,
     seas,
-    timedRng,
+    linkRngs,
     expectedTerritoryArea,
     maxLandNeighborsPerSea: TERRAIN_MAX_LAND_NEIGHBORS_PER_SEA[size],
     seaAreaMultiplier: SEA_AREA_MULTIPLIER,

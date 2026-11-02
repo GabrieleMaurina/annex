@@ -85,6 +85,7 @@ interface Filters {
   mapGenerationTile: string;
   mapGenerationSeas: string;
   mapGenerationTimed: string;
+  mapGenerationDirectional: string;
   mapGenerationUnlockable: string;
   settings: Record<string, string>;
   hasBots: '' | 'yes' | 'no';
@@ -200,6 +201,7 @@ function Games({ account }: Props) {
   const [mapGenerationTile, setMapGenerationTile] = useState('');
   const [mapGenerationSeas, setMapGenerationSeas] = useState('');
   const [mapGenerationTimed, setMapGenerationTimed] = useState('');
+  const [mapGenerationDirectional, setMapGenerationDirectional] = useState('');
   const [mapGenerationUnlockable, setMapGenerationUnlockable] = useState('');
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [hasBots, setHasBots] = useState<'' | 'yes' | 'no'>('');
@@ -234,6 +236,7 @@ function Games({ account }: Props) {
     mapGenerationTile,
     mapGenerationSeas,
     mapGenerationTimed,
+    mapGenerationDirectional,
     mapGenerationUnlockable,
     settings,
     hasBots,
@@ -299,6 +302,10 @@ function Games({ account }: Props) {
         mapName === GENERATED_MAP_VALUE && mapGenerationTimed
           ? mapGenerationTimed === 'yes'
           : undefined,
+      mapGenerationDirectional:
+        mapName === GENERATED_MAP_VALUE && mapGenerationDirectional
+          ? mapGenerationDirectional === 'yes'
+          : undefined,
       mapGenerationUnlockable:
         mapName === GENERATED_MAP_VALUE && mapGenerationUnlockable
           ? mapGenerationUnlockable === 'yes'
@@ -355,6 +362,7 @@ function Games({ account }: Props) {
     setMapGenerationTile('');
     setMapGenerationSeas('');
     setMapGenerationTimed('');
+    setMapGenerationDirectional('');
     setMapGenerationUnlockable('');
     setSettings({});
     setHasBots('');
@@ -525,6 +533,7 @@ function Games({ account }: Props) {
               tile={mapGenerationTile}
               seas={mapGenerationSeas}
               timed={mapGenerationTimed}
+              directional={mapGenerationDirectional}
               unlockable={mapGenerationUnlockable}
               onMapName={resetPage(setMapName)}
               onSize={resetPage(setMapGenerationSize)}
@@ -533,6 +542,7 @@ function Games({ account }: Props) {
               onTile={resetPage(setMapGenerationTile)}
               onSeas={resetPage(setMapGenerationSeas)}
               onTimed={resetPage(setMapGenerationTimed)}
+              onDirectional={resetPage(setMapGenerationDirectional)}
               onUnlockable={resetPage(setMapGenerationUnlockable)}
             />
           </div>

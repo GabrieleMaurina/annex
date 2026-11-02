@@ -92,6 +92,7 @@ export function buildMap(spec: MapSpec): GameMap {
     bonuses: spec.bonuses,
     wraps: [],
     timedConnections: [],
+    directionalConnections: [],
     lockedTiles: Object.entries(spec.lockedTiles ?? {}).map(
       ([id, tileNeighbors]) => ({
         id: Number(id),

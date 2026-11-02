@@ -1,4 +1,5 @@
 import type {
+  DirectionalConnection,
   Fill,
   GenerationType,
   LockedTile,
@@ -18,6 +19,7 @@ export interface GenerateInput {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  directional: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;
@@ -36,6 +38,7 @@ export interface GeneratedEditorMap {
   seaTerritories: MapSeaTerritory[];
   bonuses: number[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];

@@ -1,4 +1,5 @@
 import type {
+  DirectionalConnection,
   MapSeaTerritory,
   MapTerritory,
   MapWrap,
@@ -18,14 +19,25 @@ export interface TimedMark {
   closed: number;
 }
 
+export interface DirectionalMark {
+  id: number;
+  out: boolean;
+  forward: number;
+  backward: number;
+}
+
 export interface EditorTerritory extends MapTerritory {
   name: string;
   isSea?: boolean;
   wraps: WrapMark[];
   timed: TimedMark[];
+  directional: DirectionalMark[];
 }
 
+export type LinkMode = 'normal' | 'timed' | 'directional';
+
 export const DEFAULT_TIMED = { delay: 0, open: 1, closed: 1 };
+export const DEFAULT_DIRECTIONAL = { forward: 1, backward: 1 };
 
 export const NO_CONTINENT = -1;
 export const SEA_BRUSH = -2;
@@ -51,6 +63,7 @@ export function newTerritory(
     name: '',
     wraps: [],
     timed: [],
+    directional: [],
     isSea,
   };
 }
@@ -69,7 +82,10 @@ export function toEditorTerritories(
   territories: MapTerritory[],
   seaTerritories: MapSeaTerritory[],
   wraps: MapWrap[],
-  timedConnections: TimedConnection[],
+  links: {
+    timedConnections: TimedConnection[];
+    directionalConnections: DirectionalConnection[];
+  },
   territoryNames: string[] | null,
   seaNames: string[] | null,
 ): EditorTerritory[] {
@@ -80,17 +96,26 @@ export function toEditorTerritories(
       return [];
     });
   const timedOf = (id: number): TimedMark[] =>
-    timedConnections.flatMap(({ a, b, ...values }) => {
+    links.timedConnections.flatMap(({ a, b, ...values }) => {
       if (a === id) return [{ id: b, ...values }];
       if (b === id) return [{ id: a, ...values }];
       return [];
     });
+  const directionalOf = (id: number): DirectionalMark[] =>
+    links.directionalConnections.flatMap(
+      ({ a, b, ...values }): DirectionalMark[] => {
+        if (a === id) return [{ id: b, out: true, ...values }];
+        if (b === id) return [{ id: a, out: false, ...values }];
+        return [];
+      },
+    );
   return [
     ...territories.map((t, i) => ({
       ...t,
       name: territoryNames?.[i] ?? '',
       wraps: marksOf(t.id),
       timed: timedOf(t.id),
+      directional: directionalOf(t.id),
     })),
     ...seaTerritories.map((s, i) => ({
       ...s,
@@ -99,6 +124,7 @@ export function toEditorTerritories(
       isSea: true,
       wraps: marksOf(s.id),
       timed: timedOf(s.id),
+      directional: directionalOf(s.id),
     })),
   ];
 }
@@ -114,6 +140,7 @@ export function withoutVertex(
       neighbors: t.neighbors.filter((n) => n !== id),
       wraps: t.wraps.filter((w) => w.id !== id),
       timed: t.timed.filter((m) => m.id !== id),
+      directional: t.directional.filter((m) => m.id !== id),
     }));
 }
 

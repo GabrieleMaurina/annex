@@ -39,6 +39,13 @@ export interface TimedConnection {
   closed: number;
 }
 
+export interface DirectionalConnection {
+  a: number;
+  b: number;
+  forward: number;
+  backward: number;
+}
+
 export interface LockedTile {
   id: number;
   x: number;
@@ -54,6 +61,7 @@ export interface GameMap {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
 }
 
@@ -62,6 +70,7 @@ export interface GeneratedGameMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
@@ -72,6 +81,7 @@ export interface GeneratedGameMap {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  directional: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;
@@ -384,6 +394,7 @@ export interface PlayerGameMap {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];

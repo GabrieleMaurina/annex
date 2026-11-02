@@ -5,8 +5,8 @@ import {
   holdsContinent,
   isEnemyTerritory,
   mainCluster,
-  neighborsOf,
   snapshotState,
+  touchingOf,
   troopsIn,
 } from '../planning/context';
 
@@ -69,7 +69,7 @@ function computeHome(ctx: PlanContext): Home {
   const ids = new Set<number>(held);
   for (const [id, ownerId] of state.owners) {
     if (ownerId !== ctx.botId) continue;
-    if (continent.has(id) || neighborsOf(ctx, id).some((n) => continent.has(n)))
+    if (continent.has(id) || touchingOf(ctx, id).some((n) => continent.has(n)))
       ids.add(id);
   }
   return { continentId: bestId, ids };

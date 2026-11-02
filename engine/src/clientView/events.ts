@@ -316,6 +316,7 @@ export const EVENT_VIEWS: EventViews = {
       bonuses: p.bonuses,
       wraps: p.wraps,
       timedConnections: p.timedConnections,
+      directionalConnections: p.directionalConnections,
       lockedTiles: p.lockedTiles,
       imageSrc: p.imageSrc,
       borderColors: p.borderColors,

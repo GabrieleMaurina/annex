@@ -20,6 +20,7 @@ import { standingScore } from '../goals/standingScore';
 import {
   PlanContext,
   SimState,
+  attackersOf,
   bonusOf,
   cloneState,
   heldContinentBonus,
@@ -36,6 +37,7 @@ import {
   strongestOpponent,
   strongestThreatAt,
   timesCards,
+  touchingOf,
   troopsIn,
 } from './context';
 
@@ -311,13 +313,13 @@ function strandedTeammateTroops(ctx: PlanContext, state: SimState): number {
     const cluster = [start];
     seen.add(start);
     for (let i = 0; i < cluster.length; i++)
-      for (const n of neighborsOf(ctx, cluster[i]))
+      for (const n of touchingOf(ctx, cluster[i]))
         if (!seen.has(n) && state.owners.get(n) === ownerId) {
           seen.add(n);
           cluster.push(n);
         }
     const engaged = cluster.some((id) =>
-      neighborsOf(ctx, id).some((n) => isEnemyTerritory(ctx, state, n)),
+      touchingOf(ctx, id).some((n) => isEnemyTerritory(ctx, state, n)),
     );
     if (engaged) continue;
     for (const id of cluster) stranded += Math.max(0, troopsIn(state, id) - 1);
@@ -363,7 +365,7 @@ function nearbyHeldBonus(ctx: PlanContext, state: SimState): number {
     if (ownerId === undefined || isFriendly(ctx, ownerId)) continue;
     if (!holdsContinent(ctx, state, territoryIds, ownerId)) continue;
     const touchesBot = territoryIds.some((id) =>
-      neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId),
+      attackersOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId),
     );
     if (touchesBot) total += bonusOf(ctx, continentId);
   }

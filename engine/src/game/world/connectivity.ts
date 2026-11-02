@@ -1,3 +1,7 @@
+import {
+  isStronglyConnected,
+  withEventualLinks,
+} from '../../maps/directionalConnections';
 import { withUnlockedTiles } from '../../maps/lockedTiles';
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
@@ -23,30 +27,34 @@ export function wouldSplitAttackMap(
     ]),
   );
   const locked = closedTiles(game);
-  const neighborsById = new Map(
+  const nodes = withEventualLinks(
     withUnlockedTiles(
       map.territories,
       locked,
       new Set(locked.map((tile) => tile.id)),
-    ).map((t) => [t.id, t.neighbors]),
+    ),
+    map.timedConnections,
+    map.directionalConnections,
   );
-  const visited = new Set<number>([remaining[0].id]);
-  const stack = [remaining[0].id];
-  while (stack.length > 0) {
-    const id = stack.pop()!;
-    const neighbors = withPortalEdges(
-      neighborsById.get(id) ?? [],
-      id,
-      game.portalTerritoryIds,
-      game.portalsEnabled,
-    ).flatMap((n) => shoresBySea.get(n) ?? [n]);
-    for (const n of neighbors) {
-      if (removed.has(n) || visited.has(n)) continue;
-      visited.add(n);
-      stack.push(n);
-    }
-  }
-  return remaining.some((t) => !visited.has(t.id));
+  const edges = new Map(
+    nodes
+      .filter((t) => !removed.has(t.id))
+      .map((t) => [
+        t.id,
+        withPortalEdges(
+          t.neighbors,
+          t.id,
+          game.portalTerritoryIds,
+          game.portalsEnabled,
+        )
+          .flatMap((n) => shoresBySea.get(n) ?? [n])
+          .filter((n) => !removed.has(n)),
+      ]),
+  );
+  return !isStronglyConnected(
+    remaining.map((t) => t.id),
+    edges,
+  );
 }
 
 export function ownedTerritoryClusters(
@@ -57,6 +65,11 @@ export function ownedTerritoryClusters(
   const neighborsById = new Map(
     map.territories.map((t) => [t.id, t.neighbors]),
   );
+  const reverseById = new Map<number, number[]>();
+  if (map.directionalConnections.length > 0)
+    for (const t of map.territories)
+      for (const n of t.neighbors)
+        reverseById.set(n, [...(reverseById.get(n) ?? []), t.id]);
   const ownedIds: number[] = [];
   for (const [id, ownerId] of game.territoryOwners) {
     if (ownerId === playerId) ownedIds.push(id);
@@ -72,12 +85,15 @@ export function ownedTerritoryClusters(
     while (queue.length > 0) {
       const current = queue.shift()!;
       cluster.push(current);
-      const neighbors = withPortalEdges(
-        neighborsById.get(current) ?? [],
-        current,
-        game.portalTerritoryIds,
-        game.portalsEnabled,
-      );
+      const neighbors = [
+        ...withPortalEdges(
+          neighborsById.get(current) ?? [],
+          current,
+          game.portalTerritoryIds,
+          game.portalsEnabled,
+        ),
+        ...(reverseById.get(current) ?? []),
+      ];
       for (const neighborId of neighbors) {
         if (visited.has(neighborId) || !ownedSet.has(neighborId)) continue;
         visited.add(neighborId);

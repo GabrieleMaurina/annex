@@ -118,3 +118,33 @@ export function drawSplitArrow(
   ctx.stroke();
   ctx.restore();
 }
+
+export function drawDirectionalArrow(
+  ctx: CanvasRenderingContext2D,
+  segments: ArrowSegment[],
+  radius: number,
+  phase: number,
+  turn: number,
+) {
+  const scale = radiusScale(radius);
+  const wing = SPLIT_ARROW_WING * scale;
+  const angle = (Math.PI / 4) * (1 + turn);
+  const back = Math.cos(angle) * wing;
+  const side = Math.sin(angle) * wing;
+  ctx.save();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = ARROW_LINE_WIDTH * scale;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (const seg of segments) {
+    const t0 = seg.t0 ?? 0;
+    const t1 = seg.t1 ?? 1;
+    forEachChevron(seg.a, seg.b, scale, phase, t0, t1, (cx, cy, ux, uy) => {
+      ctx.moveTo(cx - ux * back - uy * side, cy - uy * back + ux * side);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx - ux * back + uy * side, cy - uy * back - ux * side);
+    });
+  }
+  ctx.stroke();
+  ctx.restore();
+}

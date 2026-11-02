@@ -1,9 +1,14 @@
-import { SeaTerritory, Territory, TimedConnection } from '../../../types';
+import {
+  DirectionalConnection,
+  SeaTerritory,
+  Territory,
+  TimedConnection,
+} from '../../../types';
 import { timeStep } from '../../core/bench';
 import { GridDimensions } from '../../core/params';
 import { Rng } from '../../core/rng';
+import { extractScheduledLinks, LinkRngs } from '../../links';
 import { renderTerrainImage } from '../../render/gif';
-import { extractTimedConnections } from '../../timed';
 import { computeTerritoryCentroids } from '../centroid';
 import {
   addRedundantBridges,
@@ -26,6 +31,7 @@ export interface TerrainMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   imageSrc: string;
 }
 
@@ -42,7 +48,7 @@ interface TerrainGraphInput {
   landCount: number;
   dims: GridDimensions;
   seas: boolean;
-  timedRng: Rng | null;
+  linkRngs: LinkRngs;
   expectedTerritoryArea: number;
   maxLandNeighborsPerSea: number;
   seaAreaMultiplier: number;
@@ -59,7 +65,7 @@ export function finishTerrainMap({
   landCount,
   dims,
   seas,
-  timedRng,
+  linkRngs,
   expectedTerritoryArea,
   maxLandNeighborsPerSea,
   seaAreaMultiplier,
@@ -211,10 +217,11 @@ export function finishTerrainMap({
     bonuses.push(computeBonus(continentSizes.get(i) ?? 0));
   }
 
-  const timedConnections = extractTimedConnections(
-    timedRng,
+  const links = extractScheduledLinks(
+    linkRngs,
     specialEdges,
     combinedAdjacency,
+    landCount,
   );
 
   const territories: Territory[] = Array.from(
@@ -260,5 +267,5 @@ export function finishTerrainMap({
     ),
   );
 
-  return { territories, seaTerritories, bonuses, timedConnections, imageSrc };
+  return { territories, seaTerritories, bonuses, ...links, imageSrc };
 }

@@ -1,10 +1,17 @@
-import { LockedTile, SeaTerritory, Territory, TimedConnection } from '../types';
+import {
+  DirectionalConnection,
+  LockedTile,
+  SeaTerritory,
+  Territory,
+  TimedConnection,
+} from '../types';
 import {
   generatedMapName,
   GenerateMapParams,
   mapImageSize,
 } from './core/params';
 import { createRng } from './core/rng';
+import { createLinkRngs } from './links';
 import { generateDungeon } from './pipeline/maze/dungeon';
 import { generateTemple } from './pipeline/maze/temple';
 import { generateTerrain } from './pipeline/terrain/terrainMap';
@@ -17,6 +24,7 @@ export interface GeneratedMap {
   seaTerritories: SeaTerritory[];
   bonuses: number[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
@@ -31,6 +39,7 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
     tile,
     seas,
     timed,
+    directional,
     unlockable,
     aspect,
     mountains,
@@ -38,14 +47,14 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
   } = params;
   const key = `${seed}::${size}::${type}::${fill}${type === 'tile' ? `::${tile}` : ''}${aspect === 'square' ? '::square' : ''}`;
   const rng = createRng(key);
-  const timedRng = timed ? createRng(`${key}::timed`) : null;
+  const linkRngs = createLinkRngs(key, timed, directional);
   const dims = mapImageSize(size, aspect);
 
   const built =
     type === 'dungeon'
-      ? generateDungeon(rng, fill, size, dims, seas, timedRng)
+      ? generateDungeon(rng, fill, size, dims, seas, linkRngs)
       : type === 'temple'
-        ? generateTemple(rng, fill, size, dims, seas, timedRng)
+        ? generateTemple(rng, fill, size, dims, seas, linkRngs)
         : type === 'tile'
           ? generateTile(
               rng,
@@ -55,9 +64,9 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
               dims,
               seas,
               unlockable,
-              timedRng,
+              linkRngs,
             )
-          : generateTerrain(rng, fill, size, dims, seas, timedRng, {
+          : generateTerrain(rng, fill, size, dims, seas, linkRngs, {
               mountains,
               rivers,
             });

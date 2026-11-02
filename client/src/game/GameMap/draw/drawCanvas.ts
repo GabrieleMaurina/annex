@@ -57,6 +57,7 @@ import {
   UNCLAIMED_TERRITORY_COLOR,
   type Point,
 } from '../helpers';
+import type { DirectionalLink } from '../hooks/view/useDirectionalConnections';
 import type { TimedLink } from '../hooks/view/useTimedConnections';
 import { drawTerritoryNames } from './drawNames';
 import {
@@ -65,7 +66,7 @@ import {
   strokeRegion,
   unlockedTileLayer,
 } from './drawRegions';
-import { drawTimedLinks } from './drawTimedLinks';
+import { drawDirectionalLinks, drawTimedLinks } from './drawTimedLinks';
 
 export interface DrawCanvasParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -128,6 +129,7 @@ export interface DrawCanvasParams {
   forcedWraps: ForcedWraps;
   regions: ClickableRegions | null;
   timedLinks: TimedLink[];
+  directionalLinks: DirectionalLink[];
   unlockTiles: LockedTile[];
   placeNames: PlaceNames;
 }
@@ -192,6 +194,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     forcedWraps,
     regions,
     timedLinks,
+    directionalLinks,
     unlockTiles,
     placeNames,
   } = params;
@@ -338,18 +341,18 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   ctx.beginPath();
   ctx.rect(offsetX, offsetY, imgW * scaleX, imgH * scaleY);
   ctx.clip();
-  drawTimedLinks(
-    ctx,
-    timedLinks,
-    pathPointById,
+  const linkLayout = {
+    pointById: pathPointById,
     toScreen,
     imgW,
     imgH,
     forcedWraps,
-    VERTEX_RADIUS,
-    scaleX,
-    { image: imageRef.current, regions, fillColors },
-  );
+    vertexRadius: VERTEX_RADIUS,
+    mapScale: scaleX,
+    backdrop: { image: imageRef.current, regions, fillColors },
+  };
+  drawTimedLinks(ctx, timedLinks, linkLayout);
+  drawDirectionalLinks(ctx, directionalLinks, linkLayout);
   drawAnimations(
     ctx,
     toScreen,

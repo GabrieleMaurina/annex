@@ -7,6 +7,7 @@ import {
 } from '../mapgen/core/params';
 import { DEFAULT_BORDER_COLORS } from '../mapgen/render/palette';
 import {
+  DirectionalConnection,
   Game,
   GameMap,
   LockedTile,
@@ -15,6 +16,7 @@ import {
   Territory,
   TimedConnection,
 } from '../types';
+import { withDirectedConnections } from './directionalConnections';
 import { withUnlockedTiles } from './lockedTiles';
 import { withOpenConnections } from './timedConnections';
 
@@ -44,6 +46,7 @@ function baseGameMap(game: Game): GameMap {
       bonuses: game.generatedMap.bonuses,
       wraps: [],
       timedConnections: game.generatedMap.timedConnections,
+      directionalConnections: game.generatedMap.directionalConnections,
       lockedTiles: game.generatedMap.lockedTiles,
     };
   }
@@ -55,6 +58,7 @@ function baseGameMap(game: Game): GameMap {
       bonuses: game.playerMap.bonuses,
       wraps: game.playerMap.wraps,
       timedConnections: game.playerMap.timedConnections,
+      directionalConnections: game.playerMap.directionalConnections,
       lockedTiles: game.playerMap.lockedTiles,
     };
   }
@@ -66,13 +70,18 @@ function baseGameMap(game: Game): GameMap {
       bonuses: [],
       wraps: [],
       timedConnections: [],
+      directionalConnections: [],
       lockedTiles: [],
     }
   );
 }
 
 function isStatic(game: Game, base: GameMap): boolean {
-  return base.timedConnections.length === 0 && game.unlockedTileIds.size === 0;
+  return (
+    base.timedConnections.length === 0 &&
+    base.directionalConnections.length === 0 &&
+    game.unlockedTileIds.size === 0
+  );
 }
 
 function withContinentBonuses(game: Game, map: GameMap): GameMap {
@@ -87,7 +96,11 @@ export function gameMapAtRound(game: Game, round: number): GameMap {
   return withContinentBonuses(game, {
     ...base,
     territories: withUnlockedTiles(
-      withOpenConnections(base.territories, base.timedConnections, round),
+      withDirectedConnections(
+        withOpenConnections(base.territories, base.timedConnections, round),
+        base.directionalConnections,
+        round,
+      ),
       base.lockedTiles,
       game.unlockedTileIds,
     ),
@@ -124,6 +137,7 @@ export interface ArchivedMap {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   imageSrc: string | null;
   borderColors: string[];
@@ -138,6 +152,7 @@ export interface ArchivedMap {
     tile: TileShape;
     seas: boolean;
     timed: boolean;
+    directional: boolean;
     unlockable: boolean;
     aspect: MapAspect;
     mountains: boolean;
@@ -153,6 +168,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
     bonuses,
     wraps,
     timedConnections,
+    directionalConnections,
     lockedTiles,
   } = baseGameMap(game);
   const generated = game.generatedMap;
@@ -163,6 +179,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
     bonuses,
     wraps,
     timedConnections,
+    directionalConnections,
     lockedTiles,
     imageSrc: generated?.imageSrc ?? game.playerMap?.imageSrc ?? null,
     borderColors:
@@ -181,6 +198,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
           tile: generated.tile,
           seas: generated.seas,
           timed: generated.timed,
+          directional: generated.directional,
           unlockable: generated.unlockable,
           aspect: generated.aspect,
           mountains: generated.mountains,

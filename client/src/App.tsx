@@ -26,6 +26,7 @@ import {
 import type {
   Account,
   Ack,
+  DirectionalConnection,
   IdentifyResult,
   LockedTile,
   MapWrap,
@@ -307,6 +308,7 @@ function App() {
       bonuses: number[];
       wraps: MapWrap[];
       timedConnections: TimedConnection[];
+      directionalConnections: DirectionalConnection[];
       lockedTiles: LockedTile[];
       imageSrc: string;
       borderColors: string[];
@@ -320,6 +322,7 @@ function App() {
         bonuses: data.bonuses,
         wraps: data.wraps,
         timedConnections: data.timedConnections,
+        directionalConnections: data.directionalConnections,
         lockedTiles: data.lockedTiles,
         imageSrc: data.imageSrc,
         borderColors: data.borderColors,

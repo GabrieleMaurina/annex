@@ -1,6 +1,10 @@
 import { loadWhiteIcon } from '../../../common/icon';
 import { contrastTextColor } from '../../../lib/palette';
-import { CHEVRONS_PER_MS, drawSplitArrow } from '../../animations/arrow';
+import {
+  CHEVRONS_PER_MS,
+  drawDirectionalArrow,
+  drawSplitArrow,
+} from '../../animations/arrow';
 import { areAnimationsDisabled, radiusScale } from '../../animations/state';
 import {
   buildWrappedPathSegments,
@@ -13,6 +17,7 @@ import {
   type ClickableRegions,
 } from '../../regions/clickableRegions';
 import { CANVAS_FONT_FAMILY } from '../helpers';
+import type { DirectionalLink } from '../hooks/view/useDirectionalConnections';
 import type { TimedLink } from '../hooks/view/useTimedConnections';
 
 const HOURGLASS_SRC = '/icons/hourglass.svg';
@@ -256,59 +261,177 @@ function drawCount(
   ctx.restore();
 }
 
-export function drawTimedLinks(
+interface LinkGeometry {
+  segments: WrappedSegment[];
+  at: Point;
+  normal: Point;
+}
+
+interface LinkLayout {
+  pointById: Map<number, Point>;
+  toScreen: (p: Point) => Point;
+  imgW: number;
+  imgH: number;
+  forcedWraps: ForcedWraps;
+  vertexRadius: number;
+  mapScale: number;
+  backdrop: TimedBackdrop;
+}
+
+function linkGeometry(
+  layout: LinkLayout,
+  link: { a: number; b: number },
+): LinkGeometry | null {
+  const { pointById, toScreen, imgW, imgH, forcedWraps } = layout;
+  const a = pointById.get(link.a);
+  const b = pointById.get(link.b);
+  if (!a || !b) return null;
+  const { at, along } = midpoint(
+    buildWrappedPathSegments([a, b], (p) => p, imgW, imgH, forcedWraps),
+  );
+  return {
+    segments: buildWrappedPathSegments(
+      [a, b],
+      toScreen,
+      imgW,
+      imgH,
+      forcedWraps,
+    ),
+    at,
+    normal: snappedNormal(along),
+  };
+}
+
+function drawRoundsLeft(
   ctx: CanvasRenderingContext2D,
-  links: TimedLink[],
-  pointById: Map<number, Point>,
-  toScreen: (p: Point) => Point,
-  imgW: number,
-  imgH: number,
-  forcedWraps: ForcedWraps,
-  vertexRadius: number,
-  mapScale: number,
-  backdrop: TimedBackdrop,
+  layout: LinkLayout,
+  { at, normal }: LinkGeometry,
+  roundsLeft: number,
 ) {
+  const { toScreen, vertexRadius, mapScale, backdrop } = layout;
   const screenRadius = vertexRadius * mapScale;
   const scale = radiusScale(screenRadius);
   const iconHalf = (ICON_RADII * vertexRadius) / 2;
+  const offset = SIDE_OFFSET_RADII * vertexRadius;
+  const iconAt = { x: at.x + normal.x * offset, y: at.y + normal.y * offset };
+  const countAt = { x: at.x - normal.x * offset, y: at.y - normal.y * offset };
+
+  drawHourglass(
+    ctx,
+    toScreen(iconAt),
+    ICON_RADII * screenRadius,
+    contrastAt(backdrop, iconAt, iconHalf),
+    scale,
+  );
+  drawCount(
+    ctx,
+    toScreen(countAt),
+    String(roundsLeft),
+    COUNT_FONT_RADII * screenRadius,
+    contrastAt(backdrop, countAt, iconHalf),
+    scale,
+  );
+}
+
+export function drawTimedLinks(
+  ctx: CanvasRenderingContext2D,
+  links: TimedLink[],
+  layout: LinkLayout,
+) {
+  const screenRadius = layout.vertexRadius * layout.mapScale;
   const animated = !areAnimationsDisabled();
   const now = performance.now();
-  const motions = motionsOf(backdrop.image);
+  const motions = motionsOf(layout.backdrop.image);
   for (const link of links) {
-    const a = pointById.get(link.a);
-    const b = pointById.get(link.b);
-    if (!a || !b) continue;
-    const { at, along } = midpoint(
-      buildWrappedPathSegments([a, b], (p) => p, imgW, imgH, forcedWraps),
-    );
-    const { x: nx, y: ny } = snappedNormal(along);
+    const geometry = linkGeometry(layout, link);
+    if (!geometry) continue;
     const motion = motionOf(motions, link, now);
     drawSplitArrow(
       ctx,
-      buildWrappedPathSegments([a, b], toScreen, imgW, imgH, forcedWraps),
+      geometry.segments,
       screenRadius,
       animated ? phaseAt(motion, now) : 0,
       animated ? closednessAt(motion, now) : link.open ? 0 : 1,
     );
+    drawRoundsLeft(ctx, layout, geometry, link.roundsLeft);
+  }
+}
 
-    const offset = SIDE_OFFSET_RADII * vertexRadius;
-    const iconAt = { x: at.x + nx * offset, y: at.y + ny * offset };
-    const countAt = { x: at.x - nx * offset, y: at.y - ny * offset };
+interface FlipMotion {
+  forward: boolean;
+  since: number;
+  base: number;
+}
 
-    drawHourglass(
+const flipsByImage = new WeakMap<HTMLImageElement, Map<string, FlipMotion>>();
+
+function flipsOf(image: HTMLImageElement | null): Map<string, FlipMotion> {
+  if (!image) return new Map();
+  const flips = flipsByImage.get(image) ?? new Map<string, FlipMotion>();
+  flipsByImage.set(image, flips);
+  return flips;
+}
+
+function flipPhaseAt(motion: FlipMotion, now: number): number {
+  const elapsed = now - motion.since;
+  const half = TRANSITION_MS / 2;
+  const sign = motion.forward ? 1 : -1;
+  const v = TIMED_CHEVRONS_PER_MS;
+  if (elapsed >= TRANSITION_MS)
+    return motion.base + sign * v * (elapsed - TRANSITION_MS);
+  if (elapsed < half)
+    return motion.base - sign * v * (elapsed - elapsed ** 2 / (2 * half));
+  return (
+    motion.base -
+    (sign * v * half) / 2 +
+    (sign * v * (elapsed - half) ** 2) / (2 * half)
+  );
+}
+
+function flipTurnAt(motion: FlipMotion, now: number): number {
+  const p = Math.min(1, (now - motion.since) / TRANSITION_MS);
+  const eased = p * p * (3 - 2 * p);
+  return motion.forward ? 2 - 2 * eased : 2 * eased;
+}
+
+function flipOf(
+  flips: Map<string, FlipMotion>,
+  link: DirectionalLink,
+  now: number,
+): FlipMotion {
+  const key = `${link.a},${link.b}`;
+  const motion = flips.get(key);
+  if (motion && motion.forward === link.forward) return motion;
+  const next = {
+    forward: link.forward,
+    since: motion ? now : now - TRANSITION_MS,
+    base: motion ? flipPhaseAt(motion, now) : 0,
+  };
+  flips.set(key, next);
+  return next;
+}
+
+export function drawDirectionalLinks(
+  ctx: CanvasRenderingContext2D,
+  links: DirectionalLink[],
+  layout: LinkLayout,
+) {
+  const screenRadius = layout.vertexRadius * layout.mapScale;
+  const animated = !areAnimationsDisabled();
+  const now = performance.now();
+  const flips = flipsOf(layout.backdrop.image);
+  for (const link of links) {
+    const geometry = linkGeometry(layout, link);
+    if (!geometry) continue;
+    const motion = flipOf(flips, link, now);
+    drawDirectionalArrow(
       ctx,
-      toScreen(iconAt),
-      ICON_RADII * screenRadius,
-      contrastAt(backdrop, iconAt, iconHalf),
-      scale,
+      geometry.segments,
+      screenRadius,
+      animated ? flipPhaseAt(motion, now) : 0,
+      animated ? flipTurnAt(motion, now) : link.forward ? 0 : 2,
     );
-    drawCount(
-      ctx,
-      toScreen(countAt),
-      String(link.roundsLeft),
-      COUNT_FONT_RADII * screenRadius,
-      contrastAt(backdrop, countAt, iconHalf),
-      scale,
-    );
+    if (link.roundsLeft !== null)
+      drawRoundsLeft(ctx, layout, geometry, link.roundsLeft);
   }
 }

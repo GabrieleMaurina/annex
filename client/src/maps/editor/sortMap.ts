@@ -1,4 +1,5 @@
 import type {
+  DirectionalConnection,
   LockedTile,
   MapSeaTerritory,
   MapTerritory,
@@ -110,6 +111,7 @@ export function sortTerritories(
       neighbors: t.neighbors.map((n) => idMap.get(n)!),
       wraps: t.wraps.map((w) => ({ ...w, id: idMap.get(w.id)! })),
       timed: t.timed.map((m) => ({ ...m, id: idMap.get(m.id)! })),
+      directional: t.directional.map((m) => ({ ...m, id: idMap.get(m.id)! })),
     }),
   );
 
@@ -132,6 +134,7 @@ export function sortMapData(
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   territoryNames: string[];
   seaNames: string[];
@@ -164,6 +167,16 @@ export function sortMapData(
       t.timed
         .filter((m) => t.id < m.id)
         .map(({ id, ...values }) => ({ a: t.id, b: id, ...values })),
+    ),
+    directionalConnections: sorted.territories.flatMap((t) =>
+      t.directional
+        .filter((m) => m.out)
+        .map(({ id, forward, backward }) => ({
+          a: t.id,
+          b: id,
+          forward,
+          backward,
+        })),
     ),
     lockedTiles: toLockedTiles(
       lockedTiles,

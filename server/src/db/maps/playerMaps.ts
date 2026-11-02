@@ -1,4 +1,5 @@
 import {
+  DirectionalConnection,
   Fill,
   GenerationType,
   LockedTile,
@@ -45,6 +46,7 @@ interface PlayerMapDoc {
   bonuses: number[];
   wraps: PlayerMapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   image: Binary;
   imageMime: string;
@@ -137,6 +139,7 @@ export interface PlayerMapInput {
   bonuses: number[];
   wraps: PlayerMapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   image: Buffer;
   imageMime: string;
@@ -160,6 +163,7 @@ export function createPlayerMap(
       bonuses: input.bonuses,
       wraps: input.wraps,
       timedConnections: input.timedConnections,
+      directionalConnections: input.directionalConnections,
       lockedTiles: input.lockedTiles,
       image: new Binary(input.image),
       imageMime: input.imageMime,
@@ -208,6 +212,7 @@ export function updatePlayerMap(
               bonuses: input.bonuses,
               wraps: input.wraps,
               timedConnections: input.timedConnections,
+              directionalConnections: input.directionalConnections,
               lockedTiles: input.lockedTiles,
               image: new Binary(input.image),
               imageMime: input.imageMime,
@@ -250,6 +255,7 @@ export interface PlayerMapDetail {
   bonuses: number[];
   wraps: PlayerMapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   image: string;
   imageMime: string;
@@ -278,6 +284,7 @@ export function getPlayerMapById(id: string): Promise<PlayerMapDetail | null> {
             bonuses: doc.bonuses,
             wraps: doc.wraps,
             timedConnections: doc.timedConnections ?? [],
+            directionalConnections: doc.directionalConnections ?? [],
             lockedTiles: doc.lockedTiles ?? [],
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
@@ -373,6 +380,7 @@ export interface PlayerMapsQuery {
   generationTile?: TileShape;
   generationSeas?: boolean;
   generationTimed?: boolean;
+  generationDirectional?: boolean;
   generationUnlockable?: boolean;
   sort: PlayerMapSort;
   viewerId?: string;
@@ -448,6 +456,8 @@ export function listPlayerMaps(
     filter['generation.seas'] = query.generationSeas;
   if (query.generationTimed !== undefined)
     filter['generation.timed'] = query.generationTimed;
+  if (query.generationDirectional !== undefined)
+    filter['generation.directional'] = query.generationDirectional;
   if (query.generationUnlockable !== undefined)
     filter['generation.unlockable'] = query.generationUnlockable;
 
@@ -482,6 +492,7 @@ export function listPlayerMaps(
           bonuses: 0,
           wraps: 0,
           timedConnections: 0,
+          directionalConnections: 0,
           lockedTiles: 0,
         },
       })

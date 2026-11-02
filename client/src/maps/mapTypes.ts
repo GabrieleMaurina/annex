@@ -1,4 +1,5 @@
 import type {
+  DirectionalConnection,
   Fill,
   GenerateMapInput,
   GenerationType,
@@ -37,6 +38,7 @@ export interface StoredMap {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   image: string;
   imageMime: string;
@@ -66,6 +68,7 @@ export interface PlayerMapsQuery {
   generationTile?: TileShape;
   generationSeas?: boolean;
   generationTimed?: boolean;
+  generationDirectional?: boolean;
   generationUnlockable?: boolean;
   sort: PlayerMapSort;
 }
@@ -101,6 +104,7 @@ export interface PlayerMapDetail {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   image: string;
   imageMime: string;
@@ -122,6 +126,7 @@ export interface PlayerMapSaveBody {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   image: string;
   borderColors: string[];

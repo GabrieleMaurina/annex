@@ -34,6 +34,7 @@ export interface GameSettings {
     tile: string;
     seas: boolean;
     timed: boolean;
+    directional: boolean;
     unlockable: boolean;
     aspect: string;
     mountains: boolean;
@@ -96,6 +97,7 @@ export interface HomeFilters {
   mapGenerationTile: string;
   mapGenerationSeas: string;
   mapGenerationTimed: string;
+  mapGenerationDirectional: string;
   mapGenerationUnlockable: string;
   playersMin: number;
   playersMax: number;
@@ -329,6 +331,7 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
   mapGenerationTile: '',
   mapGenerationSeas: '',
   mapGenerationTimed: '',
+  mapGenerationDirectional: '',
   mapGenerationUnlockable: '',
   playersMin: HOME_PLAYERS_MIN,
   playersMax: HOME_PLAYERS_MAX,
@@ -405,6 +408,7 @@ export const preferencesSchemaProperties = {
           'tile',
           'seas',
           'timed',
+          'directional',
           'unlockable',
           'aspect',
         ],
@@ -417,6 +421,7 @@ export const preferencesSchemaProperties = {
           tile: { enum: TILE_SHAPES },
           seas: { bsonType: 'bool' },
           timed: { bsonType: 'bool' },
+          directional: { bsonType: 'bool' },
           unlockable: { bsonType: 'bool' },
           aspect: { enum: MAP_ASPECTS },
           mountains: { bsonType: 'bool' },
@@ -445,6 +450,7 @@ export const preferencesSchemaProperties = {
       'mapGenerationTile',
       'mapGenerationSeas',
       'mapGenerationTimed',
+      'mapGenerationDirectional',
       'mapGenerationUnlockable',
       'playersMin',
       'playersMax',
@@ -480,6 +486,7 @@ export const preferencesSchemaProperties = {
       mapGenerationTile: { enum: HOME_TILES },
       mapGenerationSeas: { enum: HOME_GENERATION_FLAGS },
       mapGenerationTimed: { enum: HOME_GENERATION_FLAGS },
+      mapGenerationDirectional: { enum: HOME_GENERATION_FLAGS },
       mapGenerationUnlockable: { enum: HOME_GENERATION_FLAGS },
       playersMin: {
         bsonType: 'number',
@@ -571,6 +578,7 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
       : TILE_SHAPES[0],
     seas: r.seas,
     timed: r.timed === true,
+    directional: r.directional === true,
     unlockable: r.unlockable === true,
     aspect: MAP_ASPECTS.includes(r.aspect as string)
       ? (r.aspect as string)
@@ -704,6 +712,11 @@ export function sanitizeHomeFilters(raw: unknown): HomeFilters {
     mapGenerationSeas: pickEnum(r.mapGenerationSeas, HOME_GENERATION_FLAGS, ''),
     mapGenerationTimed: pickEnum(
       r.mapGenerationTimed,
+      HOME_GENERATION_FLAGS,
+      '',
+    ),
+    mapGenerationDirectional: pickEnum(
+      r.mapGenerationDirectional,
       HOME_GENERATION_FLAGS,
       '',
     ),

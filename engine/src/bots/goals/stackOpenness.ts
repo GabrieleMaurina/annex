@@ -3,6 +3,7 @@ import { consolidation, spreading } from '../features/stackStyle';
 import {
   PlanContext,
   SimState,
+  attackersOf,
   botBorderIds,
   cloneState,
   isFriendly,
@@ -239,7 +240,7 @@ export function openedEnemyStackPower(
       return ownerId !== undefined && isFriendly(ctx, ownerId);
     });
   let power = 0;
-  for (const n of neighborsOf(ctx, conqueredId)) {
+  for (const n of attackersOf(ctx, conqueredId)) {
     const ownerId = state.owners.get(n);
     const troops = troopsIn(state, n);
     if (ownerId === undefined || isFriendly(ctx, ownerId)) continue;

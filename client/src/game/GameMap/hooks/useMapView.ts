@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { LockedTile, MapWrap, TimedConnection } from '../../../lib/types';
+import type {
+  DirectionalConnection,
+  LockedTile,
+  MapWrap,
+  TimedConnection,
+} from '../../../lib/types';
 import {
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
@@ -26,10 +31,14 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
   const [timedConnections, setTimedConnections] = useState<TimedConnection[]>(
     [],
   );
+  const [directionalConnections, setDirectionalConnections] = useState<
+    DirectionalConnection[]
+  >([]);
   const [lockedTiles, setLockedTiles] = useState<LockedTile[]>([]);
   const [regions, setRegions] = useState<ClickableRegions | null>(null);
   const [placeNames, setPlaceNames] = useState(NO_PLACE_NAMES);
   const [camera] = useState(createCamera);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [imgDims, setImgDims] = useState({
     w: DEFAULT_IMAGE_WIDTH,
     h: DEFAULT_IMAGE_HEIGHT,
@@ -47,6 +56,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         bonuses,
         wraps,
         timedConnections,
+        directionalConnections,
         lockedTiles,
         imageSrc,
       }) => {
@@ -55,6 +65,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         setBonuses(bonuses);
         setWraps(wraps);
         setTimedConnections(timedConnections);
+        setDirectionalConnections(directionalConnections);
         setLockedTiles(lockedTiles);
         setPlaceNames(placeNamesFor(mapName));
         loadClickableRegions(mapName, playerMapId).then(setRegions);
@@ -68,6 +79,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         img.onload = () => {
           imageRef.current = img;
           setImgDims({ w: img.naturalWidth, h: img.naturalHeight });
+          setImageLoaded(true);
           camera.set({ ...DEFAULT_TRANSFORM });
         };
         img.src = imageSrc;
@@ -95,12 +107,14 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     seaTerritories,
     bonuses,
     timedConnections,
+    directionalConnections,
     lockedTiles,
     forcedWraps,
     regions,
     placeNames,
     camera,
     imgDims,
+    imageLoaded,
     size,
   };
 }

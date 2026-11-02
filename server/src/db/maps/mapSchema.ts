@@ -29,6 +29,7 @@ export const MAP_REQUIRED = [
   'bonuses',
   'wraps',
   'timedConnections',
+  'directionalConnections',
   'lockedTiles',
   'generation',
   'image',
@@ -100,6 +101,20 @@ export const MAP_PROPERTIES = {
       },
     },
   },
+  directionalConnections: {
+    bsonType: 'array',
+    items: {
+      bsonType: 'object',
+      required: ['a', 'b', 'forward', 'backward'],
+      additionalProperties: false,
+      properties: {
+        a: { bsonType: 'number' },
+        b: { bsonType: 'number' },
+        forward: TIMED_PERIOD,
+        backward: TIMED_DELAY,
+      },
+    },
+  },
   lockedTiles: {
     bsonType: 'array',
     items: {
@@ -133,6 +148,7 @@ export const MAP_PROPERTIES = {
       'tile',
       'seas',
       'timed',
+      'directional',
       'unlockable',
       'aspect',
     ],
@@ -145,6 +161,7 @@ export const MAP_PROPERTIES = {
       tile: { enum: TILE_SHAPE_VALUES },
       seas: { bsonType: 'bool' },
       timed: { bsonType: 'bool' },
+      directional: { bsonType: 'bool' },
       unlockable: { bsonType: 'bool' },
       aspect: { enum: MAP_ASPECT_VALUES },
       mountains: { bsonType: 'bool' },

@@ -19,6 +19,7 @@ import type {
   TileShape,
 } from '../lib/types';
 import {
+  DIRECTIONAL_CONNECTIONS_HELP,
   MOUNTAINS_HELP,
   RIVERS_HELP,
   SEAS_HELP,
@@ -70,6 +71,7 @@ function sameInput(a: GenerateMapInput, b: GenerateMapInput): boolean {
     (b.type !== 'tile' || a.tile === b.tile) &&
     a.seas === b.seas &&
     a.timed === b.timed &&
+    (a.directional ?? false) === b.directional &&
     a.unlockable === b.unlockable &&
     (b.type !== 'terrain' ||
       ((a.mountains ?? false) === b.mountains &&
@@ -104,6 +106,9 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
     const [timed, setTimed] = useState(
       initial?.timed ?? DEFAULT_MAP_GENERATION.timed,
     );
+    const [directional, setDirectional] = useState(
+      initial?.directional ?? DEFAULT_MAP_GENERATION.directional,
+    );
     const [unlockableChecked, setUnlockableChecked] = useState(
       initial?.unlockable ?? DEFAULT_MAP_GENERATION.unlockable,
     );
@@ -130,6 +135,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
         tile,
         seas,
         timed,
+        directional,
         unlockable,
         aspect,
         mountains,
@@ -284,12 +290,24 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                 <Form.Check
                   type="checkbox"
                   id="map-generation-timed"
-                  label={
-                    <Help tip={TIMED_CONNECTIONS_HELP}>Timed connections</Help>
-                  }
+                  label={<Help tip={TIMED_CONNECTIONS_HELP}>Timed links</Help>}
                   checked={timed}
                   disabled={unlockable}
                   onChange={(e) => setTimed(e.target.checked)}
+                />
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <Form.Check
+                  type="checkbox"
+                  id="map-generation-directional"
+                  label={
+                    <Help tip={DIRECTIONAL_CONNECTIONS_HELP}>
+                      Directional links
+                    </Help>
+                  }
+                  checked={directional}
+                  disabled={unlockable}
+                  onChange={(e) => setDirectional(e.target.checked)}
                 />
               </div>
               {type === 'tile' && (
@@ -299,7 +317,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                     id="map-generation-unlockable"
                     label={<Help tip={UNLOCKABLE_HELP}>Unlockable</Help>}
                     checked={unlockable}
-                    disabled={seas || timed}
+                    disabled={seas || timed || directional}
                     onChange={(e) => setUnlockableChecked(e.target.checked)}
                   />
                 </div>

@@ -577,6 +577,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
           tile: d.tile as TileShape,
           seas: d.seas as boolean,
           timed: d.timed as boolean,
+          directional: d.directional === true,
           unlockable: d.unlockable as boolean,
           aspect: (d.aspect as MapAspect | undefined) ?? 'wide',
           mountains: (d.mountains as boolean | undefined) ?? false,

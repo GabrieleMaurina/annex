@@ -17,6 +17,7 @@ import {
 } from './settings/gameSettings';
 import SettingOdometer from './settings/SettingOdometer';
 import {
+  DIRECTIONAL_CONNECTIONS_HELP,
   MAP_GEN_HELP,
   MAP_HELP,
   SEAS_HELP,
@@ -85,6 +86,7 @@ export function MapFilterFields({
   tile,
   seas,
   timed,
+  directional,
   unlockable,
   onMapName,
   onSize,
@@ -93,6 +95,7 @@ export function MapFilterFields({
   onTile,
   onSeas,
   onTimed,
+  onDirectional,
   onUnlockable,
 }: {
   mapName: string;
@@ -102,6 +105,7 @@ export function MapFilterFields({
   tile: string;
   seas: string;
   timed: string;
+  directional: string;
   unlockable: string;
   onMapName: (v: string) => void;
   onSize: (v: string) => void;
@@ -110,6 +114,7 @@ export function MapFilterFields({
   onTile: (v: string) => void;
   onSeas: (v: string) => void;
   onTimed: (v: string) => void;
+  onDirectional: (v: string) => void;
   onUnlockable: (v: string) => void;
 }) {
   return (
@@ -127,6 +132,7 @@ export function MapFilterFields({
               onTile('');
               onSeas('');
               onTimed('');
+              onDirectional('');
               onUnlockable('');
             }
           }}
@@ -194,10 +200,20 @@ export function MapFilterFields({
             </Selector>
           </Field>
           <Field
-            label="Generated map timed connections"
+            label="Generated map timed links"
             help={TIMED_CONNECTIONS_HELP}
           >
             <Selector size="sm" value={timed} onChange={onTimed}>
+              <option value="">Any</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </Selector>
+          </Field>
+          <Field
+            label="Generated map directional links"
+            help={DIRECTIONAL_CONNECTIONS_HELP}
+          >
+            <Selector size="sm" value={directional} onChange={onDirectional}>
               <option value="">Any</option>
               <option value="yes">Yes</option>
               <option value="no">No</option>

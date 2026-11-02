@@ -11,6 +11,7 @@ import WhiteIcon from '../../../common/icons/WhiteIcon';
 import PanelHeader from '../../../common/PanelHeader';
 import Help from '../../../common/tooltips/Help';
 import {
+  DIRECTIONAL_CONNECTIONS_HELP,
   EARTH_GREEN_AREAS_HELP,
   EARTH_MOUNTAINS_HELP,
   EARTH_RIVERS_HELP,
@@ -91,6 +92,7 @@ interface EarthSession {
   detail: OsmDetail;
   seas: boolean;
   timed: boolean;
+  directional: boolean;
   mountains: boolean;
   rivers: boolean;
   greenAreas: boolean;
@@ -107,6 +109,7 @@ const session: EarthSession = {
   detail: 'auto',
   seas: false,
   timed: false,
+  directional: false,
   mountains: false,
   rivers: false,
   greenAreas: false,
@@ -239,6 +242,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
   const [detail, setDetail] = useState(session.detail);
   const [seas, setSeas] = useState(session.seas);
   const [timed, setTimed] = useState(session.timed);
+  const [directional, setDirectional] = useState(session.directional);
   const [mountains, setMountains] = useState(session.mountains);
   const [rivers, setRivers] = useState(session.rivers);
   const [greenAreas, setGreenAreas] = useState(session.greenAreas);
@@ -268,6 +272,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
       detail,
       seas,
       timed,
+      directional,
       mountains,
       rivers,
       greenAreas,
@@ -421,6 +426,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
       detail: chosenDetail,
       seas,
       timed,
+      directional,
       mountains,
       rivers,
       greenAreas,
@@ -581,12 +587,23 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
             <div className="d-flex align-items-center gap-2">
               <Form.Check
                 type="checkbox"
-                label={
-                  <Help tip={TIMED_CONNECTIONS_HELP}>Timed connections</Help>
-                }
+                label={<Help tip={TIMED_CONNECTIONS_HELP}>Timed links</Help>}
                 checked={timed}
                 disabled={!!job}
                 onChange={(e) => setTimed(e.target.checked)}
+              />
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                type="checkbox"
+                label={
+                  <Help tip={DIRECTIONAL_CONNECTIONS_HELP}>
+                    Directional links
+                  </Help>
+                }
+                checked={directional}
+                disabled={!!job}
+                onChange={(e) => setDirectional(e.target.checked)}
               />
             </div>
             <div className="d-flex align-items-center gap-2">

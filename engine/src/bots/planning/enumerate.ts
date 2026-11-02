@@ -99,6 +99,8 @@ function materialize(
     topology: {
       neighbors: ctx.neighbors,
       horizonNeighbors: ctx.horizonNeighbors,
+      attackers: ctx.attackers,
+      horizonAttackers: ctx.horizonAttackers,
       seaLinks: ctx.seaLinks,
       continentTerritories: ctx.continentTerritories,
       territoryContinent: ctx.territoryContinent,

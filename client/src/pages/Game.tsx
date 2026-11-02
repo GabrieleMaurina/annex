@@ -413,6 +413,7 @@ function Game({
           settingsMenuOpen={settingsMenuOpen}
           onPanelOpenChange={setGamePanelOpen}
           navigate={navigate}
+          tutorialHighlight={tutorial?.highlight}
         />
       )}
       {!connector.isOffline() && (

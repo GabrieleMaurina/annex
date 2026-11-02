@@ -96,6 +96,7 @@ export interface GameExport {
     tile: string;
     seas: boolean;
     timed: boolean;
+    directional: boolean;
     unlockable: boolean;
     aspect: string;
     mountains: boolean;
@@ -391,6 +392,7 @@ export function exportGame(gameName: string): GameExport | null {
           tile: game.generatedMap.tile,
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
+          directional: game.generatedMap.directional,
           unlockable: game.generatedMap.unlockable,
           aspect: game.generatedMap.aspect,
           mountains: game.generatedMap.mountains,

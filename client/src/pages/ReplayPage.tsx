@@ -260,6 +260,7 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
             bonuses: map.bonuses,
             wraps: map.wraps,
             timedConnections: map.timedConnections,
+            directionalConnections: map.directionalConnections,
             lockedTiles: map.lockedTiles,
             imageSrc: `data:${map.imageMime};base64,${map.image}`,
             borderColors: map.borderColors,

@@ -12,6 +12,7 @@ export const DEFAULT_MAP_GENERATION = {
   tile: 'hexagons',
   seas: false,
   timed: false,
+  directional: false,
   unlockable: false,
   aspect: 'wide',
   mountains: false,

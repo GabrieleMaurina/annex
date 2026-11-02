@@ -1,9 +1,11 @@
 import {
+  DirectionalConnection,
   duplicatePlaceNames,
   Fill,
   FILL_VALUES,
   GENERATION_TYPE_VALUES,
   GenerationType,
+  isStronglyConnected,
   isValidPlaceName,
   LockedTile,
   MAP_ASPECT_VALUES,
@@ -14,6 +16,8 @@ import {
   TILE_SHAPE_VALUES,
   TileShape,
   TimedConnection,
+  withEventualLinks,
+  withSeaHops,
 } from 'engine';
 
 export function isObject(value: unknown): value is Record<string, unknown> {
@@ -127,6 +131,20 @@ function isTimedConnection(value: unknown): value is TimedConnection {
     isTimedValue(value.delay, 0) &&
     isTimedValue(value.open, 1) &&
     isTimedValue(value.closed, 1)
+  );
+}
+
+function isDirectionalConnection(
+  value: unknown,
+): value is DirectionalConnection {
+  if (!isObject(value)) return false;
+  return (
+    Object.keys(value).length === 4 &&
+    Number.isInteger(value.a) &&
+    Number.isInteger(value.b) &&
+    value.a !== value.b &&
+    isTimedValue(value.forward, 1) &&
+    isTimedValue(value.backward, 0)
   );
 }
 
@@ -252,36 +270,32 @@ export function readImageDimensions(
 
 function allConnected(
   nodes: { id: number; neighbors: number[] }[],
-  byId: Map<number, { neighbors: number[] }>,
+  seaIds: Set<number>,
   timedConnections: TimedConnection[],
+  directionalConnections: DirectionalConnection[],
   lockedTiles: LockedTile[],
 ): boolean {
-  const extraNeighbors = new Map<number, number[]>();
+  const adjacency = new Map(nodes.map((t) => [t.id, t.neighbors]));
   const link = (a: number, b: number) =>
-    extraNeighbors.set(a, [...(extraNeighbors.get(a) ?? []), b]);
-  for (const { a, b } of timedConnections) {
-    link(a, b);
-    link(b, a);
-  }
+    adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
   for (const tile of lockedTiles) {
     for (const n of tile.neighbors) {
       link(tile.id, n);
       link(n, tile.id);
     }
   }
-  const visited = new Set<number>();
-  const stack = [nodes[0].id];
-  while (stack.length > 0) {
-    const id = stack.pop()!;
-    if (visited.has(id)) continue;
-    visited.add(id);
-    for (const n of [
-      ...(byId.get(id)?.neighbors ?? []),
-      ...(extraNeighbors.get(id) ?? []),
-    ])
-      if (!visited.has(n)) stack.push(n);
-  }
-  return nodes.every((t) => visited.has(t.id));
+  const attackGraph = withEventualLinks(
+    withSeaHops(
+      [...adjacency].map(([id, neighbors]) => ({ id, neighbors })),
+      seaIds,
+    ),
+    timedConnections,
+    directionalConnections,
+  );
+  return isStronglyConnected(
+    nodes.filter((t) => !seaIds.has(t.id)).map((t) => t.id),
+    new Map(attackGraph.map((t) => [t.id, t.neighbors])),
+  );
 }
 
 export interface MapGeneration {
@@ -292,6 +306,7 @@ export interface MapGeneration {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  directional: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;
@@ -308,6 +323,7 @@ export function validateMapGeneration(
   if (raw === undefined || raw === null) return { ok: true, generation: null };
   if (!isObject(raw)) return { ok: false, error: 'invalid generation' };
   const { seed, size, type, fill, tile, seas, timed, unlockable } = raw;
+  const directional = raw.directional ?? false;
   const aspect = raw.aspect ?? 'wide';
   const mountains = raw.mountains ?? false;
   const rivers = raw.rivers ?? false;
@@ -321,8 +337,9 @@ export function validateMapGeneration(
     !(TILE_SHAPE_VALUES as string[]).includes(tile as string) ||
     typeof seas !== 'boolean' ||
     typeof timed !== 'boolean' ||
+    typeof directional !== 'boolean' ||
     typeof unlockable !== 'boolean' ||
-    (unlockable && (type !== 'tile' || seas || timed)) ||
+    (unlockable && (type !== 'tile' || seas || timed || directional)) ||
     typeof mountains !== 'boolean' ||
     typeof rivers !== 'boolean' ||
     !(MAP_ASPECT_VALUES as unknown[]).includes(aspect)
@@ -338,6 +355,7 @@ export function validateMapGeneration(
       tile: tile as TileShape,
       seas,
       timed,
+      directional,
       unlockable,
       aspect: aspect as MapAspect,
       mountains,
@@ -399,6 +417,7 @@ export function validateMapGeometry(
   bonusesRaw: unknown,
   wrapsRaw: unknown,
   timedRaw: unknown,
+  directionalRaw: unknown,
   lockedRaw: unknown,
   imageWidth: number,
   imageHeight: number,
@@ -410,6 +429,7 @@ export function validateMapGeometry(
       bonuses: number[];
       wraps: MapWrap[];
       timedConnections: TimedConnection[];
+      directionalConnections: DirectionalConnection[];
       lockedTiles: LockedTile[];
     }
   | { ok: false; error: string } {
@@ -438,7 +458,13 @@ export function validateMapGeometry(
     timedRaw.length > MAX_TERRITORIES ||
     !timedRaw.every(isTimedConnection)
   )
-    return { ok: false, error: 'invalid timed connections' };
+    return { ok: false, error: 'invalid timed links' };
+  if (
+    !Array.isArray(directionalRaw) ||
+    directionalRaw.length > MAX_TERRITORIES ||
+    !directionalRaw.every(isDirectionalConnection)
+  )
+    return { ok: false, error: 'invalid directional links' };
   if (
     !Array.isArray(lockedRaw) ||
     lockedRaw.length > MAX_TERRITORIES ||
@@ -451,6 +477,7 @@ export function validateMapGeometry(
   const bonuses = bonusesRaw as number[];
   const wraps = wrapsRaw as MapWrap[];
   const timedConnections = timedRaw as TimedConnection[];
+  const directionalConnections = directionalRaw as DirectionalConnection[];
   const lockedTiles = lockedRaw as LockedTile[];
 
   if (territories.length < MIN_CONTINENT_SIZE)
@@ -479,6 +506,8 @@ export function validateMapGeometry(
 
   const pairKey = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`);
   const landIds = new Set(territories.map((t) => t.id));
+  if (seaTerritories.some((s) => !s.neighbors.some((n) => landIds.has(n))))
+    return { ok: false, error: 'invalid seas' };
   const timedKeys = new Set<string>();
   for (const c of timedConnections) {
     const key = pairKey(c.a, c.b);
@@ -488,8 +517,21 @@ export function validateMapGeometry(
       !landIds.has(c.b) ||
       byId.get(c.a)!.neighbors.includes(c.b)
     )
-      return { ok: false, error: 'invalid timed connections' };
+      return { ok: false, error: 'invalid timed links' };
     timedKeys.add(key);
+  }
+  const directionalKeys = new Set<string>();
+  for (const c of directionalConnections) {
+    const key = pairKey(c.a, c.b);
+    if (
+      directionalKeys.has(key) ||
+      timedKeys.has(key) ||
+      !landIds.has(c.a) ||
+      !landIds.has(c.b) ||
+      byId.get(c.a)!.neighbors.includes(c.b)
+    )
+      return { ok: false, error: 'invalid directional links' };
+    directionalKeys.add(key);
   }
 
   const wrapKeys = new Set<string>();
@@ -497,7 +539,9 @@ export function validateMapGeometry(
     const key = pairKey(w.a, w.b);
     if (
       wrapKeys.has(key) ||
-      (!byId.get(w.a)?.neighbors.includes(w.b) && !timedKeys.has(key))
+      (!byId.get(w.a)?.neighbors.includes(w.b) &&
+        !timedKeys.has(key) &&
+        !directionalKeys.has(key))
     )
       return { ok: false, error: 'invalid wraps' };
     wrapKeys.add(key);
@@ -526,7 +570,15 @@ export function validateMapGeometry(
       return { ok: false, error: 'invalid locked tiles' };
   }
 
-  if (!allConnected(allNodes, byId, timedConnections, lockedTiles))
+  if (
+    !allConnected(
+      allNodes,
+      new Set(seaTerritories.map((t) => t.id)),
+      timedConnections,
+      directionalConnections,
+      lockedTiles,
+    )
+  )
     return { ok: false, error: 'territories not all connected' };
 
   const sizeByContinent = new Map<number, number>();
@@ -548,6 +600,7 @@ export function validateMapGeometry(
     bonuses,
     wraps,
     timedConnections,
+    directionalConnections,
     lockedTiles,
   };
 }
@@ -564,6 +617,7 @@ interface ParsedInput {
   bonuses: number[];
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   image: Buffer;
   imageMime: string;
@@ -601,6 +655,7 @@ export function parseMapInput(body: Record<string, unknown>): ParseResult {
     body.bonuses,
     body.wraps,
     body.timedConnections,
+    body.directionalConnections ?? [],
     body.lockedTiles,
     dimensions.width,
     dimensions.height,
@@ -629,6 +684,7 @@ export function parseMapInput(body: Record<string, unknown>): ParseResult {
       bonuses: geometry.bonuses,
       wraps: geometry.wraps,
       timedConnections: geometry.timedConnections,
+      directionalConnections: geometry.directionalConnections,
       lockedTiles: geometry.lockedTiles,
       image: data,
       imageMime: match[1],

@@ -78,6 +78,7 @@ gameHistoryRouter.get('/games/history', (req, res) => {
       : undefined;
   const mapGenerationSeas = optBoolParam(q.mapGenerationSeas);
   const mapGenerationTimed = optBoolParam(q.mapGenerationTimed);
+  const mapGenerationDirectional = optBoolParam(q.mapGenerationDirectional);
   const mapGenerationUnlockable = optBoolParam(q.mapGenerationUnlockable);
   const outcome =
     q.outcome === 'won' || q.outcome === 'draw' || q.outcome === 'lost'
@@ -108,6 +109,7 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     mapGenerationTile,
     mapGenerationSeas,
     mapGenerationTimed,
+    mapGenerationDirectional,
     mapGenerationUnlockable,
     playersMin: optIntParam(q.playersMin, 1, 100),
     playersMax: optIntParam(q.playersMax, 1, 100),

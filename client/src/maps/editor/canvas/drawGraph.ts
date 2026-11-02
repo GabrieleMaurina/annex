@@ -5,7 +5,10 @@ import type { WrapAxes } from '../../../game/mapMath';
 import { contrastTextColor } from '../../../lib/palette';
 import { edgeKey, wrapEdgeSegments, type Point } from '../mapCanvasGeometry';
 import { borderScale } from '../mapViewport';
-import type { EditorTerritory as Territory } from '../model/editorTypes';
+import type {
+  LinkMode,
+  EditorTerritory as Territory,
+} from '../model/editorTypes';
 import { continentColor, SEA_MARKER_COLOR } from '../palette';
 import {
   getVertexRadius,
@@ -29,7 +32,7 @@ interface DrawGraphParams {
   forceWrap: WrapAxes;
   allowCrossover: boolean;
   clickable?: ClickableCheck | null;
-  timedMode: boolean;
+  linkMode: LinkMode;
 }
 
 const placeNamesCache = new WeakMap<Territory[], PlaceNames>();
@@ -47,6 +50,28 @@ function editorPlaceNames(territories: Territory[]): PlaceNames {
   };
   placeNamesCache.set(territories, names);
   return names;
+}
+
+function arrowHead(
+  ctx: CanvasRenderingContext2D,
+  from: Point,
+  tip: Point,
+  inset: number,
+  size: number,
+): void {
+  const dx = tip.x - from.x;
+  const dy = tip.y - from.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= inset) return;
+  const ux = dx / length;
+  const uy = dy / length;
+  const x = tip.x - ux * inset;
+  const y = tip.y - uy * inset;
+  ctx.beginPath();
+  ctx.moveTo(x - ux * size - uy * size, y - uy * size + ux * size);
+  ctx.lineTo(x, y);
+  ctx.lineTo(x - ux * size + uy * size, y - uy * size - ux * size);
+  ctx.stroke();
 }
 
 function hexagonPath(
@@ -78,7 +103,7 @@ export function drawGraph({
   forceWrap,
   allowCrossover,
   clickable,
-  timedMode,
+  linkMode,
 }: DrawGraphParams) {
   const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = viewport;
   const toScreen = (p: Point): Point => ({
@@ -132,6 +157,27 @@ export function drawGraph({
   ctx.lineWidth = 3 * zoom;
   ctx.setLineDash(timedDash);
   drawEdges((t) => t.timed.map((m) => m.id));
+  drawEdges((t) => t.directional.map((m) => m.id));
+  ctx.setLineDash([]);
+  const headInset = getVertexRadius(imgW, imgH) * scaleX * 1.2;
+  const headSize = 8 * zoom;
+  for (const t of territories) {
+    for (const m of t.directional) {
+      const other = byId.get(m.id);
+      if (!m.out || !other) continue;
+      const segments = wrapEdgeSegments(t, other, imgW, imgH, wrapOf(t, m.id));
+      const last = segments[segments.length - 1];
+      arrowHead(ctx, toScreen(last[0]), toScreen(last[1]), headInset, headSize);
+      if (m.backward > 0)
+        arrowHead(
+          ctx,
+          toScreen(segments[0][1]),
+          toScreen(segments[0][0]),
+          headInset,
+          headSize,
+        );
+    }
+  }
   ctx.restore();
 
   if (rejectedEdge) {
@@ -164,8 +210,8 @@ export function drawGraph({
         );
       ctx.save();
       ctx.strokeStyle = overlapping ? '#ff0000' : '#000000';
-      ctx.lineWidth = (timedMode ? 3 : 2) * zoom;
-      if (timedMode) ctx.setLineDash(timedDash);
+      ctx.lineWidth = (linkMode !== 'normal' ? 3 : 2) * zoom;
+      if (linkMode !== 'normal') ctx.setLineDash(timedDash);
       for (const [a, b] of wrapEdgeSegments(
         fromTerritory,
         mouseWorldPos,

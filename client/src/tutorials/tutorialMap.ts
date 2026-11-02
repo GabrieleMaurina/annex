@@ -1,7 +1,11 @@
 import {
+  createRng,
+  createWarpField,
   DEFAULT_BORDER_COLORS,
   EARTH_TONES,
+  enforceContiguity,
   SEA_COLOR,
+  warpAt,
   type PlayerGameMap,
 } from 'engine';
 
@@ -94,10 +98,15 @@ function labelAt(layout: Layout, x: number, y: number): number {
 }
 
 function drawImage(layout: Layout): string {
-  const labels = new Int8Array(WIDTH * HEIGHT);
+  const field = createWarpField(createRng(layout.name), WIDTH, HEIGHT);
+  const warped = { x: 0, y: 0 };
+  const labels = new Int16Array(WIDTH * HEIGHT);
   for (let y = 0; y < HEIGHT; y++)
-    for (let x = 0; x < WIDTH; x++)
-      labels[y * WIDTH + x] = labelAt(layout, x, y);
+    for (let x = 0; x < WIDTH; x++) {
+      warpAt(field, x, y, warped);
+      labels[y * WIDTH + x] = labelAt(layout, warped.x, warped.y);
+    }
+  enforceContiguity(labels, WIDTH, HEIGHT);
 
   const labelNear = (x: number, y: number) =>
     labels[
@@ -159,6 +168,7 @@ function buildMap(layout: Layout): TutorialGameMap {
     bonuses: layout.bonuses,
     wraps: [],
     timedConnections: [],
+    directionalConnections: [],
     lockedTiles: [],
     imageSrc: drawImage(layout),
     borderColors: DEFAULT_BORDER_COLORS,

@@ -36,6 +36,7 @@ export function useActionFlows({
   game,
   toxins,
   closedTiles,
+  links,
   cards,
   nextSetBaseValues,
   setGame,
@@ -119,6 +120,7 @@ export function useActionFlows({
     blockedById: unusableTerritoryById,
     upcomingBlockedById: upcomingUnusableTerritoryById,
     closedTiles,
+    links,
     setGame,
   });
 

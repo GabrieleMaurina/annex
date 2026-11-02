@@ -10,6 +10,7 @@ import {
   TileShape,
 } from '../../core/params';
 import { randomFloat, randomInt, Rng } from '../../core/rng';
+import { LinkRngs } from '../../links';
 import {
   continentTileTone,
   TILE_SEA_COLOR,
@@ -375,7 +376,7 @@ export function generateTile(
   dims: GridDimensions,
   seas: boolean,
   unlockable: boolean,
-  timedRng: Rng | null,
+  linkRngs: LinkRngs,
 ): MazeMap & { lockedTiles: LockedTile[] } {
   const { layer, lockedTiles } = timeStep('shape', () => {
     const margin = Math.round(
@@ -437,7 +438,7 @@ export function generateTile(
     },
     false,
     seas,
-    timedRng,
+    linkRngs,
   );
   return { ...map, lockedTiles };
 }

@@ -1,10 +1,11 @@
 import {
   PlanContext,
   SimState,
+  attackersOf,
+  attacksOut,
   isBotBorder,
   isEnemyTerritory,
   isFriendly,
-  neighborsOf,
   ownedIds,
   troopsIn,
 } from '../../planning/context';
@@ -30,7 +31,9 @@ export function sortieCapitals(ctx: PlanContext, state: SimState): number[] {
   if (ctx.game.fortification === 'neighboring') return [];
   return guardedCapitals(ctx).filter(
     (id) =>
-      troopsIn(state, id) >= SORTIE_MIN_TROOPS && isBotBorder(ctx, state, id),
+      troopsIn(state, id) >= SORTIE_MIN_TROOPS &&
+      isBotBorder(ctx, state, id) &&
+      attacksOut(ctx, state, id),
   );
 }
 
@@ -46,7 +49,7 @@ function reachThreat(
   for (let hop = 0; hop < THREAT_HOPS; hop++) {
     const next: number[] = [];
     for (const id of frontier)
-      for (const n of neighborsOf(ctx, id)) {
+      for (const n of attackersOf(ctx, id)) {
         if (seen.has(n)) continue;
         seen.add(n);
         next.push(n);

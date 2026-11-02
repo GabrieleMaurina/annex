@@ -74,6 +74,7 @@ const DEFAULT_FILTERS: HomeFilters = {
   mapGenerationTile: '',
   mapGenerationSeas: '',
   mapGenerationTimed: '',
+  mapGenerationDirectional: '',
   mapGenerationUnlockable: '',
   playersMin: PLAYERS_MIN,
   playersMax: PLAYERS_MAX,
@@ -169,6 +170,9 @@ function Home({
   const [mapGenerationTimed, setMapGenerationTimed] = useState(
     initial.mapGenerationTimed,
   );
+  const [mapGenerationDirectional, setMapGenerationDirectional] = useState(
+    initial.mapGenerationDirectional,
+  );
   const [mapGenerationUnlockable, setMapGenerationUnlockable] = useState(
     initial.mapGenerationUnlockable,
   );
@@ -211,6 +215,7 @@ function Home({
     mapGenerationTile,
     mapGenerationSeas,
     mapGenerationTimed,
+    mapGenerationDirectional,
     mapGenerationUnlockable,
     playersMin,
     playersMax,
@@ -233,6 +238,7 @@ function Home({
     mapGenerationTile,
     mapGenerationSeas,
     mapGenerationTimed,
+    mapGenerationDirectional,
     mapGenerationUnlockable,
     playersMin,
     playersMax,
@@ -290,6 +296,10 @@ function Home({
         mapGenerationTimed:
           generated && mapGenerationTimed
             ? mapGenerationTimed === 'yes'
+            : undefined,
+        mapGenerationDirectional:
+          generated && mapGenerationDirectional
+            ? mapGenerationDirectional === 'yes'
             : undefined,
         mapGenerationUnlockable:
           generated && mapGenerationUnlockable
@@ -370,6 +380,7 @@ function Home({
     setMapGenerationTile('');
     setMapGenerationSeas('');
     setMapGenerationTimed('');
+    setMapGenerationDirectional('');
     setMapGenerationUnlockable('');
     setPlayersMin(PLAYERS_MIN);
     setPlayersMax(PLAYERS_MAX);
@@ -632,6 +643,7 @@ function Home({
                   tile={mapGenerationTile}
                   seas={mapGenerationSeas}
                   timed={mapGenerationTimed}
+                  directional={mapGenerationDirectional}
                   unlockable={mapGenerationUnlockable}
                   onMapName={resetPage(setMapName)}
                   onSize={resetPage(setMapGenerationSize)}
@@ -640,6 +652,7 @@ function Home({
                   onTile={resetPage(setMapGenerationTile)}
                   onSeas={resetPage(setMapGenerationSeas)}
                   onTimed={resetPage(setMapGenerationTimed)}
+                  onDirectional={resetPage(setMapGenerationDirectional)}
                   onUnlockable={resetPage(setMapGenerationUnlockable)}
                 />
               </div>

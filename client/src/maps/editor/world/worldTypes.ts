@@ -20,6 +20,7 @@ export interface WorldMapRequest {
   detail: OsmDetail;
   seas: boolean;
   timed: boolean;
+  directional: boolean;
   mountains: boolean;
   rivers: boolean;
   greenAreas: boolean;

@@ -459,6 +459,7 @@ function buildMap(request: WorldMapRequest): void {
             detail: request.detail,
             seas: request.seas,
             timed: request.timed,
+            directional: request.directional,
             mountains: request.mountains,
             rivers: request.rivers,
             greenAreas: request.greenAreas,

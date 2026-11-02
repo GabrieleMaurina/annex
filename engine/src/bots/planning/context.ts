@@ -37,6 +37,8 @@ export interface PlanContext {
   params: DifficultyParams;
   neighbors: Map<number, number[]>;
   horizonNeighbors: Map<number, number[]>;
+  attackers: Map<number, number[]>;
+  horizonAttackers: Map<number, number[]>;
   seaLinks: Map<number, number[]>;
   shippedSeaIds: Set<number>;
   continentTerritories: Map<number, number[]>;
@@ -90,7 +92,11 @@ function horizonNeighborsOf(
   botId: number,
   neighbors: Map<number, number[]>,
 ): Map<number, number[]> {
-  if (map.timedConnections.length === 0) return neighbors;
+  if (
+    map.timedConnections.length === 0 &&
+    map.directionalConnections.length === 0
+  )
+    return neighbors;
   const next = landNeighbors(game, gameMapAtRound(game, game.roundNumber + 1));
   if (
     !PLACEMENT_PHASES.includes(game.turnPhase) &&
@@ -103,6 +109,19 @@ function horizonNeighborsOf(
       [...new Set([...ids, ...(neighbors.get(id) ?? [])])],
     ]),
   );
+}
+
+function reverseOf(
+  map: GameMap,
+  neighbors: Map<number, number[]>,
+): Map<number, number[]> {
+  if (map.directionalConnections.length === 0) return neighbors;
+  const reverse = new Map<number, number[]>(
+    [...neighbors.keys()].map((id) => [id, []]),
+  );
+  for (const [id, ids] of neighbors)
+    for (const n of ids) reverse.get(n)?.push(id);
+  return reverse;
 }
 
 function buildTopology(game: Game, map: GameMap, botId: number): MapTopology {
@@ -125,9 +144,12 @@ function buildTopology(game: Game, map: GameMap, botId: number): MapTopology {
     else continentTerritories.set(territory.continentId, [territory.id]);
   }
 
+  const horizonNeighbors = horizonNeighborsOf(game, map, botId, neighbors);
   return {
     neighbors,
-    horizonNeighbors: horizonNeighborsOf(game, map, botId, neighbors),
+    horizonNeighbors,
+    attackers: reverseOf(map, neighbors),
+    horizonAttackers: reverseOf(map, horizonNeighbors),
     seaLinks,
     continentTerritories,
     territoryContinent,
@@ -322,6 +344,8 @@ export function buildContext(
     params,
     neighbors: topology.neighbors,
     horizonNeighbors: topology.horizonNeighbors,
+    attackers: topology.attackers,
+    horizonAttackers: topology.horizonAttackers,
     seaLinks: topology.seaLinks,
     shippedSeaIds: shippedSeaIdsOf(game, botId),
     continentTerritories: topology.continentTerritories,
@@ -342,7 +366,11 @@ export function horizonOf(ctx: PlanContext): PlanContext {
   if (ctx.horizonNeighbors === ctx.neighbors) return ctx;
   let horizon = horizons.get(ctx);
   if (!horizon) {
-    horizon = { ...ctx, neighbors: ctx.horizonNeighbors };
+    horizon = {
+      ...ctx,
+      neighbors: ctx.horizonNeighbors,
+      attackers: ctx.horizonAttackers,
+    };
     horizons.set(ctx, horizon);
   }
   return horizon;
@@ -358,6 +386,30 @@ export function timesCards(ctx: PlanContext): boolean {
 
 export function neighborsOf(ctx: PlanContext, territoryId: number): number[] {
   return ctx.neighbors.get(territoryId) ?? [];
+}
+
+export function attackersOf(ctx: PlanContext, territoryId: number): number[] {
+  return ctx.attackers.get(territoryId) ?? [];
+}
+
+const touchingMaps = new WeakMap<
+  Map<number, number[]>,
+  Map<number, number[]>
+>();
+
+export function touchingOf(ctx: PlanContext, territoryId: number): number[] {
+  if (ctx.attackers === ctx.neighbors) return neighborsOf(ctx, territoryId);
+  let touching = touchingMaps.get(ctx.attackers);
+  if (!touching) {
+    touching = new Map(
+      [...ctx.neighbors].map(([id, ids]) => [
+        id,
+        [...new Set([...ids, ...attackersOf(ctx, id)])],
+      ]),
+    );
+    touchingMaps.set(ctx.attackers, touching);
+  }
+  return touching.get(territoryId) ?? [];
 }
 
 export function bonusOf(ctx: PlanContext, continentId: number): number {
@@ -466,9 +518,29 @@ export function isBotBorder(
   territoryId: number,
 ): boolean {
   if (state.owners.get(territoryId) !== ctx.botId) return false;
-  return neighborsOf(ctx, territoryId).some(
-    (n) =>
-      state.owners.get(n) !== ctx.botId && !isFriendlyTerritory(ctx, state, n),
+  return touchingOf(ctx, territoryId).some((n) =>
+    isForeignTerritory(ctx, state, n),
+  );
+}
+
+export function attacksOut(
+  ctx: PlanContext,
+  state: SimState,
+  territoryId: number,
+): boolean {
+  return neighborsOf(ctx, territoryId).some((n) =>
+    isForeignTerritory(ctx, state, n),
+  );
+}
+
+function isForeignTerritory(
+  ctx: PlanContext,
+  state: SimState,
+  territoryId: number,
+): boolean {
+  return (
+    state.owners.get(territoryId) !== ctx.botId &&
+    !isFriendlyTerritory(ctx, state, territoryId)
   );
 }
 
@@ -481,16 +553,34 @@ function isFriendlyTerritory(
   return ownerId !== undefined && isFriendly(ctx, ownerId);
 }
 
+function isHostileTerritory(
+  ctx: PlanContext,
+  state: SimState,
+  territoryId: number,
+): boolean {
+  const ownerId = state.owners.get(territoryId);
+  if (ownerId === undefined) return !isHazard(ctx, territoryId);
+  return !isFriendly(ctx, ownerId) && !isHazard(ctx, territoryId);
+}
+
 export function hostileNeighborsOf(
   ctx: PlanContext,
   state: SimState,
   territoryId: number,
 ): number[] {
-  return neighborsOf(ctx, territoryId).filter((n) => {
-    const ownerId = state.owners.get(n);
-    if (ownerId === undefined) return !isHazard(ctx, n);
-    return !isFriendly(ctx, ownerId) && !isHazard(ctx, n);
-  });
+  return neighborsOf(ctx, territoryId).filter((n) =>
+    isHostileTerritory(ctx, state, n),
+  );
+}
+
+export function hostileAttackersOf(
+  ctx: PlanContext,
+  state: SimState,
+  territoryId: number,
+): number[] {
+  return attackersOf(ctx, territoryId).filter((n) =>
+    isHostileTerritory(ctx, state, n),
+  );
 }
 
 export function strongestThreatAt(
@@ -499,7 +589,7 @@ export function strongestThreatAt(
   territoryId: number,
 ): number {
   let worst = 0;
-  for (const n of neighborsOf(ctx, territoryId)) {
+  for (const n of attackersOf(ctx, territoryId)) {
     if (!isEnemyTerritory(ctx, state, n)) continue;
     const troops = troopsIn(state, n);
     if (troops > worst) worst = troops;
@@ -519,7 +609,7 @@ export function ownedClusters(ctx: PlanContext, state: SimState): number[][] {
     while (queue.length > 0) {
       const current = queue.shift()!;
       cluster.push(current);
-      for (const n of neighborsOf(ctx, current)) {
+      for (const n of touchingOf(ctx, current)) {
         if (owned.has(n) && !seen.has(n)) {
           seen.add(n);
           queue.push(n);
@@ -631,7 +721,9 @@ export function frontierStacks(
   minTroops: number,
 ): number[] {
   return botBorderIds(ctx, state)
-    .filter((id) => troopsIn(state, id) >= minTroops)
+    .filter(
+      (id) => troopsIn(state, id) >= minTroops && attacksOut(ctx, state, id),
+    )
     .sort((a, b) => troopsIn(state, b) - troopsIn(state, a));
 }
 
@@ -685,7 +777,7 @@ export function ownedChokepoints(ctx: PlanContext, state: SimState): number[] {
     const queue = [remaining[0]];
     while (queue.length > 0) {
       const current = queue.shift()!;
-      for (const n of neighborsOf(ctx, current)) {
+      for (const n of touchingOf(ctx, current)) {
         if (n === cut || !clusterSet.has(n) || seen.has(n)) continue;
         seen.add(n);
         queue.push(n);

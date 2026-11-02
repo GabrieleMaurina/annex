@@ -7,6 +7,7 @@ export interface Tutorial {
   title: string;
   summary: string;
   instruction: string;
+  highlight: number | 'cards';
   settings: Record<string, unknown>;
   scenario: TutorialScenario;
   map?: () => TutorialGameMap;
@@ -52,6 +53,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Reinforce your territories at the start of your turn.',
     instruction:
       'Click one of your territories, choose how many troops to send and press Deploy. Place all 3 troops to finish.',
+    highlight: 0,
     settings: SUPREMACY,
     scenario: {
       territories: [
@@ -75,6 +77,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Attack an enemy territory and take it over.',
     instruction:
       'Click your territory with 4 troops, then click the enemy territory next to it with 1 troop and attack. Once it falls, choose how many troops to move in.',
+    highlight: 3,
     settings: SUPREMACY,
     scenario: {
       territories: [
@@ -99,6 +102,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Move troops between your own territories to end your turn.',
     instruction:
       'Click your territory with 6 troops, then click another of your territories and move troops there.',
+    highlight: 4,
     settings: SUPREMACY,
     scenario: {
       territories: [
@@ -123,6 +127,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Trade three cards for extra troops.',
     instruction:
       'Open your cards with the cards button on the left, select the set and play it, then deploy all the troops it gives you.',
+    highlight: 'cards',
     settings: SUPREMACY,
     scenario: {
       territories: [
@@ -152,6 +157,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Complete a continent to earn extra troops every turn.',
     instruction:
       'The eastern continent is worth 3 extra troops per turn. Conquer its last 2 enemy territories and move in to claim it.',
+    highlight: 5,
     settings: BONUSES,
     scenario: {
       territories: [
@@ -176,6 +182,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Knock a rival out of the game and take their cards.',
     instruction:
       'One rival is down to a single territory. Attack it from your territory with 5 troops and move in to knock them out. You take their cards, and holding 5 cards you must play a set right away. Then deploy the troops it gives you.',
+    highlight: 3,
     settings: SUPREMACY,
     scenario: {
       territories: [
@@ -210,6 +217,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Choose the territory that will be your capital.',
     instruction:
       'Click one of your territories to make it your capital. It gets extra troops right away.',
+    highlight: 0,
     settings: CAPITALS,
     scenario: {
       territories: [
@@ -233,6 +241,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Capture an enemy capital.',
     instruction:
       'Click your territory with 18 troops and attack the enemy capital next to it. Capitals defend with an extra die, so expect heavy losses. Then move troops in to hold it.',
+    highlight: 3,
     settings: CAPITALS,
     scenario: {
       territories: [
@@ -257,6 +266,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Push through the fog to find a weak enemy capital.',
     instruction:
       'Fog of war hides everything except your territories and their neighbours. An enemy capital lies somewhere in the fog with almost no defenders. Attack from your 14 troops, keep moving in to reveal more of the map, then capture the capital.',
+    highlight: 3,
     settings: FOG,
     scenario: {
       territories: [
@@ -281,6 +291,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Buy ships, win a sea battle and invade an island.',
     instruction:
       'Click the sea to spend your 6 troops on 2 ships. Then attack the enemy ships in the sea. With more ships than the enemy there, attack their island across the water and move in.',
+    highlight: NAVAL_SEA,
     settings: SUPREMACY,
     map: navalTutorialMap,
     blockedEvents: ['game:deploy'],

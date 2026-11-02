@@ -38,6 +38,7 @@ import {
   nextTerritoryId,
   SEA_BRUSH,
   withoutVertex,
+  type LinkMode,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
 import type { Viewport } from './paint/PaintLayer';
@@ -64,7 +65,7 @@ interface Props {
   onViewport?: (v: Viewport) => void;
   clickable?: ClickableCheck | null;
   borderOverlay?: HTMLCanvasElement | null;
-  timedMode: boolean;
+  linkMode: LinkMode;
   onSelect: (id: number | null) => void;
 }
 
@@ -123,7 +124,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     onViewport,
     clickable,
     borderOverlay,
-    timedMode,
+    linkMode,
     onSelect,
   }: Props,
   ref,
@@ -546,7 +547,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         forceWrap,
         allowCrossover,
         clickable,
-        timedMode,
+        linkMode,
       });
     }
   });
@@ -613,7 +614,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       rejectedTimeoutRef,
       getViewport,
       getImageDims,
-      timedMode,
+      linkMode,
     };
     linkVertices(ctx, id, forced, allowCrossover);
   }

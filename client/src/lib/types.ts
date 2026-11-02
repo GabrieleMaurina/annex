@@ -1,4 +1,5 @@
 import type {
+  DirectionalConnection,
   Fill,
   GenerationType,
   LockedTile,
@@ -61,6 +62,7 @@ export interface HomeFilters {
   mapGenerationTile: string;
   mapGenerationSeas: string;
   mapGenerationTimed: string;
+  mapGenerationDirectional: string;
   mapGenerationUnlockable: string;
   playersMin: number;
   playersMax: number;
@@ -92,6 +94,7 @@ export interface GameSummary {
     tile: TileShape;
     seas: boolean;
     timed: boolean;
+    directional: boolean;
     unlockable: boolean;
     aspect: MapAspect;
     mountains: boolean;
@@ -551,6 +554,7 @@ export type GameRulesSettings = Pick<
 export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 
 export type {
+  DirectionalConnection,
   Fill,
   GenerationType,
   LockedTile,
@@ -568,6 +572,7 @@ export interface GenerateMapInput {
   tile: TileShape;
   seas: boolean;
   timed: boolean;
+  directional: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;
@@ -753,6 +758,7 @@ export interface GamesQuery {
   mapGenerationTile?: TileShape;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
+  mapGenerationDirectional?: boolean;
   mapGenerationUnlockable?: boolean;
   minRounds?: number;
   maxRounds?: number;
@@ -793,6 +799,7 @@ export interface HomeGamesQuery {
   mapGenerationTile?: TileShape;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
+  mapGenerationDirectional?: boolean;
   mapGenerationUnlockable?: boolean;
   playersMin?: number;
   playersMax?: number;

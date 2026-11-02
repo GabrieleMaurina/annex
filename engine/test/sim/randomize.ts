@@ -143,9 +143,10 @@ export function randomMapParams(
     rivers: true,
   };
   const unlockable = params.type === 'tile' && rng() < 0.1;
+  const directional = rng() < 0.2;
   return unlockable
-    ? { ...params, seas: false, timed: false, unlockable }
-    : { ...params, unlockable };
+    ? { ...params, seas: false, timed: false, directional: false, unlockable }
+    : { ...params, directional, unlockable };
 }
 
 export interface RandomSettings {

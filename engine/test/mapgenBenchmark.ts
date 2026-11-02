@@ -49,6 +49,7 @@ function runOnce(
     tile: 'hexagons',
     seas,
     timed: false,
+    directional: false,
     unlockable: false,
     aspect: 'wide',
     mountains: true,

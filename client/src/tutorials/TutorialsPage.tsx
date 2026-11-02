@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button, Container, ListGroup } from 'react-bootstrap';
+import { Badge, Button, Col, Container, ListGroup, Row } from 'react-bootstrap';
 import type { Account } from '../lib/types';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import TutorialGuide from './guide/TutorialGuide';
 import { loadCompletedTutorials } from './progress';
 import { TUTORIALS } from './tutorials';
+
+const COLUMN_MAX_WIDTH = 800;
+const TWO_COLUMNS_QUERY = `(min-width: ${2 * COLUMN_MAX_WIDTH}px)`;
 
 interface Props {
   account: Account | null;
@@ -13,6 +16,18 @@ interface Props {
 
 function TutorialsPage({ account, navigate }: Props) {
   const [completed, setCompleted] = useState<string[] | null>(null);
+  const [twoColumns, setTwoColumns] = useState(
+    () => window.matchMedia(TWO_COLUMNS_QUERY).matches,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(TWO_COLUMNS_QUERY);
+    function onChange() {
+      setTwoColumns(media.matches);
+    }
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     let stale = false;
@@ -29,65 +44,82 @@ function TutorialsPage({ account, navigate }: Props) {
   const doneCount = TUTORIALS.filter((t) => completedIds.includes(t.id)).length;
 
   return (
-    <Container className="py-5 px-2 px-sm-4" style={{ maxWidth: 760 }}>
+    <Container
+      fluid
+      className="py-5 px-2 px-sm-4"
+      style={{ maxWidth: 2 * COLUMN_MAX_WIDTH }}
+    >
       <h1 className="text-center mb-2">Tutorials</h1>
       <p className="text-center text-body-secondary mb-4">
         Short hands-on lessons on a tiny map. Play them in order, or jump to any
         one you like.
       </p>
 
-      {completed && (
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <span className="text-body-secondary">
-            {doneCount}/{TUTORIALS.length} completed
-          </span>
-          <Button
-            onClick={() =>
-              navigate(`/tutorials/${(upNext ?? TUTORIALS[0]).id}`)
-            }
-          >
-            {upNext
-              ? doneCount === 0
-                ? 'Start'
-                : `Continue: ${upNext.title}`
-              : 'Play again'}
-          </Button>
-        </div>
-      )}
-
-      <ListGroup className={`${SECTION_CLASS} mb-5`}>
-        {TUTORIALS.map((tutorial, index) => {
-          const done = completedIds.includes(tutorial.id);
-          return (
-            <ListGroup.Item
-              key={tutorial.id}
-              className="d-flex align-items-center gap-3"
-            >
-              <span className="fw-bold fs-4 text-body-secondary">
-                {index + 1}
+      <Row>
+        <Col
+          xs={twoColumns ? 6 : 12}
+          className={twoColumns ? 'mx-auto pe-5' : 'mx-auto'}
+          style={{ maxWidth: COLUMN_MAX_WIDTH }}
+        >
+          {completed && (
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <span className="text-body-secondary">
+                {doneCount}/{TUTORIALS.length} completed
               </span>
-              <div className="flex-grow-1">
-                <div className="fw-semibold d-flex align-items-center gap-2">
-                  {tutorial.title}
-                  {done && <Badge bg="success">Done</Badge>}
-                </div>
-                <div className="small text-body-secondary">
-                  {tutorial.summary}
-                </div>
-              </div>
               <Button
-                variant={tutorial === upNext ? 'primary' : 'secondary'}
-                size="sm"
-                onClick={() => navigate(`/tutorials/${tutorial.id}`)}
+                onClick={() =>
+                  navigate(`/tutorials/${(upNext ?? TUTORIALS[0]).id}`)
+                }
               >
-                {done ? 'Replay' : 'Play'}
+                {upNext
+                  ? doneCount === 0
+                    ? 'Start'
+                    : `Continue: ${upNext.title}`
+                  : 'Play again'}
               </Button>
-            </ListGroup.Item>
-          );
-        })}
-      </ListGroup>
+            </div>
+          )}
 
-      <TutorialGuide />
+          <ListGroup className={`${SECTION_CLASS} mb-5`}>
+            {TUTORIALS.map((tutorial, index) => {
+              const done = completedIds.includes(tutorial.id);
+              return (
+                <ListGroup.Item
+                  key={tutorial.id}
+                  className="d-flex align-items-center gap-3"
+                >
+                  <span className="fw-bold fs-4 text-body-secondary">
+                    {index + 1}
+                  </span>
+                  <div className="flex-grow-1">
+                    <div className="fw-semibold d-flex align-items-center gap-2">
+                      {tutorial.title}
+                      {done && <Badge bg="success">Done</Badge>}
+                    </div>
+                    <div className="small text-body-secondary">
+                      {tutorial.summary}
+                    </div>
+                  </div>
+                  <Button
+                    variant={tutorial === upNext ? 'primary' : 'secondary'}
+                    size="sm"
+                    onClick={() => navigate(`/tutorials/${tutorial.id}`)}
+                  >
+                    {done ? 'Replay' : 'Play'}
+                  </Button>
+                </ListGroup.Item>
+              );
+            })}
+          </ListGroup>
+        </Col>
+        <Col
+          xs={twoColumns ? 6 : 12}
+          className={twoColumns ? 'mx-auto ps-5' : 'mx-auto'}
+          style={{ maxWidth: COLUMN_MAX_WIDTH }}
+        >
+          <TutorialGuide />
+        </Col>
+      </Row>
     </Container>
   );
 }

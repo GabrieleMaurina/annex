@@ -3,10 +3,10 @@ import { continentBreakCandidates } from '../features/continents';
 import {
   PlanContext,
   SimState,
+  attackersOf,
   defenceDiceAt,
   frontierStacks,
   hostileNeighborsOf,
-  neighborsOf,
   troopsIn,
 } from '../planning/context';
 import { routeStack } from '../planning/route';
@@ -35,7 +35,7 @@ function frontierTarget(
   let best: number | null = null;
   for (const id of ctx.continentTerritories.get(continentId) ?? []) {
     if (state.owners.get(id) !== ownerId) continue;
-    if (!neighborsOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId))
+    if (!attackersOf(ctx, id).some((n) => state.owners.get(n) === ctx.botId))
       continue;
     if (best === null || troopsIn(state, id) < troopsIn(state, best)) best = id;
   }

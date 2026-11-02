@@ -31,6 +31,7 @@ import { evaluateBoard } from './board';
 import {
   PlanContext,
   SimState,
+  attackersOf,
   botBorderIds,
   cloneState,
   defenceDiceAt,
@@ -251,7 +252,7 @@ function stepToward(
   const queue = [to];
   while (queue.length > 0) {
     const current = queue.shift()!;
-    for (const n of neighborsOf(ctx, current)) {
+    for (const n of attackersOf(ctx, current)) {
       if (visited.has(n) || state.owners.get(n) !== ctx.botId) continue;
       if (n === from) return current;
       visited.add(n);
@@ -606,7 +607,7 @@ function deepestTarget(
   let bestExposure = -1;
   for (const id of mustVisit) {
     let exposure = 0;
-    for (const n of neighborsOf(ctx, id)) {
+    for (const n of attackersOf(ctx, id)) {
       if (mustVisit.includes(n)) continue;
       const ownerId = state.owners.get(n);
       if (ownerId !== undefined && !isFriendly(ctx, ownerId))

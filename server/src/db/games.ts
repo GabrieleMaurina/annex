@@ -88,6 +88,7 @@ export interface GamesQuery {
   mapGenerationTile?: string;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
+  mapGenerationDirectional?: boolean;
   mapGenerationUnlockable?: boolean;
   minRounds?: number;
   maxRounds?: number;
@@ -431,6 +432,7 @@ const schema = {
             'tile',
             'seas',
             'timed',
+            'directional',
             'unlockable',
             'aspect',
           ],
@@ -443,6 +445,7 @@ const schema = {
             tile: { enum: TILE_SHAPES },
             seas: bool,
             timed: bool,
+            directional: bool,
             unlockable: bool,
             aspect: { enum: MAP_ASPECTS },
             mountains: bool,
@@ -752,6 +755,8 @@ function queryGames(
     filter['mapGeneration.seas'] = query.mapGenerationSeas;
   if (query.mapGenerationTimed !== undefined)
     filter['mapGeneration.timed'] = query.mapGenerationTimed;
+  if (query.mapGenerationDirectional !== undefined)
+    filter['mapGeneration.directional'] = query.mapGenerationDirectional;
   if (query.mapGenerationUnlockable !== undefined)
     filter['mapGeneration.unlockable'] = query.mapGenerationUnlockable;
   if (query.minRounds !== undefined || query.maxRounds !== undefined) {

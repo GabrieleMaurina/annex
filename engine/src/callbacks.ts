@@ -308,6 +308,7 @@ export interface EngineCallbacks {
       bonuses: number[];
       wraps: unknown[];
       timedConnections: unknown[];
+      directionalConnections: unknown[];
       lockedTiles: unknown[];
       imageSrc: string;
       borderColors: string[];

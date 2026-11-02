@@ -1,4 +1,5 @@
 import { TimedConnection } from '../types';
+import { withArcs } from './directionalConnections';
 
 export const MAX_TIMED_VALUE = 10;
 
@@ -23,15 +24,13 @@ export function roundsUntilToggle(
 export function withOpenConnections<
   T extends { id: number; neighbors: number[] },
 >(nodes: T[], connections: TimedConnection[], round: number): T[] {
-  const extra = new Map<number, number[]>();
-  for (const c of connections) {
-    if (!isConnectionOpen(c, round)) continue;
-    extra.set(c.a, [...(extra.get(c.a) ?? []), c.b]);
-    extra.set(c.b, [...(extra.get(c.b) ?? []), c.a]);
-  }
-  if (extra.size === 0) return nodes;
-  return nodes.map((n) => {
-    const added = extra.get(n.id);
-    return added ? { ...n, neighbors: [...n.neighbors, ...added] } : n;
-  });
+  return withArcs(
+    nodes,
+    connections
+      .filter((c) => isConnectionOpen(c, round))
+      .flatMap(({ a, b }): [number, number][] => [
+        [a, b],
+        [b, a],
+      ]),
+  );
 }

@@ -178,6 +178,7 @@ export {
   TileShape,
   tileShapeLabel,
 } from './mapgen/core/params';
+export { createRng } from './mapgen/core/rng';
 export { createWarpField, warpAt } from './mapgen/core/warp';
 export { enforceContiguity } from './mapgen/pipeline/contiguity';
 export {
@@ -218,6 +219,14 @@ export {
   TILE_WALL_COLOR,
 } from './mapgen/render/palette';
 export { runMapgenWorker } from './mapgen/worker';
+export {
+  isStronglyConnected,
+  pointsForward,
+  roundsUntilFlip,
+  withDirectedConnections,
+  withEventualLinks,
+  withSeaHops,
+} from './maps/directionalConnections';
 export { withUnlockedTiles } from './maps/lockedTiles';
 export { ArchivedMap } from './maps/maps';
 export {
@@ -233,7 +242,13 @@ export {
 } from './maps/timedConnections';
 export { randomPlayerName } from './session/players';
 export { REPORT_REASONS, ReportReason } from './social/reports';
-export { GameMap, LockedTile, PlayerGameMap, TimedConnection } from './types';
+export {
+  DirectionalConnection,
+  GameMap,
+  LockedTile,
+  PlayerGameMap,
+  TimedConnection,
+} from './types';
 export { containsProfanity } from './util/profanity';
 export {
   EngineWorkerConfig,

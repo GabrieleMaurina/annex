@@ -1,4 +1,5 @@
 import { callbacks } from '../../callbacks';
+import { withEventualLinks } from '../../maps/directionalConnections';
 import { getGameMap } from '../../maps/maps';
 import { Game, Radiations } from '../../types';
 import { ownsAnyTerritory, shuffle } from '../mechanics';
@@ -41,7 +42,15 @@ export function initializeRadiation(game: Game) {
   const map = getGameMap(game);
   const count = radiationInitialCount(game.radiations, map.territories.length);
   game.radiationTerritoryIds = new Set(
-    selectRadiationTerritories(map.territories, map.seaTerritories, count),
+    selectRadiationTerritories(
+      withEventualLinks(
+        map.territories,
+        map.timedConnections,
+        map.directionalConnections,
+      ),
+      map.seaTerritories,
+      count,
+    ),
   );
   game.radiationUpcomingTerritoryIds = new Set();
 }

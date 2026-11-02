@@ -6,6 +6,7 @@ import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { attackWinProbability } from '../features/combat';
 import { completesOrBreaksContinent } from '../goals/keepStack';
 import {
+  attackersOf,
   bonusOf,
   isEnemyTerritory,
   isFriendly,
@@ -159,7 +160,7 @@ export function chooseOpportunisticUnlock(
         if (
           !isEnemyTerritory(ctx, state, targetId) ||
           !isVisible(ctx.view, targetId) ||
-          neighborsOf(ctx, targetId).some(ownedBy)
+          attackersOf(ctx, targetId).some(ownedBy)
         )
           continue;
         const others = unsafe.filter((id) => id !== targetId);

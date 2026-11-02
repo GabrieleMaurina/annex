@@ -1,16 +1,22 @@
 import { withUnlockedTiles } from 'engine';
 import { useMemo } from 'react';
-import type { LockedTile, TimedConnection } from '../../../../lib/types';
+import type {
+  DirectionalConnection,
+  LockedTile,
+  TimedConnection,
+} from '../../../../lib/types';
 import type { Territory } from '../../../mapData';
 import type { ClickableRegions } from '../../../regions/clickableRegions';
 import { withUnlockedRegions } from '../../../regions/unlockedRegions';
 import { tileLineWidth } from '../../../tiles/tileGeometry';
+import { useDirectionalConnections } from './useDirectionalConnections';
 import { useTimedConnections } from './useTimedConnections';
 
 export function useMapGraph({
   mapTerritories,
   mapRegions,
   timedConnections,
+  directionalConnections,
   lockedTiles,
   unlockedTileIds,
   round,
@@ -18,6 +24,7 @@ export function useMapGraph({
   mapTerritories: Territory[];
   mapRegions: ClickableRegions | null;
   timedConnections: TimedConnection[];
+  directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
   unlockedTileIds: number[];
   round: number;
@@ -39,10 +46,18 @@ export function useMapGraph({
       closedTiles: lockedTiles.filter((tile) => !unlocked.has(tile.id)),
     };
   }, [mapTerritories, mapRegions, lockedTiles, unlockedKey]);
-  const { territories, timedLinks } = useTimedConnections(
-    openTerritories,
-    timedConnections,
+  const timed = useTimedConnections(openTerritories, timedConnections, round);
+  const { territories, directionalLinks } = useDirectionalConnections(
+    timed.territories,
+    directionalConnections,
     round,
   );
-  return { territories, openTerritories, regions, closedTiles, timedLinks };
+  return {
+    territories,
+    openTerritories,
+    regions,
+    closedTiles,
+    timedLinks: timed.timedLinks,
+    directionalLinks,
+  };
 }

@@ -52,6 +52,7 @@ export function createGame(
     hostId: player.id,
     originalHostId: player.id,
     offline,
+    tutorial: false,
     state: 'lobby',
     createdAt: Date.now(),
     startedAt: null,

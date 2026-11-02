@@ -1,5 +1,6 @@
 import { sharedBorders } from '../../../game/regions/clickableRegions';
 import { findUnmarkedRegions } from '../../../game/regions/labelRegions';
+import { segmentsProperlyIntersect } from '../mapCanvasGeometry';
 import {
   newTerritory,
   nextTerritoryId,
@@ -52,11 +53,15 @@ export function linkTerritories(
     borderColors,
     linkReach(brushSize),
   );
-  for (const { a, b } of borders) {
+  const added: [Territory, Territory][] = [];
+  for (const { a, b } of borders.sort((x, y) => y.length - x.length)) {
     const from = byId.get(a)!;
     const to = byId.get(b)!;
     if (from.neighbors.includes(b) || from.timed.some((m) => m.id === b))
       continue;
+    if (added.some(([p, q]) => segmentsProperlyIntersect(from, to, p, q)))
+      continue;
+    added.push([from, to]);
     from.neighbors.push(b);
     to.neighbors.push(a);
   }

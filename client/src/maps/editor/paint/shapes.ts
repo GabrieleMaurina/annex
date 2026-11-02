@@ -43,6 +43,12 @@ export interface Shape {
   size: number;
   filled: boolean;
   dotted: boolean;
+  image?: SelectionImage;
+}
+
+export interface SelectionImage {
+  pixels: ImageData;
+  mask: Uint8Array;
 }
 
 export type ShapeDrag =
@@ -62,7 +68,7 @@ export const ROTATE_HANDLE = 8;
 const ROTATE_OFFSET = 40;
 const RESIZE_CURSORS = ['ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize'];
 const HANDLE_ANGLES = [225, 315, 45, 135, 270, 0, 90, 180];
-const CHROME_COLOR = '#1e88e5';
+export const CHROME_COLOR = '#1e88e5';
 const HANDLE_SIZE = 5;
 const HANDLE_REACH = 20;
 const SNAP_STEPS = [30, 45];
@@ -147,7 +153,54 @@ export function shapeAspect(kind: ShapeKind): number {
   return (e.r - e.l) / (e.b - e.t);
 }
 
+export function shapeBounds(s: Shape): Extent {
+  const hw = Math.abs(s.w) / 2;
+  const hh = Math.abs(s.h) / 2;
+  return extentOf(
+    [
+      { x: -hw, y: -hh },
+      { x: hw, y: -hh },
+      { x: hw, y: hh },
+      { x: -hw, y: hh },
+    ].map((p) => toWorld(s, p)),
+  );
+}
+
+function drawImage(surface: ImageData, s: Shape, image: SelectionImage): void {
+  if (Math.abs(s.w) < 1 || Math.abs(s.h) < 1) return;
+  const { pixels, mask } = image;
+  const c = center(s);
+  const e = shapeBounds(s);
+  const cos = Math.cos(s.rotation);
+  const sin = Math.sin(s.rotation);
+  const top = Math.max(0, Math.floor(e.t));
+  const bottom = Math.min(surface.height, Math.ceil(e.b));
+  const left = Math.max(0, Math.floor(e.l));
+  const right = Math.min(surface.width, Math.ceil(e.r));
+  const to = new Uint32Array(surface.data.buffer);
+  const from = new Uint32Array(pixels.data.buffer);
+  const ku = pixels.width / s.w;
+  const kv = pixels.height / s.h;
+  const du = cos * ku;
+  const dv = -sin * kv;
+  const dx = left + 0.5 - c.x;
+  for (let y = top; y < bottom; y++) {
+    const dy = y + 0.5 - c.y;
+    let u = (dx * cos + dy * sin) * ku + pixels.width / 2;
+    let v = (dy * cos - dx * sin) * kv + pixels.height / 2;
+    for (let x = left; x < right; x++, u += du, v += dv) {
+      if (u < 0 || v < 0 || u >= pixels.width || v >= pixels.height) continue;
+      const i = Math.floor(v) * pixels.width + Math.floor(u);
+      if (mask[i]) to[y * surface.width + x] = from[i];
+    }
+  }
+}
+
 export function drawShape(surface: ImageData, s: Shape): void {
+  if (s.image) {
+    drawImage(surface, s, s.image);
+    return;
+  }
   const left = Math.round(Math.min(s.x, s.x + s.w));
   const top = Math.round(Math.min(s.y, s.y + s.h));
   const w = Math.round(Math.abs(s.w));
@@ -286,8 +339,8 @@ export function resizeShape(from: Shape, handle: number, p: Point): Shape {
   if (handle === 0 || handle === 1 || handle === 4) t = q.y;
   if (handle === 2 || handle === 3 || handle === 6) b = q.y;
   const mid = toWorld(from, { x: (l + r) / 2, y: (t + b) / 2 });
-  const w = r - l;
-  const h = b - t;
+  const w = (r - l) * Math.sign(from.w || 1);
+  const h = (b - t) * Math.sign(from.h || 1);
   return { ...from, x: mid.x - w / 2, y: mid.y - h / 2, w, h };
 }
 

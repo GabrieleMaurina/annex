@@ -47,6 +47,9 @@ import {
 } from '../lobby/gameFilters';
 import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
 import { GAME_MODE_HELP, PASSWORD_HELP } from '../lobby/settings/settingsHelp';
+import { loadCompletedTutorials } from '../tutorials/progress';
+import TutorialInviteModal from '../tutorials/TutorialInviteModal';
+import { TUTORIALS } from '../tutorials/tutorials';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import Selector from '../ui/forms/Selector';
 
@@ -190,6 +193,10 @@ function Home({
   );
   const [page, setPage] = useState(1);
   const [joiningRandom, setJoiningRandom] = useState(false);
+  const [completedTutorials, setCompletedTutorials] = useState<string[] | null>(
+    null,
+  );
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   const playerIds = selectedPlayers.map((p) => p.id);
 
@@ -318,6 +325,16 @@ function Home({
   }, [filterKey, page, sortOption]);
 
   useEffect(() => {
+    let stale = false;
+    loadCompletedTutorials(account).then((ids) => {
+      if (!stale) setCompletedTutorials(ids);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [account]);
+
+  useEffect(() => {
     if (!joiningRandom) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -369,6 +386,16 @@ function Home({
   const totalPages = result
     ? Math.max(1, Math.ceil(result.total / PAGE_SIZE))
     : 1;
+
+  const tutorialsLeft =
+    completedTutorials !== null &&
+    TUTORIALS.some((t) => !completedTutorials.includes(t.id));
+  const inviteToTutorials = tutorialsLeft && (account?.gamesPlayed ?? 0) === 0;
+
+  function offerTutorials(action: () => void) {
+    if (inviteToTutorials) setPendingAction(() => action);
+    else action();
+  }
 
   function createGame() {
     const base = `Game with ${getPlayerName() || 'Player'}`;
@@ -443,7 +470,9 @@ function Home({
       <div className="d-flex justify-content-center mb-4">
         <div className="d-flex flex-column flex-sm-row gap-2">
           {!serverUnreachable && (
-            <Button onClick={createGame}>Create Online</Button>
+            <Button onClick={() => offerTutorials(createGame)}>
+              Create Online
+            </Button>
           )}
           {!serverUnreachable &&
             (joiningRandom ? (
@@ -455,16 +484,23 @@ function Home({
                 Cancel
               </Button>
             ) : (
-              <Button onClick={() => setJoiningRandom(true)}>
+              <Button
+                onClick={() => offerTutorials(() => setJoiningRandom(true))}
+              >
                 Join Random Game
               </Button>
             ))}
           <Button
             variant="secondary"
-            onClick={() => navigate('/games/offline')}
+            onClick={() => offerTutorials(() => navigate('/games/offline'))}
           >
             Create Offline
           </Button>
+          {(!account || tutorialsLeft) && (
+            <Button variant="secondary" onClick={() => navigate('/tutorials')}>
+              Tutorials
+            </Button>
+          )}
           <SharePageButton
             title="Annex"
             path="/"
@@ -663,7 +699,9 @@ function Home({
                     <tr
                       key={g.name}
                       role="button"
-                      onClick={() => navigate(gamePath(g.name))}
+                      onClick={() =>
+                        offerTutorials(() => navigate(gamePath(g.name)))
+                      }
                     >
                       <td style={rowStyle} className="text-center px-1">
                         {g.hasPassword && (
@@ -710,6 +748,15 @@ function Home({
           />
         </>
       )}
+      <TutorialInviteModal
+        show={pendingAction !== null}
+        onHide={() => setPendingAction(null)}
+        onContinue={() => {
+          setPendingAction(null);
+          pendingAction?.();
+        }}
+        onTutorials={() => navigate('/tutorials')}
+      />
     </Container>
   );
 }

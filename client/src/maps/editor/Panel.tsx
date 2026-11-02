@@ -33,6 +33,7 @@ import PlaceNameInput from './panel/PlaceNameInput';
 import ShapeIcon from './panel/ShapeIcon';
 import TerritorySizeRange from './panel/TerritorySizeRange';
 import TimedLinksTable from './panel/TimedLinksTable';
+import ToolGroup, { type ToolOption } from './panel/ToolGroup';
 
 const MIN_CONTINENTS = 0;
 const MAX_CONTINENTS = 20;
@@ -74,7 +75,7 @@ interface Props {
   setDotted: (value: boolean) => void;
   filled: boolean;
   setFilled: (value: boolean) => void;
-  shapeKind: ShapeKind | null;
+  shapeKind: ShapeKind;
   setShapeKind: (kind: ShapeKind) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -141,14 +142,29 @@ function ColorSwatch({
   );
 }
 
-const TOOLS: { key: PaintTool; label: string; icon?: string }[] = [
+const LINE_TOOLS: ToolOption[] = [
+  { key: 'line', label: 'Straight', icon: '/icons/line.svg' },
+  { key: 'curve', label: 'Curved', icon: '/icons/curve.svg' },
+];
+
+const SELECT_TOOLS: ToolOption[] = [
+  { key: 'select', label: 'Marquee', icon: '/icons/select.svg' },
+  { key: 'lasso', label: 'Lasso', icon: '/icons/lasso.svg' },
+];
+
+const TOOLS: {
+  key: PaintTool;
+  label: string;
+  icon?: string;
+  group?: ToolOption[];
+}[] = [
   { key: 'pencil', label: 'Pencil', icon: '/icons/pencil.svg' },
-  { key: 'line', label: 'Line', icon: '/icons/line.svg' },
-  { key: 'curve', label: 'Curve', icon: '/icons/curve.svg' },
+  { key: 'line', label: 'Line', group: LINE_TOOLS },
   { key: 'shape', label: 'Shape' },
   { key: 'fill', label: 'Fill', icon: '/icons/fill.svg' },
   { key: 'sampler', label: 'Sampler', icon: '/icons/sample.svg' },
   { key: 'eraser', label: 'Eraser', icon: '/icons/erase.svg' },
+  { key: 'select', label: 'Select', group: SELECT_TOOLS },
 ];
 
 function Panel(props: Props) {
@@ -602,33 +618,25 @@ function Panel(props: Props) {
                       setTool('shape');
                     }}
                   >
-                    {shapeKind && (
-                      <Button
-                        size="sm"
-                        variant={
-                          tool === 'shape' ? 'primary' : 'outline-secondary'
-                        }
-                        className="d-flex align-items-center gap-1"
-                        onClick={() =>
-                          setTool(tool === 'shape' ? null : 'shape')
-                        }
-                      >
-                        <ShapeIcon kind={shapeKind} />
-                        {titleCase(shapeKind)}
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant={
+                        tool === 'shape' ? 'primary' : 'outline-secondary'
+                      }
+                      className="d-flex align-items-center gap-1"
+                      onClick={() => setTool(tool === 'shape' ? null : 'shape')}
+                    >
+                      <ShapeIcon kind={shapeKind} />
+                      {titleCase(shapeKind)}
+                    </Button>
                     <Dropdown.Toggle
                       size="sm"
                       variant={
                         tool === 'shape' ? 'primary' : 'outline-secondary'
                       }
-                      split={!!shapeKind}
+                      split
                     >
-                      {shapeKind ? (
-                        <span className="visually-hidden">Choose shape</span>
-                      ) : (
-                        t.label
-                      )}
+                      <span className="visually-hidden">Choose shape</span>
                     </Dropdown.Toggle>
                     <Dropdown.Menu>
                       {SHAPE_KINDS.map((k) => (
@@ -648,6 +656,14 @@ function Panel(props: Props) {
                       ))}
                     </Dropdown.Menu>
                   </Dropdown>
+                ) : t.group ? (
+                  <ToolGroup
+                    key={t.key}
+                    label={t.label}
+                    options={t.group}
+                    tool={tool}
+                    setTool={setTool}
+                  />
                 ) : (
                   <Button
                     key={t.key}

@@ -61,6 +61,7 @@ interface UserDoc {
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
   presets: (Preset | null)[];
+  tutorials: string[];
   picture: PictureDoc | null;
 }
 
@@ -86,6 +87,8 @@ export function normalizeEmail(email: string): string {
 }
 
 export const DEFAULT_ELO = 0;
+const MAX_TUTORIALS = 50;
+const TUTORIAL_ID_PATTERN = /^[a-z-]{1,30}$/;
 
 const schema = {
   validator: {
@@ -106,6 +109,7 @@ const schema = {
         'gameSettings',
         'homeFilters',
         'presets',
+        'tutorials',
         'picture',
       ],
       additionalProperties: false,
@@ -154,6 +158,11 @@ const schema = {
         validated_email: { bsonType: 'bool' },
         ...preferencesSchemaProperties,
         ...presetsSchemaProperties,
+        tutorials: {
+          bsonType: 'array',
+          maxItems: MAX_TUTORIALS,
+          items: { bsonType: 'string', pattern: TUTORIAL_ID_PATTERN.source },
+        },
       },
     },
   },
@@ -301,6 +310,7 @@ export function insertUser(data: {
       gameSettings: { ...DEFAULT_GAME_SETTINGS },
       homeFilters: { ...DEFAULT_HOME_FILTERS },
       presets: [...DEFAULT_PRESETS],
+      tutorials: [],
       picture: null,
     })
     .then((res) => ({ id: res.insertedId.toString() }))
@@ -391,6 +401,27 @@ export function saveUserPresets(
   return collection()
     .updateOne({ _id: new ObjectId(userId) }, { $set: { presets } })
     .then(() => presets);
+}
+
+export function getUserTutorials(userId: string): Promise<string[]> {
+  return collection()
+    .findOne({ _id: new ObjectId(userId) }, { projection: { tutorials: 1 } })
+    .then((doc) => doc?.tutorials ?? []);
+}
+
+export function addUserTutorial(
+  userId: string,
+  tutorialId: unknown,
+): Promise<string[] | null> {
+  if (typeof tutorialId !== 'string' || !TUTORIAL_ID_PATTERN.test(tutorialId))
+    return Promise.resolve(null);
+  return collection()
+    .findOneAndUpdate(
+      { _id: new ObjectId(userId) },
+      { $addToSet: { tutorials: tutorialId } },
+      { returnDocument: 'after', projection: { tutorials: 1 } },
+    )
+    .then((doc) => doc?.tutorials ?? null);
 }
 
 export function searchUsers(

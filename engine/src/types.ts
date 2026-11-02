@@ -407,6 +407,7 @@ export interface Game {
   hostId: number;
   originalHostId: number;
   offline: boolean;
+  tutorial: boolean;
   state: 'lobby' | 'playing' | 'ended';
   createdAt: number;
   startedAt: number | null;

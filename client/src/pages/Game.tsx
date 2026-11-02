@@ -21,6 +21,8 @@ import type {
   PlayerResultStats,
 } from '../lib/types';
 import Lobby from '../lobby/Lobby';
+import TutorialOverlay from '../tutorials/TutorialOverlay';
+import type { Tutorial } from '../tutorials/tutorials';
 import EndPage from './EndPage';
 
 interface Props {
@@ -33,6 +35,7 @@ interface Props {
   navigate: (path: string) => void;
   onRename: (name: string) => void;
   onMapOpenChange: (open: boolean) => void;
+  tutorial: Tutorial | null;
 }
 
 function Game({
@@ -45,6 +48,7 @@ function Game({
   navigate,
   onRename,
   onMapOpenChange,
+  tutorial,
 }: Props) {
   const [game, setGame] = useState<GameState | null>(null);
   const selfId = game?.selfId ?? identifiedSelfId;
@@ -423,6 +427,13 @@ function Game({
         />
       )}
       <OfflineHandoffGate game={game} />
+      {tutorial && game.state !== 'lobby' && (
+        <TutorialOverlay
+          tutorial={tutorial}
+          account={account}
+          navigate={navigate}
+        />
+      )}
       {game.state === 'playing' && <RotateDeviceOverlay />}
     </>
   );

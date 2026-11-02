@@ -28,6 +28,7 @@ import {
   respondGameState,
   sendPlayerCards,
 } from '../session/store';
+import { Game } from '../types';
 import { isBlitzOffAllowed } from './settings';
 
 export function startGame(playerId: number): GameResponse {
@@ -53,6 +54,23 @@ export function startGame(playerId: number): GameResponse {
   if (game.blitz === 'off' && !isBlitzOffAllowed(game))
     return { ok: false, error: 'blitz off not allowed with these settings' };
 
+  prepareGameStart(game);
+  game.remainingSpecialPhases = [
+    ...(game.placement === 'custom' ||
+    (game.placement === 'single' && game.gameMode !== 'capitals')
+      ? (['territory'] as const)
+      : []),
+    ...(game.placement === 'semi' || game.placement === 'custom'
+      ? (['troop'] as const)
+      : []),
+    ...(game.gameMode === 'capitals' ? (['capital'] as const) : []),
+  ];
+  beginNextSpecialPhase(game);
+  broadcastHomeGames();
+  return respondGameState(game, player.id);
+}
+
+export function prepareGameStart(game: Game) {
   for (const ownerId of game.substituteFor.values()) {
     const owner = playersById.get(ownerId);
     if (owner && owner.gameName === game.name) owner.gameName = null;
@@ -120,17 +138,4 @@ export function startGame(playerId: number): GameResponse {
   game.originalHostId = game.hostId;
   game.state = 'playing';
   game.startedAt = Date.now();
-  game.remainingSpecialPhases = [
-    ...(game.placement === 'custom' ||
-    (game.placement === 'single' && game.gameMode !== 'capitals')
-      ? (['territory'] as const)
-      : []),
-    ...(game.placement === 'semi' || game.placement === 'custom'
-      ? (['troop'] as const)
-      : []),
-    ...(game.gameMode === 'capitals' ? (['capital'] as const) : []),
-  ];
-  beginNextSpecialPhase(game);
-  broadcastHomeGames();
-  return respondGameState(game, player.id);
 }

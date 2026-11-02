@@ -22,6 +22,7 @@ export interface WorldMapRequest {
   timed: boolean;
   mountains: boolean;
   rivers: boolean;
+  greenAreas: boolean;
   name: string;
   focus: WorldFocus[];
   cities: [string, number, number, number][];

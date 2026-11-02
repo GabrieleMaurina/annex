@@ -152,6 +152,7 @@ function TurnPanel({
       )}
       {isMyTurn &&
         !paused &&
+        !connector.isTutorial() &&
         turnPhase !== 'territory' &&
         turnPhase !== 'troop' &&
         turnPhase !== 'capital' &&

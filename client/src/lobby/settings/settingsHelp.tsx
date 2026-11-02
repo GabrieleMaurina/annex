@@ -90,6 +90,9 @@ export const RIVERS_HELP =
 export const EARTH_MOUNTAINS_HELP =
   'Rock, glaciers and, above city level, the most rugged real-world mountains become mountains, drawn as peaks. Mountains are not territories, so they leave gaps between the territories around them.';
 
+export const EARTH_GREEN_AREAS_HELP =
+  'City level only. Large woods, grassland, farmland and wetland become green areas. Green areas are not territories, so they leave gaps between the territories around them.';
+
 export const EARTH_RIVERS_HELP =
   'Large named rivers separate the territories on their two banks, drawn as blue borders, unless that would cut the map in two. Rivers are also drawn across land outside the territories.';
 

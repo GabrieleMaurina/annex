@@ -461,6 +461,7 @@ function buildMap(request: WorldMapRequest): void {
             timed: request.timed,
             mountains: request.mountains,
             rivers: request.rivers,
+            greenAreas: request.greenAreas,
             name: request.name,
             zoom,
             aspect: request.aspect,

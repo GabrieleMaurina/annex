@@ -70,6 +70,7 @@ export interface OsmMapParams {
   elevation: OsmElevation | null;
   mountains: boolean;
   rivers: boolean;
+  greenAreas: boolean;
 }
 
 export interface OsmPlaceParams {

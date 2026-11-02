@@ -116,7 +116,7 @@ export function sharedBorders(
   points: RegionPoint[],
   borderColors: string[],
   reach: number,
-): { a: number; b: number }[] {
+): { a: number; b: number; length: number }[] {
   const { width, labels, wall, invalidIds } = labelRegions(
     image,
     points,
@@ -131,60 +131,56 @@ export function sharedBorders(
     if (p >= width) visit(p - width);
     if (p + width < size) visit(p + width);
   };
-  const around = (p: number, visit: (q: number) => void) => {
-    neighbors(p, visit);
-    const x = p % width;
-    const up = p >= width;
-    const down = p + width < size;
-    if (x > 0 && up) visit(p - width - 1);
-    if (x > 0 && down) visit(p + width - 1);
-    if (x < width - 1 && up) visit(p - width + 1);
-    if (x < width - 1 && down) visit(p + width + 1);
-  };
 
-  const edgesByLabel = new Map<number, number[]>();
+  let frontier: number[] = [];
   for (let p = 0; p < size; p++) {
-    const label = labels[p];
-    if (label < 0) continue;
+    if (labels[p] < 0) continue;
     let touchesWall = false;
     neighbors(p, (q) => {
       if (wall[q]) touchesWall = true;
     });
-    if (!touchesWall) continue;
-    const list = edgesByLabel.get(label);
-    if (list) list.push(p);
-    else edgesByLabel.set(label, [p]);
+    if (touchesWall) frontier.push(p);
   }
 
-  const touching = new Set<number>();
-  const seenBy = new Int32Array(size).fill(-1);
-  for (const [label, edge] of edgesByLabel) {
-    let frontier = edge;
-    for (let step = 0; step <= reach && frontier.length > 0; step++) {
-      const next: number[] = [];
-      for (const p of frontier) {
-        around(p, (q) => {
-          const other = labels[q];
-          if (other >= 0 && other !== label) {
-            touching.add(
-              label < other
-                ? label * PAIR_STRIDE + other
-                : other * PAIR_STRIDE + label,
-            );
-            return;
-          }
-          if (step === reach || !wall[q] || seenBy[q] === label) return;
-          seenBy[q] = label;
-          next.push(q);
-        });
-      }
-      frontier = next;
+  const distance = new Int32Array(size);
+  for (let step = 1; step <= reach && frontier.length > 0; step++) {
+    const next: number[] = [];
+    for (const p of frontier) {
+      neighbors(p, (q) => {
+        if (!wall[q] || labels[q] >= 0) return;
+        labels[q] = labels[p];
+        distance[q] = step;
+        next.push(q);
+      });
     }
+    frontier = next;
   }
-  return [...touching].map((key) => ({
-    a: Math.floor(key / PAIR_STRIDE),
-    b: key % PAIR_STRIDE,
-  }));
+
+  const contacts = new Map<number, { length: number; gap: number }>();
+  const touch = (p: number, q: number) => {
+    const a = labels[p];
+    const b = labels[q];
+    if (a < 0 || b < 0 || a === b) return;
+    const key = a < b ? a * PAIR_STRIDE + b : b * PAIR_STRIDE + a;
+    const gap = distance[p] + distance[q] + 1;
+    const contact = contacts.get(key);
+    if (contact) {
+      contact.length++;
+      contact.gap = Math.min(contact.gap, gap);
+    } else contacts.set(key, { length: 1, gap });
+  };
+  for (let p = 0; p < size; p++) {
+    if (p % width < width - 1) touch(p, p + 1);
+    if (p + width < size) touch(p, p + width);
+  }
+
+  return [...contacts]
+    .filter(([, { length, gap }]) => length >= gap)
+    .map(([key, { length }]) => ({
+      a: Math.floor(key / PAIR_STRIDE),
+      b: key % PAIR_STRIDE,
+      length,
+    }));
 }
 
 export function regionAt(

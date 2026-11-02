@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { updateUserSettings } from '../../auth/auth';
-import { getUserPresets, saveUserPresets } from '../../db';
+import {
+  addUserTutorial,
+  getUserPresets,
+  getUserTutorials,
+  saveUserPresets,
+} from '../../db';
 import { isObject } from '../../validate';
 import { identityOf } from '../middleware';
 
@@ -44,5 +49,34 @@ settingsRouter.post('/presets', (req, res) => {
   }
   saveUserPresets(session.userId, req.body.presets)
     .then((presets) => res.json({ ok: true, presets }))
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+settingsRouter.get('/tutorials', (_req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  getUserTutorials(session.userId)
+    .then((completed) => res.json({ ok: true, completed }))
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+settingsRouter.post('/tutorials', (req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  const id = isObject(req.body) ? req.body.id : undefined;
+  addUserTutorial(session.userId, id)
+    .then((completed) =>
+      res.json(
+        completed
+          ? { ok: true, completed }
+          : { ok: false, error: 'invalid tutorial' },
+      ),
+    )
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });

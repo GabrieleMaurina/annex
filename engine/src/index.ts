@@ -46,6 +46,7 @@ import {
 } from './lifecycle/misc';
 import { updateSettings } from './lifecycle/settings';
 import { startGame } from './lifecycle/start';
+import { startTutorial } from './lifecycle/tutorial';
 
 import {
   attack,
@@ -159,6 +160,7 @@ export {
   MIN_STALEMATE_ROUNDS,
   MIN_STARTING_CAPITALS,
 } from './lifecycle/settings';
+export { TutorialScenario } from './lifecycle/tutorial';
 export {
   aspectLabel,
   expectedTerritoryArea,
@@ -272,6 +274,7 @@ export function createEngine(
     requestResults,
     updateSettings,
     startGame,
+    startTutorial,
     cycleColor,
     nextPhase,
     pauseGame,

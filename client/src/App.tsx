@@ -46,6 +46,8 @@ import Friends from './pages/social/Friends';
 import Messages from './pages/social/Messages';
 import PlayerProfile from './pages/social/PlayerProfile';
 import Players from './pages/social/Players';
+import TutorialsPage from './tutorials/TutorialsPage';
+import { tutorialFromPath } from './tutorials/tutorials';
 
 function EmailConfirmationRoute({
   navigate,
@@ -66,7 +68,8 @@ function PasswordResetRoute({
 }
 
 function roomFromPath(pathname: string): string {
-  if (pathname === '/games/offline') return 'offline';
+  if (pathname === '/games/offline' || tutorialFromPath(pathname))
+    return 'offline';
   const match = pathname.match(/^\/games\/live\/([^/]+)/);
   if (match) {
     try {
@@ -96,6 +99,8 @@ const PAGE_TITLES: [RegExp, string][] = [
   [/^\/games\/replay$/, 'Games'],
   [/^\/games\/replay\//, 'Replay'],
   [/^\/games\/offline$/, 'Offline Game'],
+  [/^\/tutorials$/, 'Tutorials'],
+  [/^\/tutorials\//, 'Tutorial'],
 ];
 
 function titleFromPath(pathname: string, room: string): string {
@@ -135,6 +140,7 @@ function App() {
   );
 
   const room = roomFromPath(pathname);
+  const tutorial = tutorialFromPath(pathname);
   const isOffline = room === 'offline';
   const inGame = room !== 'home';
   const onReplayMap =
@@ -178,9 +184,9 @@ function App() {
   }, [pathname, room]);
 
   useEffect(() => {
-    connector.setMode(isOffline);
+    connector.setMode(isOffline, tutorial);
     if (!isOffline) offlineSetupApplied.current = false;
-  }, [isOffline]);
+  }, [isOffline, tutorial]);
 
   const renameRoom = useCallback(
     (newName: string) => {
@@ -255,7 +261,8 @@ function App() {
       if (isOffline) {
         if (
           (sessionReady || serverUnreachable) &&
-          !offlineSetupApplied.current
+          !offlineSetupApplied.current &&
+          !tutorial
         ) {
           offlineSetupApplied.current = true;
           if (!connector.isConvertingOffline()) applySavedGameSettings();
@@ -287,6 +294,7 @@ function App() {
     sessionReady,
     serverUnreachable,
     room,
+    tutorial,
     attemptJoin,
     navigate,
   ]);
@@ -370,7 +378,7 @@ function App() {
 
   const gameElement = (
     <Game
-      key={room}
+      key={tutorial?.id ?? room}
       selfId={selfId}
       joinError={joinError}
       needsPassword={needsPassword}
@@ -380,6 +388,7 @@ function App() {
       navigate={navigate}
       onRename={renameRoom}
       onMapOpenChange={setGameMapOpen}
+      tutorial={tutorial}
     />
   );
 
@@ -516,6 +525,16 @@ function App() {
           }
         />
         <Route path="/games/offline" element={gameElement} />
+        <Route
+          path="/tutorials"
+          element={<TutorialsPage account={account} navigate={navigate} />}
+        />
+        <Route
+          path="/tutorials/:id"
+          element={
+            tutorial ? gameElement : <Navigate to="/tutorials" replace />
+          }
+        />
         <Route path="/games/live/:gameName" element={gameElement} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

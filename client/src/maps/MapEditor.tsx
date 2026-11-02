@@ -147,7 +147,7 @@ function MapEditor({ account }: { account: Account | null }) {
   const [brushSize, setBrushSize] = useState(10);
   const [dotted, setDotted] = useState(false);
   const [filled, setFilled] = useState(false);
-  const [shapeKind, setShapeKind] = useState<ShapeKind | null>(null);
+  const [shapeKind, setShapeKind] = useState<ShapeKind>('square');
   const [paintVersion, setPaintVersion] = useState(0);
   const [paintEpoch, setPaintEpoch] = useState(0);
   const [paintSurface, setPaintSurface] = useState(() =>
@@ -877,6 +877,7 @@ function MapEditor({ account }: { account: Account | null }) {
           onChange={bumpPaint}
           onWheelZoom={handleWheelZoom}
           onPickColor={handlePickColor}
+          onToolChange={setTool}
           onPanStart={handlePanStart}
           onPanMove={handlePanMove}
           onPanEnd={handlePanEnd}

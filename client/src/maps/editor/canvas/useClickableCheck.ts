@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type MutableRefObject } from 'react';
-import { labelRegions, rgbOf } from '../../../game/regions/labelRegions';
+import { rgbOf } from '../../../game/regions/labelRegions';
 import type { EditorTerritory } from '../model/editorTypes';
 import { continentColor, SEA_MARKER_COLOR } from '../palette';
+import type { ClickableReply, ClickableRequest } from './clickableWorker';
 
 const CHECK_DELAY = 400;
 const AREA_ALPHA = 140;
@@ -63,22 +64,36 @@ export function useClickableCheck(
 ): ClickableCheck | null {
   const [labeled, setLabeled] = useState<LabeledAreas | null>(null);
   useEffect(() => {
+    let worker: Worker | null = null;
     const timer = setTimeout(() => {
       const surface = surfaceRef.current;
-      const { labels, invalidIds } = labelRegions(
-        surface,
-        territories,
-        borderColors,
-      );
-      setLabeled({
-        labels,
-        invalidIds,
-        width: surface.width,
-        height: surface.height,
-        territories,
+      worker = new Worker(new URL('./clickableWorker.ts', import.meta.url), {
+        type: 'module',
       });
+      worker.addEventListener(
+        'message',
+        (event: MessageEvent<ClickableReply>) => {
+          worker?.terminate();
+          setLabeled({
+            labels: event.data.labels,
+            invalidIds: new Set(event.data.invalidIds),
+            width: surface.width,
+            height: surface.height,
+            territories,
+          });
+        },
+      );
+      const request: ClickableRequest = {
+        image: surface,
+        points: territories.map(({ id, x, y, isSea }) => ({ id, x, y, isSea })),
+        borderColors,
+      };
+      worker.postMessage(request);
     }, CHECK_DELAY);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      worker?.terminate();
+    };
   }, [surfaceRef, paintVersion, territories, borderColors]);
   const overlay = useMemo(
     () => (showAreas && labeled ? tintOverlay(labeled) : null),

@@ -89,6 +89,7 @@ function scheduleTurnTimer(game: Game) {
   clearTurnTimer(game.name);
   game.turnStartedAt = Date.now();
   game.turnExtension = 0;
+  if (game.tutorial) return;
   if (game.paused) {
     game.pausedMs += Date.now() - (game.pausedAt ?? Date.now());
     game.pausedAt = Date.now();
@@ -142,6 +143,7 @@ export function resumeTurnTimer(game: Game) {
 }
 
 function extendRemainingTurnTo(game: Game, targetMs: number) {
+  if (game.tutorial) return;
   const remaining = remainingTurnMs(game);
   if (targetMs <= remaining) return;
 

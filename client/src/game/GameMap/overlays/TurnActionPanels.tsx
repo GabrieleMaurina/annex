@@ -1,6 +1,7 @@
 import { ONLINE_PAUSE_SECONDS } from 'engine';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { stepTroops } from '../../../common/inputs/useTroopsInput';
+import { connector } from '../../../connector';
 import { playerColor } from '../../../lib/palette';
 import type {
   BlitzOutcome,
@@ -250,7 +251,7 @@ export default function TurnActionPanels({
               color="var(--bs-gray-500)"
               paused={false}
             />
-          ) : (
+          ) : connector.isTutorial() ? null : (
             <TurnProgressBar
               turnStartedAt={turnStartedAt}
               turnDuration={

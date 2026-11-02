@@ -375,7 +375,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
         </Alert>
       )}
 
-      <div className="mb-1">
+      <div className="mb-3">
         {isHost && account && (
           <PresetBar
             currentPreset={currentPreset}

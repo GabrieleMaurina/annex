@@ -50,6 +50,7 @@ function computeSeaBlitzWinProbabilities(
   defendingDice: number,
 ): number[] {
   if (game.blitz === 'off') return new Array<number>(attackingShips).fill(0);
+  if (game.tutorial) return new Array<number>(attackingShips).fill(1);
   const dice = gameDiceRules(game, defendingDice);
   if (game.blitz === 'fair')
     return trueWinProbs(attackingShips, defendingShips, dice).map((p) =>
@@ -194,7 +195,9 @@ export function attackSea(
   let attackerDice: number[] = [];
   let defenderDice: number[] = [];
   if (type === 'regular') {
-    const result = rollAttack(ships, defendingDice, game.diceTies);
+    const roll = () => rollAttack(ships, defendingDice, game.diceTies);
+    let result = roll();
+    while (game.tutorial && result.defenceLosses === 0) result = roll();
     attackLosses = result.attackLosses;
     defenceLosses = result.defenceLosses;
     attackerDice = result.attackDice;
@@ -211,8 +214,10 @@ export function attackSea(
       defendingShips,
       gameDiceRules(game, defendingDice),
     );
-    attackLosses = result.attackLosses;
-    defenceLosses = result.defenceLosses;
+    attackLosses = game.tutorial
+      ? Math.min(result.attackLosses, ships - 1)
+      : result.attackLosses;
+    defenceLosses = game.tutorial ? defendingShips : result.defenceLosses;
   }
 
   const remainingAttackers = attackingShips - attackLosses;

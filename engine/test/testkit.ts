@@ -119,6 +119,7 @@ function baseGame(name: string): Game {
     hostId: 1,
     originalHostId: 1,
     offline: true,
+    tutorial: false,
     state: 'playing',
     createdAt: 0,
     startedAt: Date.now(),

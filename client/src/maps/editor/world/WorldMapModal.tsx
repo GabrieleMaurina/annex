@@ -11,6 +11,7 @@ import WhiteIcon from '../../../common/icons/WhiteIcon';
 import PanelHeader from '../../../common/PanelHeader';
 import Help from '../../../common/tooltips/Help';
 import {
+  EARTH_GREEN_AREAS_HELP,
   EARTH_MOUNTAINS_HELP,
   EARTH_RIVERS_HELP,
   SEAS_HELP,
@@ -92,6 +93,7 @@ interface EarthSession {
   timed: boolean;
   mountains: boolean;
   rivers: boolean;
+  greenAreas: boolean;
   place: GazetteerPlace | null;
   placeBounds: GazetteerPlace['bounds'] | null;
   extras: GazetteerPlace[];
@@ -107,6 +109,7 @@ const session: EarthSession = {
   timed: false,
   mountains: false,
   rivers: false,
+  greenAreas: false,
   place: null,
   placeBounds: null,
   extras: [],
@@ -238,6 +241,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
   const [timed, setTimed] = useState(session.timed);
   const [mountains, setMountains] = useState(session.mountains);
   const [rivers, setRivers] = useState(session.rivers);
+  const [greenAreas, setGreenAreas] = useState(session.greenAreas);
   const [frame, setFrame] = useState<WorldFrame | null>(null);
   const [target, setTarget] = useState<GazetteerPlace | null>(null);
   const [place, setPlace] = useState(session.place);
@@ -266,6 +270,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
       timed,
       mountains,
       rivers,
+      greenAreas,
       place,
       placeBounds,
       extras,
@@ -418,6 +423,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
       timed,
       mountains,
       rivers,
+      greenAreas,
       name:
         focus.length > 0 && place && place.kind !== DRAWN_KIND
           ? place.name
@@ -599,6 +605,15 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
                 checked={rivers}
                 disabled={!!job}
                 onChange={(e) => setRivers(e.target.checked)}
+              />
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                type="checkbox"
+                label={<Help tip={EARTH_GREEN_AREAS_HELP}>Green areas</Help>}
+                checked={greenAreas}
+                disabled={!!job}
+                onChange={(e) => setGreenAreas(e.target.checked)}
               />
             </div>
             {job && (

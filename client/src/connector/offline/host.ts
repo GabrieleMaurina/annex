@@ -13,11 +13,37 @@ import { getGeneratedMapData } from '../../game/mapData';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
 import type { EarthMapInput, GameState } from '../../lib/types';
 import { moveToTeam } from '../../lobby/roster/teamLayout';
+import { tutorialMap } from '../../tutorials/tutorialMap';
+import type { Tutorial } from '../../tutorials/tutorials';
 import { publish } from '../inbound';
 import { browserWorkerPort } from './browserWorkerPort';
 import { loadPlayerMap } from './maps';
 
 const URL_ROOM = 'offline';
+const TUTORIAL_EVENTS = [
+  'player:identify',
+  'game:requestState',
+  'game:requestResults',
+  'game:requestCards',
+  'game:selectTerritory',
+  'game:deploy',
+  'game:buyShips',
+  'game:playCardSet',
+  'game:selectCapital',
+  'game:attackSelectStart',
+  'game:attackSelectEnd',
+  'game:attack',
+  'game:attackMove',
+  'game:quickAttack',
+  'game:attackSeaSelectStart',
+  'game:attackSeaSelectDefender',
+  'game:attackSea',
+  'game:quickAttackSea',
+  'game:fortifySelectStart',
+  'game:fortifySelectEnd',
+  'game:fortify',
+  'game:quickFortify',
+];
 
 let engine: Engine | null = null;
 let active = false;
@@ -33,6 +59,8 @@ let bufferedTurnStarted: unknown = null;
 let pausedForHandoff = false;
 let gameEntered = false;
 let unsubscribeName: (() => void) | null = null;
+let tutorial: Tutorial | null = null;
+let tutorialDone = false;
 const queue: (() => void)[] = [];
 
 function localHostName(): string {
@@ -173,6 +201,26 @@ function applySeed(s: OfflineSeed): void {
   } else finish();
 }
 
+function applyTutorial(t: Tutorial): void {
+  if (!engine || hostId === null) return;
+  const id = hostId;
+  const bots = Math.max(...t.scenario.territories.map((s) => s.seat));
+  engine.updateSettings(id, { ...t.settings, slots: bots + 1 });
+  for (let i = 0; i < bots; i++) engine.addBot(id, 'idle', 'random');
+  engine.selectPlayerMap(id, (t.map ?? tutorialMap)(), () => {});
+  engine.startTutorial(id, t.scenario);
+  flushQueue();
+  engine.requestState(id);
+}
+
+function checkTutorial(event: string, res: unknown): void {
+  const { game } = (res ?? {}) as { game?: GameState };
+  if (!tutorial || tutorialDone || !game || hostId === null) return;
+  if (!tutorial.isComplete(event, game, hostId)) return;
+  tutorialDone = true;
+  publish('tutorial:completed');
+}
+
 function beginHandoff(next: number, turnStarted: unknown): void {
   pendingActor = next;
   bufferedTurnStarted = turnStarted;
@@ -231,6 +279,7 @@ function handOffAfterAck(res: unknown): void {
 
 function forward(event: string) {
   return (playerId: number, payload?: unknown) => {
+    if (tutorialDone) return;
     if (
       event === 'game:state' &&
       playerId === currentActorId &&
@@ -336,9 +385,16 @@ export function isOffline(): boolean {
   return active;
 }
 
-export function startOffline(): void {
-  if (active) return;
+export function isTutorial(): boolean {
+  return tutorial !== null;
+}
+
+export function startOffline(next: Tutorial | null): void {
+  if (active && next === tutorial) return;
+  if (active) stopOffline();
   active = true;
+  tutorial = next;
+  tutorialDone = false;
   ready = false;
   pendingActor = null;
   bufferedTurnStarted = null;
@@ -366,7 +422,9 @@ export function startOffline(): void {
   ready = true;
   const pendingSeed = seed;
   seed = null;
-  if (pendingSeed) {
+  if (tutorial) {
+    applyTutorial(tutorial);
+  } else if (pendingSeed) {
     convertedFromOnline = true;
     applySeed(pendingSeed);
   } else {
@@ -388,6 +446,7 @@ export function stopOffline(): void {
   currentActorId = null;
   localPlayerIds = [];
   pendingActor = null;
+  tutorial = null;
 }
 
 export function setLocalPlayerName(playerId: number, name: string): void {
@@ -438,10 +497,20 @@ export function dispatch(
   data: unknown,
   cb?: (res: unknown) => void,
 ): void {
+  if (
+    tutorial &&
+    (tutorialDone ||
+      !TUTORIAL_EVENTS.includes(event) ||
+      tutorial.blockedEvents?.includes(event))
+  ) {
+    cb?.({ ok: false, error: 'not available in tutorials' });
+    return;
+  }
   const fn = () =>
     run(event, data, (res) => {
       cb?.(res);
       handOffAfterAck(res);
+      checkTutorial(event, res);
     });
   if (ready) fn();
   else queue.push(fn);

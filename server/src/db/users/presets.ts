@@ -44,6 +44,7 @@ export interface EarthRecipe {
   timed: boolean;
   mountains: boolean;
   rivers: boolean;
+  greenAreas: boolean;
   name: string;
   focus: EarthFocus[];
 }
@@ -88,6 +89,7 @@ const earthSchema = {
     ...Object.fromEntries(
       EARTH_FLAGS.map((key) => [key, { bsonType: 'bool' }]),
     ),
+    greenAreas: { bsonType: 'bool' },
     name: { bsonType: 'string' },
     focus: {
       bsonType: 'array',
@@ -207,6 +209,7 @@ function sanitizeEarth(raw: unknown): EarthRecipe | null {
     timed: r.timed as boolean,
     mountains: r.mountains as boolean,
     rivers: r.rivers as boolean,
+    greenAreas: r.greenAreas !== false,
     name: r.name,
     focus: focus as EarthFocus[],
   };

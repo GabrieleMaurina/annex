@@ -32,6 +32,7 @@ const LINKS: { label: string; path: string }[] = [
   { label: 'Players', path: '/players' },
   { label: 'Friends', path: '/friends' },
   { label: 'Messages', path: '/messages' },
+  { label: 'Tutorials', path: '/tutorials' },
 ];
 
 const LOGGED_IN_ONLY = ['/friends', '/messages'];

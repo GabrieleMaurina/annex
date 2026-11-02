@@ -76,6 +76,7 @@ function computeBlitzWinProbabilities(
 ): number[] {
   const maxBlitz = attackingTroops - 1;
   if (game.blitz === 'off') return new Array<number>(maxBlitz).fill(0);
+  if (game.tutorial) return new Array<number>(maxBlitz).fill(1);
   const dice = gameDiceRules(game, defendingDice);
   if (game.blitz === 'fair')
     return trueWinProbs(maxBlitz, defendingTroops, dice).map((p) =>
@@ -273,11 +274,14 @@ export function attack(
     attackLosses = 0;
     defenceLosses = 0;
   } else if (type === 'regular') {
-    const result = rollAttack(
-      troops,
-      Math.min(defendingTroops, defendingDice),
-      game.diceTies,
-    );
+    const roll = () =>
+      rollAttack(
+        troops,
+        Math.min(defendingTroops, defendingDice),
+        game.diceTies,
+      );
+    let result = roll();
+    while (game.tutorial && result.defenceLosses === 0) result = roll();
     attackLosses = result.attackLosses;
     defenceLosses = result.defenceLosses;
     attackerDice = result.attackDice;
@@ -294,8 +298,10 @@ export function attack(
       defendingTroops,
       gameDiceRules(game, defendingDice),
     );
-    attackLosses = result.attackLosses;
-    defenceLosses = result.defenceLosses;
+    attackLosses = game.tutorial
+      ? Math.min(result.attackLosses, troops - 1)
+      : result.attackLosses;
+    defenceLosses = game.tutorial ? defendingTroops : result.defenceLosses;
   }
 
   game.territoryTroops.set(startId, attackingTroops - attackLosses);

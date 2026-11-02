@@ -235,6 +235,7 @@ function naturalAreas(
   const minArea = (land: Uint8Array) =>
     (countLand(land) / middle) * NATURAL_AREA_RATIO;
   if (params.zoom >= LOCAL_ZOOM) {
+    if (!params.greenAreas) return null;
     const green = greenMask(params.features, width, height);
     return (land) => largeLandAreas(green, land, width, minArea(land));
   }

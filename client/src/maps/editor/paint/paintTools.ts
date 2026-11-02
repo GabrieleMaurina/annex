@@ -17,7 +17,15 @@ import {
 } from 'engine';
 
 export type PaintTool =
-  'pencil' | 'eraser' | 'line' | 'curve' | 'shape' | 'fill' | 'sampler';
+  | 'pencil'
+  | 'eraser'
+  | 'line'
+  | 'curve'
+  | 'shape'
+  | 'fill'
+  | 'sampler'
+  | 'select'
+  | 'lasso';
 
 export const ERASER_COLOR = '#ffffff';
 
@@ -82,6 +90,34 @@ export interface Rect {
   y: number;
   w: number;
   h: number;
+}
+
+export const MAX_CURSOR_DIAMETER = 128;
+
+export function brushCursor(color: string, diameter: number): string {
+  const d = Math.round(diameter);
+  if (d < 7) return 'crosshair';
+  if (diameter > MAX_CURSOR_DIAMETER) return 'none';
+  const c = d / 2;
+  const r = (d - 2) / 2;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}">` +
+    `<circle cx="${c}" cy="${c}" r="${r}" fill="${color}"/>` +
+    `</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${c} ${c}, crosshair`;
+}
+
+export function unionRect(x: Rect | null, y: Rect | null): Rect | null {
+  if (!x) return y;
+  if (!y) return x;
+  const px = Math.min(x.x, y.x);
+  const py = Math.min(x.y, y.y);
+  return {
+    x: px,
+    y: py,
+    w: Math.max(x.x + x.w, y.x + y.w) - px,
+    h: Math.max(x.y + x.h, y.y + y.h) - py,
+  };
 }
 
 export function paintContext(
@@ -229,7 +265,7 @@ function segment(
   else capsule(s, a, b, size / 2, r, g, bl);
 }
 
-function boundsOf(points: Point[], pad: number, s: ImageData): Rect {
+export function boundsOf(points: Point[], pad: number, s: ImageData): Rect {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;

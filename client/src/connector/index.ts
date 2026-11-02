@@ -34,10 +34,12 @@ import type {
   StoredGame,
   StoredMap,
 } from '../lib/types';
+import type { Tutorial } from '../tutorials/tutorials';
 import { subscribe, unsubscribe } from './inbound';
 import {
   consumeConvertedFromOnline,
   isOffline,
+  isTutorial,
   addLocalPlayer as offlineAddLocalPlayer,
   continueHandoff as offlineContinueHandoff,
   cycleLocalPlayerColor as offlineCycleLocalPlayerColor,
@@ -149,8 +151,12 @@ export const connector = {
     return isOffline();
   },
 
-  setMode(offline: boolean): void {
-    if (offline) startOffline();
+  isTutorial(): boolean {
+    return isTutorial();
+  },
+
+  setMode(offline: boolean, tutorial: Tutorial | null): void {
+    if (offline) startOffline(tutorial);
     else stopOffline();
   },
 

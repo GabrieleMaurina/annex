@@ -197,6 +197,7 @@ function PlayersPanel({
   const canSendEmoji = !!self && !connector.isOffline();
   const canSurrender =
     !gameEnded &&
+    !connector.isTutorial() &&
     !isSpectator &&
     !!self &&
     !self.eliminated &&
@@ -206,7 +207,10 @@ function PlayersPanel({
   const canLeave =
     isSpectator ||
     (!!self && (gameEnded || self.surrendered || self.eliminated));
-  const canControl = !gameEnded && (selfId === hostId || connector.isOffline());
+  const canControl =
+    !gameEnded &&
+    !connector.isTutorial() &&
+    (selfId === hostId || connector.isOffline());
   const canPause =
     canControl && (connector.isOffline() || paused || !pauseUsed);
   const hasLivingBot = players.some((p) => p.isBot && !p.eliminated);

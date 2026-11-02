@@ -19,6 +19,7 @@ const RESCAN_MS = 1000;
 const INITIAL_TANKS = 3;
 const HOLD_DELAY_MS = 250;
 const REPEAT_MS = 100;
+const GATE_ANIMATION = 'page-gate-left';
 
 interface Props {
   spawnInitial: boolean;
@@ -182,10 +183,19 @@ function RollingTanks({ spawnInitial }: Props) {
     let lastScan = last;
     let drawn = true;
     let frame = 0;
+    let gateOpening = false;
+
+    function onGateAnimation(event: AnimationEvent) {
+      if (event.animationName !== GATE_ANIMATION) return;
+      gateOpening = event.type === 'animationstart';
+      if (!gateOpening) lastScan = -Infinity;
+    }
 
     function step(now: number) {
+      frame = requestAnimationFrame(step);
       const dt = Math.min(Math.max((now - last) / 1000, 0), MAX_DT);
       last = now;
+      if (gateOpening) return;
       const busy = world.tanks.length > 0 || world.shells.length > 0;
       const sinceScan = now - lastScan;
       if (busy && ((dirty && sinceScan > SCAN_MS) || sinceScan > RESCAN_MS)) {
@@ -200,7 +210,6 @@ function RollingTanks({ spawnInitial }: Props) {
       if (visible || drawn || redraw) drawWorld(ctx, world, now);
       drawn = visible;
       redraw = false;
-      frame = requestAnimationFrame(step);
     }
     frame = requestAnimationFrame(step);
 
@@ -225,6 +234,9 @@ function RollingTanks({ spawnInitial }: Props) {
     window.addEventListener('contextmenu', onContextMenu);
     document.addEventListener('selectstart', preventSelection);
     document.addEventListener('dragstart', preventSelection);
+    document.addEventListener('animationstart', onGateAnimation);
+    document.addEventListener('animationend', onGateAnimation);
+    document.addEventListener('animationcancel', onGateAnimation);
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
@@ -242,6 +254,9 @@ function RollingTanks({ spawnInitial }: Props) {
       window.removeEventListener('contextmenu', onContextMenu);
       document.removeEventListener('selectstart', preventSelection);
       document.removeEventListener('dragstart', preventSelection);
+      document.removeEventListener('animationstart', onGateAnimation);
+      document.removeEventListener('animationend', onGateAnimation);
+      document.removeEventListener('animationcancel', onGateAnimation);
     };
   }, []);
 

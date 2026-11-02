@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="1 5.5 64 64">
+  <style>
+    .plate { fill: url(#steel); stroke: #1d232b; stroke-width: 1.8; stroke-linejoin: round; }
+    .weld { fill: none; stroke: #a3adba; stroke-width: 0.8; stroke-linejoin: round; stroke-opacity: 0.8; }
+  </style>
+  <defs>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6e7a89"/>
+      <stop offset="1" stop-color="#353d48"/>
+    </linearGradient>
+    <path id="barrel" d="M41 27h13v4H41z"/>
+    <rect id="muzzle" x="54" y="26" width="4" height="6" rx="1"/>
+    <path id="hatch" d="M28 21h8a1 1 0 0 1 1 1v2H27v-2a1 1 0 0 1 1-1z"/>
+    <rect id="turret" x="22" y="24" width="20" height="11" rx="3"/>
+    <path id="hull" d="M10 41l6-11h32l6 11H10z"/>
+    <rect id="tracks" x="8" y="39" width="48" height="15" rx="7.5"/>
+    <g id="tank">
+      <use href="#barrel"/>
+      <use href="#muzzle"/>
+      <use href="#hatch"/>
+      <use href="#turret"/>
+      <use href="#hull"/>
+      <use href="#tracks"/>
+    </g>
+    <g id="wheels">
+      <circle cx="16" cy="46.5" r="4.5"/>
+      <circle cx="26" cy="46.5" r="4.5"/>
+      <circle cx="36" cy="46.5" r="4.5"/>
+      <circle cx="46" cy="46.5" r="4.5"/>
+    </g>
+    <g id="bolts">
+      <circle cx="16" cy="46.5" r="1.4"/>
+      <circle cx="26" cy="46.5" r="1.4"/>
+      <circle cx="36" cy="46.5" r="1.4"/>
+      <circle cx="46" cy="46.5" r="1.4"/>
+      <circle cx="25" cy="27" r="0.8"/>
+      <circle cx="39" cy="27" r="0.8"/>
+      <circle cx="25" cy="34.5" r="0.8"/>
+      <circle cx="39" cy="34.5" r="0.8"/>
+    </g>
+  </defs>
+  <use href="#tank" transform="translate(0.8 1.4)" fill="#000" fill-opacity="0.55"/>
+  <use href="#barrel" class="plate"/>
+  <use href="#barrel" class="weld"/>
+  <use href="#muzzle" class="plate"/>
+  <use href="#muzzle" class="weld"/>
+  <use href="#hatch" class="plate"/>
+  <use href="#hatch" class="weld"/>
+  <use href="#turret" class="plate"/>
+  <use href="#turret" class="weld"/>
+  <use href="#hull" class="plate"/>
+  <use href="#hull" class="weld"/>
+  <use href="#tracks" class="plate"/>
+  <use href="#tracks" class="weld"/>
+  <use href="#wheels" fill="#262d37" stroke="#1d232b" stroke-width="1"/>
+  <use href="#wheels" fill="none" stroke="#a3adba" stroke-width="0.6" stroke-opacity="0.8"/>
+  <use href="#bolts" fill="#9aa5b2" stroke="#0b0f14" stroke-width="0.5"/>
+</svg>

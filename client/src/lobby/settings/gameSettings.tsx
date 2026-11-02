@@ -566,8 +566,33 @@ export const SEAT_REQUIREMENT_KEYS = [
   'minReputation',
 ];
 
+const KEEP_CURRENT_KEYS = [
+  'anonymous',
+  ...SEAT_REQUIREMENT_KEYS,
+  'disconnectBotPersonality',
+  'disconnectBotDifficulty',
+  'maxRounds',
+  'maxDuration',
+  'drawOfferRound',
+  'turnDuration',
+  'attackIncrement',
+];
+
+const DEFAULT_PROBABILITY = 0.5;
+const OFF_PROBABILITY = 0.75;
+
 function pick<T>(values: readonly T[]): T {
   return values[Math.floor(Math.random() * values.length)];
+}
+
+function pickFavoringDefault<T extends string>(
+  values: readonly T[],
+  defaultValue: T,
+): T {
+  const probability =
+    defaultValue === 'off' ? OFF_PROBABILITY : DEFAULT_PROBABILITY;
+  if (Math.random() < probability) return defaultValue;
+  return pick(values.filter((value) => value !== defaultValue));
 }
 
 function pickNearDefault(
@@ -590,19 +615,24 @@ function pickNearDefault(
 }
 
 export function randomGameSettings(): GameSettingsInput {
-  const gameMode = pick(GAME_MODES);
+  const gameMode = pickFavoringDefault(
+    GAME_MODES,
+    DEFAULT_GAME_SETTINGS.gameMode as GameMode,
+  );
   const settings: Record<string, string | number> = { gameMode };
   for (const def of GAME_SETTINGS) {
-    if (def.key === 'anonymous' || SEAT_REQUIREMENT_KEYS.includes(def.key))
-      continue;
-    if (def.range) {
-      settings[def.key] = defaultSettingValue(def.key, gameMode) as number;
+    if (KEEP_CURRENT_KEYS.includes(def.key)) continue;
+    const defaultValue = defaultSettingValue(def.key, gameMode);
+    if (def.modes && !def.modes.includes(gameMode)) {
+      settings[def.key] = defaultValue as string | number;
       continue;
     }
-    const { value } = def.numeric
-      ? pickNearDefault(def.options, defaultSettingValue(def.key, gameMode))
-      : pick(def.options);
-    settings[def.key] = def.numeric ? Number(value) : value;
+    settings[def.key] = def.numeric
+      ? Number(pickNearDefault(def.options, defaultValue).value)
+      : pickFavoringDefault(
+          def.options.map((o) => o.value),
+          String(defaultValue),
+        );
   }
   if (
     settings.blitz === 'off' &&
@@ -614,7 +644,7 @@ export function randomGameSettings(): GameSettingsInput {
       minTroops: Number(settings.minTroops),
     })
   )
-    settings.blitz = pick(['balanced', 'true', 'fair']);
+    settings.blitz = defaultSettingValue('blitz', gameMode) as string;
   if (settings.gameMode === 'team deathmatch') settings.alliances = 'off';
   settings.defenceDice = Math.min(
     Number(settings.defenceDice),

@@ -14,7 +14,7 @@ export interface RegionLabels {
 }
 
 const BORDER_TOLERANCE = 16;
-const WALL_MAX_ALPHA = 128;
+export const WALL_MAX_ALPHA = 128;
 export const MAX_LAND_AREA_FRACTION = 0.1;
 const MAX_SEA_AREA_FRACTION = 0.4;
 const GAP_PER_LONGEST_SIDE = 1 / 160;

@@ -1,6 +1,6 @@
 import type { LockedTile } from '../../lib/types';
 import { loadGameMap } from '../mapData';
-import { labelRegions, type RegionPoint } from './labelRegions';
+import { labelRegions, WALL_MAX_ALPHA, type RegionPoint } from './labelRegions';
 import { traceRegionShapes, type RegionShape } from './traceRegions';
 
 export interface ClickableRegions {
@@ -8,6 +8,8 @@ export interface ClickableRegions {
   height: number;
   labels: Int16Array;
   fillLabels: Int16Array;
+  splitLabels: Int16Array;
+  borderWidth: number;
   shapes: Map<number, RegionShape>;
   unlocked?: { tiles: LockedTile[]; lineWidth: number };
 }
@@ -16,21 +18,27 @@ const BORDER_REACH = 8;
 const PAIR_STRIDE = 1 << 15;
 const VERTEX_DIAMETERS_PER_LONGEST_SIDE = 50;
 
+function forEachNeighbor(
+  p: number,
+  width: number,
+  size: number,
+  visit: (q: number) => void,
+) {
+  const x = p % width;
+  if (x > 0) visit(p - 1);
+  if (x < width - 1) visit(p + 1);
+  if (p >= width) visit(p - width);
+  if (p + width < size) visit(p + width);
+}
+
 function growIntoBorders(labels: Int16Array, wall: Uint8Array, width: number) {
   const size = labels.length;
-  const neighbors = (p: number, visit: (q: number) => void) => {
-    const x = p % width;
-    if (x > 0) visit(p - 1);
-    if (x < width - 1) visit(p + 1);
-    if (p >= width) visit(p - width);
-    if (p + width < size) visit(p + width);
-  };
   const open = (q: number) => wall[q] === 1 && labels[q] < 0;
   let frontier: number[] = [];
   for (let p = 0; p < size; p++) {
     if (labels[p] < 0) continue;
     let touchesBorder = false;
-    neighbors(p, (q) => {
+    forEachNeighbor(p, width, size, (q) => {
       if (open(q)) touchesBorder = true;
     });
     if (touchesBorder) frontier.push(p);
@@ -38,13 +46,85 @@ function growIntoBorders(labels: Int16Array, wall: Uint8Array, width: number) {
   for (let step = 0; step < BORDER_REACH; step++) {
     const next: number[] = [];
     for (const p of frontier) {
-      neighbors(p, (q) => {
+      forEachNeighbor(p, width, size, (q) => {
         if (!open(q)) return;
         labels[q] = labels[p];
         next.push(q);
       });
     }
     frontier = next;
+  }
+}
+
+function splitWalls(
+  fillLabels: Int16Array,
+  image: ImageData,
+  wall: Uint8Array,
+  width: number,
+): { splitLabels: Int16Array; borderWidth: number } {
+  const size = fillLabels.length;
+  const border = (p: number) =>
+    wall[p] === 1 && image.data[p * 4 + 3] >= WALL_MAX_ALPHA;
+  const splitLabels = fillLabels.slice();
+  const depth = new Int32Array(size).fill(-1);
+  let frontier: number[] = [];
+  for (let p = 0; p < size; p++) {
+    if (border(p)) continue;
+    depth[p] = 0;
+    frontier.push(p);
+  }
+  while (frontier.length > 0) {
+    const next: number[] = [];
+    for (const p of frontier) {
+      forEachNeighbor(p, width, size, (q) => {
+        if (depth[q] >= 0) return;
+        depth[q] = depth[p] + 1;
+        splitLabels[q] = splitLabels[p];
+        next.push(q);
+      });
+    }
+    frontier = next;
+  }
+  const widths: number[] = [];
+  for (let p = 0; p < size; p++) {
+    if (depth[p] <= 0 || splitLabels[p] < 0) continue;
+    forEachNeighbor(p, width, size, (q) => {
+      if (splitLabels[q] >= 0 && splitLabels[q] !== splitLabels[p])
+        widths.push(depth[p] + depth[q]);
+    });
+  }
+  widths.sort((a, b) => a - b);
+  const borderWidth = widths[widths.length >> 1] ?? 0;
+  const reach = Math.ceil(borderWidth / 2) + 1;
+  for (let p = 0; p < size; p++) if (depth[p] > reach) splitLabels[p] = -1;
+  return { splitLabels, borderWidth };
+}
+
+function fillEnclosedGaps(labels: Int16Array, width: number) {
+  const size = labels.length;
+  const seen = new Uint8Array(size);
+  for (let start = 0; start < size; start++) {
+    if (labels[start] !== -1 || seen[start]) continue;
+    seen[start] = 1;
+    const gap = [start];
+    const around = new Set<number>();
+    let touchesEdge = false;
+    for (let i = 0; i < gap.length; i++) {
+      const p = gap[i];
+      const x = p % width;
+      if (x === 0 || x === width - 1 || p < width || p + width >= size)
+        touchesEdge = true;
+      forEachNeighbor(p, width, size, (q) => {
+        if (labels[q] !== -1) around.add(labels[q]);
+        else if (!seen[q]) {
+          seen[q] = 1;
+          gap.push(q);
+        }
+      });
+    }
+    const [label] = around;
+    if (touchesEdge || around.size !== 1 || label < 0) continue;
+    for (const p of gap) labels[p] = label;
   }
 }
 
@@ -71,8 +151,22 @@ export function buildClickableRegions(
     Math.PI * vertexRadius * vertexRadius,
   );
   const fillLabels = labels.slice();
+  const { splitLabels, borderWidth } = splitWalls(
+    fillLabels,
+    image,
+    wall,
+    width,
+  );
   growIntoBorders(labels, wall, width);
-  return { width, height, labels, fillLabels, shapes };
+  return {
+    width,
+    height,
+    labels,
+    fillLabels,
+    splitLabels,
+    borderWidth,
+    shapes,
+  };
 }
 
 interface ContinentTerritory {
@@ -97,12 +191,15 @@ export function continentShapes(
       .map((t) => t.continentId),
   );
   const continentById = new Map(
-    territories
-      .filter((t) => t.continentId >= 0 && !partial.has(t.continentId))
-      .map((t) => [t.id, t.continentId]),
+    territories.map((t) => [
+      t.id,
+      t.continentId >= 0 && !partial.has(t.continentId) ? t.continentId : -2,
+    ]),
   );
+  const labels = regions.splitLabels.map((id) => continentById.get(id) ?? -1);
+  fillEnclosedGaps(labels, regions.width);
   const shapes = traceRegionShapes(
-    regions.labels.map((id) => continentById.get(id) ?? -1),
+    labels,
     regions.width,
     regions.height,
     Infinity,
@@ -124,19 +221,12 @@ export function sharedBorders(
   );
   const size = labels.length;
   for (let i = 0; i < size; i++) if (invalidIds.has(labels[i])) labels[i] = -1;
-  const neighbors = (p: number, visit: (q: number) => void) => {
-    const x = p % width;
-    if (x > 0) visit(p - 1);
-    if (x < width - 1) visit(p + 1);
-    if (p >= width) visit(p - width);
-    if (p + width < size) visit(p + width);
-  };
 
   let frontier: number[] = [];
   for (let p = 0; p < size; p++) {
     if (labels[p] < 0) continue;
     let touchesWall = false;
-    neighbors(p, (q) => {
+    forEachNeighbor(p, width, size, (q) => {
       if (wall[q]) touchesWall = true;
     });
     if (touchesWall) frontier.push(p);
@@ -146,7 +236,7 @@ export function sharedBorders(
   for (let step = 1; step <= reach && frontier.length > 0; step++) {
     const next: number[] = [];
     for (const p of frontier) {
-      neighbors(p, (q) => {
+      forEachNeighbor(p, width, size, (q) => {
         if (!wall[q] || labels[q] >= 0) return;
         labels[q] = labels[p];
         distance[q] = step;

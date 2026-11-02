@@ -80,7 +80,7 @@ const GAME_MODES: GameMode[] = [
   'empire',
 ];
 const BLITZ_VALUES: Blitz[] = ['balanced', 'true', 'fair', 'off'];
-const PLACEMENT_VALUES: Placement[] = ['random', 'random', 'semi', 'custom'];
+const PLACEMENT_VALUES: Placement[] = ['random', 'semi', 'custom', 'single'];
 
 export type Contestant = 'current' | 'baseline';
 
@@ -92,6 +92,18 @@ export interface BotIdentity {
 
 function pick<T>(rng: () => number, xs: readonly T[]): T {
   return xs[Math.floor(rng() * xs.length)];
+}
+
+function weightedDefault<T>(
+  rng: () => number,
+  values: readonly T[],
+  defaultValue: T,
+): T {
+  if (rng() < 0.9) return defaultValue;
+  return pick(
+    rng,
+    values.filter((value) => value !== defaultValue),
+  );
 }
 
 function weightedOff<T extends string>(
@@ -161,13 +173,9 @@ export function randomGameSettings(
   const gameMode = pick(rng, GAME_MODES);
   const defaultDice = rng() < 0.9;
   const attackDice = defaultDice ? 3 : 1 + Math.floor(rng() * MAX_DICE);
-  const defenceDice = defaultDice
-    ? rng() < 0.5
-      ? 2
-      : 3
-    : 1 + Math.floor(rng() * attackDice);
+  const defenceDice = defaultDice ? 2 : 1 + Math.floor(rng() * attackDice);
   const alliancesAllowed = gameMode !== 'team deathmatch';
-  const cards = pick(rng, CARDS_MODES);
+  const cards = weightedDefault(rng, CARDS_MODES, 'constant');
   const roundTroops = rng() < 0.3 ? 'on' : 'off';
   const initialTroops = rng() < 0.9 ? 3 : 1 + Math.floor(rng() * 100);
   const defaultIncome = rng() < 0.9;
@@ -190,13 +198,14 @@ export function randomGameSettings(
     diceTies: defaultDice
       ? 'defence'
       : pick(rng, ['defence', 'attack', 'tie'] as const),
-    fortification: pick(rng, FORTIFICATIONS),
+    fortification: weightedDefault(rng, FORTIFICATIONS, 'connected'),
     cards,
-    blitz: pick(
+    blitz: weightedDefault(
       rng,
       blitzOffAllowed ? BLITZ_VALUES : BLITZ_VALUES.filter((b) => b !== 'off'),
+      'balanced',
     ),
-    placement: pick(rng, PLACEMENT_VALUES),
+    placement: weightedDefault(rng, PLACEMENT_VALUES, 'random'),
     fogOfWar: rng() < 0.3 ? 'on' : 'off',
     entrenchments: defenceDice < MAX_DICE && rng() < 0.3 ? 'on' : 'off',
     supplyLines: rng() < 0.3 ? 'on' : 'off',
@@ -235,7 +244,7 @@ export function randomGameSettings(
   if (gameMode === 'king of the hill')
     settings.hills = rng() < 0.9 ? 3 : 1 + Math.floor(rng() * MAX_HILLS);
   if (gameMode === 'capitals') {
-    settings.capitalRefund = rng() < 0.5 ? 'on' : 'off';
+    settings.capitalRefund = rng() < 0.1 ? 'on' : 'off';
     settings.startingCapitals = rng() < 0.7 ? 1 : 2 + Math.floor(rng() * 2);
   }
 

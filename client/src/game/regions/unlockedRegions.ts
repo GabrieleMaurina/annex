@@ -24,9 +24,11 @@ export function withUnlockedRegions(
   if (tiles.length === 0) return regions;
   const labels = regions.labels.slice();
   const fillLabels = regions.fillLabels.slice();
+  const splitLabels = regions.splitLabels.slice();
   const shapes = new Map(regions.shapes);
   for (const tile of tiles) {
     paintTile(labels, regions.width, tile);
+    paintTile(splitLabels, regions.width, tile);
     const inset = insetPolygon(tile.points, lineWidth / 2);
     paintTile(fillLabels, regions.width, { ...tile, points: inset });
     const path = polygonPath(inset);
@@ -36,6 +38,7 @@ export function withUnlockedRegions(
     ...regions,
     labels,
     fillLabels,
+    splitLabels,
     shapes,
     unlocked: { tiles, lineWidth },
   };

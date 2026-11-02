@@ -1,0 +1,130 @@
+.modal-content {
+  --gate-tank: 260px;
+}
+
+.page-gate {
+  --gate-tank: min(90vmin, 720px);
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  pointer-events: none;
+}
+
+:root.animations-off .page-gate {
+  display: none;
+}
+
+.page-gate-door {
+  flex: 1;
+  animation: 0.25s 0.05s cubic-bezier(0.7, 0, 0.3, 1) both;
+}
+
+:root:not(.animations-off) .modal.show .modal-content::before,
+:root:not(.animations-off) .modal.show .modal-content::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+  pointer-events: none;
+  animation: blast-door-open 0.25s 0.05s cubic-bezier(0.7, 0, 0.3, 1) both;
+}
+
+:root:not(.animations-off) .modal.show .modal-content::before,
+:root:not(.animations-off) .modal.show .modal-content::after,
+.page-gate-door {
+  --gate-rivet: radial-gradient(
+    circle,
+    #9aa5b2 0 1.5px,
+    var(--ui-ink) 2px,
+    transparent 2.5px
+  );
+  background:
+    url('/images/gate-tank.svg') right calc(var(--gate-tank) / -2) center /
+      var(--gate-tank) no-repeat,
+    var(--gate-rivet) right 6px top 4px / 10px 22px repeat-y,
+    var(--gate-rivet) left 6px top 4px / 10px 22px repeat-y,
+    var(--gate-rivet) left 4px top calc(33.333% - 1.667px) / 22px 10px repeat-x,
+    var(--gate-rivet) left 4px top calc(66.667% + 1.667px) / 22px 10px repeat-x,
+    linear-gradient(
+      transparent calc(33.333% - 2px),
+      var(--ui-ink) calc(33.333% - 2px) 33.333%,
+      rgba(255, 255, 255, 0.08) 33.333% calc(33.333% + 1px),
+      transparent calc(33.333% + 1px) calc(66.667% - 2px),
+      var(--ui-ink) calc(66.667% - 2px) 66.667%,
+      rgba(255, 255, 255, 0.08) 66.667% calc(66.667% + 1px),
+      transparent calc(66.667% + 1px)
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.025) 0 1px,
+      transparent 1px 3px
+    ),
+    var(--ui-steel-bright) 0 0 / 100% calc(100% / 3) repeat-y;
+}
+
+:root:not(.animations-off) .modal.show .modal-content::before {
+  left: 0;
+  border-radius: var(--bs-modal-inner-border-radius) 0 0
+    var(--bs-modal-inner-border-radius);
+}
+
+:root:not(.animations-off) .modal.show .modal-content::before,
+.page-gate-left {
+  box-shadow: inset -3px 0 0 var(--ui-ink);
+}
+
+.page-gate-left {
+  animation-name: page-gate-left;
+}
+
+:root:not(.animations-off) .modal.show .modal-content::after {
+  right: 0;
+  border-radius: 0 var(--bs-modal-inner-border-radius)
+    var(--bs-modal-inner-border-radius) 0;
+}
+
+:root:not(.animations-off) .modal.show .modal-content::after,
+.page-gate-right {
+  background-position:
+    left calc(var(--gate-tank) / -2) center,
+    left 6px top 4px,
+    right 6px top 4px,
+    right 4px top calc(33.333% - 1.667px),
+    right 4px top calc(66.667% + 1.667px),
+    0 0,
+    0 0,
+    0 0;
+  box-shadow: inset 3px 0 0 var(--ui-ink);
+}
+
+.page-gate-right {
+  animation-name: page-gate-right;
+}
+
+:root:not(.animations-off) .modal.show .modal-fullscreen .modal-content::before,
+:root:not(.animations-off) .modal.show .modal-fullscreen .modal-content::after {
+  border-radius: 0;
+}
+
+@keyframes blast-door-open {
+  from {
+    width: 50%;
+  }
+  to {
+    width: 0;
+  }
+}
+
+@keyframes page-gate-left {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes page-gate-right {
+  to {
+    transform: translateX(100%);
+  }
+}

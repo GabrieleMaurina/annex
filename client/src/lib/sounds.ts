@@ -17,6 +17,7 @@ const SOUND_NAMES = [
   'bell',
   'dice',
   'join',
+  'open',
 ];
 const SOUND_FILES: Record<string, string> = {
   ...Object.fromEntries(SOUND_NAMES.map((name) => [name, name])),
@@ -316,6 +317,7 @@ export function setMusicVolume(value: number) {
 const CLICK_SOUND_SELECTOR =
   'button, a, input[type="checkbox"], input[type="radio"], input[type="range"], input[type="color"], [role="button"]';
 const CHANGE_SOUND_SELECTOR = 'input[type="range"], input[type="color"]';
+const GATE_ANIMATIONS = ['blast-door-open', 'page-gate-left'];
 
 export function initUiClickSounds() {
   document.addEventListener(
@@ -349,4 +351,12 @@ export function initUiClickSounds() {
     },
     true,
   );
+}
+
+export function initGateSounds() {
+  document.addEventListener('animationstart', (e) => {
+    if (!GATE_ANIMATIONS.includes(e.animationName)) return;
+    if (e.pseudoElement === '::after') return;
+    playSound('open');
+  });
 }

@@ -49,6 +49,7 @@ import PlayerProfile from './pages/social/PlayerProfile';
 import Players from './pages/social/Players';
 import TutorialsPage from './tutorials/TutorialsPage';
 import { tutorialFromPath } from './tutorials/tutorials';
+import PageGate from './ui/containers/PageGate';
 
 function EmailConfirmationRoute({
   navigate,
@@ -541,6 +542,7 @@ function App() {
         <Route path="/games/live/:gameName" element={gameElement} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <PageGate />
     </>
   );
 }

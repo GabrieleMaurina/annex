@@ -448,13 +448,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   const continentShapesById = regions
     ? continentShapes(regions, territories)
     : null;
+  const continentLineWidth = (width: number) =>
+    Math.max(width * zoom, regions ? (regions.borderWidth + 1) * scaleX : 0);
   if (bonusesOpen) {
     ctx.save();
-    ctx.fillStyle = 'rgba(110, 110, 110, 0.4)';
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.lineWidth = 2.5 * zoom;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = continentLineWidth(2.5);
     ctx.lineJoin = 'round';
-    ctx.setLineDash([6 * zoom, 5 * zoom]);
     for (const [continentGroupId, group] of continentGroups) {
       const shape = continentShapesById?.get(continentGroupId);
       if (shape) outlineContinentRegion(ctx, shape, view, true);
@@ -463,7 +464,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.restore();
   } else if (continentsEnabled) {
     ctx.save();
-    ctx.lineWidth = 3 * zoom;
+    ctx.lineWidth = continentLineWidth(3);
     ctx.lineJoin = 'round';
     for (const [continentGroupId, group] of continentGroups) {
       if (visibleSet && group.some((t) => !visibleSet.has(t.id))) continue;
@@ -488,7 +489,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     if (targetTerritories.length > 0) {
       ctx.save();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.lineWidth = 3.5 * zoom;
+      ctx.lineWidth = continentLineWidth(3.5);
       ctx.lineJoin = 'round';
       const shape = continentShapesById?.get(continentId);
       if (shape) outlineContinentRegion(ctx, shape, view, false);

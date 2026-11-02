@@ -441,8 +441,8 @@ function SettingsPanel({
           show={mapGenOpen}
           onHide={() => setMapGenOpen(false)}
           initial={getGameSettings().mapGeneration}
-          preview={getGeneratedMapData(game.mapName) ?? null}
-          generate={generateMap}
+          current={getGeneratedMapData(game.mapName) ?? null}
+          onUse={(_map, input, onSettled) => generateMap(input, onSettled)}
         />
       )}
 

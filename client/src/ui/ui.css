@@ -14,6 +14,7 @@
 @import './containers/collapsible.css';
 @import './containers/tables.css';
 @import './containers/modals.css';
+@import './containers/gate.css';
 @import './containers/listGroups.css';
 @import './feedback/tooltips.css';
 @import './feedback/toasts.css';

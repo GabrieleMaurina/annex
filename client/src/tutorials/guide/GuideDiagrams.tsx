@@ -44,30 +44,30 @@ const MODES: {
   {
     title: 'Supremacy',
     text: 'Own the whole map, alone or as a team.',
-    owners: [BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE],
+    owners: [GREEN, GREEN, GREEN, GREEN, GREEN, GREEN, GREEN],
   },
   {
     title: 'Capitals',
     text: 'Hold every capital on the map.',
-    owners: [BLUE, RED, BLUE, BLUE, GREEN, RED, BLUE],
+    owners: [GREEN, RED, GREEN, GREEN, BLUE, RED, GREEN],
     capitals: [0, 2, 6],
   },
   {
     title: 'Round limits',
     text: 'Hold the most territories when time runs out.',
-    owners: [BLUE, BLUE, RED, BLUE, BLUE, GREEN, RED],
+    owners: [GREEN, GREEN, RED, GREEN, GREEN, BLUE, RED],
     badge: 'Round 5/5',
   },
   {
     title: 'Secret goals',
     text: 'Eliminate a hidden target or finish a mission.',
-    owners: [BLUE, RED, GREEN, BLUE, BLUE, RED, GREEN],
+    owners: [GREEN, RED, BLUE, GREEN, GREEN, RED, BLUE],
     target: 5,
   },
   {
     title: 'Scoring',
     text: 'Score points every turn for hills or territories.',
-    owners: [BLUE, BLUE, GREEN, RED, BLUE, RED, GREEN],
+    owners: [GREEN, GREEN, BLUE, RED, GREEN, RED, BLUE],
     hills: [1, 4],
   },
 ];

@@ -28,6 +28,7 @@ import {
 } from '../lobby/settings/settingsHelp';
 import SpinningGears from '../ui/buttons/SpinningGears';
 import Selector from '../ui/forms/Selector';
+import { generateMap, type GeneratedEditorMap } from './editor/generateMap';
 import { DEFAULT_MAP_GENERATION, randomSeed } from './randomMap';
 
 export interface MapGenerationModalHandle {
@@ -38,11 +39,13 @@ interface Props {
   show: boolean;
   onHide: () => void;
   initial?: GenerateMapInput | null;
-  preview: { imageSrc: string; territories: { continentId: number }[] } | null;
-  generate: (input: GenerateMapInput, onSettled: (ok: boolean) => void) => void;
-  error?: string;
+  current?: { imageSrc: string; territories: { continentId: number }[] } | null;
   note?: ReactNode;
-  confirm?: ReactNode;
+  onUse: (
+    map: GeneratedEditorMap,
+    input: GenerateMapInput,
+    onSettled: (ok: boolean) => void,
+  ) => void;
 }
 
 const MAX_SEED_LENGTH = 20;
@@ -81,7 +84,7 @@ function sameInput(a: GenerateMapInput, b: GenerateMapInput): boolean {
 
 const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
   function MapGenerationModal(
-    { show, onHide, initial, preview, generate, error, note, confirm },
+    { show, onHide, initial, current, note, onUse },
     ref,
   ) {
     const [seed, setSeed] = useState(() => initial?.seed ?? randomSeed());
@@ -121,12 +124,28 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
     const unlockable = type === 'tile' && unlockableChecked;
     const [generating, setGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState(initial ?? null);
+    const [result, setResult] = useState<{
+      map: GeneratedEditorMap;
+      input: GenerateMapInput;
+    } | null>(null);
+    const [error, setError] = useState('');
+    const [applying, setApplying] = useState(false);
+    const [shown, setShown] = useState(show);
+    const preview = result?.map ?? current ?? null;
+
+    if (shown !== show) {
+      setShown(show);
+      if (show) {
+        setResult(null);
+        setError('');
+      }
+    }
 
     const trimmedSeed = seed.trim();
     const seedMessage = seedError(trimmedSeed);
 
     function handleGenerate() {
-      if (generating || seedMessage) return;
+      if (generating || applying || seedMessage) return;
       const input: GenerateMapInput = {
         seed: trimmedSeed,
         size,
@@ -146,9 +165,25 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
         setSeed(input.seed);
       }
       setGenerating(true);
-      generate(input, (ok) => {
-        setGenerating(false);
-        if (ok) setLastGenerated(input);
+      setError('');
+      generateMap(input)
+        .then((map) => {
+          setResult({ map, input });
+          setLastGenerated(input);
+        })
+        .catch(() =>
+          setError('Could not generate a map. Try a different seed.'),
+        )
+        .finally(() => setGenerating(false));
+    }
+
+    function handleUse() {
+      if (!result) return;
+      setApplying(true);
+      onUse(result.map, result.input, (ok) => {
+        setApplying(false);
+        if (ok) onHide();
+        else setError('Could not use this map. Try again.');
       });
     }
 
@@ -374,16 +409,18 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onHide}>
-            {confirm ? 'Cancel' : 'Close'}
+            Cancel
           </Button>
           <Button
-            variant={confirm ? 'outline-primary' : 'primary'}
-            disabled={generating || !!seedMessage}
+            variant="outline-primary"
+            disabled={generating || applying || !!seedMessage}
             onClick={handleGenerate}
           >
             {generating ? 'Generating…' : 'Generate'}
           </Button>
-          {confirm}
+          <Button disabled={!result || applying} onClick={handleUse}>
+            {applying ? 'Applying…' : 'Use this map'}
+          </Button>
         </Modal.Footer>
       </Modal>
     );

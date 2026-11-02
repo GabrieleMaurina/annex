@@ -18,9 +18,9 @@ const TERRITORY_OUTLINES = [
   [36, 42, 45, 40, 34, 38, 44, 41, 35, 31, 37, 42, 44, 38],
   [43, 37, 33, 39, 44, 40, 34, 38, 45, 41, 36, 32, 38, 42],
 ];
-const YOU = playerColor(1);
+const YOU = playerColor(2);
 const ENEMY = playerColor(0);
-const RIVAL = playerColor(2);
+const RIVAL = playerColor(1);
 const CARD_SETS = [
   { symbols: ['soldier', 'soldier', 'soldier'], troops: 4 },
   { symbols: ['humvee', 'humvee', 'humvee'], troops: 6 },

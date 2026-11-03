@@ -1700,10 +1700,10 @@ The game list is no longer pushed; the client polls `GET /games/live` while the 
 
 ### `game:tankFired`
 - **When sent:** immediately, to every socket in a game's room, whenever a `game:attack` call resolves a battle (alongside `game:attacked` above). Never filtered by `fogOfWar`: it carries no territory or player data.
-- **Purpose:** let every client play a tank-recoil animation in the turn panel in sync, regardless of whether they can see the attacked territory. `type` and `hasDefender` (`false` for a free-conquest attack against an unowned territory) let the client delay the recoil the same way `game:attacked`'s `type` delays the map explosion, so the two animations land together for clients that can see both.
+- **Purpose:** let every client play a tank-recoil animation in the turn panel in sync, regardless of whether they can see the attacked territory. `type` and `hasDefender` (`false` for a free-conquest attack against an unowned territory) let the client delay the recoil the same way `game:attacked`'s `type` delays the map explosion, so the two animations land together for clients that can see both. `dice` is the number of attacking dice (the attack's `troops`), present only when `type` is `'regular'`, so the client can show one small tank per die; blitz attacks never reveal their troop count.
 - **Content:**
   ```ts
-  { type: 'regular' | 'blitz'; hasDefender: boolean }
+  { type: 'regular' | 'blitz'; hasDefender: boolean; dice?: number }
   ```
 
 ### `game:attackMoved`

@@ -25,7 +25,6 @@ export interface OsmLine {
   layer: string;
   cls: string;
   adminLevel: number;
-  name: string;
   points: number[];
 }
 
@@ -51,6 +50,11 @@ export interface OsmFeatures {
   places: OsmPlace[];
 }
 
+export interface OsmRiver {
+  rank: number;
+  lines: number[][];
+}
+
 export interface OsmElevation {
   heights: Float32Array;
   pixelKm: number;
@@ -71,6 +75,7 @@ export interface OsmMapParams {
   elevation: OsmElevation | null;
   mountains: boolean;
   rivers: boolean;
+  majorRivers: OsmRiver[];
   greenAreas: boolean;
 }
 

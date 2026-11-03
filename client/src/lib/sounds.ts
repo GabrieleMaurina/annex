@@ -357,6 +357,7 @@ export function initGateSounds() {
   document.addEventListener('animationstart', (e) => {
     if (!GATE_ANIMATIONS.includes(e.animationName)) return;
     if (e.pseudoElement === '::after') return;
+    if ((e.target as Element).closest('[data-no-gate-sound]')) return;
     playSound('open');
   });
 }

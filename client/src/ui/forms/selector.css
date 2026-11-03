@@ -5,6 +5,7 @@
 
 .selector:has(> .w-auto) {
   width: auto;
+  flex-shrink: 0;
 }
 
 .selector-toggle {

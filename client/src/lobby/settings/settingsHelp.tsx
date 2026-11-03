@@ -97,7 +97,7 @@ export const EARTH_GREEN_AREAS_HELP =
   'City level only. Large woods, grassland, farmland and wetland become green areas. Green areas are not territories, so they leave gaps between the territories around them.';
 
 export const EARTH_RIVERS_HELP =
-  'Large named rivers separate the territories on their two banks, drawn as blue borders, unless that would cut the map in two. Rivers are also drawn across land outside the territories.';
+  "Up to two of the world's major rivers (like the Nile, Amazon, Mississippi or Danube) are drawn across the map. Territories are built around them, and a few bridges link the two banks. Maps without a major river get none.";
 
 export const BLITZ_HELP = (
   <>

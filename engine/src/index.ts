@@ -198,6 +198,7 @@ export {
   OsmMapParams,
   OsmPlace,
   OsmPlaceParams,
+  OsmRiver,
   OsmWater,
 } from './mapgen/pipeline/osm/types';
 export {

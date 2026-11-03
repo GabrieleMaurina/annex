@@ -68,7 +68,10 @@ function SearchBox({ initialQuery, onSelect }: Props) {
           } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             setActive((a) => Math.max(a - 1, 0));
-          } else if (e.key === 'Enter' && results[active]) {
+          } else if (
+            (e.key === 'Enter' || e.key === 'Tab') &&
+            results[active]
+          ) {
             e.preventDefault();
             choose(results[active]);
           } else if (e.key === 'Escape') {

@@ -4,7 +4,7 @@ import { Button, ButtonGroup, Dropdown, Form } from 'react-bootstrap';
 import Help from '../../common/tooltips/Help';
 import Tip from '../../common/tooltips/Tip';
 import { playSound } from '../../lib/sounds';
-import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
+import { SECTION_CLASS } from '../../ui/containers/panelStyle';
 import {
   exportPreset,
   loadPresets,
@@ -17,7 +17,7 @@ import {
 import { PRESETS_HELP } from './settingsHelp';
 
 const MENU_POPPER = { strategy: 'fixed' as const };
-const SLOT_STYLE = { minWidth: 140 };
+const SHRINK_STYLE = { minWidth: 0 };
 const EMPTY_ACTIONS = [
   ['save', 'Save current settings'],
   ['import', 'Import'],
@@ -121,107 +121,111 @@ function PresetBar({ currentPreset, applyPreset, onError }: Props) {
   }
 
   return (
-    <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-      <span className={FIELD_LABEL_CLASS}>
+    <div className={`${SECTION_CLASS} p-2 mt-2`}>
+      <div className="fw-bold text-muted small mb-2">
         <Help tip={PRESETS_HELP}>Presets</Help>
-      </span>
-      {slots.map((preset, index) => (
-        <div
-          key={index}
-          className={`rounded p-1 ${dropIndex === index ? 'bg-primary-subtle' : ''}`}
-          draggable={!!preset && editing !== index}
-          onDragStart={(e) => {
-            dragFrom.current = index;
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', String(index));
-          }}
-          onDragEnd={() => {
-            dragFrom.current = null;
-            setDropIndex(null);
-          }}
-          onDragOver={(e) => {
-            if (dragFrom.current === null) return;
-            e.preventDefault();
-            setDropIndex(index);
-          }}
-          onDragLeave={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node))
-              setDropIndex(null);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDropIndex(null);
-            if (dragFrom.current !== null) move(dragFrom.current, index);
-            dragFrom.current = null;
-          }}
-        >
-          {editing === index ? (
-            <Form.Control
-              size="sm"
-              style={SLOT_STYLE}
-              autoFocus
-              maxLength={MAX_PRESET_NAME_LENGTH}
-              defaultValue={preset?.name ?? ''}
-              onFocus={(e) => e.currentTarget.select()}
-              onBlur={(e) => rename(index, e.currentTarget.value)}
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter' && e.key !== 'Escape') return;
-                playSound('click');
-                if (e.key === 'Escape')
-                  e.currentTarget.value = preset?.name ?? '';
-                e.currentTarget.blur();
+      </div>
+      <div className="row row-cols-1 row-cols-sm-3 row-cols-lg-5 g-3">
+        {slots.map((preset, index) => (
+          <div key={index} className="col" style={SHRINK_STYLE}>
+            <div
+              className={`rounded ${dropIndex === index ? 'bg-primary-subtle' : ''}`}
+              draggable={!!preset && editing !== index}
+              onDragStart={(e) => {
+                dragFrom.current = index;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(index));
               }}
-            />
-          ) : (
-            <Dropdown
-              as={ButtonGroup}
-              size="sm"
-              onSelect={(key) => key && runAction(key, index)}
+              onDragEnd={() => {
+                dragFrom.current = null;
+                setDropIndex(null);
+              }}
+              onDragOver={(e) => {
+                if (dragFrom.current === null) return;
+                e.preventDefault();
+                setDropIndex(index);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node))
+                  setDropIndex(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDropIndex(null);
+                if (dragFrom.current !== null) move(dragFrom.current, index);
+                dragFrom.current = null;
+              }}
             >
-              <Tip
-                text={
-                  preset
-                    ? 'Apply this preset. Drag it onto another slot to move it.'
-                    : 'Save the current settings in this slot.'
-                }
-              >
-                <Button
-                  variant={preset ? 'outline-primary' : 'outline-secondary'}
-                  className="text-truncate"
-                  style={SLOT_STYLE}
-                  onClick={() =>
-                    preset ? applyPreset(preset) : saveCurrent(index)
-                  }
+              {editing === index ? (
+                <Form.Control
+                  size="sm"
+                  autoFocus
+                  maxLength={MAX_PRESET_NAME_LENGTH}
+                  defaultValue={preset?.name ?? ''}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onBlur={(e) => rename(index, e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== 'Escape') return;
+                    playSound('click');
+                    if (e.key === 'Escape')
+                      e.currentTarget.value = preset?.name ?? '';
+                    e.currentTarget.blur();
+                  }}
+                />
+              ) : (
+                <Dropdown
+                  as={ButtonGroup}
+                  size="sm"
+                  className="w-100"
+                  onSelect={(key) => key && runAction(key, index)}
                 >
-                  {preset ? preset.name : `${index + 1}. Empty`}
-                </Button>
-              </Tip>
-              <Dropdown.Toggle
-                split
-                variant={preset ? 'outline-primary' : 'outline-secondary'}
-              />
-              <Dropdown.Menu
-                className="selector-menu"
-                popperConfig={MENU_POPPER}
-              >
-                {(preset ? PRESET_ACTIONS : EMPTY_ACTIONS).map(
-                  ([action, label], row) => (
-                    <Dropdown.Item
-                      key={action}
-                      as="button"
-                      eventKey={action}
-                      className="selector-option text-nowrap"
-                      style={{ '--selector-row': row } as CSSProperties}
+                  <Tip
+                    text={
+                      preset
+                        ? 'Apply this preset. Drag it onto another slot to move it.'
+                        : 'Save the current settings in this slot.'
+                    }
+                  >
+                    <Button
+                      variant={preset ? 'outline-primary' : 'outline-secondary'}
+                      className="text-truncate flex-grow-1"
+                      style={SHRINK_STYLE}
+                      onClick={() =>
+                        preset ? applyPreset(preset) : saveCurrent(index)
+                      }
                     >
-                      {label}
-                    </Dropdown.Item>
-                  ),
-                )}
-              </Dropdown.Menu>
-            </Dropdown>
-          )}
-        </div>
-      ))}
+                      {preset ? preset.name : `${index + 1}. Empty`}
+                    </Button>
+                  </Tip>
+                  <Dropdown.Toggle
+                    split
+                    className="flex-grow-0"
+                    variant={preset ? 'outline-primary' : 'outline-secondary'}
+                  />
+                  <Dropdown.Menu
+                    className="selector-menu"
+                    popperConfig={MENU_POPPER}
+                  >
+                    {(preset ? PRESET_ACTIONS : EMPTY_ACTIONS).map(
+                      ([action, label], row) => (
+                        <Dropdown.Item
+                          key={action}
+                          as="button"
+                          eventKey={action}
+                          className="selector-option text-nowrap"
+                          style={{ '--selector-row': row } as CSSProperties}
+                        >
+                          {label}
+                        </Dropdown.Item>
+                      ),
+                    )}
+                  </Dropdown.Menu>
+                </Dropdown>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
       <input
         ref={fileInput}
         type="file"

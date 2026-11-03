@@ -29,6 +29,14 @@ const SKIPPED_CLASSES = new Set(['Dragons-be-here']);
 const COUNTRY_TOLERANCE = 0.08;
 const STATE_TOLERANCE = 0.04;
 const MIN_PART_KM2 = 200;
+const MIN_MAIN_PART_SHARE = 0.1;
+const SHAPE_TOLERANCE_SHARE = 0.02;
+const COARSE_PRECISION = 100;
+const FINE_PRECISION = 1000;
+const COAST_REACH = 0.1;
+const MAJOR_RIVER_RANK = 6;
+const RIVER_TOLERANCE = 0.01;
+const RIVER_JOIN = 0.05;
 const CITY_ABBREVIATION = /^[A-Z]{2,5}$/;
 const POSTAL_COUNTRIES = new Set(['US', 'CA', 'AU']);
 const COUNTY_COUNTRY = 'US';
@@ -83,8 +91,8 @@ function unzipEntry(zip, name) {
   throw new Error(`${name} not found`);
 }
 
-function round(value) {
-  return Math.round(value * 100) / 100;
+function round(value, precision = COARSE_PRECISION) {
+  return Math.round(value * precision) / precision;
 }
 
 function polygonsOf(geometry) {
@@ -262,11 +270,143 @@ function simplify(ring, tolerance) {
 
 function outline(geometry, tolerance) {
   const rings = polygonsOf(geometry).flat();
+  const largest = Math.max(...rings.map(ringAreaKm2));
+  const minArea = Math.min(MIN_PART_KM2, largest * MIN_MAIN_PART_SHARE);
   return rings
-    .filter((ring) => ringAreaKm2(ring) >= MIN_PART_KM2)
-    .map((ring) => simplify(ring, tolerance))
-    .filter((ring) => ring.length >= 4)
-    .map((ring) => ring.flatMap(([lon, lat]) => [round(lon), round(lat)]));
+    .filter((ring) => ringAreaKm2(ring) >= minArea)
+    .map((ring) => {
+      const [west, south, east, north] = ringBox(ring);
+      const span = Math.max(east - west, north - south);
+      const fit = Math.min(tolerance, span * SHAPE_TOLERANCE_SHARE);
+      const precision =
+        fit < 1 / COARSE_PRECISION ? FINE_PRECISION : COARSE_PRECISION;
+      return simplify(ring, fit).flatMap(([lon, lat]) => [
+        round(lon, precision),
+        round(lat, precision),
+      ]);
+    })
+    .filter((ring) => ring.length >= 8);
+}
+
+function signedArea(ring) {
+  let sum = 0;
+  for (let i = 0; i + 1 < ring.length; i++)
+    sum += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+  return sum / 2;
+}
+
+function unionRings(features) {
+  const key = ([lon, lat]) => `${lon},${lat}`;
+  const edges = new Map();
+  for (const f of features)
+    for (const polygon of polygonsOf(f.geometry))
+      polygon.forEach((ring, i) => {
+        const oriented =
+          signedArea(ring) > 0 === (i === 0) ? ring : [...ring].reverse();
+        for (let k = 0; k + 1 < oriented.length; k++) {
+          const from = key(oriented[k]);
+          const to = key(oriented[k + 1]);
+          if (edges.has(`${to}>${from}`)) edges.delete(`${to}>${from}`);
+          else edges.set(`${from}>${to}`, [oriented[k], oriented[k + 1]]);
+        }
+      });
+  const next = new Map();
+  for (const [from, to] of edges.values()) next.set(key(from), to);
+  const rings = [];
+  const used = new Set();
+  for (const start of next.keys()) {
+    const ring = [];
+    let at = start;
+    while (!used.has(at) && next.has(at)) {
+      used.add(at);
+      const to = next.get(at);
+      ring.push(to);
+      at = key(to);
+    }
+    if (at === start && ring.length >= 3) rings.push([ring.at(-1), ...ring]);
+  }
+  return rings;
+}
+
+function provinceAt(provinces, [lon, lat]) {
+  const inside = provinces.find(
+    ({ box: [west, south, east, north], polygons }) =>
+      lon >= west &&
+      lon <= east &&
+      lat >= south &&
+      lat <= north &&
+      polygons.some(
+        ([outer, ...holes]) =>
+          insideRing(outer, [lon, lat]) &&
+          !holes.some((hole) => insideRing(hole, [lon, lat])),
+      ),
+  );
+  if (inside) return inside;
+  let nearest = null;
+  let nearestDistance = COAST_REACH;
+  for (const province of provinces) {
+    const [west, south, east, north] = province.box;
+    if (
+      lon < west - COAST_REACH ||
+      lon > east + COAST_REACH ||
+      lat < south - COAST_REACH ||
+      lat > north + COAST_REACH
+    )
+      continue;
+    for (const [x, y] of province.points) {
+      const distance = Math.hypot(x - lon, y - lat);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = province;
+      }
+    }
+  }
+  return nearest;
+}
+
+function majorRivers(features) {
+  const rivers = new Map();
+  for (const f of features) {
+    const p = f.properties;
+    if (p.scalerank > MAJOR_RIVER_RANK) continue;
+    const lines = (
+      f.geometry.type === 'LineString'
+        ? [f.geometry.coordinates]
+        : f.geometry.coordinates
+    ).map((line) =>
+      simplify(line, RIVER_TOLERANCE).flatMap(([lon, lat]) => [
+        round(lon),
+        round(lat),
+      ]),
+    );
+    const river = rivers.get(p.rivernum) ?? {
+      name: p.name_en || p.name,
+      rank: p.scalerank,
+      lines: [],
+    };
+    river.rank = Math.min(river.rank, p.scalerank);
+    river.lines.push(...lines);
+    rivers.set(p.rivernum, river);
+  }
+  const ends = ({ lines }) =>
+    lines.flatMap((line) => [line.slice(0, 2), line.slice(-2)]);
+  const joined = (a, b) =>
+    ends(a).some(([ax, ay]) =>
+      ends(b).some(([bx, by]) => Math.hypot(ax - bx, ay - by) <= RIVER_JOIN),
+    );
+  const merged = [];
+  for (const river of rivers.values()) {
+    const into = merged.find(
+      (other) => other.name === river.name && joined(other, river),
+    );
+    if (!into) {
+      merged.push(river);
+      continue;
+    }
+    into.rank = Math.min(into.rank, river.rank);
+    into.lines.push(...river.lines);
+  }
+  return merged.map(({ rank, lines }) => ({ rank, lines }));
 }
 
 function urbanIndex(features) {
@@ -446,7 +586,7 @@ function buildGazetteer(files) {
       name,
       KINDS.indexOf(kind),
       contextOf(context),
-      ...box.map(round),
+      ...box.map((value) => round(value)),
       Math.round(rank),
     ]);
     return places.length - 1;
@@ -492,7 +632,8 @@ function buildGazetteer(files) {
     );
   }
   const stateKeys = new Set();
-  for (const f of readJson(files.states).features) {
+  const states = readJson(files.states).features;
+  for (const f of states) {
     const shape = mainBox(f.geometry);
     const p = f.properties;
     for (const name of [p.name, p.name_en, p.gn_name, p.woe_name])
@@ -510,26 +651,47 @@ function buildGazetteer(files) {
   for (const f of readJson(files.lakes).features) {
     const shape = mainBox(f.geometry);
     const p = f.properties;
-    if (shape) add(p.name_en || p.name, 'lake', '', shape.box, shape.area);
+    if (shape)
+      describe(
+        add(p.name_en || p.name, 'lake', '', shape.box, shape.area),
+        [],
+        f.geometry,
+        COUNTRY_TOLERANCE,
+      );
   }
   for (const f of readJson(files.marine).features) {
     const shape = mainBox(f.geometry);
     const p = f.properties;
     if (shape)
-      add(p.name, 'sea', classLabel(p.featurecla), shape.box, shape.area);
+      describe(
+        add(p.name, 'sea', classLabel(p.featurecla), shape.box, shape.area),
+        [],
+        f.geometry,
+        COUNTRY_TOLERANCE,
+      );
   }
   for (const f of readJson(files.regions).features) {
     const shape = mainBox(f.geometry);
     const p = f.properties;
     if (shape && !SKIPPED_CLASSES.has(p.FEATURECLA))
-      add(
-        p.NAME_EN || p.NAME,
-        'region',
-        classLabel(p.FEATURECLA),
-        shape.box,
-        shape.area,
+      describe(
+        add(
+          p.NAME_EN || p.NAME,
+          'region',
+          classLabel(p.FEATURECLA),
+          shape.box,
+          shape.area,
+        ),
+        [],
+        f.geometry,
+        COUNTRY_TOLERANCE,
       );
   }
+  const provinces = states.map((f) => {
+    const polygons = polygonsOf(f.geometry);
+    const points = polygons.flat(2);
+    return { f, polygons, points, box: ringBox(points), votes: new Map() };
+  });
 
   const countryNames = new Map();
   for (const line of files.countryInfo.toString('utf8').split('\n')) {
@@ -601,6 +763,9 @@ function buildGazetteer(files) {
         cityShapes.shapes.push(urbanRing(clipped));
       }
     }
+    const province = provinceAt(provinces, [lon, lat]);
+    if (province)
+      province.votes.set(admin1, (province.votes.get(admin1) ?? 0) + 1);
     const union = admin1Boxes.get(admin1);
     admin1Boxes.set(
       admin1,
@@ -664,17 +829,58 @@ function buildGazetteer(files) {
     });
     cityShapes.cities.push([index, ...shapes]);
   }
+  const groupOf = ({ f: { properties: p } }) =>
+    `${p.iso_a2}|${p.region || p.adm1_code}`;
+  const groupVotes = new Map();
+  for (const province of provinces) {
+    const tally = groupVotes.get(groupOf(province)) ?? new Map();
+    for (const [admin1, count] of province.votes)
+      tally.set(admin1, (tally.get(admin1) ?? 0) + count);
+    groupVotes.set(groupOf(province), tally);
+  }
+  const provincesOf = new Map();
+  for (const province of provinces) {
+    const tally =
+      province.votes.size > 0
+        ? province.votes
+        : groupVotes.get(groupOf(province));
+    const [winner] = [...tally].sort((a, b) => b[1] - a[1])[0] ?? [];
+    if (winner)
+      provincesOf.set(winner, [...(provincesOf.get(winner) ?? []), province.f]);
+  }
   for (const [admin1, box] of admin1Boxes) {
     const name = admin1Names.get(admin1);
     const country = admin1.split('.')[0];
     if (!name || stateKeys.has(`${country}|${name.toLowerCase()}`)) continue;
     if (box[2] - box[0] > 180) continue;
-    add(name, 'state', countryNames.get(country), box, boxAreaKm2(box));
+    const geometry = {
+      type: 'MultiPolygon',
+      coordinates: unionRings(provincesOf.get(admin1) ?? []).map((ring) => [
+        ring,
+      ]),
+    };
+    const shape = mainBox(geometry);
+    describe(
+      add(
+        name,
+        'state',
+        countryNames.get(country),
+        shape?.box ?? box,
+        shape?.area ?? boxAreaKm2(box),
+      ),
+      [],
+      geometry,
+      STATE_TOLERANCE,
+    );
   }
 
   return {
     gazetteer: { kinds: KINDS, contexts, places, aliases },
-    regions: { outlines, counties: countyPoints(files.counties) },
+    regions: {
+      outlines,
+      counties: countyPoints(files.counties),
+      rivers: majorRivers(readJson(files.rivers).features),
+    },
     cityShapes,
   };
 }
@@ -696,6 +902,7 @@ const sources = {
   marine: NE + 'ne_10m_geography_marine_polys.geojson',
   regions: NE + 'ne_10m_geography_regions_polys.geojson',
   urban: NE + 'ne_10m_urban_areas.geojson',
+  rivers: NE + 'ne_10m_rivers_lake_centerlines.geojson',
   countryInfo: GEONAMES + 'countryInfo.txt',
   admin1: GEONAMES + 'admin1CodesASCII.txt',
   cities: GEONAMES + 'cities15000.zip',

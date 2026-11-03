@@ -43,7 +43,7 @@ export default function TurnActionPanels({
   mustPlaySet,
   setGame,
   nextPhaseEndsTurn,
-  tankFireId,
+  tankFire,
   deployPanelOpen,
   deployTroops,
   deployInputRef,
@@ -140,7 +140,7 @@ export default function TurnActionPanels({
   mustPlaySet: boolean;
   setGame: (game: GameState) => void;
   nextPhaseEndsTurn: boolean;
-  tankFireId: number;
+  tankFire: { id: number; dice?: number };
   deployPanelOpen: boolean;
   deployTroops: number;
   deployInputRef: RefObject<HTMLInputElement | null>;
@@ -279,7 +279,7 @@ export default function TurnActionPanels({
             paused={paused}
             setGame={setGame}
             endsTurn={nextPhaseEndsTurn}
-            tankFireId={tankFireId}
+            tankFire={tankFire}
           />
         </>
       )}

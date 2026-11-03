@@ -442,6 +442,7 @@ export function attack(
       {
         type,
         hasDefender: defenderId !== undefined,
+        ...(type === 'regular' ? { dice: troops } : {}),
       },
       game.name,
     );

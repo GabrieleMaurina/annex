@@ -376,13 +376,6 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
       )}
 
       <div className="mb-3">
-        {isHost && account && (
-          <PresetBar
-            currentPreset={currentPreset}
-            applyPreset={applyPresetToLobby}
-            onError={setSettingsError}
-          />
-        )}
         <SettingsPanel
           game={game}
           gameMeta={gameMeta}
@@ -392,6 +385,16 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
           generateMap={generateMap}
           selectPlayerMap={selectPlayerMap}
           selectEarthMap={selectEarthMap}
+          presets={
+            isHost &&
+            account && (
+              <PresetBar
+                currentPreset={currentPreset}
+                applyPreset={applyPresetToLobby}
+                onError={setSettingsError}
+              />
+            )
+          }
           headerActions={
             isHost && (
               <Button

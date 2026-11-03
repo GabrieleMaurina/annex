@@ -222,7 +222,7 @@ export interface EngineCallbacks {
   ): void;
   onTankFired(
     playerId: number,
-    payload: { type: 'regular' | 'blitz'; hasDefender: boolean },
+    payload: { type: 'regular' | 'blitz'; hasDefender: boolean; dice?: number },
     gameName: string,
   ): void;
   onAttackMoved(

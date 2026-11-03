@@ -92,7 +92,9 @@ export function useGameSocketEvents({
   );
   const toxinPlacedAtRef = useRef<Map<number, number>>(new Map());
   const radiationPlacedAtRef = useRef<Map<number, number>>(new Map());
-  const [tankFireId, setTankFireId] = useState(0);
+  const [tankFire, setTankFire] = useState<{ id: number; dice?: number }>({
+    id: 0,
+  });
 
   const startAnimationLoop = useCallback(() => {
     if (animationFrameRef.current !== null) return;
@@ -917,12 +919,16 @@ export function useGameSocketEvents({
     function onTankFired(payload: {
       type: 'regular' | 'blitz';
       hasDefender: boolean;
+      dice?: number;
     }) {
       const delay =
         payload.type === 'regular' && payload.hasDefender
           ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
           : 0;
-      setTimeout(() => setTankFireId((id) => id + 1), delay);
+      setTimeout(
+        () => setTankFire((prev) => ({ id: prev.id + 1, dice: payload.dice })),
+        delay,
+      );
     }
     connector.on('game:tankFired', onTankFired);
     return () => {
@@ -969,7 +975,7 @@ export function useGameSocketEvents({
     frozenSeaShipsRef,
     toxinPlacedAtRef,
     radiationPlacedAtRef,
-    tankFireId,
+    tankFire,
     drawParamsRef,
     startAnimationLoop,
     replay,

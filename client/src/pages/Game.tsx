@@ -23,6 +23,7 @@ import type {
 import Lobby from '../lobby/Lobby';
 import TutorialOverlay from '../tutorials/TutorialOverlay';
 import type { Tutorial } from '../tutorials/tutorials';
+import { Gate } from '../ui/containers/PageGate';
 import EndPage from './EndPage';
 
 interface Props {
@@ -63,6 +64,7 @@ function Game({
     null,
   );
   const [storedGameId, setStoredGameId] = useState<string | null>(null);
+  const [startGates, setStartGates] = useState(0);
   const showMap =
     game?.state === 'playing' || (game?.state === 'ended' && endReplaying);
   const receivedFirstStateRef = useRef(false);
@@ -99,6 +101,7 @@ function Game({
       ) {
         playSound('start');
         changeMusic();
+        setStartGates((n) => n + 1);
       } else if (
         prevStateRef.current === 'playing' &&
         state.state === 'ended'
@@ -364,6 +367,7 @@ function Game({
 
   return (
     <>
+      {startGates > 0 && <Gate key={startGates} silent />}
       <SettingsMenu
         hidden={showMap && gamePanelOpen}
         onOpenChange={setSettingsMenuOpen}

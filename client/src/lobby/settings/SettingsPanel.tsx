@@ -83,6 +83,7 @@ interface Props {
     onSettled: () => void,
   ) => void;
   headerActions?: ReactNode;
+  presets?: ReactNode;
   collapsible?: boolean;
 }
 
@@ -96,6 +97,7 @@ function SettingsPanel({
   selectPlayerMap,
   selectEarthMap,
   headerActions,
+  presets,
   collapsible = true,
 }: Props) {
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
@@ -237,13 +239,16 @@ function SettingsPanel({
   );
 
   const settingsBody = (
-    <GameSettingsFields
-      game={game}
-      gameMeta={gameMeta}
-      isHost={isHost}
-      account={account}
-      applySettings={applySettings}
-    />
+    <>
+      <GameSettingsFields
+        game={game}
+        gameMeta={gameMeta}
+        isHost={isHost}
+        account={account}
+        applySettings={applySettings}
+      />
+      {presets}
+    </>
   );
 
   function settingsAction(label: ReactNode, onClick: () => void) {

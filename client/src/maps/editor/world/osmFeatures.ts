@@ -121,7 +121,7 @@ export function addTileFeatures(
   });
 
   const lineLayers =
-    projection.zoom >= OSM_LOCAL_ZOOM ? LINE_LAYERS : ['boundary', 'waterway'];
+    projection.zoom >= OSM_LOCAL_ZOOM ? LINE_LAYERS : ['boundary'];
   for (const layer of lineLayers)
     each(layer, (feature, extent) => {
       const p = feature.properties;
@@ -130,7 +130,6 @@ export function addTileFeatures(
           layer,
           cls: text(p, 'class'),
           adminLevel: number(p, 'admin_level', 0),
-          name: nameOf(p),
           points: flatten(part, extent),
         });
     });

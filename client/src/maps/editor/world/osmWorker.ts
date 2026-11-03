@@ -7,12 +7,14 @@ import {
   type OsmElevation,
   type OsmFocus,
   type OsmPlace,
+  type OsmRiver,
 } from 'engine';
 import { traceOuterLoops } from '../../../game/regions/traceRegions';
 import {
   addTileFeatures,
   emptyFeatures,
   lonLatToImage,
+  toImage,
   type Projection,
 } from './osmFeatures';
 import regionsUrl from './regions.json?url';
@@ -35,6 +37,7 @@ import {
 interface Regions {
   outlines: Record<string, number[][]>;
   counties: [string, number, number][];
+  rivers: OsmRiver[];
 }
 
 const PARALLEL_DOWNLOADS = 4;
@@ -57,8 +60,10 @@ const FOCUS_LEVELS: Record<string, number> = {
   city: 70,
   metro: 70,
   area: 70,
+  region: 100,
 };
 const EXACT_KINDS = ['city', 'metro', 'area'];
+const OUTLINE_KINDS = [...EXACT_KINDS, 'region'];
 const TERRAIN_URL =
   'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const TERRAIN_MAX_ZOOM = 10;
@@ -148,6 +153,27 @@ function countyPlaces(regions: Regions, projection: Projection): OsmPlace[] {
     });
   }
   return places;
+}
+
+function riverLines(regions: Regions, projection: Projection): OsmRiver[] {
+  const { x0, ux, vx } = projection.frame;
+  const center = x0 + (ux + vx) / 2;
+  return regions.rivers.map(({ rank, lines }) => ({
+    rank,
+    lines: lines.map((line) => {
+      const xs: number[] = [];
+      for (let i = 0; i + 1 < line.length; i += 2) {
+        const x = (line[i] + 180) / 360;
+        xs.push(xs.length > 0 ? x + Math.round(xs[xs.length - 1] - x) : x);
+      }
+      const shift = Math.round(
+        center - xs.reduce((sum, x) => sum + x, 0) / xs.length,
+      );
+      return xs.flatMap((x, k) =>
+        toImage(projection, x + shift, mercatorY(line[k * 2 + 1])),
+      );
+    }),
+  }));
 }
 
 function cityPlaces(
@@ -462,6 +488,7 @@ function buildMap(request: WorldMapRequest): void {
             directional: request.directional,
             mountains: request.mountains,
             rivers: request.rivers,
+            majorRivers: request.rivers ? riverLines(regions, projection) : [],
             greenAreas: request.greenAreas,
             name: request.name,
             zoom,
@@ -469,7 +496,7 @@ function buildMap(request: WorldMapRequest): void {
             focus: request.focus
               .filter(
                 (one) =>
-                  !EXACT_KINDS.includes(one.kind) || one.rings.length > 0,
+                  !OUTLINE_KINDS.includes(one.kind) || one.rings.length > 0,
               )
               .map((one) => osmFocus(one, projection))
               .filter((one): one is OsmFocus => one !== null),

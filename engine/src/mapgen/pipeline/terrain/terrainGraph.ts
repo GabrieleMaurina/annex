@@ -53,8 +53,6 @@ interface TerrainGraphInput {
   maxLandNeighborsPerSea: number;
   seaAreaMultiplier: number;
   voidMask: Uint8Array | null;
-  riverPairs: [number, number][];
-  bridges: number[];
   groupContinents: GroupContinents;
 }
 
@@ -70,8 +68,6 @@ export function finishTerrainMap({
   maxLandNeighborsPerSea,
   seaAreaMultiplier,
   voidMask,
-  riverPairs,
-  bridges,
   groupContinents,
 }: TerrainGraphInput): TerrainMap {
   const { width, height } = dims;
@@ -262,8 +258,6 @@ export function finishTerrainMap({
         ? { seaLabelGrid: seaBuild.seaLabelGrid, landCount }
         : undefined,
       voidMask ?? undefined,
-      riverPairs,
-      bridges,
     ),
   );
 

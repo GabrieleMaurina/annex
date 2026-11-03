@@ -6,6 +6,7 @@ import {
 import { createRng } from '../../core/rng';
 import { createLinkRngs } from '../../links';
 import {
+  BRIDGE_VOID,
   GREEN_VOID,
   MOUNTAIN_VOID,
   RANGE_VOID,
@@ -29,16 +30,14 @@ import { mapTitle, nameMap } from './names';
 import { DETAIL_RANKS, lineRank, LOCAL_ZOOM, RIVER_RANK } from './ranks';
 import {
   carveLargeAreas,
-  cutRiverBorders,
   greenMask,
   lakeMask,
   largeLandAreas,
-  longRivers,
   mountainMask,
-  riverLines,
 } from './raster/nature';
 import { extendLine, fillRings, strokeLine } from './raster/rasterize';
 import { reliefMap, ruggedMask } from './raster/relief';
+import { bridgeRivers, majorRiverMask } from './raster/rivers';
 import { smoothBorders, smoothCoast } from './raster/smooth';
 import { Atoms, buildAtoms } from './regions';
 import {
@@ -263,7 +262,7 @@ function majorityParents(
   );
   for (let i = 0; i < labelGrid.length; i++) {
     const t = labelGrid[i];
-    if (t < 0) continue;
+    if (t < 0 || atomOf[i] < 0) continue;
     const parent = parentComponent[atomOf[i]];
     votes[t].set(parent, (votes[t].get(parent) ?? 0) + 1);
   }
@@ -286,6 +285,18 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   const rawLand = landMask(params, width, height);
   if (countLand(rawLand) === 0) throw new Error('no land in the selected area');
   smoothCoast(rawLand, width, height);
+  const river = params.rivers
+    ? majorRiverMask(
+        params.majorRivers,
+        rawLand,
+        width,
+        height,
+        params.zoom >= LOCAL_ZOOM
+          ? features.water.filter((area) => area.cls === 'river')
+          : [],
+      )
+    : null;
+  if (river) clearMask(rawLand, river);
   const mountains = params.mountains
     ? mountainMask(features, width, height)
     : new Uint8Array(width * height);
@@ -294,6 +305,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   const barrier = barrierMask(params, width, height);
   let expectedTerritoryArea = countLand(rawLand) / middle;
   let land = cleanLandMask(rawLand, width, height, expectedTerritoryArea);
+  if (river) clearMask(land, river);
   const visibleLand = cleanLandMask(
     rawLand,
     width,
@@ -315,6 +327,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     if (removed) clearMask(usable, removed);
     expectedTerritoryArea = countLand(usable) / middle;
     land = cleanLandMask(usable, width, height, expectedTerritoryArea);
+    if (river) clearMask(land, river);
     if (removed) {
       clearMask(land, removed);
       land = largeLandAreas(
@@ -386,25 +399,29 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   const { adjacency } = buildAdjacency(labelGrid, width, height);
   for (let t = 0; t < landCount; t++)
     if (!adjacency.has(t)) adjacency.set(t, new Set());
-  const riverMask = params.rivers ? longRivers(features, width, height) : null;
-  const rivers = riverMask
-    ? cutRiverBorders(riverMask, labelGrid, width, height, adjacency)
-    : { rivers: [], bridges: [] };
+  const bridges = river
+    ? bridgeRivers(
+        river,
+        labelGrid,
+        width,
+        height,
+        adjacency,
+        expectedTerritoryArea,
+      )
+    : [];
   const voidMask = focused?.voidMask ?? new Uint8Array(land.length);
   for (let i = 0; i < voidMask.length; i++)
     if (rawLand[i] && visibleLand[i] && labelGrid[i] < 0) voidMask[i] = 1;
   for (let i = 0; i < voidMask.length; i++)
     if (mountains[i] && !land[i]) voidMask[i] = MOUNTAIN_VOID;
-  const riverPixels = riverMask
-    ? riverLines(riverMask, width, height)
-    : new Uint8Array(width * height);
   for (let i = 0; i < voidMask.length; i++) {
     if (labelGrid[i] >= 0) continue;
     if (removed?.[i] || (voidMask[i] === 1 && scenery?.[i]))
       voidMask[i] = naturalKind;
-    if (voidMask[i] && riverPixels[i]) voidMask[i] = RIVER_VOID;
+    if (river?.[i]) voidMask[i] = RIVER_VOID;
     if (voidMask[i] && lakes[i]) voidMask[i] = WATER_VOID;
   }
+  for (const i of bridges) voidMask[i] = BRIDGE_VOID;
   const parentOf = majorityParents(
     labelGrid,
     atoms.atomOf,
@@ -423,8 +440,6 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     maxLandNeighborsPerSea: TERRAIN_MAX_LAND_NEIGHBORS_PER_SEA[size],
     seaAreaMultiplier: SEA_AREA_MULTIPLIER,
     voidMask,
-    riverPairs: rivers.rivers,
-    bridges: rivers.bridges,
     groupContinents: (specialEdges, centroids, absorptionPartners) =>
       groupByParent(
         rng,

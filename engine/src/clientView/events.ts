@@ -252,6 +252,7 @@ export const EVENT_VIEWS: EventViews = {
     complete<EventPayload<'onTankFired'>>({
       type: p.type,
       hasDefender: p.hasDefender,
+      dice: p.dice,
     }),
   onAttackMoved: (_game, _viewerId, p) =>
     complete<EventPayload<'onAttackMoved'>>({

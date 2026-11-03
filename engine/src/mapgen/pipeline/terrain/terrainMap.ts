@@ -119,8 +119,6 @@ export function generateTerrain(
     maxLandNeighborsPerSea,
     seaAreaMultiplier: TERRAIN_SEA_AREA_MULTIPLIER,
     voidMask: voidMask.some((value) => value > 0) ? voidMask : null,
-    riverPairs: [],
-    bridges: [],
     groupContinents: (specialEdges, centroids, absorptionPartners) =>
       clusterContinents(
         rng,

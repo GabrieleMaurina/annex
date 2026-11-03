@@ -3,6 +3,19 @@ import { useLocation, useNavigationType } from 'react-router-dom';
 
 const EDITOR_EARTH_PATH = /^(\/maps\/editor(?:\/[^/]+)?)\/earth$/;
 
+export function Gate({ silent }: { silent?: boolean }) {
+  return (
+    <div
+      className="page-gate"
+      aria-hidden
+      data-no-gate-sound={silent || undefined}
+    >
+      <div className="page-gate-door page-gate-left" />
+      <div className="page-gate-door page-gate-right" />
+    </div>
+  );
+}
+
 function PageGate() {
   const page = useLocation().pathname.replace(EDITOR_EARTH_PATH, '$1');
   const navigationType = useNavigationType();
@@ -17,12 +30,7 @@ function PageGate() {
 
   if (gate.opening === 0) return null;
 
-  return (
-    <div key={gate.opening} className="page-gate" aria-hidden>
-      <div className="page-gate-door page-gate-left" />
-      <div className="page-gate-door page-gate-right" />
-    </div>
-  );
+  return <Gate key={gate.opening} />;
 }
 
 export default PageGate;

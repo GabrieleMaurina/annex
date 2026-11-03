@@ -8,6 +8,8 @@ import {
   serializeSessionCookie,
 } from '../auth/cookies';
 import { allowAuthAttempt } from '../auth/rateLimit';
+import { cachedUserId } from '../conduct/viewerCache';
+import { markSeen } from './presence';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5000';
 
@@ -33,6 +35,17 @@ export function corsMiddleware(
     res.status(204).end();
     return;
   }
+  next();
+}
+
+export function presenceMiddleware(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): void {
+  const token = parseCookies(req.headers.cookie).anx;
+  const userId = isSessionToken(token) ? cachedUserId(token) : undefined;
+  if (userId !== undefined) markSeen(userId);
   next();
 }
 

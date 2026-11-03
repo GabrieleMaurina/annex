@@ -101,6 +101,8 @@ function materialize(
       horizonNeighbors: ctx.horizonNeighbors,
       attackers: ctx.attackers,
       horizonAttackers: ctx.horizonAttackers,
+      routeNeighbors: ctx.routeNeighbors,
+      closedTileIds: ctx.closedTileIds,
       seaLinks: ctx.seaLinks,
       continentTerritories: ctx.continentTerritories,
       territoryContinent: ctx.territoryContinent,

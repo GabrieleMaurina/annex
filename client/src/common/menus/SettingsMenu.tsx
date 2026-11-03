@@ -340,61 +340,63 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
               border-radius: 1rem;
             }
           `}</style>
-          <div
-            className="d-flex flex-column gap-1"
-            style={{ width: buttonRowWidth ?? 0 }}
-          >
-            <div className="d-flex align-items-center gap-2">
-              <VolumeRange
-                tip="Master volume"
-                value={getSoundVolume()}
-                onChange={changeVolume(setSoundVolume)}
-              />
-              <IconButton
-                tip={mixerOpen ? 'Hide volume mixer' : 'Show volume mixer'}
-                icon="/icons/sliders.svg"
-                active={mixerOpen}
-                onClick={() => setMixerOpen((prev) => !prev)}
-              />
-            </div>
-            {mixerOpen && (
-              <>
-                <div className="small">Sound effects</div>
+          {!isSoundMuted() && (
+            <div
+              className="d-flex flex-column gap-1"
+              style={{ width: buttonRowWidth ?? 0 }}
+            >
+              <div className="d-flex align-items-center gap-2">
                 <VolumeRange
-                  tip="Sound effects volume"
-                  value={getEffectsVolume()}
-                  onChange={changeVolume(setEffectsVolume)}
+                  tip="Master volume"
+                  value={getSoundVolume()}
+                  onChange={changeVolume(setSoundVolume)}
                 />
-                <div className="small">Music</div>
-                <VolumeRange
-                  tip="Music volume"
-                  value={getMusicVolume()}
-                  onChange={changeVolume(setMusicVolume)}
+                <IconButton
+                  tip={mixerOpen ? 'Hide volume mixer' : 'Show volume mixer'}
+                  icon="/icons/sliders.svg"
+                  active={mixerOpen}
+                  onClick={() => setMixerOpen((prev) => !prev)}
                 />
-              </>
-            )}
-            {currentTrack && (
-              <>
-                <Tip text={trackTitle(currentTrack)}>
-                  <div className="small text-truncate text-center">
-                    {trackTitle(currentTrack)}
+              </div>
+              {mixerOpen && (
+                <>
+                  <div className="small">Sound effects</div>
+                  <VolumeRange
+                    tip="Sound effects volume"
+                    value={getEffectsVolume()}
+                    onChange={changeVolume(setEffectsVolume)}
+                  />
+                  <div className="small">Music</div>
+                  <VolumeRange
+                    tip="Music volume"
+                    value={getMusicVolume()}
+                    onChange={changeVolume(setMusicVolume)}
+                  />
+                </>
+              )}
+              {currentTrack && (
+                <>
+                  <Tip text={trackTitle(currentTrack)}>
+                    <div className="small text-truncate text-center">
+                      {trackTitle(currentTrack)}
+                    </div>
+                  </Tip>
+                  <div className="d-flex justify-content-center gap-2">
+                    <IconButton
+                      tip="Previous song"
+                      icon="/icons/skip-back.svg"
+                      onClick={previousTrack}
+                    />
+                    <IconButton
+                      tip="Next song"
+                      icon="/icons/skip-forward.svg"
+                      onClick={nextTrack}
+                    />
                   </div>
-                </Tip>
-                <div className="d-flex justify-content-center gap-2">
-                  <IconButton
-                    tip="Previous song"
-                    icon="/icons/skip-back.svg"
-                    onClick={previousTrack}
-                  />
-                  <IconButton
-                    tip="Next song"
-                    icon="/icons/skip-forward.svg"
-                    onClick={nextTrack}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

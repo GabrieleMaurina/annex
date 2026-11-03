@@ -39,6 +39,7 @@ function ProfileActions({ userId, username, onReport }: Props) {
   return (
     <div className="d-flex flex-column align-items-center gap-1">
       <ConductButtons
+        userId={userId}
         username={username}
         friendState={state === 'blocked' ? null : state}
         blocked={state === 'blocked'}

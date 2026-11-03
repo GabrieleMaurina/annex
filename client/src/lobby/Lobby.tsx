@@ -449,6 +449,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
           nameCellRefs={nameCellRefs}
           emojiPickerRef={emojiPickerRef}
           onPick={handleEmojiPick}
+          canSendEmoji={game.players.some((p) => p.id === selfId)}
           bumpMuteVersion={bumpMuteVersion}
         />
       )}

@@ -1,12 +1,35 @@
 import { Router } from 'express';
+import { resolveSession } from '../../auth/auth';
+import { isSessionToken, parseCookies } from '../../auth/cookies';
+import { loadBlockPeers } from '../../conduct/blockPeers';
+import { cachedUserId } from '../../conduct/viewerCache';
 import {
   getPlayerHistory,
   getPlayerProfile,
   listPlayers,
   PlayersQuery,
 } from '../../db';
+import { isOnline } from '../presence';
 
 export const playersRouter = Router();
+
+function isBlockPeer(
+  cookieHeader: string | undefined,
+  userId: string,
+): Promise<boolean> {
+  const token = parseCookies(cookieHeader).anx;
+  if (!isSessionToken(token)) return Promise.resolve(false);
+  const cached = cachedUserId(token);
+  const viewerId =
+    cached !== undefined
+      ? Promise.resolve(cached)
+      : resolveSession(token).then((session) => session?.userId);
+  return viewerId.then((id) =>
+    id === undefined
+      ? false
+      : loadBlockPeers(id).then((peers) => peers.all.has(userId)),
+  );
+}
 
 function intParam(
   value: unknown,
@@ -69,7 +92,9 @@ playersRouter.get('/players/:username', (req, res) => {
   getPlayerProfile(req.params.username)
     .then((profile) =>
       profile
-        ? res.json(profile)
+        ? isBlockPeer(req.headers.cookie, profile.id).then((blocked) =>
+            res.json({ ...profile, online: !blocked && isOnline(profile.id) }),
+          )
         : res.status(404).json({ ok: false, error: 'not found' }),
     )
     .catch(() => res.status(500).json({ ok: false, error: 'server error' }));

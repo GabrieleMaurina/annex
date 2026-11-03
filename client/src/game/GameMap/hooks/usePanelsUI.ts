@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useToggleSound } from '../../../lib/sounds';
 import { DEFAULT_CARDS_BUTTONS_TOP, TOP_BUTTON_GAP } from '../helpers';
 
@@ -32,8 +38,14 @@ export function usePanelsUI(
     DEFAULT_CARDS_BUTTONS_TOP,
   );
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const outsideCloseBlockedUntilRef = useRef(0);
   useToggleSound(openPanel);
   useToggleSound(panelCollapsed);
+
+  const autoOpenCardsPanel = useCallback(() => {
+    outsideCloseBlockedUntilRef.current = Date.now() + 1000;
+    setOpenPanel('cards');
+  }, []);
 
   const [seenSettingsMenuOpen, setSeenSettingsMenuOpen] =
     useState(settingsMenuOpen);
@@ -103,6 +115,7 @@ export function usePanelsUI(
       if (logsPanelRef.current?.contains(target)) return;
       if (settingsPanelRef.current?.contains(target)) return;
       if (nukesPanelRef.current?.contains(target)) return;
+      if (Date.now() < outsideCloseBlockedUntilRef.current) return;
       setOpenPanel(null);
     }
     document.addEventListener('mousedown', handleOutside);
@@ -116,6 +129,7 @@ export function usePanelsUI(
   return {
     openPanel,
     setOpenPanel,
+    autoOpenCardsPanel,
     cardsOpen,
     bonusesOpen,
     logsOpen,

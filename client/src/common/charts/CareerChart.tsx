@@ -91,9 +91,7 @@ function CareerChart({ history, includeElo }: Props) {
           <Button
             key={stat.label}
             size="sm"
-            variant={
-              stat.label === selected.label ? 'primary' : 'outline-primary'
-            }
+            variant={stat.label === selected.label ? 'primary' : 'secondary'}
             onClick={() => setSelected(stat)}
           >
             {stat.label}

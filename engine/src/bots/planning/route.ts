@@ -4,6 +4,7 @@ import {
   isFriendly,
   isHazard,
   neighborsOf,
+  routeNeighborsOf,
   troopsIn,
   troopsPerDefenderAt,
 } from './context';
@@ -19,6 +20,7 @@ function conquerCost(
   state: SimState,
   territoryId: number,
 ): number {
+  if (ctx.closedTileIds.has(territoryId)) return 1 + ctx.unlockCost;
   const defenders = troopsIn(state, territoryId);
   const perDefender = troopsPerDefenderAt(ctx, territoryId);
   return 1 + defenders * perDefender;
@@ -40,32 +42,64 @@ interface Leg {
   cost: number;
 }
 
+type FrontierEntry = [dist: number, order: number, id: number];
+
+function before(a: FrontierEntry, b: FrontierEntry): boolean {
+  return a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
+}
+
+function pushFrontier(heap: FrontierEntry[], entry: FrontierEntry): void {
+  heap.push(entry);
+  let i = heap.length - 1;
+  while (i > 0) {
+    const up = (i - 1) >> 1;
+    if (!before(heap[i], heap[up])) break;
+    [heap[up], heap[i]] = [heap[i], heap[up]];
+    i = up;
+  }
+}
+
+function popFrontier(heap: FrontierEntry[]): FrontierEntry {
+  const top = heap[0];
+  const last = heap.pop()!;
+  if (heap.length > 0) {
+    heap[0] = last;
+    let i = 0;
+    for (;;) {
+      const l = i * 2 + 1;
+      const r = l + 1;
+      let m = i;
+      if (l < heap.length && before(heap[l], heap[m])) m = l;
+      if (r < heap.length && before(heap[r], heap[m])) m = r;
+      if (m === i) break;
+      [heap[m], heap[i]] = [heap[i], heap[m]];
+      i = m;
+    }
+  }
+  return top;
+}
+
 function shortestLegs(
   ctx: PlanContext,
   state: SimState,
   fromId: number,
   costCache: Map<number, number>,
   blocked?: Set<number>,
+  targetId?: number,
 ): Map<number, Leg> {
   const dist = new Map<number, number>([[fromId, 0]]);
   const prev = new Map<number, number>();
   const visited = new Set<number>();
-  const frontier: number[] = [fromId];
+  const firstPush = new Map<number, number>([[fromId, 0]]);
+  const frontier: FrontierEntry[] = [[0, 0, fromId]];
 
   while (frontier.length > 0) {
-    let bestIndex = 0;
-    for (let i = 1; i < frontier.length; i++) {
-      if (
-        (dist.get(frontier[i]) ?? Infinity) <
-        (dist.get(frontier[bestIndex]) ?? Infinity)
-      )
-        bestIndex = i;
-    }
-    const current = frontier.splice(bestIndex, 1)[0];
+    const current = popFrontier(frontier)[2];
     if (visited.has(current)) continue;
     visited.add(current);
+    if (current === targetId) break;
 
-    for (const next of neighborsOf(ctx, current)) {
+    for (const next of routeNeighborsOf(ctx, current)) {
       if (visited.has(next)) continue;
       if (blocked?.has(next)) continue;
       if (next !== fromId && !isConquerable(ctx, state, next)) continue;
@@ -78,7 +112,8 @@ function shortestLegs(
       if (candidate < (dist.get(next) ?? Infinity)) {
         dist.set(next, candidate);
         prev.set(next, current);
-        frontier.push(next);
+        if (!firstPush.has(next)) firstPush.set(next, firstPush.size);
+        pushFrontier(frontier, [candidate, firstPush.get(next)!, next]);
       }
     }
   }
@@ -296,7 +331,9 @@ function stitch(
   let cost = 0;
   for (const target of order) {
     if (inPath.has(target)) continue;
-    const leg = shortestLegs(ctx, state, node, costCache, inPath).get(target);
+    const leg = shortestLegs(ctx, state, node, costCache, inPath, target).get(
+      target,
+    );
     if (!leg) return { path, cost, reachesAll: false };
     for (const step of leg.path) {
       inPath.add(step);

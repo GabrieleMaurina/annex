@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { connector } from '../../connector';
+import WhiteIcon from '../icons/WhiteIcon';
 import Tip from '../tooltips/Tip';
 import type { FriendState } from './friendState';
 
+const ICON_BUTTON = 'd-inline-flex align-items-center gap-1';
+
 interface Props {
+  userId: string | null;
   username: string;
   friendState: FriendState | null;
   blocked: boolean;
@@ -15,6 +20,7 @@ interface Props {
 }
 
 function ConductButtons({
+  userId,
   username,
   friendState,
   blocked,
@@ -25,6 +31,19 @@ function ConductButtons({
 }: Props) {
   const navigate = useNavigate();
   const showFriend = friendState !== null;
+  const [watching, setWatching] = useState(false);
+
+  function watch(id: string) {
+    setWatching(true);
+    connector.watchGame(id, (gameName) => {
+      setWatching(false);
+      navigate(
+        gameName
+          ? `/games/live/${encodeURIComponent(gameName)}`
+          : `/players/${encodeURIComponent(username)}`,
+      );
+    });
+  }
 
   return (
     <div className="d-flex flex-wrap gap-1">
@@ -32,8 +51,10 @@ function ConductButtons({
         <Button
           size="sm"
           variant="success"
+          className={ICON_BUTTON}
           onClick={() => onFriendAction(connector.sendFriendRequest)}
         >
+          <WhiteIcon path="/icons/friend-add.svg" />
           Add friend
         </Button>
       )}
@@ -41,9 +62,11 @@ function ConductButtons({
         <Tip text="Request sent">
           <Button
             size="sm"
-            variant="outline-secondary"
+            variant="secondary"
+            className={ICON_BUTTON}
             onClick={() => onFriendAction(connector.removeFriend)}
           >
+            <WhiteIcon path="/icons/friend-remove.svg" />
             Cancel request
           </Button>
         </Tip>
@@ -53,8 +76,10 @@ function ConductButtons({
           <Button
             size="sm"
             variant="success"
+            className={ICON_BUTTON}
             onClick={() => onFriendAction(connector.acceptFriendRequest)}
           >
+            <WhiteIcon path="/icons/friend-accept.svg" />
             Accept request
           </Button>
         </Tip>
@@ -63,9 +88,11 @@ function ConductButtons({
         <Tip text="Friends">
           <Button
             size="sm"
-            variant="outline-secondary"
+            variant="secondary"
+            className={ICON_BUTTON}
             onClick={() => onFriendAction(connector.removeFriend)}
           >
+            <WhiteIcon path="/icons/friend-remove.svg" />
             Remove friend
           </Button>
         </Tip>
@@ -73,25 +100,47 @@ function ConductButtons({
       {showFriend && (
         <Button
           size="sm"
+          className={ICON_BUTTON}
           onClick={() =>
             navigate(`/messages?to=${encodeURIComponent(username)}`)
           }
         >
+          <WhiteIcon path="/icons/message.svg" />
           Send message
+        </Button>
+      )}
+      {userId !== null && !blocked && (
+        <Button
+          size="sm"
+          variant="info"
+          className={ICON_BUTTON}
+          disabled={watching}
+          onClick={() => watch(userId)}
+        >
+          <WhiteIcon path="/icons/binoculars.svg" />
+          Watch
         </Button>
       )}
       {onReport && (
         <Button
           size="sm"
           variant="danger"
+          className={ICON_BUTTON}
           disabled={reported}
           onClick={onReport}
         >
+          <WhiteIcon path="/icons/report.svg" />
           {reported ? 'Reported' : 'Report'}
         </Button>
       )}
       {onToggleBlock && (
-        <Button size="sm" variant="danger" onClick={onToggleBlock}>
+        <Button
+          size="sm"
+          variant="danger"
+          className={ICON_BUTTON}
+          onClick={onToggleBlock}
+        >
+          <WhiteIcon path="/icons/block.svg" />
           {blocked ? 'Unblock' : 'Block'}
         </Button>
       )}

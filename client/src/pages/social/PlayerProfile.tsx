@@ -10,19 +10,15 @@ import { formatError } from '../../common/formatError';
 import { useWhiteIcon } from '../../common/icon';
 import SharePageButton from '../../common/menus/SharePageButton';
 import ProfileActions from '../../common/ProfileActions';
+import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
-import {
-  contrastTextColor,
-  GAME_STATE_COLORS,
-  playerColor,
-} from '../../lib/palette';
+import { contrastTextColor, playerColor } from '../../lib/palette';
 import { rankForElo } from '../../lib/ranks';
 import { useToggleSound } from '../../lib/sounds';
 import type {
   Account,
   GameHistoryRow,
   GamesPage,
-  GameSummary,
   PlayerHistoryPoint,
   PlayerMapRow,
   PlayerProfile,
@@ -33,12 +29,6 @@ import MapPreviewModal from '../../maps/MapPreviewModal';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 
 const PAGE_SIZE = 20;
-
-const LIVE_GAME_LABEL: Record<GameSummary['state'], string> = {
-  lobby: 'Join',
-  playing: 'Spectate',
-  ended: 'View',
-};
 
 function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
@@ -97,7 +87,6 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   const [result, setResult] = useState<GamesPage | null>(null);
   const [mapTotal, setMapTotal] = useState<number | null>(null);
   const [history, setHistory] = useState<PlayerHistoryPoint[]>([]);
-  const [liveGame, setLiveGame] = useState<GameSummary | null>(null);
   const [reportMenu, setReportMenu] = useState<{ x: number; y: number } | null>(
     null,
   );
@@ -160,20 +149,6 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   useEffect(() => {
     if (!profile) return;
     let stale = false;
-    connector.listGames(
-      { page: 1, pageSize: 1, playerIds: [profile.id] },
-      (r) => {
-        if (!stale) setLiveGame(r.games[0] ?? null);
-      },
-    );
-    return () => {
-      stale = true;
-    };
-  }, [profile]);
-
-  useEffect(() => {
-    if (!profile) return;
-    let stale = false;
     connector.listGameHistory(
       {
         page,
@@ -225,13 +200,6 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   }
 
   const rank = rankForElo(profile.elo);
-  const liveGameState: GameSummary['state'] | undefined =
-    liveGame &&
-    liveGame.state === 'lobby' &&
-    liveGame.playerCount >= liveGame.slots
-      ? 'playing'
-      : liveGame?.state;
-  const liveGameColor = liveGameState ? GAME_STATE_COLORS[liveGameState] : '';
   const totalPages = result
     ? Math.max(1, Math.ceil(result.total / PAGE_SIZE))
     : 1;
@@ -275,31 +243,41 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
       <div
         className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex flex-column flex-md-row align-items-center gap-4 mt-3 mb-4`}
       >
-        {profile.picture ? (
-          <img
-            src={profile.picture}
-            alt={profile.username}
-            width={120}
-            height={120}
-            className="rounded flex-shrink-0"
-            onContextMenu={
-              canReport
-                ? (e) => {
-                    e.preventDefault();
-                    setReportMessage('');
-                    setReportMenu({ x: e.clientX, y: e.clientY });
-                  }
-                : undefined
-            }
-          />
-        ) : (
-          <div
-            className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50 flex-shrink-0"
-            style={{ width: 120, height: 120 }}
-          >
-            No picture
-          </div>
-        )}
+        <div className="position-relative flex-shrink-0">
+          {profile.picture ? (
+            <img
+              src={profile.picture}
+              alt={profile.username}
+              width={120}
+              height={120}
+              className="rounded d-block"
+              onContextMenu={
+                canReport
+                  ? (e) => {
+                      e.preventDefault();
+                      setReportMessage('');
+                      setReportMenu({ x: e.clientX, y: e.clientY });
+                    }
+                  : undefined
+              }
+            />
+          ) : (
+            <div
+              className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50"
+              style={{ width: 120, height: 120 }}
+            >
+              No picture
+            </div>
+          )}
+          <Tip text={profile.online ? 'Online' : 'Offline'}>
+            <span
+              role="img"
+              aria-label={profile.online ? 'Online' : 'Offline'}
+              className={`position-absolute bottom-0 end-0 m-1 rounded-circle border border-2 border-white ${profile.online ? 'bg-success' : 'bg-secondary'}`}
+              style={{ width: 16, height: 16 }}
+            />
+          </Tip>
+        </div>
         <div className="d-flex flex-column align-items-center align-items-md-start gap-2">
           <h1 className="d-flex align-items-center gap-2 mb-0">
             <Flag country={profile.country} height={30} />
@@ -415,25 +393,6 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
             history={history}
             includeElo={profile.elo > 0}
           />
-        </div>
-      )}
-
-      {liveGame && liveGameState && (
-        <div className="d-flex justify-content-center mb-4">
-          <button
-            type="button"
-            className="btn"
-            style={{
-              backgroundColor: liveGameColor,
-              borderColor: liveGameColor,
-              color: contrastTextColor(liveGameColor),
-            }}
-            onClick={() =>
-              navigate(`/games/live/${encodeURIComponent(liveGame.name)}`)
-            }
-          >
-            {LIVE_GAME_LABEL[liveGameState]}: {liveGame.name}
-          </button>
         </div>
       )}
 

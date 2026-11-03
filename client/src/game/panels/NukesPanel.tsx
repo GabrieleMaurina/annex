@@ -69,7 +69,7 @@ function NukesPanel({
         <div className="d-flex gap-2 mb-2">
           <Button
             size="sm"
-            variant={targeting === 'launch' ? 'secondary' : 'outline-secondary'}
+            variant={targeting === 'launch' ? 'primary' : 'secondary'}
             className="flex-fill text-nowrap"
             disabled={arsenal.nukes < 1}
             onClick={() => onArm('launch')}
@@ -78,9 +78,7 @@ function NukesPanel({
           </Button>
           <Button
             size="sm"
-            variant={
-              targeting === 'antiNuke' ? 'secondary' : 'outline-secondary'
-            }
+            variant={targeting === 'antiNuke' ? 'primary' : 'secondary'}
             className="flex-fill text-nowrap"
             disabled={arsenal.antiNukes < 1}
             onClick={() => onArm('antiNuke')}
@@ -114,7 +112,7 @@ function NukesPanel({
                   />
                   <Button
                     size="sm"
-                    variant="outline-secondary"
+                    variant="secondary"
                     className="ms-1"
                     disabled={
                       !canBuild ||
@@ -138,7 +136,7 @@ function NukesPanel({
         <div className="d-flex gap-2">
           <Button
             size="sm"
-            variant="outline-secondary"
+            variant="secondary"
             className="flex-fill text-nowrap"
             disabled={troopsToDeploy < NUKE_INSTALLMENT}
             onClick={onBuildNuke}
@@ -147,7 +145,7 @@ function NukesPanel({
           </Button>
           <Button
             size="sm"
-            variant="outline-secondary"
+            variant="secondary"
             className="flex-fill text-nowrap"
             disabled={troopsToDeploy < ANTI_NUKE_INSTALLMENT}
             onClick={onBuildAntiNuke}

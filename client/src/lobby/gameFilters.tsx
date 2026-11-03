@@ -260,7 +260,7 @@ function RangeSettingFilter({
       ) : (
         <Button
           size="sm"
-          variant="outline-secondary"
+          variant="secondary"
           onClick={() => onChange(def.key, '')}
         >
           Any

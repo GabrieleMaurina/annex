@@ -82,7 +82,7 @@ export function sendEmoji(
   const payload = { senderId: playerId, targetPlayerId, emoji, attackTarget };
 
   if (targetPlayerId === undefined) {
-    for (const id of game.playerIds)
+    for (const id of [...game.playerIds, ...game.spectatorIds])
       callbacks.onEmojiSent(id, payload, game.name);
   } else {
     callbacks.onEmojiSent(playerId, payload, game.name);

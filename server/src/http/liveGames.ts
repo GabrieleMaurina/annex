@@ -2,7 +2,7 @@ import type { GameSummary } from 'engine';
 
 export type LiveGameSummary = Omit<
   GameSummary,
-  'playerIds' | 'bannedIds' | 'settings'
+  'playerIds' | 'watchablePlayerIds' | 'bannedIds' | 'settings'
 > & {
   hasPassword: boolean;
   minRank: string;
@@ -22,6 +22,7 @@ export interface SeatProfile {
 export type LiveGameRow = GameSummary & {
   hasPassword: boolean;
   playerUserIds: string[];
+  watchableUserIds: string[];
 };
 
 export interface LiveViewer {
@@ -169,16 +170,31 @@ function toSummary(row: LiveGameRow): LiveGameSummary {
   };
 }
 
+function visibleTo(game: LiveGameRow, viewer: LiveViewer): boolean {
+  return (
+    !viewer.excludedGames.has(game.name) &&
+    viewer.reputation >= game.settings.minReputation
+  );
+}
+
+export function watchGameName(
+  all: LiveGameRow[],
+  userId: string,
+  viewer: LiveViewer,
+): string | null {
+  const game = all.find(
+    (row) => row.watchableUserIds.includes(userId) && visibleTo(row, viewer),
+  );
+  return game ? game.name : null;
+}
+
 export function filterLiveGames(
   all: LiveGameRow[],
   query: LiveGamesQuery,
   viewer: LiveViewer,
 ): LiveGamesPage {
   const matched = all.filter(
-    (game) =>
-      !viewer.excludedGames.has(game.name) &&
-      viewer.reputation >= game.settings.minReputation &&
-      matches(game, query),
+    (game) => visibleTo(game, viewer) && matches(game, query),
   );
   const dir = query.sortDir === 'asc' ? 1 : -1;
   matched.sort((a, b) => dir * compare(a, b, query.sort));

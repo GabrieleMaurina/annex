@@ -79,6 +79,7 @@ interface Props {
   nameCellRefs: React.RefObject<Map<number, HTMLElement>>;
   emojiPickerRef: React.RefObject<HTMLDivElement | null>;
   onPick: (targetPlayerId: number, emoji: EmojiValue) => void;
+  canSendEmoji: boolean;
   players?: GameState['players'];
   navigate?: (path: string) => void;
   bumpMuteVersion: () => void;
@@ -92,6 +93,7 @@ function EmojiTableOverlay({
   nameCellRefs,
   emojiPickerRef,
   onPick,
+  canSendEmoji,
   players,
   navigate,
   bumpMuteVersion,
@@ -127,19 +129,24 @@ function EmojiTableOverlay({
                 zIndex: 3,
               }}
             >
-              {PICKABLE_EMOJIS.map((emoji) => (
-                <Tip key={emoji} text={EMOJI_LABELS[emoji]} placement="bottom">
-                  <button
-                    type="button"
-                    className="border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
-                    style={{ fontSize: 24, padding: '3px 2px 5px 2px' }}
-                    data-no-click-sound
-                    onClick={() => onPick(emojiPickerFor, emoji)}
+              {canSendEmoji &&
+                PICKABLE_EMOJIS.map((emoji) => (
+                  <Tip
+                    key={emoji}
+                    text={EMOJI_LABELS[emoji]}
+                    placement="bottom"
                   >
-                    {emoji}
-                  </button>
-                </Tip>
-              ))}
+                    <button
+                      type="button"
+                      className="border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
+                      style={{ fontSize: 24, padding: '3px 2px 5px 2px' }}
+                      data-no-click-sound
+                      onClick={() => onPick(emojiPickerFor, emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  </Tip>
+                ))}
               {emojiPickerFor !== GLOBAL_TARGET_ID && (
                 <Tip text={muted ? 'Unmute' : 'Mute'} placement="bottom">
                   <button

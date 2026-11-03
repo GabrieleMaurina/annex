@@ -1,6 +1,7 @@
 import { alliedIds } from '../../game/alliances';
 import { defenceDiceFor } from '../../game/combat/dice';
 import { calculateDeployTroopsBreakdown } from '../../game/mechanics';
+import { closedTiles, unlockCost } from '../../game/tiles/unlock';
 import { withPortalEdges } from '../../game/world/portals';
 import { gameMapAtRound, getGameMap } from '../../maps/maps';
 import {
@@ -8,6 +9,7 @@ import {
   BotProfile,
   Game,
   GameMap,
+  LockedTile,
   TurnPhase,
 } from '../../types';
 import { difficultyParams } from '../difficulty';
@@ -39,6 +41,9 @@ export interface PlanContext {
   horizonNeighbors: Map<number, number[]>;
   attackers: Map<number, number[]>;
   horizonAttackers: Map<number, number[]>;
+  routeNeighbors: Map<number, number[]>;
+  closedTileIds: Set<number>;
+  unlockCost: number;
   seaLinks: Map<number, number[]>;
   shippedSeaIds: Set<number>;
   continentTerritories: Map<number, number[]>;
@@ -124,6 +129,20 @@ function reverseOf(
   return reverse;
 }
 
+function withClosedTiles(
+  tiles: LockedTile[],
+  neighbors: Map<number, number[]>,
+): Map<number, number[]> {
+  if (tiles.length === 0) return neighbors;
+  const routes = new Map(neighbors);
+  for (const tile of tiles) {
+    routes.set(tile.id, tile.neighbors);
+    for (const n of tile.neighbors)
+      if (neighbors.has(n)) routes.set(n, [...routes.get(n)!, tile.id]);
+  }
+  return routes;
+}
+
 function buildTopology(game: Game, map: GameMap, botId: number): MapTopology {
   const seaIds = new Set(map.seaTerritories.map((t) => t.id));
   const neighbors = landNeighbors(game, map);
@@ -145,11 +164,14 @@ function buildTopology(game: Game, map: GameMap, botId: number): MapTopology {
   }
 
   const horizonNeighbors = horizonNeighborsOf(game, map, botId, neighbors);
+  const tiles = closedTiles(game);
   return {
     neighbors,
     horizonNeighbors,
     attackers: reverseOf(map, neighbors),
     horizonAttackers: reverseOf(map, horizonNeighbors),
+    routeNeighbors: withClosedTiles(tiles, neighbors),
+    closedTileIds: new Set(tiles.map((tile) => tile.id)),
     seaLinks,
     continentTerritories,
     territoryContinent,
@@ -346,6 +368,9 @@ export function buildContext(
     horizonNeighbors: topology.horizonNeighbors,
     attackers: topology.attackers,
     horizonAttackers: topology.horizonAttackers,
+    routeNeighbors: topology.routeNeighbors,
+    closedTileIds: topology.closedTileIds,
+    unlockCost: unlockCost(game, botId),
     seaLinks: topology.seaLinks,
     shippedSeaIds: shippedSeaIdsOf(game, botId),
     continentTerritories: topology.continentTerritories,
@@ -386,6 +411,13 @@ export function timesCards(ctx: PlanContext): boolean {
 
 export function neighborsOf(ctx: PlanContext, territoryId: number): number[] {
   return ctx.neighbors.get(territoryId) ?? [];
+}
+
+export function routeNeighborsOf(
+  ctx: PlanContext,
+  territoryId: number,
+): number[] {
+  return ctx.routeNeighbors.get(territoryId) ?? [];
 }
 
 export function attackersOf(ctx: PlanContext, territoryId: number): number[] {

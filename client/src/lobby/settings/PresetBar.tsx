@@ -187,7 +187,7 @@ function PresetBar({ currentPreset, applyPreset, onError }: Props) {
                     }
                   >
                     <Button
-                      variant={preset ? 'outline-primary' : 'outline-secondary'}
+                      variant={preset ? 'primary' : 'secondary'}
                       className="text-truncate flex-grow-1"
                       style={SHRINK_STYLE}
                       onClick={() =>
@@ -200,7 +200,7 @@ function PresetBar({ currentPreset, applyPreset, onError }: Props) {
                   <Dropdown.Toggle
                     split
                     className="flex-grow-0"
-                    variant={preset ? 'outline-primary' : 'outline-secondary'}
+                    variant={preset ? 'primary' : 'secondary'}
                   />
                   <Dropdown.Menu
                     className="selector-menu"

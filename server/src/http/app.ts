@@ -1,6 +1,10 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { LiveGameRow, SeatProfile } from './liveGames';
-import { corsMiddleware, identityMiddleware } from './middleware';
+import {
+  corsMiddleware,
+  identityMiddleware,
+  presenceMiddleware,
+} from './middleware';
 import { accountRouter } from './routes/accountRoutes';
 import { authRouter } from './routes/authRoutes';
 import { conductRouter } from './routes/conductRoutes';
@@ -45,6 +49,7 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   app.use(corsMiddleware);
 
   const api = express.Router();
+  api.use(presenceMiddleware);
   api.use(gamesRouter(deps.listGames));
   api.use(publicGamesRouter);
   api.use(playersRouter);

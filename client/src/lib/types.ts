@@ -859,6 +859,7 @@ export interface PlayerProfile extends CareerTotals {
   createdAt: number;
   reputation: number;
   picture: string | null;
+  online: boolean;
 }
 
 export * from '../game/replay/replayTypes';

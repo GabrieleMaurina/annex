@@ -16,17 +16,28 @@ function paintTile(labels: Int16Array, width: number, tile: LockedTile) {
       if (tileAt([tile], x + 0.5, y + 0.5)) labels[y * width + x] = tile.id;
 }
 
+const latestByBase = new WeakMap<ClickableRegions, ClickableRegions>();
+
 export function withUnlockedRegions(
   regions: ClickableRegions,
   tiles: LockedTile[],
   lineWidth: number,
 ): ClickableRegions {
   if (tiles.length === 0) return regions;
-  const labels = regions.labels.slice();
-  const fillLabels = regions.fillLabels.slice();
-  const splitLabels = regions.splitLabels.slice();
-  const shapes = new Map(regions.shapes);
+  const ids = new Set(tiles.map((tile) => tile.id));
+  const latest = latestByBase.get(regions);
+  const from =
+    latest?.unlocked?.lineWidth === lineWidth &&
+    latest.unlocked.tiles.every((tile) => ids.has(tile.id))
+      ? latest
+      : regions;
+  const painted = new Set(from.unlocked?.tiles.map((tile) => tile.id));
+  const labels = from.labels.slice();
+  const fillLabels = from.fillLabels.slice();
+  const splitLabels = from.splitLabels.slice();
+  const shapes = new Map(from.shapes);
   for (const tile of tiles) {
+    if (painted.has(tile.id)) continue;
     paintTile(labels, regions.width, tile);
     paintTile(splitLabels, regions.width, tile);
     const inset = insetPolygon(tile.points, lineWidth / 2);
@@ -34,12 +45,15 @@ export function withUnlockedRegions(
     const path = polygonPath(inset);
     shapes.set(tile.id, { fill: path, outline: path });
   }
-  return {
+  const merged = {
     ...regions,
     labels,
     fillLabels,
     splitLabels,
     shapes,
     unlocked: { tiles, lineWidth },
+    base: regions,
   };
+  latestByBase.set(regions, merged);
+  return merged;
 }

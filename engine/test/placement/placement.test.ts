@@ -104,6 +104,31 @@ test('the first claim stakes out a quiet area away from rival claims', () => {
   assert.ok([3, 4, 5].includes(chooseTerritoryClaim(game, botId, 0) ?? -1));
 });
 
+test('under fog a claim never lands on a hidden territory that is already taken', () => {
+  const map: MapSpec = {
+    continents: [
+      [0, 1, 2],
+      [3, 4, 5],
+    ],
+    edges: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+    ],
+    bonuses: [3, 3],
+  };
+  const { game, botId } = buildGame({
+    map,
+    players: [1, 2],
+    owners: { 0: 2, 1: 2, 2: 2, 3: 2, 4: 2 },
+    troops: {},
+    settings: { fogOfWar: 'on', placement: 'single', turnPhase: 'territory' },
+  });
+  assert.equal(chooseTerritoryClaim(game, botId, 0), 5);
+});
+
 test('defensive grows bolder only as its opponents fall', () => {
   const { game, botId } = buildGame({
     map: { continents: [[0]], edges: [], bonuses: [0] },

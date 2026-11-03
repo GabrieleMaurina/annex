@@ -255,7 +255,7 @@ function GameSettingsFields({
                         {gameMeta.hasPassword && (
                           <Button
                             size="sm"
-                            variant="outline-secondary"
+                            variant="secondary"
                             onClick={() => applySettings({ password: null })}
                           >
                             Clear

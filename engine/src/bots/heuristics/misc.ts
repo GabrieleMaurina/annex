@@ -161,26 +161,23 @@ export function chooseTerritoryClaim(
   if (unclaimed.length === 0) return null;
   const claims = continentClaims(game, view, botId, continentsOf(game));
   const distances = rivalDistances(game, view, botId, landLinks(game));
-  let best: number | null = null;
-  let bestValue = -Infinity;
-  for (const territory of unclaimed) {
-    const value =
-      claimValue(
-        game,
-        botId,
-        territory.id,
-        territory.continentId,
-        claims.get(territory.continentId)!,
-        distances.get(territory.id) ?? RIVAL_DISTANCE_CAP,
-      ) +
-      (Math.random() - 0.5) * noise +
-      Math.random() * TIE_BREAK;
-    if (value > bestValue) {
-      bestValue = value;
-      best = territory.id;
-    }
-  }
-  return best;
+  const ranked = unclaimed
+    .map((territory) => ({
+      id: territory.id,
+      value:
+        claimValue(
+          game,
+          botId,
+          territory.id,
+          territory.continentId,
+          claims.get(territory.continentId)!,
+          distances.get(territory.id) ?? RIVAL_DISTANCE_CAP,
+        ) +
+        (Math.random() - 0.5) * noise +
+        Math.random() * TIE_BREAK,
+    }))
+    .sort((a, b) => b.value - a.value);
+  return ranked.find(({ id }) => !game.territoryOwners.has(id))?.id ?? null;
 }
 
 export function chooseTroopPlacement(game: Game, botId: number): number | null {

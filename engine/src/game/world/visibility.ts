@@ -56,7 +56,7 @@ export function isFogActive(
     game.turnPhase === 'troop'
   )
     return false;
-  if (game.spectatorIds.includes(viewerId)) return false;
+  if (game.spectatorIds.includes(viewerId)) return true;
   if (game.surrenderedIds.has(viewerId)) return false;
   const territoryCount = stats.get(viewerId)?.territoryCount ?? 0;
   if (isEliminated(game, territoryCount)) return false;

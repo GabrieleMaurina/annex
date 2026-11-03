@@ -17,6 +17,7 @@ import type {
   GameState,
   PlayerResultStats,
 } from '../lib/types';
+import SpectatorList from '../lobby/SpectatorList';
 
 interface Props {
   game: GameState;
@@ -58,6 +59,8 @@ function EndPage({
     nameCellRefs,
   } = useTableEmojiReactions(selfId);
   const tableEmojiEnabled = !connector.isOffline();
+  const canSendEmoji =
+    tableEmojiEnabled && game.players.some((p) => p.id === selfId);
   const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
   const gameWithAccounts = useMemo(
     () => ({
@@ -142,35 +145,42 @@ function EndPage({
         showMuted
         shareGameId={storedGameId}
         belowTable={
-          tableEmojiEnabled && (
-            <div className="d-flex justify-content-start mt-1">
-              <Tip text="Everyone" placement="bottom">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="d-inline-flex align-items-center justify-content-center"
-                  style={{ width: 28, height: 28, padding: 0 }}
-                  onClick={() => handleRowClick(GLOBAL_TARGET_ID)}
-                  ref={(el) => {
-                    if (el) {
-                      rowRefs.current.set(GLOBAL_TARGET_ID, el);
-                      nameCellRefs.current.set(GLOBAL_TARGET_ID, el);
-                    } else {
-                      rowRefs.current.delete(GLOBAL_TARGET_ID);
-                      nameCellRefs.current.delete(GLOBAL_TARGET_ID);
-                    }
-                  }}
-                >
-                  <img
-                    src={whiteGlobeIcon ?? '/icons/globe.svg'}
-                    width={14}
-                    height={14}
-                    alt="Everyone"
-                  />
-                </Button>
-              </Tip>
-            </div>
-          )
+          <>
+            {canSendEmoji && (
+              <div className="d-flex justify-content-start mt-1">
+                <Tip text="Everyone" placement="bottom">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="d-inline-flex align-items-center justify-content-center"
+                    style={{ width: 28, height: 28, padding: 0 }}
+                    onClick={() => handleRowClick(GLOBAL_TARGET_ID)}
+                    ref={(el) => {
+                      if (el) {
+                        rowRefs.current.set(GLOBAL_TARGET_ID, el);
+                        nameCellRefs.current.set(GLOBAL_TARGET_ID, el);
+                      } else {
+                        rowRefs.current.delete(GLOBAL_TARGET_ID);
+                        nameCellRefs.current.delete(GLOBAL_TARGET_ID);
+                      }
+                    }}
+                  >
+                    <img
+                      src={whiteGlobeIcon ?? '/icons/globe.svg'}
+                      width={14}
+                      height={14}
+                      alt="Everyone"
+                    />
+                  </Button>
+                </Tip>
+              </div>
+            )}
+            {game.spectators.length > 0 && (
+              <div className="mt-4">
+                <SpectatorList spectators={game.spectators} isHost={false} />
+              </div>
+            )}
+          </>
         }
         overlay={
           tableEmojiEnabled && (
@@ -181,6 +191,7 @@ function EndPage({
               nameCellRefs={nameCellRefs}
               emojiPickerRef={emojiPickerRef}
               onPick={handleEmojiPick}
+              canSendEmoji={canSendEmoji}
               players={playersWithAccounts}
               navigate={navigate}
               bumpMuteVersion={bumpMuteVersion}

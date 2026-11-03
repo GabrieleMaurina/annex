@@ -26,6 +26,7 @@ import {
   LiveGamesQuery,
   LiveViewer,
   SeatProfile,
+  watchGameName,
 } from '../liveGames';
 import { identityOf } from '../middleware';
 import {
@@ -133,6 +134,15 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
     res.json(
       filterLiveGames(getGames(), query, liveViewer(req.headers.cookie)),
     );
+  });
+  router.get('/games/watch', (req, res) => {
+    const userId = req.query.userId;
+    res.json({
+      gameName:
+        typeof userId === 'string'
+          ? watchGameName(getGames(), userId, liveViewer(req.headers.cookie))
+          : null,
+    });
   });
   return router;
 }

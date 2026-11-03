@@ -337,7 +337,7 @@ function traceRailway(
   rails: Path2D,
   a: Point,
   b: Point,
-  zoom: number,
+  uiScale: number,
 ) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
@@ -348,10 +348,10 @@ function traceRailway(
   const px = -uy;
   const py = ux;
 
-  const offset = RAIL_OFFSET * zoom;
-  const spacing = SLEEPER_SPACING * zoom;
-  const sleeperHalfLength = SLEEPER_HALF_LENGTH * zoom;
-  const sleeperHalfThickness = SLEEPER_HALF_THICKNESS * zoom;
+  const offset = RAIL_OFFSET * uiScale;
+  const spacing = SLEEPER_SPACING * uiScale;
+  const sleeperHalfLength = SLEEPER_HALF_LENGTH * uiScale;
+  const sleeperHalfThickness = SLEEPER_HALF_THICKNESS * uiScale;
 
   const sleeperCount = Math.max(1, Math.round(len / spacing));
   for (let i = 0; i <= sleeperCount; i++) {
@@ -382,7 +382,7 @@ export function drawSupplyLines(
   toScreen: (p: Point) => Point,
   mapW: number,
   mapH: number,
-  zoom: number,
+  uiScale: number,
   forcedWraps: ForcedWraps,
 ) {
   const sleepers = new Path2D();
@@ -406,7 +406,7 @@ export function drawSupplyLines(
           dots.moveTo(a.x, a.y);
           dots.lineTo(b.x, b.y);
         } else {
-          traceRailway(sleepers, rails, a, b, zoom);
+          traceRailway(sleepers, rails, a, b, uiScale);
         }
       }
     }
@@ -415,19 +415,19 @@ export function drawSupplyLines(
   ctx.save();
   ctx.fillStyle = SLEEPER_COLOR;
   ctx.strokeStyle = SLEEPER_STROKE;
-  ctx.lineWidth = Math.max(1, zoom);
+  ctx.lineWidth = Math.max(1, uiScale);
   ctx.fill(sleepers);
   ctx.stroke(sleepers);
   ctx.strokeStyle = RAIL_OUTLINE_COLOR;
-  ctx.lineWidth = RAIL_WIDTH * zoom + zoom;
+  ctx.lineWidth = RAIL_WIDTH * uiScale + uiScale;
   ctx.stroke(rails);
   ctx.strokeStyle = RAIL_COLOR;
-  ctx.lineWidth = RAIL_WIDTH * zoom;
+  ctx.lineWidth = RAIL_WIDTH * uiScale;
   ctx.stroke(rails);
   ctx.strokeStyle = DOT_COLOR;
-  ctx.lineWidth = DOT_WIDTH * zoom;
+  ctx.lineWidth = DOT_WIDTH * uiScale;
   ctx.lineCap = 'round';
-  ctx.setLineDash([0, DOT_SPACING * zoom]);
+  ctx.setLineDash([0, DOT_SPACING * uiScale]);
   ctx.stroke(dots);
   ctx.restore();
 }

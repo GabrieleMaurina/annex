@@ -188,7 +188,7 @@ function Friends({ account }: Props) {
                   </Button>
                   <Button
                     size="sm"
-                    variant="outline-secondary"
+                    variant="secondary"
                     onClick={() =>
                       run(
                         connector.removeFriend,
@@ -219,7 +219,7 @@ function Friends({ account }: Props) {
                 >
                   <Button
                     size="sm"
-                    variant="outline-secondary"
+                    variant="secondary"
                     onClick={() =>
                       run(
                         connector.removeFriend,
@@ -250,7 +250,7 @@ function Friends({ account }: Props) {
                 >
                   <Button
                     size="sm"
-                    variant="outline-secondary"
+                    variant="secondary"
                     onClick={() =>
                       run(connector.removeFriend, person.id, 'Friend removed.')
                     }

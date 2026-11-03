@@ -12,6 +12,7 @@ export interface ClickableRegions {
   borderWidth: number;
   shapes: Map<number, RegionShape>;
   unlocked?: { tiles: LockedTile[]; lineWidth: number };
+  base?: ClickableRegions;
 }
 
 const BORDER_REACH = 8;
@@ -176,15 +177,28 @@ interface ContinentTerritory {
 
 const continentShapesByRegions = new WeakMap<
   ClickableRegions,
-  { territories: ContinentTerritory[]; shapes: Map<number, RegionShape> }
+  {
+    territories: ContinentTerritory[];
+    key: string;
+    shapes: Map<number, RegionShape>;
+  }
 >();
 
 export function continentShapes(
-  regions: ClickableRegions,
-  territories: ContinentTerritory[],
+  unlockedRegions: ClickableRegions,
+  allTerritories: ContinentTerritory[],
 ): Map<number, RegionShape> {
+  const regions = unlockedRegions.base ?? unlockedRegions;
   const cached = continentShapesByRegions.get(regions);
-  if (cached?.territories === territories) return cached.shapes;
+  if (cached?.territories === allTerritories) return cached.shapes;
+  const territories = allTerritories.filter(
+    (t) => t.continentId >= 0 || regions.shapes.has(t.id),
+  );
+  const key = territories.map((t) => `${t.id}:${t.continentId}`).join(',');
+  if (cached?.key === key) {
+    cached.territories = allTerritories;
+    return cached.shapes;
+  }
   const partial = new Set(
     territories
       .filter((t) => !regions.shapes.has(t.id))
@@ -204,7 +218,11 @@ export function continentShapes(
     regions.height,
     Infinity,
   );
-  continentShapesByRegions.set(regions, { territories, shapes });
+  continentShapesByRegions.set(regions, {
+    territories: allTerritories,
+    key,
+    shapes,
+  });
   return shapes;
 }
 

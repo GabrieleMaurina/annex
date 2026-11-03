@@ -521,7 +521,7 @@ export const FOG_OF_WAR_HELP = (
         territories they own and the territories adjacent to them. Everything
         else is hidden: gray on the map, and hidden as &quot;?&quot; in the
         players table. Actions entirely outside a player&apos;s view are not
-        shown to them.
+        shown to them. Spectators see no territories until the game ends.
       </li>
     </ul>
   </>

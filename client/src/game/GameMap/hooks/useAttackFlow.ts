@@ -253,10 +253,16 @@ export function useAttackFlow({
         if (!res.ok) return;
         setAttackDiceRoll(null);
         setGame(res.game);
-        if (enter) continueFromConquest(res.game, tileId);
+        if (
+          enter &&
+          res.game.territories.some(
+            (t) => t.id === tileId && t.ownerId === selfId && t.troops >= 2,
+          )
+        )
+          selectAttackStart(tileId);
       });
     },
-    [setGame, continueFromConquest],
+    [setGame, selfId, selectAttackStart],
   );
 
   const selectUnlockTile = useCallback((tileId: number) => {

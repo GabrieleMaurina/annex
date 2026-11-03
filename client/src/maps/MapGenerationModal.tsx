@@ -219,7 +219,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                   />
                   <Tip text="Random seed">
                     <Button
-                      variant="outline-secondary"
+                      variant="secondary"
                       className="d-flex align-items-center"
                       aria-label="Random seed"
                       onClick={() => setSeed(randomSeed())}
@@ -412,7 +412,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
             Cancel
           </Button>
           <Button
-            variant="outline-primary"
+            variant="info"
             disabled={generating || applying || !!seedMessage}
             onClick={handleGenerate}
           >

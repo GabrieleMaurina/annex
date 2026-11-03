@@ -107,7 +107,7 @@ function DirectionalLinksTable({
                 <td className="text-nowrap">
                   <Tip text="Reverse">
                     <Button
-                      variant="outline-secondary"
+                      variant="secondary"
                       size="sm"
                       onClick={() => reverseLink(link.a, link.b)}
                     >

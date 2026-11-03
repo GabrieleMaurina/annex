@@ -327,6 +327,7 @@ function GameMap({
   const {
     openPanel,
     setOpenPanel,
+    autoOpenCardsPanel,
     cardsOpen,
     bonusesOpen,
     logsOpen,
@@ -390,6 +391,7 @@ function GameMap({
     botSpeed,
     cardsOpen: cardsOpen,
     setOpenPanel: setOpenPanel,
+    autoOpenCardsPanel,
     setToasts,
     setGame,
   });

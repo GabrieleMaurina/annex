@@ -67,6 +67,20 @@ export function isEliminated(game: Game, territoryCount: number): boolean {
   return game.state !== 'lobby' && !isClaimPhase(game) && territoryCount === 0;
 }
 
+function watchablePlayerIds(game: Game): number[] {
+  if (game.state !== 'playing' || isAnonymous(game)) return [];
+  const stats = territoryStats(game);
+  return game.playerIds.filter((id) => {
+    const member = playersById.get(id);
+    return (
+      !!member?.connected &&
+      member.gameName === game.name &&
+      !game.surrenderedIds.has(id) &&
+      !isEliminated(game, stats.get(id)?.territoryCount ?? 0)
+    );
+  });
+}
+
 export function gameSummary(game: Game) {
   return {
     name: game.name,
@@ -92,6 +106,7 @@ export function gameSummary(game: Game) {
         ? anonymousName(game, game.hostId)
         : (playersById.get(game.hostId)?.name ?? ''),
     playerIds: isAnonymous(game) ? [] : [...game.playerIds],
+    watchablePlayerIds: watchablePlayerIds(game),
     bannedIds: [...game.bannedIds],
     playerCount: game.playerIds.length,
     hasBots: game.playerIds.some((id) =>

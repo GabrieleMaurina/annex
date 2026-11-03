@@ -449,7 +449,7 @@ function Panel(props: Props) {
             <Button
               key={c}
               size="sm"
-              variant="outline-secondary"
+              variant="secondary"
               className="d-flex align-items-center gap-1 py-0 px-1"
               disabled={borderColors.length === 1}
               onClick={() =>
@@ -466,7 +466,7 @@ function Panel(props: Props) {
           {borderPick === null ? (
             <Button
               size="sm"
-              variant="outline-secondary"
+              variant="secondary"
               className="py-0"
               disabled={borderColors.length >= MAX_BORDER_COLORS}
               onClick={() => {
@@ -516,11 +516,7 @@ function Panel(props: Props) {
       <ButtonGroup size="sm" className="w-100 mb-2">
         <Button
           variant={
-            mode === 'graph'
-              ? exclusive
-                ? 'success'
-                : 'primary'
-              : 'outline-primary'
+            mode === 'graph' ? (exclusive ? 'success' : 'primary') : 'secondary'
           }
           onClick={() => onModeClick('graph')}
         >
@@ -528,11 +524,7 @@ function Panel(props: Props) {
         </Button>
         <Button
           variant={
-            mode === 'paint'
-              ? exclusive
-                ? 'success'
-                : 'primary'
-              : 'outline-primary'
+            mode === 'paint' ? (exclusive ? 'success' : 'primary') : 'secondary'
           }
           onClick={() => onModeClick('paint')}
         >
@@ -623,9 +615,7 @@ function Panel(props: Props) {
                     >
                       <Button
                         size="sm"
-                        variant={
-                          tool === 'shape' ? 'primary' : 'outline-secondary'
-                        }
+                        variant={tool === 'shape' ? 'primary' : 'secondary'}
                         className="d-flex flex-grow-1 align-items-center justify-content-center gap-1"
                         onClick={() =>
                           setTool(tool === 'shape' ? null : 'shape')
@@ -636,9 +626,7 @@ function Panel(props: Props) {
                       </Button>
                       <Dropdown.Toggle
                         size="sm"
-                        variant={
-                          tool === 'shape' ? 'primary' : 'outline-secondary'
-                        }
+                        variant={tool === 'shape' ? 'primary' : 'secondary'}
                         split
                       >
                         <span className="visually-hidden">Choose shape</span>
@@ -671,7 +659,7 @@ function Panel(props: Props) {
                   ) : (
                     <Button
                       size="sm"
-                      variant={tool === t.key ? 'primary' : 'outline-secondary'}
+                      variant={tool === t.key ? 'primary' : 'secondary'}
                       onClick={() => setTool(tool === t.key ? null : t.key)}
                       className="d-flex w-100 align-items-center justify-content-center gap-1"
                     >

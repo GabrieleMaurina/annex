@@ -72,6 +72,7 @@ import {
   isStrategist,
   ownedIds,
   planDepth,
+  routeNeighborsOf,
   snapshotState,
   strongestThreatAt,
   timesCards,
@@ -501,7 +502,13 @@ function planAttack(
       plan,
     );
 
-  const unlockChoice = chooseUnlock(ctx);
+  const nextStep = plan.attackSteps
+    .slice(plan.step)
+    .find((step) => stepStatus(ctx, game, step) !== 'done');
+  const unlockChoice =
+    nextStep && ctx.closedTileIds.has(nextStep.endId)
+      ? null
+      : chooseUnlock(ctx);
   if (unlockChoice)
     return result(
       [
@@ -524,6 +531,35 @@ function planAttack(
     if (status === 'done') {
       plan.step++;
       continue;
+    }
+    if (status === 'ok' && ctx.closedTileIds.has(step.endId)) {
+      const entering =
+        (game.territoryTroops.get(step.startId) ?? 0) - 1 - ctx.unlockCost;
+      plan.attacksIssued++;
+      return result(
+        [
+          {
+            event: 'game:attackSelectStart',
+            payload: { territoryId: step.startId },
+          },
+          {
+            event: 'game:unlock',
+            payload: { tileId: step.endId, enter: false },
+          },
+          {
+            event: 'game:attackSelectEnd',
+            payload: { territoryId: step.endId },
+          },
+          {
+            event: 'game:attack',
+            payload: {
+              type: 'regular',
+              troops: Math.min(entering, game.attackDice),
+            },
+          },
+        ],
+        plan,
+      );
     }
     if (status === 'ok') {
       const attackers = (game.territoryTroops.get(step.startId) ?? 0) - 1;
@@ -799,6 +835,11 @@ function stepStatus(
   if (game.territoryOwners.get(step.startId) !== ctx.botId) return 'invalid';
   const startTroops = game.territoryTroops.get(step.startId) ?? 0;
   if (startTroops < 2) return 'invalid';
+  if (ctx.closedTileIds.has(step.endId))
+    return startTroops >= ctx.unlockCost + 2 &&
+      routeNeighborsOf(ctx, step.startId).includes(step.endId)
+      ? 'ok'
+      : 'invalid';
   if (!(ctx.neighbors.get(step.startId) ?? []).includes(step.endId))
     return 'invalid';
   if (

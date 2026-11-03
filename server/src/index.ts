@@ -92,6 +92,9 @@ function listVisibleGames(): LiveGameRow[] {
       playerUserIds: game.playerIds
         .map((id) => userIdByPlayerId(id))
         .filter((id): id is string => id !== undefined),
+      watchableUserIds: game.watchablePlayerIds
+        .map((id) => userIdByPlayerId(id))
+        .filter((id): id is string => id !== undefined),
     }));
 }
 

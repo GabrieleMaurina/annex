@@ -1,8 +1,10 @@
 import { TILE_SEAM_COLOR, TILE_WALL_COLOR } from 'engine';
-import type { ClickableRegions } from '../../regions/clickableRegions';
+import {
+  regionAt,
+  type ClickableRegions,
+} from '../../regions/clickableRegions';
 import type { RegionShape } from '../../regions/traceRegions';
 import { polygonPath, tileEdges } from '../../tiles/tileGeometry';
-import { tileAt } from '../../tiles/unlock';
 
 export interface ImageView {
   scaleX: number;
@@ -68,6 +70,7 @@ export function unlockedTileLayer(
   const tiles = regions.unlocked.tiles.filter(
     (tile) => !hiddenIds.has(tile.id),
   );
+  const shownIds = new Set(tiles.map((tile) => tile.id));
   const { lineWidth } = regions.unlocked;
   const canvas = document.createElement('canvas');
   canvas.width = regions.width;
@@ -79,7 +82,9 @@ export function unlockedTileLayer(
   const walls = new Path2D();
   for (const tile of tiles) {
     for (const { from, to, outside } of tileEdges(tile, lineWidth)) {
-      const path = tileAt(tiles, ...outside) ? seams : walls;
+      const path = shownIds.has(regionAt(regions, ...outside) ?? -1)
+        ? seams
+        : walls;
       path.moveTo(...from);
       path.lineTo(...to);
     }

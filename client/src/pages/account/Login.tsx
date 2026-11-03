@@ -163,11 +163,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
                 {formatError(error)}
               </Alert>
             )}
-            <Button
-              variant="outline-secondary"
-              size="sm"
-              onClick={handleLogout}
-            >
+            <Button variant="secondary" size="sm" onClick={handleLogout}>
               Log out
             </Button>
             <Button
@@ -227,7 +223,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <Button
-                    variant="outline-secondary"
+                    variant="secondary"
                     tabIndex={-1}
                     onClick={() => setRevealPassword((v) => !v)}
                   >

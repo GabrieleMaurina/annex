@@ -18,10 +18,6 @@
     transform 70ms;
 }
 
-.btn[class*='btn-outline-'] {
-  --button-shine: 0 0 0 transparent;
-}
-
 .btn:focus-visible {
   box-shadow:
     0 4px 0 var(--button-lip),
@@ -54,32 +50,27 @@
   transform: none;
 }
 
-.btn-primary,
-.btn-outline-primary {
+.btn-primary {
   --button-fx-color: var(--bs-primary);
   --button-fx-glow: #ffcf5a;
 }
 
-.btn-danger,
-.btn-outline-danger {
+.btn-danger {
   --button-fx-color: #ff5a4a;
   --button-fx-glow: #ff9a5a;
 }
 
-.btn-success,
-.btn-outline-success {
+.btn-success {
   --button-fx-color: #5fd08a;
   --button-fx-glow: #c8f5d8;
 }
 
-.btn-warning,
-.btn-outline-warning {
+.btn-warning {
   --button-fx-color: #ff9a3a;
   --button-fx-glow: #ffd36b;
 }
 
-.btn-info,
-.btn-outline-info {
+.btn-info {
   --button-fx-color: #5cc2ff;
   --button-fx-glow: #d6f0ff;
 }

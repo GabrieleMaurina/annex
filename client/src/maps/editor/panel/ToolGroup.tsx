@@ -20,7 +20,7 @@ function ToolGroup({ label, options, tool, setTool }: Props) {
   const [chosen, setChosen] = useState(options[0]);
   const active = options.find((o) => o.key === tool);
   if (active && active !== chosen) setChosen(active);
-  const variant = active ? 'primary' : 'outline-secondary';
+  const variant = active ? 'primary' : 'secondary';
   return (
     <Dropdown
       as={ButtonGroup}

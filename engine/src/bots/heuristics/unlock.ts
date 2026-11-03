@@ -1,23 +1,22 @@
 import { defenceDiceFor } from '../../game/combat/dice';
-import { territoryIncome } from '../../game/mechanics';
-import { nextSetBaseValues } from '../../game/progression/cards';
-import { closedTiles, unlockCost } from '../../game/tiles/unlock';
+import { closedTiles } from '../../game/tiles/unlock';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { attackWinProbability } from '../features/combat';
-import { completesOrBreaksContinent } from '../goals/keepStack';
+import { expectedScore, StepRisk } from '../goals/failureRisk';
+import { evaluateBoard } from '../planning/board';
 import {
   attackersOf,
-  bonusOf,
+  cloneState,
   isEnemyTerritory,
   isFriendly,
   neighborsOf,
   ownedIds,
   PlanContext,
-  SimState,
   snapshotState,
   strongestThreatAt,
   troopsIn,
 } from '../planning/context';
+import { walkStack } from '../planning/simulate';
 import { AttackStep } from '../planning/turnPlan';
 import { isVisible } from '../view';
 
@@ -68,7 +67,7 @@ export function chooseUnlock(ctx: PlanContext): UnlockChoice | null {
     }
   }
 
-  const cost = unlockCost(game, ctx.botId);
+  const cost = ctx.unlockCost;
   let best: (UnlockChoice & { distance: number; troops: number }) | null = null;
   for (const tile of locked) {
     const tileDistance = distance.get(tile.id);
@@ -89,19 +88,12 @@ export function chooseUnlock(ctx: PlanContext): UnlockChoice | null {
   return best;
 }
 
-function bridgeValue(
-  ctx: PlanContext,
-  state: SimState,
-  targetId: number,
-): number {
-  const ownerId = state.owners.get(targetId)!;
-  let value = 0;
-  if (ctx.game.cards !== 'off' && !state.conquered)
-    value += nextSetBaseValues(ctx.game, ctx.botId).mixed / 3;
-  if (ctx.preTurnOpponents.get(ownerId) === 1) value += ctx.income;
-  if (completesOrBreaksContinent(ctx, state, targetId, ownerId))
-    value += bonusOf(ctx, ctx.territoryContinent.get(targetId)!);
-  return value;
+function marginalIncome(ctx: PlanContext, ownedCount: number): number {
+  const { minTroops, troopsPerTerritory } = ctx.game;
+  return (
+    Math.max(minTroops, (ownedCount + 1) * troopsPerTerritory) -
+    Math.max(minTroops, ownedCount * troopsPerTerritory)
+  );
 }
 
 export function chooseOpportunisticUnlock(
@@ -117,13 +109,11 @@ export function chooseOpportunisticUnlock(
   if (locked.length === 0) return null;
   const lockedIds = new Set(locked.map((tile) => tile.id));
   const state = snapshotState(ctx);
-  const cost = unlockCost(game, ctx.botId);
+  const cost = ctx.unlockCost;
   const ownedCount = ownedIds(state, ctx.botId).length;
   const expansionScore =
-    (territoryIncome(game, ownedCount + 1) -
-      territoryIncome(game, ownedCount)) *
-      EXPANSION_PAYBACK_TURNS -
-    cost;
+    marginalIncome(ctx, ownedCount) * EXPANSION_PAYBACK_TURNS - cost;
+  let baseScore: number | undefined;
   const ownedBy = (id: number) => state.owners.get(id) === ctx.botId;
   const safe = (id: number) => {
     const ownerId = state.owners.get(id);
@@ -132,9 +122,14 @@ export function chooseOpportunisticUnlock(
       : isFriendly(ctx, ownerId);
   };
 
-  let best: (UnlockOpportunity & { score: number }) | null = null;
+  let bestBridge: (UnlockOpportunity & { score: number }) | null = null;
+  let bestExpansion: (UnlockOpportunity & { score: number }) | null = null;
   const consider = (option: UnlockOpportunity & { score: number }) => {
-    if (option.score > 0 && (!best || option.score > best.score)) best = option;
+    if (option.score <= 0) return;
+    const best = option.occupy ? bestExpansion : bestBridge;
+    if (best && best.score >= option.score) return;
+    if (option.occupy) bestExpansion = option;
+    else bestBridge = option;
   };
   for (const tile of locked) {
     const opened = tile.neighbors.filter((id) => !lockedIds.has(id));
@@ -160,7 +155,9 @@ export function chooseOpportunisticUnlock(
         if (
           !isEnemyTerritory(ctx, state, targetId) ||
           !isVisible(ctx.view, targetId) ||
-          attackersOf(ctx, targetId).some(ownedBy)
+          attackersOf(ctx, targetId).some(
+            (id) => ownedBy(id) && troopsIn(state, id) >= troops - cost,
+          )
         )
           continue;
         const others = unsafe.filter((id) => id !== targetId);
@@ -176,22 +173,28 @@ export function chooseOpportunisticUnlock(
           defenceDiceFor(game, targetId),
         );
         if (win < BRIDGE_MIN_WIN) continue;
+        const after = cloneState(state);
+        const steps: AttackStep[] = [];
+        const risks: StepRisk[] = [];
+        walkStack(
+          ctx,
+          after,
+          { startId: fromId, route: [tile.id, targetId], objectiveIndex: -1 },
+          steps,
+          risks,
+        );
+        if (steps.length < 2) continue;
         consider({
           fromId,
           tileId: tile.id,
-          steps: [
-            {
-              startId: tile.id,
-              endId: targetId,
-              objectiveIndex: -1,
-              minWinProb: Math.max(0.3, win - 0.3),
-            },
-          ],
+          steps: steps.slice(1),
           occupy: false,
-          score: win * bridgeValue(ctx, state, targetId) - cost,
+          score:
+            expectedScore(ctx, risks, evaluateBoard(ctx, after)) -
+            (baseScore ??= evaluateBoard(ctx, state)),
         });
       }
     }
   }
-  return best;
+  return bestBridge ?? bestExpansion;
 }

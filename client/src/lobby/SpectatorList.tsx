@@ -7,7 +7,7 @@ import type { GameState } from '../lib/types';
 interface Props {
   spectators: GameState['spectators'];
   isHost: boolean;
-  banId: (id: number) => void;
+  banId?: (id: number) => void;
 }
 
 function SpectatorList({ spectators, isHost, banId }: Props) {
@@ -42,7 +42,7 @@ function SpectatorList({ spectators, isHost, banId }: Props) {
                   <Button
                     size="sm"
                     variant="danger"
-                    onClick={() => banId(s.id)}
+                    onClick={() => banId?.(s.id)}
                   >
                     <WhiteIcon path="/icons/close.svg" size={12} alt="Ban" />
                   </Button>

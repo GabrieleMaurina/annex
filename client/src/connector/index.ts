@@ -234,6 +234,14 @@ export const connector = {
       .catch(() => {});
   },
 
+  watchGame(userId: string, cb: (gameName: string | null) => void): void {
+    httpGet<{ gameName: string | null }>(
+      '/games/watch?userId=' + encodeURIComponent(userId),
+    )
+      .then((res) => cb(res.gameName))
+      .catch(() => cb(null));
+  },
+
   listGameHistory(query: GamesQuery, cb: (page: GamesPage) => void): void {
     const params = new URLSearchParams();
     params.set('page', String(query.page));

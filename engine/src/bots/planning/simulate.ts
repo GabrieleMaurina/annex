@@ -147,6 +147,24 @@ export function walkStack(
       cur = next;
       continue;
     }
+    if (ctx.closedTileIds.has(next)) {
+      const entering = troopsIn(state, cur) - 1 - ctx.unlockCost;
+      if (entering < 1) break;
+      steps.push({
+        startId: cur,
+        endId: next,
+        objectiveIndex: stack.objectiveIndex,
+        minWinProb: 1,
+      });
+      state.troopsLost += ctx.unlockCost;
+      state.troops.set(cur, 1);
+      state.owners.set(next, ctx.botId);
+      state.troops.set(next, entering);
+      lastConquest = { fromId: cur, toId: next };
+      cur = next;
+      taken++;
+      continue;
+    }
     const attackers = troopsIn(state, cur) - 1;
     if (attackers < 1) break;
     const defenders = troopsIn(state, next);

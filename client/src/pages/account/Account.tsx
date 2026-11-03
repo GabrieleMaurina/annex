@@ -209,11 +209,7 @@ function AccountPage({ account, onCountryChange }: Props) {
               {picture ? 'Change picture' : 'Upload picture'}
             </Button>
             {(picture || dangerous) && (
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                onClick={removePicture}
-              >
+              <Button size="sm" variant="secondary" onClick={removePicture}>
                 Remove picture
               </Button>
             )}
@@ -244,7 +240,7 @@ function AccountPage({ account, onCountryChange }: Props) {
                 onChange={(e) => setNewPassword(e.target.value)}
               />
               <Button
-                variant="outline-secondary"
+                variant="secondary"
                 tabIndex={-1}
                 onClick={() => setReveal((v) => !v)}
               >

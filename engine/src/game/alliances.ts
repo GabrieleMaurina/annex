@@ -21,6 +21,7 @@ function isTeammate(game: Game, a: number, b: number): boolean {
 
 export function alliedIds(game: Game, playerId: number): Set<number> {
   const ids = new Set<number>();
+  if (!game.playerIds.includes(playerId)) return ids;
   for (const otherId of game.playerIds) {
     if (otherId === playerId) continue;
     if (

@@ -169,7 +169,7 @@ export function FilterDetails({
         {open && (
           <Button
             size="sm"
-            variant="outline-secondary"
+            variant="secondary"
             className="position-absolute top-50 end-0 translate-middle-y me-2"
             onClick={(e) => {
               e.preventDefault();

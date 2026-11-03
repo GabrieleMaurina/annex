@@ -255,7 +255,7 @@ function SettingsPanel({
     return (
       <Button
         size="sm"
-        variant="outline-secondary"
+        variant="secondary"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

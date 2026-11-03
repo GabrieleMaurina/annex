@@ -9,7 +9,10 @@ import { addHostCandidate, recomputeHost } from '../game/host';
 import { assignRandomColor } from '../game/mechanics';
 import { gameResultsStats, gameState, gameSummary } from '../game/state';
 import { clearTurnTimer } from '../game/turns';
-import { filterGameStateForViewer } from '../game/world/visibility';
+import {
+  filterGameStateForViewer,
+  visibleTerritoryIdsOrAll,
+} from '../game/world/visibility';
 import { canTakeSeat } from '../lifecycle/eligibility';
 import { openTeam } from '../lifecycle/teams';
 import { getGameMap } from '../maps/maps';
@@ -474,6 +477,8 @@ export function broadcastGameStateExcept(game: Game, excludePlayerId: number) {
 
 export function broadcastSelected(game: Game, territoryId: number) {
   for (const viewerId of [...game.playerIds, ...game.spectatorIds]) {
+    const visible = visibleTerritoryIdsOrAll(game, viewerId);
+    if (visible !== null && !visible.has(territoryId)) continue;
     callbacks.onSelected(viewerId, { territoryId }, game.name);
   }
 }

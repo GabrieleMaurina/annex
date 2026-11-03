@@ -38,6 +38,7 @@ function PlayerRoster(roster: RosterProps) {
   const {
     game,
     isTeamDeathmatch,
+    selfId,
     removeEmptySlot,
     addSlot,
     rowRefs,
@@ -62,7 +63,7 @@ function PlayerRoster(roster: RosterProps) {
           removeEmptySlot={removeEmptySlot}
         />
       )}
-      {!connector.isOffline() && (
+      {!connector.isOffline() && game.players.some((p) => p.id === selfId) && (
         <div className="d-flex justify-content-start mt-1">
           <Tip text="Everyone" placement="bottom">
             <Button

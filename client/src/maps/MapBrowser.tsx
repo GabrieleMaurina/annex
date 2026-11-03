@@ -405,7 +405,7 @@ function MapBrowser({
                     {showAuthor && (
                       <td>
                         <Button
-                          variant="outline-secondary"
+                          variant="secondary"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();

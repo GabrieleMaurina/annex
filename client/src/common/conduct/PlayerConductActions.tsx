@@ -93,6 +93,7 @@ function PlayerConductActions({
   return (
     <div className="d-flex flex-column gap-1">
       <ConductButtons
+        userId={userId}
         username={name}
         friendState={showFriend ? friendState : null}
         blocked={blocked}

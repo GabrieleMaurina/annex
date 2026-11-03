@@ -50,6 +50,8 @@ export interface MapTopology {
   horizonNeighbors: Map<number, number[]>;
   attackers: Map<number, number[]>;
   horizonAttackers: Map<number, number[]>;
+  routeNeighbors: Map<number, number[]>;
+  closedTileIds: Set<number>;
   seaLinks: Map<number, number[]>;
   continentTerritories: Map<number, number[]>;
   territoryContinent: Map<number, number>;

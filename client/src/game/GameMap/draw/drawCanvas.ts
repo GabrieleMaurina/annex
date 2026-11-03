@@ -227,6 +227,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     transform.offsetY,
     imgDims,
   );
+  const uiScale = zoom * borderScale((VERTEX_RADIUS * scaleX) / zoom);
 
   drawMapBorder(
     ctx,
@@ -235,7 +236,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     offsetY,
     imgW * scaleX,
     imgH * scaleY,
-    10 * zoom,
+    10 * uiScale,
   );
 
   const cracking = crackingTileIds();
@@ -245,8 +246,6 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     x: p.x * scaleX + offsetX,
     y: p.y * scaleY + offsetY,
   });
-
-  const stateBorderScale = borderScale((VERTEX_RADIUS * scaleX) / zoom);
 
   const territoryById = new Map(territories.map((t) => [t.id, t]));
   const pathPointById: Map<number, Point> = new Map(
@@ -332,7 +331,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       toScreen,
       imgW,
       imgH,
-      zoom,
+      uiScale,
       forcedWraps,
     );
   }
@@ -449,7 +448,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ? continentShapes(regions, territories)
     : null;
   const continentLineWidth = (width: number) =>
-    Math.max(width * zoom, regions ? (regions.borderWidth + 1) * scaleX : 0);
+    Math.max(width * uiScale, regions ? (regions.borderWidth + 1) * scaleX : 0);
   if (bonusesOpen) {
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
@@ -522,7 +521,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.fillStyle = HILL_FILL;
     ctx.fill();
     ctx.strokeStyle = HILL_STROKE;
-    ctx.lineWidth = 2 * zoom;
+    ctx.lineWidth = 2 * uiScale;
     ctx.lineJoin = 'round';
     ctx.stroke();
   }
@@ -550,7 +549,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           ctx,
           seaShape,
           seaStyle.stroke,
-          seaStyle.width * zoom * stateBorderScale,
+          seaStyle.width * uiScale,
           view,
         );
     } else {
@@ -559,7 +558,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ctx.fillStyle = SEA_COLOR;
       ctx.fill();
       ctx.strokeStyle = seaStyle.stroke;
-      ctx.lineWidth = seaStyle.width * zoom * stateBorderScale;
+      ctx.lineWidth = seaStyle.width * uiScale;
       ctx.stroke();
     }
 
@@ -570,7 +569,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ).filter((b) => b.ships > 0);
     const circleRadius = VERTEX_RADIUS * scaleX * 0.7;
     const triangleRadius = VERTEX_RADIUS * scaleX * 1.3;
-    const dist = hexRadius + triangleRadius + 4 * zoom;
+    const dist = hexRadius + triangleRadius + 4 * uiScale;
     ships.forEach((ship, i) => {
       const angle = (Math.PI * 2 * i) / ships.length - Math.PI / 2;
       const cx = p.x + dist * Math.cos(angle);
@@ -587,7 +586,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ctx.fillStyle = fillColor;
       ctx.fill();
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2 * zoom;
+      ctx.lineWidth = 2 * uiScale;
       ctx.stroke();
       ctx.restore();
 
@@ -661,14 +660,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           ctx,
           shape,
           fogStyle.stroke,
-          fogStyle.width * zoom * stateBorderScale,
+          fogStyle.width * uiScale,
           view,
         );
       } else if (fogStyle !== STATE_STYLE.normal) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
         ctx.strokeStyle = fogStyle.stroke;
-        ctx.lineWidth = fogStyle.width * zoom * stateBorderScale;
+        ctx.lineWidth = fogStyle.width * uiScale;
         ctx.stroke();
       }
     } else {
@@ -676,13 +675,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       owner = ownerOf(t.id);
       const fillColor = fillColorOf(t.id);
       if (shape && style !== STATE_STYLE.normal)
-        strokeRegion(
-          ctx,
-          shape,
-          style.stroke,
-          style.width * zoom * stateBorderScale,
-          view,
-        );
+        strokeRegion(ctx, shape, style.stroke, style.width * uiScale, view);
 
       if (owner && owner.entrenchedTurns > 0) {
         traceOctagon(
@@ -694,7 +687,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         ctx.fillStyle = ENTRENCHED_OCTAGON_FILL;
         ctx.fill();
         ctx.strokeStyle = ENTRENCHED_OCTAGON_STROKE;
-        ctx.lineWidth = 2 * zoom;
+        ctx.lineWidth = 2 * uiScale;
         ctx.stroke();
       }
 
@@ -728,7 +721,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           ctx.fillStyle = fillColor;
           ctx.fill();
           ctx.strokeStyle = markerStyle.stroke;
-          ctx.lineWidth = markerStyle.width * zoom * stateBorderScale;
+          ctx.lineWidth = markerStyle.width * uiScale;
           ctx.stroke();
         }
 
@@ -750,8 +743,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, (VERTEX_RADIUS + 3) * scaleX, 0, Math.PI * 2);
         ctx.strokeStyle = '#22d3ee';
-        ctx.lineWidth = 2 * zoom;
-        ctx.setLineDash([4 * zoom, 3 * zoom]);
+        ctx.lineWidth = 2 * uiScale;
+        ctx.setLineDash([4 * uiScale, 3 * uiScale]);
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -803,33 +796,33 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * scaleX, 0, Math.PI * 2);
         }
         ctx.strokeStyle = '#e3a33b';
-        ctx.lineWidth = 3 * zoom;
+        ctx.lineWidth = 3 * uiScale;
         ctx.stroke();
       }
 
       if (territoryCard.symbol && territoryCard.territoryId !== null) {
         const img = cardImagesRef.current[territoryCard.symbol];
         if (img.complete && img.naturalWidth > 0) {
-          const iconSize = 16 * zoom;
-          const textHeight = 11 * zoom;
-          const badgePad = 4 * zoom;
-          const badgeGap = 1 * zoom;
+          const iconSize = 16 * uiScale;
+          const textHeight = 11 * uiScale;
+          const badgePad = 4 * uiScale;
+          const badgeGap = 1 * uiScale;
           const badgeW = iconSize + badgePad * 2;
           const badgeH = iconSize + badgeGap + textHeight + badgePad * 2;
-          const dist = (VERTEX_RADIUS + 6) * scaleX + badgeH / 2 + 4;
+          const dist = (VERTEX_RADIUS + 6) * scaleX + badgeH / 2 + 4 * uiScale;
           const cx = p.x + dist * Math.SQRT1_2;
           const cy = p.y - dist * Math.SQRT1_2;
 
           ctx.fillStyle = '#ffffff';
           ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1 * zoom;
+          ctx.lineWidth = 1 * uiScale;
           ctx.beginPath();
           ctx.roundRect(
             cx - badgeW / 2,
             cy - badgeH / 2,
             badgeW,
             badgeH,
-            4 * zoom,
+            4 * uiScale,
           );
           ctx.fill();
           ctx.stroke();
@@ -853,9 +846,9 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
 
           if (cardOwned) {
             const pillText = '+2';
-            ctx.font = `bold ${10 * zoom}px ${CANVAS_FONT_FAMILY}`;
-            const pillWidth = ctx.measureText(pillText).width + 6 * zoom;
-            const pillHeight = 12 * zoom;
+            ctx.font = `bold ${10 * uiScale}px ${CANVAS_FONT_FAMILY}`;
+            const pillWidth = ctx.measureText(pillText).width + 6 * uiScale;
+            const pillHeight = 12 * uiScale;
             const pillX = cx + badgeW / 2;
             const pillY = cy - badgeH / 2;
             ctx.fillStyle = '#2ecc71';
@@ -869,7 +862,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
             );
             ctx.fill();
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(pillText, pillX, pillY + 3.5 * zoom);
+            ctx.fillText(pillText, pillX, pillY + 3.5 * uiScale);
           }
         }
       }
@@ -877,25 +870,25 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
 
     if (bonusesOpen) {
       const idText = `#${t.id + 1}`;
-      ctx.font = `bold ${11 * zoom}px ${CANVAS_FONT_FAMILY}`;
-      const padX = 4 * zoom;
+      ctx.font = `bold ${11 * uiScale}px ${CANVAS_FONT_FAMILY}`;
+      const padX = 4 * uiScale;
       const boxW = ctx.measureText(idText).width + padX * 2;
-      const boxH = 15 * zoom;
+      const boxH = 15 * uiScale;
       const boxX = p.x - boxW / 2;
-      const boxY = p.y + VERTEX_RADIUS * scaleX + 4 * zoom;
+      const boxY = p.y + VERTEX_RADIUS * scaleX + 4 * uiScale;
 
       ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1 * zoom;
+      ctx.lineWidth = 1 * uiScale;
       ctx.beginPath();
-      ctx.roundRect(boxX, boxY, boxW, boxH, 4 * zoom);
+      ctx.roundRect(boxX, boxY, boxW, boxH, 4 * uiScale);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(idText, p.x, boxY + boxH / 2 + 1 * zoom);
+      ctx.fillText(idText, p.x, boxY + boxH / 2 + 1 * uiScale);
     }
   }
 
@@ -939,16 +932,16 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       const text = `${label}:+${bonuses[continentGroupId] ?? 0}`;
       const owned = group.filter((t) => ownedTerritoryIds.has(t.id)).length;
       const statsText = `${owned}/${group.length} (${Math.round((owned / group.length) * 100)}%)`;
-      const mainFont = `bold ${34 * zoom}px ${CANVAS_FONT_FAMILY}`;
-      const statsFont = `bold ${13 * zoom}px ${CANVAS_FONT_FAMILY}`;
+      const mainFont = `bold ${34 * uiScale}px ${CANVAS_FONT_FAMILY}`;
+      const statsFont = `bold ${13 * uiScale}px ${CANVAS_FONT_FAMILY}`;
 
       ctx.font = mainFont;
       const mainWidth = ctx.measureText(text).width;
       ctx.font = statsFont;
       const statsWidth = ctx.measureText(statsText).width;
-      const paddingX = 10 * zoom;
-      const mainH = 42 * zoom;
-      const statsH = showStats ? 16 * zoom : 0;
+      const paddingX = 10 * uiScale;
+      const mainH = 42 * uiScale;
+      const statsH = showStats ? 16 * uiScale : 0;
       const boxW =
         (showStats ? Math.max(mainWidth, statsWidth) : mainWidth) +
         paddingX * 2;
@@ -958,9 +951,9 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
 
       ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5 * zoom;
+      ctx.lineWidth = 1.5 * uiScale;
       ctx.beginPath();
-      ctx.roundRect(boxX, boxY, boxW, boxH, 10 * zoom);
+      ctx.roundRect(boxX, boxY, boxW, boxH, 10 * uiScale);
       ctx.fill();
       ctx.stroke();
 
@@ -968,10 +961,10 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = mainFont;
-      ctx.fillText(text, cx, boxY + mainH / 2 + 1 * zoom);
+      ctx.fillText(text, cx, boxY + mainH / 2 + 1 * uiScale);
       if (showStats) {
         ctx.font = statsFont;
-        ctx.fillText(statsText, cx, boxY + mainH + statsH / 2 - 4 * zoom);
+        ctx.fillText(statsText, cx, boxY + mainH + statsH / 2 - 4 * uiScale);
       }
     }
   }

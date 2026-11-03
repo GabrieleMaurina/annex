@@ -31,6 +31,7 @@ export function useCardsAndDeploy({
   botSpeed,
   cardsOpen,
   setOpenPanel,
+  autoOpenCardsPanel,
   setToasts,
   setGame,
 }: {
@@ -48,6 +49,7 @@ export function useCardsAndDeploy({
   setOpenPanel: (
     panel: 'cards' | 'bonuses' | 'logs' | 'settings' | null,
   ) => void;
+  autoOpenCardsPanel: () => void;
   setToasts: Dispatch<SetStateAction<GameToast[]>>;
   setGame: (game: GameState) => void;
 }) {
@@ -75,8 +77,8 @@ export function useCardsAndDeploy({
     turnPhase === 'deploy' && isMyTurn && !paused && mustPlaySet;
 
   useLayoutEffect(() => {
-    if (autoOpenCards) setOpenPanel('cards');
-  }, [autoOpenCards, setOpenPanel]);
+    if (autoOpenCards) autoOpenCardsPanel();
+  }, [autoOpenCards, autoOpenCardsPanel]);
 
   const cardByTerritoryId =
     gameEnded && !cardsOpen

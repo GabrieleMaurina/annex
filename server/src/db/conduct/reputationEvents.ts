@@ -11,6 +11,7 @@ export const REPUTATION_REASONS = [
   'surrender',
   'map',
   'report',
+  'report spam',
 ] as const;
 
 export type ReputationReason = (typeof REPUTATION_REASONS)[number];

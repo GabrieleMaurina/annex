@@ -234,6 +234,14 @@ export const connector = {
       .catch(() => {});
   },
 
+  isPlayerOnline(userId: string, cb: (online: boolean) => void): void {
+    httpGet<{ online: boolean }>(
+      '/presence?userId=' + encodeURIComponent(userId),
+    )
+      .then((res) => cb(res.online))
+      .catch(() => cb(false));
+  },
+
   watchGame(userId: string, cb: (gameName: string | null) => void): void {
     httpGet<{ gameName: string | null }>(
       '/games/watch?userId=' + encodeURIComponent(userId),

@@ -82,6 +82,17 @@ playersRouter.get('/players', (req, res) => {
     .catch(() => res.json({ players: [], total: 0, page, pageSize }));
 });
 
+playersRouter.get('/presence', (req, res) => {
+  const userId = req.query.userId;
+  if (typeof userId !== 'string') {
+    res.json({ online: false });
+    return;
+  }
+  isBlockPeer(req.headers.cookie, userId)
+    .then((blocked) => res.json({ online: !blocked && isOnline(userId) }))
+    .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
+});
+
 playersRouter.get('/players/:username/history', (req, res) => {
   getPlayerHistory(req.params.username)
     .then((history) => res.json(history))

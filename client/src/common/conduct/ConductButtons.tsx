@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { connector } from '../../connector';
@@ -32,6 +32,22 @@ function ConductButtons({
   const navigate = useNavigate();
   const showFriend = friendState !== null;
   const [watching, setWatching] = useState(false);
+  const [presence, setPresence] = useState<{
+    userId: string;
+    online: boolean;
+  } | null>(null);
+  const online = presence?.userId === userId && presence.online;
+
+  useEffect(() => {
+    if (userId === null || blocked) return;
+    let stale = false;
+    connector.isPlayerOnline(userId, (value) => {
+      if (!stale) setPresence({ userId, online: value });
+    });
+    return () => {
+      stale = true;
+    };
+  }, [userId, blocked]);
 
   function watch(id: string) {
     setWatching(true);
@@ -109,7 +125,7 @@ function ConductButtons({
           Send message
         </Button>
       )}
-      {userId !== null && !blocked && (
+      {userId !== null && !blocked && online && (
         <Button
           size="sm"
           variant="info"

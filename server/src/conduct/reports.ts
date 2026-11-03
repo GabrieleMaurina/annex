@@ -43,8 +43,11 @@ const EVIDENCE_TOLERANCE = 1e-9;
 const FULL_WEIGHT_ACCOUNT_DAYS = 30;
 const FULL_WEIGHT_GAMES = 20;
 const FULL_WEIGHT_DAILY_REPORTS = 2;
+const ZERO_WEIGHT_DAILY_REPORTS = 6;
 const FULL_WEIGHT_MONTHLY_REPORTS = 30;
+const ZERO_WEIGHT_MONTHLY_REPORTS = 60;
 const PROFILE_REPORT_FACTOR = 0.5;
+const SPAM_PENALTY = 1;
 
 interface WeightedReport {
   id: string;
@@ -96,6 +99,10 @@ export function reconcileReportableGames(existing: Set<string>): void {
 
 const enqueueEvaluation = createKeyedQueue();
 
+function volumeFactor(reports: number, full: number, zero: number): number {
+  return Math.min(1, Math.max(0, (zero - reports) / (zero - full)));
+}
+
 function reporterFactor(reporterId: string, now: number): Promise<number> {
   return Promise.all([
     findUserById(reporterId),
@@ -113,7 +120,11 @@ function reporterFactor(reporterId: string, now: number): Promise<number> {
       ageDays / FULL_WEIGHT_ACCOUNT_DAYS,
       games / FULL_WEIGHT_GAMES,
     );
-    const monthFactor = Math.min(1, FULL_WEIGHT_MONTHLY_REPORTS / monthReports);
+    const monthFactor = volumeFactor(
+      monthReports,
+      FULL_WEIGHT_MONTHLY_REPORTS,
+      ZERO_WEIGHT_MONTHLY_REPORTS,
+    );
     return newAccountFactor * monthFactor;
   });
 }
@@ -136,7 +147,11 @@ function weighReport(
       reporterId: report.reporterId,
       weight:
         reporterWeight *
-        Math.min(1, FULL_WEIGHT_DAILY_REPORTS / dayReports) *
+        volumeFactor(
+          dayReports,
+          FULL_WEIGHT_DAILY_REPORTS,
+          ZERO_WEIGHT_DAILY_REPORTS,
+        ) *
         sourceFactor(report.source, reason),
     }),
   );
@@ -279,9 +294,37 @@ function storeReport(
     .then((already) => (already ? false : insertPlayerReport(report)))
     .then((stored) => {
       if (!stored) return failure('already reported');
-      scheduleEvaluation(targetId, reason, pictureId);
-      return { ok: true };
+      return penaliseSpam(reporterId, gameId).then(() => {
+        scheduleEvaluation(targetId, reason, pictureId);
+        return { ok: true };
+      });
     });
+}
+
+function penaliseSpam(
+  reporterId: string,
+  gameId: string | null,
+): Promise<void> {
+  const now = Date.now();
+  const dayEnd = Math.floor(now / DAY_MS) * DAY_MS + DAY_MS;
+  return Promise.all([
+    countReportsBy(reporterId, dayEnd - DAY_MS, dayEnd),
+    countReportsBy(reporterId, now - EVIDENCE_DAYS * DAY_MS, dayEnd),
+  ])
+    .then(([dayReports, monthReports]) => {
+      if (
+        dayReports < ZERO_WEIGHT_DAILY_REPORTS &&
+        monthReports < ZERO_WEIGHT_MONTHLY_REPORTS
+      )
+        return;
+      return addReputation(reporterId, -SPAM_PENALTY, {
+        reason: 'report spam',
+        gameId,
+      }).then(() => undefined);
+    })
+    .catch((error) =>
+      console.error('failed to apply report spam penalty', error),
+    );
 }
 
 function isReason(

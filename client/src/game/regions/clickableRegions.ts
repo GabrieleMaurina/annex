@@ -18,6 +18,9 @@ export interface ClickableRegions {
 const BORDER_REACH = 8;
 const PAIR_STRIDE = 1 << 15;
 const VERTEX_DIAMETERS_PER_LONGEST_SIDE = 50;
+const CHAMFER_STEP = 3;
+const CHAMFER_DIAGONAL = 4;
+const UNREACHED = 1 << 29;
 
 function forEachNeighbor(
   p: number,
@@ -86,19 +89,52 @@ function splitWalls(
     }
     frontier = next;
   }
-  const widths: number[] = [];
+  const distance = borderDistance(border, width, size);
+  const widthCounts = new Map<number, number>();
   for (let p = 0; p < size; p++) {
     if (depth[p] <= 0 || splitLabels[p] < 0) continue;
     forEachNeighbor(p, width, size, (q) => {
-      if (splitLabels[q] >= 0 && splitLabels[q] !== splitLabels[p])
-        widths.push(depth[p] + depth[q]);
+      if (splitLabels[q] < 0 || splitLabels[q] === splitLabels[p]) return;
+      const w = Math.round((distance[p] + distance[q]) / CHAMFER_STEP);
+      widthCounts.set(w, (widthCounts.get(w) ?? 0) + 1);
     });
   }
-  widths.sort((a, b) => a - b);
-  const borderWidth = widths[widths.length >> 1] ?? 0;
-  const reach = Math.ceil(borderWidth / 2) + 1;
-  for (let p = 0; p < size; p++) if (depth[p] > reach) splitLabels[p] = -1;
+  let borderWidth = 0;
+  for (const [w, count] of widthCounts)
+    if (count > (widthCounts.get(borderWidth) ?? 0)) borderWidth = w;
+  const reach = (Math.ceil(borderWidth / 2) + 1) * CHAMFER_STEP;
+  for (let p = 0; p < size; p++) if (distance[p] > reach) splitLabels[p] = -1;
   return { splitLabels, borderWidth };
+}
+
+function borderDistance(
+  border: (p: number) => boolean,
+  width: number,
+  size: number,
+): Int32Array {
+  const distance = new Int32Array(size);
+  for (let p = 0; p < size; p++) if (border(p)) distance[p] = UNREACHED;
+  const relax = (p: number, dx: number, dy: number, step: number) => {
+    const x = (p % width) + dx;
+    const q = p + dy * width + dx;
+    if (x < 0 || x >= width || q < 0 || q >= size) return;
+    distance[p] = Math.min(distance[p], distance[q] + step);
+  };
+  for (let p = 0; p < size; p++) {
+    if (distance[p] === 0) continue;
+    relax(p, -1, 0, CHAMFER_STEP);
+    relax(p, 0, -1, CHAMFER_STEP);
+    relax(p, -1, -1, CHAMFER_DIAGONAL);
+    relax(p, 1, -1, CHAMFER_DIAGONAL);
+  }
+  for (let p = size - 1; p >= 0; p--) {
+    if (distance[p] === 0) continue;
+    relax(p, 1, 0, CHAMFER_STEP);
+    relax(p, 0, 1, CHAMFER_STEP);
+    relax(p, 1, 1, CHAMFER_DIAGONAL);
+    relax(p, -1, 1, CHAMFER_DIAGONAL);
+  }
+  return distance;
 }
 
 function fillEnclosedGaps(labels: Int16Array, width: number) {

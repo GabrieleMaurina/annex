@@ -26,6 +26,29 @@ import type { Tutorial } from '../tutorials/tutorials';
 import { Gate } from '../ui/containers/PageGate';
 import EndPage from './EndPage';
 
+interface PlayerStatus {
+  state: GameState['state'];
+  eliminated: Set<number>;
+  surrendered: Set<number>;
+  connected: Set<number>;
+}
+
+function playerStatus(state: GameState): PlayerStatus {
+  function idsWhere(test: (p: GameState['players'][number]) => boolean) {
+    return new Set(state.players.filter(test).map((p) => p.id));
+  }
+  return {
+    state: state.state,
+    eliminated: idsWhere((p) => p.eliminated),
+    surrendered: idsWhere((p) => p.surrendered),
+    connected: idsWhere((p) => p.connected),
+  };
+}
+
+function hasNewId(ids: Set<number>, previous: Set<number>): boolean {
+  return [...ids].some((id) => !previous.has(id));
+}
+
 interface Props {
   selfId: number | null;
   joinError: string;
@@ -70,24 +93,29 @@ function Game({
   const receivedFirstStateRef = useRef(false);
   const prevStateRef = useRef<GameState['state'] | null>(null);
   const prevTurnPhaseRef = useRef<GameState['turnPhase'] | null>(null);
-  const eliminatedIdsRef = useRef<Set<number> | null>(null);
+  const playerStatusRef = useRef<PlayerStatus | null>(null);
   const logs = useGameLogs(game);
 
-  const playEliminationSound = useCallback((state: GameState) => {
-    if (eliminatedIdsRef.current) {
-      const newlyEliminated = state.players.some(
-        (p) => p.eliminated && !eliminatedIdsRef.current!.has(p.id),
-      );
-      if (newlyEliminated && state.state !== 'ended') playSound('bell');
+  const playPlayerStatusSounds = useCallback((state: GameState) => {
+    const status = playerStatus(state);
+    const previous = playerStatusRef.current;
+    if (previous && state.state !== 'ended') {
+      if (hasNewId(status.eliminated, previous.eliminated)) playSound('bell');
+      if (hasNewId(status.surrendered, previous.surrendered))
+        playSound('surrender');
+      if (state.state === 'playing' && previous.state === 'playing') {
+        if (hasNewId(status.connected, previous.connected))
+          playSound('connect');
+        if (hasNewId(previous.connected, status.connected))
+          playSound('disconnect');
+      }
     }
-    eliminatedIdsRef.current = new Set(
-      state.players.filter((p) => p.eliminated).map((p) => p.id),
-    );
+    playerStatusRef.current = status;
   }, []);
 
   const applyGameState = useCallback(
     (state: GameState) => {
-      playEliminationSound(state);
+      playPlayerStatusSounds(state);
       setMusicMapType(
         state.state === 'playing' ? (state.mapGeneration?.type ?? null) : null,
       );
@@ -118,11 +146,14 @@ function Game({
       if (state.state === 'playing') prevTurnPhaseRef.current = state.turnPhase;
       setGame(state);
     },
-    [playEliminationSound],
+    [playPlayerStatusSounds],
   );
 
   function updateGameFromAction(state: GameState) {
-    playEliminationSound(state);
+    playPlayerStatusSounds(state);
+    if (prevStateRef.current === 'playing' && state.state === 'ended')
+      playSound('end');
+    prevStateRef.current = state.state;
     if (
       game?.state === 'playing' &&
       state.state === 'playing' &&

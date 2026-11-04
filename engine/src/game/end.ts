@@ -8,6 +8,7 @@ import {
   drawCandidateIds,
   isLobbyBot,
   stalemateReason,
+  trackCapitalOwners,
 } from './draw';
 import { ownsAnyTerritory, supremacyTerritoriesToWin } from './mechanics';
 import { missionAccomplished } from './progression/missions';
@@ -180,8 +181,13 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
   else if (drawAgreed(game)) finishDraw(game, 'agreed', turnAlreadyEnded);
 }
 
-export function checkStalemate(game: Game): boolean {
-  const reason = stalemateReason(game);
+export function checkStalemate(
+  game: Game,
+  endedRoundNumber: number,
+  nextTurnPlayerIndex: number,
+): boolean {
+  trackCapitalOwners(game, endedRoundNumber, game.turnPlayerIndex);
+  const reason = stalemateReason(game, nextTurnPlayerIndex);
   if (reason === null) return false;
   if (game.earlyWin) finishGame(game, game.winnerIds, true);
   else finishDraw(game, reason, true);

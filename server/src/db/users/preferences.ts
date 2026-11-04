@@ -7,6 +7,7 @@ import {
   MAX_STALEMATE_ROUNDS,
   MAX_STARTING_CAPITALS,
   MIN_ACCOUNT_AGE_VALUES,
+  MIN_CAPITAL_STANDOFF,
   MIN_GAMES_VALUES,
   MIN_RANK_VALUES,
   MIN_REPUTATION_VALUES,
@@ -76,6 +77,7 @@ export interface GameSettings {
   attackIncrement: number;
   maxRounds: number;
   maxDuration: number;
+  capitalStandoff: number;
   drawOfferRound: number;
   disconnectBotDifficulty: string;
   disconnectBotPersonality: string;
@@ -116,12 +118,12 @@ export const GENERATION_TYPES = ['terrain', 'dungeon', 'temple', 'tile'];
 export const TILE_SHAPES: string[] = TILE_SHAPE_VALUES;
 export const MAP_ASPECTS: string[] = MAP_ASPECT_VALUES;
 
-function stalemateRounds(defaultValue: number): number[] {
+function stalemateRounds(defaultValue: number, min: number): number[] {
   return [
     defaultValue,
     ...Array.from(
-      { length: MAX_STALEMATE_ROUNDS - MIN_STALEMATE_ROUNDS + 1 },
-      (_, i) => MIN_STALEMATE_ROUNDS + i,
+      { length: MAX_STALEMATE_ROUNDS - min + 1 },
+      (_, i) => min + i,
     ).filter((value) => value !== defaultValue),
   ];
 }
@@ -204,9 +206,10 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   anonymous: ['off', 'on'],
   turnDuration: [120, 30, 60, 90, 150, 180, 300],
   attackIncrement: Array.from({ length: 16 }, (_, i) => i),
-  maxRounds: stalemateRounds(1000),
+  maxRounds: stalemateRounds(1000, MIN_STALEMATE_ROUNDS),
   maxDuration: [180, ...MAX_DURATION_VALUES.filter((value) => value !== 180)],
-  drawOfferRound: stalemateRounds(500),
+  capitalStandoff: stalemateRounds(50, MIN_CAPITAL_STANDOFF),
+  drawOfferRound: stalemateRounds(500, MIN_STALEMATE_ROUNDS),
   disconnectBotDifficulty: ['idle', 'easy', 'medium', 'hard', 'random'],
   disconnectBotPersonality: [
     'balanced',
@@ -216,6 +219,9 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'vengeful',
     'defensive',
     'erratic',
+    'police',
+    'hoarder',
+    'opportunist',
     'random',
   ],
   minRank: MIN_RANK_VALUES,
@@ -310,6 +316,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   attackIncrement: 0,
   maxRounds: 1000,
   maxDuration: 180,
+  capitalStandoff: 50,
   drawOfferRound: 500,
   disconnectBotDifficulty: 'random',
   disconnectBotPersonality: 'random',

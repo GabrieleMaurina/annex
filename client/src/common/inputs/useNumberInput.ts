@@ -1,8 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react';
 import { playSound } from '../../lib/sounds';
 
-const PIXELS_PER_STEP = 8;
-const DRAG_THRESHOLD = 4;
+export const PIXELS_PER_STEP = 8;
+export const DRAG_THRESHOLD = 4;
 
 export function modifierStep(e: {
   ctrlKey: boolean;

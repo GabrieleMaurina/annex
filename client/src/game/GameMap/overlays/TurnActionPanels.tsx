@@ -264,6 +264,7 @@ export default function TurnActionPanels({
               }
               color={playerColor(currentTurnPlayer.color)}
               paused={paused}
+              heartbeat={isMyTurn && !currentTurnPlayer.surrendered}
             />
           )}
           <TurnPanel

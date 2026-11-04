@@ -9,6 +9,7 @@ import {
   MAX_STALEMATE_ROUNDS,
   MAX_STARTING_CAPITALS,
   MIN_ACCOUNT_AGE_VALUES,
+  MIN_CAPITAL_STANDOFF,
   MIN_GAMES_VALUES,
   MIN_HILLS,
   MIN_REPUTATION_VALUES,
@@ -36,6 +37,7 @@ import {
   BLITZ_HELP,
   BOUNTIES_HELP,
   CAPITAL_REFUND_HELP,
+  CAPITAL_STANDOFF_HELP,
   CARDS_HELP,
   CONTINENTS_HELP,
   DEFENCE_DICE_HELP,
@@ -124,6 +126,7 @@ export const DEFAULT_GAME_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   roundTroops: 'off',
   maxRounds: 1000,
   maxDuration: 180,
+  capitalStandoff: 50,
   drawOfferRound: 500,
   visibility: 'public',
 };
@@ -217,6 +220,10 @@ const STARTING_CAPITALS = Array.from(
 );
 const STALEMATE_ROUNDS = {
   min: MIN_STALEMATE_ROUNDS,
+  max: MAX_STALEMATE_ROUNDS,
+};
+const CAPITAL_STANDOFF_ROUNDS = {
+  min: MIN_CAPITAL_STANDOFF,
   max: MAX_STALEMATE_ROUNDS,
 };
 const TROOPS_PER_TERRITORY_FRACTIONS = [5, 4, 3, 2].map((d) => ({
@@ -492,6 +499,15 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     help: MAX_DURATION_HELP,
   },
   {
+    key: 'capitalStandoff',
+    label: 'Capital Standoff',
+    section: 'Stalemate Prevention',
+    range: CAPITAL_STANDOFF_ROUNDS,
+    modes: ['capitals'],
+    options: [],
+    help: CAPITAL_STANDOFF_HELP,
+  },
+  {
     key: 'drawOfferRound',
     label: 'Draw Offer Round',
     section: 'Stalemate Prevention',
@@ -573,6 +589,7 @@ const KEEP_CURRENT_KEYS = [
   'disconnectBotDifficulty',
   'maxRounds',
   'maxDuration',
+  'capitalStandoff',
   'drawOfferRound',
   'turnDuration',
   'attackIncrement',

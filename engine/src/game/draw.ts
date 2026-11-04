@@ -50,8 +50,53 @@ function playedMs(game: Game): number {
   return now - (game.startedAt ?? now) - game.pausedMs - pausedNow;
 }
 
-export function stalemateReason(game: Game): DrawReason | null {
+function capitalOwnersKey(game: Game): string {
+  return [...game.capitalTerritoryIds]
+    .sort((a, b) => a - b)
+    .map((id) => `${id}:${game.territoryOwners.get(id) ?? ''}`)
+    .join(',');
+}
+
+export function trackCapitalOwners(
+  game: Game,
+  roundNumber: number,
+  turnPlayerIndex: number,
+): void {
+  if (game.gameMode !== 'capitals') return;
+  const key = capitalOwnersKey(game);
+  if (key === game.capitalOwnersKey) return;
+  game.capitalOwnersKey = key;
+  game.capitalStandoffStart = { roundNumber, turnPlayerIndex };
+}
+
+function capitalStandoffTurnsLeft(
+  game: Game,
+  turnPlayerIndex: number,
+): number | null {
+  const start = game.capitalStandoffStart;
+  if (start === null) return null;
+  const seats = game.playerIds.length;
+  const endTurn =
+    (start.roundNumber + game.capitalStandoff) * seats + start.turnPlayerIndex;
+  return endTurn - (game.roundNumber * seats + turnPlayerIndex);
+}
+
+export function capitalStandoffRoundsLeft(game: Game): number | null {
+  if (game.state !== 'playing') return null;
+  const turnsLeft = capitalStandoffTurnsLeft(game, game.turnPlayerIndex);
+  return turnsLeft === null
+    ? null
+    : Math.ceil(turnsLeft / game.playerIds.length);
+}
+
+export function stalemateReason(
+  game: Game,
+  nextTurnPlayerIndex: number,
+): DrawReason | null {
   if (game.roundNumber >= game.maxRounds) return 'max rounds';
   if (playedMs(game) >= game.maxDuration * 60_000) return 'max duration';
+  const standoffTurnsLeft = capitalStandoffTurnsLeft(game, nextTurnPlayerIndex);
+  if (standoffTurnsLeft !== null && standoffTurnsLeft <= 0)
+    return 'capital standoff';
   return null;
 }

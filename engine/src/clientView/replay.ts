@@ -114,6 +114,7 @@ function viewPlayerState(game: Game, s: ReplayPlayerState): ReplayPlayerState {
     playerId: aliasOf(game, s.playerId),
     eliminated: s.eliminated,
     surrendered: s.surrendered,
+    connected: s.connected,
     killedPlayerIds: aliasesOf(game, s.killedPlayerIds),
     points: s.points,
     nukes: s.nukes,

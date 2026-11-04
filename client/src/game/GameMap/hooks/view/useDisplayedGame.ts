@@ -98,6 +98,7 @@ export function useDisplayedGame({
             ? {
                 eliminated: state.eliminated,
                 surrendered: state.surrendered,
+                connected: state.connected ?? p.connected,
                 playersKilled: state.killedPlayerIds,
                 points: state.points ?? 0,
               }

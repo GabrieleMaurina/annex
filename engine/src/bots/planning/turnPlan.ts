@@ -1,4 +1,5 @@
 import { Game } from '../../types';
+import { BotStyle } from '../types';
 
 export type ObjectiveKind =
   | 'complete'
@@ -17,7 +18,8 @@ export type ObjectiveKind =
   | 'capture'
   | 'expand'
   | 'deny'
-  | 'sortie';
+  | 'sortie'
+  | 'snipe';
 
 export interface Objective {
   kind: ObjectiveKind;
@@ -64,6 +66,7 @@ export interface TurnPlan {
   cardSetPlayed: boolean;
   cardsHeld?: boolean;
   stackFocus?: number;
+  style?: BotStyle;
   deployments: Deployment[];
   attackSteps: AttackStep[];
   fortify: FortifyMove | null;

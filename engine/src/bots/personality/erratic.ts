@@ -1,17 +1,25 @@
-import { Weights } from '../types';
+import { BotStyle, Weights } from '../types';
 import { balancedWeights } from './balanced';
 import { breakerWeights } from './breaker';
 import { killerWeights } from './killer';
+import { hoarderWeights } from './specialists/hoarder';
+import { opportunistWeights } from './specialists/opportunist';
+import { policeWeights } from './specialists/police';
 import { takerWeights } from './taker';
 import { vengefulWeights } from './vengeful';
 
-const ARCHETYPES: Weights[] = [
-  takerWeights,
-  breakerWeights,
-  killerWeights,
-  vengefulWeights,
-  balancedWeights,
-];
+function archetypes(): BotStyle[] {
+  return [
+    { personality: 'erratic', weights: takerWeights },
+    { personality: 'erratic', weights: breakerWeights },
+    { personality: 'erratic', weights: killerWeights },
+    { personality: 'erratic', weights: vengefulWeights },
+    { personality: 'erratic', weights: balancedWeights },
+    { personality: 'police', weights: policeWeights },
+    { personality: 'hoarder', weights: hoarderWeights },
+    { personality: 'opportunist', weights: opportunistWeights },
+  ];
+}
 
 function randomWeights(): Weights {
   return {
@@ -32,7 +40,9 @@ function randomWeights(): Weights {
   };
 }
 
-export function erraticWeights(): Weights {
-  if (Math.random() < 0.5) return randomWeights();
-  return ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
+export function erraticStyle(): BotStyle {
+  if (Math.random() < 0.5)
+    return { personality: 'erratic', weights: randomWeights() };
+  const styles = archetypes();
+  return styles[Math.floor(Math.random() * styles.length)];
 }

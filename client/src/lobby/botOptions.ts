@@ -24,6 +24,9 @@ export const BOT_PERSONALITY_LABELS: Record<BotPersonality | 'random', string> =
     vengeful: 'Vengeful',
     defensive: 'Defensive',
     erratic: 'Erratic',
+    police: 'Police',
+    hoarder: 'Hoarder',
+    opportunist: 'Opportunist',
     random: 'Random',
   };
 export const BOT_PERSONALITIES: (BotPersonality | 'random')[] = [
@@ -34,5 +37,8 @@ export const BOT_PERSONALITIES: (BotPersonality | 'random')[] = [
   'vengeful',
   'defensive',
   'erratic',
+  'police',
+  'hoarder',
+  'opportunist',
   'random',
 ];

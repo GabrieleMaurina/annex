@@ -151,6 +151,7 @@ export const MIN_STARTING_CAPITALS = 1;
 export const MAX_STARTING_CAPITALS = 10;
 export const MIN_STALEMATE_ROUNDS = 20;
 export const MAX_STALEMATE_ROUNDS = 5000;
+export const MIN_CAPITAL_STANDOFF = 5;
 export const MAX_DURATION_VALUES = [
   30, 60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 540, 600,
 ];
@@ -330,6 +331,16 @@ export function updateSettings(
     if (!(CAPITAL_REFUND_VALUES as unknown[]).includes(settings.capitalRefund))
       return { ok: false, error: 'invalid capital refund' };
     game.capitalRefund = settings.capitalRefund as CapitalRefund;
+  }
+
+  if (settings.capitalStandoff !== undefined) {
+    if (
+      !isInteger(settings.capitalStandoff) ||
+      settings.capitalStandoff < MIN_CAPITAL_STANDOFF ||
+      settings.capitalStandoff > MAX_STALEMATE_ROUNDS
+    )
+      return { ok: false, error: 'invalid capital standoff' };
+    game.capitalStandoff = settings.capitalStandoff;
   }
 
   if (settings.cards !== undefined) {

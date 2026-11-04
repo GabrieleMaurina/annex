@@ -23,7 +23,7 @@ import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import Flag from '../badges/Flag';
 import RankIcon from '../badges/RankIcon';
 import { useWhiteIcon } from '../icon';
-import ShortcutsPanel from './shortcuts/ShortcutsPanel';
+import { setShortcutsOpen } from './shortcuts/shortcutsOpen';
 
 const LINKS: { label: string; path: string }[] = [
   { label: 'Home', path: '/' },
@@ -47,8 +47,6 @@ interface Props {
 function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
   const [open, setOpen] = useState(false);
   useToggleSound(open);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  useToggleSound(shortcutsOpen);
   const panelRef = useRef<HTMLDivElement>(null);
   const whiteMenuIcon = useWhiteIcon('/icons/menu.svg');
   const { pathname } = useLocation();
@@ -212,9 +210,6 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
               </Button>
             ))}
         </div>
-      )}
-      {shortcutsOpen && (
-        <ShortcutsPanel onClose={() => setShortcutsOpen(false)} />
       )}
     </div>
   );

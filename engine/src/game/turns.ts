@@ -860,7 +860,7 @@ export function advanceToNextPlayer(game: Game) {
   awardTurnPoints(game, game.playerIds[nextIndex]);
   checkGameEnd(game, true);
   if (game.state === 'ended') return;
-  if (checkStalemate(game)) return;
+  if (checkStalemate(game, previousRoundNumber, nextIndex)) return;
 
   if (game.roundNumber !== previousRoundNumber) updatePortalsForNewRound(game);
 

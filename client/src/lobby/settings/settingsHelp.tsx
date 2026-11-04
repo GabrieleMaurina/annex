@@ -577,6 +577,9 @@ export const MAX_ROUNDS_HELP =
 export const MAX_DURATION_HELP =
   'If the game lasts this long without a winner, it ends in a stalemate at the end of the current turn: nobody wins and every remaining player draws. Time spent paused does not count. Players who were eliminated, surrendered or are disconnected still lose.';
 
+export const CAPITAL_STANDOFF_HELP =
+  'If this many rounds pass without any capital changing owner, the game ends in a stalemate: nobody wins and every remaining player draws. The count starts on the first turn and restarts from the turn any capital changes owner. A warning is shown when 3, 2 and 1 rounds remain. Players who were eliminated, surrendered or are disconnected still lose.';
+
 export const DRAW_OFFER_ROUND_HELP =
   'From this round on, remaining players can toggle the Draw button. If every remaining player has it on at the same time, the game ends immediately in a draw. Bots never vote, but they still share the draw.';
 

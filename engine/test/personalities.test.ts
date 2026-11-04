@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { erraticStyle } from '../src/bots/personality/erratic';
+import { buildContext } from '../src/bots/planning/context';
+import { planBotTurn } from '../src/bots/planning/planBotTurn';
 import { BotPersonality } from '../src/types';
-import { ScenarioSpec, kinds, planScenario, primaryKind } from './testkit';
+import { mulberry32 } from './sim/randomize';
+import {
+  ScenarioSpec,
+  buildGame,
+  kinds,
+  planScenario,
+  primaryKind,
+  replayBotTurn,
+} from './testkit';
 
 function line(...ids: number[]): [number, number][] {
   const edges: [number, number][] = [];
@@ -347,6 +358,9 @@ for (const personality of [
   'vengeful',
   'defensive',
   'erratic',
+  'police',
+  'hoarder',
+  'opportunist',
 ] as BotPersonality[]) {
   test(`${personality} produces a feasible plan on a plain board`, () => {
     const plan = planScenario(withPersonality(plainBoard, personality));
@@ -358,3 +372,177 @@ for (const personality of [
     );
   });
 }
+
+function seededReplay(spec: ScenarioSpec, seed: number) {
+  const originalRandom = Math.random;
+  Math.random = mulberry32(seed);
+  try {
+    return replayBotTurn(spec);
+  } finally {
+    Math.random = originalRandom;
+  }
+}
+
+const bonusesOnBothSides: ScenarioSpec = {
+  map: {
+    continents: [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+    ],
+    edges: line(0, 1, 2, 3, 4, 5, 6, 7, 8),
+    bonuses: [3, 2, 3],
+  },
+  players: [1, 2, 3],
+  owners: { 0: 2, 1: 2, 2: 2, 3: 1, 4: 1, 5: 1, 6: 3, 7: 3, 8: 3 },
+  troops: { 0: 4, 1: 4, 2: 2, 3: 12, 4: 2, 5: 12, 6: 2, 7: 4, 8: 4 },
+  troopsToDeploy: 6,
+  difficulty: 'hard',
+};
+
+test('police breaks every enemy bonus it can reach in one turn', () => {
+  const plan = planScenario(withPersonality(bonusesOnBothSides, 'police'));
+  const ends = plan.attackSteps.map((step) => step.endId);
+  assert.ok(
+    ends.includes(2) && ends.includes(6),
+    `police hit: ${ends.join(', ')}`,
+  );
+});
+
+const hoardBoard: ScenarioSpec = {
+  map: {
+    continents: [[0, 1, 2, 3, 4, 5, 6, 7]],
+    edges: line(0, 1, 2, 3, 4, 5, 6, 7),
+    bonuses: [0],
+  },
+  players: [1, 2],
+  owners: { 0: 1, 1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2, 7: 2 },
+  troops: { 0: 3, 1: 3, 2: 3, 3: 10, 4: 2, 5: 2, 6: 2, 7: 2 },
+  troopsToDeploy: 6,
+  botCards: 4,
+  difficulty: 'hard',
+};
+
+test('hoarder conquers once, holds its cards and piles its troops on one stack', () => {
+  const { game, dispatchFailures } = seededReplay(
+    withPersonality(hoardBoard, 'hoarder'),
+    1,
+  );
+  assert.equal(dispatchFailures, 0);
+  const owned = [...game.territoryOwners]
+    .filter(([, ownerId]) => ownerId === 1)
+    .map(([id]) => id);
+  assert.equal(owned.length, 5);
+  assert.equal(game.playerCards.get(1)?.length, hoardBoard.botCards);
+  assert.ok((game.territoryTroops.get(3) ?? 0) > hoardBoard.troops[3]);
+  for (const id of owned.filter((id) => id !== 3))
+    assert.ok((game.territoryTroops.get(id) ?? 0) <= 3, `stray stack on ${id}`);
+});
+
+test('hoarder in capitals mode piles its troops on its capital', () => {
+  const plan = planScenario({
+    ...withPersonality(hoardBoard, 'hoarder'),
+    capitals: [1],
+    settings: { gameMode: 'capitals' },
+  });
+  const onCapital = plan.deployments
+    .filter((d) => d.territoryId === 1)
+    .reduce((sum, d) => sum + d.troops, 0);
+  assert.equal(onCapital, hoardBoard.troopsToDeploy);
+  assert.equal(plan.attackSteps.length, 1);
+  assert.equal(plan.fortify?.endId, 1);
+});
+
+const loneTroops: ScenarioSpec = {
+  map: {
+    continents: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
+    edges: line(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+    bonuses: [0],
+  },
+  players: [1, 2],
+  owners: { 0: 2, 1: 2, 2: 2, 3: 2, 4: 1, 5: 1, 6: 2, 7: 2, 8: 2, 9: 2 },
+  troops: { 0: 9, 4: 8, 5: 8, 9: 9 },
+  troopsToDeploy: 4,
+  difficulty: 'hard',
+};
+
+test('opportunist picks off every lone troop it can reach', () => {
+  const { game, dispatchFailures } = seededReplay(
+    withPersonality(loneTroops, 'opportunist'),
+    1,
+  );
+  assert.equal(dispatchFailures, 0);
+  const missed = [1, 2, 3, 6, 7, 8].filter(
+    (id) => game.territoryOwners.get(id) !== 1,
+  );
+  assert.deepEqual(missed, []);
+});
+
+test('erratic sometimes plays a turn as police, hoarder or opportunist', () => {
+  const originalRandom = Math.random;
+  Math.random = mulberry32(7);
+  try {
+    const drawn = new Set(
+      Array.from({ length: 200 }, () => erraticStyle().personality),
+    );
+    assert.deepEqual([...drawn].sort(), [
+      'erratic',
+      'hoarder',
+      'opportunist',
+      'police',
+    ]);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('erratic keeps the personality it drew for the rest of its turn', () => {
+  const { game, botId } = buildGame(withPersonality(plainBoard, 'erratic'));
+  const profile = { difficulty: 'hard', personality: 'erratic' } as const;
+  const plan = planBotTurn(game, botId, profile, null).plan;
+  assert.ok(plan.style);
+  for (let i = 0; i < 10; i++)
+    assert.equal(
+      buildContext(game, botId, profile, plan).personality,
+      plan.style.personality,
+    );
+});
+
+test('hoarder takes the easiest attack even away from its stack', () => {
+  const plan = planScenario({
+    ...withPersonality(hoardBoard, 'hoarder'),
+    owners: { ...hoardBoard.owners, 8: 2 },
+    map: {
+      ...hoardBoard.map,
+      continents: [[0, 1, 2, 3, 4, 5, 6, 7, 8]],
+      edges: [...hoardBoard.map.edges, [0, 8]],
+    },
+    troops: { ...hoardBoard.troops, 4: 5, 8: 1 },
+  });
+  assert.deepEqual(
+    plan.attackSteps.map((step) => [step.startId, step.endId]),
+    [[0, 8]],
+  );
+});
+
+const twoRivals: ScenarioSpec = {
+  map: {
+    continents: [[0, 1, 2, 3, 4, 5, 6, 7, 8]],
+    edges: line(0, 1, 2, 3, 4, 5, 6, 7, 8),
+    bonuses: [0],
+  },
+  players: [1, 2, 3],
+  owners: { 0: 2, 1: 2, 2: 2, 3: 2, 4: 1, 5: 3, 6: 3, 7: 3, 8: 3 },
+  troops: { 0: 20, 1: 20, 2: 20, 3: 5, 4: 12, 5: 3, 6: 3, 7: 3, 8: 3 },
+  troopsToDeploy: 4,
+  difficulty: 'hard',
+};
+
+test('police goes after the strongest player even when the weaker one is easier', () => {
+  const firstTarget = (personality: BotPersonality) =>
+    planScenario(withPersonality(twoRivals, personality)).attackSteps[0]?.endId;
+  assert.equal(firstTarget('balanced'), 5);
+  assert.equal(firstTarget('police'), 3);
+  const plan = planScenario(withPersonality(twoRivals, 'police'));
+  assert.ok(plan.attackSteps.every((step) => step.endId !== 5));
+});

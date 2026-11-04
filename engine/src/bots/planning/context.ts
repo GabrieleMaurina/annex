@@ -24,8 +24,10 @@ import {
 import { buildStanding, playerStrengths, Standing } from '../features/standing';
 import { isHazardTerritory } from '../features/territory';
 import { publicIncomes, withPublicIntel } from '../intel';
+import { erraticStyle } from '../personality/erratic';
 import { getWeights } from '../personality/registry';
-import { DifficultyParams, Weights } from '../types';
+import { policeStrongestPreference } from '../personality/specialists/police';
+import { BotStyle, DifficultyParams, Weights } from '../types';
 import { BotView, getBotView, isVisible } from '../view';
 import { isPlanFresh, MapTopology, TurnPlan } from './turnPlan';
 
@@ -252,6 +254,7 @@ function computeFocus(
     continentTerritories,
     bonuses,
     incomes,
+    personality === 'police' ? policeStrongestPreference : 0,
   );
   const duel = duelFocus(game, botId, friendlyIds, weights, params);
   const finisher =
@@ -312,6 +315,22 @@ function incomeOf(game: Game, botId: number): number {
   );
 }
 
+function styleOf(
+  botProfile: BotProfile,
+  cachedPlan: TurnPlan | null,
+  game: Game,
+  botId: number,
+): BotStyle {
+  if (botProfile.personality !== 'erratic')
+    return {
+      personality: botProfile.personality,
+      weights: getWeights(botProfile.personality),
+    };
+  return isPlanFresh(cachedPlan, game, botId) && cachedPlan.style
+    ? cachedPlan.style
+    : erraticStyle();
+}
+
 export function buildContext(
   game: Game,
   botId: number,
@@ -329,13 +348,13 @@ export function buildContext(
       ? cachedPlan.topology
       : buildTopology(game, map, botId);
 
-  const weights = getWeights(botProfile.personality);
+  const { personality, weights } = styleOf(botProfile, cachedPlan, game, botId);
   const params = difficultyParams(botProfile.difficulty);
 
   const focus = cachedFocus(
     game,
     botId,
-    botProfile.personality,
+    personality,
     topology.continentTerritories,
     map.bonuses,
     weights,
@@ -360,7 +379,7 @@ export function buildContext(
     game,
     map,
     botId,
-    personality: botProfile.personality,
+    personality,
     view: focus.view,
     weights,
     params,

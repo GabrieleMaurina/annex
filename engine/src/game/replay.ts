@@ -1,3 +1,4 @@
+import { playersById } from '../session/players';
 import {
   Game,
   ReplayAnimation,
@@ -56,10 +57,12 @@ function snapshotHands(game: Game): ReplayHand[] {
 function snapshotPlayerStates(game: Game): ReplayPlayerState[] {
   return game.playerIds.map((playerId) => {
     const arsenal = game.arsenal.get(playerId) ?? { nukes: 0, antiNukes: 0 };
+    const member = playersById.get(playerId);
     return {
       playerId,
       eliminated: game.deathOrder.includes(playerId),
       surrendered: game.surrenderedIds.has(playerId),
+      connected: !!member?.connected && member.gameName === game.name,
       killedPlayerIds: [...(game.stats.get(playerId)?.playersKilled ?? [])],
       points: game.points.get(playerId) ?? 0,
       nukes: arsenal.nukes,

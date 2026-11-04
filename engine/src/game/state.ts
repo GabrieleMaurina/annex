@@ -3,7 +3,7 @@ import { playersById } from '../session/players';
 import { AllianceViewState, Game, Player } from '../types';
 import { anonymousName, isAnonymous, isAnonymousPlaying } from './anonymous';
 import { attackFullPath } from './combat/seaBridge';
-import { activeDrawVoteIds } from './draw';
+import { activeDrawVoteIds, capitalStandoffRoundsLeft } from './draw';
 import { supremacyTerritoriesToWin } from './mechanics';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats } from './progression/stats';
@@ -150,6 +150,7 @@ export function gameSummary(game: Game) {
       attackIncrement: game.attackIncrement,
       maxRounds: game.maxRounds,
       maxDuration: game.maxDuration,
+      capitalStandoff: game.capitalStandoff,
       drawOfferRound: game.drawOfferRound,
       disconnectBotDifficulty: game.disconnectBotDifficulty,
       disconnectBotPersonality: game.disconnectBotPersonality,
@@ -312,6 +313,8 @@ export function gameState(game: Game) {
     roundTroops: game.roundTroops,
     maxRounds: game.maxRounds,
     maxDuration: game.maxDuration,
+    capitalStandoff: game.capitalStandoff,
+    capitalStandoffRoundsLeft: capitalStandoffRoundsLeft(game),
     drawOfferRound: game.drawOfferRound,
     territoryTroopsCap: TERRITORY_CAP,
     totalTroopsCap: totalTroopsCap(game),

@@ -215,6 +215,7 @@ export function conquestEndShare(
   toId: number,
   attackers: number,
 ): number {
+  if (ctx.personality === 'hoarder') return 0;
   const sharpness = 1 + CONSOLIDATION * keepStackWeight(ctx);
   const fromReach =
     reachTotal(stackReach(ctx, state, fromId, attackers)) ** sharpness;

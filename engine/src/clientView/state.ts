@@ -115,6 +115,8 @@ export function viewGameStateFor(
     roundTroops: s.roundTroops,
     maxRounds: s.maxRounds,
     maxDuration: s.maxDuration,
+    capitalStandoff: s.capitalStandoff,
+    capitalStandoffRoundsLeft: s.capitalStandoffRoundsLeft,
     drawOfferRound: s.drawOfferRound,
     territoryTroopsCap: s.territoryTroopsCap,
     totalTroopsCap: s.totalTroopsCap,

@@ -1,4 +1,12 @@
+import { useEffect, useSyncExternalStore } from 'react';
 import { Badge, Modal } from 'react-bootstrap';
+import { isTypingTarget } from '../../../game/GameMap/helpers';
+import { useToggleSound } from '../../../lib/sounds';
+import {
+  getShortcutsOpen,
+  setShortcutsOpen,
+  subscribeShortcutsOpen,
+} from './shortcutsOpen';
 
 const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
   {
@@ -6,6 +14,7 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
     shortcuts: [
       ['M', 'Menu'],
       ['O', 'Client settings'],
+      ['K', 'Shortcuts'],
       ['Esc', 'Close the open menu or popup'],
     ],
   },
@@ -35,6 +44,16 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
       ['← ↓ / → ↑', 'Decrease / increase troops'],
       ['← ↑ / → ↓', 'Previous / next attack option'],
       ['%', 'Toggle percentage for troops and ships over 100'],
+    ],
+  },
+  {
+    title: 'Replay',
+    shortcuts: [
+      ['← ↓ / → ↑', 'Previous / next frame'],
+      ['Wheel', 'Previous / next frame, over the replay bar'],
+      ['Drag ← ↓ / → ↑', 'Previous / next frame, on the replay bar'],
+      ['Ctrl', 'Step by turn (arrows, wheel, drag)'],
+      ['Shift', 'Step by round (arrows, wheel, drag)'],
     ],
   },
   {
@@ -83,9 +102,24 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
   },
 ];
 
-function ShortcutsPanel({ onClose }: { onClose: () => void }) {
+function ShortcutsPanel() {
+  const open = useSyncExternalStore(subscribeShortcutsOpen, getShortcutsOpen);
+  useToggleSound(open);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target))
+        return;
+      if (e.key.toLowerCase() === 'k') setShortcutsOpen(!getShortcutsOpen());
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  if (!open) return null;
+
   return (
-    <Modal show onHide={onClose} centered scrollable>
+    <Modal show onHide={() => setShortcutsOpen(false)} centered scrollable>
       <Modal.Header closeButton>
         <Modal.Title>Shortcuts</Modal.Title>
       </Modal.Header>

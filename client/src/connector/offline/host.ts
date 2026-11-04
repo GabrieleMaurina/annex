@@ -128,6 +128,7 @@ export function seedOffline(state: GameState): void {
       roundTroops: state.roundTroops,
       maxRounds: state.maxRounds,
       maxDuration: state.maxDuration,
+      capitalStandoff: state.capitalStandoff,
       drawOfferRound: state.drawOfferRound,
     },
     mapGeneration: state.mapGeneration,

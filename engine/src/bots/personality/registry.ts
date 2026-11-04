@@ -3,8 +3,11 @@ import { Weights } from '../types';
 import { balancedWeights } from './balanced';
 import { breakerWeights } from './breaker';
 import { defensiveWeights } from './defensive';
-import { erraticWeights } from './erratic';
+import { erraticStyle } from './erratic';
 import { killerWeights } from './killer';
+import { hoarderWeights } from './specialists/hoarder';
+import { opportunistWeights } from './specialists/opportunist';
+import { policeWeights } from './specialists/police';
 import { takerWeights } from './taker';
 import { vengefulWeights } from './vengeful';
 
@@ -21,8 +24,14 @@ export function getWeights(personality: BotPersonality): Weights {
     case 'defensive':
       return defensiveWeights;
     case 'erratic':
-      return erraticWeights();
+      return erraticStyle().weights;
     case 'balanced':
       return balancedWeights;
+    case 'police':
+      return policeWeights;
+    case 'hoarder':
+      return hoarderWeights;
+    case 'opportunist':
+      return opportunistWeights;
   }
 }

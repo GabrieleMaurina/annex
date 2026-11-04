@@ -177,6 +177,7 @@ const playerState = object(
     playerId: int,
     eliminated: bool,
     surrendered: bool,
+    connected: bool,
     killedPlayerIds: array(int),
     points: int,
     nukes: int,
@@ -343,6 +344,7 @@ export const SETTINGS_ENUM_KEYS = [
   'attackIncrement',
   'maxRounds',
   'maxDuration',
+  'capitalStandoff',
   'drawOfferRound',
   'disconnectBotDifficulty',
   'disconnectBotPersonality',
@@ -461,7 +463,14 @@ const schema = {
           required: ['reason', 'playerIds'],
           additionalProperties: false,
           properties: {
-            reason: { enum: ['max rounds', 'max duration', 'agreed'] },
+            reason: {
+              enum: [
+                'max rounds',
+                'max duration',
+                'capital standoff',
+                'agreed',
+              ],
+            },
             playerIds: array(int),
           },
         },

@@ -9,6 +9,9 @@ export const PERSONALITIES: BotPersonality[] = [
   'vengeful',
   'defensive',
   'erratic',
+  'police',
+  'hoarder',
+  'opportunist',
 ];
 
 function pick<T>(values: T[]): T {

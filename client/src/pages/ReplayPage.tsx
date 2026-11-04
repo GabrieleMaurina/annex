@@ -124,6 +124,8 @@ function buildGameState(
     roundTroops: s.roundTroops,
     maxRounds: s.maxRounds,
     maxDuration: s.maxDuration,
+    capitalStandoff: s.capitalStandoff,
+    capitalStandoffRoundsLeft: null,
     drawOfferRound: s.drawOfferRound,
     territoryTroopsCap: 30,
     totalTroopsCap: 9999,

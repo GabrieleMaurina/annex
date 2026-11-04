@@ -4,6 +4,7 @@ import {
   wheelDirection,
 } from '../../../../common/inputs/useNumberInput';
 import { stepTroops } from '../../../../common/inputs/useTroopsInput';
+import { getShortcutsOpen } from '../../../../common/menus/shortcuts/shortcutsOpen';
 import { connector } from '../../../../connector';
 import {
   isTroopsPercentage,
@@ -176,6 +177,7 @@ export function useCanvasKeyboard({
       setOpenPanel(openPanel === panel ? null : panel);
     }
     function onKeyDown(e: KeyboardEvent) {
+      if (getShortcutsOpen()) return;
       if (e.key === 'Escape') {
         if (pendingAttackEmoji) {
           playSound('click');

@@ -1,3 +1,10 @@
+import { BotPersonality } from '../types';
+
+export interface BotStyle {
+  personality: BotPersonality;
+  weights: Weights;
+}
+
 export interface Weights {
   completeContinent: number;
   breakContinent: number;

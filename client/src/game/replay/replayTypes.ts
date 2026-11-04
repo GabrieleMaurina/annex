@@ -95,6 +95,7 @@ export interface ReplayPlayerState {
   playerId: number;
   eliminated: boolean;
   surrendered: boolean;
+  connected?: boolean;
   killedPlayerIds: number[];
   points?: number;
   nukes: number;

@@ -78,7 +78,9 @@ function GameEndResults({
               ? `Stalemate reached after ${game.maxRounds} rounds. Nobody wins.`
               : draw.reason === 'max duration'
                 ? `Stalemate reached after ${formatDuration(game.maxDuration * 60000)}. Nobody wins.`
-                : 'All remaining players agreed to a draw. Nobody wins.'}
+                : draw.reason === 'capital standoff'
+                  ? `Stalemate reached after ${game.capitalStandoff} rounds without a capital changing hands. Nobody wins.`
+                  : 'All remaining players agreed to a draw. Nobody wins.'}
           </p>
         ) : isTeamDeathmatch ? (
           <p className="fs-4 mb-0">

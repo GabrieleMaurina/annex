@@ -141,6 +141,7 @@ export interface GameExport {
     attackIncrement: number;
     maxRounds: number;
     maxDuration: number;
+    capitalStandoff: number;
     drawOfferRound: number;
     disconnectBotDifficulty: string;
     disconnectBotPersonality: string;
@@ -435,6 +436,7 @@ export function exportGame(gameName: string): GameExport | null {
       attackIncrement: game.attackIncrement,
       maxRounds: game.maxRounds,
       maxDuration: game.maxDuration,
+      capitalStandoff: game.capitalStandoff,
       drawOfferRound: game.drawOfferRound,
       disconnectBotDifficulty: game.disconnectBotDifficulty,
       disconnectBotPersonality: game.disconnectBotPersonality,

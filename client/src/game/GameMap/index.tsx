@@ -532,6 +532,7 @@ function GameMap({
     isMyTurn,
     hasSetToPlay: cardsFlow.hasSetToPlay,
     earlyWin: game.earlyWin && !gameEnded,
+    capitalStandoffRoundsLeft: game.capitalStandoffRoundsLeft,
     selfId,
     addToasts,
   });
@@ -810,6 +811,8 @@ function GameMap({
           onJumpStart={replay.jumpToStart}
           onJumpEnd={replay.jumpToEnd}
           onSeek={replay.seek}
+          onMove={replay.move}
+          roundStops={replay.roundStops}
           onCycleSpeed={replay.cycleSpeed}
         />
       )}

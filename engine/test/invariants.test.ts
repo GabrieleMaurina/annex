@@ -29,6 +29,9 @@ const PERSONALITIES: BotPersonality[] = [
   'vengeful',
   'defensive',
   'erratic',
+  'police',
+  'hoarder',
+  'opportunist',
 ];
 const FORTIFICATIONS = ['connected', 'neighboring', 'unrestricted'] as const;
 

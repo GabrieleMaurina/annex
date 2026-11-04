@@ -76,7 +76,8 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLInputElement ||
     target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement
+    target instanceof HTMLSelectElement ||
+    (target instanceof Element && target.closest('.selector-menu') !== null)
   );
 }
 

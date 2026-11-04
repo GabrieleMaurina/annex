@@ -60,6 +60,9 @@ const PERSONALITIES: BotPersonality[] = [
   'killer',
   'vengeful',
   'defensive',
+  'police',
+  'hoarder',
+  'opportunist',
 ];
 
 const SETTING_VARIANTS: Record<string, unknown>[] = [

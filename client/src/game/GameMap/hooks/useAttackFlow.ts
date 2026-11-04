@@ -232,10 +232,7 @@ export function useAttackFlow({
         if (!res.ok) return;
         setAttackDiceRoll(null);
         setGame(res.game);
-        if (res.game.state === 'ended') {
-          playSound('end');
-          return;
-        }
+        if (res.game.state === 'ended') return;
         continueFromConquest(
           res.game,
           territoryId,
@@ -291,7 +288,6 @@ export function useAttackFlow({
       if (!res.ok) return;
       const hasDiceRoll =
         res.attackerDice.length > 0 && attackEndTerritoryId !== null;
-      if (!hasDiceRoll && res.game.state === 'ended') playSound('end');
       setGame(
         hasDiceRoll && res.game.state === 'ended'
           ? { ...res.game, state: 'playing' }
@@ -327,7 +323,6 @@ export function useAttackFlow({
           setAttackDiceSettled(true);
           setAttackPreRevealSnapshot(null);
           if (res.game.state === 'ended') {
-            playSound('end');
             setGame(res.game);
           } else if (res.game.attackConquestMinTroops !== null) {
             if (autoMoveTroops !== null) {

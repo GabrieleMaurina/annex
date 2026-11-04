@@ -1,5 +1,7 @@
 import { pickBestSet } from '../../game/progression/cards';
 import { chooseCardSet } from '../heuristics/cards';
+import { holdsCardsUntilForced } from '../personality/specialists/hoarder';
+import { policeChoice } from '../personality/specialists/police';
 import { Weights } from '../types';
 import { PlanContext, SimState, isFriendly, snapshotState } from './context';
 import {
@@ -40,6 +42,7 @@ const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
   expand: () => 1,
   deny: () => 2,
   sortie: () => 0.4,
+  snipe: () => 3,
 };
 
 const DUEL_FINISHER_ELIMINATE_BONUS = 50;
@@ -120,7 +123,8 @@ export function repairPlan(ctx: PlanContext, plan: TurnPlan): boolean {
     objective.kind === 'defensive' ||
     objective.kind === 'card' ||
     objective.kind === 'sortie' ||
-    objective.kind === 'holdChokepoint'
+    objective.kind === 'holdChokepoint' ||
+    objective.kind === 'snipe'
   )
     return false;
 
@@ -221,7 +225,10 @@ export function buildTurnPlan(
   allowCards = true,
 ): TurnPlan {
   const state = snapshotState(ctx);
-  const cardSet = allowCards ? chooseCardSet(ctx.game, ctx.botId) : null;
+  const cardSet =
+    allowCards && !holdsCardsUntilForced(ctx)
+      ? chooseCardSet(ctx.game, ctx.botId)
+      : null;
   const budget = troopsToDeploy + (cardSet ? estimateCardBonus(ctx) : 0);
   const jitter = ctx.params.noise * 4;
 
@@ -245,12 +252,17 @@ export function buildTurnPlan(
     }
   };
 
-  const scored = gatherCandidates(ctx, state, budget).map((candidate) => {
-    const result = simulateTurn(ctx, candidate, false);
-    const feasible =
-      result.feasible || candidate.objectives[0].kind === 'defensive';
-    return { candidate, result, feasible, refined: false };
-  });
+  const scored = policeChoice(
+    ctx,
+    state,
+    gatherCandidates(ctx, state, budget).map((candidate) => {
+      const result = simulateTurn(ctx, candidate, false);
+      const feasible =
+        result.feasible || candidate.objectives[0].kind === 'defensive';
+      return { candidate, result, feasible, refined: false };
+    }),
+    (e) => e.feasible && confidentEnough(ctx, e.candidate, e.result),
+  );
 
   if (ctx.params.optimizeFortify)
     scored

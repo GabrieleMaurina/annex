@@ -130,6 +130,32 @@ function targetStance(
   return Math.min(1, Math.max(-1, 2 * progress - 1));
 }
 
+function rankByStrength(
+  standing: Standing,
+  sideStrength: Map<number, number>,
+  friendSides: Set<number>,
+  alivePlayers: number[],
+  sideOf: (playerId: number) => number,
+  scale: number,
+): Standing {
+  const rivals = [...sideStrength]
+    .filter(([side]) => !friendSides.has(side))
+    .map(([, strength]) => strength);
+  const strongest = Math.max(...rivals);
+  const weakest = Math.min(...rivals);
+  for (const id of alivePlayers) {
+    const side = sideOf(id);
+    const strength = sideStrength.get(side);
+    if (strength === undefined || friendSides.has(side)) continue;
+    const rank =
+      strongest > weakest
+        ? (2 * (strength - weakest)) / (strongest - weakest) - 1
+        : 1;
+    standing.preference.set(id, scale * rank);
+  }
+  return standing;
+}
+
 export function antiLeaderActive(standing: Standing): boolean {
   return standing.gangUp > 0;
 }
@@ -142,6 +168,7 @@ export function buildStanding(
   continentTerritories: Map<number, number[]>,
   bonuses: number[],
   incomes: Map<number, PublicIncome> | null,
+  strongestFirst: number,
 ): Standing {
   const teamMode = game.gameMode === 'team deathmatch';
   const sideOf = (playerId: number) =>
@@ -190,6 +217,15 @@ export function buildStanding(
   }
   const stance = targetStance(game, regime, botStrength >= strongestOther);
   standing.gangUp = Math.max(0, -stance);
+  if (strongestFirst > 0)
+    return rankByStrength(
+      standing,
+      sideStrength,
+      friendSides,
+      alivePlayers,
+      sideOf,
+      strongestFirst,
+    );
 
   if (regime === 'duel') {
     if (stance > 0)

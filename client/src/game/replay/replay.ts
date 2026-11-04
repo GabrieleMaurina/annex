@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { playSound } from '../../lib/sounds';
 import type {
   GameState,
@@ -27,6 +34,8 @@ function groupSeaShips(flat: ReplaySeaShips[]): GameState['seas'] {
 
 export const REPLAY_SPEEDS = [0.5, 1, 2, 4, 8];
 const BASE_FRAME_INTERVAL_MS = 800;
+
+export type ReplayMoveUnit = 'frame' | 'turn' | 'round';
 
 export interface ReplayData {
   initial: ReplayTerritory[];
@@ -254,19 +263,36 @@ function playFrameSounds(replay: ReplayData, index: number) {
     playSound('end');
     return;
   }
-  const previouslyEliminated = new Set(
-    (previous?.playerStates ?? [])
-      .filter((s) => s.eliminated)
-      .map((s) => s.playerId),
+  const previousStates = new Map(
+    (previous?.playerStates ?? []).map((s) => [s.playerId, s]),
   );
   const newlyEliminated = frame.playerStates.some(
-    (s) => s.eliminated && !previouslyEliminated.has(s.playerId),
+    (s) =>
+      s.eliminated &&
+      !s.surrendered &&
+      !previousStates.get(s.playerId)?.eliminated,
   );
+  const newlySurrendered = frame.playerStates.some(
+    (s) => s.surrendered && !previousStates.get(s.playerId)?.surrendered,
+  );
+  const connectionChanges = frame.playerStates
+    .filter((s) => {
+      const before = previousStates.get(s.playerId)?.connected;
+      return (
+        before !== undefined &&
+        s.connected !== undefined &&
+        s.connected !== before
+      );
+    })
+    .map((s) => s.connected);
   const phaseChanged =
     previous !== null &&
     (previous.turnPhase !== frame.turnPhase ||
       (frame.turnPhase === 'deploy' && previous.playerId !== frame.playerId));
   if (newlyEliminated) playSound('bell');
+  if (newlySurrendered) playSound('surrender');
+  if (connectionChanges.includes(true)) playSound('connect');
+  if (connectionChanges.includes(false)) playSound('disconnect');
   if (phaseChanged) playSound('phase');
 }
 
@@ -281,19 +307,41 @@ export function useReplay(
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
 
+  const indexRef = useRef(index);
+
+  useLayoutEffect(() => {
+    indexRef.current = index;
+  });
+
   const totalFrames = replay?.frames.length ?? 0;
 
+  const { turnStops, roundStops } = useMemo(() => {
+    const frames = replay?.frames ?? [];
+    const turnStops: number[] = [];
+    const roundStops: number[] = [];
+    frames.forEach((frame, i) => {
+      const previous = frames[i - 1];
+      const newRound = !previous || previous.roundNumber !== frame.roundNumber;
+      if (newRound) roundStops.push(i + 1);
+      if (newRound || previous.playerId !== frame.playerId)
+        turnStops.push(i + 1);
+    });
+    return { turnStops, roundStops };
+  }, [replay]);
+
   const stepForward = useCallback(() => {
-    if (!replay || index >= totalFrames) return;
-    const next = index + 1;
+    const current = indexRef.current;
+    if (!replay || current >= totalFrames) return;
+    const next = current + 1;
+    indexRef.current = next;
     onEnterFrame(
-      replay.frames[index].animation,
+      replay.frames[current].animation,
       conquestArrowAt(replay, next) !== null,
     );
-    playFrameSounds(replay, index);
+    playFrameSounds(replay, current);
     setIndex(next);
     if (next >= totalFrames) setPlaying(false);
-  }, [replay, index, totalFrames, onEnterFrame]);
+  }, [replay, totalFrames, onEnterFrame]);
 
   function stepBackward() {
     setPlaying(false);
@@ -311,8 +359,25 @@ export function useReplay(
   }
 
   function seek(value: number) {
+    const next = Math.max(0, Math.min(totalFrames, value));
+    indexRef.current = next;
     setPlaying(false);
-    setIndex(Math.max(0, Math.min(totalFrames, value)));
+    setIndex(next);
+  }
+
+  function move(direction: 1 | -1, unit: ReplayMoveUnit) {
+    const current = indexRef.current;
+    const stops = unit === 'turn' ? turnStops : roundStops;
+    const target =
+      unit === 'frame'
+        ? current + direction
+        : direction > 0
+          ? (stops.find((stop) => stop > current) ?? totalFrames)
+          : (stops.findLast((stop) => stop < current) ?? 0);
+    if (target < 0 || target > totalFrames || target === current) return;
+    playSound('click');
+    if (target === current + 1) stepForward();
+    else seek(target);
   }
 
   function togglePlay() {
@@ -401,6 +466,8 @@ export function useReplay(
     jumpToStart,
     jumpToEnd,
     seek,
+    move,
+    roundStops,
     togglePlay,
     cycleSpeed,
   };

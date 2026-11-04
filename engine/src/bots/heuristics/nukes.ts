@@ -21,22 +21,28 @@ const BLIND_LAUNCH_PRESSURE = 0.5;
 
 const PERSONALITY_AGGRESSION: Record<BotPersonality, number> = {
   killer: 1,
+  police: 0.9,
   breaker: 0.9,
   vengeful: 0.75,
   erratic: 0.6,
   balanced: 0.5,
+  opportunist: 0.6,
   taker: 0.35,
   defensive: 0.2,
+  hoarder: 0,
 };
 
 const PERSONALITY_MIN_STACK: Record<BotPersonality, number> = {
   killer: 8,
+  police: 9,
   breaker: 9,
   vengeful: 10,
   erratic: 10,
   balanced: 12,
+  opportunist: 10,
   taker: 14,
   defensive: 16,
+  hoarder: 16,
 };
 
 function aggression(ctx: PlanContext): number {

@@ -15,6 +15,9 @@ import { modeCandidates } from '../goals/modeObjectives';
 import { preyCandidates } from '../goals/preyObjectives';
 import { defensiveBoldness } from '../personality/defensive';
 import { killerWeaknessThreshold } from '../personality/killer';
+import { hoarderCandidates } from '../personality/specialists/hoarder';
+import { snipeCandidates } from '../personality/specialists/opportunist';
+import { policeCandidates } from '../personality/specialists/police';
 import { wallsInTeammate } from './board';
 import {
   PlanContext,
@@ -771,9 +774,13 @@ export function gatherCandidates(
       ...defensiveCandidates(ctx, state, budget),
     ];
   }
+  if (ctx.personality === 'hoarder')
+    return hoarderCandidates(ctx, state, budget);
   return [
+    ...snipeCandidates(ctx, state, budget),
     ...completeCandidates(ctx, state, budget),
     ...breakCandidates(ctx, state, budget),
+    ...policeCandidates(ctx, state, budget),
     ...duelBreakCandidates(ctx, state, budget),
     ...rollCandidates(ctx, state, budget),
     ...eliminateCandidates(ctx, state, budget),

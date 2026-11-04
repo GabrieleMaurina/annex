@@ -27,6 +27,7 @@ import {
   mostOpenBorders,
   openStackWeight,
 } from '../goals/stackOpenness';
+import { hoardFortify } from '../personality/specialists/hoarder';
 import { evaluateBoard } from './board';
 import {
   PlanContext,
@@ -231,7 +232,7 @@ export function walkStack(
   return objectiveProb;
 }
 
-function reachableOwned(
+export function reachableOwned(
   ctx: PlanContext,
   state: SimState,
   fromId: number,
@@ -341,6 +342,8 @@ export function bestFortify(
   const cachedProgress =
     goal.minTroops <= 1 ? sideProgress(ctx, goal, state) : undefined;
   const baseScore = evaluateBoard(ctx, state, cachedProgress);
+  if (ctx.personality === 'hoarder')
+    return { move: hoardFortify(ctx, state), score: baseScore };
   const owned = ownedIds(state, ctx.botId);
   const horizon = horizonOf(ctx);
   const borderTargets = owned
@@ -744,6 +747,14 @@ export function mainStackDeployments(
   return [{ territoryId: main, troops: budget }];
 }
 
+export function stagingNeed(
+  state: SimState,
+  stagingId: number,
+  cost: number,
+): number {
+  return Math.ceil(cost * 1.25) + 2 - troopsIn(state, stagingId);
+}
+
 export function multiDeployments(
   ctx: PlanContext,
   state: SimState,
@@ -755,7 +766,7 @@ export function multiDeployments(
   let spent = 0;
   for (const { id, cost } of stagings) {
     if (budget - spent <= 0) break;
-    const need = Math.ceil(cost * 1.25) + 2 - troopsIn(state, id);
+    const need = stagingNeed(state, id, cost);
     if (need <= 0) continue;
     const give = Math.min(budget - spent, need);
     perStaging.set(id, (perStaging.get(id) ?? 0) + give);

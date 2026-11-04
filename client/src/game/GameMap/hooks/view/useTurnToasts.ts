@@ -19,6 +19,7 @@ export function useTurnToasts({
   isMyTurn,
   hasSetToPlay,
   earlyWin,
+  capitalStandoffRoundsLeft,
   selfId,
   addToasts,
 }: Pick<
@@ -34,6 +35,7 @@ export function useTurnToasts({
   isMyTurn: boolean;
   hasSetToPlay: boolean;
   earlyWin: boolean;
+  capitalStandoffRoundsLeft: number | null;
   selfId: number | null;
   addToasts: (messages: string[], delay?: number) => void;
 }) {
@@ -42,6 +44,9 @@ export function useTurnToasts({
   >(null);
   const [capitalModeAnnounced, setCapitalModeAnnounced] = useState(false);
   const [earlyWinAnnounced, setEarlyWinAnnounced] = useState(false);
+  const [standoffRoundsLeft, setStandoffRoundsLeft] = useState<number | null>(
+    null,
+  );
   const currentTurnPlayer = players[turnPlayerIndex];
 
   const deployPhaseKey =
@@ -68,6 +73,18 @@ export function useTurnToasts({
   if (isCapitals && !capitalModeAnnounced && roundNumber >= 2) {
     setCapitalModeAnnounced(true);
     addToasts(['Capitals mode activated']);
+  }
+
+  if (capitalStandoffRoundsLeft !== standoffRoundsLeft) {
+    setStandoffRoundsLeft(capitalStandoffRoundsLeft);
+    if (
+      capitalStandoffRoundsLeft !== null &&
+      capitalStandoffRoundsLeft <= 3 &&
+      !earlyWin
+    )
+      addToasts([
+        `No capital changed hands: stalemate in ${capitalStandoffRoundsLeft} ${capitalStandoffRoundsLeft === 1 ? 'round' : 'rounds'}`,
+      ]);
   }
 
   if (earlyWin && !earlyWinAnnounced) {

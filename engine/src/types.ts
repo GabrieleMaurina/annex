@@ -111,7 +111,10 @@ export type BotPersonality =
   | 'killer'
   | 'vengeful'
   | 'defensive'
-  | 'erratic';
+  | 'erratic'
+  | 'police'
+  | 'hoarder'
+  | 'opportunist';
 export type BotSpeed = 'slow' | 'medium' | 'fast';
 
 export interface BotProfile {
@@ -181,7 +184,8 @@ export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
 export type Anonymous = 'off' | 'on';
 export type Nukes = 'off' | 'on';
-export type DrawReason = 'max rounds' | 'max duration' | 'agreed';
+export type DrawReason =
+  'max rounds' | 'max duration' | 'capital standoff' | 'agreed';
 
 export interface GameDraw {
   reason: DrawReason;
@@ -305,6 +309,7 @@ export interface ReplayPlayerState {
   playerId: number;
   eliminated: boolean;
   surrendered: boolean;
+  connected: boolean;
   killedPlayerIds: number[];
   points: number;
   nukes: number;
@@ -478,9 +483,12 @@ export interface Game {
   roundTroops: RoundTroops;
   maxRounds: number;
   maxDuration: number;
+  capitalStandoff: number;
   drawOfferRound: number;
   drawVoteIds: Set<number>;
   draw: GameDraw | null;
+  capitalOwnersKey: string | null;
+  capitalStandoffStart: { roundNumber: number; turnPlayerIndex: number } | null;
   roundNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;

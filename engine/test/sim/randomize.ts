@@ -48,6 +48,9 @@ export const PERSONALITIES: BotPersonality[] = [
   'vengeful',
   'defensive',
   'erratic',
+  'police',
+  'hoarder',
+  'opportunist',
 ];
 
 const FORTIFICATIONS: Fortification[] = [

@@ -1,10 +1,14 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import { playSound } from '../../lib/sounds';
+
+const HEARTBEAT_SECONDS = 5;
 
 interface Props {
   turnStartedAt: number;
   turnDuration: number;
   color: string;
   paused: boolean;
+  heartbeat?: boolean;
 }
 
 function TurnProgressBar({
@@ -12,8 +16,21 @@ function TurnProgressBar({
   turnDuration,
   color,
   paused,
+  heartbeat = false,
 }: Props) {
   const barRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!heartbeat || paused) return;
+    const remainingMs = turnStartedAt + turnDuration * 1000 - Date.now();
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let second = HEARTBEAT_SECONDS; second > 0; second--) {
+      const delay = remainingMs - second * 1000;
+      if (delay >= 0)
+        timers.push(setTimeout(() => playSound('heartbeat'), delay));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [heartbeat, paused, turnStartedAt, turnDuration]);
 
   useLayoutEffect(() => {
     const bar = barRef.current;

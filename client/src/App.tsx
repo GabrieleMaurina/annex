@@ -10,6 +10,7 @@ import {
 } from 'react-router-dom';
 import BurgerMenu from './common/menus/BurgerMenu';
 import SettingsMenu from './common/menus/SettingsMenu';
+import ShortcutsPanel from './common/menus/shortcuts/ShortcutsPanel';
 import RollingTanks from './common/tanks/RollingTanks';
 import { connector } from './connector';
 import {
@@ -413,6 +414,7 @@ function App() {
   return (
     <>
       {!inGame && <SettingsMenu onOpenChange={setSettingsMenuOpen} />}
+      <ShortcutsPanel />
       {!onGameMap && !onReplayMap && !onMapEditor && (
         <RollingTanks spawnInitial={pathname === '/'} />
       )}

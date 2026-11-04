@@ -63,6 +63,14 @@ import {
 import { chooseOpportunisticUnlock, chooseUnlock } from '../heuristics/unlock';
 import { defensiveBoldness } from '../personality/defensive';
 import {
+  hoardCapital,
+  hoardPlacement,
+  hoarderDone,
+  holdsCardsUntilForced,
+} from '../personality/specialists/hoarder';
+import { chooseSnipe } from '../personality/specialists/opportunist';
+import { policeOutranked } from '../personality/specialists/police';
+import {
   PlanContext,
   SimState,
   buildContext,
@@ -156,6 +164,7 @@ function resolvePlan(
   if (isPlanFresh(cached, game, botId)) return cached;
   const plan = choosePlan(ctx, game, botId);
   plan.stackFocus = ctx.stackFocus;
+  plan.style = { personality: ctx.personality, weights: ctx.weights };
   return plan;
 }
 
@@ -200,7 +209,9 @@ function extraCardSet(
   game: Game,
   plan: TurnPlan,
 ): (number | null)[] | null {
-  const holding = canHoldCards(ctx) && (plan.cardsHeld || holdPays(ctx));
+  const holding =
+    holdsCardsUntilForced(ctx) ||
+    (canHoldCards(ctx) && (plan.cardsHeld || holdPays(ctx)));
   return holding ? null : chooseCardSet(game, ctx.botId);
 }
 
@@ -229,11 +240,14 @@ export function planBotTurn(
   if (phase === 'troop') {
     const pool = game.placementTroopPools.get(botId) ?? 0;
     const troops = Math.min(3, game.troopsToDeploy, pool);
+    const hoard = hoardPlacement(game, botId, botProfile);
     const planned =
-      troops >= 1 && game.initialTroops <= MAX_PLANNED_INITIAL_TROOPS
+      hoard === null &&
+      troops >= 1 &&
+      game.initialTroops <= MAX_PLANNED_INITIAL_TROOPS
         ? plannedPlacement(game, botId, botProfile, troops, pool)
         : null;
-    const territoryId = planned ?? chooseTroopPlacement(game, botId);
+    const territoryId = hoard ?? planned ?? chooseTroopPlacement(game, botId);
     return result(
       territoryId !== null && troops >= 1
         ? [{ event: 'game:placeTroop', payload: { territoryId, troops } }]
@@ -242,7 +256,10 @@ export function planBotTurn(
     );
   }
   if (phase === 'capital') {
-    const territoryId = chooseCapital(game, botId);
+    const territoryId =
+      botProfile.personality === 'hoarder'
+        ? hoardCapital(game, botId)
+        : chooseCapital(game, botId);
     return result(
       territoryId !== null
         ? [{ event: 'game:selectCapital', payload: { territoryId } }]
@@ -444,6 +461,7 @@ function planAttack(
     const troops = chooseAttackMoveTroops(game, chained, endShare);
     return result([{ event: 'game:attackMove', payload: { troops } }], plan);
   }
+  if (hoarderDone(ctx)) return result([NEXT_PHASE], plan);
 
   if (!plan.antiNukeDeployed) {
     plan.antiNukeDeployed = true;
@@ -715,7 +733,10 @@ function planAttack(
         reserve
     );
   };
+  const snipe = chooseSnipe(ctx, drainsCapital);
+  if (snipe) return result(attackActions(snipe), plan);
   const risk = passive ? passiveRisk : stackRisk;
+  const outranked = policeOutranked(ctx);
   const regular = chooseAttack(
     game,
     ctx.view,
@@ -724,7 +745,9 @@ function planAttack(
     ctx.params.noise,
     ctx.standing,
     (startId, endId) =>
-      expectedLoss(startId, endId) > lossLimit || drainsCapital(startId, endId)
+      expectedLoss(startId, endId) > lossLimit ||
+      drainsCapital(startId, endId) ||
+      outranked(endId)
         ? Infinity
         : risk(startId, endId),
   );
@@ -749,20 +772,21 @@ function planAttack(
     if (overwhelming) plan.overwhelmingAttacksIssued++;
     else plan.attacksIssued++;
   }
-  return result(
-    [
-      {
-        event: 'game:attackSelectStart',
-        payload: { territoryId: attack.startId },
-      },
-      { event: 'game:attackSelectEnd', payload: { territoryId: attack.endId } },
-      {
-        event: 'game:attack',
-        payload: { type: attack.type, troops: attack.troops },
-      },
-    ],
-    plan,
-  );
+  return result(attackActions(attack), plan);
+}
+
+function attackActions(attack: AttackChoice): BotAction[] {
+  return [
+    {
+      event: 'game:attackSelectStart',
+      payload: { territoryId: attack.startId },
+    },
+    { event: 'game:attackSelectEnd', payload: { territoryId: attack.endId } },
+    {
+      event: 'game:attack',
+      payload: { type: attack.type, troops: attack.troops },
+    },
+  ];
 }
 
 function continuesFromConquest(
@@ -893,7 +917,8 @@ function planFortify(
   game: Game,
   plan: TurnPlan,
 ): PlanBotTurnResult {
-  const gathering = consolidation(ctx.stackFocus) > 0;
+  const gathering =
+    consolidation(ctx.stackFocus) > 0 || ctx.personality === 'hoarder';
   const planned = gathering
     ? bestFortify(ctx, snapshotState(ctx), undefined, false, true).move
     : plan.fortify;

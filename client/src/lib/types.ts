@@ -197,7 +197,8 @@ export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
 export type Anonymous = 'off' | 'on';
 export type Nukes = 'off' | 'on';
-export type DrawReason = 'max rounds' | 'max duration' | 'agreed';
+export type DrawReason =
+  'max rounds' | 'max duration' | 'capital standoff' | 'agreed';
 
 export interface GameDraw {
   reason: DrawReason;
@@ -274,7 +275,10 @@ export type BotPersonality =
   | 'killer'
   | 'vengeful'
   | 'defensive'
-  | 'erratic';
+  | 'erratic'
+  | 'police'
+  | 'hoarder'
+  | 'opportunist';
 export type BotSpeed = 'slow' | 'medium' | 'fast';
 
 export interface SavedBot {
@@ -346,6 +350,8 @@ export interface GameState {
   roundTroops: RoundTroops;
   maxRounds: number;
   maxDuration: number;
+  capitalStandoff: number;
+  capitalStandoffRoundsLeft: number | null;
   drawOfferRound: number;
   territoryTroopsCap: number;
   totalTroopsCap: number;
@@ -502,6 +508,7 @@ export interface GameSettingsInput {
   roundTroops?: RoundTroops;
   maxRounds?: number;
   maxDuration?: number;
+  capitalStandoff?: number;
   drawOfferRound?: number;
   visibility?: Visibility;
 }
@@ -547,6 +554,7 @@ export type GameRulesSettings = Pick<
   | 'roundTroops'
   | 'maxRounds'
   | 'maxDuration'
+  | 'capitalStandoff'
   | 'drawOfferRound'
   | 'visibility'
 > & { mapGeneration?: GenerateMapInput; playerMapId?: string | null };
@@ -648,6 +656,7 @@ export interface StoredGameSettings {
   attackIncrement: number;
   maxRounds: number;
   maxDuration: number;
+  capitalStandoff: number;
   drawOfferRound: number;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';

@@ -286,6 +286,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
       attackIncrement: state.attackIncrement,
       maxRounds: state.maxRounds,
       maxDuration: state.maxDuration,
+      capitalStandoff: state.capitalStandoff,
       drawOfferRound: state.drawOfferRound,
       disconnectBotDifficulty: state.disconnectBotDifficulty,
       disconnectBotPersonality: state.disconnectBotPersonality,

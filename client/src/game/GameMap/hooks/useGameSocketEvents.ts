@@ -14,6 +14,7 @@ import {
   DICE_ROLL_STEPS,
   getAnimationDuration,
   hasActiveAnimations,
+  noteCaptureSource,
   onAnimationsToggle,
   pruneAnimations,
   scheduleDiceReveal,
@@ -92,8 +93,6 @@ export function useGameSocketEvents({
   const frozenTerritoryDataRef = useRef(
     new Map<number, GameState['territories'][number]>(),
   );
-  const toxinPlacedAtRef = useRef<Map<number, number>>(new Map());
-  const radiationPlacedAtRef = useRef<Map<number, number>>(new Map());
   const [tankFire, setTankFire] = useState<{ id: number; dice?: number }>({
     id: 0,
   });
@@ -229,16 +228,6 @@ export function useGameSocketEvents({
     },
     [territoriesRef, ownerByIdRef, startAnimationLoop],
   );
-
-  const toxinPlaceEffect = useCallback((territoryId: number) => {
-    toxinPlacedAtRef.current.set(territoryId, performance.now());
-  }, []);
-
-  const radiationPlaceEffect = useCallback((territoryIds: number[]) => {
-    const now = performance.now();
-    for (const territoryId of territoryIds)
-      radiationPlacedAtRef.current.set(territoryId, now);
-  }, []);
 
   const animateStarve = useCallback(
     ({ territoryId, troops }: { territoryId: number; troops: number }) => {
@@ -452,7 +441,6 @@ export function useGameSocketEvents({
         });
       } else if (animation.type === 'toxins') {
         playSound('toxins');
-        toxinPlaceEffect(animation.territoryId);
       } else if (animation.type === 'nuke') {
         nukeEffect(animation);
       } else if (animation.type === 'unlock') {
@@ -508,7 +496,6 @@ export function useGameSocketEvents({
       afterRefund,
       entrenchEffect,
       animateStarve,
-      toxinPlaceEffect,
       nukeEffect,
       unlockEffect,
       playAttackLossEffects,
@@ -652,7 +639,6 @@ export function useGameSocketEvents({
       roundsRemaining: number;
     }) {
       playSound('toxins');
-      toxinPlaceEffect(payload.territoryId);
       adjustToxinTerritories([
         {
           territoryId: payload.territoryId,
@@ -697,7 +683,6 @@ export function useGameSocketEvents({
         (id) => !radiationTerritoryIds.includes(id),
       );
       if (newlyRadiated.length > 0) playSound('radiation');
-      radiationPlaceEffect(newlyRadiated);
       setRadiationTerritoryIds(payload.territoryIds);
       setRadiationUpcomingTerritoryIds([]);
       startAnimationLoop();
@@ -744,10 +729,8 @@ export function useGameSocketEvents({
     entrenchEffect,
     animateStarve,
     adjustTerritoryTroops,
-    toxinPlaceEffect,
     unlockEffect,
     adjustToxinTerritories,
-    radiationPlaceEffect,
     radiationTerritoryIds,
     setRadiationTerritoryIds,
     setRadiationUpcomingTerritoryIds,
@@ -777,6 +760,11 @@ export function useGameSocketEvents({
       const troopsRefunded = payload.troopsRefunded ?? 0;
       const conquered = payload.conquered ?? false;
       const freeConquest = payload.defenderId === undefined;
+      if (conquered)
+        noteCaptureSource(
+          payload.defendingTerritoryId,
+          payload.path.at(-1)?.at(-2) ?? payload.attackingTerritoryId,
+        );
       const delay =
         payload.type === 'manual' && !freeConquest
           ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
@@ -979,8 +967,6 @@ export function useGameSocketEvents({
     frozenVisibleTerritoryIdsRef,
     frozenTerritoryDataRef,
     frozenSeaShipsRef,
-    toxinPlacedAtRef,
-    radiationPlacedAtRef,
     tankFire,
     drawParamsRef,
     startAnimationLoop,

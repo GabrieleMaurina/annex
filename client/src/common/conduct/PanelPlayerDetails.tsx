@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Button } from 'react-bootstrap';
+import { connector } from '../../connector';
 import type { FriendsOverview, GameState } from '../../lib/types';
 import WhiteIcon from '../icons/WhiteIcon';
 import Tip from '../tooltips/Tip';
@@ -13,11 +15,13 @@ interface Props {
   blockedUserIds?: string[];
   onChange: () => void;
   onCycleColor?: () => void;
+  live: boolean;
 }
 
 function PanelPlayerDetails({
   player,
   name,
+  live,
   conduct,
   friends,
   blockedUserIds,
@@ -31,9 +35,32 @@ function PanelPlayerDetails({
     !player.isBot &&
     player.id !== conduct.viewerId &&
     (conduct.live ? conduct.masked || knownAccount : userId !== null);
+  const [picture, setPicture] = useState<string | null>(null);
+  const fetchPicture = live && !player.isBot && !connector.isOffline();
+  useEffect(() => {
+    if (!fetchPicture) return;
+    let stale = false;
+    connector.getPlayerPictureInGame(player.id, (res) => {
+      if (!stale && res.ok) setPicture(res.picture);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [fetchPicture, player.id]);
   return (
     <div className="d-flex flex-column gap-1 px-2 py-1">
-      <span className="text-truncate">{name}</span>
+      <div className="d-flex align-items-center gap-1">
+        {picture && (
+          <img
+            src={picture}
+            alt=""
+            width={20}
+            height={20}
+            className="rounded flex-shrink-0"
+          />
+        )}
+        <span className="text-truncate">{name}</span>
+      </div>
       {onCycleColor && (
         <div className="d-flex">
           <Tip text="Only you see this color">

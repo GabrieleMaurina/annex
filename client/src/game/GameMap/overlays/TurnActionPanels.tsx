@@ -390,10 +390,11 @@ export default function TurnActionPanels({
             setAttackBlitzTroops(troops);
           }}
           onBlitzTroopsWheel={(delta) => {
+            const at = performance.now();
             setAttackDiceRoll(null);
             setAttackSelectedType('blitz');
             setAttackBlitzTroops((prev) =>
-              stepTroops(prev, delta, 1, maxBlitzTroops),
+              stepTroops(prev, delta, 1, maxBlitzTroops, at),
             );
           }}
           onConfirm={submitAttack}

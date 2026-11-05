@@ -22,6 +22,7 @@ const SOUND_NAMES = [
   'connect',
   'disconnect',
   'surrender',
+  'bass',
 ];
 const SOUND_FILES: Record<string, string> = {
   ...Object.fromEntries(SOUND_NAMES.map((name) => [name, name])),

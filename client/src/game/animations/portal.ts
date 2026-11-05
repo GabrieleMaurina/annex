@@ -14,7 +14,9 @@ const PORTAL_SHARD_COLORS = ['#7c3aed', '#a78bfa', '#c4b5fd'];
 const PORTAL_SHARD_SPIN_SPEED = 0.003;
 const PORTAL_RING_COLOR_ENABLED = '167, 139, 250';
 const PORTAL_RING_FILL_ENABLED = '124, 58, 237';
-const PORTAL_RING_COLOR_DISABLED = '108, 117, 125';
+const PORTAL_RING_COLOR_DISABLED = '173, 181, 189';
+const PORTAL_RING_FILL_DISABLED = '108, 117, 125';
+const PORTAL_SHARD_COLORS_DISABLED = ['#495057', '#868e96', '#ced4da'];
 const PORTAL_SPIN_SPEED = 0.0015;
 const PORTAL_SPIN_SPEED_JITTER = 0.3;
 
@@ -108,22 +110,27 @@ export function drawPortal(
 ) {
   const ringRadius = radius * PORTAL_RING_SCALE;
 
+  const style = portalStyle(seed);
+
   ctx.save();
   ctx.translate(x, y);
 
   if (!enabled) {
-    ctx.beginPath();
-    ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-    ctx.fillStyle = `rgb(${PORTAL_RING_COLOR_DISABLED})`;
-    ctx.fill();
-    ctx.strokeStyle = `rgba(${PORTAL_RING_COLOR_DISABLED}, 0.6)`;
-    ctx.lineWidth = Math.max(1.5, radius * 0.12);
-    ctx.stroke();
+    drawPortalBody(
+      ctx,
+      radius,
+      ringRadius,
+      style.spinPhase,
+      0,
+      style,
+      PORTAL_RING_FILL_DISABLED,
+      PORTAL_RING_COLOR_DISABLED,
+      PORTAL_SHARD_COLORS_DISABLED,
+    );
     ctx.restore();
     return;
   }
 
-  const style = portalStyle(seed);
   const spin = (now * style.spinSpeed + style.spinPhase) % (Math.PI * 2);
 
   const cycleSeconds = PORTAL_SPARK_CYCLE_MS / 1000;
@@ -186,10 +193,36 @@ export function drawPortal(
   }
   ctx.globalAlpha = 1;
 
+  drawPortalBody(
+    ctx,
+    radius,
+    ringRadius,
+    spin,
+    now,
+    style,
+    PORTAL_RING_FILL_ENABLED,
+    PORTAL_RING_COLOR_ENABLED,
+    PORTAL_SHARD_COLORS,
+  );
+
+  ctx.restore();
+}
+
+function drawPortalBody(
+  ctx: CanvasRenderingContext2D,
+  radius: number,
+  ringRadius: number,
+  spin: number,
+  now: number,
+  style: PortalStyle,
+  fill: string,
+  stroke: string,
+  shardColors: string[],
+) {
   portalBlobPath(ctx, ringRadius, spin, now, style);
-  ctx.fillStyle = `rgb(${PORTAL_RING_FILL_ENABLED})`;
+  ctx.fillStyle = `rgb(${fill})`;
   ctx.fill();
-  ctx.strokeStyle = `rgba(${PORTAL_RING_COLOR_ENABLED}, 0.9)`;
+  ctx.strokeStyle = `rgba(${stroke}, 0.9)`;
   ctx.lineWidth = Math.max(1.5, radius * 0.12);
   ctx.stroke();
 
@@ -210,9 +243,7 @@ export function drawPortal(
       shardRotation,
       PORTAL_SHARD_JITTERS,
     );
-    ctx.fillStyle = PORTAL_SHARD_COLORS[i % PORTAL_SHARD_COLORS.length];
+    ctx.fillStyle = shardColors[i % shardColors.length];
     ctx.fill();
   }
-
-  ctx.restore();
 }

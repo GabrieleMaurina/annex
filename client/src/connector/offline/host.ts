@@ -769,6 +769,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
     case 'game:block':
     case 'game:unblock':
     case 'game:report':
+    case 'game:picture':
       cb?.({ ok: false, error: 'offline' });
       return;
     default:

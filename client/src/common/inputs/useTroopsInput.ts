@@ -3,6 +3,7 @@ import {
   isTroopsPercentage,
   subscribeTroopsPercentage,
 } from '../../lib/player';
+import { detentStep } from './detent';
 import { useNumberInput } from './useNumberInput';
 
 const PERCENTAGE_THRESHOLD = 100;
@@ -54,10 +55,11 @@ export function stepTroops(
   delta: number,
   min: number,
   max: number,
+  at: number,
 ): number {
   const scale = troopsScale(min, max, isTroopsPercentage());
   return scale.toTroops(
-    Math.min(scale.max, Math.max(scale.min, scale.toShown(troops) + delta)),
+    detentStep(scale.toShown(troops), delta, scale.min, scale.max, at),
   );
 }
 

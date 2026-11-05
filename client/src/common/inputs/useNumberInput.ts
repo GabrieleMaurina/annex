@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react';
-import { playSound } from '../../lib/sounds';
+import { detentStep } from './detent';
 
 export const PIXELS_PER_STEP = 8;
 export const DRAG_THRESHOLD = 4;
@@ -46,13 +46,9 @@ export function useNumberInput({
 
   const step = useCallback((delta: number) => {
     const latest = latestRef.current;
-    const next = Math.min(
-      latest.max,
-      Math.max(latest.min, latest.value + delta),
-    );
+    const next = detentStep(latest.value, delta, latest.min, latest.max);
     if (next === latest.value) return;
     latest.value = next;
-    playSound('click');
     latest.onChange(next);
   }, []);
 

@@ -1,6 +1,8 @@
 import { CANVAS_FONT_FAMILY } from '../GameMap/helpers';
 import { makeEntrenchParticles } from './entrench';
 import { makeExplosionParticles } from './nukes/explosion';
+import { capturesActive } from './transitions/capture';
+import { presenceActive } from './transitions/presence';
 import { type DustPuff, makeUnlockEffect, type RockPiece } from './unlock';
 
 export type AnimationType =
@@ -274,6 +276,8 @@ export function hasActiveAnimations(): boolean {
   if (animations.length > 0) return true;
   if (disabled) return false;
   return (
+    capturesActive() ||
+    presenceActive() ||
     continuousAnimationActive ||
     portalsActive ||
     toxinsActive ||

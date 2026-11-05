@@ -250,7 +250,6 @@ function AttackPanel({
     function onWheel(e: WheelEvent) {
       e.preventDefault();
       e.stopPropagation();
-      playSound('click');
       blitzWheelRef.current(wheelDirection(e) * modifierStep(e));
     }
     el.addEventListener('wheel', onWheel, { passive: false });

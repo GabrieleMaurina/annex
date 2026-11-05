@@ -753,6 +753,7 @@ function PlayersPanel({
                           <PanelPlayerDetails
                             player={p}
                             name={p.id === selfId ? 'You' : p.name}
+                            live={storedGameId === undefined}
                             conduct={conduct}
                             friends={conductFriends}
                             blockedUserIds={conductBlockedUserIds}

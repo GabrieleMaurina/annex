@@ -99,3 +99,13 @@ export {
 } from './state';
 export type { AnimationType } from './state';
 export { drawToxinCloud } from './toxin';
+export {
+  fillWithRipple,
+  markerRipple,
+  noteCaptureSource,
+  regionRipple,
+  trackCaptures,
+} from './transitions/capture';
+export type { Capture, Ripple } from './transitions/capture';
+export { drawScaled, trackPresence } from './transitions/presence';
+export type { Look, Shown } from './transitions/presence';

@@ -1,14 +1,23 @@
+import { RING_LIGHTEN, type Ripple } from '../animations/transitions/capture';
+
 export interface SmoothSource {
   image: HTMLImageElement | HTMLCanvasElement;
   revision: number;
   tiles: HTMLCanvasElement | null;
-  fill: { labels: Int16Array; colors: Map<number, string> } | null;
+  fill: {
+    labels: Int16Array;
+    colors: Map<number, string>;
+    ripples: Map<number, Ripple>;
+  } | null;
 }
 
 const SIGMA = 1.25;
 const RADIUS = 3;
 const THIN_FLOOR = 0.75;
 const PALETTE_WIDTH = 256;
+const RIPPLE_TEXELS = 3;
+const RIPPLE_SCALE = 4;
+const RIPPLE_OFFSET = 4096;
 
 const IMAGE_UNIT = 0;
 const TILES_UNIT = 1;
@@ -17,6 +26,7 @@ const PALETTE_UNIT = 3;
 const FIELD_UNIT = 4;
 const AXIS_UNIT = 5;
 const DIAGONAL_UNIT = 6;
+const RIPPLES_UNIT = 7;
 const SAMPLERS: [string, number][] = [
   ['u_image', IMAGE_UNIT],
   ['u_tiles', TILES_UNIT],
@@ -25,6 +35,7 @@ const SAMPLERS: [string, number][] = [
   ['u_field', FIELD_UNIT],
   ['u_axis', AXIS_UNIT],
   ['u_diagonal', DIAGONAL_UNIT],
+  ['u_ripples', RIPPLES_UNIT],
 ];
 const CROSS_PASSES: [number, number[], number[]][] = [
   [AXIS_UNIT, [-1, 1, 0, 0], [0, 0, -1, 1]],
@@ -170,12 +181,14 @@ uniform sampler2D u_palette;
 uniform sampler2D u_field;
 uniform sampler2D u_axis;
 uniform sampler2D u_diagonal;
+uniform sampler2D u_ripples;
 uniform vec2 u_paletteSize;
 uniform vec2 u_origin;
 uniform float u_scale;
 uniform float u_height;
 
 vec4 c0, c1, c2, c3, labels, shares, w, wx, wy;
+vec2 imagePos;
 
 float same(vec4 a, float la, vec4 b, float lb) {
   return la == lb && sameColor(a, b) ? 1.0 : 0.0;
@@ -195,11 +208,36 @@ vec3 score(vec4 mask, vec4 others) {
   return vec3(dot(value, w), dot(value, wx), dot(value, wy));
 }
 
+vec4 rippleTexel(vec2 slot, float index) {
+  vec2 size = vec2(u_paletteSize.x * ${RIPPLE_TEXELS}.0, u_paletteSize.y);
+  vec2 texel = vec2(slot.x * ${RIPPLE_TEXELS}.0 + index, slot.y);
+  return texture2D(u_ripples, (texel + 0.5) / size);
+}
+
+float wordOf(float high, float low) {
+  return (floor(high * 255.0 + 0.5) * 256.0 + floor(low * 255.0 + 0.5)) / ${RIPPLE_SCALE}.0;
+}
+
+vec4 rippled(vec4 fill, vec2 slot) {
+  vec4 previous = rippleTexel(slot, 0.0);
+  if (previous.a == 0.0) return fill;
+  vec4 entry = rippleTexel(slot, 1.0);
+  vec4 wave = rippleTexel(slot, 2.0);
+  vec2 center = vec2(wordOf(entry.r, entry.g), wordOf(entry.b, entry.a)) - ${RIPPLE_OFFSET}.0;
+  float radius = wordOf(wave.r, wave.g);
+  float halfRing = floor(wave.a * 255.0 + 0.5) / ${RIPPLE_SCALE * 2}.0;
+  float edge = 0.5 / u_scale;
+  float d = distance(imagePos, center);
+  vec4 color = mix(fill, previous, smoothstep(radius - edge, radius + edge, d));
+  float ring = wave.b * (1.0 - smoothstep(halfRing - edge, halfRing + edge, abs(d - radius)));
+  return mix(color, vec4(mix(fill.rgb, vec3(1.0), ${RING_LIGHTEN.toFixed(2)}), 1.0), ring);
+}
+
 vec4 shown(vec4 color, float label) {
   if (label >= 0.0) {
     vec2 slot = vec2(mod(label, u_paletteSize.x), floor(label / u_paletteSize.x));
     vec4 fill = texture2D(u_palette, (slot + 0.5) / u_paletteSize);
-    if (fill.a > 0.0) return fill;
+    if (fill.a > 0.0) return rippled(fill, slot);
   }
   return color;
 }
@@ -222,6 +260,7 @@ void main() {
     gl_FragColor = vec4(0.0);
     return;
   }
+  imagePos = p;
   vec2 q = p - 0.5;
   vec2 cell = floor(q);
   vec2 f = q - cell;
@@ -447,6 +486,44 @@ function uploadPalette(s: Smoother, colors: Map<number, string>) {
   );
 }
 
+function uploadRipples(s: Smoother, ripples: Map<number, Ripple>) {
+  const pixels = new Uint8Array(
+    PALETTE_WIDTH * RIPPLE_TEXELS * s.paletteRows * 4,
+  );
+  const word = (value: number) =>
+    Math.max(0, Math.min(65535, Math.round(value * RIPPLE_SCALE)));
+  for (const [id, ripple] of ripples) {
+    const x = word(ripple.x + RIPPLE_OFFSET);
+    const y = word(ripple.y + RIPPLE_OFFSET);
+    const radius = word(ripple.radius);
+    pixels.set(
+      [
+        parseInt(ripple.from.slice(1, 3), 16),
+        parseInt(ripple.from.slice(3, 5), 16),
+        parseInt(ripple.from.slice(5, 7), 16),
+        255,
+        x >> 8,
+        x & 255,
+        y >> 8,
+        y & 255,
+        radius >> 8,
+        radius & 255,
+        Math.round(ripple.ring * 255),
+        Math.min(255, Math.round(ripple.ringWidth * RIPPLE_SCALE)),
+      ],
+      id * RIPPLE_TEXELS * 4,
+    );
+  }
+  uploadPixels(
+    s,
+    RIPPLES_UNIT,
+    s.gl.RGBA,
+    PALETTE_WIDTH * RIPPLE_TEXELS,
+    s.paletteRows,
+    pixels,
+  );
+}
+
 function selectProgram(
   s: Smoother,
   program: WebGLProgram,
@@ -546,7 +623,10 @@ export function drawSmoothImage(
     s.labels = labels;
     fieldStale = true;
   }
-  if (source.fill) uploadPalette(s, source.fill.colors);
+  if (source.fill) {
+    uploadPalette(s, source.fill.colors);
+    uploadRipples(s, source.fill.ripples);
+  }
   if (fieldStale) computeField(s, source, width, height);
 
   const canvas = gl.canvas as HTMLCanvasElement;

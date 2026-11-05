@@ -1,4 +1,5 @@
 import { TILE_SEAM_COLOR, TILE_WALL_COLOR } from 'engine';
+import { fillWithRipple, type Ripple } from '../../animations';
 import {
   regionAt,
   type ClickableRegions,
@@ -30,6 +31,7 @@ const fillLayers = new WeakMap<ClickableRegions, FillLayer>();
 export function regionFillLayer(
   regions: ClickableRegions,
   colors: Map<number, string>,
+  ripples: Map<number, Ripple>,
 ): HTMLCanvasElement {
   let layer = fillLayers.get(regions);
   if (!layer) {
@@ -45,11 +47,12 @@ export function regionFillLayer(
     if (!colors.has(id)) ctx.fill(regions.shapes.get(id)!.fill);
   ctx.globalCompositeOperation = 'source-over';
   for (const [id, color] of colors) {
-    if (layer.colors.get(id) === color) continue;
-    ctx.fillStyle = color;
-    ctx.fill(regions.shapes.get(id)!.fill);
+    const ripple = ripples.get(id);
+    if (!ripple && layer.colors.get(id) === color) continue;
+    fillWithRipple(ctx, regions.shapes.get(id)!.fill, color, ripple);
   }
-  layer.colors = colors;
+  layer.colors = new Map(colors);
+  for (const id of ripples.keys()) if (colors.has(id)) layer.colors.set(id, '');
   return layer.canvas;
 }
 
@@ -112,6 +115,22 @@ export function outlineContinentRegion(
   ctx.setLineDash(dash.map((d) => d / view.scaleX));
   if (tinted) ctx.fill(shape.outline);
   ctx.stroke(shape.outline);
+  ctx.restore();
+}
+
+export function strokeSharedBorders(
+  ctx: CanvasRenderingContext2D,
+  shape: RegionShape,
+  neighbors: RegionShape[],
+  color: string,
+  view: ImageView,
+) {
+  const width = ctx.lineWidth;
+  enterImageSpace(ctx, view);
+  ctx.clip(shape.outline);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = (width * 2) / view.scaleX;
+  for (const neighbor of neighbors) ctx.stroke(neighbor.outline);
   ctx.restore();
 }
 

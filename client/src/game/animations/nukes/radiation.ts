@@ -29,7 +29,6 @@ const RADIATION_COLORS = [
 const RADIATION_SPEED_SCALE = 0.55;
 const RADIATION_ALPHA_SCALE = 0.7;
 const RADIATION_UPCOMING_ALPHA_SCALE = 0.3;
-const RADIATION_PLACE_BURST_DURATION = 900;
 const RADIATION_PARTICLE_COUNT = 9;
 const RADIATION_TRAIL_SAMPLES = 3;
 const RADIATION_TRAIL_STEP_MS = 55;
@@ -63,7 +62,6 @@ function radiationParticlePosition(
   seed: number,
   index: number,
   cloudRadius: number,
-  expansion: number,
 ): ToxinParticlePosition {
   const r = (k: number) => pseudoRandom(seed * 17.53 + index * 5.113 + k);
 
@@ -84,7 +82,7 @@ function radiationParticlePosition(
     TOXIN_PARTICLE_RADIUS_MIN + r(8) * TOXIN_PARTICLE_RADIUS_RANGE;
   const radiusFrac = Math.min(1, Math.max(0.05, baseRadiusFrac + radiusJitter));
 
-  const dist = cloudRadius * radiusFrac * expansion;
+  const dist = cloudRadius * radiusFrac;
   const shakeX =
     cloudRadius *
     RADIATION_SHAKE_XY_AMOUNT *
@@ -157,17 +155,11 @@ export function drawRadiationCloud(
   now: number,
   isUpcoming: boolean,
   seed: number,
-  placedAt: number,
 ) {
   const cloudRadius = radius * RADIATION_CLOUD_SCALE;
   const sizeScale = radius / TOXIN_PARTICLE_REFERENCE_RADIUS;
   const alphaScale =
     (isUpcoming ? RADIATION_UPCOMING_ALPHA_SCALE : 1) * RADIATION_ALPHA_SCALE;
-  const burstProgress = Math.min(
-    1,
-    Math.max(0, (now - placedAt) / RADIATION_PLACE_BURST_DURATION),
-  );
-  const expansion = isUpcoming ? 1 : 1 - (1 - burstProgress) ** 3;
 
   ctx.save();
   ctx.translate(x, y);
@@ -181,7 +173,6 @@ export function drawRadiationCloud(
           seed,
           i,
           cloudRadius,
-          expansion,
         ),
       );
     }

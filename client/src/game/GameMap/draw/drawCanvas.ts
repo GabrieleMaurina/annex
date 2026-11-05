@@ -11,13 +11,10 @@ import {
   areAnimationsDisabled,
   crackingTileIds,
   drawAnimations,
-  drawFogCloud,
   drawFortifyPath,
-  drawPortal,
-  drawRadiationCloud,
-  drawToxinCloud,
-  ENTRENCHED_OCTAGON_SCALE,
-  traceOctagon,
+  regionRipple,
+  trackCaptures,
+  type Ripple,
 } from '../../animations';
 import type { EvaluatedCombo } from '../../logic/cards';
 import { formatTroops } from '../../logic/formatTroops';
@@ -41,16 +38,9 @@ import { drawSupplyLines } from '../../supplyLines';
 import type { Camera } from '../camera';
 import {
   CANVAS_FONT_FAMILY,
-  ENTRENCHED_OCTAGON_FILL,
-  ENTRENCHED_OCTAGON_STROKE,
   getScales,
   getScreenOffset,
   hexagonPath,
-  HILL_BASE,
-  HILL_FILL,
-  HILL_HALF_WIDTH,
-  HILL_HEIGHT,
-  HILL_STROKE,
   SEA_COLOR,
   SEA_SIZE_MULTIPLIER,
   STATE_STYLE,
@@ -60,11 +50,22 @@ import {
 } from '../helpers';
 import type { DirectionalLink } from '../hooks/view/useDirectionalConnections';
 import type { TimedLink } from '../hooks/view/useTimedConnections';
+import {
+  drawCardBadge,
+  drawFog,
+  drawHills,
+  drawOverModifiers,
+  drawShips,
+  drawUnderModifiers,
+  trackModifiers,
+  type ModifierFrame,
+} from './drawModifiers';
 import { drawTerritoryNames } from './drawNames';
 import {
   outlineContinentRegion,
   regionFillLayer,
   strokeRegion,
+  strokeSharedBorders,
   unlockedTileLayer,
 } from './drawRegions';
 import { drawDirectionalLinks, drawTimedLinks } from './drawTimedLinks';
@@ -95,7 +96,6 @@ export interface DrawCanvasParams {
   displayedToxinTerritories: GameState['toxinTerritories'];
   radiationById: Set<number>;
   antiNukeById: Set<number>;
-  radiationPlacedAtRef: RefObject<Map<number, number>>;
   visibleTerritoryIds: GameState['visibleTerritoryIds'];
   frozenVisibleTerritoryIdsRef: RefObject<Set<number> | null>;
   radiationUpcomingById: Set<number>;
@@ -106,7 +106,6 @@ export interface DrawCanvasParams {
   nodeState: (id: number) => 'normal' | 'selectable' | 'hovered' | 'selected';
   frozenOwnerRef: RefObject<Map<number, number>>;
   VERTEX_RADIUS: number;
-  toxinPlacedAtRef: RefObject<Map<number, number>>;
   isMyTurn: boolean;
   attackPendingConquest: boolean;
   attackMoveTroops: number;
@@ -142,10 +141,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     imgDims,
     camera,
     imageRef,
-    supplyLineEdgesByPlayer,
     territories,
     seaTerritories,
-    seas,
     fortifyPathTerritoryIds,
     attackPathTerritoryIds,
     sailPathTerritoryIds,
@@ -157,21 +154,16 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     bonusesOpen,
     gameMode,
     continentId,
-    hillTerritoryIds,
     players,
     displayedToxinTerritories,
     radiationById,
-    antiNukeById,
-    radiationPlacedAtRef,
     visibleTerritoryIds,
     frozenVisibleTerritoryIdsRef,
-    radiationUpcomingById,
     ownerById,
     frozenTerritoryDataRef,
     nodeState,
     frozenOwnerRef,
     VERTEX_RADIUS,
-    toxinPlacedAtRef,
     isMyTurn,
     attackPendingConquest,
     attackMoveTroops,
@@ -183,7 +175,6 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     fortifyTroops,
     fortifyStartTerritoryId,
     frozenTroopsRef,
-    frozenSeaShipsRef,
     cardByTerritoryId,
     ownedTerritoryIds,
     showReplay,
@@ -267,28 +258,58 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
   const ownerOf = (id: number) =>
     ownerById.get(id) ?? frozenTerritoryDataRef.current.get(id);
-  const fillColorOf = (id: number) => {
-    const displayOwnerId =
-      frozenOwnerRef.current.get(id) ?? ownerOf(id)?.ownerId;
-    return displayOwnerId !== undefined
-      ? playerColor(colorByPlayerId.get(displayOwnerId) ?? 0)
+  const displayOwnerOf = (id: number) =>
+    frozenOwnerRef.current.get(id) ?? ownerOf(id)?.ownerId;
+  const ownerColor = (ownerId: number | undefined) =>
+    ownerId !== undefined
+      ? playerColor(colorByPlayerId.get(ownerId) ?? 0)
       : UNCLAIMED_TERRITORY_COLOR;
-  };
+  const fillColorOf = (id: number) => ownerColor(displayOwnerOf(id));
   const view = { scaleX, scaleY, offsetX, offsetY };
+  const captures = trackCaptures(canvas, {
+    territories,
+    visibleSet,
+    ownerOf: displayOwnerOf,
+    colorOf: ownerColor,
+    pointById: pathPointById,
+    vertexRadius: VERTEX_RADIUS,
+    ready: imageRef.current !== null,
+    animate: !areAnimationsDisabled(),
+  });
+  const now = areAnimationsDisabled() ? 0 : performance.now();
+  const frame: ModifierFrame = {
+    ctx,
+    shown: trackModifiers(canvas, params, {
+      visibleSet,
+      cracking,
+      ownerOf,
+      fillColorOf,
+      ready: imageRef.current !== null,
+    }),
+    toScreen,
+    scaleX,
+    radius: VERTEX_RADIUS * scaleX,
+    uiScale,
+    now,
+    captures,
+  };
 
   const fillColors = new Map<number, string>();
   const tintedFillColors = new Map<number, string>();
+  const ripples = new Map<number, Ripple>();
   if (regions) {
     for (const t of territories) {
-      if (!regions.shapes.has(t.id) || radiationById.has(t.id)) continue;
+      if (!regions.shapes.has(t.id)) continue;
       if (cracking.has(t.id)) continue;
-      if (visibleSet && !visibleSet.has(t.id)) continue;
-      const color = fillColorOf(t.id);
+      const color =
+        visibleSet && !visibleSet.has(t.id)
+          ? UNCLAIMED_TERRITORY_COLOR
+          : fillColorOf(t.id);
+      const tint = STATE_STYLE[nodeState(t.id)].tint;
       fillColors.set(t.id, color);
-      tintedFillColors.set(
-        t.id,
-        lighten(color, STATE_STYLE[nodeState(t.id)].tint),
-      );
+      tintedFillColors.set(t.id, lighten(color, tint));
+      const capture = captures.get(t.id);
+      if (capture) ripples.set(t.id, regionRipple(regions, t, capture, tint));
     }
   }
 
@@ -306,6 +327,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         fill: regions && {
           labels: regions.fillLabels,
           colors: tintedFillColors,
+          ripples,
         },
       },
       offsetX,
@@ -320,13 +342,13 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     };
     if (image) drawLayer(image);
     if (tileLayer) drawLayer(tileLayer);
-    if (regions) drawLayer(regionFillLayer(regions, tintedFillColors));
+    if (regions) drawLayer(regionFillLayer(regions, tintedFillColors, ripples));
   }
 
-  if (supplyLineEdgesByPlayer.size > 0) {
+  if (frame.shown.supply.size > 0) {
     drawSupplyLines(
       ctx,
-      supplyLineEdgesByPlayer,
+      frame.shown.supply.values(),
       pathPointById,
       new Set(seaTerritories.map((t) => t.id)),
       toScreen,
@@ -487,7 +509,15 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         strokeContinentOutline(ctx, group, toScreen, continentHullPad, false);
     }
     for (const { shape, color } of ownedShapes)
-      strokeRegion(ctx, shape, color, ctx.lineWidth / 2, view);
+      strokeSharedBorders(
+        ctx,
+        shape,
+        ownedShapes
+          .filter((other) => other.color !== color)
+          .map((other) => other.shape),
+        color,
+        view,
+      );
     ctx.restore();
   }
 
@@ -514,55 +544,23 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     }
   }
 
-  ctx.save();
-  for (const id of hillTerritoryIds) {
-    const t = territoryById.get(id);
-    if (!t) continue;
-    const p = toScreen(t);
-    const r = VERTEX_RADIUS * scaleX;
-    const apex = { x: p.x, y: p.y - r * HILL_HEIGHT };
-    const left = { x: p.x - r * HILL_HALF_WIDTH, y: p.y + r * HILL_BASE };
-    const right = { x: p.x + r * HILL_HALF_WIDTH, y: p.y + r * HILL_BASE };
-    ctx.beginPath();
-    ctx.moveTo(apex.x, apex.y);
-    ctx.lineTo(right.x, right.y);
-    ctx.lineTo(left.x, left.y);
-    ctx.closePath();
-    ctx.fillStyle = HILL_FILL;
-    ctx.fill();
-    ctx.strokeStyle = HILL_STROKE;
-    ctx.lineWidth = 2 * uiScale;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-  }
-  ctx.restore();
+  drawHills(frame, territoryById);
 
-  const portalTerritoryIdSet = new Set(portalTerritoryIds);
-  const now = areAnimationsDisabled() ? 0 : performance.now();
-
-  const seaShipsById = new Map(seas.map((s) => [s.id, s.ships]));
   for (const s of seaTerritories) {
     const isVisible = visibleSet === null || visibleSet.has(s.id);
     const p = toScreen(s);
     const hexRadius = VERTEX_RADIUS * scaleX * SEA_SIZE_MULTIPLIER;
-
-    if (!isVisible) {
-      drawFogCloud(ctx, p.x, p.y, hexRadius, now, s.id);
-      continue;
-    }
-
     const seaShape = regions?.shapes.get(s.id);
     const seaStyle = STATE_STYLE[nodeState(s.id)];
-    if (seaShape) {
-      if (seaStyle !== STATE_STYLE.normal)
-        strokeRegion(
-          ctx,
-          seaShape,
-          seaStyle.stroke,
-          seaStyle.width * uiScale,
-          view,
-        );
-    } else {
+    if (isVisible && seaShape && seaStyle !== STATE_STYLE.normal)
+      strokeRegion(
+        ctx,
+        seaShape,
+        seaStyle.stroke,
+        seaStyle.width * uiScale,
+        view,
+      );
+    if (isVisible && !seaShape) {
       ctx.beginPath();
       hexagonPath(ctx, p.x, p.y, hexRadius);
       ctx.fillStyle = SEA_COLOR;
@@ -571,47 +569,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ctx.lineWidth = seaStyle.width * uiScale;
       ctx.stroke();
     }
-
-    const ships = (
-      frozenSeaShipsRef.current.get(s.id) ??
-      seaShipsById.get(s.id) ??
-      []
-    ).filter((b) => b.ships > 0);
-    const circleRadius = VERTEX_RADIUS * scaleX * 0.7;
-    const triangleRadius = VERTEX_RADIUS * scaleX * 1.3;
-    const dist = hexRadius + triangleRadius + 4 * uiScale;
-    ships.forEach((ship, i) => {
-      const angle = (Math.PI * 2 * i) / ships.length - Math.PI / 2;
-      const cx = p.x + dist * Math.cos(angle);
-      const cy = p.y + dist * Math.sin(angle);
-      const fillColor = playerColor(colorByPlayerId.get(ship.playerId) ?? 0);
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(angle + Math.PI / 2);
-      ctx.beginPath();
-      ctx.moveTo(triangleRadius, 0);
-      ctx.lineTo(-triangleRadius * 0.6, triangleRadius * 0.7);
-      ctx.lineTo(-triangleRadius * 0.6, -triangleRadius * 0.7);
-      ctx.closePath();
-      ctx.fillStyle = fillColor;
-      ctx.fill();
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2 * uiScale;
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.fillStyle = contrastTextColor(fillColor);
-      ctx.font = `bold ${circleRadius}px ${CANVAS_FONT_FAMILY}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-      const text = String(ship.ships);
-      const metrics = ctx.measureText(text);
-      const baselineY =
-        cy +
-        (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
-          2;
-      ctx.fillText(text, cx, baselineY);
-    });
+    drawShips(frame, s.id, p, hexRadius);
+    drawFog(frame, s.id, p, hexRadius);
   }
 
   for (const t of territories) {
@@ -619,264 +578,73 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     const isVisible = visibleSet === null || visibleSet.has(t.id);
     const p = toScreen(t);
     const shape = regions?.shapes.get(t.id);
+    const style = STATE_STYLE[nodeState(t.id)];
+    const owner = isVisible ? ownerOf(t.id) : undefined;
 
-    if (portalTerritoryIdSet.has(t.id)) {
-      drawPortal(
-        ctx,
-        p.x,
-        p.y,
-        VERTEX_RADIUS * scaleX,
-        now,
-        portalsEnabled,
-        t.id,
-      );
+    drawUnderModifiers(frame, t.id, p);
+    if (isVisible && shape && style !== STATE_STYLE.normal)
+      strokeRegion(ctx, shape, style.stroke, style.width * uiScale, view);
+    drawOverModifiers(frame, t.id, p);
+
+    if (owner) {
+      const fillColor = fillColorOf(t.id);
+      const troops =
+        isMyTurn && attackPendingConquest && t.id === attackEndTerritoryId
+          ? (frozenTroopsRef.current.has(t.id) ? 0 : owner.troops) +
+            attackMoveTroops
+          : isMyTurn && attackPendingConquest && t.id === attackStartTerritoryId
+            ? owner.troops - attackMoveTroops
+            : deployPanelOpen && t.id === selectedTerritoryId
+              ? owner.troops + deployTroops
+              : fortifyPanelOpen && t.id === fortifyEndTerritoryId
+                ? owner.troops + fortifyTroops
+                : fortifyPanelOpen && t.id === fortifyStartTerritoryId
+                  ? owner.troops - fortifyTroops
+                  : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
+      const fullyClickable = shape && !owner.isCapital;
+      ctx.fillStyle = contrastTextColor(fillColor);
+      ctx.font = `bold ${VERTEX_RADIUS * scaleX * (fullyClickable ? 1.25 : 1)}px ${CANVAS_FONT_FAMILY}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      const text = formatTroops(troops);
+      const metrics = ctx.measureText(text);
+      const baselineY =
+        p.y +
+        (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
+          2;
+      ctx.fillText(text, p.x, baselineY);
     }
 
-    const isRadiated = radiationById.has(t.id);
-    if (isRadiated) {
-      drawRadiationCloud(
-        ctx,
-        p.x,
-        p.y,
-        VERTEX_RADIUS * scaleX,
-        now,
-        false,
-        t.id,
-        areAnimationsDisabled()
-          ? -Infinity
-          : (radiationPlacedAtRef.current.get(t.id) ?? -Infinity),
-      );
-    }
-
-    let owner: GameState['territories'][number] | undefined;
-
-    if (!isVisible) {
-      if (!isRadiated && radiationUpcomingById.has(t.id)) {
-        drawRadiationCloud(
-          ctx,
-          p.x,
-          p.y,
-          VERTEX_RADIUS * scaleX,
-          now,
-          true,
-          t.id,
-          -Infinity,
-        );
-      }
-      drawFogCloud(ctx, p.x, p.y, VERTEX_RADIUS * scaleX, now, t.id);
-      const fogStyle = STATE_STYLE[nodeState(t.id)];
-      if (shape && fogStyle !== STATE_STYLE.normal) {
-        strokeRegion(
-          ctx,
-          shape,
-          fogStyle.stroke,
-          fogStyle.width * uiScale,
-          view,
-        );
-      } else if (fogStyle !== STATE_STYLE.normal) {
+    drawFog(frame, t.id, p, VERTEX_RADIUS * scaleX);
+    if (!isVisible && style !== STATE_STYLE.normal) {
+      if (shape) {
+        strokeRegion(ctx, shape, style.stroke, style.width * uiScale, view);
+      } else {
         ctx.beginPath();
         ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
-        ctx.strokeStyle = fogStyle.stroke;
-        ctx.lineWidth = fogStyle.width * uiScale;
+        ctx.strokeStyle = style.stroke;
+        ctx.lineWidth = style.width * uiScale;
         ctx.stroke();
-      }
-    } else {
-      const style = STATE_STYLE[nodeState(t.id)];
-      owner = ownerOf(t.id);
-      const fillColor = fillColorOf(t.id);
-      if (shape && style !== STATE_STYLE.normal)
-        strokeRegion(ctx, shape, style.stroke, style.width * uiScale, view);
-
-      if (owner && owner.entrenchedTurns > 0) {
-        traceOctagon(
-          ctx,
-          p.x,
-          p.y,
-          VERTEX_RADIUS * ENTRENCHED_OCTAGON_SCALE * scaleX,
-        );
-        ctx.fillStyle = ENTRENCHED_OCTAGON_FILL;
-        ctx.fill();
-        ctx.strokeStyle = ENTRENCHED_OCTAGON_STROKE;
-        ctx.lineWidth = 2 * uiScale;
-        ctx.stroke();
-      }
-
-      const toxin = toxinByTerritoryId.get(t.id);
-      if (toxin) {
-        drawToxinCloud(
-          ctx,
-          p.x,
-          p.y,
-          VERTEX_RADIUS * scaleX,
-          now,
-          toxin.permanent,
-          toxin.roundsRemaining,
-          t.id,
-          areAnimationsDisabled()
-            ? -Infinity
-            : (toxinPlacedAtRef.current.get(t.id) ?? -Infinity),
-        );
-      }
-
-      if (!toxin && !isRadiated) {
-        if (!shape || owner?.isCapital) {
-          const markerStyle = shape ? STATE_STYLE.normal : style;
-          ctx.beginPath();
-          if (owner?.isCapital) {
-            const half = VERTEX_RADIUS * scaleX;
-            ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
-          } else {
-            ctx.arc(p.x, p.y, VERTEX_RADIUS * scaleX, 0, Math.PI * 2);
-          }
-          ctx.fillStyle = fillColor;
-          ctx.fill();
-          ctx.strokeStyle = markerStyle.stroke;
-          ctx.lineWidth = markerStyle.width * uiScale;
-          ctx.stroke();
-        }
-
-        if (radiationUpcomingById.has(t.id)) {
-          drawRadiationCloud(
-            ctx,
-            p.x,
-            p.y,
-            VERTEX_RADIUS * scaleX,
-            now,
-            true,
-            t.id,
-            -Infinity,
-          );
-        }
-      }
-
-      if (antiNukeById.has(t.id)) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, (VERTEX_RADIUS + 3) * scaleX, 0, Math.PI * 2);
-        ctx.strokeStyle = '#22d3ee';
-        ctx.lineWidth = 2 * uiScale;
-        ctx.setLineDash([4 * uiScale, 3 * uiScale]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-
-      if (owner) {
-        const troops =
-          isMyTurn && attackPendingConquest && t.id === attackEndTerritoryId
-            ? (frozenTroopsRef.current.has(t.id) ? 0 : owner.troops) +
-              attackMoveTroops
-            : isMyTurn &&
-                attackPendingConquest &&
-                t.id === attackStartTerritoryId
-              ? owner.troops - attackMoveTroops
-              : deployPanelOpen && t.id === selectedTerritoryId
-                ? owner.troops + deployTroops
-                : fortifyPanelOpen && t.id === fortifyEndTerritoryId
-                  ? owner.troops + fortifyTroops
-                  : fortifyPanelOpen && t.id === fortifyStartTerritoryId
-                    ? owner.troops - fortifyTroops
-                    : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
-        const fullyClickable = shape && !owner.isCapital;
-        ctx.fillStyle = contrastTextColor(fillColor);
-        ctx.font = `bold ${VERTEX_RADIUS * scaleX * (fullyClickable ? 1.25 : 1)}px ${CANVAS_FONT_FAMILY}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'alphabetic';
-        const text = formatTroops(troops);
-        const metrics = ctx.measureText(text);
-        const baselineY =
-          p.y +
-          (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
-            2;
-        ctx.fillText(text, p.x, baselineY);
       }
     }
 
-    const territoryCard = cardByTerritoryId.get(t.id);
-    if (territoryCard) {
-      const cardOwned = ownedTerritoryIds.has(t.id);
-
-      const inSelectedCombo =
-        cardsOpen &&
-        (selectedCombo?.cards.some((c) => c.territoryId === t.id) ?? false);
-      if (inSelectedCombo) {
-        ctx.beginPath();
-        if (owner?.isCapital) {
-          const half = (VERTEX_RADIUS + 6) * scaleX;
-          ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
-        } else {
-          ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * scaleX, 0, Math.PI * 2);
-        }
-        ctx.strokeStyle = '#e3a33b';
-        ctx.lineWidth = 3 * uiScale;
-        ctx.stroke();
+    const inSelectedCombo =
+      cardsOpen &&
+      cardByTerritoryId.has(t.id) &&
+      (selectedCombo?.cards.some((c) => c.territoryId === t.id) ?? false);
+    if (inSelectedCombo) {
+      ctx.beginPath();
+      if (owner?.isCapital) {
+        const half = (VERTEX_RADIUS + 6) * scaleX;
+        ctx.rect(p.x - half, p.y - half, half * 2, half * 2);
+      } else {
+        ctx.arc(p.x, p.y, (VERTEX_RADIUS + 6) * scaleX, 0, Math.PI * 2);
       }
-
-      if (territoryCard.symbol && territoryCard.territoryId !== null) {
-        const img = cardImagesRef.current[territoryCard.symbol];
-        if (img.complete && img.naturalWidth > 0) {
-          const iconSize = 16 * uiScale;
-          const textHeight = 11 * uiScale;
-          const badgePad = 4 * uiScale;
-          const badgeGap = 1 * uiScale;
-          const cardText =
-            placeNames.territories.get(territoryCard.territoryId) ??
-            `#${territoryCard.territoryId + 1}`;
-          ctx.font = `bold ${textHeight}px ${CANVAS_FONT_FAMILY}`;
-          const textW = Math.max(iconSize, ctx.measureText(cardText).width);
-          const badgeW = textW + badgePad * 2;
-          const badgeH = iconSize + badgeGap + textHeight + badgePad * 2;
-          const dist = (VERTEX_RADIUS + 6) * scaleX + badgeH / 2 + 4 * uiScale;
-          const cx = p.x + dist * Math.SQRT1_2 + (textW - iconSize) / 2;
-          const cy = p.y - dist * Math.SQRT1_2;
-
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1 * uiScale;
-          ctx.beginPath();
-          ctx.roundRect(
-            cx - badgeW / 2,
-            cy - badgeH / 2,
-            badgeW,
-            badgeH,
-            4 * uiScale,
-          );
-          ctx.fill();
-          ctx.stroke();
-          ctx.drawImage(
-            img,
-            cx - iconSize / 2,
-            cy - badgeH / 2 + badgePad,
-            iconSize,
-            iconSize,
-          );
-
-          ctx.fillStyle = '#000000';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'alphabetic';
-          ctx.fillText(cardText, cx, cy + badgeH / 2 - badgePad * 0.6);
-
-          if (cardOwned) {
-            const pillText = '+2';
-            ctx.font = `bold ${10 * uiScale}px ${CANVAS_FONT_FAMILY}`;
-            const pillWidth = ctx.measureText(pillText).width + 6 * uiScale;
-            const pillHeight = 12 * uiScale;
-            const pillX = cx + badgeW / 2;
-            const pillY = cy - badgeH / 2;
-            ctx.fillStyle = '#2ecc71';
-            ctx.beginPath();
-            ctx.roundRect(
-              pillX - pillWidth / 2,
-              pillY - pillHeight / 2,
-              pillWidth,
-              pillHeight,
-              pillHeight / 2,
-            );
-            ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(pillText, pillX, pillY + 3.5 * uiScale);
-          }
-        }
-      }
+      ctx.strokeStyle = '#e3a33b';
+      ctx.lineWidth = 3 * uiScale;
+      ctx.stroke();
     }
+    drawCardBadge(frame, t.id, p, cardImagesRef.current, placeNames);
 
     if (bonusesOpen && !placeNames.territories.has(t.id)) {
       const idText = `#${t.id + 1}`;

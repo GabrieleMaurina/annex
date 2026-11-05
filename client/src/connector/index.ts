@@ -972,4 +972,13 @@ export const connector = {
   ): void {
     route('game:report', { playerId, reason }, cb);
   },
+
+  getPlayerPictureInGame(
+    playerId: number,
+    cb: (
+      res: { ok: true; picture: string | null } | { ok: false; error: string },
+    ) => void,
+  ): void {
+    route('game:picture', { playerId }, cb);
+  },
 };

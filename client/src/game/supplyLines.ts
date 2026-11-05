@@ -1,4 +1,5 @@
 import type { GameState } from '../lib/types';
+import type { Shown } from './animations';
 import {
   buildWrappedPathSegments,
   type ForcedWraps,
@@ -238,7 +239,16 @@ export function computeSupplyLineEdges(
       }
       for (const id of component) globalVisited.add(id);
       edges.push(
-        ...primMST(component, hubId, territoryById, adjacency, mapW, mapH),
+        ...primMST(
+          component,
+          hubId,
+          territoryById,
+          adjacency,
+          mapW,
+          mapH,
+        ).filter((edge) =>
+          territoryById.get(edge.fromId)!.neighbors.includes(edge.toId),
+        ),
       );
     }
     result.set(playerId, edges);
@@ -374,9 +384,18 @@ function traceRailway(
   }
 }
 
+function scaleSegment(a: Point, b: Point, scale: number) {
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  return {
+    a: { x: mx + (a.x - mx) * scale, y: my + (a.y - my) * scale },
+    b: { x: mx + (b.x - mx) * scale, y: my + (b.y - my) * scale },
+  };
+}
+
 export function drawSupplyLines(
   ctx: CanvasRenderingContext2D,
-  edgesByPlayer: Map<number, RailEdge[]>,
+  edges: Iterable<Shown<RailEdge>>,
   territoryById: Map<number, Point>,
   seaIds: Set<number>,
   toScreen: (p: Point) => Point,
@@ -388,26 +407,25 @@ export function drawSupplyLines(
   const sleepers = new Path2D();
   const rails = new Path2D();
   const dots = new Path2D();
-  for (const edges of edgesByPlayer.values()) {
-    for (const edge of edges) {
-      const from = territoryById.get(edge.fromId);
-      const to = territoryById.get(edge.toId);
-      if (!from || !to) continue;
-      const overSea = seaIds.has(edge.fromId) || seaIds.has(edge.toId);
-      const segments = buildWrappedPathSegments(
-        [from, to],
-        toScreen,
-        mapW,
-        mapH,
-        forcedWraps,
-      );
-      for (const { a, b } of segments) {
-        if (overSea) {
-          dots.moveTo(a.x, a.y);
-          dots.lineTo(b.x, b.y);
-        } else {
-          traceRailway(sleepers, rails, a, b, uiScale);
-        }
+  for (const { data: edge, scale } of edges) {
+    const from = territoryById.get(edge.fromId);
+    const to = territoryById.get(edge.toId);
+    if (!from || !to) continue;
+    const overSea = seaIds.has(edge.fromId) || seaIds.has(edge.toId);
+    const segments = buildWrappedPathSegments(
+      [from, to],
+      toScreen,
+      mapW,
+      mapH,
+      forcedWraps,
+    );
+    for (const segment of segments) {
+      const { a, b } = scaleSegment(segment.a, segment.b, scale);
+      if (overSea) {
+        dots.moveTo(a.x, a.y);
+        dots.lineTo(b.x, b.y);
+      } else {
+        traceRailway(sleepers, rails, a, b, uiScale);
       }
     }
   }

@@ -19,6 +19,19 @@ function getPool(): WorkerPool<PlanBotTurnInput, PlanBotTurnResult> {
   return pool;
 }
 
+function planningGame(game: Game, botId: number): Game {
+  const botLog = game.logs.get(botId);
+  return {
+    ...game,
+    replayFrames: [],
+    replayTurnMarkers: [],
+    replayChat: [],
+    replayEmoji: [],
+    replayLog: [],
+    logs: new Map(botLog ? [[botId, botLog]] : []),
+  };
+}
+
 export function planBotTurnAsync(
   game: Game,
   botId: number,
@@ -27,7 +40,13 @@ export function planBotTurnAsync(
   callback: (result: WorkerResult<PlanBotTurnResult>) => void,
 ): void {
   getPool().run(
-    { game, map: getGameMap(game), botId, botProfile, cachedPlan },
+    {
+      game: planningGame(game, botId),
+      map: getGameMap(game),
+      botId,
+      botProfile,
+      cachedPlan,
+    },
     callback,
   );
 }

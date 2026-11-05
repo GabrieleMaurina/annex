@@ -6,6 +6,7 @@ import {
   unblockUser,
 } from '../../conduct/blockPeers';
 import { fileLiveGameReport, ReportResult } from '../../conduct/reports';
+import { getUserPicture } from '../../db';
 import {
   playerIdBySocketId,
   userIdByPlayerId,
@@ -16,6 +17,9 @@ import { isInteger, isObject } from '../../validate';
 type Target =
   | { ok: true; actorId: number; actorUserId: string; targetUserId: string }
   | { ok: false; error: string };
+
+type PictureResult =
+  { ok: true; picture: string | null } | { ok: false; error: string };
 
 function resolveTarget(engine: Engine, socket: Socket, data: unknown): Target {
   const actorId = playerIdBySocketId.get(socket.id);
@@ -87,6 +91,41 @@ export function registerConductHandlers(
         isActorAnonymous(actorId),
       )
         .then(callback)
+        .catch(() => callback({ ok: false, error: 'server error' }));
+    },
+  );
+  socket.on(
+    'game:picture',
+    (data: unknown, callback: (response: PictureResult) => void) => {
+      if (typeof callback !== 'function') return;
+      const actorId = playerIdBySocketId.get(socket.id);
+      if (actorId === undefined)
+        return callback({ ok: false, error: 'not in this game' });
+      if (isActorAnonymous(actorId))
+        return callback({ ok: true, picture: null });
+      const targetId = fromClient(
+        actorId,
+        isObject(data) ? data.playerId : null,
+      );
+      const gameName = engine.playerGameName(actorId);
+      if (
+        !gameName ||
+        !isInteger(targetId) ||
+        !engine.isGameMember(targetId, gameName)
+      )
+        return callback({ ok: false, error: 'not in this game' });
+      const userId = userIdByPlayerId(targetId);
+      if (userId === undefined) return callback({ ok: true, picture: null });
+      getUserPicture(userId)
+        .then((picture) =>
+          callback({
+            ok: true,
+            picture:
+              picture && !picture.dangerous
+                ? `data:${picture.mime};base64,${picture.data}`
+                : null,
+          }),
+        )
         .catch(() => callback({ ok: false, error: 'server error' }));
     },
   );

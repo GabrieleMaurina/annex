@@ -22,7 +22,6 @@ export const TOXIN_PARTICLE_ROTATION_SPEED_RANGE = 0.0016;
 export const TOXIN_PARTICLE_ALPHA_MIN = 0.4;
 export const TOXIN_PARTICLE_ALPHA_RANGE = 0.4;
 const TOXIN_PARTICLE_ALPHA_PERMANENT_BOOST = 1.35;
-const TOXIN_PLACE_BURST_DURATION = 900;
 
 export interface ToxinParticlePosition {
   x: number;
@@ -37,7 +36,6 @@ export function toxinParticlePosition(
   seed: number,
   index: number,
   cloudRadius: number,
-  expansion: number,
 ): ToxinParticlePosition {
   const r = (k: number) => pseudoRandom(seed * 11.31 + index * 7.919 + k);
 
@@ -64,7 +62,7 @@ export function toxinParticlePosition(
   const radiusFrac = Math.min(1, Math.max(0.05, baseRadiusFrac + radiusWander));
   const angleWobble = 0.5 * Math.sin(now * wanderSpeed2 + wanderPhase1);
 
-  const dist = cloudRadius * radiusFrac * expansion;
+  const dist = cloudRadius * radiusFrac;
 
   const rotationSpeed =
     (TOXIN_PARTICLE_ROTATION_SPEED_MIN +
@@ -106,27 +104,15 @@ export function drawToxinCloud(
   permanent: boolean,
   roundsRemaining: number,
   seed: number,
-  placedAt: number,
 ) {
   const cloudRadius = radius * TOXIN_CLOUD_SCALE;
   const sizeScale = radius / TOXIN_PARTICLE_REFERENCE_RADIUS;
   const alphaBoost = permanent ? TOXIN_PARTICLE_ALPHA_PERMANENT_BOOST : 1;
-  const burstProgress = Math.min(
-    1,
-    Math.max(0, (now - placedAt) / TOXIN_PLACE_BURST_DURATION),
-  );
-  const expansion = 1 - (1 - burstProgress) ** 3;
 
   ctx.save();
   ctx.translate(x, y);
   for (let i = 0; i < TOXIN_PARTICLE_COUNT; i++) {
-    const particle = toxinParticlePosition(
-      now,
-      seed,
-      i,
-      cloudRadius,
-      expansion,
-    );
+    const particle = toxinParticlePosition(now, seed, i, cloudRadius);
     drawToxinParticle(ctx, particle, sizeScale, alphaBoost);
   }
   ctx.restore();

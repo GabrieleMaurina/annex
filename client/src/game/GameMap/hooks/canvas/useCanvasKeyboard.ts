@@ -110,35 +110,38 @@ export function useCanvasKeyboard({
 }) {
   const stepTroopPanel = useCallback(
     (delta: number) => {
+      const at = performance.now();
       if (deployPanelOpen) {
-        setDeployTroops((prev) => stepTroops(prev, delta, 1, deployMaxTroops));
+        setDeployTroops((prev) =>
+          stepTroops(prev, delta, 1, deployMaxTroops, at),
+        );
         return true;
       }
       if (deploySeaPanelOpen) {
         setDeploySeaShips((prev) =>
-          stepTroops(prev, delta, 1, deploySeaMaxShips),
+          stepTroops(prev, delta, 1, deploySeaMaxShips, at),
         );
         return true;
       }
       if (sailPanelOpen) {
-        setSailShips((prev) => stepTroops(prev, delta, 1, sailMaxShips));
+        setSailShips((prev) => stepTroops(prev, delta, 1, sailMaxShips, at));
         return true;
       }
       if (fortifyPanelOpen) {
         setFortifyTroops((prev) =>
-          stepTroops(prev, delta, 1, fortifyMaxTroops),
+          stepTroops(prev, delta, 1, fortifyMaxTroops, at),
         );
         return true;
       }
       if (entrenchPanelOpen) {
         setEntrenchTroops((prev) =>
-          stepTroops(prev, delta, 1, entrenchMaxTroops),
+          stepTroops(prev, delta, 1, entrenchMaxTroops, at),
         );
         return true;
       }
       if (attackPanelOpen && attackShowPendingConquest) {
         setAttackMoveTroops((prev) =>
-          stepTroops(prev, delta, attackMoveMinTroops, attackMoveMaxTroops),
+          stepTroops(prev, delta, attackMoveMinTroops, attackMoveMaxTroops, at),
         );
         return true;
       }
@@ -371,7 +374,6 @@ export function useCanvasKeyboard({
         stepTroopPanel(arrowDelta * modifierStep(e))
       ) {
         e.preventDefault();
-        playSound('click');
         return;
       }
       if (
@@ -505,10 +507,7 @@ export function useCanvasKeyboard({
   useEffect(() => {
     function onWheel(e: WheelEvent) {
       e.preventDefault();
-      if (stepTroopPanel(wheelDirection(e) * modifierStep(e))) {
-        playSound('click');
-        return;
-      }
+      if (stepTroopPanel(wheelDirection(e) * modifierStep(e))) return;
       if (
         attackPanelOpen &&
         unlockTileId === null &&

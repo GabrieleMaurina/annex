@@ -1440,6 +1440,15 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
   ```
 - **Ack:** `{ ok: true } | { ok: false; error: string }`. Errors: `not logged in`, `game not found` (the caller's current game never started), `not in this game` (the caller or the target was not a counted account of it), `not an account` (a bot or a guest), `cannot report yourself`, `report window closed`, `invalid reason`, `already reported`, `server error`. Offline games answer `offline`. While an `anonymous` game has not ended, every seat that was in the game at `game:start` but is not a counted account (a bot or a guest, still present or not) is a disguised target: it goes through the same `invalid reason`, `not in this game` (on the caller) and window checks as an account and then answers `{ ok: true }` with nothing stored, and a repeat report against a counted account also answers `{ ok: true }` instead of `already reported`, so no answer tells bots and guests apart from accounts.
 
+### `game:picture`
+- **When sent:** a non-bot row of the live game's players panel is expanded in an online game (not in a stored replay). The client shows the returned picture as a small image beside the player's name, and nothing when `picture` is `null`.
+- **Purpose:** fetch the profile picture of another member of the caller's current game (or the caller's own), naming it by its in-game player id (aliased in an `anonymous` game), so the target's account id never reaches the client. Same `data:` URL as `GET /players/:username`, `null` while the picture is `dangerous`.
+- **Content:**
+  ```ts
+  { playerId: number }
+  ```
+- **Ack:** `{ ok: true; picture: string | null } | { ok: false; error: string }`. `picture` is `null` for a bot, a guest, an account without a picture, and every target while the caller's game is `anonymous` and not ended (checked first, so no answer reveals an identity). Errors: `not in this game` (the caller is in no game, or the target is not a member of it), `server error`. Offline games answer `offline`.
+
 ---
 
 ## Server → Client

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { EditorTerritory } from '../model/editorTypes';
+import { maskTiles } from '../tiles/drawTiles';
+import type { EditorTile } from '../tiles/editorTiles';
 import { DEFAULT_CELL_SCALE, drawTerritoryBorders } from './drawTerritories';
 import {
   previewBorders,
@@ -25,6 +27,7 @@ export function useTerritoryBorders(
   borderColors: string[],
   brushSize: number,
   dotted: boolean,
+  tiles: EditorTile[],
 ): TerritoryBorders {
   const [cellScale, setCellScale] = useState(DEFAULT_CELL_SCALE);
   const [preview, setPreview] = useState(false);
@@ -33,11 +36,14 @@ export function useTerritoryBorders(
   useEffect(() => {
     if (!preview) return;
     const timer = setTimeout(
-      () => setGrid(previewGrid(surface, borderColors)),
+      () =>
+        setGrid(
+          previewGrid(maskTiles(surface, tiles, borderColors[0]), borderColors),
+        ),
       GRID_DELAY,
     );
     return () => clearTimeout(timer);
-  }, [preview, surface, paintVersion, borderColors]);
+  }, [preview, surface, paintVersion, borderColors, tiles]);
 
   const fittingGrid =
     grid?.imageWidth === surface.width && grid.imageHeight === surface.height

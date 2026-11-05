@@ -37,6 +37,7 @@ import {
   nextInContinentCycle,
   nextTerritoryId,
   SEA_BRUSH,
+  withContinent,
   withoutVertex,
   type LinkMode,
   type EditorTerritory as Territory,
@@ -64,7 +65,7 @@ interface Props {
   hideGraph?: boolean;
   onViewport?: (v: Viewport) => void;
   clickable?: ClickableCheck | null;
-  borderOverlay?: HTMLCanvasElement | null;
+  overlays: (HTMLCanvasElement | null)[];
   linkMode: LinkMode;
   onSelect: (id: number | null) => void;
 }
@@ -100,6 +101,7 @@ export interface MapCanvasHandle {
   panStart: (clientX: number, clientY: number) => void;
   panMove: (clientX: number, clientY: number) => void;
   panEnd: () => void;
+  select: (id: number | null) => void;
 }
 
 const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
@@ -123,7 +125,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     hideGraph,
     onViewport,
     clickable,
-    borderOverlay,
+    overlays,
     linkMode,
     onSelect,
   }: Props,
@@ -482,6 +484,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       panEnd() {
         panEndImplRef.current();
       },
+      select: setSelectedVertexId,
     }),
     [applyZoom],
   );
@@ -531,7 +534,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       smoothEdges &&
       drawSmoothPaint(ctx, paintCanvas, paintVersion, offsetX, offsetY, scaleX);
     if (!hideImage && !smoothed) drawLayer(paintCanvas);
-    if (borderOverlay) drawLayer(borderOverlay);
+    for (const overlay of overlays) if (overlay) drawLayer(overlay);
 
     if (!hideGraph) {
       drawGraph({
@@ -792,15 +795,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         ? nextInContinentCycle(current, continentCount)
         : brushContinentId;
     setCurrentContinentId(next);
-    setTerritories((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? next === SEA_BRUSH
-            ? { ...t, isSea: true }
-            : { ...t, continentId: next, isSea: false }
-          : t,
-      ),
-    );
+    setTerritories((prev) => withContinent(prev, id, next));
   }
   cycleContinentAtRef.current = cycleContinentAt;
 

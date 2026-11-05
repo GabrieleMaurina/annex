@@ -1,10 +1,15 @@
-import { Engine } from 'engine';
+import { AchievementFacts, Engine } from 'engine';
 import { storeGame } from './db';
 import { GameElo } from './elo';
 import { persistGameMap } from './maps';
 
 interface GameEndedPayload {
   gameName: string;
+  ranking: {
+    playerId: number;
+    disconnected: boolean;
+    facts: AchievementFacts;
+  }[];
 }
 
 const storedIdByGame = new Map<string, string>();
@@ -49,7 +54,16 @@ export function persistFinishedGame(
         capitalTerritoryIds: bundle.capitalTerritoryIds,
         hillTerritoryIds: bundle.hillTerritoryIds,
         continentBonuses: bundle.continentBonuses,
-        results: bundle.results,
+        results: bundle.results.map((result) => {
+          const entry = payload.ranking.find(
+            (r) => r.playerId === result.playerId,
+          )!;
+          return {
+            ...result,
+            played: entry.facts.lastPlayedRound !== null,
+            disconnected: entry.disconnected,
+          };
+        }),
         serverLog: bundle.serverLog,
         replay: bundle.replay,
         mapId,

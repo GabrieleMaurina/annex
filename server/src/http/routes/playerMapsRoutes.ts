@@ -9,6 +9,10 @@ import {
   TileShape,
 } from 'engine';
 import { Response, Router } from 'express';
+import {
+  grantMapLikedAchievements,
+  grantMapPublishedAchievements,
+} from '../../achievements/achievements';
 import { addReputation } from '../../conduct/reputation';
 import {
   createPlayerMap,
@@ -153,6 +157,7 @@ playerMapsRouter.get('/player-maps/:id', (req, res) => {
         timedConnections: map.timedConnections,
         directionalConnections: map.directionalConnections,
         lockedTiles: map.lockedTiles,
+        fixedTiles: map.fixedTiles,
         image: `data:${map.imageMime};base64,${map.image}`,
         imageMime: map.imageMime,
         borderColors: map.borderColors,
@@ -208,7 +213,10 @@ playerMapsRouter.post('/player-maps', (req, res) => {
         return;
       }
       return createPlayerMap(session.userId, parsed.input).then((r) =>
-        res.json(r),
+        (r.ok
+          ? grantMapPublishedAchievements(session.userId).catch(console.error)
+          : Promise.resolve()
+        ).then(() => res.json(r)),
       );
     })
     .catch(() => res.json({ ok: false, error: 'server error' }));
@@ -284,6 +292,11 @@ playerMapsRouter.post('/player-maps/:id/like', (req, res) => {
     return;
   }
   likeMap(session.userId, req.params.id)
+    .then((r) =>
+      r.ok
+        ? grantMapLikedAchievements(req.params.id).catch(console.error)
+        : undefined,
+    )
     .then(() => res.json({ ok: true }))
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });

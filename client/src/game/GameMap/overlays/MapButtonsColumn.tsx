@@ -30,6 +30,7 @@ export default function MapButtonsColumn({
   cardsOpen,
   cardsPanelRef,
   hand,
+  territoryNames,
   ownedTerritoryIds,
   upcomingSetValues,
   combos,
@@ -76,6 +77,7 @@ export default function MapButtonsColumn({
   cardsOpen: boolean;
   cardsPanelRef: RefObject<HTMLDivElement | null>;
   hand: Card[];
+  territoryNames: Map<number, string>;
   ownedTerritoryIds: Set<number>;
   upcomingSetValues: GameState['upcomingSetValues'];
   combos: EvaluatedCombo[];
@@ -157,6 +159,7 @@ export default function MapButtonsColumn({
           <div ref={cardsPanelRef}>
             <CardsPanel
               hand={hand}
+              territoryNames={territoryNames}
               ownedTerritoryIds={ownedTerritoryIds}
               upcomingSetValues={upcomingSetValues}
               combos={combos}
@@ -314,7 +317,7 @@ export default function MapButtonsColumn({
               key={id}
               className={`${PANEL_BG_CLASS} border rounded p-2 d-flex align-items-center gap-2`}
             >
-              <CardFace card={card} size={36} />
+              <CardFace card={card} territoryNames={territoryNames} size={36} />
               <span className="small">New card!</span>
             </div>
           ))}

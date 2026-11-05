@@ -4,8 +4,10 @@ import { isSessionToken, parseCookies } from '../../auth/cookies';
 import { loadBlockPeers } from '../../conduct/blockPeers';
 import { cachedUserId } from '../../conduct/viewerCache';
 import {
+  findUserByUsername,
   getPlayerHistory,
   getPlayerProfile,
+  listPlayerAchievements,
   listPlayers,
   PlayersQuery,
 } from '../../db';
@@ -96,6 +98,13 @@ playersRouter.get('/presence', (req, res) => {
 playersRouter.get('/players/:username/history', (req, res) => {
   getPlayerHistory(req.params.username)
     .then((history) => res.json(history))
+    .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
+});
+
+playersRouter.get('/players/:username/achievements', (req, res) => {
+  findUserByUsername(req.params.username)
+    .then((user) => (user ? listPlayerAchievements(user.id) : []))
+    .then((achievements) => res.json(achievements))
     .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
 });
 

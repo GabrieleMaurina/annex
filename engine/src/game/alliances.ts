@@ -1,4 +1,5 @@
 import { AllianceViewState, Game } from '../types';
+import { bumpStat, isBotControlled } from './progression/stats';
 
 export const ALLIANCE_REQUEST_TIMEOUT_MS = 60_000;
 export const ALLIANCE_REQUEST_COOLDOWN_MS = 60_000;
@@ -115,6 +116,8 @@ export function removeAllianceRequest(game: Game, a: number, b: number) {
 export function formAlliance(game: Game, initiatorId: number, otherId: number) {
   game.allianceIds.add(pairKey(initiatorId, otherId));
   game.allianceInitiators.set(pairKey(initiatorId, otherId), initiatorId);
+  for (const playerId of [initiatorId, otherId])
+    if (!isBotControlled(playerId)) bumpStat(game, playerId, 'alliancesFormed');
 }
 
 export function allianceInitiator(

@@ -11,7 +11,8 @@ import { growCells, seedSkeletons } from './drawTerritories';
 import { visitNeighbors } from './territoryBorders';
 
 const PREVIEW_CELLS = 60_000;
-const PREVIEW_RGBA = [128, 128, 128, 160];
+const PREVIEW_COLOR = 'rgba(128, 128, 128, 0.63)';
+const PREVIEW_DETAIL = 4;
 
 export interface PreviewGrid {
   scale: number;
@@ -159,7 +160,7 @@ export function previewBorders(
   );
   growCells(free, width, dist, owner, seeds, maxArea / (scale * scale));
 
-  const image = new ImageData(width, height);
+  const border = new Uint8Array(region.length);
   const claimed = (q: number) => free[q] === 1 && owner[q] >= 0;
   const otherOwner = (p: number, q: number) =>
     claimed(q) && owner[q] !== owner[p];
@@ -174,16 +175,48 @@ export function previewBorders(
     for (let x = 0; x < width; x++) {
       const p = y * width + x;
       if (!free[p]) continue;
-      const border =
+      const onBorder =
         owner[p] >= 0
           ? (x < width - 1 && otherOwner(p, p + 1)) ||
             (y < height - 1 && otherOwner(p, p + width))
           : touchesClaimed(p);
-      if (border) image.data.set(PREVIEW_RGBA, p * 4);
+      if (onBorder) border[p] = 1;
     }
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  canvas.getContext('2d')?.putImageData(image, 0, 0);
+  canvas.width = width * PREVIEW_DETAIL;
+  canvas.height = height * PREVIEW_DETAIL;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  ctx.scale(PREVIEW_DETAIL, PREVIEW_DETAIL);
+  ctx.translate(0.5, 0.5);
+  ctx.lineWidth = 1;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = PREVIEW_COLOR;
+  ctx.stroke(borderPath(border, width, height));
   return canvas;
+}
+
+function borderPath(border: Uint8Array, width: number, height: number): Path2D {
+  const path = new Path2D();
+  const link = (x: number, y: number, nx: number, ny: number) => {
+    path.moveTo(x, y);
+    path.lineTo(nx, ny);
+  };
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      if (!border[p]) continue;
+      const right = x < width - 1 && border[p + 1] === 1;
+      const left = x > 0 && border[p - 1] === 1;
+      const down = y < height - 1 && border[p + width] === 1;
+      link(x, y, x, y);
+      if (right) link(x, y, x + 1, y);
+      if (down) link(x, y, x, y + 1);
+      if (y === height - 1 || down) continue;
+      if (x < width - 1 && !right && border[p + width + 1])
+        link(x, y, x + 1, y + 1);
+      if (x > 0 && !left && border[p + width - 1]) link(x, y, x - 1, y + 1);
+    }
+  return path;
 }

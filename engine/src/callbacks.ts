@@ -1,5 +1,6 @@
 import type { gameResultsStats, gameState } from './game/state';
 import {
+  AchievementFacts,
   Card,
   DrawReason,
   EmojiAttackTarget,
@@ -40,6 +41,7 @@ export interface EngineCallbacks {
       surrenderRound: number | null;
       disconnected: boolean;
       drawn: boolean;
+      facts: AchievementFacts;
     }[];
   }): void;
   onCardSetPlayed(

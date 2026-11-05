@@ -1,6 +1,7 @@
 import type {
   DirectionalConnection,
   Fill,
+  FixedTile,
   GenerateMapInput,
   GenerationType,
   LockedTile,
@@ -106,6 +107,7 @@ export interface PlayerMapDetail {
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -128,6 +130,7 @@ export interface PlayerMapSaveBody {
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
+  fixedTiles?: FixedTile[];
   image: string;
   borderColors: string[];
   territoryNames: string[];

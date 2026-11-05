@@ -34,7 +34,7 @@ import {
   returnCardsToDeck,
 } from './progression/cards';
 import { awardTurnPoints } from './progression/points';
-import { bumpStat } from './progression/stats';
+import { bumpStat, recordCardSet, recordTurnStart } from './progression/stats';
 import { updateRadiationForNewRound } from './radiation/radiation';
 import { recordReplayFrame } from './replay';
 import { decrementToxinsGlobally } from './toxins/toxins';
@@ -204,6 +204,7 @@ function dropTroopsRandomly(
     deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + troops);
     recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
   }
+  return placed;
 }
 
 function emitDeployedMany(
@@ -252,7 +253,6 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
     returnCardsToDeck(game.deck, best.cards);
     const key = counterKey(game, playerId);
     game.cardSetsPlayed.set(key, (game.cardSetsPlayed.get(key) ?? 0) + 1);
-    bumpStat(game, playerId, 'setsPlayed');
     if (game.cards === 'exponential' || game.cards === 'exponential per player')
       game.cardsLastSetValue.set(key, best.baseValue);
 
@@ -269,7 +269,14 @@ function forceCompleteDeployPhase(game: Game): Map<number, number> {
       });
     }
     bumpStat(game, playerId, 'troopsGained', bonusGained);
-    dropTroopsRandomly(game, playerId, best.baseValue, deposits, true);
+    const placed = dropTroopsRandomly(
+      game,
+      playerId,
+      best.baseValue,
+      deposits,
+      true,
+    );
+    recordCardSet(game, playerId, bonusGained + placed);
   }
 
   if (cardsChanged) sendPlayerCards(game, playerId);
@@ -565,6 +572,7 @@ function startDeployPhase(game: Game, playerId: number) {
     breakdown.turnOrder;
   game.troopsToDeploy = 0;
   const awarded = awardDeployTroops(game, playerId, earned);
+  recordTurnStart(game, playerId, awarded);
   const turnStartedPayload = {
     playerId,
     roundNumber: game.roundNumber,

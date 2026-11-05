@@ -15,7 +15,8 @@ import { createLinkRngs } from './links';
 import { generateDungeon } from './pipeline/maze/dungeon';
 import { generateTemple } from './pipeline/maze/temple';
 import { generateTerrain } from './pipeline/terrain/terrainMap';
-import { generateTile } from './pipeline/tile/tileMap';
+import { generateTile, layTileShape } from './pipeline/tile/tileMap';
+import { Point } from './pipeline/tile/tiling';
 import { generatedBorderColors } from './render/palette';
 
 export interface GeneratedMap {
@@ -30,9 +31,34 @@ export interface GeneratedMap {
   borderColors: string[];
 }
 
+function generationKey({
+  seed,
+  size,
+  type,
+  fill,
+  tile,
+  aspect,
+}: GenerateMapParams): string {
+  return `${seed}::${size}::${type}::${fill}${type === 'tile' ? `::${tile}` : ''}${aspect === 'square' ? '::square' : ''}`;
+}
+
+export function generatedTileGrid(params: GenerateMapParams): {
+  tiles: Point[][];
+  width: number;
+  height: number;
+} {
+  const { tiles, kept, dims } = layTileShape(
+    createRng(generationKey(params)),
+    params.tile,
+    params.fill,
+    params.size,
+    mapImageSize(params.size, params.aspect),
+  );
+  return { tiles: tiles.filter((_, t) => kept[t]), ...dims };
+}
+
 export function generateMap(params: GenerateMapParams): GeneratedMap {
   const {
-    seed,
     size,
     type,
     fill,
@@ -45,7 +71,7 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
     mountains,
     rivers,
   } = params;
-  const key = `${seed}::${size}::${type}::${fill}${type === 'tile' ? `::${tile}` : ''}${aspect === 'square' ? '::square' : ''}`;
+  const key = generationKey(params);
   const rng = createRng(key);
   const linkRngs = createLinkRngs(key, timed, directional);
   const dims = mapImageSize(size, aspect);

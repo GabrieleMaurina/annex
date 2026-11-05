@@ -32,10 +32,12 @@ function collection() {
   return getCollection<LikeDoc>(NAME);
 }
 
+export function countMapLikes(mapId: string): Promise<number> {
+  return collection().countDocuments({ mapId: new ObjectId(mapId) });
+}
+
 function syncLikeCount(mapId: string): Promise<void> {
-  return collection()
-    .countDocuments({ mapId: new ObjectId(mapId) })
-    .then((count) => setLikeCount(mapId, count));
+  return countMapLikes(mapId).then((count) => setLikeCount(mapId, count));
 }
 
 export const MAP_LIKES_COLLECTION: CollectionSpec = {

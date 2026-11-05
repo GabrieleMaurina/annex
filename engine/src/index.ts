@@ -161,7 +161,7 @@ export {
   MIN_STALEMATE_ROUNDS,
   MIN_STARTING_CAPITALS,
 } from './lifecycle/settings';
-export { TutorialScenario } from './lifecycle/tutorial';
+export { TUTORIAL_IDS, TutorialScenario } from './lifecycle/tutorial';
 export {
   aspectLabel,
   expectedTerritoryArea,
@@ -181,6 +181,7 @@ export {
 } from './mapgen/core/params';
 export { createRng } from './mapgen/core/rng';
 export { createWarpField, warpAt } from './mapgen/core/warp';
+export { generatedTileGrid } from './mapgen/generate';
 export { enforceContiguity } from './mapgen/pipeline/contiguity';
 export {
   generateOsmMap,
@@ -202,6 +203,8 @@ export {
   OsmRiver,
   OsmWater,
 } from './mapgen/pipeline/osm/types';
+export { tileSide } from './mapgen/pipeline/tile/tileMap';
+export { tileVariants } from './mapgen/pipeline/tile/tiling';
 export {
   DEFAULT_BORDER_COLORS,
   DUNGEON_SEAM_COLOR,
@@ -245,7 +248,9 @@ export {
 export { randomPlayerName } from './session/players';
 export { REPORT_REASONS, ReportReason } from './social/reports';
 export {
+  AchievementFacts,
   DirectionalConnection,
+  FixedTile,
   GameMap,
   LockedTile,
   PlayerGameMap,

@@ -1,6 +1,7 @@
 import type {
   DirectionalConnection,
   Fill,
+  FixedTile,
   GenerationType,
   LockedTile,
   MapAspect,
@@ -564,6 +565,7 @@ export type Ack = { ok: true; game: GameState } | { ok: false; error: string };
 export type {
   DirectionalConnection,
   Fill,
+  FixedTile,
   GenerationType,
   LockedTile,
   MapAspect,
@@ -619,6 +621,8 @@ export interface StoredGameResult {
   cardsGained: number;
   turnsPlayed: number;
   setsPlayed: number;
+  played?: boolean;
+  disconnected?: boolean;
 }
 
 export interface StoredGameSettings {
@@ -718,6 +722,13 @@ export interface CareerTotals {
   territoriesConquered: number;
   capitalsConquered: number;
   setsPlayed: number;
+}
+
+export interface PlayerAchievement {
+  id: string;
+  title: string;
+  description: string;
+  achievedAt: number | null;
 }
 
 export interface PlayerHistoryPoint extends CareerTotals {

@@ -2,6 +2,7 @@ import { LockedTile } from '../../../types';
 import { timeStep } from '../../core/bench';
 import { Perlin2D } from '../../core/noise';
 import {
+  expectedTerritoryArea,
   Fill,
   GridDimensions,
   MAP_SIZE_VALUES,
@@ -56,6 +57,16 @@ const LAKE_OCTAVES = 3;
 const LAKE_PERSISTENCE = 0.5;
 const LAKE_LACUNARITY = 2;
 const ISLAND_WEIGHT_RANGE: [number, number] = [0.5, 1.5];
+
+export function tileSide(width: number, height: number): number {
+  const margin = Math.round(Math.min(width, height) * MARGIN_FRACTION);
+  const usable = (width - 2 * margin) * (height - 2 * margin);
+  const slots =
+    (width * height) /
+    expectedTerritoryArea(width, height) /
+    (1 - VOID_FRACTION.full);
+  return Math.sqrt(usable / (slots * tileUnitArea('squares')));
+}
 
 function layGrid(
   shape: TileShape,
@@ -368,6 +379,38 @@ function toLockedTiles(
   return locked;
 }
 
+export function layTileShape(
+  rng: Rng,
+  shape: TileShape,
+  fill: Fill,
+  size: MapSize,
+  dims: GridDimensions,
+): {
+  tiles: Point[][];
+  dims: GridDimensions;
+  neighbors: number[][];
+  kept: Uint8Array;
+} {
+  const margin = Math.round(
+    Math.min(dims.width, dims.height) * MARGIN_FRACTION,
+  );
+  const laid = layGrid(shape, size, fill, dims, margin);
+  const tiles = largestComponent(tileNeighbors(laid)).map((t) => laid[t]);
+  const neighbors = tileNeighbors(tiles);
+  const keepCount = Math.round(tiles.length * (1 - VOID_FRACTION[fill]));
+  const kept =
+    fill === 'full'
+      ? carveLakes(rng, tiles, neighbors, tiles.length - keepCount)
+      : growIslands(
+          rng,
+          neighbors,
+          keepCount,
+          randomInt(rng, ...ISLAND_RANGES[fill]) +
+            MAP_SIZE_VALUES.indexOf(size),
+        );
+  return { ...cropToKept(tiles, kept, margin), neighbors, kept };
+}
+
 export function generateTile(
   rng: Rng,
   shape: TileShape,
@@ -379,34 +422,16 @@ export function generateTile(
   linkRngs: LinkRngs,
 ): MazeMap & { lockedTiles: LockedTile[] } {
   const { layer, lockedTiles } = timeStep('shape', () => {
-    const margin = Math.round(
-      Math.min(dims.width, dims.height) * MARGIN_FRACTION,
-    );
-    const laid = layGrid(shape, size, fill, dims, margin);
-    const tiles = largestComponent(tileNeighbors(laid)).map((t) => laid[t]);
-    const neighbors = tileNeighbors(tiles);
-    const keepCount = Math.round(tiles.length * (1 - VOID_FRACTION[fill]));
-    const kept =
-      fill === 'full'
-        ? carveLakes(rng, tiles, neighbors, tiles.length - keepCount)
-        : growIslands(
-            rng,
-            neighbors,
-            keepCount,
-            randomInt(rng, ...ISLAND_RANGES[fill]) +
-              MAP_SIZE_VALUES.indexOf(size),
-          );
-    const cropped = cropToKept(tiles, kept, margin);
+    const {
+      tiles,
+      neighbors,
+      kept,
+      dims: cropped,
+    } = layTileShape(rng, shape, fill, size, dims);
     return {
-      layer: toCellLayer(
-        cropped.tiles,
-        neighbors,
-        kept,
-        cropped.dims,
-        unlockable,
-      ),
+      layer: toCellLayer(tiles, neighbors, kept, cropped, unlockable),
       lockedTiles: unlockable
-        ? toLockedTiles(cropped.tiles, neighbors, kept, cropped.dims)
+        ? toLockedTiles(tiles, neighbors, kept, cropped)
         : [],
     };
   });

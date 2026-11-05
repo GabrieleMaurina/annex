@@ -1,3 +1,4 @@
+import { checkNewAchievements } from '../common/achievements/newAchievements';
 import { httpGet, httpSend } from '../lib/http';
 import type { Account } from '../lib/types';
 
@@ -29,7 +30,9 @@ export function markTutorialCompleted(
   account: Account | null,
 ): void {
   if (account) {
-    httpSend<TutorialsReply>('POST', '/tutorials', { id }).catch(() => {});
+    httpSend<TutorialsReply>('POST', '/tutorials', { id })
+      .then(checkNewAchievements)
+      .catch(() => {});
     return;
   }
   try {

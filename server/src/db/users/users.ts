@@ -1,4 +1,9 @@
-import { effectiveReputation, MAX_REPUTATION, MIN_REPUTATION } from 'engine';
+import {
+  effectiveReputation,
+  MAX_REPUTATION,
+  MIN_REPUTATION,
+  TUTORIAL_IDS,
+} from 'engine';
 import { Binary, ObjectId, WithId } from 'mongodb';
 import { COUNTRY_CODES } from '../../countries';
 import { CollectionSpec, getCollection } from '../mongo';
@@ -413,7 +418,7 @@ export function addUserTutorial(
   userId: string,
   tutorialId: unknown,
 ): Promise<string[] | null> {
-  if (typeof tutorialId !== 'string' || !TUTORIAL_ID_PATTERN.test(tutorialId))
+  if (typeof tutorialId !== 'string' || !TUTORIAL_IDS.includes(tutorialId))
     return Promise.resolve(null);
   return collection()
     .findOneAndUpdate(

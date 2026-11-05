@@ -418,6 +418,7 @@ function GameMap({
     canvasRef,
     getTerritoryScreenPosRef,
     getVertexScreenRadiusRef,
+    placeNames,
   });
 
   const allianceUI = useAllianceUI({ allianceStates, playersRef, setToasts });
@@ -674,6 +675,7 @@ function GameMap({
         cardsOpen={cardsOpen}
         cardsPanelRef={cardsPanelRef}
         hand={showReplay ? replayHandCards : cardsFlow.hand}
+        territoryNames={placeNames.territories}
         ownedTerritoryIds={
           showReplay ? replayActingOwnedIds : ownedTerritoryIds
         }
@@ -879,6 +881,7 @@ function GameMap({
         <CardSetFlash
           key={cardsFlow.cardSetFlash.id}
           cards={cardsFlow.cardSetFlash.cards}
+          territoryNames={placeNames.territories}
         />
       )}
     </div>

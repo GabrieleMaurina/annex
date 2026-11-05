@@ -19,7 +19,7 @@ import {
 import { attackFullPath, hasSeaBridgeTo } from '../game/combat/seaBridge';
 import { finishGame, resolveWinnerIds } from '../game/end';
 import { hasReadyNuke } from '../game/nukes/nukes';
-import { recordElimination } from '../game/progression/stats';
+import { recordConquest, recordElimination } from '../game/progression/stats';
 import { recordReplayFrame } from '../game/replay';
 import { gameState } from '../game/state';
 import { lockedTilesNextTo, unlockCost } from '../game/tiles/unlock';
@@ -336,7 +336,7 @@ export function attack(
   let winnerIds: number[] | null = null;
   if (conquered) {
     if (defenderId !== undefined) game.conqueredThisTurn = true;
-    attackerStats.territoriesConquered++;
+    recordConquest(attackerStats, playerId);
     if (game.capitalTerritoryIds.has(endId)) attackerStats.capitalsConquered++;
     if (defenderStats) {
       defenderStats.territoriesLost++;
@@ -422,7 +422,7 @@ export function attack(
       attackerId: playerId,
       type,
       path: pathRunsForViewer(fullPath, visible),
-      ...(sourceVisible ? { attackingTroops: troops, attackLosses } : {}),
+      ...(sourceVisible ? { attackingTroops, attackLosses } : {}),
       ...(targetVisible
         ? {
             defenderId,

@@ -210,6 +210,7 @@ gameHistoryRouter.post('/games/replay/:id/save-map', (req, res) => {
         }
         return createPlayerMap(session.userId, {
           ...map,
+          fixedTiles: [],
           name: uniqueMapName(map.name, names),
           image: Buffer.from(map.image, 'base64'),
           generation: generation.generation,

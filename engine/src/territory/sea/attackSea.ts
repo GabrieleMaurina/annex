@@ -11,6 +11,7 @@ import {
   trueWinProbs,
 } from '../../game/combat/dice';
 import { hasReadyNuke } from '../../game/nukes/nukes';
+import { bumpStat, isBotControlled } from '../../game/progression/stats';
 import { recordReplayFrame } from '../../game/replay';
 import { gameState } from '../../game/state';
 import { advanceTurnPhase } from '../../game/turns';
@@ -224,6 +225,8 @@ export function attackSea(
   const remainingDefenders = defendingShips - defenceLosses;
   setSeaShips(game, seaTerritoryId, playerId, remainingAttackers);
   setSeaShips(game, seaTerritoryId, defenderId, remainingDefenders);
+  if (remainingDefenders === 0 && !isBotControlled(playerId))
+    bumpStat(game, playerId, 'fleetsSunk');
 
   recordReplayFrame(game, {
     type: 'attackSea',

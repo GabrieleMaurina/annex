@@ -8,6 +8,7 @@ import {
   useNavigate,
   useParams,
 } from 'react-router-dom';
+import AchievementToasts from './common/achievements/AchievementToasts';
 import BurgerMenu from './common/menus/BurgerMenu';
 import SettingsMenu from './common/menus/SettingsMenu';
 import ShortcutsPanel from './common/menus/shortcuts/ShortcutsPanel';
@@ -545,6 +546,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <PageGate />
+      <AchievementToasts enabled={!!account} />
     </>
   );
 }

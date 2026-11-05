@@ -1,3 +1,4 @@
+import { checkNewAchievements } from '../common/achievements/newAchievements';
 import { httpGet, httpSend } from '../lib/http';
 import {
   closeSocket,
@@ -20,6 +21,7 @@ import type {
   HomeGamesQuery,
   IdentifyResult,
   MessagesOverview,
+  PlayerAchievement,
   PlayerHistoryPoint,
   PlayerMapDetail,
   PlayerMapSaveBody,
@@ -356,7 +358,10 @@ export const connector = {
 
   savePlayerMap(body: PlayerMapSaveBody, cb: (res: SaveMapAck) => void): void {
     httpSend<SaveMapAck>('POST', '/player-maps', body)
-      .then(cb)
+      .then((res) => {
+        cb(res);
+        if (res.ok) checkNewAchievements();
+      })
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
@@ -457,6 +462,19 @@ export const connector = {
       '/players/' + encodeURIComponent(username) + '/history',
     )
       .then((history) => cb(Array.isArray(history) ? history : []))
+      .catch(() => cb([]));
+  },
+
+  getPlayerAchievements(
+    username: string,
+    cb: (achievements: PlayerAchievement[]) => void,
+  ): void {
+    httpGet<PlayerAchievement[]>(
+      '/players/' + encodeURIComponent(username) + '/achievements',
+    )
+      .then((achievements) =>
+        cb(Array.isArray(achievements) ? achievements : []),
+      )
       .catch(() => cb([]));
   },
 

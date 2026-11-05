@@ -6,6 +6,8 @@ interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+const INSTALLED_KEY = 'pwaInstalled';
+
 let installPrompt: BeforeInstallPromptEvent | null = null;
 const listeners = new Set<() => void>();
 
@@ -14,11 +16,32 @@ function setInstallPrompt(value: BeforeInstallPromptEvent | null) {
   listeners.forEach((l) => l());
 }
 
+function markInstalled() {
+  try {
+    localStorage.setItem(INSTALLED_KEY, '1');
+  } catch {
+    return;
+  }
+}
+
+function isMarkedInstalled() {
+  try {
+    return localStorage.getItem(INSTALLED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+if (window.matchMedia('(display-mode: standalone)').matches) markInstalled();
+
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
-  setInstallPrompt(e as BeforeInstallPromptEvent);
+  if (!isMarkedInstalled()) setInstallPrompt(e as BeforeInstallPromptEvent);
 });
-window.addEventListener('appinstalled', () => setInstallPrompt(null));
+window.addEventListener('appinstalled', () => {
+  markInstalled();
+  setInstallPrompt(null);
+});
 
 function subscribe(listener: () => void) {
   listeners.add(listener);

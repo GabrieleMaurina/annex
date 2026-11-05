@@ -1,11 +1,13 @@
 import { Badge, Button, ListGroup } from 'react-bootstrap';
 import PanelHeader from '../../common/PanelHeader';
+import Tip from '../../common/tooltips/Tip';
 import type { Card } from '../../lib/types';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import { comboKey, sortForDisplay, type EvaluatedCombo } from '../logic/cards';
 
 interface Props {
   hand: Card[];
+  territoryNames: Map<number, string>;
   ownedTerritoryIds: Set<number>;
   upcomingSetValues: number[];
   combos: EvaluatedCombo[];
@@ -21,11 +23,13 @@ const SELECTED_BORDER_COLOR = 'var(--bs-primary)';
 
 export function CardFace({
   card,
+  territoryNames,
   size = 40,
   owned = false,
   selected = false,
 }: {
   card: Card;
+  territoryNames: Map<number, string>;
   size?: number;
   owned?: boolean;
   selected?: boolean;
@@ -52,7 +56,9 @@ export function CardFace({
       </div>
     );
   }
-  return (
+  const territoryId = card.territoryId ?? 0;
+  const name = territoryNames.get(territoryId);
+  const face = (
     <div
       className="d-flex flex-column align-items-center justify-content-center border rounded bg-white position-relative"
       style={{ width, height, ...borderStyle }}
@@ -63,9 +69,18 @@ export function CardFace({
         width={width * 0.6}
         height={width * 0.6}
       />
-      <span className="text-black" style={{ fontSize: width * 0.24 }}>
-        #{(card.territoryId ?? 0) + 1}
-      </span>
+      {name ? (
+        <span
+          className="text-black text-truncate mw-100 px-1"
+          style={{ fontSize: width * 0.18 }}
+        >
+          {name}
+        </span>
+      ) : (
+        <span className="text-black" style={{ fontSize: width * 0.24 }}>
+          #{territoryId + 1}
+        </span>
+      )}
       {owned && (
         <span
           className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success"
@@ -76,14 +91,17 @@ export function CardFace({
       )}
     </div>
   );
+  return name ? <Tip text={name}>{face}</Tip> : face;
 }
 
 function ComboRow({
   combo,
+  territoryNames,
   selected,
   onClick,
 }: {
   combo: EvaluatedCombo;
+  territoryNames: Map<number, string>;
   selected: boolean;
   onClick: () => void;
 }) {
@@ -99,6 +117,7 @@ function ComboRow({
           <CardFace
             key={i}
             card={c}
+            territoryNames={territoryNames}
             size={24}
             owned={
               c.territoryId !== null &&
@@ -118,6 +137,7 @@ function ComboRow({
 
 function CardsPanel({
   hand,
+  territoryNames,
   ownedTerritoryIds,
   upcomingSetValues,
   combos,
@@ -160,6 +180,7 @@ function CardsPanel({
               <CardFace
                 key={i}
                 card={c}
+                territoryNames={territoryNames}
                 owned={
                   c.territoryId !== null && ownedTerritoryIds.has(c.territoryId)
                 }
@@ -197,6 +218,7 @@ function CardsPanel({
                   <ComboRow
                     key={comboKey(combo)}
                     combo={combo}
+                    territoryNames={territoryNames}
                     selected={combo === selectedCombo}
                     onClick={() => onSelectCombo(combo)}
                   />

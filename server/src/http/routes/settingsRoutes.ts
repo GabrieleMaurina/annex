@@ -1,10 +1,15 @@
 import { Router } from 'express';
+import {
+  grantOfflineAchievements,
+  grantTutorialAchievements,
+} from '../../achievements/achievements';
 import { updateUserSettings } from '../../auth/auth';
 import {
   addUserTutorial,
   getUserPresets,
   getUserTutorials,
   saveUserPresets,
+  takeNewAchievements,
 } from '../../db';
 import { isObject } from '../../validate';
 import { identityOf } from '../middleware';
@@ -71,12 +76,41 @@ settingsRouter.post('/tutorials', (req, res) => {
   }
   const id = isObject(req.body) ? req.body.id : undefined;
   addUserTutorial(session.userId, id)
-    .then((completed) =>
-      res.json(
-        completed
-          ? { ok: true, completed }
-          : { ok: false, error: 'invalid tutorial' },
-      ),
-    )
+    .then((completed) => {
+      if (!completed) {
+        res.json({ ok: false, error: 'invalid tutorial' });
+        return;
+      }
+      return grantTutorialAchievements(session.userId, completed)
+        .catch(console.error)
+        .then(() => res.json({ ok: true, completed }));
+    })
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+settingsRouter.post('/achievements/offline', (req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  const won = isObject(req.body) ? req.body.won : undefined;
+  if (typeof won !== 'boolean') {
+    res.json({ ok: false, error: 'invalid game' });
+    return;
+  }
+  grantOfflineAchievements(session.userId, won)
+    .then(() => res.json({ ok: true }))
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+settingsRouter.get('/achievements/new', (_req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  takeNewAchievements(session.userId)
+    .then((achievements) => res.json({ ok: true, achievements }))
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });

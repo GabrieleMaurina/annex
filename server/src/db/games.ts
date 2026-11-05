@@ -44,9 +44,15 @@ export interface PlayerHistoryPoint extends CareerTotals {
   won: boolean;
 }
 
-export type GameDoc = Omit<GameExport, 'players' | 'mapName'> & {
+export type GameResultDoc = GameExport['results'][number] & {
+  played?: boolean;
+  disconnected?: boolean;
+};
+
+export type GameDoc = Omit<GameExport, 'players' | 'mapName' | 'results'> & {
   mapId: string;
   players: GamePlayerDoc[];
+  results: GameResultDoc[];
 };
 
 export interface GameHistoryRow {
@@ -308,6 +314,8 @@ const result = object(
     cardsGained: int,
     turnsPlayed: int,
     setsPlayed: int,
+    played: bool,
+    disconnected: bool,
   },
 );
 
@@ -534,6 +542,49 @@ export function storeGame(
 
 export function countGamesPlayed(userId: string): Promise<number> {
   return collection().countDocuments({ 'players.userId': userId });
+}
+
+export function countGameResults(
+  userId: string,
+): Promise<{ played: number; won: number; eliminated: number }> {
+  return collection()
+    .find(
+      { 'players.userId': userId },
+      {
+        projection: {
+          winnerIds: 1,
+          draw: 1,
+          'settings.gameMode': 1,
+          'players.$': 1,
+          'results.playerId': 1,
+          'results.eliminated': 1,
+          'results.played': 1,
+          'results.disconnected': 1,
+        },
+      },
+    )
+    .toArray()
+    .then((docs) => {
+      const games = docs.map((doc) => ({
+        doc,
+        result: doc.results.find(
+          (result) => result.playerId === doc.players[0].playerId,
+        ),
+      }));
+      const played = games.filter(({ result }) => result?.played !== false);
+      return {
+        played: played.length,
+        won: played.filter(
+          ({ doc, result }) =>
+            !doc.draw &&
+            doc.settings.gameMode !== 'team deathmatch' &&
+            doc.winnerIds.length === 1 &&
+            doc.winnerIds[0] === doc.players[0].playerId &&
+            !result?.disconnected,
+        ).length,
+        eliminated: played.filter(({ result }) => result?.eliminated).length,
+      };
+    });
 }
 
 export function getGameReportInfo(

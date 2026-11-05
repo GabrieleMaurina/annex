@@ -1,5 +1,6 @@
 import type {
   DirectionalConnection,
+  FixedTile,
   LockedTile,
   MapSeaTerritory,
   MapTerritory,
@@ -10,7 +11,12 @@ import {
   NO_CONTINENT,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
-import { toLockedTiles, type EditorLockedTile } from './model/lockedTiles';
+import { toLockedTiles } from './model/lockedTiles';
+import {
+  lockedLinks,
+  roundedPoints,
+  type EditorTile,
+} from './tiles/editorTiles';
 
 const ROW_TOLERANCE_FRACTION = 0.5;
 
@@ -127,7 +133,7 @@ export function sortMapData(
   territories: Territory[],
   bonuses: number[],
   continentNames: string[],
-  lockedTiles: EditorLockedTile[],
+  tiles: EditorTile[],
 ): {
   territories: MapTerritory[];
   seaTerritories: MapSeaTerritory[];
@@ -136,11 +142,24 @@ export function sortMapData(
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   territoryNames: string[];
   seaNames: string[];
   continentNames: string[];
 } {
-  const sorted = sortTerritories(territories, bonuses, continentNames);
+  const lockedIds = new Set(
+    territories.filter((t) => t.locked).map((t) => t.id),
+  );
+  const sorted = sortTerritories(
+    territories
+      .filter((t) => !t.locked)
+      .map((t) => ({
+        ...t,
+        neighbors: t.neighbors.filter((n) => !lockedIds.has(n)),
+      })),
+    bonuses,
+    continentNames,
+  );
   const newTerritories: MapTerritory[] = sorted.territories
     .filter((t) => !t.isSea)
     .map((t) => ({
@@ -179,10 +198,17 @@ export function sortMapData(
         })),
     ),
     lockedTiles: toLockedTiles(
-      lockedTiles,
+      lockedLinks(tiles, territories),
       new Map([...sorted.idMap].filter(([, id]) => id < newTerritories.length)),
       sorted.territories.length,
     ),
+    fixedTiles: tiles
+      .filter((tile) => !tile.unlockable)
+      .map((tile) => ({
+        id: sorted.idMap.get(tile.territoryId)!,
+        points: roundedPoints(tile.points),
+        color: tile.color,
+      })),
     territoryNames: sorted.territories
       .filter((t) => !t.isSea)
       .map((t) => t.name.trim()),

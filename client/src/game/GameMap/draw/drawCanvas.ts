@@ -34,6 +34,7 @@ import {
   type ClickableRegions,
 } from '../../regions/clickableRegions';
 import { drawSmoothImage } from '../../regions/smoothImage';
+import type { RegionShape } from '../../regions/traceRegions';
 import type { ConquestArrow } from '../../replay/replay';
 import type { RailEdge } from '../../supplyLines';
 import { drawSupplyLines } from '../../supplyLines';
@@ -448,7 +449,10 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ? continentShapes(regions, territories)
     : null;
   const continentLineWidth = (width: number) =>
-    Math.max(width * uiScale, regions ? (regions.borderWidth + 1) * scaleX : 0);
+    Math.max(
+      width * uiScale,
+      regions ? (regions.borderWidth + 1) * 1.1 * scaleX : 0,
+    );
   if (bonusesOpen) {
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
@@ -465,19 +469,25 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.save();
     ctx.lineWidth = continentLineWidth(3);
     ctx.lineJoin = 'round';
+    const ownedShapes: { shape: RegionShape; color: string }[] = [];
     for (const [continentGroupId, group] of continentGroups) {
       if (visibleSet && group.some((t) => !visibleSet.has(t.id))) continue;
       const ownerId = continentBonusOwnerOf(group);
       if (ownerId === undefined) continue;
-      ctx.strokeStyle = lighten(
+      const color = lighten(
         playerColor(colorByPlayerId.get(ownerId) ?? 0),
         STATE_STYLE.hovered.tint,
       );
+      ctx.strokeStyle = color;
       const shape = continentShapesById?.get(continentGroupId);
-      if (shape) outlineContinentRegion(ctx, shape, view, false);
-      else
+      if (shape) {
+        outlineContinentRegion(ctx, shape, view, false);
+        ownedShapes.push({ shape, color });
+      } else
         strokeContinentOutline(ctx, group, toScreen, continentHullPad, false);
     }
+    for (const { shape, color } of ownedShapes)
+      strokeRegion(ctx, shape, color, ctx.lineWidth / 2, view);
     ctx.restore();
   }
 
@@ -807,10 +817,15 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           const textHeight = 11 * uiScale;
           const badgePad = 4 * uiScale;
           const badgeGap = 1 * uiScale;
-          const badgeW = iconSize + badgePad * 2;
+          const cardText =
+            placeNames.territories.get(territoryCard.territoryId) ??
+            `#${territoryCard.territoryId + 1}`;
+          ctx.font = `bold ${textHeight}px ${CANVAS_FONT_FAMILY}`;
+          const textW = Math.max(iconSize, ctx.measureText(cardText).width);
+          const badgeW = textW + badgePad * 2;
           const badgeH = iconSize + badgeGap + textHeight + badgePad * 2;
           const dist = (VERTEX_RADIUS + 6) * scaleX + badgeH / 2 + 4 * uiScale;
-          const cx = p.x + dist * Math.SQRT1_2;
+          const cx = p.x + dist * Math.SQRT1_2 + (textW - iconSize) / 2;
           const cy = p.y - dist * Math.SQRT1_2;
 
           ctx.fillStyle = '#ffffff';
@@ -835,14 +850,9 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
           );
 
           ctx.fillStyle = '#000000';
-          ctx.font = `bold ${textHeight}px ${CANVAS_FONT_FAMILY}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'alphabetic';
-          ctx.fillText(
-            `#${territoryCard.territoryId + 1}`,
-            cx,
-            cy + badgeH / 2 - badgePad * 0.6,
-          );
+          ctx.fillText(cardText, cx, cy + badgeH / 2 - badgePad * 0.6);
 
           if (cardOwned) {
             const pillText = '+2';
@@ -868,7 +878,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       }
     }
 
-    if (bonusesOpen) {
+    if (bonusesOpen && !placeNames.territories.has(t.id)) {
       const idText = `#${t.id + 1}`;
       ctx.font = `bold ${11 * uiScale}px ${CANVAS_FONT_FAMILY}`;
       const padX = 4 * uiScale;

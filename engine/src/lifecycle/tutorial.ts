@@ -9,6 +9,19 @@ import { prepareGameStart } from './start';
 
 const SEAT_COLORS = [2, 0, 1];
 
+export const TUTORIAL_IDS = [
+  'deploy',
+  'conquer',
+  'fortify',
+  'cards',
+  'bonus',
+  'eliminate',
+  'capital',
+  'capital-conquest',
+  'fog',
+  'naval',
+];
+
 export interface TutorialScenario {
   territories: {
     id: number;

@@ -9,7 +9,11 @@ import type {
   LinkMode,
   EditorTerritory as Territory,
 } from '../model/editorTypes';
-import { continentColor, SEA_MARKER_COLOR } from '../palette';
+import {
+  continentColor,
+  LOCKED_MARKER_COLOR,
+  SEA_MARKER_COLOR,
+} from '../palette';
 import {
   getVertexRadius,
   SEA_SIZE_MULTIPLIER,
@@ -18,6 +22,8 @@ import {
   type Viewport,
 } from './canvasGeometry';
 import type { ClickableCheck } from './useClickableCheck';
+
+const LOCKED_DASH = 0.35;
 
 interface DrawGraphParams {
   ctx: CanvasRenderingContext2D;
@@ -236,14 +242,16 @@ export function drawGraph({
     const p = toScreen(t);
     const isSelected = selectedVertexId === t.id;
     const isHovered = hoveredVertexId === t.id;
+    const fill = t.isSea
+      ? SEA_MARKER_COLOR
+      : t.locked
+        ? LOCKED_MARKER_COLOR
+        : continentColor(t.continentId);
     ctx.beginPath();
-    if (t.isSea) {
+    if (t.isSea)
       hexagonPath(ctx, p.x, p.y, vertexRadius * scaleX * SEA_SIZE_MULTIPLIER);
-      ctx.fillStyle = SEA_MARKER_COLOR;
-    } else {
-      ctx.arc(p.x, p.y, vertexRadius * scaleX, 0, Math.PI * 2);
-      ctx.fillStyle = continentColor(t.continentId);
-    }
+    else ctx.arc(p.x, p.y, vertexRadius * scaleX, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
     ctx.fill();
     ctx.strokeStyle = isSelected
       ? '#ffffff'
@@ -252,14 +260,21 @@ export function drawGraph({
         : '#000000';
     ctx.lineWidth =
       (isSelected || isHovered ? 7 : 2) * zoom * vertexBorderScale;
+    ctx.setLineDash(
+      t.locked
+        ? [
+            vertexRadius * scaleX * LOCKED_DASH,
+            vertexRadius * scaleX * LOCKED_DASH,
+          ]
+        : [],
+    );
     ctx.stroke();
+    ctx.setLineDash([]);
 
     const labelRadius = t.isSea
       ? vertexRadius * scaleX * SEA_SIZE_MULTIPLIER
       : vertexRadius * scaleX;
-    ctx.fillStyle = contrastTextColor(
-      t.isSea ? SEA_MARKER_COLOR : continentColor(t.continentId),
-    );
+    ctx.fillStyle = contrastTextColor(fill);
     ctx.font = `bold ${labelRadius}px ${CANVAS_FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';

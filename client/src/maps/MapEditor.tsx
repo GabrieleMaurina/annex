@@ -1,10 +1,4 @@
-import {
-  DEFAULT_BORDER_COLORS,
-  duplicatePlaceNames,
-  isValidPlaceName,
-  mapImageSize,
-  MAX_PLACE_NAME_LENGTH,
-} from 'engine';
+import { DEFAULT_BORDER_COLORS, mapImageSize } from 'engine';
 import {
   lazy,
   Suspense,
@@ -42,7 +36,6 @@ import type {
   GenerateInput,
 } from './editor/generateMap';
 import GenerateMapModal from './editor/GenerateMapModal';
-import { graphError } from './editor/graph';
 import MapCanvas, { type MapCanvasHandle } from './editor/MapCanvas';
 import ImportMapModal from './editor/modals/ImportMapModal';
 import LeaveEditorModal from './editor/modals/LeaveEditorModal';
@@ -51,7 +44,7 @@ import type {
   LinkMode,
   EditorTerritory as Territory,
 } from './editor/model/editorTypes';
-import { allPlaceNames, toEditorTerritories } from './editor/model/editorTypes';
+import { toEditorTerritories } from './editor/model/editorTypes';
 import {
   graphKeyOf,
   graphOf,
@@ -59,16 +52,12 @@ import {
   type HistoryEntry,
 } from './editor/model/history';
 import {
-  remapLockedTiles,
-  toEditorLockedTiles,
-  useLockedTiles,
-} from './editor/model/lockedTiles';
-import {
   DEFAULT_MAP_NAME,
   freeDefaultName,
   isDefaultName,
 } from './editor/model/mapName';
 import { mapSizeText } from './editor/model/mapSize';
+import { saveError } from './editor/model/saveError';
 import { useEarthRoute } from './editor/model/useEarthRoute';
 import { useEditorShortcuts } from './editor/model/useEditorShortcuts';
 import { fillTerritories } from './editor/paint/fillTerritories';
@@ -89,6 +78,10 @@ import { useTerritoryBorders } from './editor/paint/useTerritoryBorders';
 import Panel from './editor/Panel';
 import ImageFileInput from './editor/panel/ImageFileInput';
 import { sortMapData, sortTerritories } from './editor/sortMap';
+import { bakeTiles } from './editor/tiles/drawTiles';
+import { remapTiles, toEditorTiles } from './editor/tiles/editorTiles';
+import TileLayer from './editor/tiles/TileLayer';
+import { useTiles } from './editor/tiles/useTiles';
 import EarthErrorBoundary from './editor/world/EarthErrorBoundary';
 
 const WorldMapModal = lazy(() => import('./editor/world/WorldMapModal'));
@@ -118,7 +111,6 @@ function MapEditor({ account }: { account: Account | null }) {
   const [imageLoads, setImageLoads] = useState(0);
   const [mapName, setMapName] = useState(DEFAULT_MAP_NAME);
   const [generation, setGeneration] = useState<GenerateMapInput | null>(null);
-  const [lockedTiles, setLockedTiles] = useLockedTiles(territories);
   const [currentContinentId, setCurrentContinentId] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   useToggleSound(collapsed);
@@ -209,6 +201,7 @@ function MapEditor({ account }: { account: Account | null }) {
   useEffect(
     () => () => {
       if (paintRafRef.current) cancelAnimationFrame(paintRafRef.current);
+      paintRafRef.current = 0;
     },
     [],
   );
@@ -256,6 +249,19 @@ function MapEditor({ account }: { account: Account | null }) {
       : '';
 
   const [borderColors, setBorderColors] = useState(DEFAULT_BORDER_COLORS);
+  const tiles = useTiles({
+    territories,
+    setTerritories,
+    paintSurface,
+    generation,
+    continentId: currentContinentId,
+    continentCount,
+    borderColor: borderColors[0],
+    onChange: bumpPaint,
+    selectedTerritoryId,
+    selectTerritory: (id) => mapCanvasRef.current?.select(id),
+  });
+  const { list: tileList, setList: setTiles, load: loadTiles } = tiles;
   const graph = useMemo(
     () => ({
       territories,
@@ -264,7 +270,7 @@ function MapEditor({ account }: { account: Account | null }) {
       continentCount,
       borderColors,
       generation,
-      lockedTiles,
+      tiles: tileList,
     }),
     [
       territories,
@@ -273,7 +279,7 @@ function MapEditor({ account }: { account: Account | null }) {
       continentCount,
       borderColors,
       generation,
-      lockedTiles,
+      tileList,
     ],
   );
   const graphKey = useMemo(() => graphKeyOf(graph), [graph]);
@@ -295,24 +301,28 @@ function MapEditor({ account }: { account: Account | null }) {
     territories,
     borderColors,
     showClickable,
+    tileList,
   );
   const borders = useTerritoryBorders(
     paintSurface,
     paintVersion,
-    territories,
+    tiles.untiled,
     borderColors,
     brushSize,
     dotted,
+    tileList,
   );
-  const clickableCount = clickable
-    ? territories.filter((t) => !clickable.invalidIds.has(t.id)).length
-    : 0;
+  const paintOnly = exclusive && mode === 'paint';
+  const overlays = useMemo(
+    () => [paintOnly ? null : tiles.overlay, borders.overlay],
+    [paintOnly, tiles.overlay, borders.overlay],
+  );
 
   function handleFindTerritories() {
     paintLayerRef.current?.flush();
     setTerritories(
       findTerritories(
-        paintSurfaceRef.current,
+        tiles.masked(paintSurfaceRef.current),
         territories,
         borderColors,
         currentContinentId,
@@ -325,7 +335,7 @@ function MapEditor({ account }: { account: Account | null }) {
     paintLayerRef.current?.flush();
     setTerritories(
       linkTerritories(
-        paintSurfaceRef.current,
+        tiles.regions(paintSurfaceRef.current),
         territories,
         borderColors,
         brushSize,
@@ -397,7 +407,7 @@ function MapEditor({ account }: { account: Account | null }) {
   const [prevMode, setPrevMode] = useState(mode);
   if (mode !== prevMode) {
     setPrevMode(mode);
-    if (mode === 'graph' && tool !== null) setTool(null);
+    if (tool !== null) setTool(null);
   }
 
   useEffect(() => {
@@ -409,6 +419,7 @@ function MapEditor({ account }: { account: Account | null }) {
         const surface = blank
           ? blankSurface(img.naturalWidth, img.naturalHeight)
           : decodeToSurface(img);
+        tiles.unbake(surface);
         blitSurface(surface, paintCanvas);
         setPaintSurface(surface);
         applyingRef.current = false;
@@ -463,8 +474,10 @@ function MapEditor({ account }: { account: Account | null }) {
   }, [id]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || id === savedId) return;
+    let stale = false;
     connector.getPlayerMap(id, (map) => {
+      if (stale) return;
       setLoading(false);
       if (!map || !map.mine || map.dangerous) {
         navigate('/maps/mine', { replace: true });
@@ -486,12 +499,15 @@ function MapEditor({ account }: { account: Account | null }) {
       setMapName(map.name);
       setSavedName(map.name);
       setGeneration(map.generation ?? null);
-      setLockedTiles(toEditorLockedTiles(map.lockedTiles));
+      loadTiles(map.lockedTiles, map.fixedTiles);
       setBorderColors(map.borderColors);
       setCurrentContinentId(0);
       setImageSrc(map.image);
     });
-  }, [id, navigate, setLockedTiles]);
+    return () => {
+      stale = true;
+    };
+  }, [id, savedId, navigate, loadTiles]);
 
   const applyEntry = useCallback(
     (e: HistoryEntry) => {
@@ -502,7 +518,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setContinentCount(e.continentCount);
       setBorderColors(e.borderColors);
       setGeneration(e.generation);
-      setLockedTiles(e.lockedTiles);
+      setTiles(e.tiles);
       setCurrentContinentId(0);
       committedRef.current = e;
       committedPaintRef.current = paintRevRef.current;
@@ -524,7 +540,7 @@ function MapEditor({ account }: { account: Account | null }) {
       bumpPaint();
       applyingRef.current = false;
     },
-    [paintSurface, paintCanvas, bumpPaint, bumpEpoch, setLockedTiles],
+    [paintSurface, paintCanvas, bumpPaint, bumpEpoch, setTiles],
   );
 
   const undo = useCallback(() => {
@@ -584,7 +600,6 @@ function MapEditor({ account }: { account: Account | null }) {
     reader.onload = () => {
       replaceImage(reader.result as string);
       setGeneration(null);
-      setLockedTiles([]);
       if (isDefaultName(mapName)) setMapName(file.name.replace(/\.[^.]+$/, ''));
     };
     reader.readAsDataURL(file);
@@ -606,7 +621,7 @@ function MapEditor({ account }: { account: Account | null }) {
     setContinentCount(1);
     setCurrentContinentId(0);
     setGeneration(null);
-    setLockedTiles([]);
+    setTiles([]);
     setBorderColors(DEFAULT_BORDER_COLORS);
     setMapName(freeDefaultName(takenNames));
     setSavedId(null);
@@ -630,7 +645,7 @@ function MapEditor({ account }: { account: Account | null }) {
       continentCount: 1,
       borderColors: DEFAULT_BORDER_COLORS,
       generation: null,
-      lockedTiles: [],
+      tiles: [],
     };
     committedRef.current = {
       pixels: surface.data.slice(),
@@ -674,9 +689,7 @@ function MapEditor({ account }: { account: Account | null }) {
     setContinentCount(Math.max(1, sorted.bonuses.length));
     setCurrentContinentId(0);
     setGeneration(input);
-    setLockedTiles(
-      remapLockedTiles(toEditorLockedTiles(map.lockedTiles), sorted.idMap),
-    );
+    setTiles(remapTiles(toEditorTiles(map.lockedTiles, []), sorted.idMap));
     setBorderColors(map.borderColors);
     setMapName(map.name);
   }
@@ -703,7 +716,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setContinentNames(map.continentNames ?? map.bonuses.map(() => ''));
       setContinentCount(map.bonuses.length);
       setGeneration(map.generation ?? null);
-      setLockedTiles(toEditorLockedTiles(map.lockedTiles));
+      loadTiles(map.lockedTiles, map.fixedTiles);
       setBorderColors(map.borderColors);
       setMapName(map.name);
       setCurrentContinentId(0);
@@ -712,49 +725,29 @@ function MapEditor({ account }: { account: Account | null }) {
   }
 
   const handleSave = useCallback(() => {
-    setError('');
     const name = mapName.trim();
-    if (!name) {
-      setError('Enter a map name.');
-      return;
-    }
-    if (nameError) {
-      setError(nameError);
-      return;
-    }
-    if (territories.length === 0) {
-      setError('Add at least one territory before saving.');
-      return;
-    }
-    const graphProblem = graphError(territories, lockedTiles, continentCount);
-    if (graphProblem) {
-      setError(graphProblem);
-      return;
-    }
-    const placeNames = allPlaceNames(territories, continentNames);
-    const badNames = [
-      ...placeNames.filter((n) => !isValidPlaceName(n)),
-      ...duplicatePlaceNames(placeNames),
-    ];
-    if (badNames.length > 0) {
-      setError(
-        `Names must be unique, at most ${MAX_PLACE_NAME_LENGTH} characters, with no profanity: ${badNames.join(', ')}`,
-      );
-      return;
-    }
+    const problem = saveError({
+      name,
+      nameError,
+      territories,
+      tiles: tileList,
+      continentCount,
+      continentNames,
+      width: paintSurface.width,
+      height: paintSurface.height,
+    });
+    setError(problem ?? '');
+    if (problem) return;
     paintLayerRef.current?.flush();
-    const image = surfaceToDataUrl(paintSurface);
+    const image = surfaceToDataUrl(
+      bakeTiles(paintSurface, tileList, borderColors[0]),
+    );
     if (image.length * 0.75 > MAX_IMAGE_BYTES) {
       setError('Image too large, max 5 MB.');
       return;
     }
     setSaving(true);
-    const sorted = sortMapData(
-      territories,
-      bonuses,
-      continentNames,
-      lockedTiles,
-    );
+    const sorted = sortMapData(territories, bonuses, continentNames, tileList);
     const body = {
       name,
       territories: sorted.territories,
@@ -764,6 +757,7 @@ function MapEditor({ account }: { account: Account | null }) {
       timedConnections: sorted.timedConnections,
       directionalConnections: sorted.directionalConnections,
       lockedTiles: sorted.lockedTiles,
+      fixedTiles: sorted.fixedTiles,
       image,
       generation,
       borderColors,
@@ -795,7 +789,7 @@ function MapEditor({ account }: { account: Account | null }) {
     bonuses,
     continentNames,
     generation,
-    lockedTiles,
+    tileList,
     borderColors,
     effectiveId,
     paintSurface,
@@ -839,16 +833,27 @@ function MapEditor({ account }: { account: Account | null }) {
         paintSize={brushSize}
         onPaintChange={bumpPaint}
         onPaintStrokeEnd={commitPaint}
-        disabled={mode === 'paint'}
+        disabled={mode === 'paint' || tool === 'tiles'}
         panOnly={mode === 'paint' && tool === null}
         hideImage={exclusive && mode === 'graph'}
-        hideGraph={exclusive && mode === 'paint'}
+        hideGraph={paintOnly}
         onViewport={handleViewport}
         clickable={showClickable ? clickable : null}
-        borderOverlay={borders.overlay}
+        overlays={overlays}
         linkMode={linkMode}
         onSelect={setSelectedTerritoryId}
       />
+
+      {mode === 'graph' && tool === 'tiles' && (
+        <TileLayer
+          tiles={tiles}
+          viewportRef={viewportRef}
+          onWheelZoom={handleWheelZoom}
+          onPanStart={handlePanStart}
+          onPanMove={handlePanMove}
+          onPanEnd={handlePanEnd}
+        />
+      )}
 
       {mode === 'paint' && tool !== null && (
         <PaintLayer
@@ -908,6 +913,7 @@ function MapEditor({ account }: { account: Account | null }) {
           setFilled={setFilled}
           shapeKind={shapeKind}
           setShapeKind={setShapeKind}
+          tileOptions={tiles.options}
           onUndo={undo}
           onRedo={redo}
           canUndo={canUndo}
@@ -925,13 +931,19 @@ function MapEditor({ account }: { account: Account | null }) {
           error={error}
           showClickable={showClickable}
           setShowClickable={setShowClickable}
-          clickableStatus={`${clickableCount}/${territories.length}`}
+          clickableStatus={`${clickable?.validCount ?? 0}/${territories.length}`}
           onFindTerritories={handleFindTerritories}
           onLinkTerritories={handleLinkTerritories}
-          onDrawTerritories={() => applyTerritoryPaint(borders.draw)}
+          onDrawTerritories={() =>
+            applyTerritoryPaint((surface) =>
+              tiles.paintMasked(surface, borders.draw),
+            )
+          }
           onFillTerritories={() =>
             applyTerritoryPaint((surface) =>
-              fillTerritories(surface, territories, borderColors, brushSize),
+              tiles.paintFilled(surface, (s) =>
+                fillTerritories(s, territories, borderColors, brushSize),
+              ),
             )
           }
           cellScale={borders.cellScale}

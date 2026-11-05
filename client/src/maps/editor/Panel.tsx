@@ -34,8 +34,10 @@ import NumberCell from './panel/NumberCell';
 import PlaceNameInput from './panel/PlaceNameInput';
 import ShapeIcon from './panel/ShapeIcon';
 import TerritorySizeRange from './panel/TerritorySizeRange';
+import TileTool from './panel/TileTool';
 import TimedLinksTable from './panel/TimedLinksTable';
 import ToolGroup, { type ToolOption } from './panel/ToolGroup';
+import type { TileOptions } from './tiles/useTiles';
 
 const MIN_CONTINENTS = 0;
 const MAX_CONTINENTS = 20;
@@ -79,6 +81,7 @@ interface Props {
   setFilled: (value: boolean) => void;
   shapeKind: ShapeKind;
   setShapeKind: (kind: ShapeKind) => void;
+  tileOptions: TileOptions;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -203,6 +206,7 @@ function Panel(props: Props) {
     setFilled,
     shapeKind,
     setShapeKind,
+    tileOptions,
     onUndo,
     onRedo,
     canUndo,
@@ -533,24 +537,43 @@ function Panel(props: Props) {
       </ButtonGroup>
 
       {mode === 'graph' ? (
-        <div className="d-flex gap-2 mb-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="w-100"
-            onClick={onFindTerritories}
-          >
-            Find territories
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="w-100"
-            onClick={onLinkTerritories}
-          >
-            Link territories
-          </Button>
-        </div>
+        <>
+          <div className="d-flex gap-2 mb-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-100"
+              onClick={onFindTerritories}
+            >
+              Find territories
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-100"
+              onClick={onLinkTerritories}
+            >
+              Link territories
+            </Button>
+          </div>
+          <div className="d-flex align-items-center gap-3 mb-2">
+            <div className="w-50">
+              <TileTool
+                tool={tool}
+                setTool={setTool}
+                kind={tileOptions.kind}
+                setKind={tileOptions.setKind}
+              />
+            </div>
+            <Form.Check
+              type="switch"
+              id="graph-unlockable"
+              label="Unlockable"
+              checked={tileOptions.unlockable}
+              onChange={(e) => tileOptions.setUnlockable(e.target.checked)}
+            />
+          </div>
+        </>
       ) : (
         <div className="d-flex gap-2 mb-2">
           <Button

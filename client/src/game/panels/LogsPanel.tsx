@@ -23,9 +23,9 @@ interface Props {
 const BOTTOM_MARGIN = 72;
 
 function boldRanges(text: string): [number, number][] {
-  const spaceIndex = text.indexOf(' ');
+  const wordEnd = text.search(/[ \n]/);
   const ranges: [number, number][] = [
-    [0, spaceIndex === -1 ? text.length : spaceIndex],
+    [0, wordEnd === -1 ? text.length : wordEnd],
   ];
   const numberRegex = /(?<![A-Za-z])\d+(?![A-Za-z])/g;
   let match: RegExpExecArray | null;
@@ -42,22 +42,23 @@ function boldRanges(text: string): [number, number][] {
   return merged;
 }
 
-function logNodes(
+function logLines(
   text: string,
   colorRanges: LogColorRange[] = [],
   whiteBotIcon: string | undefined,
   rowForeground: string,
-): ReactNode[] {
+): ReactNode[][] {
   const bold = boldRanges(text);
-  const badgeRanges = colorRanges.filter((r) => r.badge);
-  const isInteriorToBadge = (point: number) =>
-    badgeRanges.some((r) => point > r.start && point < r.end);
+  const atomicRanges = colorRanges.filter((r) => r.badge || r.isBot);
+  const isInteriorToAtomic = (point: number) =>
+    atomicRanges.some((r) => point > r.start && point < r.end);
   const boundaries = [
     ...new Set([
       0,
       text.length,
-      ...bold.flat().filter((point) => !isInteriorToBadge(point)),
+      ...bold.flat().filter((point) => !isInteriorToAtomic(point)),
       ...colorRanges.flatMap((r) => [r.start, r.end]),
+      ...[...text.matchAll(/\n/g)].flatMap((m) => [m.index, m.index + 1]),
     ]),
   ].sort((a, b) => a - b);
 
@@ -72,18 +73,34 @@ function logNodes(
     />
   );
 
-  const nodes: ReactNode[] = [];
+  const lines: ReactNode[][] = [[]];
   for (let i = 0; i < boundaries.length - 1; i++) {
     const start = boundaries[i];
     const end = boundaries[i + 1];
     if (start === end) continue;
     const piece = text.slice(start, end);
-    const isBold = bold.some(([bs, be]) => start >= bs && end <= be);
+    if (piece === '\n') {
+      lines.push([]);
+      continue;
+    }
+    const nodes = lines.at(-1)!;
     const colorRange = colorRanges.find(
       (r) => start >= r.start && end <= r.end,
     );
+    const isBold =
+      colorRange?.bold || bold.some(([bs, be]) => start >= bs && end <= be);
 
-    if (colorRange?.badge) {
+    if (colorRange?.label) {
+      nodes.push(
+        <span
+          key={start}
+          className="d-inline-block opacity-75"
+          style={{ minWidth: '7.5em' }}
+        >
+          {piece}
+        </span>,
+      );
+    } else if (colorRange?.badge) {
       const fg = contrastTextColor(colorRange.color!);
       nodes.push(
         <span
@@ -119,7 +136,7 @@ function logNodes(
       nodes.push(piece);
     }
   }
-  return nodes;
+  return lines;
 }
 
 function LogText({
@@ -133,7 +150,18 @@ function LogText({
   whiteBotIcon: string | undefined;
   rowForeground: string;
 }) {
-  return <>{logNodes(text, colorRanges, whiteBotIcon, rowForeground)}</>;
+  return (
+    <>
+      {logLines(text, colorRanges, whiteBotIcon, rowForeground).map(
+        (line, index) => (
+          <div key={index} className={index > 0 ? 'ps-3' : undefined}>
+            {index === 0 && '• '}
+            {line}
+          </div>
+        ),
+      )}
+    </>
+  );
 }
 
 function LogsPanel({ logs, stats, top, onClose }: Props) {
@@ -186,7 +214,6 @@ function LogsPanel({ logs, stats, top, onClose }: Props) {
                         color: rowForeground,
                       }}
                     >
-                      •{' '}
                       <LogText
                         text={log.text}
                         colorRanges={log.colorRanges}

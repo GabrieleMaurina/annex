@@ -1,6 +1,7 @@
 import {
   DirectionalConnection,
   Fill,
+  FixedTile,
   GenerationType,
   LockedTile,
   MapSize,
@@ -8,7 +9,7 @@ import {
   TimedConnection,
 } from 'engine';
 import { Binary, ObjectId } from 'mongodb';
-import { MapGeneration } from '../../validate';
+import { BORDER_COLOR_PATTERN, MapGeneration } from '../../validate';
 import { CollectionSpec, getCollection } from '../mongo';
 import { getUsernamesByIds, searchUsers } from '../users/users';
 import { likedMapIds } from './mapLikes';
@@ -48,6 +49,7 @@ interface PlayerMapDoc {
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
+  fixedTiles?: FixedTile[];
   image: Binary;
   imageMime: string;
   borderColors: string[];
@@ -78,6 +80,19 @@ const schema = {
         _id: {},
         authorId: { bsonType: 'objectId' },
         ...MAP_PROPERTIES,
+        fixedTiles: {
+          bsonType: 'array',
+          items: {
+            bsonType: 'object',
+            required: ['id', 'points', 'color'],
+            additionalProperties: false,
+            properties: {
+              id: { bsonType: 'number' },
+              points: MAP_PROPERTIES.lockedTiles.items.properties.points,
+              color: { bsonType: 'string', pattern: BORDER_COLOR_PATTERN },
+            },
+          },
+        },
         territoryCount: { bsonType: 'number' },
         continentCount: { bsonType: 'number' },
         likeCount: { bsonType: 'number' },
@@ -141,6 +156,7 @@ export interface PlayerMapInput {
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   image: Buffer;
   imageMime: string;
   borderColors: string[];
@@ -165,6 +181,7 @@ export function createPlayerMap(
       timedConnections: input.timedConnections,
       directionalConnections: input.directionalConnections,
       lockedTiles: input.lockedTiles,
+      fixedTiles: input.fixedTiles,
       image: new Binary(input.image),
       imageMime: input.imageMime,
       borderColors: input.borderColors,
@@ -214,6 +231,7 @@ export function updatePlayerMap(
               timedConnections: input.timedConnections,
               directionalConnections: input.directionalConnections,
               lockedTiles: input.lockedTiles,
+              fixedTiles: input.fixedTiles,
               image: new Binary(input.image),
               imageMime: input.imageMime,
               borderColors: input.borderColors,
@@ -257,6 +275,7 @@ export interface PlayerMapDetail {
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -286,6 +305,7 @@ export function getPlayerMapById(id: string): Promise<PlayerMapDetail | null> {
             timedConnections: doc.timedConnections ?? [],
             directionalConnections: doc.directionalConnections ?? [],
             lockedTiles: doc.lockedTiles ?? [],
+            fixedTiles: doc.fixedTiles ?? [],
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
             borderColors: doc.borderColors,

@@ -1,3 +1,7 @@
+import {
+  ACHIEVEMENTS_COLLECTION,
+  USER_ACHIEVEMENTS_COLLECTION,
+} from './achievements';
 import { BLOCKS_COLLECTION } from './conduct/blocks';
 import { PLAYER_REPORTS_COLLECTION } from './conduct/playerReports';
 import { REPUTATION_EVENTS_COLLECTION } from './conduct/reputationEvents';
@@ -29,6 +33,8 @@ export const COLLECTIONS: CollectionSpec[] = [
   REPUTATION_EVENTS_COLLECTION,
   BLOCKS_COLLECTION,
   PLAYER_REPORTS_COLLECTION,
+  ACHIEVEMENTS_COLLECTION,
+  USER_ACHIEVEMENTS_COLLECTION,
 ];
 
 export function connectDb(): Promise<void> {
@@ -39,6 +45,7 @@ export function connectDb(): Promise<void> {
     });
 }
 
+export * from './achievements';
 export * from './conduct/blocks';
 export * from './conduct/playerReports';
 export * from './conduct/reputationEvents';

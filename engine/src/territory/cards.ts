@@ -5,7 +5,7 @@ import {
   evaluateCardSelection,
   returnCardsToDeck,
 } from '../game/progression/cards';
-import { bumpStat } from '../game/progression/stats';
+import { bumpStat, recordCardSet } from '../game/progression/stats';
 import { recordReplayFrame } from '../game/replay';
 import { fogFilterEmit, recordLogForAll } from '../game/world/fog';
 import { visibleTerritoryIdsOrAll } from '../game/world/visibility';
@@ -63,7 +63,6 @@ export function playCardSet(playerId: number, rawCards: unknown): GameResponse {
   }
   const key = counterKey(game, playerId);
   game.cardSetsPlayed.set(key, (game.cardSetsPlayed.get(key) ?? 0) + 1);
-  bumpStat(game, playerId, 'setsPlayed');
   bumpStat(
     game,
     playerId,
@@ -84,6 +83,7 @@ export function playCardSet(playerId: number, rawCards: unknown): GameResponse {
     callbacks.onCardSetPlayed(viewerId, cardSetPlayedPayload, game.name);
   }
   recordLogForAll(game, 'game:cardSetPlayed', cardSetPlayedPayload);
+  recordCardSet(game, playerId, cardSetPlayedPayload.troops);
   for (const { territoryId, troops } of bonusDeposits) {
     fogFilterEmit(game, 'game:deployed', callbacks.onDeployed, (viewerId) => {
       const visible = visibleTerritoryIdsOrAll(game, viewerId);

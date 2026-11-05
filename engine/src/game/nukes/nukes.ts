@@ -2,7 +2,11 @@ import { callbacks } from '../../callbacks';
 import { getGameMap } from '../../maps/maps';
 import { Arsenal, Game, NukeProject } from '../../types';
 import { ownedTerritoryIds, ownsAnyTerritory } from '../mechanics';
-import { recordElimination } from '../progression/stats';
+import {
+  bumpStat,
+  isBotControlled,
+  recordElimination,
+} from '../progression/stats';
 import { recordReplayFrame } from '../replay';
 import { connectedOwnedTerritories } from '../world/connectivity';
 import { recordLogForAll } from '../world/fog';
@@ -176,6 +180,7 @@ export function launchNuke(
     }
   }
 
+  if (!isBotControlled(playerId)) bumpStat(game, playerId, 'nukesLaunched');
   recordReplayFrame(game, {
     type: 'nuke',
     fromTerritoryId,

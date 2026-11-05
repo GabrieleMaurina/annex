@@ -17,6 +17,8 @@ export interface LogColorRange {
   color?: string;
   badge?: boolean;
   isBot?: boolean;
+  bold?: boolean;
+  label?: boolean;
 }
 
 interface LogPart {
@@ -25,7 +27,7 @@ interface LogPart {
   colorRanges?: LogColorRange[];
 }
 
-type LogHighlight = { color?: string; badge?: boolean; isBot?: boolean };
+type LogHighlight = Omit<LogColorRange, 'start' | 'end'>;
 
 function buildText() {
   let text = '';
@@ -39,8 +41,32 @@ function buildText() {
       });
     text += piece;
   };
-  return { append, finish: () => ({ text, colorRanges }) };
+  const line = (label?: string) => {
+    text += '\n';
+    if (label !== undefined) {
+      append(`${label}:`, { label: true });
+      text += ' ';
+    }
+  };
+  return { append, line, finish: () => ({ text, colorRanges }) };
 }
+
+type TextBuilder = ReturnType<typeof buildText>;
+
+const plural = (count: number, word: string) =>
+  `${count} ${word}${count === 1 ? '' : 's'}`;
+
+const minus = (a: number | undefined, b: number | undefined) =>
+  a === undefined || b === undefined ? undefined : a - b;
+
+const TURN_SOURCES = [
+  ['troopsFromTerritories', 'Territories'],
+  ['troopsFromBonuses', 'Bonuses'],
+  ['troopsFromCapitals', 'Capitals'],
+  ['troopsFromRoundTroops', 'Round troops'],
+  ['troopsFromBounties', 'Bounties'],
+  ['troopsFromTurnOrder', 'Turn order'],
+] as const;
 
 export function createLogFormatter() {
   let lastConquestAttackerId: number | undefined;
@@ -60,340 +86,426 @@ export function createLogFormatter() {
       (id === undefined ? undefined : playerById.get(id)?.name) ?? 'a player';
     const isBotFor = (id: number | undefined) =>
       (id === undefined ? undefined : playerById.get(id)?.isBot) ?? false;
-    const botHighlight = (id: number | undefined): LogHighlight | undefined =>
-      isBotFor(id) ? { isBot: true } : undefined;
-    const place = (id: number, prefix: string) =>
-      placeNames.territories.get(id) ?? `${prefix}#${id + 1}`;
-    const appendPlace = (
-      b: ReturnType<typeof buildText>,
-      id: number,
-      prefix: string,
-      highlight?: LogHighlight,
-    ) => {
-      const name = placeNames.territories.get(id);
-      if (name) {
-        b.append(name, highlight);
-      } else {
-        b.append(prefix);
-        b.append(`#${id + 1}`, highlight);
-      }
-    };
+    const badgeFor = (id: number | undefined): LogHighlight | undefined =>
+      id === undefined ? undefined : { color: colorFor(id), badge: true };
 
     const parts: LogPart[] = [];
     const push = (color: string, text: string, colorRanges?: LogColorRange[]) =>
       parts.push({ color, text, colorRanges });
     const p = entry.payload as Record<string, unknown>;
     const n = (key: string) => p[key] as number;
+    const optional = (key: string) => p[key] as number | undefined;
     const moved = (added: string, removed: string) =>
       (p[added] ?? p[removed]) as number;
+
+    const log = (color: string, write: (b: TextBuilder) => void) => {
+      const b = buildText();
+      write(b);
+      const { text, colorRanges } = b.finish();
+      push(color, text, colorRanges);
+    };
+    const actor = (b: TextBuilder, id: number | undefined) =>
+      b.append(nameFor(id), { bold: true, isBot: isBotFor(id) });
+    const opponent = (b: TextBuilder, id: number) =>
+      b.append(nameFor(id), { ...badgeFor(id), isBot: isBotFor(id) });
+    const opponents = (b: TextBuilder, ids: number[]) =>
+      ids.forEach((id, index) => {
+        if (index > 0) b.append(', ');
+        opponent(b, id);
+      });
+    const place = (
+      b: TextBuilder,
+      id: number,
+      prefix: string,
+      highlight?: LogHighlight,
+    ) => {
+      const name = placeNames.territories.get(id);
+      if (name) {
+        b.append(name, { ...highlight, bold: true });
+      } else {
+        b.append(prefix);
+        b.append(`#${id + 1}`, { ...highlight, bold: true });
+      }
+    };
+    const route = (
+      b: TextBuilder,
+      fromId: number,
+      toId: number,
+      toHighlight?: LogHighlight,
+    ) => {
+      b.line('Route');
+      place(b, fromId, '');
+      b.append(' → ');
+      place(b, toId, '', toHighlight);
+    };
+    const versus = (
+      b: TextBuilder,
+      label: string,
+      attack: number | undefined,
+      defence: number | undefined,
+      defenceHighlight?: LogHighlight,
+    ) => {
+      if (attack === undefined && defence === undefined) return;
+      b.line(label);
+      b.append(String(attack ?? '?'));
+      b.append(' vs ');
+      b.append(String(defence ?? '?'), defenceHighlight);
+    };
+
     const logRound = (round: number) => {
       if (lastLoggedRound !== null && round <= lastLoggedRound) return;
       lastLoggedRound = round;
       push(NEUTRAL_LOG_COLOR, `Started round ${round + 1}`);
     };
     const deploy = (playerId: number, territoryId: number, troops: number) =>
-      push(
-        colorFor(playerId),
-        `${nameFor(playerId)} deployed ${troops} troops to ${place(territoryId, 'territory ')}`,
-      );
+      log(colorFor(playerId), (b) => {
+        actor(b, playerId);
+        b.append(` deployed ${plural(troops, 'troop')} to `);
+        place(b, territoryId, 'territory ');
+      });
 
     switch (entry.type) {
       case 'game:deployed':
         deploy(n('playerId'), n('territoryId'), n('troops'));
         break;
-      case 'game:deployedMany':
-        for (const deposit of p.deposits as {
+      case 'game:deployedMany': {
+        const deposits = p.deposits as {
           territoryId: number;
           troops: number;
-        }[])
-          deploy(n('playerId'), deposit.territoryId, deposit.troops);
+        }[];
+        if (deposits.length === 1) {
+          deploy(n('playerId'), deposits[0].territoryId, deposits[0].troops);
+          break;
+        }
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(
+            ` deployed ${plural(
+              deposits.reduce((sum, d) => sum + d.troops, 0),
+              'troop',
+            )}`,
+          );
+          for (const deposit of deposits) {
+            b.line();
+            place(b, deposit.territoryId, 'Territory ');
+            b.append(`: ${deposit.troops}`);
+          }
+        });
         break;
+      }
       case 'game:fortified':
-        push(
-          colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} fortified ${moved('troopsAdded', 'troopsRemoved')} troops from ${place(n('fromTerritoryId'), 'territory ')} to ${place(n('territoryId'), 'territory ')}`,
-        );
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(
+            ` fortified ${plural(moved('troopsAdded', 'troopsRemoved'), 'troop')}`,
+          );
+          route(b, n('fromTerritoryId'), n('territoryId'));
+        });
         break;
       case 'game:attackMoved':
-        push(
-          colorFor(lastConquestAttackerId),
-          `${nameFor(lastConquestAttackerId)} moved ${moved('troopsAdded', 'troopsRemoved')} troops into conquered ${place(n('territoryId'), 'territory ')}`,
-        );
-        if (p.troopsRefunded !== undefined)
-          push(
-            colorFor(lastConquestAttackerId),
-            `${nameFor(lastConquestAttackerId)} got ${n('troopsRefunded')} troops back from ${place(n('territoryId'), 'capital ')}`,
+        log(colorFor(lastConquestAttackerId), (b) => {
+          actor(b, lastConquestAttackerId);
+          b.append(
+            ` moved ${plural(moved('troopsAdded', 'troopsRemoved'), 'troop')} into `,
           );
+          place(b, n('territoryId'), 'territory ');
+          if (p.troopsRefunded !== undefined) {
+            b.line('Refund');
+            b.append(plural(n('troopsRefunded'), 'troop'));
+          }
+        });
         break;
       case 'game:entrenched':
-        push(
-          colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} entrenched ${place(n('territoryId'), 'territory ')} with ${n('troops')} troops (now ${n('turnsRemaining')} turns)`,
-        );
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(' entrenched ');
+          place(b, n('territoryId'), 'territory ');
+          b.line('Troops');
+          b.append(String(n('troops')));
+          b.line('Duration');
+          b.append(plural(n('turnsRemaining'), 'turn'));
+        });
         break;
       case 'game:toxined':
-        push(
-          colorFor(n('playerId')),
-          p.permanent
-            ? `${nameFor(n('playerId'))} released toxin on ${place(n('territoryId'), 'territory ')} permanently`
-            : `${nameFor(n('playerId'))} released toxin on ${place(n('territoryId'), 'territory ')} for ${n('roundsRemaining')} rounds`,
-        );
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(' released toxin on ');
+          place(b, n('territoryId'), 'territory ');
+          b.line('Duration');
+          b.append(
+            p.permanent ? 'permanent' : plural(n('roundsRemaining'), 'round'),
+          );
+        });
         break;
       case 'game:unlocked':
-        push(
-          colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} unlocked tile #${n('tileId') + 1} from ${place(n('fromTerritoryId'), 'territory ')} for ${n('cost')} troops`,
-        );
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(` unlocked tile #${n('tileId') + 1}`);
+          b.line('From');
+          place(b, n('fromTerritoryId'), '');
+          b.line('Cost');
+          b.append(plural(n('cost'), 'troop'));
+        });
         break;
       case 'game:nukeLaunched': {
         const launcherId = n('playerId');
-        if (p.intercepted)
-          push(
-            colorFor(launcherId),
-            `${nameFor(launcherId)}'s nuke aimed at ${place(n('targetTerritoryId'), 'territory ')} was intercepted`,
-          );
-        else
-          push(
-            colorFor(launcherId),
-            `${nameFor(launcherId)} nuked ${place(n('targetTerritoryId'), 'territory ')}`,
-          );
-        for (const id of (p.eliminatedPlayerIds as number[]) ?? [])
-          push(colorFor(id), `${nameFor(id)} was eliminated by a nuke`);
+        const eliminatedIds = (p.eliminatedPlayerIds as number[]) ?? [];
+        log(colorFor(launcherId), (b) => {
+          actor(b, launcherId);
+          if (p.intercepted) {
+            b.append("'s nuke was intercepted");
+            b.line('Target');
+            place(b, n('targetTerritoryId'), '');
+          } else {
+            b.append(' nuked ');
+            place(b, n('targetTerritoryId'), 'territory ');
+          }
+          if (eliminatedIds.length > 0) {
+            b.line('Eliminated');
+            opponents(b, eliminatedIds);
+          }
+        });
         break;
       }
       case 'game:radiationChanged': {
         const newly = p.newlyRadiatedIds as number[];
         if (newly.length > 0)
-          push(
-            NEUTRAL_LOG_COLOR,
-            `Radiation spread to territor${newly.length === 1 ? 'y' : 'ies'} ${newly.map((id) => place(id, '')).join(', ')}`,
-          );
+          log(NEUTRAL_LOG_COLOR, (b) => {
+            if (newly.length === 1) {
+              b.append('Radiation spread to ');
+              place(b, newly[0], 'territory ');
+              return;
+            }
+            b.append(`Radiation spread to ${newly.length} territories`);
+            for (const id of newly) {
+              b.line();
+              place(b, id, 'Territory ');
+            }
+          });
         for (const id of p.eliminatedPlayerIds as number[])
-          push(colorFor(id), `${nameFor(id)} was eliminated by radiation`);
+          log(colorFor(id), (b) => {
+            actor(b, id);
+            b.append(' was eliminated by radiation');
+          });
         break;
       }
       case 'game:attacked': {
-        if (p.conquered) lastConquestAttackerId = n('attackerId');
         const attackerId = n('attackerId');
         const defenderId = p.defenderId as number | undefined;
-        const defenderColor = colorFor(defenderId);
-        const defenderHighlight =
-          defenderId !== undefined
-            ? { color: defenderColor, badge: true }
-            : undefined;
-
-        const b = buildText();
-        b.append(nameFor(attackerId), botHighlight(attackerId));
-        b.append(p.conquered ? ' conquered' : ' attacked');
-        if (defenderId !== undefined) {
-          b.append(' ');
-          b.append(nameFor(defenderId), {
-            ...defenderHighlight!,
-            isBot: isBotFor(defenderId),
-          });
-          b.append("'s");
-        }
-        b.append(' ');
-        appendPlace(
-          b,
-          n('defendingTerritoryId'),
-          'territory ',
-          defenderHighlight,
-        );
-        b.append(` from ${place(n('attackingTerritoryId'), '')}`);
-        if (
-          p.attackingTroops !== undefined &&
-          p.defendingTroops !== undefined
-        ) {
-          b.append(`: ${n('attackingTroops')} vs `);
-          b.append(String(n('defendingTroops')), defenderHighlight);
-          b.append(' troops');
-        }
-        if (p.attackLosses !== undefined)
-          b.append(`, lost ${n('attackLosses')}`);
-        if (p.defenceLosses !== undefined) {
-          b.append(' and killed ');
-          b.append(String(n('defenceLosses')), defenderHighlight);
-        }
-
-        const { text, colorRanges } = b.finish();
-        push(colorFor(attackerId), text, colorRanges);
-
-        if (p.eliminated && defenderId !== undefined) {
-          const kill = buildText();
-          kill.append(nameFor(attackerId), botHighlight(attackerId));
-          kill.append(' eliminated ');
-          kill.append(nameFor(defenderId), {
-            ...defenderHighlight!,
-            isBot: isBotFor(defenderId),
-          });
-          const killed = kill.finish();
-          push(colorFor(attackerId), killed.text, killed.colorRanges);
-        }
-        if (n('cardsTaken') > 0 && defenderId !== undefined) {
-          const cards = buildText();
-          cards.append(nameFor(attackerId), botHighlight(attackerId));
-          cards.append(
-            ` took ${n('cardsTaken')} card${n('cardsTaken') === 1 ? '' : 's'} from `,
+        if (p.conquered) lastConquestAttackerId = attackerId;
+        const defenderHighlight = badgeFor(defenderId);
+        log(colorFor(attackerId), (b) => {
+          actor(b, attackerId);
+          b.append(' attacked ');
+          if (defenderId !== undefined) opponent(b, defenderId);
+          else
+            b.append(
+              p.conquered === undefined
+                ? 'an unknown player'
+                : 'an unowned territory',
+            );
+          route(
+            b,
+            n('attackingTerritoryId'),
+            n('defendingTerritoryId'),
+            defenderHighlight,
           );
-          cards.append(nameFor(defenderId), {
-            ...defenderHighlight!,
-            isBot: isBotFor(defenderId),
-          });
-          const taken = cards.finish();
-          push(colorFor(attackerId), taken.text, taken.colorRanges);
-        }
-        if (p.troopsRefunded !== undefined)
-          push(
-            colorFor(attackerId),
-            `${nameFor(attackerId)} got ${n('troopsRefunded')} troops back from ${place(n('defendingTerritoryId'), 'capital ')}`,
+          versus(
+            b,
+            'Troops',
+            optional('attackingTroops'),
+            optional('defendingTroops'),
+            defenderHighlight,
           );
+          versus(
+            b,
+            'Losses',
+            optional('attackLosses'),
+            optional('defenceLosses'),
+            defenderHighlight,
+          );
+          versus(
+            b,
+            'Remaining',
+            minus(optional('attackingTroops'), optional('attackLosses')),
+            minus(optional('defendingTroops'), optional('defenceLosses')),
+            defenderHighlight,
+          );
+          if (p.conquered) {
+            b.line('Result');
+            b.append('Conquered', { bold: true });
+          }
+          if (p.eliminated && defenderId !== undefined) {
+            b.line('Eliminated');
+            opponent(b, defenderId);
+          }
+          if (n('cardsTaken') > 0 && defenderId !== undefined) {
+            b.line('Cards');
+            b.append(`took ${plural(n('cardsTaken'), 'card')} from `);
+            opponent(b, defenderId);
+          }
+          if (p.troopsRefunded !== undefined) {
+            b.line('Refund');
+            b.append(plural(n('troopsRefunded'), 'troop'));
+          }
+        });
         break;
       }
       case 'game:shipsBought':
-        push(
-          colorFor(n('playerId')),
-          p.fromPool
-            ? `${nameFor(n('playerId'))} deployed ${n('ships')} ships to ${place(n('seaTerritoryId'), 'sea territory ')}`
-            : `${nameFor(n('playerId'))} built ${n('ships')} ships from ${place(n('sourceTerritoryId'), 'territory ')} to ${place(n('seaTerritoryId'), 'sea territory ')}`,
-        );
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          if (p.fromPool) {
+            b.append(` deployed ${plural(n('ships'), 'ship')} to `);
+            place(b, n('seaTerritoryId'), 'sea ');
+          } else {
+            b.append(` built ${plural(n('ships'), 'ship')}`);
+            route(b, n('sourceTerritoryId'), n('seaTerritoryId'));
+          }
+        });
         break;
       case 'game:sailed':
-        push(
-          colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} sailed ${moved('shipsAdded', 'shipsRemoved')} ships from ${place(n('fromSeaTerritoryId'), 'sea territory ')} to ${place(n('seaTerritoryId'), 'sea territory ')}`,
-        );
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(
+            ` sailed ${plural(moved('shipsAdded', 'shipsRemoved'), 'ship')}`,
+          );
+          route(b, n('fromSeaTerritoryId'), n('seaTerritoryId'));
+        });
         break;
       case 'game:seaAttacked': {
         const attackerId = n('attackerId');
         const defenderId = n('defenderId');
-        const defenderHighlight = { color: colorFor(defenderId), badge: true };
-
-        const b = buildText();
-        b.append(nameFor(attackerId), botHighlight(attackerId));
-        b.append(' attacked ');
-        b.append(nameFor(defenderId), {
-          ...defenderHighlight,
-          isBot: isBotFor(defenderId),
+        const defenderHighlight = badgeFor(defenderId);
+        log(colorFor(attackerId), (b) => {
+          actor(b, attackerId);
+          b.append(' attacked ');
+          opponent(b, defenderId);
+          b.append("'s ships");
+          b.line('Sea');
+          place(b, n('seaTerritoryId'), '', defenderHighlight);
+          versus(
+            b,
+            'Ships',
+            n('attackingShips'),
+            n('defendingShips'),
+            defenderHighlight,
+          );
+          versus(
+            b,
+            'Losses',
+            n('attackLosses'),
+            n('defenceLosses'),
+            defenderHighlight,
+          );
+          versus(
+            b,
+            'Remaining',
+            n('attackingShips') - n('attackLosses'),
+            n('defendingShips') - n('defenceLosses'),
+            defenderHighlight,
+          );
         });
-        b.append("'s ships in ");
-        appendPlace(
-          b,
-          n('seaTerritoryId'),
-          'sea territory ',
-          defenderHighlight,
-        );
-        b.append(`: ${n('attackingShips')} vs `);
-        b.append(String(n('defendingShips')), defenderHighlight);
-        b.append(` ships, lost ${n('attackLosses')} and killed `);
-        b.append(String(n('defenceLosses')), defenderHighlight);
-
-        const { text, colorRanges } = b.finish();
-        push(colorFor(attackerId), text, colorRanges);
         break;
       }
       case 'game:surrendered':
-        push(colorFor(n('playerId')), `${nameFor(n('playerId'))} surrendered`);
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(' surrendered');
+        });
         break;
       case 'game:pointsScored':
         logRound(n('roundNumber'));
-        push(
-          colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} scored ${n('points')} point${n('points') === 1 ? '' : 's'} (total ${n('total')})`,
-        );
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(` scored ${plural(n('points'), 'point')}`);
+          b.line('Total');
+          b.append(String(n('total')));
+        });
         break;
       case 'game:gameOver': {
         const winnerIds = p.winnerIds as number[];
-        const b = buildText();
-        b.append('Game over');
-        if (p.drawReason === 'agreed') b.append(', draw agreed');
-        else if (p.drawReason) b.append(`, stalemate (${p.drawReason})`);
-        winnerIds.forEach((id, index) => {
-          b.append(
-            index === 0
-              ? ', won by '
-              : index === winnerIds.length - 1
-                ? ' and '
-                : ', ',
-          );
-          b.append(nameFor(id), {
-            color: colorFor(id),
-            badge: true,
-            isBot: isBotFor(id),
-          });
+        log(NEUTRAL_LOG_COLOR, (b) => {
+          b.append('Game over');
+          if (p.drawReason) {
+            b.line('Result');
+            b.append(
+              p.drawReason === 'agreed'
+                ? 'Draw agreed'
+                : `Stalemate (${p.drawReason})`,
+            );
+          }
+          if (winnerIds.length > 0) {
+            b.line(winnerIds.length === 1 ? 'Winner' : 'Winners');
+            opponents(b, winnerIds);
+          }
         });
-        const { text, colorRanges } = b.finish();
-        push(NEUTRAL_LOG_COLOR, text, colorRanges);
         break;
       }
       case 'game:cardSetPlayed':
-        push(
-          colorFor(n('playerId')),
-          `${nameFor(n('playerId'))} received ${n('troops') - n('territoryBonusCount') * 2} troops from a set`,
-        );
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(
+            ` received ${plural(n('troops') - n('territoryBonusCount') * 2, 'troop')} from a set`,
+          );
+        });
         break;
       case 'game:turnStarted': {
         logRound(n('roundNumber'));
-        const color = colorFor(n('playerId'));
-        const name = nameFor(n('playerId'));
-        const source = (key: string, label: string) => {
-          if (n(key) > 0)
-            push(color, `${name} received ${n(key)} troops from ${label}`);
-        };
-        source('troopsFromTerritories', 'territories');
-        source('troopsFromBonuses', 'bonuses');
-        source('troopsFromCapitals', 'capitals');
-        source('troopsFromRoundTroops', 'round troops');
-        source('troopsFromBounties', 'bounties');
-        source('troopsFromTurnOrder', 'turn order');
-        if (n('troopsWithheld') > 0)
-          push(
-            color,
-            `${name} could not receive ${n('troopsWithheld')} troops (territory troop limit)`,
+        const sources = TURN_SOURCES.filter(([key]) => n(key) > 0);
+        const withheld = n('troopsWithheld') > 0;
+        if (sources.length === 0 && !withheld) break;
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(
+            ` received ${plural(
+              sources.reduce((sum, [key]) => sum + n(key), 0),
+              'troop',
+            )}`,
           );
+          for (const [key, label] of sources) {
+            b.line(label);
+            b.append(String(n(key)));
+          }
+          if (withheld) {
+            b.line('Withheld');
+            b.append(`${n('troopsWithheld')} (territory troop limit)`);
+          }
+        });
         break;
       }
       case 'game:capitalPlacementStarted':
         push(NEUTRAL_LOG_COLOR, 'Started capital placement');
         break;
-      case 'game:territoryClaimed': {
-        const color = colorFor(n('playerId'));
-        const name = nameFor(n('playerId'));
-        push(color, `${name} claimed ${place(n('territoryId'), 'territory ')}`);
-        push(
-          color,
-          `${name} deployed ${n('troops') ?? 1} troops to ${place(n('territoryId'), 'territory ')}`,
-        );
+      case 'game:territoryClaimed':
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(' claimed ');
+          place(b, n('territoryId'), 'territory ');
+          b.append(` with ${plural(n('troops') ?? 1, 'troop')}`);
+        });
         break;
-      }
-      case 'game:allianceFormed': {
-        const actor = p.playerId as number | undefined;
-        const withId = n('withId');
-        const b = buildText();
-        if (actor === undefined) {
-          b.append('Formed an alliance with ');
-        } else {
-          b.append(nameFor(actor), botHighlight(actor));
-          b.append(' formed an alliance with ');
-        }
-        b.append(nameFor(withId), botHighlight(withId));
-        const { text, colorRanges } = b.finish();
-        push(colorFor(actor ?? withId), text, colorRanges);
-        break;
-      }
+      case 'game:allianceFormed':
       case 'game:allianceTerminated': {
-        const actor = p.playerId as number | undefined;
+        const actorId = p.playerId as number | undefined;
         const withId = n('withId');
-        const b = buildText();
-        if (actor === undefined) {
-          b.append('Terminated the alliance with ');
-        } else {
-          b.append(nameFor(actor), botHighlight(actor));
-          b.append(' terminated the alliance with ');
-        }
-        b.append(nameFor(withId), botHighlight(withId));
-        const { text, colorRanges } = b.finish();
-        push(colorFor(actor ?? withId), text, colorRanges);
+        const formed = entry.type === 'game:allianceFormed';
+        log(colorFor(actorId ?? withId), (b) => {
+          if (actorId === undefined) {
+            b.append(
+              formed
+                ? 'Formed an alliance with '
+                : 'Terminated the alliance with ',
+            );
+          } else {
+            actor(b, actorId);
+            b.append(
+              formed
+                ? ' formed an alliance with '
+                : ' terminated the alliance with ',
+            );
+          }
+          actor(b, withId);
+        });
         break;
       }
     }

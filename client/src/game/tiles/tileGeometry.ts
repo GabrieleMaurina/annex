@@ -20,7 +20,7 @@ function polygonArea(points: Point[]): number {
   return Math.abs(twiceArea) / 2;
 }
 
-export function tileLineWidth(lockedTiles: LockedTile[]): number {
+export function tileLineWidth(lockedTiles: { points: Point[] }[]): number {
   if (lockedTiles.length === 0) return 0;
   const meanArea =
     lockedTiles.reduce((sum, tile) => sum + polygonArea(tile.points), 0) /

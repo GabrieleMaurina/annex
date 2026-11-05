@@ -130,6 +130,16 @@ export function tileUnitArea(shape: TileShape): number {
   return Math.abs(a[0] * b[1] - a[1] * b[0]) / tiles.length;
 }
 
+export function tileVariants(shape: TileShape): Point[][] {
+  return TILINGS[shape].tiles
+    .map((tile) => {
+      const cx = tile.reduce((sum, p) => sum + p[0], 0) / tile.length;
+      const cy = tile.reduce((sum, p) => sum + p[1], 0) / tile.length;
+      return tile.map(([x, y]): Point => [x - cx, y - cy]);
+    })
+    .reverse();
+}
+
 const SNAP = 1024;
 
 function snap(value: number): number {

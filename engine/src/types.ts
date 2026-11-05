@@ -54,6 +54,12 @@ export interface LockedTile {
   neighbors: number[];
 }
 
+export interface FixedTile {
+  id: number;
+  points: [number, number][];
+  color: string;
+}
+
 export interface GameMap {
   name: string;
   territories: Territory[];
@@ -390,6 +396,30 @@ export interface PlayerStats {
   playersKilled: number[];
   turnsPlayed: number;
   setsPlayed: number;
+  peakTurnTroops: number;
+  peakTerritories: number;
+  cornered: boolean;
+  turnConquests: number;
+  peakTurnConquests: number;
+  peakSetTroops: number;
+  nukesLaunched: number;
+  fleetsSunk: number;
+  alliancesFormed: number;
+  lastPlayedRound: number | null;
+}
+
+export interface AchievementFacts {
+  won: boolean;
+  cornered: boolean;
+  peakTurnTroops: number;
+  territoriesConquered: number;
+  playersKilled: number;
+  peakTurnConquests: number;
+  peakSetTroops: number;
+  nukesLaunched: number;
+  fleetsSunk: number;
+  alliancesFormed: number;
+  lastPlayedRound: number | null;
 }
 
 export interface PlayerGameMap {

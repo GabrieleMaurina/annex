@@ -60,7 +60,9 @@ export function linkTerritories(
     if (
       from.neighbors.includes(b) ||
       from.timed.some((m) => m.id === b) ||
-      from.directional.some((m) => m.id === b)
+      from.directional.some((m) => m.id === b) ||
+      (from.locked && to.isSea) ||
+      (to.locked && from.isSea)
     )
       continue;
     if (added.some(([p, q]) => segmentsProperlyIntersect(from, to, p, q)))

@@ -17,7 +17,7 @@ import {
   GLOBAL_TARGET_ID,
   type EmojiPop,
 } from '../../logic/emoji';
-import type { Territory } from '../../mapData';
+import type { PlaceNames, Territory } from '../../mapData';
 import type { Point } from '../helpers';
 
 export function useEmojiUI({
@@ -33,6 +33,7 @@ export function useEmojiUI({
   canvasRef,
   getTerritoryScreenPosRef,
   getVertexScreenRadiusRef,
+  placeNames,
 }: {
   selfId: number | null;
   isTeamDeathmatch: boolean;
@@ -46,7 +47,12 @@ export function useEmojiUI({
   canvasRef: RefObject<HTMLCanvasElement | null>;
   getTerritoryScreenPosRef: RefObject<(t: Territory) => Point>;
   getVertexScreenRadiusRef: RefObject<() => number>;
+  placeNames: PlaceNames;
 }) {
+  const placeNamesRef = useRef(placeNames);
+  useEffect(() => {
+    placeNamesRef.current = placeNames;
+  });
   const [emojiPickerFor, setEmojiPickerFor] = useState<number | null>(null);
   const [pendingAttackEmoji, setPendingAttackEmoji] = useState<{
     targetPlayerId: number;
@@ -172,7 +178,9 @@ export function useEmojiUI({
         attackColor = target ? playerColor(target.color) : undefined;
       } else if (attackTarget?.type === 'territory') {
         const territoryId = attackTarget.territoryId;
-        attackText = `#${territoryId + 1}`;
+        attackText =
+          placeNamesRef.current.territories.get(territoryId) ??
+          `#${territoryId + 1}`;
         const ownerId = ownerByIdRef.current.get(territoryId)?.ownerId;
         const owner = playersRef.current.find((p) => p.id === ownerId);
         attackColor = owner ? playerColor(owner.color) : undefined;

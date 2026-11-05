@@ -8,3 +8,4 @@ export function continentColor(continentId: number): string {
 }
 
 export const SEA_MARKER_COLOR = '#0d6efd';
+export const LOCKED_MARKER_COLOR = '#ffffff';

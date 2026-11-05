@@ -1,5 +1,5 @@
 import { playersById } from '../../session/players';
-import { Game, PlayerStats } from '../../types';
+import { AchievementFacts, Game, PlayerStats } from '../../types';
 import { ownsAnyTerritory } from '../mechanics';
 import { isPointsMode } from './points';
 
@@ -16,6 +16,83 @@ export function emptyPlayerStats(): PlayerStats {
     playersKilled: [],
     turnsPlayed: 0,
     setsPlayed: 0,
+    peakTurnTroops: 0,
+    peakTerritories: 0,
+    cornered: false,
+    turnConquests: 0,
+    peakTurnConquests: 0,
+    peakSetTroops: 0,
+    nukesLaunched: 0,
+    fleetsSunk: 0,
+    alliancesFormed: 0,
+    lastPlayedRound: null,
+  };
+}
+
+const CORNERED_TERRITORIES = 3;
+
+export function isBotControlled(playerId: number): boolean {
+  return playersById.get(playerId)?.isBot ?? false;
+}
+
+export function recordTurnStart(game: Game, playerId: number, troops: number) {
+  const stats = game.stats.get(playerId)!;
+  stats.turnConquests = 0;
+  if (isBotControlled(playerId)) return;
+  const territories = countTerritories(game, playerId);
+  if (
+    territories <= CORNERED_TERRITORIES &&
+    stats.peakTerritories > CORNERED_TERRITORIES
+  )
+    stats.cornered = true;
+  stats.peakTerritories = Math.max(stats.peakTerritories, territories);
+  stats.peakTurnTroops = Math.max(stats.peakTurnTroops, troops);
+}
+
+export function recordConquest(stats: PlayerStats, playerId: number) {
+  stats.territoriesConquered++;
+  if (isBotControlled(playerId)) return;
+  stats.turnConquests++;
+  stats.peakTurnConquests = Math.max(
+    stats.peakTurnConquests,
+    stats.turnConquests,
+  );
+}
+
+export function recordCardSet(game: Game, playerId: number, troops: number) {
+  const stats = game.stats.get(playerId)!;
+  stats.setsPlayed++;
+  if (!isBotControlled(playerId))
+    stats.peakSetTroops = Math.max(stats.peakSetTroops, troops);
+}
+
+function isSoleWinner(game: Game, playerId: number): boolean {
+  return (
+    !game.draw &&
+    game.gameMode !== 'team deathmatch' &&
+    game.winnerIds.length === 1 &&
+    game.winnerIds[0] === playerId
+  );
+}
+
+export function achievementFacts(
+  game: Game,
+  playerId: number,
+  disconnected: boolean,
+): AchievementFacts {
+  const stats = game.stats.get(playerId) ?? emptyPlayerStats();
+  return {
+    won: isSoleWinner(game, playerId) && !disconnected,
+    cornered: stats.cornered,
+    peakTurnTroops: stats.peakTurnTroops,
+    territoriesConquered: stats.territoriesConquered,
+    playersKilled: stats.playersKilled.length,
+    peakTurnConquests: stats.peakTurnConquests,
+    peakSetTroops: stats.peakSetTroops,
+    nukesLaunched: stats.nukesLaunched,
+    fleetsSunk: stats.fleetsSunk,
+    alliancesFormed: stats.alliancesFormed,
+    lastPlayedRound: stats.lastPlayedRound,
   };
 }
 
@@ -29,7 +106,10 @@ export function bumpStat(
   field: NumericStat,
   amount = 1,
 ) {
-  game.stats.get(playerId)![field] += amount;
+  const stats = game.stats.get(playerId)!;
+  stats[field] += amount;
+  if (field === 'turnsPlayed' && !isBotControlled(playerId))
+    stats.lastPlayedRound = game.roundNumber;
 }
 
 function recordAwayElimination(game: Game, playerId: number) {

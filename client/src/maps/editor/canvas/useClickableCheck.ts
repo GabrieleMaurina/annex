@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { rgbOf } from '../../../game/regions/labelRegions';
+import { polygonPath } from '../../../game/tiles/tileGeometry';
 import type { EditorTerritory } from '../model/editorTypes';
 import { continentColor, SEA_MARKER_COLOR } from '../palette';
+import { maskTiles } from '../tiles/drawTiles';
+import type { EditorTile } from '../tiles/editorTiles';
 import type { ClickableReply, ClickableRequest } from './clickableWorker';
 
 const CHECK_DELAY = 400;
 const AREA_ALPHA = 140;
 
 export interface ClickableCheck {
-  invalidIds: Set<number>;
+  validCount: number;
   overlay: HTMLCanvasElement | null;
 }
 
@@ -18,6 +21,11 @@ interface LabeledAreas {
   width: number;
   height: number;
   territories: EditorTerritory[];
+  tiles: EditorTile[];
+}
+
+function markerOf(t: EditorTerritory): string {
+  return t.isSea ? SEA_MARKER_COLOR : continentColor(t.continentId);
 }
 
 function tintOverlay({
@@ -26,17 +34,12 @@ function tintOverlay({
   width,
   height,
   territories,
+  tiles,
 }: LabeledAreas): HTMLCanvasElement {
   const tintById = new Map(
     territories
       .filter((t) => !invalidIds.has(t.id))
-      .map((t) => [
-        t.id,
-        [
-          ...rgbOf(t.isSea ? SEA_MARKER_COLOR : continentColor(t.continentId)),
-          AREA_ALPHA,
-        ],
-      ]),
+      .map((t) => [t.id, [...rgbOf(markerOf(t)), AREA_ALPHA]]),
   );
   const image = new ImageData(width, height);
   for (let i = 0; i < labels.length; i++) {
@@ -51,7 +54,17 @@ function tintOverlay({
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  canvas.getContext('2d')?.putImageData(image, 0, 0);
+  const ctx = canvas.getContext('2d');
+  ctx?.putImageData(image, 0, 0);
+  if (!ctx) return canvas;
+  const byId = new Map(territories.map((t) => [t.id, t]));
+  ctx.globalAlpha = AREA_ALPHA / 255;
+  for (const tile of tiles) {
+    const t = byId.get(tile.territoryId);
+    if (!t) continue;
+    ctx.fillStyle = markerOf(t);
+    ctx.fill(polygonPath(tile.points));
+  }
   return canvas;
 }
 
@@ -61,12 +74,14 @@ export function useClickableCheck(
   territories: EditorTerritory[],
   borderColors: string[],
   showAreas: boolean,
+  tiles: EditorTile[],
 ): ClickableCheck | null {
   const [labeled, setLabeled] = useState<LabeledAreas | null>(null);
   useEffect(() => {
     let worker: Worker | null = null;
     const timer = setTimeout(() => {
-      const surface = surfaceRef.current;
+      const surface = maskTiles(surfaceRef.current, tiles, borderColors[0]);
+      const tileIds = new Set(tiles.map((tile) => tile.territoryId));
       worker = new Worker(new URL('./clickableWorker.ts', import.meta.url), {
         type: 'module',
       });
@@ -76,10 +91,13 @@ export function useClickableCheck(
           worker?.terminate();
           setLabeled({
             labels: event.data.labels,
-            invalidIds: new Set(event.data.invalidIds),
+            invalidIds: new Set(
+              event.data.invalidIds.filter((id) => !tileIds.has(id)),
+            ),
             width: surface.width,
             height: surface.height,
             territories,
+            tiles,
           });
         },
       );
@@ -94,13 +112,20 @@ export function useClickableCheck(
       clearTimeout(timer);
       worker?.terminate();
     };
-  }, [surfaceRef, paintVersion, territories, borderColors]);
+  }, [surfaceRef, paintVersion, territories, borderColors, tiles]);
   const overlay = useMemo(
     () => (showAreas && labeled ? tintOverlay(labeled) : null),
     [showAreas, labeled],
   );
   return useMemo(
-    () => (labeled ? { invalidIds: labeled.invalidIds, overlay } : null),
-    [labeled, overlay],
+    () =>
+      labeled
+        ? {
+            validCount: territories.filter((t) => !labeled.invalidIds.has(t.id))
+              .length,
+            overlay,
+          }
+        : null,
+    [labeled, overlay, territories],
   );
 }

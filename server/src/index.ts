@@ -9,6 +9,10 @@ import {
 import { createServer } from 'http';
 import os from 'os';
 import { Server } from 'socket.io';
+import {
+  ACHIEVEMENTS,
+  grantGameAchievements,
+} from './achievements/achievements';
 import { randomToken } from './auth/auth';
 import {
   isSecureRequest,
@@ -28,7 +32,7 @@ import {
   setReputationEngine,
 } from './conduct/reputation';
 import { cachedBlockPeers } from './conduct/viewerCache';
-import { connectDb } from './db';
+import { connectDb, installAchievements } from './db';
 import {
   gameElos,
   gameParticipants,
@@ -223,6 +227,9 @@ const callbacks: EngineCallbacks = {
     persistFinishedGame(engine, payload, participants, elos, gameId)
       .then(() => {
         if (storedGameId(payload.gameName)) resendResults(payload.gameName);
+        return elos.then((gameElos) =>
+          grantGameAchievements(payload, participants, gameElos),
+        );
       })
       .catch(console.error);
     elos.then(() => resendResults(payload.gameName));
@@ -312,10 +319,12 @@ io.on('connection', (socket) => {
   registerConductHandlers(io, socket, engine);
 });
 
-connectDb().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+connectDb()
+  .then(() => installAchievements(ACHIEVEMENTS))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 
 const port = Number(process.env.PORT) || 3000;
 httpServer.listen(port, () => {

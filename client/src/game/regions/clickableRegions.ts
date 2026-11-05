@@ -1,5 +1,6 @@
 import type { LockedTile } from '../../lib/types';
 import { loadGameMap } from '../mapData';
+import { polygonPath } from '../tiles/tileGeometry';
 import { labelRegions, WALL_MAX_ALPHA, type RegionPoint } from './labelRegions';
 import { traceRegionShapes, type RegionShape } from './traceRegions';
 
@@ -340,7 +341,11 @@ export function regionAt(
   return id >= 0 ? id : null;
 }
 
-function decodeImage(src: string): Promise<ImageData> {
+function decodeImage(
+  src: string,
+  closedTiles: LockedTile[],
+  wallColor: string,
+): Promise<ImageData> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -349,6 +354,8 @@ function decodeImage(src: string): Promise<ImageData> {
       canvas.height = img.naturalHeight;
       const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
       ctx.drawImage(img, 0, 0);
+      ctx.fillStyle = wallColor;
+      for (const tile of closedTiles) ctx.fill(polygonPath(tile.points));
       resolve(ctx.getImageData(0, 0, canvas.width, canvas.height));
     };
     img.onerror = reject;
@@ -366,7 +373,7 @@ export function loadClickableRegions(
     if (!map.imageSrc) return null;
     let regions = regionsByMap.get(map);
     if (!regions) {
-      regions = decodeImage(map.imageSrc)
+      regions = decodeImage(map.imageSrc, map.lockedTiles, map.borderColors[0])
         .then((image) =>
           buildClickableRegions(
             image,

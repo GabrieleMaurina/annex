@@ -3,6 +3,7 @@ import {
   duplicatePlaceNames,
   Fill,
   FILL_VALUES,
+  FixedTile,
   GENERATION_TYPE_VALUES,
   GenerationType,
   isStronglyConnected,
@@ -148,6 +149,49 @@ function isDirectionalConnection(
   );
 }
 
+function isTilePolygon(points: unknown): points is [number, number][] {
+  return (
+    Array.isArray(points) &&
+    points.length >= 3 &&
+    points.length <= MAX_TILE_POINTS &&
+    points.every(
+      (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        p.every((c) => typeof c === 'number' && Number.isFinite(c)),
+    )
+  );
+}
+
+function validateFixedTiles(
+  raw: unknown,
+  ids: Set<number>,
+  imageWidth: number,
+  imageHeight: number,
+): FixedTile[] | null {
+  if (!Array.isArray(raw) || raw.length > MAX_TERRITORIES) return null;
+  const pattern = new RegExp(BORDER_COLOR_PATTERN);
+  const seen = new Set<number>();
+  for (const tile of raw) {
+    if (
+      !isObject(tile) ||
+      Object.keys(tile).length !== 3 ||
+      typeof tile.color !== 'string' ||
+      !pattern.test(tile.color) ||
+      !Number.isInteger(tile.id) ||
+      !ids.has(tile.id as number) ||
+      seen.has(tile.id as number) ||
+      !isTilePolygon(tile.points) ||
+      !tile.points.every(
+        ([x, y]) => x >= 0 && x <= imageWidth && y >= 0 && y <= imageHeight,
+      )
+    )
+      return null;
+    seen.add(tile.id as number);
+  }
+  return raw as FixedTile[];
+}
+
 function isLockedTile(value: unknown): value is LockedTile {
   if (!isObject(value)) return false;
   return (
@@ -157,15 +201,7 @@ function isLockedTile(value: unknown): value is LockedTile {
     Number.isFinite(value.x) &&
     typeof value.y === 'number' &&
     Number.isFinite(value.y) &&
-    Array.isArray(value.points) &&
-    value.points.length >= 3 &&
-    value.points.length <= MAX_TILE_POINTS &&
-    value.points.every(
-      (p) =>
-        Array.isArray(p) &&
-        p.length === 2 &&
-        p.every((c) => typeof c === 'number' && Number.isFinite(c)),
-    ) &&
+    isTilePolygon(value.points) &&
     Array.isArray(value.neighbors) &&
     value.neighbors.every((n) => Number.isInteger(n))
   );
@@ -619,6 +655,7 @@ interface ParsedInput {
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   image: Buffer;
   imageMime: string;
   imageDataUrl: string;
@@ -662,6 +699,16 @@ export function parseMapInput(body: Record<string, unknown>): ParseResult {
   );
   if (!geometry.ok) return geometry;
 
+  const fixedTiles = validateFixedTiles(
+    body.fixedTiles ?? [],
+    new Set(
+      [...geometry.territories, ...geometry.seaTerritories].map((t) => t.id),
+    ),
+    dimensions.width,
+    dimensions.height,
+  );
+  if (!fixedTiles) return { ok: false, error: 'invalid fixed tiles' };
+
   const names = validateMapNames(
     body.territoryNames,
     body.seaNames,
@@ -686,6 +733,7 @@ export function parseMapInput(body: Record<string, unknown>): ParseResult {
       timedConnections: geometry.timedConnections,
       directionalConnections: geometry.directionalConnections,
       lockedTiles: geometry.lockedTiles,
+      fixedTiles,
       image: data,
       imageMime: match[1],
       imageDataUrl: match[0],

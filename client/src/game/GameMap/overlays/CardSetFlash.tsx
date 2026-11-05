@@ -3,7 +3,13 @@ import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
 import { CARD_SET_FLASH_DURATION } from '../../animations';
 import { CardFace } from '../../panels/CardsPanel';
 
-export default function CardSetFlash({ cards }: { cards: Card[] }) {
+export default function CardSetFlash({
+  cards,
+  territoryNames,
+}: {
+  cards: Card[];
+  territoryNames: Map<number, string>;
+}) {
   return (
     <div
       className={`position-fixed top-50 start-50 d-flex gap-3 ${PANEL_BG_CLASS} border rounded p-3`}
@@ -23,7 +29,12 @@ export default function CardSetFlash({ cards }: { cards: Card[] }) {
         }
       `}</style>
       {cards.map((card, i) => (
-        <CardFace key={i} card={card} size={90} />
+        <CardFace
+          key={i}
+          card={card}
+          territoryNames={territoryNames}
+          size={90}
+        />
       ))}
     </div>
   );

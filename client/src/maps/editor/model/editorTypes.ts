@@ -1,10 +1,12 @@
 import type {
   DirectionalConnection,
+  LockedTile,
   MapSeaTerritory,
   MapTerritory,
   MapWrap,
   TimedConnection,
 } from '../../../lib/types';
+import { tileCenter } from '../tiles/editorTiles';
 
 export interface WrapMark {
   id: number;
@@ -29,6 +31,7 @@ export interface DirectionalMark {
 export interface EditorTerritory extends MapTerritory {
   name: string;
   isSea?: boolean;
+  locked?: boolean;
   wraps: WrapMark[];
   timed: TimedMark[];
   directional: DirectionalMark[];
@@ -85,6 +88,7 @@ export function toEditorTerritories(
   links: {
     timedConnections: TimedConnection[];
     directionalConnections: DirectionalConnection[];
+    lockedTiles: LockedTile[];
   },
   territoryNames: string[] | null,
   seaNames: string[] | null,
@@ -109,9 +113,14 @@ export function toEditorTerritories(
         return [];
       },
     );
+  const lockedOf = (id: number) =>
+    links.lockedTiles
+      .filter((tile) => tile.neighbors.includes(id))
+      .map((tile) => tile.id);
   return [
     ...territories.map((t, i) => ({
       ...t,
+      neighbors: [...t.neighbors, ...lockedOf(t.id)],
       name: territoryNames?.[i] ?? '',
       wraps: marksOf(t.id),
       timed: timedOf(t.id),
@@ -126,7 +135,36 @@ export function toEditorTerritories(
       timed: timedOf(s.id),
       directional: directionalOf(s.id),
     })),
+    ...links.lockedTiles.map((tile) => {
+      const [x, y] = tileCenter(tile.points);
+      return {
+        id: tile.id,
+        continentId: NO_CONTINENT,
+        x,
+        y,
+        neighbors: tile.neighbors,
+        name: '',
+        wraps: [],
+        timed: [],
+        directional: [],
+        locked: true,
+      };
+    }),
   ];
+}
+
+export function withContinent(
+  territories: EditorTerritory[],
+  id: number,
+  continentId: number,
+): EditorTerritory[] {
+  return territories.map((t) =>
+    t.id !== id || t.locked
+      ? t
+      : continentId === SEA_BRUSH
+        ? { ...t, isSea: true }
+        : { ...t, continentId, isSea: false },
+  );
 }
 
 export function withoutVertex(

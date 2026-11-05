@@ -27,6 +27,7 @@ import { titleCase } from '../../lobby/settings/gameSettings';
 import MapBrowser from '../../maps/MapBrowser';
 import MapPreviewModal from '../../maps/MapPreviewModal';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import Achievements from './Achievements';
 
 const PAGE_SIZE = 20;
 
@@ -384,6 +385,8 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
           </div>
         ))}
       </div>
+
+      <Achievements key={profile.id} username={profile.username} />
 
       {history.length > 0 && (
         <div className="mb-4">

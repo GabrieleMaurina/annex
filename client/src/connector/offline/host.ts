@@ -9,7 +9,9 @@ import {
   type PlayerGameMap,
   type TileShape,
 } from 'engine';
+import { checkNewAchievements } from '../../common/achievements/newAchievements';
 import { getGeneratedMapData } from '../../game/mapData';
+import { httpSend } from '../../lib/http';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
 import type { EarthMapInput, GameState } from '../../lib/types';
 import { moveToTeam } from '../../lobby/roster/teamLayout';
@@ -359,6 +361,13 @@ const callbacks: EngineCallbacks = {
   onSelected: forward('game:selected'),
   onMapGenerated: forward('game:mapGenerated'),
   onRoomChanged: () => {},
+  onGameEnded: ({ ranking }) => {
+    const host = ranking.find((entry) => entry.playerId === hostId);
+    if (tutorial || !host) return;
+    httpSend('POST', '/achievements/offline', { won: host.facts.won })
+      .then(checkNewAchievements)
+      .catch(() => {});
+  },
 };
 
 function buildEngine(): Engine {

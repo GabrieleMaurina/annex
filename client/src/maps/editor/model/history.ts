@@ -1,7 +1,7 @@
 import type { GenerateMapInput } from '../../../lib/types';
 import type { Shape } from '../paint/shapes';
+import type { EditorTile } from '../tiles/editorTiles';
 import type { EditorTerritory } from './editorTypes';
-import type { EditorLockedTile } from './lockedTiles';
 
 export interface GraphState {
   territories: EditorTerritory[];
@@ -10,7 +10,7 @@ export interface GraphState {
   continentCount: number;
   borderColors: string[];
   generation: GenerateMapInput | null;
-  lockedTiles: EditorLockedTile[];
+  tiles: EditorTile[];
 }
 
 export interface HistoryEntry extends GraphState {
@@ -29,7 +29,7 @@ export function graphOf(s: GraphState): GraphState {
     continentCount: s.continentCount,
     borderColors: s.borderColors,
     generation: s.generation,
-    lockedTiles: s.lockedTiles,
+    tiles: s.tiles,
   };
 }
 

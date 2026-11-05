@@ -23,7 +23,7 @@ export function useEditorShortcuts({
 }: Shortcuts) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && mode === 'paint') {
+      if (e.key === 'Escape' && (mode === 'paint' || tool)) {
         if (tool) {
           playSound('click');
           setTool(null);

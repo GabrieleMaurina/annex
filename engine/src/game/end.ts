@@ -2,7 +2,7 @@ import { revealBotProfiles } from '../bots/reveal';
 import { callbacks } from '../callbacks';
 import { playersById } from '../session/players';
 import { broadcastGameResults, broadcastHomeGames } from '../session/store';
-import { DrawReason, Game } from '../types';
+import { AchievementFacts, DrawReason, Game } from '../types';
 import {
   drawAgreed,
   drawCandidateIds,
@@ -14,6 +14,7 @@ import { ownsAnyTerritory, supremacyTerritoriesToWin } from './mechanics';
 import { missionAccomplished } from './progression/missions';
 import { isPointsMode, pointsWinner } from './progression/points';
 import {
+  achievementFacts,
   bumpStat,
   compareByPointsFirst,
   compareByTerritoriesFirst,
@@ -38,6 +39,7 @@ function emitGameEnded(game: Game): void {
     surrenderRound: number | null;
     disconnected: boolean;
     drawn: boolean;
+    facts: AchievementFacts;
   }[] = [];
   for (const id of game.finalRanking) {
     if (seen.has(id)) continue;
@@ -45,15 +47,17 @@ function emitGameEnded(game: Game): void {
     const lockedWinner = game.earlyWin && game.winnerIds.includes(id);
     const aliveAndAway =
       !game.deathOrder.includes(id) && !playersById.get(id)?.connected;
+    const disconnected =
+      game.autoSurrenderedIds.has(id) ||
+      game.eliminatedWhileAwayIds.has(id) ||
+      (aliveAndAway && !lockedWinner);
     ranking.push({
       playerId: id,
       team: game.playerTeams.get(id) ?? 0,
       surrenderRound: game.surrenderRounds.get(id) ?? null,
-      disconnected:
-        game.autoSurrenderedIds.has(id) ||
-        game.eliminatedWhileAwayIds.has(id) ||
-        (aliveAndAway && !lockedWinner),
+      disconnected,
       drawn: game.draw?.playerIds.includes(id) ?? false,
+      facts: achievementFacts(game, id, disconnected),
     });
   }
   const payload = {

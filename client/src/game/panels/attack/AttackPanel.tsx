@@ -24,7 +24,7 @@ import {
 } from '../../animations';
 import { attackOptionStyle, formatProbability } from './attackOptionStyle';
 
-export type AttackType = 'regular' | 'blitz';
+export type AttackType = 'manual' | 'blitz';
 
 export interface DiceRoll {
   attackerDice: number[];
@@ -38,19 +38,18 @@ interface Props {
   blitzOutcomes: BlitzOutcome[];
   maxBlitzTroops: number;
   selectedType: AttackType;
-  regularTroops: number;
+  manualTroops: number;
   blitzTroops: number;
   blitzEnabled: boolean;
   attackDice: number;
   diceTies: DiceTies;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   diceRoll: DiceRoll | null;
-  onSelectRegular: (troops: number) => void;
+  onSelectManual: (troops: number) => void;
   onSelectBlitz: () => void;
   onBlitzTroopsChange: (troops: number) => void;
   onBlitzTroopsWheel: (delta: number) => void;
   onConfirm: () => void;
-  revealing: boolean;
   diceOnly: boolean;
   pendingConquest: boolean;
   moveTroops: number;
@@ -197,19 +196,18 @@ function AttackPanel({
   blitzOutcomes,
   maxBlitzTroops,
   selectedType,
-  regularTroops,
+  manualTroops,
   blitzTroops,
   blitzEnabled,
   attackDice,
   diceTies,
   blitzInputRef,
   diceRoll,
-  onSelectRegular,
+  onSelectManual,
   onSelectBlitz,
   onBlitzTroopsChange,
   onBlitzTroopsWheel,
   onConfirm,
-  revealing,
   diceOnly,
   pendingConquest,
   moveTroops,
@@ -222,7 +220,7 @@ function AttackPanel({
 }: Props) {
   const blitzProbability = blitzWinProbabilities[blitzTroops - 1] ?? 0;
   const blitzOutcome = blitzOutcomes[blitzTroops - 1];
-  const maxRegularTroops = Math.min(maxBlitzTroops, attackDice);
+  const maxManualTroops = Math.min(maxBlitzTroops, attackDice);
 
   const moveTroopsInput = useTroopsInput({
     value: moveTroops,
@@ -287,17 +285,17 @@ function AttackPanel({
           className="d-flex flex-wrap align-items-center gap-2"
           style={{ whiteSpace: 'nowrap' }}
         >
-          {Array.from({ length: maxRegularTroops }, (_, i) => {
+          {Array.from({ length: maxManualTroops }, (_, i) => {
             const troops = i + 1;
             return (
               <div
                 key={troops}
                 style={attackOptionStyle(
-                  selectedType === 'regular' && regularTroops === troops,
+                  selectedType === 'manual' && manualTroops === troops,
                 )}
                 onClick={() => {
                   playSound('click');
-                  onSelectRegular(troops);
+                  onSelectManual(troops);
                 }}
               >
                 <div>{troops}</div>
@@ -328,7 +326,7 @@ function AttackPanel({
               </div>
             </div>
           )}
-          <Button size="sm" onClick={onConfirm} disabled={revealing}>
+          <Button size="sm" onClick={onConfirm}>
             Attack
           </Button>
           {blitzEnabled && <PercentageToggle max={maxBlitzTroops} />}

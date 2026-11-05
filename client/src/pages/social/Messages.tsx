@@ -304,7 +304,7 @@ function Messages({ account }: Props) {
                       style={{ maxWidth: '75%' }}
                     >
                       <div
-                        className={`rounded px-2 py-1 ${
+                        className={`rounded px-2 py-1 selectable ${
                           m.fromMe
                             ? 'text-bg-primary'
                             : 'bg-secondary-subtle border'

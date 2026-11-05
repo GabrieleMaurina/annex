@@ -130,7 +130,7 @@ export const BLITZ_HELP = (
 export const ATTACK_DICE_HELP = (
   <>
     The most dice an attacker rolls per attack exchange, one per attacking troop
-    or ship. Also the most troops a regular (non-blitz) attack can send. More
+    or ship. Also the most troops a manual (non-blitz) attack can send. More
     dice means better odds for the attacker. Lowering it below Defence Dice
     lowers Defence Dice to match.
   </>

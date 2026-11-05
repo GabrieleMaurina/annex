@@ -1,6 +1,21 @@
 export const DICE_ROLL_STEPS = 8;
 export const DICE_ROLL_STEP_DURATION = 90;
 
+const pendingReveals = new Set<() => void>();
+
+export function scheduleDiceReveal(reveal: () => void, delay: number) {
+  const run = () => {
+    clearTimeout(timer);
+    if (pendingReveals.delete(run)) reveal();
+  };
+  const timer = setTimeout(run, delay);
+  pendingReveals.add(run);
+}
+
+export function skipDiceReveals() {
+  [...pendingReveals].forEach((run) => run());
+}
+
 function rollDie(...exclude: number[]): number {
   let value: number;
   do {

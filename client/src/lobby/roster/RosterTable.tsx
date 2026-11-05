@@ -215,31 +215,32 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                   )}
                 </td>
                 {hasBots && (
-                  <td
-                    className="align-middle"
-                    style={rowStyle}
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <td className="align-middle" style={rowStyle}>
                     {p?.isBot &&
                       (isHost ? (
-                        <Selector
-                          size="sm"
-                          className="w-auto"
-                          value={p.botPersonality ?? 'random'}
-                          onChange={(value) =>
-                            setBotProfile(
-                              p.id,
-                              p.botDifficulty ?? 'easy',
-                              value as BotPersonality | 'random',
-                            )
-                          }
+                        <span
+                          className="d-inline-block"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {BOT_PERSONALITIES.map((value) => (
-                            <option key={value} value={value}>
-                              {BOT_PERSONALITY_LABELS[value]}
-                            </option>
-                          ))}
-                        </Selector>
+                          <Selector
+                            size="sm"
+                            className="w-auto"
+                            value={p.botPersonality ?? 'random'}
+                            onChange={(value) =>
+                              setBotProfile(
+                                p.id,
+                                p.botDifficulty ?? 'easy',
+                                value as BotPersonality | 'random',
+                              )
+                            }
+                          >
+                            {BOT_PERSONALITIES.map((value) => (
+                              <option key={value} value={value}>
+                                {BOT_PERSONALITY_LABELS[value]}
+                              </option>
+                            ))}
+                          </Selector>
+                        </span>
                       ) : (
                         p.botPersonality &&
                         BOT_PERSONALITY_LABELS[p.botPersonality]
@@ -247,31 +248,32 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                   </td>
                 )}
                 {hasBots && (
-                  <td
-                    className="align-middle"
-                    style={rowStyle}
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <td className="align-middle" style={rowStyle}>
                     {p?.isBot &&
                       (isHost ? (
-                        <Selector
-                          size="sm"
-                          className="w-auto"
-                          value={p.botDifficulty ?? 'easy'}
-                          onChange={(value) =>
-                            setBotProfile(
-                              p.id,
-                              value as BotDifficulty | 'random',
-                              p.botPersonality ?? 'random',
-                            )
-                          }
+                        <span
+                          className="d-inline-block"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {BOT_DIFFICULTIES.map((value) => (
-                            <option key={value} value={value}>
-                              {BOT_DIFFICULTY_LABELS[value]}
-                            </option>
-                          ))}
-                        </Selector>
+                          <Selector
+                            size="sm"
+                            className="w-auto"
+                            value={p.botDifficulty ?? 'easy'}
+                            onChange={(value) =>
+                              setBotProfile(
+                                p.id,
+                                value as BotDifficulty | 'random',
+                                p.botPersonality ?? 'random',
+                              )
+                            }
+                          >
+                            {BOT_DIFFICULTIES.map((value) => (
+                              <option key={value} value={value}>
+                                {BOT_DIFFICULTY_LABELS[value]}
+                              </option>
+                            ))}
+                          </Selector>
+                        </span>
                       ) : (
                         p.botDifficulty &&
                         BOT_DIFFICULTY_LABELS[p.botDifficulty]
@@ -279,43 +281,44 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
                   </td>
                 )}
                 {isHost && (
-                  <td
-                    className="text-nowrap align-middle"
-                    style={rowStyle}
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <td className="text-nowrap align-middle" style={rowStyle}>
                     {p?.id !== selfId && (
-                      <Tip
-                        text={
-                          p
-                            ? p.isBot
-                              ? 'Remove bot'
-                              : connector.isOffline()
-                                ? 'Remove player'
-                                : 'Kick/Ban'
-                            : 'Remove'
-                        }
+                      <span
+                        className="d-inline-block"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Button
-                          variant="danger"
-                          className="d-inline-flex align-items-center justify-content-center"
-                          style={{ width: 24, height: 24, padding: 0 }}
-                          onClick={() =>
+                        <Tip
+                          text={
                             p
                               ? p.isBot
-                                ? removeBot(p.id)
-                                : removePlayer(p.id)
-                              : removeEmptySlot()
-                          }
-                          disabled={
-                            !p &&
-                            (game.slots <= MIN_SLOTS ||
-                              (team !== undefined && rows.length <= 1))
+                                ? 'Remove bot'
+                                : connector.isOffline()
+                                  ? 'Remove player'
+                                  : 'Kick/Ban'
+                              : 'Remove'
                           }
                         >
-                          <WhiteIcon path="/icons/close.svg" size={12} />
-                        </Button>
-                      </Tip>
+                          <Button
+                            variant="danger"
+                            className="d-inline-flex align-items-center justify-content-center"
+                            style={{ width: 24, height: 24, padding: 0 }}
+                            onClick={() =>
+                              p
+                                ? p.isBot
+                                  ? removeBot(p.id)
+                                  : removePlayer(p.id)
+                                : removeEmptySlot()
+                            }
+                            disabled={
+                              !p &&
+                              (game.slots <= MIN_SLOTS ||
+                                (team !== undefined && rows.length <= 1))
+                            }
+                          >
+                            <WhiteIcon path="/icons/close.svg" size={12} />
+                          </Button>
+                        </Tip>
+                      </span>
                     )}
                   </td>
                 )}

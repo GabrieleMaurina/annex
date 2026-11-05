@@ -548,11 +548,14 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
 
     if (turnPhase === 'attack') {
       if (attackPendingConquest) {
-        if (vertex && vertex.id === attackEndTerritoryId) submitAttackMove();
+        if (vertex && vertex.id === attackEndTerritoryId) {
+          if (attackRevealing) submitAttack();
+          else submitAttackMove();
+        }
         return;
       }
       if (vertex && seaIdSet.has(vertex.id)) {
-        if (attackSeaRevealing) return;
+        if (attackSeaRevealing && vertex.id !== attackSeaTerritoryId) return;
         if (attackSeaTerritoryId !== null) {
           if (vertex.id === attackSeaTerritoryId) {
             if (attackSeaDefenderId !== null) submitAttackSea();
@@ -570,7 +573,6 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       }
       if (attackEndTerritoryId !== null) {
         if (
-          !attackRevealing &&
           vertex &&
           (vertex.id === attackStartTerritoryId ||
             vertex.id === attackEndTerritoryId)

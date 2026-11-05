@@ -7,6 +7,7 @@ import {
   wheelDirection,
 } from '../../common/inputs/useNumberInput';
 import Tip from '../../common/tooltips/Tip';
+import { playSound } from '../../lib/sounds';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import { isTypingTarget } from '../GameMap/helpers';
 import type { ReplayMoveUnit } from '../replay/replay';
@@ -69,6 +70,7 @@ function ReplayPanel({
     dragging: boolean;
   } | null>(null);
   const onMoveRef = useRef(onMove);
+  const onTogglePlayRef = useRef(onTogglePlay);
   const whitePlayIcon = useWhiteIcon('/icons/play.svg');
   const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
   const whiteSkipBackIcon = useWhiteIcon('/icons/skip-back.svg');
@@ -86,17 +88,24 @@ function ReplayPanel({
 
   useLayoutEffect(() => {
     onMoveRef.current = onMove;
+    onTogglePlayRef.current = onTogglePlay;
   });
 
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
     function onKeyDown(e: KeyboardEvent) {
-      const direction = arrowDirection(e.key);
-      if (direction === 0 || e.defaultPrevented) return;
-      if (e.altKey || e.metaKey) return;
+      if (e.defaultPrevented || e.altKey || e.metaKey) return;
       if (e.target instanceof Element && e.target.closest('.modal')) return;
       if (isTypingTarget(e.target) && e.target !== rangeRef.current) return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        playSound('click');
+        onTogglePlayRef.current();
+        return;
+      }
+      const direction = arrowDirection(e.key);
+      if (direction === 0) return;
       e.preventDefault();
       onMoveRef.current(direction, moveUnit(e));
     }

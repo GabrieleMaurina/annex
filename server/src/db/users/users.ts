@@ -68,6 +68,7 @@ interface UserDoc {
   presets: (Preset | null)[];
   tutorials: string[];
   picture: PictureDoc | null;
+  bio: string;
 }
 
 export interface StoredPicture {
@@ -92,6 +93,7 @@ export function normalizeEmail(email: string): string {
 }
 
 export const DEFAULT_ELO = 0;
+export const MAX_BIO_LENGTH = 200;
 const MAX_TUTORIALS = 50;
 const TUTORIAL_ID_PATTERN = /^[a-z-]{1,30}$/;
 
@@ -116,6 +118,7 @@ const schema = {
         'presets',
         'tutorials',
         'picture',
+        'bio',
       ],
       additionalProperties: false,
       properties: {
@@ -161,6 +164,7 @@ const schema = {
         },
         password: { bsonType: 'string' },
         validated_email: { bsonType: 'bool' },
+        bio: { bsonType: 'string', maxLength: MAX_BIO_LENGTH },
         ...preferencesSchemaProperties,
         ...presetsSchemaProperties,
         tutorials: {
@@ -317,6 +321,7 @@ export function insertUser(data: {
       presets: [...DEFAULT_PRESETS],
       tutorials: [],
       picture: null,
+      bio: '',
     })
     .then((res) => ({ id: res.insertedId.toString() }))
     .catch((error: { code?: number }) => {
@@ -368,6 +373,12 @@ export function setReputationState(
 export function setCountry(userId: string, country: string): Promise<void> {
   return collection()
     .updateOne({ _id: new ObjectId(userId) }, { $set: { country } })
+    .then(() => undefined);
+}
+
+export function setBio(userId: string, bio: string): Promise<void> {
+  return collection()
+    .updateOne({ _id: new ObjectId(userId) }, { $set: { bio } })
     .then(() => undefined);
 }
 
@@ -618,6 +629,7 @@ export interface PlayerProfile extends CareerTotals {
   createdAt: number;
   reputation: number;
   picture: string | null;
+  bio: string;
 }
 
 export function listPlayers(query: PlayersQuery): Promise<PlayersPage> {
@@ -722,6 +734,7 @@ export function getPlayerProfile(
                   doc.picture.data.buffer,
                 ).toString('base64')}`
               : null,
+          bio: doc.bio,
         };
       });
     });

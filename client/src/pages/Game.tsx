@@ -3,9 +3,11 @@ import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
 import { formatError } from '../common/formatError';
 import SettingsMenu from '../common/menus/SettingsMenu';
+import { useUiHidden } from '../common/menus/shortcuts/uiHidden';
 import { connector } from '../connector';
 import GameMap from '../game/GameMap';
 import { gameMapDataProps } from '../game/gameMapProps';
+import { useLocalColors } from '../game/logic/colorOverrides';
 import { useGameLogs } from '../game/logs/useGameLogs';
 import OfflineHandoffGate from '../game/OfflineHandoffGate';
 import RotateDeviceOverlay from '../game/RotateDeviceOverlay';
@@ -75,6 +77,7 @@ function Game({
   tutorial,
 }: Props) {
   const [game, setGame] = useState<GameState | null>(null);
+  const uiHidden = useUiHidden();
   const selfId = game?.selfId ?? identifiedSelfId;
   const [gameMeta, setGameMeta] = useState<GameMeta | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
@@ -94,7 +97,8 @@ function Game({
   const prevStateRef = useRef<GameState['state'] | null>(null);
   const prevTurnPhaseRef = useRef<GameState['turnPhase'] | null>(null);
   const playerStatusRef = useRef<PlayerStatus | null>(null);
-  const logs = useGameLogs(game);
+  const localColors = useLocalColors(game);
+  const logs = useGameLogs(localColors.shownGame);
 
   const playPlayerStatusSounds = useCallback((state: GameState) => {
     const status = playerStatus(state);
@@ -393,14 +397,15 @@ function Game({
   const nameById = new Map(
     [...game.players, ...game.spectators].map((p) => [p.id, p.name]),
   );
-  const colorById = new Map(game.players.map((p) => [p.id, p.color]));
+  const shownGame = localColors.shownGame ?? game;
+  const colorById = new Map(shownGame.players.map((p) => [p.id, p.color]));
   const ended = game.state === 'ended';
 
   return (
     <>
       {startGates > 0 && <Gate key={startGates} silent />}
       <SettingsMenu
-        hidden={showMap && gamePanelOpen}
+        hidden={(showMap && gamePanelOpen) || uiHidden}
         onOpenChange={setSettingsMenuOpen}
         lockScrollOnFullscreen={showMap}
       />
@@ -417,7 +422,7 @@ function Game({
         </Container>
       ) : ended ? (
         <EndPage
-          game={game}
+          game={shownGame}
           results={results}
           storedGameId={storedGameId}
           selfId={selfId}
@@ -430,7 +435,7 @@ function Game({
         />
       ) : (
         <GameMap
-          {...gameMapDataProps(game, game.mapName)}
+          {...gameMapDataProps(shownGame, game.mapName)}
           mission={mission}
           selfId={selfId}
           onTogglePause={togglePause}
@@ -449,6 +454,8 @@ function Game({
           onPanelOpenChange={setGamePanelOpen}
           navigate={navigate}
           tutorialHighlight={tutorial?.highlight}
+          recoloredIds={localColors.recoloredIds}
+          onCycleColor={localColors.cycleColor}
         />
       )}
       {!connector.isOffline() && (
@@ -460,6 +467,7 @@ function Game({
           colorById={colorById}
           open={chatOpen}
           setOpen={setChatOpen}
+          hidden={uiHidden}
         />
       )}
       <OfflineHandoffGate game={game} />

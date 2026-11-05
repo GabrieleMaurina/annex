@@ -1,3 +1,4 @@
+import { containsProfanity } from 'engine';
 import { Router } from 'express';
 import { ObjectId } from 'mongodb';
 import { isValidPassword } from '../../auth/auth';
@@ -6,6 +7,8 @@ import { isSelectableCountry } from '../../countries';
 import {
   findUserById,
   getUserPicture,
+  MAX_BIO_LENGTH,
+  setBio,
   setCountry,
   setPassword,
   setUserPicture,
@@ -108,6 +111,34 @@ accountRouter.post('/account/country', (req, res) => {
     return;
   }
   setCountry(session.userId, country)
+    .then(() => res.json({ ok: true }))
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+accountRouter.post('/account/bio', (req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  if (rateLimited(req)) {
+    res.json({ ok: false, error: 'too many requests' });
+    return;
+  }
+  const bio = bodyOf(req).bio;
+  if (
+    typeof bio !== 'string' ||
+    bio.trim() !== bio ||
+    bio.length > MAX_BIO_LENGTH
+  ) {
+    res.json({ ok: false, error: 'invalid text' });
+    return;
+  }
+  if (containsProfanity(bio)) {
+    res.json({ ok: false, error: 'text contains profanity' });
+    return;
+  }
+  setBio(session.userId, bio)
     .then(() => res.json({ ok: true }))
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });

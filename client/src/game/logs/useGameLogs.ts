@@ -112,6 +112,11 @@ export function useGameLogs(game: GameState | null): LogEntry[] {
     loadGameMap(mapName, playerMapId).then(() => rebuild(entriesRef.current));
   }, [mapName, playerMapId, rebuild]);
 
+  const playerColors = game?.players.map((p) => p.color).join(',');
+  useEffect(() => {
+    if (playerColors !== undefined) rebuild(entriesRef.current);
+  }, [playerColors, rebuild]);
+
   useEffect(() => {
     const handlers = LIVE_EVENTS.map((type) => {
       const handler = (payload: unknown) => append({ type, payload });

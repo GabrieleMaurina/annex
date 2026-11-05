@@ -9,8 +9,21 @@ import {
 
 const COLOR_COUNT = 20;
 
-function colorBound(game: Game) {
-  return Math.min(COLOR_COUNT, game.playerIds.length + 3);
+function colorBound(playerCount: number) {
+  return Math.min(COLOR_COUNT, playerCount + 3);
+}
+
+export function nextFreeColor(
+  current: number,
+  usedByOthers: Set<number>,
+  playerCount: number,
+): number {
+  const bound = colorBound(playerCount);
+  for (let step = 1; step <= bound; step++) {
+    const candidate = (current + step) % bound;
+    if (!usedByOthers.has(candidate)) return candidate;
+  }
+  return current;
 }
 
 export function supremacyTerritoriesToWin(game: Game): number | null {
@@ -434,7 +447,7 @@ export function calculateDeployTroopsBreakdown(
 }
 
 export function assignRandomColor(game: Game, playerId: number) {
-  const bound = colorBound(game);
+  const bound = colorBound(game.playerIds.length);
   const used = new Set(game.playerColors.values());
   const available = [];
   for (let i = 0; i < bound; i++) {
@@ -451,18 +464,17 @@ export function assignRandomColor(game: Game, playerId: number) {
 }
 
 export function cycleColor(game: Game, playerId: number) {
-  const bound = colorBound(game);
-  const current = game.playerColors.get(playerId) ?? 0;
   const usedByOthers = new Set(
     [...game.playerColors.entries()]
       .filter(([id]) => id !== playerId)
       .map(([, index]) => index),
   );
-  for (let step = 1; step <= bound; step++) {
-    const candidate = (current + step) % bound;
-    if (!usedByOthers.has(candidate)) {
-      game.playerColors.set(playerId, candidate);
-      return;
-    }
-  }
+  game.playerColors.set(
+    playerId,
+    nextFreeColor(
+      game.playerColors.get(playerId) ?? 0,
+      usedByOthers,
+      game.playerIds.length,
+    ),
+  );
 }

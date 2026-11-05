@@ -631,6 +631,12 @@ export const connector = {
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
+  setBio(bio: string, cb: (res: AuthAck) => void): void {
+    httpSend<AuthAck>('POST', '/account/bio', { bio })
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
   uploadPicture(data: { image: string }, cb: (res: AuthAck) => void): void {
     httpSend<AuthAck>('POST', '/account/picture', data)
       .then(cb)
@@ -874,7 +880,7 @@ export const connector = {
   },
 
   attack<R extends Ack>(
-    data: { type: 'regular' | 'blitz'; troops: number },
+    data: { type: 'manual' | 'blitz'; troops: number },
     cb: RichAckCallback<R>,
   ): void {
     route('game:attack', data, cb);
@@ -910,7 +916,7 @@ export const connector = {
   },
 
   attackSea<R extends Ack>(
-    data: { type: 'regular' | 'blitz'; ships: number },
+    data: { type: 'manual' | 'blitz'; ships: number },
     cb: RichAckCallback<R>,
   ): void {
     route('game:attackSea', data, cb);

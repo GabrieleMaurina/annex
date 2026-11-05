@@ -166,7 +166,7 @@ export interface ShipAttack {
   seaTerritoryId: number;
   defenderId: number;
   ships: number;
-  type: 'regular' | 'blitz';
+  type: 'manual' | 'blitz';
 }
 
 export function chooseShipAttack(game: Game, botId: number): ShipAttack | null {

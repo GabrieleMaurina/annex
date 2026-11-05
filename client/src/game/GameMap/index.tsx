@@ -1,5 +1,9 @@
 import { useEffect, useReducer } from 'react';
 import { useWhiteIcon } from '../../common/icon';
+import {
+  useHideUiShortcut,
+  useUiHidden,
+} from '../../common/menus/shortcuts/uiHidden';
 import TutorialHighlight from '../../tutorials/TutorialHighlight';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
@@ -123,8 +127,12 @@ function GameMap({
   conductFriends,
   conductBlockedUserIds,
   onConductChange,
+  recoloredIds,
+  onCycleColor,
   tutorialHighlight,
 }: GameMapProps) {
+  useHideUiShortcut();
+  const uiHidden = useUiHidden();
   const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
   const whiteBonusIcon = useWhiteIcon('/icons/bonus.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
@@ -665,225 +673,229 @@ function GameMap({
         toxinById={toxinById}
         placeNames={placeNames}
       />
-      <MapButtonsColumn
-        cardsButtonsTop={cardsButtonsTop}
-        buttonColumnRef={buttonColumnRef}
-        bonusesButtonRef={bonusesButtonRef}
-        whiteBonusIcon={whiteBonusIcon}
-        setOpenPanel={setOpenPanel}
-        bonusesOpen={bonusesOpen}
-        cardsOpen={cardsOpen}
-        cardsPanelRef={cardsPanelRef}
-        hand={showReplay ? replayHandCards : cardsFlow.hand}
-        territoryNames={placeNames.territories}
-        ownedTerritoryIds={
-          showReplay ? replayActingOwnedIds : ownedTerritoryIds
-        }
-        upcomingSetValues={upcomingSetValues}
-        combos={showReplay ? [] : cardsFlow.combos}
-        selectedCombo={showReplay ? undefined : cardsFlow.selectedCombo}
-        setSelectedComboKey={cardsFlow.setSelectedComboKey}
-        isMyTurn={showReplay ? false : isMyTurn}
-        turnPhase={turnPhase}
-        playCardSet={cardsFlow.playCardSet}
-        cardsButtonRef={cardsButtonRef}
-        whiteCardsIcon={whiteCardsIcon}
-        gameEnded={gameEnded}
-        showReplay={showReplay}
-        cardsTitle={
-          showReplay && replayPlayer
-            ? `${replayPlayer.name}'s Cards`
-            : undefined
-        }
-        hasSetToPlay={showReplay ? false : cardsFlow.hasSetToPlay}
-        setAwardedCards={cardsFlow.setAwardedCards}
-        logsOpen={logsOpen}
-        logsPanelRef={logsPanelRef}
-        logs={displayedLogs}
-        logsStats={
-          showReplay ? undefined : players.find((p) => p.id === selfId)
-        }
-        logsPanelTop={logsPanelTop}
-        logsButtonRef={logsButtonRef}
-        whiteLogsIcon={whiteLogsIcon}
-        settingsOpen={settingsOpen}
-        settingsPanelRef={settingsPanelRef}
-        settingsPanelTop={settingsPanelTop}
-        settingsButtonRef={settingsButtonRef}
-        whiteSettingsIcon={whiteSettingsIcon}
-        settingsMenuOpen={settingsMenuOpen}
-        game={nukesGame}
-        awardedCards={cardsFlow.awardedCards}
-        nukesButtonRef={nukesButtonRef}
-        nukesPanelRef={nukesPanelRef}
-        whiteNukesIcon={whiteNukesIcon}
-        nukes={nukes}
-      />
-      <PlayersPanel
-        players={displayedPlayers}
-        spectators={spectators}
-        gameMode={gameMode}
-        isTeamDeathmatch={isTeamDeathmatch}
-        isCapitals={isCapitals}
-        starvation={starvation}
-        bounties={bounties}
-        cards={cards}
-        territoryTroopsCap={territoryTroopsCap}
-        totalTroopsCap={totalTroopsCap}
-        leaderTerritoryCount={leaderTerritoryCount}
-        territoriesToWin={territoriesToWin}
-        maxPoints={game.maxPoints}
-        toxins={toxins}
-        toxinsCost={turnFlow.toxinsCostValue}
-        mission={mission}
-        continentNames={placeNames.continents}
-        selfId={selfId}
-        roundNumber={panelRoundNumber}
-        turnPhase={panelTurnPhase}
-        turnPlayerId={panelTurnPlayerId}
-        hostId={hostId}
-        paused={paused}
-        pauseUsed={pauseUsed}
-        botSpeed={botSpeed}
-        onTogglePause={onTogglePause}
-        onCycleBotSpeed={onCycleBotSpeed}
-        onSurrender={surrender}
-        earlyWin={game.earlyWin}
-        onEndGame={endGame}
-        drawOffersOpen={game.roundNumber + 1 >= game.drawOfferRound}
-        drawVoteIds={game.drawVoteIds}
-        onToggleDraw={toggleDraw}
-        gameEnded={gameEnded}
-        collapsed={panelCollapsed}
-        setCollapsed={setPanelCollapsed}
-        navigate={navigate}
-        rowRefs={emojiUI.rowRefs}
-        onRowClick={emojiUI.handlePlayerRowClick}
-        emojiTargeting={emojiUI.pendingAttackEmoji !== null}
-        emojiPops={emojiUI.emojiPops}
-        emojiAllowedIds={emojiUI.emojiAllowedIds}
-        alliances={alliances}
-        allianceStates={allianceStates}
-        allianceCellRefs={allianceUI.allianceCellRefs}
-        onAllianceCellClick={allianceUI.handleAllianceCellClick}
-        allianceCooldownIds={allianceUI.allianceCooldownIds}
-        storedGameId={storedGameId}
-        conductFriends={conductFriends}
-        conductBlockedUserIds={conductBlockedUserIds}
-        anonymous={game.anonymous === 'on'}
-        onConductChange={onConductChange}
-        endedAt={game.endedAt}
-      />
-      <AlliancePopupOverlay
-        alliancePopupFor={allianceUI.alliancePopupFor}
-        allianceStateWith={allianceUI.allianceStateWith}
-        allianceCellRefs={allianceUI.allianceCellRefs}
-        alliancePopupRef={allianceUI.alliancePopupRef}
-        respondAllianceRequest={allianceUI.respondAllianceRequest}
-        setAlliancePopupFor={allianceUI.setAlliancePopupFor}
-        terminateAlliance={allianceUI.terminateAlliance}
-      />
-      <EmojiOverlay
-        emojiPickerFor={emojiUI.emojiPickerFor}
-        rowRefs={emojiUI.rowRefs}
-        emojiPickerRef={emojiUI.emojiPickerRef}
-        size={size}
-        handleEmojiPick={emojiUI.handleEmojiPick}
-        whiteMutedIcon={whiteMutedIcon}
-        whiteUnmutedIcon={whiteUnmutedIcon}
-        whiteGlobeIcon={whiteGlobeIcon}
-        emojiPops={emojiUI.emojiPops}
-        emojiFlights={emojiUI.emojiFlights}
-        bumpMuteVersion={bumpMuteVersion}
-        gameEnded={gameEnded}
-        players={playersWithAccounts}
-        navigate={navigate}
-      />
-      {showReplay && replay.territories && (
-        <ReplayPanel
-          index={replay.index}
-          totalFrames={replay.totalFrames}
-          playing={replay.playing}
-          speed={replay.speed}
-          roundNumber={(replay.roundNumber ?? 0) + 1}
-          color={replayPlayerColor}
-          onTogglePlay={replay.togglePlay}
-          onStepBack={replay.stepBackward}
-          onStepForward={replay.stepForward}
-          onJumpStart={replay.jumpToStart}
-          onJumpEnd={replay.jumpToEnd}
-          onSeek={replay.seek}
-          onMove={replay.move}
-          roundStops={replay.roundStops}
-          onCycleSpeed={replay.cycleSpeed}
-        />
-      )}
-      {tutorialHighlight !== undefined && imageLoaded && (
-        <TutorialHighlight
-          target={tutorialHighlight}
-          camera={camera}
-          places={[...territories, ...seaTerritories]}
-          size={size}
-          imgDims={imgDims}
-          VERTEX_RADIUS={VERTEX_RADIUS}
-          cardsButtonRef={cardsButtonRef}
+      <div className={uiHidden ? 'invisible' : undefined}>
+        <MapButtonsColumn
           cardsButtonsTop={cardsButtonsTop}
-          panelOpen={openPanel !== null}
-        />
-      )}
-      <TurnActionPanels
-        {...turnActionPanelsProps({
-          camera,
-          territories,
-          seaTerritories,
-          size,
-          imgDims,
-          VERTEX_RADIUS,
-          selectedTerritoryId,
-          fortifyEndTerritoryId,
-          attackEndTerritoryId,
-          sailEndTerritoryId,
-          attackSeaTerritoryId,
-          attackSeaDefenderId,
-          currentTurnPlayer,
-          gameEnded,
-          turnPhase,
-          game,
-          toxins,
-          entrenchments,
-          turnDuration,
-          paused,
-          pausedAt,
-          turnStartedAt,
-          turnExtension,
-          isMyTurn,
-          troopsToDeploy,
-          deployMaxTroops,
-          setGame,
-          tankFire,
-          deployPanelOpen: deployTroopsPanelOpen,
-          players,
-          cardsFlow,
-          deploySeaFlow,
-          sailFlow,
-          turnFlow,
-          attackFlow,
-          attackSeaFlow,
-        })}
-      />
-      <GameToasts
-        paused={paused}
-        gameEnded={gameEnded}
-        toasts={toasts}
-        setToasts={setToasts}
-      />
-      {!gameEnded && cardsFlow.cardSetFlash && (
-        <CardSetFlash
-          key={cardsFlow.cardSetFlash.id}
-          cards={cardsFlow.cardSetFlash.cards}
+          buttonColumnRef={buttonColumnRef}
+          bonusesButtonRef={bonusesButtonRef}
+          whiteBonusIcon={whiteBonusIcon}
+          setOpenPanel={setOpenPanel}
+          bonusesOpen={bonusesOpen}
+          cardsOpen={cardsOpen}
+          cardsPanelRef={cardsPanelRef}
+          hand={showReplay ? replayHandCards : cardsFlow.hand}
           territoryNames={placeNames.territories}
+          ownedTerritoryIds={
+            showReplay ? replayActingOwnedIds : ownedTerritoryIds
+          }
+          upcomingSetValues={upcomingSetValues}
+          combos={showReplay ? [] : cardsFlow.combos}
+          selectedCombo={showReplay ? undefined : cardsFlow.selectedCombo}
+          setSelectedComboKey={cardsFlow.setSelectedComboKey}
+          isMyTurn={showReplay ? false : isMyTurn}
+          turnPhase={turnPhase}
+          playCardSet={cardsFlow.playCardSet}
+          cardsButtonRef={cardsButtonRef}
+          whiteCardsIcon={whiteCardsIcon}
+          gameEnded={gameEnded}
+          showReplay={showReplay}
+          cardsTitle={
+            showReplay && replayPlayer
+              ? `${replayPlayer.name}'s Cards`
+              : undefined
+          }
+          hasSetToPlay={showReplay ? false : cardsFlow.hasSetToPlay}
+          setAwardedCards={cardsFlow.setAwardedCards}
+          logsOpen={logsOpen}
+          logsPanelRef={logsPanelRef}
+          logs={displayedLogs}
+          logsStats={
+            showReplay ? undefined : players.find((p) => p.id === selfId)
+          }
+          logsPanelTop={logsPanelTop}
+          logsButtonRef={logsButtonRef}
+          whiteLogsIcon={whiteLogsIcon}
+          settingsOpen={settingsOpen}
+          settingsPanelRef={settingsPanelRef}
+          settingsPanelTop={settingsPanelTop}
+          settingsButtonRef={settingsButtonRef}
+          whiteSettingsIcon={whiteSettingsIcon}
+          settingsMenuOpen={settingsMenuOpen}
+          game={nukesGame}
+          awardedCards={cardsFlow.awardedCards}
+          nukesButtonRef={nukesButtonRef}
+          nukesPanelRef={nukesPanelRef}
+          whiteNukesIcon={whiteNukesIcon}
+          nukes={nukes}
         />
-      )}
+        <PlayersPanel
+          players={displayedPlayers}
+          spectators={spectators}
+          gameMode={gameMode}
+          isTeamDeathmatch={isTeamDeathmatch}
+          isCapitals={isCapitals}
+          starvation={starvation}
+          bounties={bounties}
+          cards={cards}
+          territoryTroopsCap={territoryTroopsCap}
+          totalTroopsCap={totalTroopsCap}
+          leaderTerritoryCount={leaderTerritoryCount}
+          territoriesToWin={territoriesToWin}
+          maxPoints={game.maxPoints}
+          toxins={toxins}
+          toxinsCost={turnFlow.toxinsCostValue}
+          mission={mission}
+          continentNames={placeNames.continents}
+          selfId={selfId}
+          roundNumber={panelRoundNumber}
+          turnPhase={panelTurnPhase}
+          turnPlayerId={panelTurnPlayerId}
+          hostId={hostId}
+          paused={paused}
+          pauseUsed={pauseUsed}
+          botSpeed={botSpeed}
+          onTogglePause={onTogglePause}
+          onCycleBotSpeed={onCycleBotSpeed}
+          onSurrender={surrender}
+          earlyWin={game.earlyWin}
+          onEndGame={endGame}
+          drawOffersOpen={game.roundNumber + 1 >= game.drawOfferRound}
+          drawVoteIds={game.drawVoteIds}
+          onToggleDraw={toggleDraw}
+          gameEnded={gameEnded}
+          collapsed={panelCollapsed}
+          setCollapsed={setPanelCollapsed}
+          navigate={navigate}
+          rowRefs={emojiUI.rowRefs}
+          onRowClick={emojiUI.handlePlayerRowClick}
+          emojiTargeting={emojiUI.pendingAttackEmoji !== null}
+          emojiPops={emojiUI.emojiPops}
+          emojiAllowedIds={emojiUI.emojiAllowedIds}
+          alliances={alliances}
+          allianceStates={allianceStates}
+          allianceCellRefs={allianceUI.allianceCellRefs}
+          onAllianceCellClick={allianceUI.handleAllianceCellClick}
+          allianceCooldownIds={allianceUI.allianceCooldownIds}
+          storedGameId={storedGameId}
+          conductFriends={conductFriends}
+          conductBlockedUserIds={conductBlockedUserIds}
+          anonymous={game.anonymous === 'on'}
+          onConductChange={onConductChange}
+          endedAt={game.endedAt}
+          recoloredIds={recoloredIds}
+          onCycleColor={onCycleColor}
+        />
+        <AlliancePopupOverlay
+          alliancePopupFor={allianceUI.alliancePopupFor}
+          allianceStateWith={allianceUI.allianceStateWith}
+          allianceCellRefs={allianceUI.allianceCellRefs}
+          alliancePopupRef={allianceUI.alliancePopupRef}
+          respondAllianceRequest={allianceUI.respondAllianceRequest}
+          setAlliancePopupFor={allianceUI.setAlliancePopupFor}
+          terminateAlliance={allianceUI.terminateAlliance}
+        />
+        <EmojiOverlay
+          emojiPickerFor={emojiUI.emojiPickerFor}
+          rowRefs={emojiUI.rowRefs}
+          emojiPickerRef={emojiUI.emojiPickerRef}
+          size={size}
+          handleEmojiPick={emojiUI.handleEmojiPick}
+          whiteMutedIcon={whiteMutedIcon}
+          whiteUnmutedIcon={whiteUnmutedIcon}
+          whiteGlobeIcon={whiteGlobeIcon}
+          emojiPops={emojiUI.emojiPops}
+          emojiFlights={emojiUI.emojiFlights}
+          bumpMuteVersion={bumpMuteVersion}
+          gameEnded={gameEnded}
+          players={playersWithAccounts}
+          navigate={navigate}
+        />
+        {showReplay && replay.territories && (
+          <ReplayPanel
+            index={replay.index}
+            totalFrames={replay.totalFrames}
+            playing={replay.playing}
+            speed={replay.speed}
+            roundNumber={(replay.roundNumber ?? 0) + 1}
+            color={replayPlayerColor}
+            onTogglePlay={replay.togglePlay}
+            onStepBack={replay.stepBackward}
+            onStepForward={replay.stepForward}
+            onJumpStart={replay.jumpToStart}
+            onJumpEnd={replay.jumpToEnd}
+            onSeek={replay.seek}
+            onMove={replay.move}
+            roundStops={replay.roundStops}
+            onCycleSpeed={replay.cycleSpeed}
+          />
+        )}
+        {tutorialHighlight !== undefined && imageLoaded && (
+          <TutorialHighlight
+            target={tutorialHighlight}
+            camera={camera}
+            places={[...territories, ...seaTerritories]}
+            size={size}
+            imgDims={imgDims}
+            VERTEX_RADIUS={VERTEX_RADIUS}
+            cardsButtonRef={cardsButtonRef}
+            cardsButtonsTop={cardsButtonsTop}
+            panelOpen={openPanel !== null}
+          />
+        )}
+        <TurnActionPanels
+          {...turnActionPanelsProps({
+            camera,
+            territories,
+            seaTerritories,
+            size,
+            imgDims,
+            VERTEX_RADIUS,
+            selectedTerritoryId,
+            fortifyEndTerritoryId,
+            attackEndTerritoryId,
+            sailEndTerritoryId,
+            attackSeaTerritoryId,
+            attackSeaDefenderId,
+            currentTurnPlayer,
+            gameEnded,
+            turnPhase,
+            game,
+            toxins,
+            entrenchments,
+            turnDuration,
+            paused,
+            pausedAt,
+            turnStartedAt,
+            turnExtension,
+            isMyTurn,
+            troopsToDeploy,
+            deployMaxTroops,
+            setGame,
+            tankFire,
+            deployPanelOpen: deployTroopsPanelOpen,
+            players,
+            cardsFlow,
+            deploySeaFlow,
+            sailFlow,
+            turnFlow,
+            attackFlow,
+            attackSeaFlow,
+          })}
+        />
+        <GameToasts
+          paused={paused}
+          gameEnded={gameEnded}
+          toasts={toasts}
+          setToasts={setToasts}
+        />
+        {!gameEnded && cardsFlow.cardSetFlash && (
+          <CardSetFlash
+            key={cardsFlow.cardSetFlash.id}
+            cards={cardsFlow.cardSetFlash.cards}
+            territoryNames={placeNames.territories}
+          />
+        )}
+      </div>
     </div>
   );
 }

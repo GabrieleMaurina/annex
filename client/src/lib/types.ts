@@ -880,6 +880,7 @@ export interface PlayerProfile extends CareerTotals {
   reputation: number;
   picture: string | null;
   online: boolean;
+  bio: string;
 }
 
 export * from '../game/replay/replayTypes';

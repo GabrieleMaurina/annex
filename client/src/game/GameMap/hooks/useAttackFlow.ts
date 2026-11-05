@@ -7,7 +7,12 @@ import type {
   GameState,
   LockedTile,
 } from '../../../lib/types';
-import { DICE_ROLL_STEP_DURATION, DICE_ROLL_STEPS } from '../../animations';
+import {
+  DICE_ROLL_STEP_DURATION,
+  DICE_ROLL_STEPS,
+  scheduleDiceReveal,
+  skipDiceReveals,
+} from '../../animations';
 import {
   getAttackEndCandidates,
   getAttackStartCandidates,
@@ -86,8 +91,8 @@ export function useAttackFlow({
     BlitzOutcome[] | null
   >(null);
   const [attackSelectedType, setAttackSelectedType] =
-    useState<AttackType>('regular');
-  const [attackRegularTroops, setAttackRegularTroops] = useState(1);
+    useState<AttackType>('manual');
+  const [attackManualTroops, setAttackManualTroops] = useState(1);
   const [attackBlitzTroops, setAttackBlitzTroops] = useState(1);
   const blitzInputRef = useRef<HTMLInputElement>(null);
   const [attackMoveTroops, setAttackMoveTroops] = useState(1);
@@ -100,7 +105,7 @@ export function useAttackFlow({
     blitzWinProbabilities: number[];
     blitzOutcomes: BlitzOutcome[];
     selectedType: AttackType;
-    regularTroops: number;
+    manualTroops: number;
     blitzTroops: number;
   } | null>(null);
   const attackOptionIndexRef = useRef(0);
@@ -132,8 +137,8 @@ export function useAttackFlow({
     (blitzWinProbabilities: number[], blitzOutcomes: BlitzOutcome[] | null) => {
       setAttackWinProbabilities(blitzWinProbabilities);
       setAttackBlitzOutcomes(blitzOutcomes);
-      setAttackSelectedType(blitzEnabled ? 'blitz' : 'regular');
-      setAttackRegularTroops(
+      setAttackSelectedType(blitzEnabled ? 'blitz' : 'manual');
+      setAttackManualTroops(
         blitzEnabled
           ? 1
           : Math.min(attackDice, Math.max(1, blitzWinProbabilities.length)),
@@ -148,8 +153,8 @@ export function useAttackFlow({
       setAttackWinProbabilities(blitzWinProbabilities);
       setAttackBlitzOutcomes(blitzOutcomes);
       const newMaxBlitz = blitzWinProbabilities.length;
-      const newMaxRegular = Math.min(newMaxBlitz, attackDice);
-      setAttackRegularTroops((prev) => Math.min(prev, newMaxRegular));
+      const newMaxManual = Math.min(newMaxBlitz, attackDice);
+      setAttackManualTroops((prev) => Math.min(prev, newMaxManual));
       setAttackBlitzTroops((prev) => Math.min(prev, newMaxBlitz));
     },
     [attackDice],
@@ -267,22 +272,34 @@ export function useAttackFlow({
     setUnlockTileId(tileId);
   }, []);
 
+  const attackRevealing = attackDiceRoll !== null && !attackDiceSettled;
+
   const submitAttack = useCallback(() => {
     if (unlockTileId !== null) {
       unlock(unlockTileId, false);
       return;
     }
+    if (attackRevealing) {
+      skipDiceReveals();
+      if (attackEndTerritoryId === null || attackConquestMinTroops !== null)
+        return;
+    }
+    const manualTroops = Math.min(
+      attackManualTroops,
+      maxBlitzTroops,
+      attackDice,
+    );
     const preRevealSnapshot = {
       maxBlitzTroops,
       blitzWinProbabilities: attackWinProbabilities ?? [],
       blitzOutcomes: attackBlitzOutcomes ?? [],
       selectedType: attackSelectedType,
-      regularTroops: attackRegularTroops,
-      blitzTroops: attackBlitzTroops,
+      manualTroops,
+      blitzTroops: Math.min(attackBlitzTroops, maxBlitzTroops),
     };
     const payload =
-      attackSelectedType === 'regular'
-        ? { type: 'regular' as const, troops: attackRegularTroops }
+      attackSelectedType === 'manual'
+        ? { type: 'manual' as const, troops: manualTroops }
         : { type: 'blitz' as const, troops: attackBlitzTroops };
     connector.attack(payload, (res: AttackResultAck) => {
       if (!res.ok) return;
@@ -318,7 +335,7 @@ export function useAttackFlow({
           id: rollId,
         });
         setAttackDiceSettled(false);
-        setTimeout(() => {
+        scheduleDiceReveal(() => {
           if (attackDiceRollIdRef.current !== rollId) return;
           setAttackDiceSettled(true);
           setAttackPreRevealSnapshot(null);
@@ -352,12 +369,15 @@ export function useAttackFlow({
   }, [
     unlockTileId,
     unlock,
+    attackRevealing,
     attackSelectedType,
-    attackRegularTroops,
+    attackManualTroops,
     attackBlitzTroops,
     attackStartTerritoryId,
     attackEndTerritoryId,
+    attackConquestMinTroops,
     maxBlitzTroops,
+    attackDice,
     attackWinProbabilities,
     attackBlitzOutcomes,
     setGame,
@@ -425,30 +445,28 @@ export function useAttackFlow({
     attackStartTerritoryId !== null
       ? Math.max(1, (ownerById.get(attackStartTerritoryId)?.troops ?? 1) - 1)
       : 1;
-  const maxRegularTroops = Math.min(maxBlitzTroops, attackDice);
+  const maxManualTroops = Math.min(maxBlitzTroops, attackDice);
 
   useEffect(() => {
     attackOptionIndexRef.current =
-      attackSelectedType === 'blitz'
-        ? maxRegularTroops
-        : attackRegularTroops - 1;
+      attackSelectedType === 'blitz' ? maxManualTroops : attackManualTroops - 1;
   });
 
   const cycleAttackOption = useCallback(
     (direction: 1 | -1) => {
-      const optionCount = maxRegularTroops + (blitzEnabled ? 1 : 0);
+      const optionCount = maxManualTroops + (blitzEnabled ? 1 : 0);
       const nextIndex =
         (attackOptionIndexRef.current + direction + optionCount) % optionCount;
       attackOptionIndexRef.current = nextIndex;
       setAttackDiceRoll(null);
-      if (nextIndex === maxRegularTroops) {
+      if (nextIndex === maxManualTroops) {
         setAttackSelectedType('blitz');
       } else {
-        setAttackSelectedType('regular');
-        setAttackRegularTroops(nextIndex + 1);
+        setAttackSelectedType('manual');
+        setAttackManualTroops(nextIndex + 1);
       }
     },
-    [maxRegularTroops, blitzEnabled],
+    [maxManualTroops, blitzEnabled],
   );
 
   if (attackEndTerritoryId === null && attackWinProbabilities !== null) {
@@ -458,7 +476,6 @@ export function useAttackFlow({
     setAttackBlitzOutcomes(null);
   }
 
-  const attackRevealing = attackDiceRoll !== null && !attackDiceSettled;
   const attackDiceOnly =
     attackDiceSettled &&
     attackEndTerritoryId === null &&
@@ -497,7 +514,7 @@ export function useAttackFlow({
           blitzWinProbabilities: attackWinProbabilities ?? [],
           blitzOutcomes: attackBlitzOutcomes ?? [],
           selectedType: attackSelectedType,
-          regularTroops: attackRegularTroops,
+          manualTroops: attackManualTroops,
           blitzTroops: attackBlitzTroops,
         }),
     unlock: selectedUnlockTile && {
@@ -511,8 +528,8 @@ export function useAttackFlow({
     attackWinProbabilities,
     attackSelectedType,
     setAttackSelectedType,
-    attackRegularTroops,
-    setAttackRegularTroops,
+    attackManualTroops,
+    setAttackManualTroops,
     attackBlitzTroops,
     setAttackBlitzTroops,
     blitzInputRef,
@@ -535,7 +552,7 @@ export function useAttackFlow({
     attackEndCandidates,
     attackMoveMinTroops,
     attackMoveMaxTroops,
-    maxRegularTroops,
+    maxManualTroops,
     cycleAttackOption,
     attackRevealing,
     attackDiceOnly,

@@ -2,6 +2,7 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import SharePageButton from '../../common/menus/SharePageButton';
+import { useUiHidden } from '../../common/menus/shortcuts/uiHidden';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import type { ResultRow } from '../../common/ResultsTable';
 import { contrastTextColor, playerColor } from '../../lib/palette';
@@ -70,6 +71,7 @@ function GameReplayView({
   const [view, setView] = useState<'results' | 'replay'>('results');
   const [replayIndex, setReplayIndex] = useState(0);
   const previousReplayIndexRef = useRef<number | null>(null);
+  const uiHidden = useUiHidden();
 
   useEffect(() => {
     onViewChange?.(view);
@@ -167,7 +169,7 @@ function GameReplayView({
         onConductChange={onConductChange}
       />
       <div
-        className="position-fixed bottom-0 end-0 m-3 d-flex gap-2"
+        className={`position-fixed bottom-0 end-0 m-3 d-flex gap-2${uiHidden ? ' invisible' : ''}`}
         style={{ zIndex: 5 }}
       >
         {shareGameId && (
@@ -184,7 +186,7 @@ function GameReplayView({
       </div>
       {(shownChat.length > 0 || shownEmoji.length > 0) && (
         <div
-          className={`position-fixed bottom-0 start-0 m-3 p-2 border rounded small ${PANEL_BG_CLASS}`}
+          className={`position-fixed bottom-0 start-0 m-3 p-2 border rounded small ${PANEL_BG_CLASS}${uiHidden ? ' invisible' : ''}`}
           style={{
             zIndex: 5,
             maxWidth: 280,

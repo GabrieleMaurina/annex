@@ -28,6 +28,7 @@ import MapBrowser from '../../maps/MapBrowser';
 import MapPreviewModal from '../../maps/MapPreviewModal';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import Achievements from './Achievements';
+import ProfileBio from './ProfileBio';
 
 const PAGE_SIZE = 20;
 
@@ -284,6 +285,11 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
             <Flag country={profile.country} height={30} />
             {profile.username}
           </h1>
+          <ProfileBio
+            key={profile.id}
+            bio={profile.bio}
+            editable={isOwnProfile}
+          />
           <div className="small text-muted">
             Member since {new Date(profile.createdAt).toLocaleDateString()}
           </div>

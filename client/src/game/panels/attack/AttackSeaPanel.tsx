@@ -16,22 +16,21 @@ interface Props {
   onSelectDefender: (defenderId: number) => void;
   blitzWinProbabilities: number[];
   blitzOutcomes: BlitzOutcome[];
-  maxRegularShips: number;
+  maxManualShips: number;
   maxBlitzShips: number;
   selectedType: AttackType;
-  regularShips: number;
+  manualShips: number;
   blitzShips: number;
   blitzEnabled: boolean;
   diceTies: DiceTies;
   inputRef: RefObject<HTMLInputElement | null>;
   blitzInputRef: RefObject<HTMLInputElement | null>;
-  onSelectRegular: () => void;
-  onRegularShipsChange: (ships: number) => void;
+  onSelectManual: () => void;
+  onManualShipsChange: (ships: number) => void;
   onSelectBlitz: () => void;
   onBlitzShipsChange: (ships: number) => void;
   onConfirm: () => void;
   diceRoll: DiceRoll | null;
-  revealing: boolean;
   diceOnly: boolean;
   style: React.CSSProperties;
 }
@@ -42,35 +41,34 @@ function AttackSeaPanel({
   onSelectDefender,
   blitzWinProbabilities,
   blitzOutcomes,
-  maxRegularShips,
+  maxManualShips,
   maxBlitzShips,
   selectedType,
-  regularShips,
+  manualShips,
   blitzShips,
   blitzEnabled,
   diceTies,
   inputRef,
   blitzInputRef,
-  onSelectRegular,
-  onRegularShipsChange,
+  onSelectManual,
+  onManualShipsChange,
   onSelectBlitz,
   onBlitzShipsChange,
   onConfirm,
   diceRoll,
-  revealing,
   diceOnly,
   style,
 }: Props) {
   const blitzProbability = blitzWinProbabilities[blitzShips - 1] ?? 0;
   const blitzOutcome = blitzOutcomes[blitzShips - 1];
 
-  const regularShipsInput = useTroopsInput({
-    value: regularShips,
+  const manualShipsInput = useTroopsInput({
+    value: manualShips,
     min: 1,
-    max: maxRegularShips,
+    max: maxManualShips,
     onChange: (ships) => {
-      onSelectRegular();
-      onRegularShipsChange(ships);
+      onSelectManual();
+      onManualShipsChange(ships);
     },
     inputRef,
   });
@@ -115,17 +113,17 @@ function AttackSeaPanel({
       ) : (
         <div className="d-flex align-items-center gap-2">
           <div
-            style={attackOptionStyle(selectedType === 'regular')}
+            style={attackOptionStyle(selectedType === 'manual')}
             onClick={() => {
               playSound('click');
-              onSelectRegular();
+              onSelectManual();
             }}
           >
             <div className="d-flex align-items-center gap-1">
               <span>Ships</span>
               <NumberOdometer
                 onClick={(e) => e.stopPropagation()}
-                {...regularShipsInput}
+                {...manualShipsInput}
                 style={{ minWidth: 60 }}
               />
             </div>
@@ -153,7 +151,7 @@ function AttackSeaPanel({
               </div>
             </div>
           )}
-          <Button size="sm" onClick={onConfirm} disabled={revealing}>
+          <Button size="sm" onClick={onConfirm}>
             Attack
           </Button>
           {blitzEnabled && <PercentageToggle max={maxBlitzShips} />}

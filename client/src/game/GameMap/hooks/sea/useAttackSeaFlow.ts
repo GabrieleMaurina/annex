@@ -2,7 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../../../../connector';
 import { playSound } from '../../../../lib/sounds';
 import type { Ack, BlitzOutcome, GameState } from '../../../../lib/types';
-import { DICE_ROLL_STEP_DURATION, DICE_ROLL_STEPS } from '../../../animations';
+import {
+  DICE_ROLL_STEP_DURATION,
+  DICE_ROLL_STEPS,
+  scheduleDiceReveal,
+  skipDiceReveals,
+} from '../../../animations';
 import {
   getAttackSeaStartCandidates,
   getSeaDefenders,
@@ -63,10 +68,10 @@ export function useAttackSeaFlow({
   attackDice: number;
   setGame: (game: GameState) => void;
 }) {
-  const [attackSeaRegularShips, setAttackSeaRegularShips] = useState(1);
+  const [attackSeaManualShips, setAttackSeaManualShips] = useState(1);
   const [attackSeaBlitzShips, setAttackSeaBlitzShips] = useState(1);
   const [attackSeaSelectedType, setAttackSeaSelectedType] =
-    useState<AttackType>('regular');
+    useState<AttackType>('manual');
   const [attackSeaWinProbabilities, setAttackSeaWinProbabilities] = useState<
     number[] | null
   >(null);
@@ -91,7 +96,7 @@ export function useAttackSeaFlow({
       ? getSeaDefenders(seas, attackSeaTerritoryId, selfId)
       : [];
   const attackSeaOwnShips = shipsAt(seas, attackSeaTerritoryId, selfId);
-  const attackSeaMaxRegularShips = Math.min(attackDice, attackSeaOwnShips);
+  const attackSeaMaxManualShips = Math.min(attackDice, attackSeaOwnShips);
   const attackSeaMaxBlitzShips = attackSeaOwnShips;
   const attackSeaDefenderValid =
     attackSeaDefenderId === null ||
@@ -100,17 +105,17 @@ export function useAttackSeaFlow({
   const attackSeaKey = `${attackSeaTerritoryId}-${attackSeaDefenderId}`;
   if (trackedAttackSeaKey !== attackSeaKey) {
     setTrackedAttackSeaKey(attackSeaKey);
-    setAttackSeaSelectedType('regular');
-    if (attackSeaMaxRegularShips >= 1)
-      setAttackSeaRegularShips(attackSeaMaxRegularShips);
+    setAttackSeaSelectedType('manual');
+    if (attackSeaMaxManualShips >= 1)
+      setAttackSeaManualShips(attackSeaMaxManualShips);
     if (attackSeaMaxBlitzShips >= 1)
       setAttackSeaBlitzShips(attackSeaMaxBlitzShips);
   } else {
     if (
-      attackSeaMaxRegularShips >= 1 &&
-      attackSeaRegularShips > attackSeaMaxRegularShips
+      attackSeaMaxManualShips >= 1 &&
+      attackSeaManualShips > attackSeaMaxManualShips
     )
-      setAttackSeaRegularShips(attackSeaMaxRegularShips);
+      setAttackSeaManualShips(attackSeaMaxManualShips);
     if (
       attackSeaMaxBlitzShips >= 1 &&
       attackSeaBlitzShips > attackSeaMaxBlitzShips
@@ -159,11 +164,12 @@ export function useAttackSeaFlow({
   );
 
   const submitAttackSea = useCallback(() => {
+    skipDiceReveals();
     const seaTerritoryId = attackSeaTerritoryId;
     if (seaTerritoryId === null) return;
     const ships =
-      attackSeaSelectedType === 'regular'
-        ? attackSeaRegularShips
+      attackSeaSelectedType === 'manual'
+        ? attackSeaManualShips
         : attackSeaBlitzShips;
     connector.attackSea(
       { type: attackSeaSelectedType, ships },
@@ -181,7 +187,7 @@ export function useAttackSeaFlow({
             id: rollId,
           });
           setAttackSeaDiceSettled(false);
-          setTimeout(() => {
+          scheduleDiceReveal(() => {
             if (attackSeaDiceRollIdRef.current !== rollId) return;
             setAttackSeaDiceSettled(true);
             setAttackSeaWinProbabilities(res.blitzWinProbabilities);
@@ -196,7 +202,7 @@ export function useAttackSeaFlow({
   }, [
     attackSeaTerritoryId,
     attackSeaSelectedType,
-    attackSeaRegularShips,
+    attackSeaManualShips,
     attackSeaBlitzShips,
     setGame,
   ]);
@@ -279,11 +285,11 @@ export function useAttackSeaFlow({
   return {
     attackSeaSelectedType,
     setAttackSeaSelectedType,
-    attackSeaRegularShips,
-    setAttackSeaRegularShips,
+    attackSeaManualShips,
+    setAttackSeaManualShips,
     attackSeaBlitzShips,
     setAttackSeaBlitzShips,
-    attackSeaMaxRegularShips,
+    attackSeaMaxManualShips,
     attackSeaMaxBlitzShips,
     attackSeaWinProbabilities,
     attackSeaBlitzOutcomes,

@@ -7,11 +7,16 @@ export function nextBotSpeed(speed: BotSpeed): BotSpeed {
   return BOT_SPEED_ORDER[(index + 1) % BOT_SPEED_ORDER.length];
 }
 
-const JITTER_MS = 1000;
+const JITTER_MS = 700;
 
 export function thinkDelayMs(speed: BotSpeed): number {
-  if (speed === 'medium') return 800;
-  if (speed === 'fast') return 100;
-  const base = 1500;
+  if (speed === 'medium') return 560;
+  if (speed === 'fast') return 50;
+  const base = 1050;
   return base + Math.random() * JITTER_MS;
+}
+
+export function clickDelayMs(speed: BotSpeed): number {
+  if (speed === 'medium') return 280;
+  return 490;
 }

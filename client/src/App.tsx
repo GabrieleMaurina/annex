@@ -12,6 +12,7 @@ import AchievementToasts from './common/achievements/AchievementToasts';
 import BurgerMenu from './common/menus/BurgerMenu';
 import SettingsMenu from './common/menus/SettingsMenu';
 import ShortcutsPanel from './common/menus/shortcuts/ShortcutsPanel';
+import { useUiHidden } from './common/menus/shortcuts/uiHidden';
 import RollingTanks from './common/tanks/RollingTanks';
 import { connector } from './connector';
 import {
@@ -125,6 +126,7 @@ function App() {
   const [account, setAccount] = useState<Account | null>(null);
   const [joinError, setJoinError] = useState('');
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const uiHidden = useUiHidden();
   const [needsPassword, setNeedsPassword] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
   const [kickedMessage, setKickedMessage] = useState('');
@@ -414,7 +416,9 @@ function App() {
 
   return (
     <>
-      {!inGame && <SettingsMenu onOpenChange={setSettingsMenuOpen} />}
+      {!inGame && (
+        <SettingsMenu hidden={uiHidden} onOpenChange={setSettingsMenuOpen} />
+      )}
       <ShortcutsPanel />
       {!onGameMap && !onReplayMap && !onMapEditor && (
         <RollingTanks spawnInitial={pathname === '/'} />
@@ -440,6 +444,7 @@ function App() {
               navigate={navigate}
               kickedMessage={kickedMessage}
               clearKickedMessage={() => setKickedMessage('')}
+              sessionReady={sessionReady}
               serverUnreachable={serverUnreachable}
               account={account}
               onAccountChange={updateAccount}

@@ -1,3 +1,16 @@
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable],
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 ::selection {
   background: rgba(var(--bs-primary-rgb), 0.35);
   color: var(--bs-emphasis-color);

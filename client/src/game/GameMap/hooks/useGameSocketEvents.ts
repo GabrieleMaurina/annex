@@ -16,6 +16,8 @@ import {
   hasActiveAnimations,
   onAnimationsToggle,
   pruneAnimations,
+  scheduleDiceReveal,
+  skipDiceReveals,
   startAnimation,
   startNukeAnimation,
   startUnlockAnimation,
@@ -766,16 +768,17 @@ export function useGameSocketEvents({
       defenceLosses?: number;
       conquered?: boolean;
       troopsRefunded?: number;
-      type: 'regular' | 'blitz';
+      type: 'manual' | 'blitz';
       path: number[][];
     }) {
+      skipDiceReveals();
       const attackLosses = payload.attackLosses ?? 0;
       const defenceLosses = payload.defenceLosses ?? 0;
       const troopsRefunded = payload.troopsRefunded ?? 0;
       const conquered = payload.conquered ?? false;
       const freeConquest = payload.defenderId === undefined;
       const delay =
-        payload.type === 'regular' && !freeConquest
+        payload.type === 'manual' && !freeConquest
           ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
           : 0;
 
@@ -798,16 +801,17 @@ export function useGameSocketEvents({
         });
         frozenTerritoryDataRef.current = snapshot;
         startAnimationLoop();
-        setTimeout(
-          () => {
-            frozenVisibleOwnersRef.current.delete(freezeId);
-            if (frozenVisibleOwnersRef.current.size === 0) {
-              frozenVisibleTerritoryIdsRef.current = null;
-            }
-            frozenTerritoryDataRef.current = new Map();
-            startAnimationLoop();
-          },
-          delay + getAnimationDuration('explosion'),
+        scheduleDiceReveal(
+          () =>
+            setTimeout(() => {
+              frozenVisibleOwnersRef.current.delete(freezeId);
+              if (frozenVisibleOwnersRef.current.size === 0) {
+                frozenVisibleTerritoryIdsRef.current = null;
+              }
+              frozenTerritoryDataRef.current = new Map();
+              startAnimationLoop();
+            }, getAnimationDuration('explosion')),
+          delay,
         );
       }
 
@@ -830,7 +834,7 @@ export function useGameSocketEvents({
       if (deltas.length > 0) adjustTerritoryTroops(deltas);
 
       if (
-        payload.type === 'regular' &&
+        payload.type === 'manual' &&
         payload.defenderId !== undefined &&
         !areAnimationsDisabled()
       ) {
@@ -863,7 +867,9 @@ export function useGameSocketEvents({
             defenderTroops,
           );
       }
-      setTimeout(() => {
+      scheduleDiceReveal(() => {
+        attackRevealDeadlineRef.current.delete(payload.attackingTerritoryId);
+        attackRevealDeadlineRef.current.delete(payload.defendingTerritoryId);
         if (!freeConquest) playSound('explode');
         flashArrowRuns(payload.path);
         frozenTroopsRef.current.delete(payload.attackingTerritoryId);
@@ -917,15 +923,15 @@ export function useGameSocketEvents({
 
   useEffect(() => {
     function onTankFired(payload: {
-      type: 'regular' | 'blitz';
+      type: 'manual' | 'blitz';
       hasDefender: boolean;
       dice?: number;
     }) {
       const delay =
-        payload.type === 'regular' && payload.hasDefender
+        payload.type === 'manual' && payload.hasDefender
           ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
           : 0;
-      setTimeout(
+      scheduleDiceReveal(
         () => setTankFire((prev) => ({ id: prev.id + 1, dice: payload.dice })),
         delay,
       );

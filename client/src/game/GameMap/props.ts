@@ -107,5 +107,7 @@ export interface GameMapProps {
   conductFriends?: FriendsOverview;
   conductBlockedUserIds?: string[];
   onConductChange?: () => void;
+  recoloredIds?: Set<number>;
+  onCycleColor?: (playerId: number) => void;
   tutorialHighlight?: number | 'cards';
 }

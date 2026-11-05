@@ -11,6 +11,8 @@ import {
   areAnimationsDisabled,
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
+  scheduleDiceReveal,
+  skipDiceReveals,
 } from '../../../animations';
 import { getSailPath } from '../../../logic/sail';
 import type { SeaTerritory, Territory } from '../../../mapData';
@@ -208,14 +210,15 @@ export function useSeaSocketEvents({
       seaTerritoryId: number;
       attackerId: number;
       defenderId: number;
-      type: 'regular' | 'blitz';
+      type: 'manual' | 'blitz';
       attackingShips: number;
       attackLosses: number;
       defendingShips: number;
       defenceLosses: number;
     }) {
+      skipDiceReveals();
       const delay =
-        payload.type === 'regular' && !areAnimationsDisabled()
+        payload.type === 'manual' && !areAnimationsDisabled()
           ? DICE_ROLL_STEPS * DICE_ROLL_STEP_DURATION
           : 0;
       const wipedOut =
@@ -239,7 +242,7 @@ export function useSeaSocketEvents({
         }
         startAnimationLoop();
       }
-      setTimeout(() => {
+      scheduleDiceReveal(() => {
         frozenSeaShipsRef.current.delete(payload.seaTerritoryId);
         if (freezeId !== null) {
           frozenVisibleOwnersRef.current.delete(freezeId);

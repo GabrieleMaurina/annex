@@ -19,16 +19,16 @@ export interface AttackChoice {
   startId: number;
   endId: number;
   troops: number;
-  type: 'regular' | 'blitz';
+  type: 'manual' | 'blitz';
 }
 
 export function attackOrder(
   game: Game,
   troops: number,
-): { type: 'regular' | 'blitz'; troops: number } {
+): { type: 'manual' | 'blitz'; troops: number } {
   if (game.blitz === 'off')
     return {
-      type: 'regular',
+      type: 'manual',
       troops: Math.min(troops, game.attackDice),
     };
   return { type: 'blitz', troops };

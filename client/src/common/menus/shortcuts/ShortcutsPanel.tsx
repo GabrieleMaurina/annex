@@ -15,6 +15,7 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
       ['M', 'Menu'],
       ['O', 'Client settings'],
       ['K', 'Shortcuts'],
+      ['H', 'Hide or show the UI on the map'],
       ['Esc', 'Close the open menu or popup'],
     ],
   },
@@ -49,6 +50,7 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
   {
     title: 'Replay',
     shortcuts: [
+      ['Space', 'Play / pause'],
       ['← ↓ / → ↑', 'Previous / next frame'],
       ['Wheel', 'Previous / next frame, over the replay bar'],
       ['Drag ← ↓ / → ↑', 'Previous / next frame, on the replay bar'],

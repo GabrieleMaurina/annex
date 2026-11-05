@@ -14,9 +14,10 @@ interface Props {
   colorById: Map<number, number>;
   open: boolean;
   setOpen: (open: boolean) => void;
+  hidden?: boolean;
 }
 
-function Chat({ nameById, colorById, open, setOpen }: Props) {
+function Chat({ nameById, colorById, open, setOpen, hidden }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [hasProfanity, setHasProfanity] = useState(false);
@@ -82,7 +83,7 @@ function Chat({ nameById, colorById, open, setOpen }: Props) {
       ref={containerRef}
       className={`position-fixed bottom-0 start-0 m-3 ${
         open ? `${PANEL_CLASS} ${PANEL_BG_CLASS}` : ''
-      }`}
+      }${hidden ? ' invisible' : ''}`}
       style={{ zIndex: 1 }}
     >
       <style>{`
@@ -116,7 +117,7 @@ function Chat({ nameById, colorById, open, setOpen }: Props) {
             {messages.map((m, i) => {
               const color = colorById.get(m.id);
               return (
-                <ListGroup.Item key={i} className="py-1">
+                <ListGroup.Item key={i} className="py-1 selectable">
                   <strong
                     className={color !== undefined ? 'badge' : undefined}
                     style={

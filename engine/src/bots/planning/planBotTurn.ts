@@ -571,7 +571,7 @@ function planAttack(
           {
             event: 'game:attack',
             payload: {
-              type: 'regular',
+              type: 'manual',
               troops: Math.min(entering, game.attackDice),
             },
           },
@@ -647,7 +647,7 @@ function planAttack(
                 event: 'game:attackSelectEnd',
                 payload: { territoryId: opportunity.tileId },
               },
-              { event: 'game:attack', payload: { type: 'regular', troops: 1 } },
+              { event: 'game:attack', payload: { type: 'manual', troops: 1 } },
               { event: 'game:attackMove', payload: { troops: 1 } },
             ]
           : []),

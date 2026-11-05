@@ -135,6 +135,8 @@ interface Props {
   conductBlockedUserIds?: string[];
   onConductChange?: () => void;
   anonymous: boolean;
+  recoloredIds?: Set<number>;
+  onCycleColor?: (playerId: number) => void;
 }
 
 function PlayersPanel({
@@ -191,6 +193,8 @@ function PlayersPanel({
   conductBlockedUserIds,
   onConductChange,
   anonymous,
+  recoloredIds,
+  onCycleColor,
 }: Props) {
   const isSpectator = spectators.some((s) => s.id === selfId);
   const self = players.find((p) => p.id === selfId);
@@ -275,6 +279,7 @@ function PlayersPanel({
   const whiteDotIcon = useWhiteIcon('/icons/dot.svg');
   const whiteYouIcon = useWhiteIcon('/icons/you.svg');
   const whitePlayerIcon = useWhiteIcon('/icons/player.svg');
+  const whitePaletteIcon = useWhiteIcon('/icons/palette.svg');
 
   if (collapsed) {
     return (
@@ -628,6 +633,21 @@ function PlayersPanel({
                             />
                           </Tip>
                         )}
+                        {recoloredIds?.has(p.id) && (
+                          <Tip text="Color changed only for you">
+                            <img
+                              src={
+                                isDark
+                                  ? (whitePaletteIcon ?? '/icons/palette.svg')
+                                  : '/icons/palette.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Color changed"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
+                        )}
                         {p.eliminated && (
                           <Tip text="Eliminated">
                             <img
@@ -740,6 +760,9 @@ function PlayersPanel({
                               bumpConductVersion();
                               onConductChange?.();
                             }}
+                            onCycleColor={
+                              onCycleColor && (() => onCycleColor(p.id))
+                            }
                           />
                         </div>
                       </Collapse>

@@ -46,7 +46,6 @@ export function useCanvasKeyboard({
   attackMoveMinTroops,
   attackMoveMaxTroops,
   setAttackDiceRoll,
-  attackRevealing,
   attackDiceOnly,
   attackMoveInputRef,
   blitzInputRef,
@@ -336,8 +335,7 @@ export function useCanvasKeyboard({
         isConfirmKey &&
         attackSeaPanelOpen &&
         attackSeaDefenderId !== null &&
-        !attackSeaDiceOnly &&
-        !attackSeaRevealing
+        !attackSeaDiceOnly
       ) {
         if (
           !isTypingTarget(e.target) ||
@@ -353,8 +351,7 @@ export function useCanvasKeyboard({
         isConfirmKey &&
         attackPanelOpen &&
         !attackShowPendingConquest &&
-        !attackDiceOnly &&
-        !attackRevealing
+        !attackDiceOnly
       ) {
         if (!isTypingTarget(e.target) || e.target === blitzInputRef.current) {
           e.preventDefault();
@@ -470,7 +467,6 @@ export function useCanvasKeyboard({
     attackPendingConquest,
     attackShowPendingConquest,
     attackDiceOnly,
-    attackRevealing,
     cancelAttack,
     attackPanelOpen,
     unlockTileId,

@@ -7,7 +7,7 @@ import {
   unlockTile,
 } from '../territory/attack';
 import { playCardSet } from '../territory/cards';
-import { deploy } from '../territory/deploy';
+import { deploy, selectTerritory } from '../territory/deploy';
 import { entrench } from '../territory/entrench';
 import {
   fortify,
@@ -58,6 +58,8 @@ export function dispatchBotAction(
       return nextPhase(playerId);
     case 'game:deploy':
       return deploy(playerId, p.territoryId as number, p.troops as number);
+    case 'game:selectTerritory':
+      return selectTerritory(playerId, p.territoryId);
     case 'game:buyShips':
       return buyShips(
         playerId,
@@ -79,7 +81,7 @@ export function dispatchBotAction(
     case 'game:attackSea':
       return attackSea(
         playerId,
-        p.type as 'regular' | 'blitz',
+        p.type as 'manual' | 'blitz',
         p.ships as number,
       );
     case 'game:attackMove':
@@ -91,11 +93,7 @@ export function dispatchBotAction(
     case 'game:attackSelectEnd':
       return attackSelectEnd(playerId, p.territoryId as number);
     case 'game:attack':
-      return attack(
-        playerId,
-        p.type as 'regular' | 'blitz',
-        p.troops as number,
-      );
+      return attack(playerId, p.type as 'manual' | 'blitz', p.troops as number);
     case 'game:fortifySelectStart':
       return fortifySelectStart(playerId, p.territoryId as number);
     case 'game:fortifySelectEnd':

@@ -1,4 +1,7 @@
+import { Button } from 'react-bootstrap';
 import type { FriendsOverview, GameState } from '../../lib/types';
+import WhiteIcon from '../icons/WhiteIcon';
+import Tip from '../tooltips/Tip';
 import type { PanelConduct } from './panelConduct';
 import PlayerConductActions from './PlayerConductActions';
 
@@ -9,6 +12,7 @@ interface Props {
   friends?: FriendsOverview;
   blockedUserIds?: string[];
   onChange: () => void;
+  onCycleColor?: () => void;
 }
 
 function PanelPlayerDetails({
@@ -18,6 +22,7 @@ function PanelPlayerDetails({
   friends,
   blockedUserIds,
   onChange,
+  onCycleColor,
 }: Props) {
   const userId = player.userId ?? null;
   const knownAccount = userId !== null || player.country !== null;
@@ -29,6 +34,21 @@ function PanelPlayerDetails({
   return (
     <div className="d-flex flex-column gap-1 px-2 py-1">
       <span className="text-truncate">{name}</span>
+      {onCycleColor && (
+        <div className="d-flex">
+          <Tip text="Only you see this color">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="d-inline-flex align-items-center gap-1"
+              onClick={onCycleColor}
+            >
+              <WhiteIcon path="/icons/palette.svg" />
+              Change color
+            </Button>
+          </Tip>
+        </div>
+      )}
       {showActions && (
         <PlayerConductActions
           live={conduct.live}

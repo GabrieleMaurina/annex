@@ -180,7 +180,7 @@ export function attackSea(
   const attackingShips = shipsByPlayer.get(playerId) ?? 0;
   const defendingShips = shipsByPlayer.get(defenderId) ?? 0;
   const maxShips =
-    type === 'regular'
+    type === 'manual'
       ? Math.min(attackingShips, game.attackDice)
       : attackingShips;
 
@@ -195,7 +195,7 @@ export function attackSea(
   let defenceLosses: number;
   let attackerDice: number[] = [];
   let defenderDice: number[] = [];
-  if (type === 'regular') {
+  if (type === 'manual') {
     const roll = () => rollAttack(ships, defendingDice, game.diceTies);
     let result = roll();
     while (game.tutorial && result.defenceLosses === 0) result = roll();

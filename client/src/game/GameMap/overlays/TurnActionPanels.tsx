@@ -87,10 +87,9 @@ export default function TurnActionPanels({
   attackDiceRoll,
   setAttackDiceRoll,
   setAttackSelectedType,
-  setAttackRegularTroops,
+  setAttackManualTroops,
   setAttackBlitzTroops,
   maxBlitzTroops,
-  attackRevealing,
   attackDiceOnly,
   attackShowPendingConquest,
   attackMoveTroops,
@@ -106,18 +105,17 @@ export default function TurnActionPanels({
   selectAttackSeaDefender,
   attackSeaSelectedType,
   setAttackSeaSelectedType,
-  attackSeaRegularShips,
-  setAttackSeaRegularShips,
+  attackSeaManualShips,
+  setAttackSeaManualShips,
   attackSeaBlitzShips,
   setAttackSeaBlitzShips,
-  attackSeaMaxRegularShips,
+  attackSeaMaxManualShips,
   attackSeaMaxBlitzShips,
   attackSeaWinProbabilities,
   attackSeaBlitzOutcomes,
   attackSeaInputRef,
   attackSeaBlitzInputRef,
   attackSeaDiceRoll,
-  attackSeaRevealing,
   attackSeaDiceOnly,
   submitAttackSea,
   players,
@@ -181,7 +179,7 @@ export default function TurnActionPanels({
     blitzWinProbabilities: number[];
     blitzOutcomes: BlitzOutcome[];
     selectedType: AttackType;
-    regularTroops: number;
+    manualTroops: number;
     blitzTroops: number;
     unlock: { x: number; y: number; cost: number } | null;
   };
@@ -192,10 +190,9 @@ export default function TurnActionPanels({
   attackDiceRoll: DiceRoll | null;
   setAttackDiceRoll: Dispatch<SetStateAction<DiceRoll | null>>;
   setAttackSelectedType: Dispatch<SetStateAction<AttackType>>;
-  setAttackRegularTroops: Dispatch<SetStateAction<number>>;
+  setAttackManualTroops: Dispatch<SetStateAction<number>>;
   setAttackBlitzTroops: Dispatch<SetStateAction<number>>;
   maxBlitzTroops: number;
-  attackRevealing: boolean;
   attackDiceOnly: boolean;
   attackShowPendingConquest: boolean;
   attackMoveTroops: number;
@@ -211,18 +208,17 @@ export default function TurnActionPanels({
   selectAttackSeaDefender: (defenderId: number) => void;
   attackSeaSelectedType: AttackType;
   setAttackSeaSelectedType: Dispatch<SetStateAction<AttackType>>;
-  attackSeaRegularShips: number;
-  setAttackSeaRegularShips: Dispatch<SetStateAction<number>>;
+  attackSeaManualShips: number;
+  setAttackSeaManualShips: Dispatch<SetStateAction<number>>;
   attackSeaBlitzShips: number;
   setAttackSeaBlitzShips: Dispatch<SetStateAction<number>>;
-  attackSeaMaxRegularShips: number;
+  attackSeaMaxManualShips: number;
   attackSeaMaxBlitzShips: number;
   attackSeaWinProbabilities: number[] | null;
   attackSeaBlitzOutcomes: BlitzOutcome[] | null;
   attackSeaInputRef: RefObject<HTMLInputElement | null>;
   attackSeaBlitzInputRef: RefObject<HTMLInputElement | null>;
   attackSeaDiceRoll: DiceRoll | null;
-  attackSeaRevealing: boolean;
   attackSeaDiceOnly: boolean;
   submitAttackSea: () => void;
   players: GameState['players'];
@@ -373,17 +369,17 @@ export default function TurnActionPanels({
           blitzOutcomes={attackDisplay.blitzOutcomes}
           maxBlitzTroops={attackDisplay.maxBlitzTroops}
           selectedType={attackDisplay.selectedType}
-          regularTroops={attackDisplay.regularTroops}
+          manualTroops={attackDisplay.manualTroops}
           blitzTroops={attackDisplay.blitzTroops}
           blitzEnabled={blitzEnabled}
           attackDice={attackDice}
           diceTies={diceTies}
           blitzInputRef={blitzInputRef}
           diceRoll={attackDiceRoll}
-          onSelectRegular={(troops) => {
+          onSelectManual={(troops) => {
             setAttackDiceRoll(null);
-            setAttackSelectedType('regular');
-            setAttackRegularTroops(troops);
+            setAttackSelectedType('manual');
+            setAttackManualTroops(troops);
           }}
           onSelectBlitz={() => {
             setAttackDiceRoll(null);
@@ -401,7 +397,6 @@ export default function TurnActionPanels({
             );
           }}
           onConfirm={submitAttack}
-          revealing={attackRevealing}
           diceOnly={attackDiceOnly}
           pendingConquest={attackShowPendingConquest}
           moveTroops={attackMoveTroops}
@@ -423,22 +418,21 @@ export default function TurnActionPanels({
           onSelectDefender={selectAttackSeaDefender}
           blitzWinProbabilities={attackSeaWinProbabilities ?? []}
           blitzOutcomes={attackSeaBlitzOutcomes ?? []}
-          maxRegularShips={attackSeaMaxRegularShips}
+          maxManualShips={attackSeaMaxManualShips}
           maxBlitzShips={attackSeaMaxBlitzShips}
           selectedType={attackSeaSelectedType}
-          regularShips={attackSeaRegularShips}
+          manualShips={attackSeaManualShips}
           blitzShips={attackSeaBlitzShips}
           blitzEnabled={blitzEnabled}
           diceTies={diceTies}
           inputRef={attackSeaInputRef}
           blitzInputRef={attackSeaBlitzInputRef}
-          onSelectRegular={() => setAttackSeaSelectedType('regular')}
-          onRegularShipsChange={setAttackSeaRegularShips}
+          onSelectManual={() => setAttackSeaSelectedType('manual')}
+          onManualShipsChange={setAttackSeaManualShips}
           onSelectBlitz={() => setAttackSeaSelectedType('blitz')}
           onBlitzShipsChange={setAttackSeaBlitzShips}
           onConfirm={submitAttackSea}
           diceRoll={attackSeaDiceRoll}
-          revealing={attackSeaRevealing}
           diceOnly={attackSeaDiceOnly}
           style={attackSeaPanelStyle}
         />

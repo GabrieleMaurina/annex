@@ -70,6 +70,8 @@ export {
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
   generateDiceRollSequence,
+  scheduleDiceReveal,
+  skipDiceReveals,
 } from './dice';
 export { ENTRENCHED_OCTAGON_SCALE, traceOctagon } from './entrench';
 export { drawFogCloud } from './fog';

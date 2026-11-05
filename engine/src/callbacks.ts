@@ -208,7 +208,7 @@ export interface EngineCallbacks {
       attackingTerritoryId: number;
       defendingTerritoryId: number;
       attackerId: number;
-      type: 'regular' | 'blitz';
+      type: 'manual' | 'blitz';
       path: number[][];
       attackingTroops?: number;
       attackLosses?: number;
@@ -224,7 +224,7 @@ export interface EngineCallbacks {
   ): void;
   onTankFired(
     playerId: number,
-    payload: { type: 'regular' | 'blitz'; hasDefender: boolean; dice?: number },
+    payload: { type: 'manual' | 'blitz'; hasDefender: boolean; dice?: number },
     gameName: string,
   ): void;
   onAttackMoved(
@@ -268,7 +268,7 @@ export interface EngineCallbacks {
       seaTerritoryId: number;
       attackerId: number;
       defenderId: number;
-      type: 'regular' | 'blitz';
+      type: 'manual' | 'blitz';
       attackingShips: number;
       attackLosses: number;
       defendingShips: number;

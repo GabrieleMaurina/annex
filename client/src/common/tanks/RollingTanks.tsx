@@ -55,7 +55,7 @@ function RollingTanks({ spawnInitial }: Props) {
     resize();
 
     let pressedOnBackground = false;
-    let blockSelection = false;
+    let blockDrag = false;
     let hold: {
       event: PointerEvent;
       tank: boolean;
@@ -84,7 +84,7 @@ function RollingTanks({ spawnInitial }: Props) {
       ctrlDown = event.ctrlKey;
       pressedOnBackground = isBackground(event, canvas);
       const mouse = event.pointerType === 'mouse';
-      blockSelection =
+      blockDrag =
         pressedOnBackground && (mouse || event.pointerType === 'touch');
       hold =
         pressedOnBackground &&
@@ -129,7 +129,7 @@ function RollingTanks({ spawnInitial }: Props) {
 
     function onPointerUp(event: PointerEvent) {
       endHold();
-      if (event.pointerType === 'mouse') blockSelection = false;
+      if (event.pointerType === 'mouse') blockDrag = false;
     }
 
     function endHold() {
@@ -154,8 +154,8 @@ function RollingTanks({ spawnInitial }: Props) {
       if (event.button === 1 && pressedOnBackground) event.preventDefault();
     }
 
-    function preventSelection(event: Event) {
-      if (blockSelection) event.preventDefault();
+    function preventDrag(event: Event) {
+      if (blockDrag) event.preventDefault();
     }
 
     function releasedOnBackground(event: MouseEvent) {
@@ -232,8 +232,7 @@ function RollingTanks({ spawnInitial }: Props) {
     window.addEventListener('mousedown', onMouseDown, true);
     window.addEventListener('click', onClick);
     window.addEventListener('contextmenu', onContextMenu);
-    document.addEventListener('selectstart', preventSelection);
-    document.addEventListener('dragstart', preventSelection);
+    document.addEventListener('dragstart', preventDrag);
     document.addEventListener('animationstart', onGateAnimation);
     document.addEventListener('animationend', onGateAnimation);
     document.addEventListener('animationcancel', onGateAnimation);
@@ -252,8 +251,7 @@ function RollingTanks({ spawnInitial }: Props) {
       window.removeEventListener('mousedown', onMouseDown, true);
       window.removeEventListener('click', onClick);
       window.removeEventListener('contextmenu', onContextMenu);
-      document.removeEventListener('selectstart', preventSelection);
-      document.removeEventListener('dragstart', preventSelection);
+      document.removeEventListener('dragstart', preventDrag);
       document.removeEventListener('animationstart', onGateAnimation);
       document.removeEventListener('animationend', onGateAnimation);
       document.removeEventListener('animationcancel', onGateAnimation);

@@ -115,6 +115,7 @@ interface Props {
   navigate: (path: string) => void;
   kickedMessage: string;
   clearKickedMessage: () => void;
+  sessionReady: boolean;
   serverUnreachable: boolean;
   account: Account | null;
   onAccountChange: (account: Account | null) => void;
@@ -136,6 +137,7 @@ function Home({
   navigate,
   kickedMessage,
   clearKickedMessage,
+  sessionReady,
   serverUnreachable,
   account,
   onAccountChange,
@@ -507,11 +509,15 @@ function Home({
           >
             Create Offline
           </Button>
-          {(!account || tutorialsLeft) && (
-            <Button variant="secondary" onClick={() => navigate('/tutorials')}>
-              Tutorials
-            </Button>
-          )}
+          {(sessionReady || serverUnreachable) &&
+            (!account || tutorialsLeft) && (
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/tutorials')}
+              >
+                Tutorials
+              </Button>
+            )}
           <SharePageButton
             title="Annex"
             path="/"

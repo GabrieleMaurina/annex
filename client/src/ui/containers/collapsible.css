@@ -15,7 +15,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   list-style: none;
-  user-select: none;
 }
 
 .collapsible-summary::-webkit-details-marker {

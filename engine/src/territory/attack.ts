@@ -144,8 +144,8 @@ function requirePlayingTurn(ctx: GameContext, phase: Game['turnPhase']) {
   return ctx;
 }
 
-export function isAttackType(value: unknown): value is 'regular' | 'blitz' {
-  return value === 'regular' || value === 'blitz';
+export function isAttackType(value: unknown): value is 'manual' | 'blitz' {
+  return value === 'manual' || value === 'blitz';
 }
 
 export function attackSelectStart(
@@ -255,7 +255,7 @@ export function attack(
   const endId = game.attackEndTerritoryId;
   const attackingTroops = game.territoryTroops.get(startId) ?? 0;
   const maxTroops =
-    type === 'regular'
+    type === 'manual'
       ? Math.min(attackingTroops - 1, game.attackDice)
       : attackingTroops - 1;
   if (!isInteger(rawTroops)) return { ok: false, error: 'invalid troops' };
@@ -273,7 +273,7 @@ export function attack(
   if (defenderId === undefined) {
     attackLosses = 0;
     defenceLosses = 0;
-  } else if (type === 'regular') {
+  } else if (type === 'manual') {
     const roll = () =>
       rollAttack(
         troops,
@@ -442,7 +442,7 @@ export function attack(
       {
         type,
         hasDefender: defenderId !== undefined,
-        ...(type === 'regular' ? { dice: troops } : {}),
+        ...(type === 'manual' ? { dice: troops } : {}),
       },
       game.name,
     );
@@ -597,7 +597,7 @@ export function unlockTile(
   if (!selected.ok) return selected;
   const attacked = attack(
     playerId,
-    'regular',
+    'manual',
     Math.min(startTroops - cost - 1, game.attackDice),
     true,
   );

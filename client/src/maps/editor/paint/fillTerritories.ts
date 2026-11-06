@@ -3,6 +3,7 @@ import { sharedBorders } from '../../../game/regions/clickableRegions';
 import { labelRegions, rgbOf } from '../../../game/regions/labelRegions';
 import { linkReach } from '../canvas/findTerritories';
 import type { EditorTerritory as Territory } from '../model/editorTypes';
+import { regionVertices } from '../model/switches';
 
 function landClusters(
   surface: ImageData,
@@ -40,10 +41,11 @@ function landClusters(
 
 export function fillTerritories(
   surface: ImageData,
-  territories: Territory[],
+  vertices: Territory[],
   borderColors: string[],
   brushSize: number,
 ): boolean {
+  const territories = regionVertices(vertices);
   const { labels, invalidIds } = labelRegions(
     surface,
     territories,

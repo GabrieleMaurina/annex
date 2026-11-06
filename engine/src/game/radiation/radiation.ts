@@ -1,6 +1,7 @@
 import { callbacks } from '../../callbacks';
 import { withEventualLinks } from '../../maps/directionalConnections';
 import { getGameMap } from '../../maps/maps';
+import { switchedLinkKeys } from '../../maps/switches';
 import { Game, Radiations } from '../../types';
 import { ownsAnyTerritory, shuffle } from '../mechanics';
 import { recordElimination } from '../progression/stats';
@@ -47,6 +48,7 @@ export function initializeRadiation(game: Game) {
         map.territories,
         map.timedConnections,
         map.directionalConnections,
+        switchedLinkKeys(map.switchedLinks),
       ),
       map.seaTerritories,
       count,

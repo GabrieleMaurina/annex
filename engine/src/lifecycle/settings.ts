@@ -156,7 +156,7 @@ export const MAX_DURATION_VALUES = [
   30, 60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 540, 600,
 ];
 
-const MAX_BLITZ_OFF_TROOPS = 10;
+export const MAX_BLITZ_OFF_TROOPS = 10;
 
 function isStalemateRound(value: unknown): value is number {
   return (

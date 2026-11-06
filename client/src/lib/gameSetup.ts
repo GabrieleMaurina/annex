@@ -7,11 +7,7 @@ import {
 import { connector } from '../connector';
 import { publish } from '../connector/inbound';
 import { rememberEarthRecipe, type Preset } from '../lobby/settings/presets';
-import {
-  decodeToSurface,
-  loadImage,
-  surfaceToDataUrl,
-} from '../maps/editor/paint/surface';
+import { readSurface, surfaceToDataUrl } from '../maps/editor/paint/surface';
 import type { EarthRecipe } from '../maps/editor/world/generateWorldMap';
 import { randomMapInput } from '../maps/randomMap';
 import {
@@ -69,12 +65,11 @@ export function uploadEarthMap(
   onAck: (res: Ack) => void,
 ): Promise<void> {
   const { imageSrc, ...rest } = map;
-  return loadImage(imageSrc).then((img) =>
-    connector.selectEarthMap(
-      { ...rest, wraps: [], image: surfaceToDataUrl(decodeToSurface(img)) },
-      onAck,
-    ),
-  );
+  return readSurface(imageSrc)
+    .then(surfaceToDataUrl)
+    .then((image) =>
+      connector.selectEarthMap({ ...rest, wraps: [], image }, onAck),
+    );
 }
 
 function regenerateEarthMap(

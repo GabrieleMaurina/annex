@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { Button } from 'react-bootstrap';
+import { isNewWheelGesture } from '../../../common/inputs/edgeWrap';
 import PercentageToggle from '../../../common/inputs/PercentageToggle';
 import {
   modifierStep,
@@ -48,7 +49,7 @@ interface Props {
   onSelectManual: (troops: number) => void;
   onSelectBlitz: () => void;
   onBlitzTroopsChange: (troops: number) => void;
-  onBlitzTroopsWheel: (delta: number) => void;
+  onBlitzTroopsWheel: (delta: number, newGesture: boolean) => void;
   onConfirm: () => void;
   diceOnly: boolean;
   pendingConquest: boolean;
@@ -250,7 +251,10 @@ function AttackPanel({
     function onWheel(e: WheelEvent) {
       e.preventDefault();
       e.stopPropagation();
-      blitzWheelRef.current(wheelDirection(e) * modifierStep(e));
+      blitzWheelRef.current(
+        wheelDirection(e) * modifierStep(e),
+        isNewWheelGesture(),
+      );
     }
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => {

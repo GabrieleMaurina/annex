@@ -26,7 +26,11 @@ export type PaintTool =
   | 'sampler'
   | 'select'
   | 'lasso'
-  | 'tiles';
+  | 'tiles'
+  | 'territory'
+  | 'timed'
+  | 'directional'
+  | 'switch';
 
 export const ERASER_COLOR = '#ffffff';
 

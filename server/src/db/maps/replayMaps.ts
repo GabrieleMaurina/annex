@@ -1,5 +1,11 @@
 import { createHash } from 'crypto';
-import { DirectionalConnection, LockedTile, TimedConnection } from 'engine';
+import {
+  DirectionalConnection,
+  LockedTile,
+  MapSwitch,
+  SwitchedLink,
+  TimedConnection,
+} from 'engine';
 import { Binary } from 'mongodb';
 import { MapGeneration } from '../../validate';
 import { CollectionSpec, getCollection } from '../mongo';
@@ -22,6 +28,8 @@ export interface MapDoc {
   wraps: { a: number; b: number; x: boolean; y: boolean }[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   generation: MapGeneration | null;
   image: Binary;
@@ -57,6 +65,8 @@ export function replayMapId(
     | 'wraps'
     | 'timedConnections'
     | 'directionalConnections'
+    | 'switches'
+    | 'switchedLinks'
     | 'lockedTiles'
     | 'imageMime'
     | 'borderColors'
@@ -76,6 +86,9 @@ export function replayMapId(
         timedConnections: map.timedConnections,
         ...(map.directionalConnections.length > 0
           ? { directionalConnections: map.directionalConnections }
+          : {}),
+        ...(map.switches.length > 0
+          ? { switches: map.switches, switchedLinks: map.switchedLinks }
           : {}),
         ...(map.lockedTiles.length > 0 ? { lockedTiles: map.lockedTiles } : {}),
         imageMime: map.imageMime,
@@ -114,6 +127,8 @@ export interface StoredMap {
   wraps: MapDoc['wraps'];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   image: string;
   imageMime: string;
@@ -151,6 +166,8 @@ export function getMapById(id: string): Promise<StoredMap | null> {
             wraps: doc.wraps,
             timedConnections: doc.timedConnections ?? [],
             directionalConnections: doc.directionalConnections ?? [],
+            switches: doc.switches ?? [],
+            switchedLinks: doc.switchedLinks ?? [],
             lockedTiles: doc.lockedTiles ?? [],
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,

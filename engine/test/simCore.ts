@@ -48,6 +48,8 @@ function buildGridMap(name: string, cols: number, rows: number): GameMap {
     wraps: [],
     timedConnections: [],
     directionalConnections: [],
+    switches: [],
+    switchedLinks: [],
     lockedTiles: [],
   };
 }
@@ -133,6 +135,8 @@ export function runGame(
     bonuses: map.bonuses,
     timedConnections: [],
     directionalConnections: [],
+    switches: [],
+    switchedLinks: [],
     lockedTiles: [],
     imageSrc: '',
     borderColors: [],
@@ -144,6 +148,7 @@ export function runGame(
     seas: false,
     timed: false,
     directional: false,
+    switched: false,
     unlockable: false,
     aspect: 'wide',
     mountains: true,

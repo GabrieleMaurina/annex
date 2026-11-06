@@ -451,6 +451,13 @@ export function useGameSocketEvents({
           troops: animation.cost,
           playerId: animation.playerId,
         });
+      } else if (animation.type === 'switch') {
+        playSound('click');
+        animateRemove({
+          territoryId: animation.fromTerritoryId,
+          troops: animation.cost,
+          playerId: animation.playerId,
+        });
       } else if (
         animation.type === 'buyShips' ||
         animation.type === 'sail' ||
@@ -664,6 +671,20 @@ export function useGameSocketEvents({
       });
       startAnimationLoop();
     }
+    function onSwitchFlipped(payload: {
+      fromTerritoryId: number;
+      cost: number;
+    }) {
+      playSound('click');
+      adjustTerritoryTroops([
+        { territoryId: payload.fromTerritoryId, delta: -payload.cost },
+      ]);
+      animateRemove({
+        territoryId: payload.fromTerritoryId,
+        troops: payload.cost,
+      });
+      startAnimationLoop();
+    }
     function onToxinExpired(payload: { territoryIds: number[] }) {
       adjustToxinTerritories(
         payload.territoryIds.map((territoryId) => ({
@@ -704,6 +725,7 @@ export function useGameSocketEvents({
     connector.on('game:starved', onStarved);
     connector.on('game:toxined', onToxined);
     connector.on('game:unlocked', onUnlocked);
+    connector.on('game:switchFlipped', onSwitchFlipped);
     connector.on('game:toxinExpired', onToxinExpired);
     connector.on('game:radiationUpcoming', onRadiationUpcoming);
     connector.on('game:radiationChanged', onRadiationChanged);
@@ -717,6 +739,7 @@ export function useGameSocketEvents({
       connector.off('game:starved', onStarved);
       connector.off('game:toxined', onToxined);
       connector.off('game:unlocked', onUnlocked);
+      connector.off('game:switchFlipped', onSwitchFlipped);
       connector.off('game:toxinExpired', onToxinExpired);
       connector.off('game:radiationUpcoming', onRadiationUpcoming);
       connector.off('game:radiationChanged', onRadiationChanged);

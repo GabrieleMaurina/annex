@@ -21,6 +21,7 @@ import {
   MAP_GEN_HELP,
   MAP_HELP,
   SEAS_HELP,
+  SWITCHES_HELP,
   TIMED_CONNECTIONS_HELP,
   UNLOCKABLE_HELP,
 } from './settings/settingsHelp';
@@ -87,6 +88,7 @@ export function MapFilterFields({
   seas,
   timed,
   directional,
+  switched,
   unlockable,
   onMapName,
   onSize,
@@ -96,6 +98,7 @@ export function MapFilterFields({
   onSeas,
   onTimed,
   onDirectional,
+  onSwitched,
   onUnlockable,
 }: {
   mapName: string;
@@ -106,6 +109,7 @@ export function MapFilterFields({
   seas: string;
   timed: string;
   directional: string;
+  switched: string;
   unlockable: string;
   onMapName: (v: string) => void;
   onSize: (v: string) => void;
@@ -115,6 +119,7 @@ export function MapFilterFields({
   onSeas: (v: string) => void;
   onTimed: (v: string) => void;
   onDirectional: (v: string) => void;
+  onSwitched: (v: string) => void;
   onUnlockable: (v: string) => void;
 }) {
   return (
@@ -133,6 +138,7 @@ export function MapFilterFields({
               onSeas('');
               onTimed('');
               onDirectional('');
+              onSwitched('');
               onUnlockable('');
             }
           }}
@@ -219,6 +225,13 @@ export function MapFilterFields({
               <option value="no">No</option>
             </Selector>
           </Field>
+          <Field label="Generated map switches" help={SWITCHES_HELP}>
+            <Selector size="sm" value={switched} onChange={onSwitched}>
+              <option value="">Any</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </Selector>
+          </Field>
           <Field label="Generated map unlockable" help={UNLOCKABLE_HELP}>
             <Selector size="sm" value={unlockable} onChange={onUnlockable}>
               <option value="">Any</option>
@@ -288,7 +301,7 @@ export function SettingFilterSections({
             <div className="row g-3">
               {defs.map((def) => (
                 <Field key={def.key} label={def.label} help={def.help}>
-                  {def.range ? (
+                  {def.range && def.options.length === 0 ? (
                     <RangeSettingFilter
                       def={def}
                       range={def.range}

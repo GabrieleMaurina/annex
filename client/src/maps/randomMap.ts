@@ -13,6 +13,7 @@ export const DEFAULT_MAP_GENERATION = {
   seas: false,
   timed: false,
   directional: false,
+  switched: false,
   unlockable: false,
   aspect: 'wide',
   mountains: false,

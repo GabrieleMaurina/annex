@@ -5,6 +5,7 @@ import type {
   EmojiValue,
   GameState,
   LockedTile,
+  MapSwitch,
 } from '../../../../lib/types';
 import type { EvaluatedCombo } from '../../../logic/cards';
 import type { SeaTerritory, Territory } from '../../../mapData';
@@ -159,5 +160,9 @@ export type CanvasInteractionsParams = {
   unlockTileId: number | null;
   selectUnlockTile: (tileId: number) => void;
   unlock: (tileId: number, enter: boolean) => void;
+  switches: MapSwitch[];
+  flipVertexId: number | null;
+  selectFlipSwitch: (switchId: number) => void;
+  flipSwitch: (switchId: number) => void;
   canAdvancePhase: boolean;
 };

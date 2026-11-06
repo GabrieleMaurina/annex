@@ -205,6 +205,13 @@ export const EVENT_VIEWS: EventViews = {
       cost: p.cost,
       playerId: aliasOf(game, p.playerId),
     }),
+  onSwitchFlipped: (game, _viewerId, p) =>
+    complete<EventPayload<'onSwitchFlipped'>>({
+      fromTerritoryId: p.fromTerritoryId,
+      switchId: p.switchId,
+      cost: p.cost,
+      playerId: aliasOf(game, p.playerId),
+    }),
   onToxinExpired: (_game, _viewerId, p) =>
     complete<EventPayload<'onToxinExpired'>>({
       territoryIds: p.territoryIds,
@@ -318,6 +325,8 @@ export const EVENT_VIEWS: EventViews = {
       wraps: p.wraps,
       timedConnections: p.timedConnections,
       directionalConnections: p.directionalConnections,
+      switches: p.switches,
+      switchedLinks: p.switchedLinks,
       lockedTiles: p.lockedTiles,
       imageSrc: p.imageSrc,
       borderColors: p.borderColors,
@@ -353,6 +362,7 @@ const LOG_VIEWS: LogViews = {
   'game:entrenched': EVENT_VIEWS.onEntrenched,
   'game:toxined': EVENT_VIEWS.onToxined,
   'game:unlocked': EVENT_VIEWS.onUnlocked,
+  'game:switchFlipped': EVENT_VIEWS.onSwitchFlipped,
   'game:radiationChanged': EVENT_VIEWS.onRadiationChanged,
   'game:nukeLaunched': EVENT_VIEWS.onNukeLaunched,
   'game:cardSetPlayed': EVENT_VIEWS.onCardSetPlayed,

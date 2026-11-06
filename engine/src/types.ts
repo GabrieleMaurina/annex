@@ -46,6 +46,22 @@ export interface DirectionalConnection {
   backward: number;
 }
 
+export interface MapSwitch {
+  x: number;
+  y: number;
+  on: boolean;
+  neighbors: number[];
+}
+
+export type SwitchGate = 'or' | 'and';
+
+export interface SwitchedLink {
+  a: number;
+  b: number;
+  switches: number[];
+  gate: SwitchGate;
+}
+
 export interface LockedTile {
   id: number;
   x: number;
@@ -68,6 +84,8 @@ export interface GameMap {
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
 }
 
@@ -77,6 +95,8 @@ export interface GeneratedGameMap {
   bonuses: number[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
@@ -88,6 +108,7 @@ export interface GeneratedGameMap {
   seas: boolean;
   timed: boolean;
   directional: boolean;
+  switched: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;
@@ -262,6 +283,13 @@ export type ReplayAnimation =
       playerId: number;
     }
   | {
+      type: 'switch';
+      fromTerritoryId: number;
+      switchId: number;
+      cost: number;
+      playerId: number;
+    }
+  | {
       type: 'nuke';
       fromTerritoryId: number;
       targetTerritoryId: number;
@@ -430,6 +458,8 @@ export interface PlayerGameMap {
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
@@ -556,6 +586,7 @@ export interface Game {
   fogMemory: Map<number, Map<number, RememberedTerritory>>;
   territoryToxins: Map<number, { permanent: boolean; roundsRemaining: number }>;
   unlockedTileIds: Set<number>;
+  flippedSwitchIds: Set<number>;
   capitalTerritoryIds: Set<number>;
   capitalRefunds: Map<number, number>;
   playerMissions: Map<number, Mission>;

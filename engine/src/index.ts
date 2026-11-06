@@ -53,6 +53,7 @@ import {
   attackMove,
   attackSelectEnd,
   attackSelectStart,
+  flipSwitch,
   quickAttack,
   unlockTile,
 } from './territory/attack';
@@ -158,6 +159,7 @@ export {
 } from './lifecycle/eligibility';
 export {
   isBlitzOffAllowed,
+  MAX_BLITZ_OFF_TROOPS,
   MAX_DURATION_VALUES,
   MAX_STALEMATE_ROUNDS,
   MAX_STARTING_CAPITALS,
@@ -244,6 +246,14 @@ export {
   MAX_PLACE_NAME_LENGTH,
 } from './maps/placeNames';
 export {
+  FLIP_COST,
+  linkKey,
+  MAX_SWITCHES,
+  switchedLinkKeys,
+  switchedLinkStates,
+  switchStates,
+} from './maps/switches';
+export {
   isConnectionOpen,
   MAX_TIMED_VALUE,
   roundsUntilToggle,
@@ -257,7 +267,10 @@ export {
   FixedTile,
   GameMap,
   LockedTile,
+  MapSwitch,
   PlayerGameMap,
+  SwitchedLink,
+  SwitchGate,
   TimedConnection,
 } from './types';
 export { containsProfanity } from './util/profanity';
@@ -359,6 +372,7 @@ export function createEngine(
     attackMove,
     quickAttack,
     unlockTile,
+    flipSwitch,
 
     requestReplay,
     exportGame,

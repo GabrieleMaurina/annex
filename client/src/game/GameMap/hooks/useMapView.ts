@@ -19,6 +19,7 @@ import {
   loadClickableRegions,
   type ClickableRegions,
 } from '../../regions/clickableRegions';
+import { NO_SWITCHING, type MapSwitching } from '../../switches/switches';
 import { createCamera, DEFAULT_TRANSFORM } from '../camera';
 
 export function useMapView(mapName: string, playerMapId?: string | null) {
@@ -34,6 +35,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
   const [directionalConnections, setDirectionalConnections] = useState<
     DirectionalConnection[]
   >([]);
+  const [switching, setSwitching] = useState<MapSwitching>(NO_SWITCHING);
   const [lockedTiles, setLockedTiles] = useState<LockedTile[]>([]);
   const [regions, setRegions] = useState<ClickableRegions | null>(null);
   const [placeNames, setPlaceNames] = useState(NO_PLACE_NAMES);
@@ -57,6 +59,8 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         wraps,
         timedConnections,
         directionalConnections,
+        switches,
+        switchedLinks,
         lockedTiles,
         imageSrc,
       }) => {
@@ -66,6 +70,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
         setWraps(wraps);
         setTimedConnections(timedConnections);
         setDirectionalConnections(directionalConnections);
+        setSwitching({ switches, switchedLinks });
         setLockedTiles(lockedTiles);
         setPlaceNames(placeNamesFor(mapName));
         loadClickableRegions(mapName, playerMapId).then(setRegions);
@@ -108,6 +113,7 @@ export function useMapView(mapName: string, playerMapId?: string | null) {
     bonuses,
     timedConnections,
     directionalConnections,
+    switching,
     lockedTiles,
     forcedWraps,
     regions,

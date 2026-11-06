@@ -1,9 +1,13 @@
+import { linkKey } from 'engine';
 import type {
   DirectionalConnection,
   LockedTile,
   MapSeaTerritory,
+  MapSwitch,
   MapTerritory,
   MapWrap,
+  SwitchedLink,
+  SwitchGate,
   TimedConnection,
 } from '../../../lib/types';
 import { tileCenter } from '../tiles/editorTiles';
@@ -19,6 +23,7 @@ export interface TimedMark {
   delay: number;
   open: number;
   closed: number;
+  gate: SwitchGate;
 }
 
 export interface DirectionalMark {
@@ -26,24 +31,54 @@ export interface DirectionalMark {
   out: boolean;
   forward: number;
   backward: number;
+  gate: SwitchGate;
+}
+
+export interface SwitchWire {
+  a: number;
+  b: number;
+}
+
+export interface EditorSwitch {
+  on: boolean;
+  wires: SwitchWire[];
 }
 
 export interface EditorTerritory extends MapTerritory {
   name: string;
   isSea?: boolean;
   locked?: boolean;
+  switch?: EditorSwitch;
   wraps: WrapMark[];
   timed: TimedMark[];
   directional: DirectionalMark[];
 }
 
-export type LinkMode = 'normal' | 'timed' | 'directional';
+export type LinkMode = 'select' | 'normal' | 'timed' | 'directional' | 'switch';
 
-export const DEFAULT_TIMED = { delay: 0, open: 1, closed: 1 };
-export const DEFAULT_DIRECTIONAL = { forward: 1, backward: 1 };
+export function linkModeOf(tool: string | null): LinkMode {
+  if (tool === 'territory') return 'normal';
+  return tool === 'timed' || tool === 'directional' || tool === 'switch'
+    ? tool
+    : 'select';
+}
+
+export const DEFAULT_GATE: SwitchGate = 'or';
+export const DEFAULT_TIMED = {
+  delay: 0,
+  open: 1,
+  closed: 1,
+  gate: DEFAULT_GATE,
+};
+export const DEFAULT_DIRECTIONAL = {
+  forward: 1,
+  backward: 1,
+  gate: DEFAULT_GATE,
+};
 
 export const NO_CONTINENT = -1;
 export const SEA_BRUSH = -2;
+export const SWITCH_BRUSH = -3;
 
 export function nextTerritoryId(territories: EditorTerritory[]): number {
   return territories.length ? Math.max(...territories.map((t) => t.id)) + 1 : 0;
@@ -57,9 +92,8 @@ export function newTerritory(
   continentCount: number,
 ): EditorTerritory {
   const isSea = brushId === SEA_BRUSH;
-  return {
+  const base = {
     id,
-    continentId: isSea ? 0 : Math.min(brushId, continentCount - 1),
     x,
     y,
     neighbors: [],
@@ -67,6 +101,16 @@ export function newTerritory(
     wraps: [],
     timed: [],
     directional: [],
+  };
+  if (brushId === SWITCH_BRUSH)
+    return {
+      ...base,
+      continentId: NO_CONTINENT,
+      switch: { on: false, wires: [] },
+    };
+  return {
+    ...base,
+    continentId: isSea ? 0 : Math.min(brushId, continentCount - 1),
     isSea,
   };
 }
@@ -88,6 +132,8 @@ export function toEditorTerritories(
   links: {
     timedConnections: TimedConnection[];
     directionalConnections: DirectionalConnection[];
+    switches: MapSwitch[];
+    switchedLinks: SwitchedLink[];
     lockedTiles: LockedTile[];
   },
   territoryNames: string[] | null,
@@ -99,17 +145,24 @@ export function toEditorTerritories(
       if (w.b === id) return [{ id: w.a, x: w.x, y: w.y }];
       return [];
     });
+  const gates = new Map(
+    links.switchedLinks.map((link) => [linkKey(link.a, link.b), link.gate]),
+  );
+  const gateOf = (a: number, b: number) =>
+    gates.get(linkKey(a, b)) ?? DEFAULT_GATE;
   const timedOf = (id: number): TimedMark[] =>
     links.timedConnections.flatMap(({ a, b, ...values }) => {
-      if (a === id) return [{ id: b, ...values }];
-      if (b === id) return [{ id: a, ...values }];
+      const gate = gateOf(a, b);
+      if (a === id) return [{ id: b, ...values, gate }];
+      if (b === id) return [{ id: a, ...values, gate }];
       return [];
     });
   const directionalOf = (id: number): DirectionalMark[] =>
     links.directionalConnections.flatMap(
       ({ a, b, ...values }): DirectionalMark[] => {
-        if (a === id) return [{ id: b, out: true, ...values }];
-        if (b === id) return [{ id: a, out: false, ...values }];
+        const gate = gateOf(a, b);
+        if (a === id) return [{ id: b, out: true, ...values, gate }];
+        if (b === id) return [{ id: a, out: false, ...values, gate }];
         return [];
       },
     );
@@ -117,10 +170,21 @@ export function toEditorTerritories(
     links.lockedTiles
       .filter((tile) => tile.neighbors.includes(id))
       .map((tile) => tile.id);
+  const firstSwitchId =
+    Math.max(
+      -1,
+      ...[...territories, ...seaTerritories, ...links.lockedTiles].map(
+        (t) => t.id,
+      ),
+    ) + 1;
+  const switchesOf = (id: number) =>
+    links.switches.flatMap((s, i) =>
+      s.neighbors.includes(id) ? [firstSwitchId + i] : [],
+    );
   return [
     ...territories.map((t, i) => ({
       ...t,
-      neighbors: [...t.neighbors, ...lockedOf(t.id)],
+      neighbors: [...t.neighbors, ...lockedOf(t.id), ...switchesOf(t.id)],
       name: territoryNames?.[i] ?? '',
       wraps: marksOf(t.id),
       timed: timedOf(t.id),
@@ -150,6 +214,23 @@ export function toEditorTerritories(
         locked: true,
       };
     }),
+    ...links.switches.map((s, i) => ({
+      id: firstSwitchId + i,
+      continentId: NO_CONTINENT,
+      x: s.x,
+      y: s.y,
+      neighbors: s.neighbors,
+      name: '',
+      wraps: [],
+      timed: [],
+      directional: [],
+      switch: {
+        on: s.on,
+        wires: links.switchedLinks
+          .filter((link) => link.switches.includes(i))
+          .map(({ a, b }) => ({ a, b })),
+      },
+    })),
   ];
 }
 
@@ -159,7 +240,7 @@ export function withContinent(
   continentId: number,
 ): EditorTerritory[] {
   return territories.map((t) =>
-    t.id !== id || t.locked
+    t.id !== id || t.locked || t.switch
       ? t
       : continentId === SEA_BRUSH
         ? { ...t, isSea: true }
@@ -179,6 +260,10 @@ export function withoutVertex(
       wraps: t.wraps.filter((w) => w.id !== id),
       timed: t.timed.filter((m) => m.id !== id),
       directional: t.directional.filter((m) => m.id !== id),
+      switch: t.switch && {
+        ...t.switch,
+        wires: t.switch.wires.filter((w) => w.a !== id && w.b !== id),
+      },
     }));
 }
 

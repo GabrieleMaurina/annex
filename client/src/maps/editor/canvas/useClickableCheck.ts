@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { rgbOf } from '../../../game/regions/labelRegions';
 import { polygonPath } from '../../../game/tiles/tileGeometry';
 import type { EditorTerritory } from '../model/editorTypes';
+import { regionVertices } from '../model/switches';
 import { continentColor, SEA_MARKER_COLOR } from '../palette';
 import { maskTiles } from '../tiles/drawTiles';
 import type { EditorTile } from '../tiles/editorTiles';
@@ -80,6 +81,7 @@ export function useClickableCheck(
   useEffect(() => {
     let worker: Worker | null = null;
     const timer = setTimeout(() => {
+      const vertices = regionVertices(territories);
       const surface = maskTiles(surfaceRef.current, tiles, borderColors[0]);
       const tileIds = new Set(tiles.map((tile) => tile.territoryId));
       worker = new Worker(new URL('./clickableWorker.ts', import.meta.url), {
@@ -96,14 +98,14 @@ export function useClickableCheck(
             ),
             width: surface.width,
             height: surface.height,
-            territories,
+            territories: vertices,
             tiles,
           });
         },
       );
       const request: ClickableRequest = {
         image: surface,
-        points: territories.map(({ id, x, y, isSea }) => ({ id, x, y, isSea })),
+        points: vertices.map(({ id, x, y, isSea }) => ({ id, x, y, isSea })),
         borderColors,
       };
       worker.postMessage(request);
@@ -121,11 +123,12 @@ export function useClickableCheck(
     () =>
       labeled
         ? {
-            validCount: territories.filter((t) => !labeled.invalidIds.has(t.id))
-              .length,
+            validCount: labeled.territories.filter(
+              (t) => !labeled.invalidIds.has(t.id),
+            ).length,
             overlay,
           }
         : null,
-    [labeled, overlay, territories],
+    [labeled, overlay],
   );
 }

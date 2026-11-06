@@ -97,6 +97,7 @@ export interface GameExport {
     seas: boolean;
     timed: boolean;
     directional: boolean;
+    switched: boolean;
     unlockable: boolean;
     aspect: string;
     mountains: boolean;
@@ -394,6 +395,7 @@ export function exportGame(gameName: string): GameExport | null {
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
           directional: game.generatedMap.directional,
+          switched: game.generatedMap.switched,
           unlockable: game.generatedMap.unlockable,
           aspect: game.generatedMap.aspect,
           mountains: game.generatedMap.mountains,

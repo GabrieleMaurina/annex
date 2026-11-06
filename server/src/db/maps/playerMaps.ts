@@ -5,6 +5,8 @@ import {
   GenerationType,
   LockedTile,
   MapSize,
+  MapSwitch,
+  SwitchedLink,
   TileShape,
   TimedConnection,
 } from 'engine';
@@ -48,6 +50,8 @@ interface PlayerMapDoc {
   wraps: PlayerMapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   fixedTiles?: FixedTile[];
   image: Binary;
@@ -155,6 +159,8 @@ export interface PlayerMapInput {
   wraps: PlayerMapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   fixedTiles: FixedTile[];
   image: Buffer;
@@ -180,6 +186,8 @@ export function createPlayerMap(
       wraps: input.wraps,
       timedConnections: input.timedConnections,
       directionalConnections: input.directionalConnections,
+      switches: input.switches,
+      switchedLinks: input.switchedLinks,
       lockedTiles: input.lockedTiles,
       fixedTiles: input.fixedTiles,
       image: new Binary(input.image),
@@ -230,6 +238,8 @@ export function updatePlayerMap(
               wraps: input.wraps,
               timedConnections: input.timedConnections,
               directionalConnections: input.directionalConnections,
+              switches: input.switches,
+              switchedLinks: input.switchedLinks,
               lockedTiles: input.lockedTiles,
               fixedTiles: input.fixedTiles,
               image: new Binary(input.image),
@@ -274,6 +284,8 @@ export interface PlayerMapDetail {
   wraps: PlayerMapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   fixedTiles: FixedTile[];
   image: string;
@@ -304,6 +316,8 @@ export function getPlayerMapById(id: string): Promise<PlayerMapDetail | null> {
             wraps: doc.wraps,
             timedConnections: doc.timedConnections ?? [],
             directionalConnections: doc.directionalConnections ?? [],
+            switches: doc.switches ?? [],
+            switchedLinks: doc.switchedLinks ?? [],
             lockedTiles: doc.lockedTiles ?? [],
             fixedTiles: doc.fixedTiles ?? [],
             image: Buffer.from(doc.image.buffer).toString('base64'),
@@ -401,6 +415,7 @@ export interface PlayerMapsQuery {
   generationSeas?: boolean;
   generationTimed?: boolean;
   generationDirectional?: boolean;
+  generationSwitched?: boolean;
   generationUnlockable?: boolean;
   sort: PlayerMapSort;
   viewerId?: string;
@@ -478,6 +493,10 @@ export function listPlayerMaps(
     filter['generation.timed'] = query.generationTimed;
   if (query.generationDirectional !== undefined)
     filter['generation.directional'] = query.generationDirectional;
+  if (query.generationSwitched !== undefined) {
+    filter.generation = { $ne: null };
+    filter['generation.switched'] = query.generationSwitched || { $ne: true };
+  }
   if (query.generationUnlockable !== undefined)
     filter['generation.unlockable'] = query.generationUnlockable;
 
@@ -513,6 +532,8 @@ export function listPlayerMaps(
           wraps: 0,
           timedConnections: 0,
           directionalConnections: 0,
+          switches: 0,
+          switchedLinks: 0,
           lockedTiles: 0,
         },
       })

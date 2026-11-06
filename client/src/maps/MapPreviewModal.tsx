@@ -60,6 +60,7 @@ function MapPreviewModal({
                 {preview.generation.seas && ', seas'}
                 {preview.generation.timed && ', timed links'}
                 {preview.generation.directional && ', directional links'}
+                {preview.generation.switched && ', switches'}
                 {preview.generation.unlockable && ', unlockable'}
                 {preview.generation.mountains && ', mountains'}
                 {preview.generation.rivers && ', rivers'}

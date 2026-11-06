@@ -152,12 +152,6 @@ export function useTiles({
     (tile) => tile.territoryId === selectedTerritoryId,
   );
   const selected = found >= 0 ? found : null;
-  const [prevSelected, setPrevSelected] = useState(selected);
-  if (selected !== prevSelected) {
-    setPrevSelected(selected);
-    if (selected !== null) setDefaultUnlockable(list[selected].unlockable);
-  }
-
   useEffect(() => {
     drawTileOverlay(
       overlay,
@@ -173,7 +167,7 @@ export function useTiles({
 
   const untiled = useMemo(() => {
     const ids = new Set(list.map((tile) => tile.territoryId));
-    return territories.filter((t) => !ids.has(t.id));
+    return territories.filter((t) => !ids.has(t.id) && !t.switch);
   }, [territories, list]);
 
   const finishRef = useRef(() => {});
@@ -282,7 +276,6 @@ export function useTiles({
   function toggle(index: number) {
     const tile = list[index];
     const locked = !tile.unlockable;
-    if (index === selected) setDefaultUnlockable(locked);
     replace(index, { ...tile, unlockable: locked });
     setTerritories(
       territories.map((t) =>
@@ -295,13 +288,12 @@ export function useTiles({
     );
   }
 
-  function setUnlockable(value: boolean) {
-    setDefaultUnlockable(value);
-    if (selected !== null && list[selected].unlockable === !value)
-      toggle(selected);
-  }
-
-  const options: TileOptions = { kind, setKind, unlockable, setUnlockable };
+  const options: TileOptions = {
+    kind,
+    setKind,
+    unlockable,
+    setUnlockable: setDefaultUnlockable,
+  };
 
   return {
     list,

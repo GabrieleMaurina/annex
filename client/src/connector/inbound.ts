@@ -27,6 +27,7 @@ const INBOUND_EVENTS = [
   'game:entrenched',
   'game:toxined',
   'game:unlocked',
+  'game:switchFlipped',
   'game:toxinExpired',
   'game:radiationUpcoming',
   'game:radiationChanged',

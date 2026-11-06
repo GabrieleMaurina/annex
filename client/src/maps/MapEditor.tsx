@@ -28,7 +28,6 @@ import {
   createDefaultImage,
   DEFAULT_IMAGE_HEIGHT,
   DEFAULT_IMAGE_WIDTH,
-  isBlankImage,
 } from './editor/defaultImage';
 import type {
   GeneratedEditorMap,
@@ -40,11 +39,11 @@ import MapCanvas, { type MapCanvasHandle } from './editor/MapCanvas';
 import ImportMapModal from './editor/modals/ImportMapModal';
 import LeaveEditorModal from './editor/modals/LeaveEditorModal';
 import NewMapModal from './editor/modals/NewMapModal';
-import type {
-  LinkMode,
-  EditorTerritory as Territory,
+import {
+  linkModeOf,
+  toEditorTerritories,
+  type EditorTerritory as Territory,
 } from './editor/model/editorTypes';
-import { toEditorTerritories } from './editor/model/editorTypes';
 import {
   graphKeyOf,
   graphOf,
@@ -58,6 +57,7 @@ import {
 } from './editor/model/mapName';
 import { mapSizeText } from './editor/model/mapSize';
 import { saveError } from './editor/model/saveError';
+import { regionVertices } from './editor/model/switches';
 import { useEarthRoute } from './editor/model/useEarthRoute';
 import { useEditorShortcuts } from './editor/model/useEditorShortcuts';
 import { fillTerritories } from './editor/paint/fillTerritories';
@@ -70,13 +70,13 @@ import { drawShape, type ShapeKind } from './editor/paint/shapes';
 import {
   blankSurface,
   blitSurface,
-  decodeToSurface,
-  loadImage,
+  readSurface,
   surfaceToDataUrl,
 } from './editor/paint/surface';
 import { useTerritoryBorders } from './editor/paint/useTerritoryBorders';
 import Panel from './editor/Panel';
 import ImageFileInput from './editor/panel/ImageFileInput';
+import GraphPopover from './editor/popover/GraphPopover';
 import { sortMapData, sortTerritories } from './editor/sortMap';
 import { bakeTiles } from './editor/tiles/drawTiles';
 import { remapTiles, toEditorTiles } from './editor/tiles/editorTiles';
@@ -116,7 +116,6 @@ function MapEditor({ account }: { account: Account | null }) {
   useToggleSound(collapsed);
 
   const [mode, setMode] = useState<'graph' | 'paint'>('graph');
-  const [linkMode, setLinkMode] = useState<LinkMode>('normal');
   const [exclusive, setExclusive] = useState(false);
   function handleModeClick(target: 'graph' | 'paint') {
     if (mode === target) setExclusive((e) => !e);
@@ -283,6 +282,14 @@ function MapEditor({ account }: { account: Account | null }) {
     ],
   );
   const graphKey = useMemo(() => graphKeyOf(graph), [graph]);
+  const graphEdit = {
+    territories,
+    setTerritories,
+    continentNames,
+    setContinentNames,
+    tiles: tileList,
+    toggleTile: tiles.toggle,
+  };
 
   const graphRef = useRef({ ...graph, graphKey });
   useEffect(() => {
@@ -412,13 +419,9 @@ function MapEditor({ account }: { account: Account | null }) {
 
   useEffect(() => {
     let stale = false;
-    const blank = isBlankImage(imageSrc);
-    loadImage(imageSrc)
-      .then((img) => {
+    readSurface(imageSrc)
+      .then((surface) => {
         if (stale) return;
-        const surface = blank
-          ? blankSurface(img.naturalWidth, img.naturalHeight)
-          : decodeToSurface(img);
         tiles.unbake(surface);
         blitSurface(surface, paintCanvas);
         setPaintSurface(surface);
@@ -739,32 +742,8 @@ function MapEditor({ account }: { account: Account | null }) {
     setError(problem ?? '');
     if (problem) return;
     paintLayerRef.current?.flush();
-    const image = surfaceToDataUrl(
-      bakeTiles(paintSurface, tileList, borderColors[0]),
-    );
-    if (image.length * 0.75 > MAX_IMAGE_BYTES) {
-      setError('Image too large, max 5 MB.');
-      return;
-    }
     setSaving(true);
     const sorted = sortMapData(territories, bonuses, continentNames, tileList);
-    const body = {
-      name,
-      territories: sorted.territories,
-      seaTerritories: sorted.seaTerritories,
-      bonuses: sorted.bonuses,
-      wraps: sorted.wraps,
-      timedConnections: sorted.timedConnections,
-      directionalConnections: sorted.directionalConnections,
-      lockedTiles: sorted.lockedTiles,
-      fixedTiles: sorted.fixedTiles,
-      image,
-      generation,
-      borderColors,
-      territoryNames: sorted.territoryNames,
-      seaNames: sorted.seaNames,
-      continentNames: sorted.continentNames,
-    };
     const done = (res: { ok: boolean; error?: string; id?: string }) => {
       setSaving(false);
       if (!res.ok) {
@@ -779,8 +758,18 @@ function MapEditor({ account }: { account: Account | null }) {
       setDirty(false);
       connector.listMyMapNames(setTakenNames);
     };
-    if (effectiveId) connector.updatePlayerMap(effectiveId, body, done);
-    else connector.savePlayerMap(body, done);
+    surfaceToDataUrl(bakeTiles(paintSurface, tileList, borderColors[0]))
+      .then((image) => {
+        if (image.length * 0.75 > MAX_IMAGE_BYTES) {
+          setSaving(false);
+          setError('Image too large, max 5 MB.');
+          return;
+        }
+        const body = { name, ...sorted, image, generation, borderColors };
+        if (effectiveId) connector.updatePlayerMap(effectiveId, body, done);
+        else connector.savePlayerMap(body, done);
+      })
+      .catch(() => done({ ok: false }));
   }, [
     mapName,
     nameError,
@@ -840,8 +829,17 @@ function MapEditor({ account }: { account: Account | null }) {
         onViewport={handleViewport}
         clickable={showClickable ? clickable : null}
         overlays={overlays}
-        linkMode={linkMode}
+        linkMode={linkModeOf(mode === 'graph' ? tool : null)}
         onSelect={setSelectedTerritoryId}
+        continentNames={continentNames}
+        popover={(selection, anchor, close) => (
+          <GraphPopover
+            selection={selection}
+            anchor={anchor}
+            close={close}
+            graph={graphEdit}
+          />
+        )}
       />
 
       {mode === 'graph' && tool === 'tiles' && (
@@ -889,9 +887,7 @@ function MapEditor({ account }: { account: Account | null }) {
           setContinentCount={setContinentCount}
           bonuses={bonuses}
           setBonuses={setBonuses}
-          continentNames={continentNames}
           setContinentNames={setContinentNames}
-          selectedTerritoryId={selectedTerritoryId}
           mapName={mapName}
           setMapName={handleNameChange}
           mapSizeText={sizeLabel}
@@ -931,7 +927,7 @@ function MapEditor({ account }: { account: Account | null }) {
           error={error}
           showClickable={showClickable}
           setShowClickable={setShowClickable}
-          clickableStatus={`${clickable?.validCount ?? 0}/${territories.length}`}
+          clickableStatus={`${clickable?.validCount ?? 0}/${regionVertices(territories).length}`}
           onFindTerritories={handleFindTerritories}
           onLinkTerritories={handleLinkTerritories}
           onDrawTerritories={() =>
@@ -952,8 +948,7 @@ function MapEditor({ account }: { account: Account | null }) {
           setBorderPreview={borders.setPreview}
           borderColors={borderColors}
           setBorderColors={handleBorderColorsChange}
-          linkMode={linkMode}
-          setLinkMode={setLinkMode}
+          onContinentClick={(i) => mapCanvasRef.current?.pickContinent(i)}
         />
       </div>
 

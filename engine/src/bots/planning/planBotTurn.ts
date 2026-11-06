@@ -54,12 +54,13 @@ import {
 } from '../heuristics/nukes';
 import { chooseLosingAttack } from '../heuristics/sacrifice';
 import {
-  ShipPurchase,
+  buyShipsAction,
   chooseSail,
   chooseShipAttack,
   chooseShipPurchase,
   chooseSupplyBridge,
 } from '../heuristics/ships';
+import { planSwitchFlip } from '../heuristics/switches';
 import { chooseOpportunisticUnlock, chooseUnlock } from '../heuristics/unlock';
 import { defensiveBoldness } from '../personality/defensive';
 import {
@@ -141,18 +142,6 @@ const FRUSTRATED_LOSS_TURNS = 20;
 
 function result(actions: BotAction[], plan: TurnPlan): PlanBotTurnResult {
   return { actions, plan };
-}
-
-function buyShipsAction(purchase: ShipPurchase): BotAction {
-  return {
-    event: 'game:buyShips',
-    payload: {
-      sourceTerritoryId: purchase.sourceTerritoryId,
-      seaTerritoryId: purchase.seaTerritoryId,
-      ships: purchase.ships,
-      fromPool: purchase.fromPool,
-    },
-  };
 }
 
 function resolvePlan(
@@ -520,6 +509,9 @@ function planAttack(
       plan,
     );
 
+  const switchFlip = planSwitchFlip(ctx, plan);
+  if (switchFlip) return result(switchFlip, plan);
+
   const nextStep = plan.attackSteps
     .slice(plan.step)
     .find((step) => stepStatus(ctx, game, step) !== 'done');
@@ -627,6 +619,8 @@ function planAttack(
   }
 
   plan.step = plan.attackSteps.length;
+  const lateFlip = planSwitchFlip(ctx, plan);
+  if (lateFlip) return result(lateFlip, plan);
   const opportunity = chooseOpportunisticUnlock(ctx, plan.unlocksIssued ?? 0);
   if (opportunity) {
     plan.unlocksIssued = (plan.unlocksIssued ?? 0) + 1;

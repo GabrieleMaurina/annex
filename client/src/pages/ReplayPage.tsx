@@ -217,6 +217,7 @@ function buildGameState(
     toxinTerritories: [],
     seas: [],
     unlockedTileIds: [],
+    switchesOn: [],
     visibleTerritoryIds: undefined,
   };
 }
@@ -263,6 +264,8 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
             wraps: map.wraps,
             timedConnections: map.timedConnections,
             directionalConnections: map.directionalConnections,
+            switches: map.switches,
+            switchedLinks: map.switchedLinks,
             lockedTiles: map.lockedTiles,
             imageSrc: `data:${map.imageMime};base64,${map.image}`,
             borderColors: map.borderColors,

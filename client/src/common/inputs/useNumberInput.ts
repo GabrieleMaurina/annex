@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react';
-import { detentStep } from './detent';
+import { isNewWheelGesture, wrapStep } from './edgeWrap';
 
 export const PIXELS_PER_STEP = 8;
 export const DRAG_THRESHOLD = 4;
@@ -36,6 +36,7 @@ export function useNumberInput({
     startY: number;
     steps: number;
     dragging: boolean;
+    stepped: boolean;
   } | null>(null);
   const pointerStepRef = useRef(1);
   const latestRef = useRef({ value, min, max, onChange });
@@ -44,9 +45,15 @@ export function useNumberInput({
     latestRef.current = { value, min, max, onChange };
   });
 
-  const step = useCallback((delta: number) => {
+  const step = useCallback((delta: number, newGesture: boolean) => {
     const latest = latestRef.current;
-    const next = detentStep(latest.value, delta, latest.min, latest.max);
+    const next = wrapStep(
+      latest.value,
+      delta,
+      latest.min,
+      latest.max,
+      newGesture,
+    );
     if (next === latest.value) return;
     latest.value = next;
     latest.onChange(next);
@@ -59,7 +66,7 @@ export function useNumberInput({
       function onWheel(e: WheelEvent) {
         e.preventDefault();
         e.stopPropagation();
-        step(wheelDirection(e) * modifierStep(e));
+        step(wheelDirection(e) * modifierStep(e), isNewWheelGesture());
       }
       el.addEventListener('wheel', onWheel, { passive: false });
       return () => {
@@ -80,7 +87,7 @@ export function useNumberInput({
     if (delta === 0) return;
     e.preventDefault();
     e.stopPropagation();
-    step(delta * modifierStep(e));
+    step(delta * modifierStep(e), !e.repeat);
   }
 
   function onInput(e: React.FormEvent<HTMLElement>) {
@@ -104,6 +111,7 @@ export function useNumberInput({
       startY: e.clientY,
       steps: 0,
       dragging: false,
+      stepped: false,
     };
   }
 
@@ -121,8 +129,9 @@ export function useNumberInput({
     e.preventDefault();
     const steps = Math.round((dx + dy) / PIXELS_PER_STEP);
     if (steps === drag.steps) return;
-    step((steps - drag.steps) * modifierStep(e));
+    step((steps - drag.steps) * modifierStep(e), !drag.stepped);
     drag.steps = steps;
+    drag.stepped = true;
   }
 
   function endDrag(e: React.PointerEvent<HTMLElement>) {

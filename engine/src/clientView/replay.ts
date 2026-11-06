@@ -71,6 +71,14 @@ function viewAnimation(game: Game, a: ReplayAnimation): ReplayAnimation {
         cost: a.cost,
         playerId: aliasOf(game, a.playerId),
       });
+    case 'switch':
+      return complete<typeof a>({
+        type: a.type,
+        fromTerritoryId: a.fromTerritoryId,
+        switchId: a.switchId,
+        cost: a.cost,
+        playerId: aliasOf(game, a.playerId),
+      });
     case 'nuke':
       return complete<typeof a>({
         type: a.type,

@@ -486,6 +486,7 @@ function buildMap(request: WorldMapRequest): void {
             seas: request.seas,
             timed: request.timed,
             directional: request.directional,
+            switched: request.switched,
             mountains: request.mountains,
             rivers: request.rivers,
             majorRivers: request.rivers ? riverLines(regions, projection) : [],

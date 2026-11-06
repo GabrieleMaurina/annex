@@ -20,6 +20,7 @@ const LIVE_EVENTS = [
   'game:entrenched',
   'game:toxined',
   'game:unlocked',
+  'game:switchFlipped',
   'game:radiationChanged',
   'game:nukeLaunched',
   'game:attacked',

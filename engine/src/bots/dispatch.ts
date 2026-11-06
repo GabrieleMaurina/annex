@@ -4,6 +4,7 @@ import {
   attackMove,
   attackSelectEnd,
   attackSelectStart,
+  flipSwitch,
   unlockTile,
 } from '../territory/attack';
 import { playCardSet } from '../territory/cards';
@@ -90,6 +91,8 @@ export function dispatchBotAction(
       return attackSelectStart(playerId, p.territoryId as number);
     case 'game:unlock':
       return unlockTile(playerId, p.tileId, p.enter);
+    case 'game:flipSwitch':
+      return flipSwitch(playerId, p.switchId);
     case 'game:attackSelectEnd':
       return attackSelectEnd(playerId, p.territoryId as number);
     case 'game:attack':

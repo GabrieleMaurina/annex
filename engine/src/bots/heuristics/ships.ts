@@ -14,8 +14,21 @@ import {
 } from '../features/navy';
 import { frustrationLevel, minWinProbability } from '../features/pressure';
 import { hostileNeighbors, ownedTerritoryIds } from '../features/territory';
+import type { BotAction } from '../planning/planBotTurn';
 import { BotView } from '../view';
 import { attackOrder } from './attack';
+
+export function buyShipsAction(purchase: ShipPurchase): BotAction {
+  return {
+    event: 'game:buyShips',
+    payload: {
+      sourceTerritoryId: purchase.sourceTerritoryId,
+      seaTerritoryId: purchase.seaTerritoryId,
+      ships: purchase.ships,
+      fromPool: purchase.fromPool,
+    },
+  };
+}
 
 export interface ShipPurchase {
   sourceTerritoryId: number;

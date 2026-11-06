@@ -1,5 +1,6 @@
 import { TimedConnection } from '../types';
 import { withArcs } from './directionalConnections';
+import { linkKey } from './switches';
 
 export const MAX_TIMED_VALUE = 10;
 
@@ -23,11 +24,18 @@ export function roundsUntilToggle(
 
 export function withOpenConnections<
   T extends { id: number; neighbors: number[] },
->(nodes: T[], connections: TimedConnection[], round: number): T[] {
+>(
+  nodes: T[],
+  connections: TimedConnection[],
+  round: number,
+  switched: ReadonlyMap<string, boolean>,
+): T[] {
   return withArcs(
     nodes,
     connections
-      .filter((c) => isConnectionOpen(c, round))
+      .filter(
+        (c) => switched.get(linkKey(c.a, c.b)) ?? isConnectionOpen(c, round),
+      )
       .flatMap(({ a, b }): [number, number][] => [
         [a, b],
         [b, a],

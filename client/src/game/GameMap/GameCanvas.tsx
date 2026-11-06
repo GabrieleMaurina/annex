@@ -78,7 +78,8 @@ export default function GameCanvas({
           touchAction: 'none',
           cursor: pendingAttackEmoji
             ? 'crosshair'
-            : interactions.hoveredId !== null
+            : interactions.hoveredId !== null &&
+                interactions.isInteractable({ id: interactions.hoveredId })
               ? CURSOR_POINTER
               : interactions.isDragging
                 ? CURSOR_GRABBING

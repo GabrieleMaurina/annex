@@ -1,10 +1,13 @@
+import { linkKey } from 'engine';
 import type {
   DirectionalConnection,
   FixedTile,
   LockedTile,
   MapSeaTerritory,
+  MapSwitch,
   MapTerritory,
   MapWrap,
+  SwitchedLink,
   TimedConnection,
 } from '../../lib/types';
 import {
@@ -118,6 +121,13 @@ export function sortTerritories(
       wraps: t.wraps.map((w) => ({ ...w, id: idMap.get(w.id)! })),
       timed: t.timed.map((m) => ({ ...m, id: idMap.get(m.id)! })),
       directional: t.directional.map((m) => ({ ...m, id: idMap.get(m.id)! })),
+      switch: t.switch && {
+        ...t.switch,
+        wires: t.switch.wires.map((w) => ({
+          a: idMap.get(w.a)!,
+          b: idMap.get(w.b)!,
+        })),
+      },
     }),
   );
 
@@ -141,25 +151,52 @@ export function sortMapData(
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   fixedTiles: FixedTile[];
   territoryNames: string[];
   seaNames: string[];
   continentNames: string[];
 } {
-  const lockedIds = new Set(
-    territories.filter((t) => t.locked).map((t) => t.id),
+  const skippedIds = new Set(
+    territories.filter((t) => t.locked || t.switch).map((t) => t.id),
   );
   const sorted = sortTerritories(
     territories
-      .filter((t) => !t.locked)
+      .filter((t) => !skippedIds.has(t.id))
       .map((t) => ({
         ...t,
-        neighbors: t.neighbors.filter((n) => !lockedIds.has(n)),
+        neighbors: t.neighbors.filter((n) => !skippedIds.has(n)),
       })),
     bonuses,
     continentNames,
   );
+  const newId = (id: number) => sorted.idMap.get(id)!;
+  const switchVertices = sortByPosition(
+    territories.filter((t) => t.switch),
+    (t) => t.x,
+    (t) => t.y,
+  );
+  const gateOf = (a: number, b: number) => {
+    const t = sorted.territories.find((s) => s.id === a)!;
+    return [...t.timed, ...t.directional].find((m) => m.id === b)!.gate;
+  };
+  const switchedLinks = new Map<string, SwitchedLink>();
+  switchVertices.forEach((t, i) => {
+    for (const wire of t.switch!.wires) {
+      const a = newId(wire.a);
+      const b = newId(wire.b);
+      const entry = switchedLinks.get(linkKey(a, b)) ?? {
+        a,
+        b,
+        switches: [],
+        gate: gateOf(a, b),
+      };
+      entry.switches.push(i);
+      switchedLinks.set(linkKey(a, b), entry);
+    }
+  });
   const newTerritories: MapTerritory[] = sorted.territories
     .filter((t) => !t.isSea)
     .map((t) => ({
@@ -185,7 +222,13 @@ export function sortMapData(
     timedConnections: sorted.territories.flatMap((t) =>
       t.timed
         .filter((m) => t.id < m.id)
-        .map(({ id, ...values }) => ({ a: t.id, b: id, ...values })),
+        .map(({ id, delay, open, closed }) => ({
+          a: t.id,
+          b: id,
+          delay,
+          open,
+          closed,
+        })),
     ),
     directionalConnections: sorted.territories.flatMap((t) =>
       t.directional
@@ -197,6 +240,13 @@ export function sortMapData(
           backward,
         })),
     ),
+    switches: switchVertices.map((t) => ({
+      x: t.x,
+      y: t.y,
+      on: t.switch!.on,
+      neighbors: t.neighbors.map(newId),
+    })),
+    switchedLinks: [...switchedLinks.values()],
     lockedTiles: toLockedTiles(
       lockedLinks(tiles, territories),
       new Map([...sorted.idMap].filter(([, id]) => id < newTerritories.length)),

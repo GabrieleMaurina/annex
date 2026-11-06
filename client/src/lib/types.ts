@@ -6,6 +6,9 @@ import type {
   LockedTile,
   MapAspect,
   MapSize,
+  MapSwitch,
+  SwitchedLink,
+  SwitchGate,
   TileShape,
   TimedConnection,
 } from 'engine';
@@ -64,6 +67,7 @@ export interface HomeFilters {
   mapGenerationSeas: string;
   mapGenerationTimed: string;
   mapGenerationDirectional: string;
+  mapGenerationSwitched: string;
   mapGenerationUnlockable: string;
   playersMin: number;
   playersMax: number;
@@ -96,6 +100,7 @@ export interface GameSummary {
     seas: boolean;
     timed: boolean;
     directional: boolean;
+    switched: boolean;
     unlockable: boolean;
     aspect: MapAspect;
     mountains: boolean;
@@ -436,6 +441,7 @@ export interface GameState {
   toxinTerritories: ReplayToxinTerritory[];
   seas: { id: number; ships: { playerId: number; ships: number }[] }[];
   unlockedTileIds: number[];
+  switchesOn: number[];
   visibleTerritoryIds?: number[];
 }
 
@@ -570,6 +576,9 @@ export type {
   LockedTile,
   MapAspect,
   MapSize,
+  MapSwitch,
+  SwitchedLink,
+  SwitchGate,
   TileShape,
   TimedConnection,
 };
@@ -583,6 +592,7 @@ export interface GenerateMapInput {
   seas: boolean;
   timed: boolean;
   directional: boolean;
+  switched: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;
@@ -779,6 +789,7 @@ export interface GamesQuery {
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
   mapGenerationDirectional?: boolean;
+  mapGenerationSwitched?: boolean;
   mapGenerationUnlockable?: boolean;
   minRounds?: number;
   maxRounds?: number;
@@ -820,6 +831,7 @@ export interface HomeGamesQuery {
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
   mapGenerationDirectional?: boolean;
+  mapGenerationSwitched?: boolean;
   mapGenerationUnlockable?: boolean;
   playersMin?: number;
   playersMax?: number;

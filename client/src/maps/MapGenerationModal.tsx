@@ -23,6 +23,7 @@ import {
   MOUNTAINS_HELP,
   RIVERS_HELP,
   SEAS_HELP,
+  SWITCHES_HELP,
   TIMED_CONNECTIONS_HELP,
   UNLOCKABLE_HELP,
 } from '../lobby/settings/settingsHelp';
@@ -75,6 +76,7 @@ function sameInput(a: GenerateMapInput, b: GenerateMapInput): boolean {
     a.seas === b.seas &&
     a.timed === b.timed &&
     (a.directional ?? false) === b.directional &&
+    (a.switched ?? false) === b.switched &&
     a.unlockable === b.unlockable &&
     (b.type !== 'terrain' ||
       ((a.mountains ?? false) === b.mountains &&
@@ -112,6 +114,9 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
     const [directional, setDirectional] = useState(
       initial?.directional ?? DEFAULT_MAP_GENERATION.directional,
     );
+    const [switchedChecked, setSwitchedChecked] = useState(
+      initial?.switched ?? DEFAULT_MAP_GENERATION.switched,
+    );
     const [unlockableChecked, setUnlockableChecked] = useState(
       initial?.unlockable ?? DEFAULT_MAP_GENERATION.unlockable,
     );
@@ -122,6 +127,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
       initial?.rivers ?? DEFAULT_MAP_GENERATION.rivers,
     );
     const unlockable = type === 'tile' && unlockableChecked;
+    const switched = switchedChecked && (timed || directional) && !unlockable;
     const [generating, setGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState(initial ?? null);
     const [result, setResult] = useState<{
@@ -155,6 +161,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
         seas,
         timed,
         directional,
+        switched,
         unlockable,
         aspect,
         mountains,
@@ -327,7 +334,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                   id="map-generation-timed"
                   label={<Help tip={TIMED_CONNECTIONS_HELP}>Timed links</Help>}
                   checked={timed}
-                  disabled={unlockable}
+                  disabled={unlockable || (switched && !directional)}
                   onChange={(e) => setTimed(e.target.checked)}
                 />
               </div>
@@ -341,8 +348,18 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                     </Help>
                   }
                   checked={directional}
-                  disabled={unlockable}
+                  disabled={unlockable || (switched && !timed)}
                   onChange={(e) => setDirectional(e.target.checked)}
+                />
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <Form.Check
+                  type="checkbox"
+                  id="map-generation-switches"
+                  label={<Help tip={SWITCHES_HELP}>Switches</Help>}
+                  checked={switched}
+                  disabled={unlockable || (!timed && !directional)}
+                  onChange={(e) => setSwitchedChecked(e.target.checked)}
                 />
               </div>
               {type === 'tile' && (

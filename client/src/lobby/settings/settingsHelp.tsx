@@ -81,6 +81,9 @@ export const TIMED_CONNECTIONS_HELP =
 export const DIRECTIONAL_CONNECTIONS_HELP =
   'Turns some of the links drawn across water or void into directional links that only work one way. The moving arrows show the way you can attack, move and see through them. Some flip direction every few rounds and are marked with an hourglass and the number of rounds until they flip, the others never change.';
 
+export const SWITCHES_HELP =
+  'Needs Timed links or Directional links. Puts switches on some of those links. A switch sits on the border between two territories and is either on or off. During your attack phase, a territory next to a switch can flip it for 2 troops, which must leave at least 1 troop behind. A link controlled by switches ignores its schedule: a timed link is open while on and closed while off, and a directional link points one way while on and the other way while off. Some links have two switches and are on when either of them is on (OR) or only when both are (AND). Hover or tap a switch, or the switch on a link, to see what is wired to it.';
+
 export const UNLOCKABLE_HELP =
   'Tile maps only, not with Seas, Timed links or Directional links. Removes every link drawn across the void, so islands may start disconnected. Instead, the empty slots between tiles become locked tiles. During your attack phase, the locked tiles you can unlock are marked with a dot: a territory next to one can unlock it for 5 troops (Constant or Off cards) or 25% of the value of the next card set, paid from the attacking territory, which must keep at least 1 troop. The tile then becomes an empty territory you can move into straight away or conquer later. Unlocking never earns a card.';
 

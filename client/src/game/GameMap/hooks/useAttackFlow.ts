@@ -1,3 +1,4 @@
+import { FLIP_COST } from 'engine';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connector } from '../../../connector';
 import { playSound } from '../../../lib/sounds';
@@ -6,6 +7,7 @@ import type {
   BlitzOutcome,
   GameState,
   LockedTile,
+  MapSwitch,
 } from '../../../lib/types';
 import {
   DICE_ROLL_STEP_DURATION,
@@ -19,6 +21,11 @@ import {
 } from '../../logic/attack';
 import type { SeaTerritory, Territory } from '../../mapData';
 import type { AttackType, DiceRoll } from '../../panels/attack/AttackPanel';
+import {
+  flipSources,
+  flipTargets,
+  switchVertexId,
+} from '../../switches/switches';
 import { unlockCost, unlockSources, unlockTargets } from '../../tiles/unlock';
 
 type AttackSelectEndAck =
@@ -59,6 +66,7 @@ export function useAttackFlow({
   blitzEnabled,
   attackDice,
   closedTiles,
+  switches,
   cards,
   nextSetBaseValues,
   setGame,
@@ -80,6 +88,7 @@ export function useAttackFlow({
   blitzEnabled: boolean;
   attackDice: number;
   closedTiles: LockedTile[];
+  switches: MapSwitch[];
   cards: GameState['cards'];
   nextSetBaseValues: GameState['nextSetBaseValues'];
   setGame: (game: GameState) => void;
@@ -110,6 +119,7 @@ export function useAttackFlow({
   } | null>(null);
   const attackOptionIndexRef = useRef(0);
   const [unlockTileId, setUnlockTileId] = useState<number | null>(null);
+  const [flipSwitchId, setFlipSwitchId] = useState<number | null>(null);
 
   const maxBlitzTroops =
     attackStartTerritoryId !== null
@@ -119,6 +129,7 @@ export function useAttackFlow({
   const selectAttackStart = useCallback(
     (territoryId: number | null) => {
       setUnlockTileId(null);
+      setFlipSwitchId(null);
       connector.attackSelectStart({ territoryId }, (res: Ack) => {
         if (!res.ok) return;
         setGame(res.game);
@@ -199,6 +210,7 @@ export function useAttackFlow({
           selfId,
           unlockCost(game.cards, game.nextSetBaseValues),
         ),
+        ...flipSources(switches, freshOwnerById, selfId),
       ]);
       if (candidates.has(nextStartId)) {
         selectAttackStart(nextStartId);
@@ -213,6 +225,7 @@ export function useAttackFlow({
       portalsEnabled,
       unusableTerritoryById,
       closedTiles,
+      switches,
       selectAttackStart,
     ],
   );
@@ -272,11 +285,32 @@ export function useAttackFlow({
     setUnlockTileId(tileId);
   }, []);
 
+  const flipSwitch = useCallback(
+    (switchId: number) => {
+      setFlipSwitchId(null);
+      connector.flipSwitch({ switchId }, (res: Ack) => {
+        if (!res.ok) return;
+        setAttackDiceRoll(null);
+        setGame(res.game);
+      });
+    },
+    [setGame],
+  );
+
+  const selectFlipSwitch = useCallback((switchId: number) => {
+    playSound('select');
+    setFlipSwitchId(switchId);
+  }, []);
+
   const attackRevealing = attackDiceRoll !== null && !attackDiceSettled;
 
   const submitAttack = useCallback(() => {
     if (unlockTileId !== null) {
       unlock(unlockTileId, false);
+      return;
+    }
+    if (flipSwitchId !== null) {
+      flipSwitch(flipSwitchId);
       return;
     }
     if (attackRevealing) {
@@ -369,6 +403,8 @@ export function useAttackFlow({
   }, [
     unlockTileId,
     unlock,
+    flipSwitchId,
+    flipSwitch,
     attackRevealing,
     attackSelectedType,
     attackManualTroops,
@@ -404,6 +440,18 @@ export function useAttackFlow({
     setUnlockTileId(null);
   const selectedUnlockTile =
     unlockTiles.find((t) => t.id === unlockTileId) ?? null;
+  const switchSources =
+    attackActive && !attackPendingConquest
+      ? flipSources(switches, ownerById, selfId)
+      : new Set<number>();
+  const flipTargetIds =
+    attackEndTerritoryId === null && unlockTileId === null
+      ? flipTargets(switches, switchSources, attackStartTerritoryId)
+      : [];
+  if (flipSwitchId !== null && !flipTargetIds.includes(flipSwitchId))
+    setFlipSwitchId(null);
+  const selectedSwitch =
+    flipSwitchId === null ? null : (switches[flipSwitchId] ?? null);
   const attackStartCandidates =
     attackActive && !attackPendingConquest
       ? new Set([
@@ -418,13 +466,15 @@ export function useAttackFlow({
             unusableTerritoryById,
           ),
           ...sources,
+          ...switchSources,
         ])
       : new Set<number>();
   const attackEndCandidates =
     attackActive &&
     attackStartTerritoryId !== null &&
     attackEndTerritoryId === null &&
-    unlockTileId === null
+    unlockTileId === null &&
+    flipSwitchId === null
       ? new Set([
           ...getAttackEndCandidates(
             territories,
@@ -438,6 +488,7 @@ export function useAttackFlow({
             unusableTerritoryById,
           ),
           ...unlockTiles.map((t) => t.id),
+          ...flipTargetIds.map(switchVertexId),
         ])
       : new Set<number>();
   const attackMoveMinTroops = attackConquestMinTroops ?? 1;
@@ -487,6 +538,7 @@ export function useAttackFlow({
     !paused &&
     (attackRevealing ||
       selectedUnlockTile !== null ||
+      selectedSwitch !== null ||
       (attackEndTerritoryId !== null &&
         (attackPendingConquest || attackWinProbabilities !== null)) ||
       attackDiceOnly);
@@ -521,6 +573,11 @@ export function useAttackFlow({
       x: selectedUnlockTile.x,
       y: selectedUnlockTile.y,
       cost: unlockCostValue,
+    },
+    flip: selectedSwitch && {
+      x: selectedSwitch.x,
+      y: selectedSwitch.y,
+      cost: FLIP_COST,
     },
   };
 
@@ -563,5 +620,8 @@ export function useAttackFlow({
     unlockTileId,
     selectUnlockTile,
     unlock,
+    flipVertexId: flipSwitchId === null ? null : switchVertexId(flipSwitchId),
+    selectFlipSwitch,
+    flipSwitch,
   };
 }

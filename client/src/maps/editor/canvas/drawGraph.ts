@@ -1,7 +1,9 @@
 import { drawTerritoryNames } from '../../../game/GameMap/draw/drawNames';
+import { drawSwitchIcon } from '../../../game/GameMap/draw/drawSwitches';
 import { CANVAS_FONT_FAMILY } from '../../../game/GameMap/helpers';
 import type { PlaceNames } from '../../../game/mapData';
 import type { WrapAxes } from '../../../game/mapMath';
+import { SWITCH_WIDTH_RADII } from '../../../game/switches/switches';
 import { contrastTextColor } from '../../../lib/palette';
 import { edgeKey, wrapEdgeSegments, type Point } from '../mapCanvasGeometry';
 import { borderScale } from '../mapViewport';
@@ -9,6 +11,7 @@ import type {
   LinkMode,
   EditorTerritory as Territory,
 } from '../model/editorTypes';
+import { switchLabels } from '../model/switches';
 import {
   continentColor,
   LOCKED_MARKER_COLOR,
@@ -16,14 +19,26 @@ import {
 } from '../palette';
 import {
   getVertexRadius,
+  NO_WRAP,
   SEA_SIZE_MULTIPLIER,
   segmentWouldCross,
   wrapOf,
   type Viewport,
 } from './canvasGeometry';
+import {
+  continentLabels,
+  labelBox,
+  labelFontSize,
+  linkMidpoint,
+  linkSegments,
+  type GraphPick,
+} from './graphPick';
 import type { ClickableCheck } from './useClickableCheck';
 
 const LOCKED_DASH = 0.35;
+const WIRE_COLOR = '#ffd43b';
+const PICK_COLOR = '#ffffff';
+const PICK_LINK_COLOR = '#0dcaf0';
 
 interface DrawGraphParams {
   ctx: CanvasRenderingContext2D;
@@ -39,6 +54,8 @@ interface DrawGraphParams {
   allowCrossover: boolean;
   clickable?: ClickableCheck | null;
   linkMode: LinkMode;
+  pick: GraphPick;
+  continentNames: string[];
 }
 
 const placeNamesCache = new WeakMap<Territory[], PlaceNames>();
@@ -110,6 +127,8 @@ export function drawGraph({
   allowCrossover,
   clickable,
   linkMode,
+  pick,
+  continentNames,
 }: DrawGraphParams) {
   const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = viewport;
   const toScreen = (p: Point): Point => ({
@@ -156,6 +175,22 @@ export function drawGraph({
       }
     }
   };
+  if (pick?.kind === 'link') {
+    ctx.save();
+    ctx.strokeStyle = PICK_LINK_COLOR;
+    ctx.lineWidth = 12 * zoom;
+    ctx.lineCap = 'round';
+    for (const [a, b] of linkSegments(byId, pick.a, pick.b, viewport)) {
+      const p1 = toScreen(a);
+      const p2 = toScreen(b);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 2 * zoom;
   drawEdges((t) => t.neighbors);
@@ -186,6 +221,27 @@ export function drawGraph({
   }
   ctx.restore();
 
+  ctx.save();
+  ctx.strokeStyle = WIRE_COLOR;
+  ctx.lineWidth = 3 * zoom;
+  ctx.setLineDash([8 * zoom, 6 * zoom]);
+  for (const t of territories) {
+    if (!t.switch) continue;
+    const from = toScreen(t);
+    for (const wire of t.switch.wires) {
+      const to = linkMidpoint(byId, wire.a, wire.b, viewport);
+      if (!to) continue;
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(to.x, to.y, 6 * zoom, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
   if (rejectedEdge) {
     ctx.strokeStyle = '#ff0000';
     ctx.lineWidth = 3 * zoom;
@@ -204,6 +260,10 @@ export function drawGraph({
     if (fromTerritory) {
       const excludeIds = new Set<number>([selectedVertexId]);
       if (hoveredVertexId !== null) excludeIds.add(hoveredVertexId);
+      const hovered =
+        hoveredVertexId === null ? undefined : byId.get(hoveredVertexId);
+      const switchPair = !!(fromTerritory.switch || hovered?.switch);
+      const wrap = switchPair ? NO_WRAP : forceWrap;
       const overlapping =
         !allowCrossover &&
         segmentWouldCross(
@@ -212,18 +272,20 @@ export function drawGraph({
           fromTerritory,
           mouseWorldPos,
           excludeIds,
-          forceWrap,
+          wrap,
         );
       ctx.save();
       ctx.strokeStyle = overlapping ? '#ff0000' : '#000000';
-      ctx.lineWidth = (linkMode !== 'normal' ? 3 : 2) * zoom;
-      if (linkMode !== 'normal') ctx.setLineDash(timedDash);
+      const dashed =
+        !switchPair && (linkMode === 'timed' || linkMode === 'directional');
+      ctx.lineWidth = (dashed ? 3 : 2) * zoom;
+      if (dashed) ctx.setLineDash(timedDash);
       for (const [a, b] of wrapEdgeSegments(
         fromTerritory,
         mouseWorldPos,
         imgW,
         imgH,
-        forceWrap,
+        wrap,
       )) {
         const p1 = toScreen(a);
         const p2 = toScreen(b);
@@ -238,10 +300,33 @@ export function drawGraph({
 
   const vertexRadius = getVertexRadius(imgW, imgH);
   const vertexBorderScale = borderScale((vertexRadius * scaleX) / zoom);
+  const labels = switchLabels(territories);
   for (const t of territories) {
     const p = toScreen(t);
     const isSelected = selectedVertexId === t.id;
     const isHovered = hoveredVertexId === t.id;
+    if (t.switch) {
+      const width = SWITCH_WIDTH_RADII * vertexRadius * scaleX;
+      const scale = zoom * vertexBorderScale;
+      drawSwitchIcon(
+        ctx,
+        p,
+        width,
+        t.switch.on ? 1 : 0,
+        scale,
+        isSelected ? '#ffffff' : isHovered ? '#bbbbbb' : '#000000',
+      );
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3 * scale;
+      ctx.font = `bold ${vertexRadius * scaleX * 0.8}px ${CANVAS_FONT_FAMILY}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const labelAt = p.y + vertexRadius * scaleX * 0.6;
+      ctx.strokeText(labels.get(t.id)!, p.x, labelAt);
+      ctx.fillText(labels.get(t.id)!, p.x, labelAt);
+      continue;
+    }
     const fill = t.isSea
       ? SEA_MARKER_COLOR
       : t.locked
@@ -288,11 +373,33 @@ export function drawGraph({
 
   drawTerritoryNames(
     ctx,
-    territories.filter((t) => !t.isSea),
+    territories.filter((t) => !t.isSea && !t.switch),
     territories.filter((t) => t.isSea),
     editorPlaceNames(territories),
     toScreen,
     scaleX,
     vertexRadius * scaleX,
   );
+
+  ctx.save();
+  ctx.font = `bold ${labelFontSize(viewport)}px ${CANVAS_FONT_FAMILY}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const shown = continentLabels(territories, continentNames).filter(
+    (label) => pick?.kind === 'continent' && pick.id === label.id,
+  );
+  for (const label of shown) {
+    const box = labelBox(label, viewport);
+    const color = continentColor(label.id);
+    ctx.beginPath();
+    ctx.roundRect(box.x, box.y, box.w, box.h, box.h / 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.lineWidth = 4 * zoom;
+    ctx.strokeStyle = PICK_COLOR;
+    ctx.stroke();
+    ctx.fillStyle = contrastTextColor(color);
+    ctx.fillText(label.text, box.x + box.w / 2, box.y + box.h / 2);
+  }
+  ctx.restore();
 }

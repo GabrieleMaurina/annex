@@ -16,6 +16,7 @@ import {
   EARTH_MOUNTAINS_HELP,
   EARTH_RIVERS_HELP,
   SEAS_HELP,
+  SWITCHES_HELP,
   TIMED_CONNECTIONS_HELP,
 } from '../../../lobby/settings/settingsHelp';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../../ui/containers/panelStyle';
@@ -94,6 +95,7 @@ interface EarthSession {
   seas: boolean;
   timed: boolean;
   directional: boolean;
+  switched: boolean;
   mountains: boolean;
   rivers: boolean;
   greenAreas: boolean;
@@ -111,6 +113,7 @@ const session: EarthSession = {
   seas: false,
   timed: false,
   directional: false,
+  switched: false,
   mountains: false,
   rivers: false,
   greenAreas: false,
@@ -244,6 +247,8 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
   const [seas, setSeas] = useState(session.seas);
   const [timed, setTimed] = useState(session.timed);
   const [directional, setDirectional] = useState(session.directional);
+  const [switchedChecked, setSwitchedChecked] = useState(session.switched);
+  const switched = switchedChecked && (timed || directional);
   const [mountains, setMountains] = useState(session.mountains);
   const [rivers, setRivers] = useState(session.rivers);
   const [greenAreas, setGreenAreas] = useState(session.greenAreas);
@@ -274,6 +279,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
       seas,
       timed,
       directional,
+      switched,
       mountains,
       rivers,
       greenAreas,
@@ -428,6 +434,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
       seas,
       timed,
       directional,
+      switched,
       mountains,
       rivers,
       greenAreas,
@@ -590,7 +597,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
                 type="checkbox"
                 label={<Help tip={TIMED_CONNECTIONS_HELP}>Timed links</Help>}
                 checked={timed}
-                disabled={!!job}
+                disabled={!!job || (switched && !directional)}
                 onChange={(e) => setTimed(e.target.checked)}
               />
             </div>
@@ -603,8 +610,17 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
                   </Help>
                 }
                 checked={directional}
-                disabled={!!job}
+                disabled={!!job || (switched && !timed)}
                 onChange={(e) => setDirectional(e.target.checked)}
+              />
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                type="checkbox"
+                label={<Help tip={SWITCHES_HELP}>Switches</Help>}
+                checked={switched}
+                disabled={!!job || (!timed && !directional)}
+                onChange={(e) => setSwitchedChecked(e.target.checked)}
               />
             </div>
             <div className="d-flex align-items-center gap-2">

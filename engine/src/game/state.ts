@@ -9,6 +9,7 @@ import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats } from './progression/stats';
 import { fortifyFullPath, sailFullPath } from './world/connectivity';
 import { TERRITORY_CAP, totalTroopsCap } from './world/starvation';
+import { switchesOn } from './world/switches';
 
 function seaState(game: Game) {
   return getGameMap(game).seaTerritories.map((sea) => ({
@@ -94,6 +95,7 @@ export function gameSummary(game: Game) {
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
           directional: game.generatedMap.directional,
+          switched: game.generatedMap.switched,
           unlockable: game.generatedMap.unlockable,
           aspect: game.generatedMap.aspect,
           mountains: game.generatedMap.mountains,
@@ -244,6 +246,7 @@ export function gameState(game: Game) {
           seas: game.generatedMap.seas,
           timed: game.generatedMap.timed,
           directional: game.generatedMap.directional,
+          switched: game.generatedMap.switched,
           unlockable: game.generatedMap.unlockable,
           aspect: game.generatedMap.aspect,
           mountains: game.generatedMap.mountains,
@@ -423,6 +426,7 @@ export function gameState(game: Game) {
     ),
     seas: seaState(game),
     unlockedTileIds: [...game.unlockedTileIds],
+    switchesOn: switchesOn(game),
     visibleTerritoryIds: undefined as number[] | undefined,
   };
 }

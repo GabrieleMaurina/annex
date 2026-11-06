@@ -7,6 +7,7 @@ import {
   SEA_BRUSH,
   type EditorTerritory as Territory,
 } from '../model/editorTypes';
+import { regionVertices } from '../model/switches';
 import { getVertexRadius } from './canvasGeometry';
 
 const MIN_LINK_REACH = 16;
@@ -26,7 +27,7 @@ export function findTerritories(
   const firstId = nextTerritoryId(territories);
   const found = findUnmarkedRegions(
     surface,
-    territories,
+    regionVertices(territories),
     borderColors,
     brushId === SEA_BRUSH,
     Math.PI * radius * radius,
@@ -49,7 +50,7 @@ export function linkTerritories(
   const byId = new Map(all.map((t) => [t.id, t]));
   const borders = sharedBorders(
     surface,
-    all,
+    regionVertices(all),
     borderColors,
     linkReach(brushSize),
   );

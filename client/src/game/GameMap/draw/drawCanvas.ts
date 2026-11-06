@@ -6,6 +6,7 @@ import type {
   GameMode,
   GameState,
   LockedTile,
+  MapSwitch,
 } from '../../../lib/types';
 import {
   areAnimationsDisabled,
@@ -68,6 +69,7 @@ import {
   strokeSharedBorders,
   unlockedTileLayer,
 } from './drawRegions';
+import { drawSwitches, type SwitchedLinkSpot } from './drawSwitches';
 import { drawDirectionalLinks, drawTimedLinks } from './drawTimedLinks';
 
 export interface DrawCanvasParams {
@@ -130,6 +132,8 @@ export interface DrawCanvasParams {
   regions: ClickableRegions | null;
   timedLinks: TimedLink[];
   directionalLinks: DirectionalLink[];
+  switches: MapSwitch[];
+  switchOn: boolean[];
   unlockTiles: LockedTile[];
   placeNames: PlaceNames;
 }
@@ -187,6 +191,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     regions,
     timedLinks,
     directionalLinks,
+    switches,
+    switchOn,
     unlockTiles,
     placeNames,
   } = params;
@@ -373,8 +379,19 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     mapScale: scaleX,
     backdrop: { image: imageRef.current, regions, fillColors },
   };
-  drawTimedLinks(ctx, timedLinks, linkLayout);
-  drawDirectionalLinks(ctx, directionalLinks, linkLayout);
+  const spots: SwitchedLinkSpot[] = [];
+  drawTimedLinks(ctx, timedLinks, linkLayout, spots);
+  drawDirectionalLinks(ctx, directionalLinks, linkLayout, spots);
+  drawSwitches(ctx, {
+    switches,
+    switchOn,
+    spots,
+    nodeState,
+    toScreen,
+    screenRadius: VERTEX_RADIUS * scaleX,
+    uiScale,
+    image: imageRef.current,
+  });
   drawAnimations(
     ctx,
     toScreen,

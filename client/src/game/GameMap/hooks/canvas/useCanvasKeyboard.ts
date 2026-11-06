@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { isNewWheelGesture } from '../../../../common/inputs/edgeWrap';
 import {
   modifierStep,
   wheelDirection,
@@ -96,6 +97,7 @@ export function useCanvasKeyboard({
   attackPanelOpen,
   attackShowPendingConquest,
   unlockTileId,
+  flipVertexId,
   setAttackMoveTroops,
   cycleAttackOption,
   submitAttackMove,
@@ -109,39 +111,48 @@ export function useCanvasKeyboard({
   zoomAround: ReturnType<typeof useMapViewportAnimation>['zoomAround'];
 }) {
   const stepTroopPanel = useCallback(
-    (delta: number) => {
+    (delta: number, newGesture: boolean) => {
       const at = performance.now();
       if (deployPanelOpen) {
         setDeployTroops((prev) =>
-          stepTroops(prev, delta, 1, deployMaxTroops, at),
+          stepTroops(prev, delta, 1, deployMaxTroops, newGesture, at),
         );
         return true;
       }
       if (deploySeaPanelOpen) {
         setDeploySeaShips((prev) =>
-          stepTroops(prev, delta, 1, deploySeaMaxShips, at),
+          stepTroops(prev, delta, 1, deploySeaMaxShips, newGesture, at),
         );
         return true;
       }
       if (sailPanelOpen) {
-        setSailShips((prev) => stepTroops(prev, delta, 1, sailMaxShips, at));
+        setSailShips((prev) =>
+          stepTroops(prev, delta, 1, sailMaxShips, newGesture, at),
+        );
         return true;
       }
       if (fortifyPanelOpen) {
         setFortifyTroops((prev) =>
-          stepTroops(prev, delta, 1, fortifyMaxTroops, at),
+          stepTroops(prev, delta, 1, fortifyMaxTroops, newGesture, at),
         );
         return true;
       }
       if (entrenchPanelOpen) {
         setEntrenchTroops((prev) =>
-          stepTroops(prev, delta, 1, entrenchMaxTroops, at),
+          stepTroops(prev, delta, 1, entrenchMaxTroops, newGesture, at),
         );
         return true;
       }
       if (attackPanelOpen && attackShowPendingConquest) {
         setAttackMoveTroops((prev) =>
-          stepTroops(prev, delta, attackMoveMinTroops, attackMoveMaxTroops, at),
+          stepTroops(
+            prev,
+            delta,
+            attackMoveMinTroops,
+            attackMoveMaxTroops,
+            newGesture,
+            at,
+          ),
         );
         return true;
       }
@@ -371,7 +382,7 @@ export function useCanvasKeyboard({
       if (
         isArrowKey &&
         !isTypingTarget(e.target) &&
-        stepTroopPanel(arrowDelta * modifierStep(e))
+        stepTroopPanel(arrowDelta * modifierStep(e), !e.repeat)
       ) {
         e.preventDefault();
         return;
@@ -379,6 +390,7 @@ export function useCanvasKeyboard({
       if (
         attackPanelOpen &&
         unlockTileId === null &&
+        flipVertexId === null &&
         !attackShowPendingConquest &&
         !attackDiceOnly &&
         !isTypingTarget(e.target) &&
@@ -472,6 +484,7 @@ export function useCanvasKeyboard({
     cancelAttack,
     attackPanelOpen,
     unlockTileId,
+    flipVertexId,
     submitAttack,
     submitAttackMove,
     stepTroopPanel,
@@ -507,10 +520,14 @@ export function useCanvasKeyboard({
   useEffect(() => {
     function onWheel(e: WheelEvent) {
       e.preventDefault();
-      if (stepTroopPanel(wheelDirection(e) * modifierStep(e))) return;
+      if (
+        stepTroopPanel(wheelDirection(e) * modifierStep(e), isNewWheelGesture())
+      )
+        return;
       if (
         attackPanelOpen &&
         unlockTileId === null &&
+        flipVertexId === null &&
         !attackShowPendingConquest &&
         !attackDiceOnly
       ) {
@@ -518,7 +535,8 @@ export function useCanvasKeyboard({
         cycleAttackOption(e.deltaY < 0 ? -1 : 1);
         return;
       }
-      if (attackPanelOpen && unlockTileId === null) return;
+      if (attackPanelOpen && unlockTileId === null && flipVertexId === null)
+        return;
       zoomAround(e.clientX, e.clientY, e.deltaY < 0 ? 1.1 : 0.9);
     }
     window.addEventListener('wheel', onWheel, { passive: false });
@@ -527,6 +545,7 @@ export function useCanvasKeyboard({
     stepTroopPanel,
     attackPanelOpen,
     unlockTileId,
+    flipVertexId,
     attackShowPendingConquest,
     attackDiceOnly,
     cycleAttackOption,

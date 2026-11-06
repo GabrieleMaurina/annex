@@ -19,6 +19,7 @@ import {
 import { CANVAS_FONT_FAMILY } from '../helpers';
 import type { DirectionalLink } from '../hooks/view/useDirectionalConnections';
 import type { TimedLink } from '../hooks/view/useTimedConnections';
+import type { SwitchedLinkSpot } from './drawSwitches';
 
 const HOURGLASS_SRC = '/icons/hourglass.svg';
 const ICON_RADII = 1;
@@ -337,6 +338,7 @@ export function drawTimedLinks(
   ctx: CanvasRenderingContext2D,
   links: TimedLink[],
   layout: LinkLayout,
+  spots: SwitchedLinkSpot[],
 ) {
   const screenRadius = layout.vertexRadius * layout.mapScale;
   const animated = !areAnimationsDisabled();
@@ -353,7 +355,10 @@ export function drawTimedLinks(
       animated ? phaseAt(motion, now) : 0,
       animated ? closednessAt(motion, now) : link.open ? 0 : 1,
     );
-    drawRoundsLeft(ctx, layout, geometry, link.roundsLeft);
+    if (link.control)
+      spots.push({ at: layout.toScreen(geometry.at), control: link.control });
+    else if (link.roundsLeft !== null)
+      drawRoundsLeft(ctx, layout, geometry, link.roundsLeft);
   }
 }
 
@@ -415,6 +420,7 @@ export function drawDirectionalLinks(
   ctx: CanvasRenderingContext2D,
   links: DirectionalLink[],
   layout: LinkLayout,
+  spots: SwitchedLinkSpot[],
 ) {
   const screenRadius = layout.vertexRadius * layout.mapScale;
   const animated = !areAnimationsDisabled();
@@ -431,7 +437,9 @@ export function drawDirectionalLinks(
       animated ? flipPhaseAt(motion, now) : 0,
       animated ? flipTurnAt(motion, now) : link.forward ? 0 : 2,
     );
-    if (link.roundsLeft !== null)
+    if (link.control)
+      spots.push({ at: layout.toScreen(geometry.at), control: link.control });
+    else if (link.roundsLeft !== null)
       drawRoundsLeft(ctx, layout, geometry, link.roundsLeft);
   }
 }

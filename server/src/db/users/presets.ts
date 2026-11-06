@@ -43,6 +43,7 @@ export interface EarthRecipe {
   seas: boolean;
   timed: boolean;
   directional: boolean;
+  switched: boolean;
   mountains: boolean;
   rivers: boolean;
   greenAreas: boolean;
@@ -91,6 +92,7 @@ const earthSchema = {
       EARTH_FLAGS.map((key) => [key, { bsonType: 'bool' }]),
     ),
     directional: { bsonType: 'bool' },
+    switched: { bsonType: 'bool' },
     greenAreas: { bsonType: 'bool' },
     name: { bsonType: 'string' },
     focus: {
@@ -210,6 +212,8 @@ function sanitizeEarth(raw: unknown): EarthRecipe | null {
     seas: r.seas as boolean,
     timed: r.timed as boolean,
     directional: r.directional === true,
+    switched:
+      r.switched === true && (r.timed === true || r.directional === true),
     mountains: r.mountains as boolean,
     rivers: r.rivers as boolean,
     greenAreas: r.greenAreas !== false,

@@ -75,6 +75,7 @@ const DEFAULT_FILTERS: HomeFilters = {
   mapGenerationSeas: '',
   mapGenerationTimed: '',
   mapGenerationDirectional: '',
+  mapGenerationSwitched: '',
   mapGenerationUnlockable: '',
   playersMin: PLAYERS_MIN,
   playersMax: PLAYERS_MAX,
@@ -175,6 +176,9 @@ function Home({
   const [mapGenerationDirectional, setMapGenerationDirectional] = useState(
     initial.mapGenerationDirectional,
   );
+  const [mapGenerationSwitched, setMapGenerationSwitched] = useState(
+    initial.mapGenerationSwitched,
+  );
   const [mapGenerationUnlockable, setMapGenerationUnlockable] = useState(
     initial.mapGenerationUnlockable,
   );
@@ -218,6 +222,7 @@ function Home({
     mapGenerationSeas,
     mapGenerationTimed,
     mapGenerationDirectional,
+    mapGenerationSwitched,
     mapGenerationUnlockable,
     playersMin,
     playersMax,
@@ -241,6 +246,7 @@ function Home({
     mapGenerationSeas,
     mapGenerationTimed,
     mapGenerationDirectional,
+    mapGenerationSwitched,
     mapGenerationUnlockable,
     playersMin,
     playersMax,
@@ -302,6 +308,10 @@ function Home({
         mapGenerationDirectional:
           generated && mapGenerationDirectional
             ? mapGenerationDirectional === 'yes'
+            : undefined,
+        mapGenerationSwitched:
+          generated && mapGenerationSwitched
+            ? mapGenerationSwitched === 'yes'
             : undefined,
         mapGenerationUnlockable:
           generated && mapGenerationUnlockable
@@ -383,6 +393,7 @@ function Home({
     setMapGenerationSeas('');
     setMapGenerationTimed('');
     setMapGenerationDirectional('');
+    setMapGenerationSwitched('');
     setMapGenerationUnlockable('');
     setPlayersMin(PLAYERS_MIN);
     setPlayersMax(PLAYERS_MAX);
@@ -650,6 +661,7 @@ function Home({
                   seas={mapGenerationSeas}
                   timed={mapGenerationTimed}
                   directional={mapGenerationDirectional}
+                  switched={mapGenerationSwitched}
                   unlockable={mapGenerationUnlockable}
                   onMapName={resetPage(setMapName)}
                   onSize={resetPage(setMapGenerationSize)}
@@ -659,6 +671,7 @@ function Home({
                   onSeas={resetPage(setMapGenerationSeas)}
                   onTimed={resetPage(setMapGenerationTimed)}
                   onDirectional={resetPage(setMapGenerationDirectional)}
+                  onSwitched={resetPage(setMapGenerationSwitched)}
                   onUnlockable={resetPage(setMapGenerationUnlockable)}
                 />
               </div>

@@ -22,6 +22,7 @@ type OwnParamKeys =
   | 'regions'
   | 'imgDims'
   | 'VERTEX_RADIUS'
+  | 'switches'
   | 'gameEnded'
   | 'isMyTurn'
   | 'paused'
@@ -147,6 +148,9 @@ export function useGameCanvasInteractions({
     unlockTileId: attackFlow.unlockTileId,
     selectUnlockTile: attackFlow.selectUnlockTile,
     unlock: attackFlow.unlock,
+    flipVertexId: attackFlow.flipVertexId,
+    selectFlipSwitch: attackFlow.selectFlipSwitch,
+    flipSwitch: attackFlow.flipSwitch,
     pendingAttackEmoji: emojiUI.pendingAttackEmoji,
     setPendingAttackEmoji: emojiUI.setPendingAttackEmoji,
     sendEmoji: emojiUI.sendEmoji,

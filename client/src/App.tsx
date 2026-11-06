@@ -32,7 +32,9 @@ import type {
   DirectionalConnection,
   IdentifyResult,
   LockedTile,
+  MapSwitch,
   MapWrap,
+  SwitchedLink,
   TimedConnection,
 } from './lib/types';
 import MapEditor from './maps/MapEditor';
@@ -314,6 +316,8 @@ function App() {
       wraps: MapWrap[];
       timedConnections: TimedConnection[];
       directionalConnections: DirectionalConnection[];
+      switches: MapSwitch[];
+      switchedLinks: SwitchedLink[];
       lockedTiles: LockedTile[];
       imageSrc: string;
       borderColors: string[];
@@ -328,6 +332,8 @@ function App() {
         wraps: data.wraps,
         timedConnections: data.timedConnections,
         directionalConnections: data.directionalConnections,
+        switches: data.switches,
+        switchedLinks: data.switchedLinks,
         lockedTiles: data.lockedTiles,
         imageSrc: data.imageSrc,
         borderColors: data.borderColors,

@@ -1,4 +1,4 @@
-import { withUnlockedTiles } from 'engine';
+import { linkKey, switchedLinkStates, withUnlockedTiles } from 'engine';
 import { useMemo } from 'react';
 import type {
   DirectionalConnection,
@@ -8,6 +8,7 @@ import type {
 import type { Territory } from '../../../mapData';
 import type { ClickableRegions } from '../../../regions/clickableRegions';
 import { withUnlockedRegions } from '../../../regions/unlockedRegions';
+import type { MapSwitching } from '../../../switches/switches';
 import { tileLineWidth } from '../../../tiles/tileGeometry';
 import { useDirectionalConnections } from './useDirectionalConnections';
 import { useTimedConnections } from './useTimedConnections';
@@ -17,6 +18,8 @@ export function useMapGraph({
   mapRegions,
   timedConnections,
   directionalConnections,
+  switching,
+  switchesOn,
   lockedTiles,
   unlockedTileIds,
   round,
@@ -25,6 +28,8 @@ export function useMapGraph({
   mapRegions: ClickableRegions | null;
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switching: MapSwitching;
+  switchesOn: number[];
   lockedTiles: LockedTile[];
   unlockedTileIds: number[];
   round: number;
@@ -46,11 +51,31 @@ export function useMapGraph({
       closedTiles: lockedTiles.filter((tile) => !unlocked.has(tile.id)),
     };
   }, [mapTerritories, mapRegions, lockedTiles, unlockedKey]);
-  const timed = useTimedConnections(openTerritories, timedConnections, round);
+  const onKey = switchesOn.join(',');
+  const { switchOn, switched, controls } = useMemo(() => {
+    const on = new Set(onKey.split(',').filter(Boolean).map(Number));
+    const states = switching.switches.map((_, i) => on.has(i));
+    return {
+      switchOn: states,
+      switched: switchedLinkStates(switching.switchedLinks, states),
+      controls: new Map(
+        switching.switchedLinks.map((link) => [linkKey(link.a, link.b), link]),
+      ),
+    };
+  }, [switching, onKey]);
+  const timed = useTimedConnections(
+    openTerritories,
+    timedConnections,
+    round,
+    switched,
+    controls,
+  );
   const { territories, directionalLinks } = useDirectionalConnections(
     timed.territories,
     directionalConnections,
     round,
+    switched,
+    controls,
   );
   return {
     territories,
@@ -59,5 +84,6 @@ export function useMapGraph({
     closedTiles,
     timedLinks: timed.timedLinks,
     directionalLinks,
+    switchOn,
   };
 }

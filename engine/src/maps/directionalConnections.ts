@@ -1,4 +1,5 @@
 import { DirectionalConnection, TimedConnection } from '../types';
+import { linkKey } from './switches';
 
 export function pointsForward(
   connection: DirectionalConnection,
@@ -34,11 +35,18 @@ export function withArcs<T extends { id: number; neighbors: number[] }>(
 
 export function withDirectedConnections<
   T extends { id: number; neighbors: number[] },
->(nodes: T[], connections: DirectionalConnection[], round: number): T[] {
+>(
+  nodes: T[],
+  connections: DirectionalConnection[],
+  round: number,
+  switched: ReadonlyMap<string, boolean>,
+): T[] {
   return withArcs(
     nodes,
     connections.map((c): [number, number] =>
-      pointsForward(c, round) ? [c.a, c.b] : [c.b, c.a],
+      (switched.get(linkKey(c.a, c.b)) ?? pointsForward(c, round))
+        ? [c.a, c.b]
+        : [c.b, c.a],
     ),
   );
 }
@@ -49,6 +57,7 @@ export function withEventualLinks<
   nodes: T[],
   timedConnections: TimedConnection[],
   directionalConnections: DirectionalConnection[],
+  switchedKeys: ReadonlySet<string> = new Set(),
 ): T[] {
   return withArcs(nodes, [
     ...timedConnections.flatMap(({ a, b }): [number, number][] => [
@@ -57,7 +66,7 @@ export function withEventualLinks<
     ]),
     ...directionalConnections.flatMap(
       ({ a, b, backward }): [number, number][] =>
-        backward > 0
+        backward > 0 || switchedKeys.has(linkKey(a, b))
           ? [
               [a, b],
               [b, a],

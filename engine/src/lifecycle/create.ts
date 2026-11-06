@@ -158,6 +158,7 @@ export function createGame(
     fogMemory: new Map(),
     territoryToxins: new Map(),
     unlockedTileIds: new Set(),
+    flippedSwitchIds: new Set(),
     capitalTerritoryIds: new Set(),
     capitalRefunds: new Map(),
     playerMissions: new Map(),

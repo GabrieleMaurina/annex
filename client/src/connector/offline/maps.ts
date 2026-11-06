@@ -11,6 +11,8 @@ export interface LoadedPlayerMap {
   wraps: GameMap['wraps'];
   timedConnections: GameMap['timedConnections'];
   directionalConnections: GameMap['directionalConnections'];
+  switches: GameMap['switches'];
+  switchedLinks: GameMap['switchedLinks'];
   lockedTiles: GameMap['lockedTiles'];
   imageSrc: string;
   borderColors: string[];
@@ -33,6 +35,8 @@ export function loadPlayerMap(id: string): Promise<LoadedPlayerMap> {
           wraps: map.wraps,
           timedConnections: map.timedConnections,
           directionalConnections: map.directionalConnections,
+          switches: map.switches,
+          switchedLinks: map.switchedLinks,
           lockedTiles: map.lockedTiles,
           imageSrc: map.image,
           borderColors: map.borderColors,

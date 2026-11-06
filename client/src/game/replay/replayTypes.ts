@@ -55,6 +55,13 @@ export type ReplayAnimation =
       playerId: number;
     }
   | {
+      type: 'switch';
+      fromTerritoryId: number;
+      switchId: number;
+      cost: number;
+      playerId: number;
+    }
+  | {
       type: 'nuke';
       fromTerritoryId: number;
       targetTerritoryId: number;

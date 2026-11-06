@@ -247,6 +247,16 @@ export function createLogFormatter() {
           b.append(plural(n('cost'), 'troop'));
         });
         break;
+      case 'game:switchFlipped':
+        log(colorFor(n('playerId')), (b) => {
+          actor(b, n('playerId'));
+          b.append(` flipped switch #${n('switchId') + 1}`);
+          b.line('From');
+          place(b, n('fromTerritoryId'), '');
+          b.line('Cost');
+          b.append(plural(n('cost'), 'troop'));
+        });
+        break;
       case 'game:nukeLaunched': {
         const launcherId = n('playerId');
         const eliminatedIds = (p.eliminatedPlayerIds as number[]) ?? [];

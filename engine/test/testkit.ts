@@ -93,6 +93,8 @@ export function buildMap(spec: MapSpec): GameMap {
     wraps: [],
     timedConnections: [],
     directionalConnections: [],
+    switches: [],
+    switchedLinks: [],
     lockedTiles: Object.entries(spec.lockedTiles ?? {}).map(
       ([id, tileNeighbors]) => ({
         id: Number(id),
@@ -223,6 +225,7 @@ function baseGame(name: string): Game {
     fogMemory: new Map(),
     territoryToxins: new Map(),
     unlockedTileIds: new Set(),
+    flippedSwitchIds: new Set(),
     capitalTerritoryIds: new Set(),
     capitalRefunds: new Map(),
     playerMissions: new Map(),

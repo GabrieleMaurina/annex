@@ -188,6 +188,7 @@ export function viewGameStateFor(
       }),
     ),
     unlockedTileIds: s.unlockedTileIds,
+    switchesOn: s.switchesOn,
     visibleTerritoryIds: s.visibleTerritoryIds,
   });
 }

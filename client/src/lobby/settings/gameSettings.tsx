@@ -226,6 +226,13 @@ const CAPITAL_STANDOFF_ROUNDS = {
   min: MIN_CAPITAL_STANDOFF,
   max: MAX_STALEMATE_ROUNDS,
 };
+const INITIAL_TROOPS_RANGE = { min: 1, max: 100 };
+const MIN_TROOPS_RANGE = { min: 0, max: 100 };
+const HILLS_RANGE = { min: MIN_HILLS, max: MAX_HILLS };
+const STARTING_CAPITALS_RANGE = {
+  min: MIN_STARTING_CAPITALS,
+  max: MAX_STARTING_CAPITALS,
+};
 const TROOPS_PER_TERRITORY_FRACTIONS = [5, 4, 3, 2].map((d) => ({
   value: String(1 / d),
   label: `1/${d}`,
@@ -247,6 +254,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     section: 'Setup',
     numeric: true,
     modes: ['king of the hill'],
+    range: HILLS_RANGE,
     options: options(...HILLS.map(String)),
     help: HILLS_HELP,
   },
@@ -262,6 +270,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     label: 'Initial Troops',
     section: 'Setup',
     numeric: true,
+    range: INITIAL_TROOPS_RANGE,
     options: INITIAL_TROOPS.map((troops) => ({
       value: String(troops),
       label: String(troops),
@@ -289,6 +298,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     section: 'Setup',
     numeric: true,
     modes: ['capitals'],
+    range: STARTING_CAPITALS_RANGE,
     options: options(...STARTING_CAPITALS.map(String)),
     help: STARTING_CAPITALS_HELP,
   },
@@ -345,6 +355,7 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     label: 'Min Troops',
     section: 'Reinforcements',
     numeric: true,
+    range: MIN_TROOPS_RANGE,
     options: options(...MIN_TROOPS.map(String)),
     help: MIN_TROOPS_HELP,
   },

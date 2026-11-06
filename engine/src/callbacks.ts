@@ -166,6 +166,16 @@ export interface EngineCallbacks {
     },
     gameName: string,
   ): void;
+  onSwitchFlipped(
+    playerId: number,
+    payload: {
+      fromTerritoryId: number;
+      switchId: number;
+      cost: number;
+      playerId: number;
+    },
+    gameName: string,
+  ): void;
   onToxinExpired(
     playerId: number,
     payload: { territoryIds: number[] },
@@ -311,6 +321,8 @@ export interface EngineCallbacks {
       wraps: unknown[];
       timedConnections: unknown[];
       directionalConnections: unknown[];
+      switches: unknown[];
+      switchedLinks: unknown[];
       lockedTiles: unknown[];
       imageSrc: string;
       borderColors: string[];

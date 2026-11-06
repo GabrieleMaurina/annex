@@ -11,6 +11,7 @@ import type {
   TurnDuration,
   TurnPhase,
 } from '../../../lib/types';
+import { useDragOffset } from '../../../ui/containers/dragOffset';
 import AttackPanel, {
   type AttackType,
   type DiceRoll,
@@ -182,6 +183,7 @@ export default function TurnActionPanels({
     manualTroops: number;
     blitzTroops: number;
     unlock: { x: number; y: number; cost: number } | null;
+    flip: { x: number; y: number; cost: number } | null;
   };
   blitzEnabled: boolean;
   attackDice: number;
@@ -223,15 +225,28 @@ export default function TurnActionPanels({
   submitAttackSea: () => void;
   players: GameState['players'];
 }) {
-  const {
-    deployPanelStyle,
-    fortifyPanelStyle,
-    attackPanelStyle,
-    sailPanelStyle,
-    attackSeaPanelStyle,
-    deploySeaPanelStyle: seaPanelStyle,
-    unlockPanelStyle,
-  } = usePanelStyles(anchors, useCameraTransform(camera), attackDisplay.unlock);
+  const target = attackDisplay.unlock ?? attackDisplay.flip;
+  const drag = useDragOffset(
+    [
+      turnPhase,
+      anchors.selectedTerritoryId,
+      anchors.fortifyEndTerritoryId,
+      anchors.attackEndTerritoryId ?? anchors.attackDiceRollTerritoryId,
+      anchors.sailEndTerritoryId,
+      anchors.attackSeaTerritoryId ?? anchors.attackSeaDiceRollTerritoryId,
+      anchors.deploySeaTerritoryId,
+      target?.x,
+      target?.y,
+    ].join(':'),
+  );
+  const styles = usePanelStyles(anchors, useCameraTransform(camera), target);
+  const deployPanelStyle = drag.shift(styles.deployPanelStyle);
+  const fortifyPanelStyle = drag.shift(styles.fortifyPanelStyle);
+  const attackPanelStyle = drag.shift(styles.attackPanelStyle);
+  const sailPanelStyle = drag.shift(styles.sailPanelStyle);
+  const attackSeaPanelStyle = drag.shift(styles.attackSeaPanelStyle);
+  const seaPanelStyle = drag.shift(styles.deploySeaPanelStyle);
+  const unlockPanelStyle = drag.shift(styles.unlockPanelStyle);
   const deploySeaPanelStyle = deploySeaComboActive
     ? deployPanelStyle
     : seaPanelStyle;
@@ -280,164 +295,178 @@ export default function TurnActionPanels({
           />
         </>
       )}
-      {deployPanelOpen && deployPanelStyle && (
-        <TroopPanel
-          label={turnPhase === 'troop' ? 'Place troops:' : 'Deploy troops:'}
-          buttonLabel={turnPhase === 'troop' ? 'Place' : 'Deploy'}
-          troops={deployTroops}
-          maxTroops={deployMaxTroops}
-          inputRef={deployInputRef}
-          onChange={setDeployTroops}
-          onConfirm={submitDeploy}
-          style={deployPanelStyle}
-        />
-      )}
-      {deploySeaPanelOpen && deploySeaPanelStyle && (
-        <TroopPanel
-          label={deploySeaComboActive ? 'Buy ships:' : 'Deploy ships:'}
-          buttonLabel={deploySeaComboActive ? 'Buy' : 'Deploy'}
-          troops={deploySeaShips}
-          maxTroops={deploySeaMaxShips}
-          inputRef={deploySeaInputRef}
-          onChange={setDeploySeaShips}
-          onConfirm={submitDeploySea}
-          style={deploySeaPanelStyle}
-        />
-      )}
-      {sailPanelOpen && sailPanelStyle && (
-        <TroopPanel
-          label="Sail ships:"
-          buttonLabel="Sail"
-          troops={sailShips}
-          maxTroops={sailMaxShips}
-          inputRef={sailInputRef}
-          onChange={setSailShips}
-          onConfirm={submitSail}
-          style={sailPanelStyle}
-        />
-      )}
-      {fortifyPanelOpen && fortifyPanelStyle && (
-        <TroopPanel
-          label="Move troops:"
-          buttonLabel="Fortify"
-          troops={fortifyTroops}
-          maxTroops={fortifyMaxTroops}
-          inputRef={fortifyInputRef}
-          onChange={setFortifyTroops}
-          onConfirm={submitFortify}
-          style={fortifyPanelStyle}
-        />
-      )}
-      {entrenchPanelOpen && deployPanelStyle && (
-        <TroopPanel
-          label="Entrench troops:"
-          buttonLabel="Entrench"
-          troops={entrenchTroops}
-          maxTroops={entrenchMaxTroops}
-          inputRef={entrenchInputRef}
-          onChange={setEntrenchTroops}
-          onConfirm={submitEntrench}
-          style={deployPanelStyle}
-          extra={`Entrenched: ${entrenchCurrentTurns} → ${entrenchCurrentTurns + entrenchTroops} turns`}
-        />
-      )}
-      {toxinsPanelOpen && deployPanelStyle && (
-        <ConfirmPanel
-          label="Release toxin:"
-          buttonLabel="Confirm"
-          onConfirm={submitToxins}
-          style={deployPanelStyle}
-          extra={
-            toxinsWastedTroops > 0
-              ? `Warning: ${toxinsWastedTroops} troops wasted`
-              : undefined
-          }
-        />
-      )}
-      {attackPanelOpen && unlockPanelStyle && attackDisplay.unlock && (
-        <ConfirmPanel
-          label="Unlock tile:"
-          buttonLabel="Unlock"
-          onConfirm={submitAttack}
-          style={unlockPanelStyle}
-          extra={`Costs ${attackDisplay.unlock.cost} troops`}
-        />
-      )}
-      {attackPanelOpen && attackPanelStyle && !attackDisplay.unlock && (
-        <AttackPanel
-          blitzWinProbabilities={attackDisplay.blitzWinProbabilities}
-          blitzOutcomes={attackDisplay.blitzOutcomes}
-          maxBlitzTroops={attackDisplay.maxBlitzTroops}
-          selectedType={attackDisplay.selectedType}
-          manualTroops={attackDisplay.manualTroops}
-          blitzTroops={attackDisplay.blitzTroops}
-          blitzEnabled={blitzEnabled}
-          attackDice={attackDice}
-          diceTies={diceTies}
-          blitzInputRef={blitzInputRef}
-          diceRoll={attackDiceRoll}
-          onSelectManual={(troops) => {
-            setAttackDiceRoll(null);
-            setAttackSelectedType('manual');
-            setAttackManualTroops(troops);
-          }}
-          onSelectBlitz={() => {
-            setAttackDiceRoll(null);
-            setAttackSelectedType('blitz');
-          }}
-          onBlitzTroopsChange={(troops) => {
-            setAttackDiceRoll(null);
-            setAttackBlitzTroops(troops);
-          }}
-          onBlitzTroopsWheel={(delta) => {
-            const at = performance.now();
-            setAttackDiceRoll(null);
-            setAttackSelectedType('blitz');
-            setAttackBlitzTroops((prev) =>
-              stepTroops(prev, delta, 1, maxBlitzTroops, at),
-            );
-          }}
-          onConfirm={submitAttack}
-          diceOnly={attackDiceOnly}
-          pendingConquest={attackShowPendingConquest}
-          moveTroops={attackMoveTroops}
-          moveMinTroops={attackMoveMinTroops}
-          moveMaxTroops={attackMoveMaxTroops}
-          moveInputRef={attackMoveInputRef}
-          onMoveTroopsChange={setAttackMoveTroops}
-          onConfirmMove={submitAttackMove}
-          style={attackPanelStyle}
-        />
-      )}
-      {attackSeaPanelOpen && attackSeaPanelStyle && (
-        <AttackSeaPanel
-          defenders={attackSeaDefenders.map((d) => ({
-            ...d,
-            color: players.find((p) => p.id === d.playerId)?.color ?? 0,
-          }))}
-          defenderId={attackSeaDefenderId}
-          onSelectDefender={selectAttackSeaDefender}
-          blitzWinProbabilities={attackSeaWinProbabilities ?? []}
-          blitzOutcomes={attackSeaBlitzOutcomes ?? []}
-          maxManualShips={attackSeaMaxManualShips}
-          maxBlitzShips={attackSeaMaxBlitzShips}
-          selectedType={attackSeaSelectedType}
-          manualShips={attackSeaManualShips}
-          blitzShips={attackSeaBlitzShips}
-          blitzEnabled={blitzEnabled}
-          diceTies={diceTies}
-          inputRef={attackSeaInputRef}
-          blitzInputRef={attackSeaBlitzInputRef}
-          onSelectManual={() => setAttackSeaSelectedType('manual')}
-          onManualShipsChange={setAttackSeaManualShips}
-          onSelectBlitz={() => setAttackSeaSelectedType('blitz')}
-          onBlitzShipsChange={setAttackSeaBlitzShips}
-          onConfirm={submitAttackSea}
-          diceRoll={attackSeaDiceRoll}
-          diceOnly={attackSeaDiceOnly}
-          style={attackSeaPanelStyle}
-        />
-      )}
+      <div style={{ display: 'contents' }} onPointerDown={drag.start}>
+        {deployPanelOpen && deployPanelStyle && (
+          <TroopPanel
+            label={turnPhase === 'troop' ? 'Place troops:' : 'Deploy troops:'}
+            buttonLabel={turnPhase === 'troop' ? 'Place' : 'Deploy'}
+            troops={deployTroops}
+            maxTroops={deployMaxTroops}
+            inputRef={deployInputRef}
+            onChange={setDeployTroops}
+            onConfirm={submitDeploy}
+            style={deployPanelStyle}
+          />
+        )}
+        {deploySeaPanelOpen && deploySeaPanelStyle && (
+          <TroopPanel
+            label={deploySeaComboActive ? 'Buy ships:' : 'Deploy ships:'}
+            buttonLabel={deploySeaComboActive ? 'Buy' : 'Deploy'}
+            troops={deploySeaShips}
+            maxTroops={deploySeaMaxShips}
+            inputRef={deploySeaInputRef}
+            onChange={setDeploySeaShips}
+            onConfirm={submitDeploySea}
+            style={deploySeaPanelStyle}
+          />
+        )}
+        {sailPanelOpen && sailPanelStyle && (
+          <TroopPanel
+            label="Sail ships:"
+            buttonLabel="Sail"
+            troops={sailShips}
+            maxTroops={sailMaxShips}
+            inputRef={sailInputRef}
+            onChange={setSailShips}
+            onConfirm={submitSail}
+            style={sailPanelStyle}
+          />
+        )}
+        {fortifyPanelOpen && fortifyPanelStyle && (
+          <TroopPanel
+            label="Move troops:"
+            buttonLabel="Fortify"
+            troops={fortifyTroops}
+            maxTroops={fortifyMaxTroops}
+            inputRef={fortifyInputRef}
+            onChange={setFortifyTroops}
+            onConfirm={submitFortify}
+            style={fortifyPanelStyle}
+          />
+        )}
+        {entrenchPanelOpen && deployPanelStyle && (
+          <TroopPanel
+            label="Entrench troops:"
+            buttonLabel="Entrench"
+            troops={entrenchTroops}
+            maxTroops={entrenchMaxTroops}
+            inputRef={entrenchInputRef}
+            onChange={setEntrenchTroops}
+            onConfirm={submitEntrench}
+            style={deployPanelStyle}
+            extra={`Entrenched: ${entrenchCurrentTurns} → ${entrenchCurrentTurns + entrenchTroops} turns`}
+          />
+        )}
+        {toxinsPanelOpen && deployPanelStyle && (
+          <ConfirmPanel
+            label="Release toxin:"
+            buttonLabel="Confirm"
+            onConfirm={submitToxins}
+            style={deployPanelStyle}
+            extra={
+              toxinsWastedTroops > 0
+                ? `Warning: ${toxinsWastedTroops} troops wasted`
+                : undefined
+            }
+          />
+        )}
+        {attackPanelOpen && unlockPanelStyle && attackDisplay.unlock && (
+          <ConfirmPanel
+            label="Unlock tile:"
+            buttonLabel="Unlock"
+            onConfirm={submitAttack}
+            style={unlockPanelStyle}
+            extra={`Costs ${attackDisplay.unlock.cost} troops`}
+          />
+        )}
+        {attackPanelOpen && unlockPanelStyle && attackDisplay.flip && (
+          <ConfirmPanel
+            label="Flip switch:"
+            buttonLabel="Flip"
+            onConfirm={submitAttack}
+            style={unlockPanelStyle}
+            extra={`Costs ${attackDisplay.flip.cost} troops`}
+          />
+        )}
+        {attackPanelOpen &&
+          attackPanelStyle &&
+          !attackDisplay.unlock &&
+          !attackDisplay.flip && (
+            <AttackPanel
+              blitzWinProbabilities={attackDisplay.blitzWinProbabilities}
+              blitzOutcomes={attackDisplay.blitzOutcomes}
+              maxBlitzTroops={attackDisplay.maxBlitzTroops}
+              selectedType={attackDisplay.selectedType}
+              manualTroops={attackDisplay.manualTroops}
+              blitzTroops={attackDisplay.blitzTroops}
+              blitzEnabled={blitzEnabled}
+              attackDice={attackDice}
+              diceTies={diceTies}
+              blitzInputRef={blitzInputRef}
+              diceRoll={attackDiceRoll}
+              onSelectManual={(troops) => {
+                setAttackDiceRoll(null);
+                setAttackSelectedType('manual');
+                setAttackManualTroops(troops);
+              }}
+              onSelectBlitz={() => {
+                setAttackDiceRoll(null);
+                setAttackSelectedType('blitz');
+              }}
+              onBlitzTroopsChange={(troops) => {
+                setAttackDiceRoll(null);
+                setAttackBlitzTroops(troops);
+              }}
+              onBlitzTroopsWheel={(delta, newGesture) => {
+                const at = performance.now();
+                setAttackDiceRoll(null);
+                setAttackSelectedType('blitz');
+                setAttackBlitzTroops((prev) =>
+                  stepTroops(prev, delta, 1, maxBlitzTroops, newGesture, at),
+                );
+              }}
+              onConfirm={submitAttack}
+              diceOnly={attackDiceOnly}
+              pendingConquest={attackShowPendingConquest}
+              moveTroops={attackMoveTroops}
+              moveMinTroops={attackMoveMinTroops}
+              moveMaxTroops={attackMoveMaxTroops}
+              moveInputRef={attackMoveInputRef}
+              onMoveTroopsChange={setAttackMoveTroops}
+              onConfirmMove={submitAttackMove}
+              style={attackPanelStyle}
+            />
+          )}
+        {attackSeaPanelOpen && attackSeaPanelStyle && (
+          <AttackSeaPanel
+            defenders={attackSeaDefenders.map((d) => ({
+              ...d,
+              color: players.find((p) => p.id === d.playerId)?.color ?? 0,
+            }))}
+            defenderId={attackSeaDefenderId}
+            onSelectDefender={selectAttackSeaDefender}
+            blitzWinProbabilities={attackSeaWinProbabilities ?? []}
+            blitzOutcomes={attackSeaBlitzOutcomes ?? []}
+            maxManualShips={attackSeaMaxManualShips}
+            maxBlitzShips={attackSeaMaxBlitzShips}
+            selectedType={attackSeaSelectedType}
+            manualShips={attackSeaManualShips}
+            blitzShips={attackSeaBlitzShips}
+            blitzEnabled={blitzEnabled}
+            diceTies={diceTies}
+            inputRef={attackSeaInputRef}
+            blitzInputRef={attackSeaBlitzInputRef}
+            onSelectManual={() => setAttackSeaSelectedType('manual')}
+            onManualShipsChange={setAttackSeaManualShips}
+            onSelectBlitz={() => setAttackSeaSelectedType('blitz')}
+            onBlitzShipsChange={setAttackSeaBlitzShips}
+            onConfirm={submitAttackSea}
+            diceRoll={attackSeaDiceRoll}
+            diceOnly={attackSeaDiceOnly}
+            style={attackSeaPanelStyle}
+          />
+        )}
+      </div>
     </>
   );
 }

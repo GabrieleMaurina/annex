@@ -1,6 +1,7 @@
 import {
   isBlitzOffAllowed,
   joinReputation,
+  MAX_BLITZ_OFF_TROOPS,
   MAX_DICE,
   meetsMinAccountAge,
   meetsMinGames,
@@ -34,6 +35,7 @@ import {
 import SettingOdometer from './SettingOdometer';
 import { PASSWORD_HELP, VISIBILITY_HELP } from './settingsHelp';
 
+const BLITZ_OFF_CAPPED_KEYS = ['initialTroops', 'minTroops'];
 const SHRINK_STYLE = { minWidth: 0 };
 const TRUNCATE_STYLE: CSSProperties = {
   minWidth: 0,
@@ -106,6 +108,12 @@ function GameSettingsFields({
     return false;
   }
 
+  function rangeMax(def: GameSettingDef, max: number): number {
+    return game.blitz === 'off' && BLITZ_OFF_CAPPED_KEYS.includes(def.key)
+      ? MAX_BLITZ_OFF_TROOPS
+      : max;
+  }
+
   function field(def: GameSettingDef) {
     const value = game[def.key as keyof GameState];
     const changed =
@@ -124,7 +132,7 @@ function GameSettingsFields({
             className={changed ? 'border-primary' : undefined}
             value={Number(value)}
             min={def.range.min}
-            max={def.range.max}
+            max={rangeMax(def, def.range.max)}
             onChange={(next) => applySettings(settingUpdate(def.key, next))}
           />
         ) : isHost ? (

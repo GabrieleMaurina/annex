@@ -45,6 +45,7 @@ export interface LiveGamesQuery {
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
   mapGenerationDirectional?: boolean;
+  mapGenerationSwitched?: boolean;
   mapGenerationUnlockable?: boolean;
   playersMin?: number;
   playersMax?: number;
@@ -104,6 +105,11 @@ function matches(game: LiveGameRow, query: LiveGamesQuery): boolean {
   if (
     query.mapGenerationDirectional !== undefined &&
     game.mapGeneration?.directional !== query.mapGenerationDirectional
+  )
+    return false;
+  if (
+    query.mapGenerationSwitched !== undefined &&
+    game.mapGeneration?.switched !== query.mapGenerationSwitched
   )
     return false;
   if (

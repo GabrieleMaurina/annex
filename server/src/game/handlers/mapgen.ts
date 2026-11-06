@@ -51,6 +51,8 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               wraps: map.wraps,
               timedConnections: map.timedConnections,
               directionalConnections: map.directionalConnections,
+              switches: map.switches,
+              switchedLinks: map.switchedLinks,
               lockedTiles: map.lockedTiles,
               imageSrc: `data:${map.imageMime};base64,${map.image}`,
               borderColors: map.borderColors,
@@ -102,6 +104,8 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
               wraps: map.wraps,
               timedConnections: map.timedConnections,
               directionalConnections: map.directionalConnections,
+              switches: map.switches,
+              switchedLinks: map.switchedLinks,
               lockedTiles: map.lockedTiles,
               imageSrc: map.imageDataUrl,
               borderColors: map.borderColors,
@@ -143,6 +147,12 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
       const directional = input.directional ?? false;
       if (typeof directional !== 'boolean')
         return callback({ ok: false, error: 'invalid directional' });
+      const switched = input.switched ?? false;
+      if (
+        typeof switched !== 'boolean' ||
+        (switched && !input.timed && !directional)
+      )
+        return callback({ ok: false, error: 'invalid switched' });
       if (
         typeof input.unlockable !== 'boolean' ||
         (input.unlockable &&
@@ -170,6 +180,7 @@ export function registerMapGenHandlers(socket: Socket, engine: Engine) {
           seas: input.seas,
           timed: input.timed,
           directional,
+          switched,
           unlockable: input.unlockable,
           aspect: aspect as MapAspect,
           mountains,

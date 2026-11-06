@@ -1,4 +1,9 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import type {
+  Dispatch,
+  MutableRefObject,
+  ReactNode,
+  SetStateAction,
+} from 'react';
 import {
   forwardRef,
   memo,
@@ -18,7 +23,14 @@ import {
   wrapAxesOf,
 } from './canvas/canvasGeometry';
 import { drawGraph } from './canvas/drawGraph';
+import {
+  pickAt,
+  selectionAnchor,
+  type GraphPick,
+  type GraphSelection,
+} from './canvas/graphPick';
 import { drawSmoothPaint, useSmoothEdges } from './canvas/smoothEdges';
+import { wireAt } from './canvas/switchWires';
 import type { ClickableCheck } from './canvas/useClickableCheck';
 import {
   handleVertexClick as linkVertices,
@@ -26,22 +38,24 @@ import {
 } from './canvas/vertexLink';
 import { touchDistance, touchMidpoint, type Point } from './mapCanvasGeometry';
 import {
+  animateSettle,
   clamp,
-  createSettleSampler,
-  easeOutCubic,
-  screenOffset,
+  viewportFor,
   zoomTransform,
+  type ViewTransform,
 } from './mapViewport';
 import {
   newTerritory,
   nextInContinentCycle,
   nextTerritoryId,
   SEA_BRUSH,
+  SWITCH_BRUSH,
   withContinent,
   withoutVertex,
   type LinkMode,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
+import { withSwitchToggled } from './model/switches';
 import type { Viewport } from './paint/PaintLayer';
 import { drawFreehand, paintContext, type Rect } from './paint/paintTools';
 
@@ -68,12 +82,12 @@ interface Props {
   overlays: (HTMLCanvasElement | null)[];
   linkMode: LinkMode;
   onSelect: (id: number | null) => void;
-}
-
-interface Transform {
-  zoom: number;
-  offsetX: number;
-  offsetY: number;
+  continentNames: string[];
+  popover: (
+    selection: GraphSelection,
+    anchor: Point,
+    close: () => void,
+  ) => ReactNode;
 }
 
 type DragState =
@@ -88,7 +102,6 @@ type DragState =
   | null;
 
 const DRAG_THRESHOLD = 4;
-const SETTLE_DURATION = 200;
 const DOUBLE_TAP_MS = 300;
 const DOUBLE_TAP_DIST = 24;
 
@@ -102,6 +115,7 @@ export interface MapCanvasHandle {
   panMove: (clientX: number, clientY: number) => void;
   panEnd: () => void;
   select: (id: number | null) => void;
+  pickContinent: (id: number) => void;
 }
 
 const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
@@ -128,6 +142,8 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     overlays,
     linkMode,
     onSelect,
+    continentNames,
+    popover,
   }: Props,
   ref,
 ) {
@@ -166,12 +182,13 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   const windowMouseUpRef = useRef((e: MouseEvent) =>
     dragUpHandlerRef.current(e),
   );
-  const [transform, setTransform] = useState<Transform>({
+  const [transform, setTransform] = useState<ViewTransform>({
     zoom: 1,
     offsetX: 0,
     offsetY: 0,
   });
   const [selectedVertexId, setSelectedVertexId] = useState<number | null>(null);
+  const [pick, setPick] = useState<GraphPick>(null);
   useEffect(() => onSelect(selectedVertexId), [selectedVertexId, onSelect]);
   const [hoveredVertexId, setHoveredVertexId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -198,57 +215,28 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   const [prevDisabled, setPrevDisabled] = useState(!!disabled);
   if (!!disabled !== prevDisabled) {
     setPrevDisabled(!!disabled);
-    if (disabled && selectedVertexId !== null) setSelectedVertexId(null);
+    if (disabled) clearSelection();
+  }
+
+  function clearSelection() {
+    setSelectedVertexId(null);
+    setPick(null);
   }
 
   function getImageDims(): { w: number; h: number } {
     return { w: paintCanvas.width, h: paintCanvas.height };
   }
 
-  function getScales(canvasW: number, canvasH: number, zoom: number) {
-    const { w: imgW, h: imgH } = getImageDims();
-    const scale = Math.min(canvasW / imgW, canvasH / imgH) * zoom;
-    return {
-      imgW,
-      imgH,
-      scaleX: scale,
-      scaleY: scale,
-    };
-  }
-
-  function getScreenOffset(
-    canvasW: number,
-    canvasH: number,
-    zoom: number,
-    panX: number,
-    panY: number,
-  ) {
-    const { imgW, imgH, scaleX, scaleY } = getScales(canvasW, canvasH, zoom);
-    return screenOffset(
-      canvasW,
-      canvasH,
-      scaleX,
-      scaleY,
-      imgW,
-      imgH,
-      panX,
-      panY,
-    );
-  }
-
   function getViewport() {
     const canvas = canvasRef.current!;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    const { imgW, imgH, scaleX, scaleY } = getScales(w, h, transform.zoom);
-    const { x: offsetX, y: offsetY } = getScreenOffset(
+    const { w, h } = getImageDims();
+    return viewportFor(
+      canvas.clientWidth,
+      canvas.clientHeight,
       w,
       h,
-      transform.zoom,
-      transform.offsetX,
-      transform.offsetY,
+      transform,
     );
-    return { imgW, imgH, scaleX, scaleY, offsetX, offsetY };
   }
 
   const cancelSettle = useCallback(() => {
@@ -267,40 +255,14 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     const canvas = canvasRef.current;
     if (!canvas) return;
     cancelSettle();
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    const { offsetX, offsetY } = transform;
-    const { imgW, imgH, scaleX, scaleY } = getScales(w, h, transform.zoom);
-    const settle = createSettleSampler(
-      w,
-      h,
-      scaleX,
-      scaleY,
-      imgW,
-      imgH,
-      offsetX,
-      offsetY,
+    const { w, h } = getImageDims();
+    animateSettle(
+      viewportFor(canvas.clientWidth, canvas.clientHeight, w, h, transform),
+      { w: canvas.clientWidth, h: canvas.clientHeight },
+      transform,
+      setTransform,
+      settleRef,
     );
-    const { target } = settle;
-    if (settle.settled) {
-      if (offsetX !== target.x || offsetY !== target.y) {
-        setTransform((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
-      }
-      return;
-    }
-    const begin = performance.now();
-    const animate = (now: number) => {
-      const progress = Math.min((now - begin) / SETTLE_DURATION, 1);
-      if (progress >= 1) {
-        setTransform((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
-        settleRef.current = null;
-        return;
-      }
-      const next = settle.sample(easeOutCubic(progress));
-      setTransform((t) => ({ ...t, offsetX: next.x, offsetY: next.y }));
-      settleRef.current = requestAnimationFrame(animate);
-    };
-    settleRef.current = requestAnimationFrame(animate);
   }
 
   function panStartImpl(clientX: number, clientY: number) {
@@ -343,7 +305,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     img.onload = () => {
       if (stale) return;
       setTransform({ zoom: 1, offsetX: 0, offsetY: 0 });
-      setSelectedVertexId(null);
+      clearSelection();
     };
     img.src = imageSrc;
     return () => {
@@ -406,10 +368,10 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (selectedVertexId !== null) {
+        if (selectedVertexId !== null || pick) {
           playSound('click');
-          setSelectedVertexId(null);
-        } else if (!disabledRef.current) {
+          clearSelection();
+        } else if (!disabledRef.current && linkMode === 'select') {
           setCollapsed(true);
         }
         return;
@@ -423,7 +385,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedVertexId, setCollapsed, deleteVertex]);
+  }, [selectedVertexId, pick, linkMode, setCollapsed, deleteVertex]);
 
   const applyZoom = useCallback(
     (pos: Point, factor: number) => {
@@ -485,6 +447,10 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         panEndImplRef.current();
       },
       select: setSelectedVertexId,
+      pickContinent(id: number) {
+        setSelectedVertexId(null);
+        setPick({ kind: 'continent', id });
+      },
     }),
     [applyZoom],
   );
@@ -505,14 +471,9 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     ctx.fillRect(0, 0, size.w, size.h);
 
     const { zoom } = transform;
-    const { imgW, imgH, scaleX, scaleY } = getScales(size.w, size.h, zoom);
-    const { x: offsetX, y: offsetY } = getScreenOffset(
-      size.w,
-      size.h,
-      zoom,
-      transform.offsetX,
-      transform.offsetY,
-    );
+    const { w, h } = getImageDims();
+    const viewport = viewportFor(size.w, size.h, w, h, transform);
+    const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = viewport;
 
     onViewport?.({ offsetX, offsetY, scaleX, scaleY });
 
@@ -539,7 +500,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     if (!hideGraph) {
       drawGraph({
         ctx,
-        viewport: { imgW, imgH, scaleX, scaleY, offsetX, offsetY },
+        viewport,
         zoom,
         territories,
         rejectedEdge,
@@ -551,6 +512,8 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         allowCrossover,
         clickable,
         linkMode,
+        pick,
+        continentNames,
       });
     }
   });
@@ -594,10 +557,12 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     const worldX = (pos.x - offsetX) / scaleX;
     const worldY = (pos.y - offsetY) / scaleY;
     if (worldX < 0 || worldY < 0 || worldX > imgW || worldY > imgH) return null;
+    if (linkMode !== 'normal' && linkMode !== 'switch') return null;
     const nextId = nextTerritoryId(territories);
+    const brush = linkMode === 'switch' ? SWITCH_BRUSH : currentContinentId;
     setTerritories([
       ...territories,
-      newTerritory(nextId, worldX, worldY, currentContinentId, continentCount),
+      newTerritory(nextId, worldX, worldY, brush, continentCount),
     ]);
     setHoveredVertexId(nextId);
     return nextId;
@@ -750,9 +715,21 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       if (!drag.moved) {
         lastTapPosRef.current = pos;
         lastTapAtRef.current = Date.now();
-        if (selectedVertexId !== null) {
+        lastAddedVertexRef.current = null;
+        const wired = wireAt(
+          territories,
+          selectedVertexId,
+          linkMode,
+          getViewport(),
+          pos,
+        );
+        const picked = !wired && pickAt(territories, getViewport(), pos);
+        if (wired) setTerritories(wired);
+        else if (picked) {
           setSelectedVertexId(null);
-          lastAddedVertexRef.current = null;
+          setPick(picked);
+        } else if (selectedVertexId !== null || pick) {
+          clearSelection();
         } else {
           lastAddedVertexRef.current = addVertexAt(pos);
         }
@@ -772,6 +749,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       lastAddedVertexRef.current = null;
       if (isDoubleTap) deleteVertex(drag.id);
       else handleVertexClick(drag.id, forced, allowCrossover);
+      setPick(null);
     }
   }
 
@@ -789,6 +767,10 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       return;
     }
     const id = vertex.id;
+    if (vertex.switch) {
+      setTerritories((prev) => withSwitchToggled(prev, id));
+      return;
+    }
     const current = vertex.isSea ? SEA_BRUSH : vertex.continentId;
     const next =
       brushContinentId === current
@@ -968,26 +950,48 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     endPointer(getPos(e), wrapAxesOf(e), e.altKey);
   };
 
+  const selection: GraphSelection | null =
+    selectedVertexId !== null ? { kind: 'vertex', id: selectedVertexId } : pick;
+  const anchor =
+    selection &&
+    !hideGraph &&
+    (selection.kind !== 'vertex' || linkMode === 'select') &&
+    selectionAnchor(
+      selection,
+      territories,
+      continentNames,
+      viewportFor(
+        size.w,
+        size.h,
+        paintCanvas.width,
+        paintCanvas.height,
+        transform,
+      ),
+    );
+
   return (
-    <canvas
-      ref={canvasRef}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      onContextMenu={handleContextMenu}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
-      style={{
-        touchAction: 'none',
-        display: 'block',
-        width: size.w,
-        height: size.h,
-        cursor: canvasCursor(hoveredVertexId !== null, isDragging),
-      }}
-    />
+    <>
+      {selection && anchor && popover(selection, anchor, clearSelection)}
+      <canvas
+        ref={canvasRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+        style={{
+          touchAction: 'none',
+          display: 'block',
+          width: size.w,
+          height: size.h,
+          cursor: canvasCursor(hoveredVertexId !== null, isDragging),
+        }}
+      />
+    </>
   );
 });
 

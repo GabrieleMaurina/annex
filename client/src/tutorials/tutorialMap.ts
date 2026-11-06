@@ -169,6 +169,8 @@ function buildMap(layout: Layout): TutorialGameMap {
     wraps: [],
     timedConnections: [],
     directionalConnections: [],
+    switches: [],
+    switchedLinks: [],
     lockedTiles: [],
     imageSrc: drawImage(layout),
     borderColors: DEFAULT_BORDER_COLORS,

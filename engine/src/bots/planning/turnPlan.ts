@@ -58,6 +58,7 @@ export interface MapTopology {
   continentTerritories: Map<number, number[]>;
   territoryContinent: Map<number, number>;
   unlockedTiles: number;
+  flippedSwitches: string;
 }
 
 export interface TurnPlan {
@@ -82,6 +83,9 @@ export interface TurnPlan {
   nukeLaunched?: boolean;
   replans?: number;
   unlocksIssued?: number;
+  switchFlips?: number;
+  switchCheckedStep?: number;
+  switchReplan?: boolean;
   antiNukeDeployed?: boolean;
   topology?: MapTopology;
 }

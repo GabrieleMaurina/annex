@@ -108,6 +108,7 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
       mapGenerationSeas: optBoolParam(q.mapGenerationSeas),
       mapGenerationTimed: optBoolParam(q.mapGenerationTimed),
       mapGenerationDirectional: optBoolParam(q.mapGenerationDirectional),
+      mapGenerationSwitched: optBoolParam(q.mapGenerationSwitched),
       mapGenerationUnlockable: optBoolParam(q.mapGenerationUnlockable),
       playersMin: optIntParam(q.playersMin, 1, 100),
       playersMax: optIntParam(q.playersMax, 1, 100),

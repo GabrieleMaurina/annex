@@ -31,12 +31,14 @@ import {
 } from '../game/turns';
 import { fogFilterEmit } from '../game/world/fog';
 import { withPortalEdges } from '../game/world/portals';
+import { switchesNextTo, toggleFlipped } from '../game/world/switches';
 import {
   pathRunsForViewer,
   troopMoveFields,
   visibleTerritoryIdsOrAll,
 } from '../game/world/visibility';
 import { getGameMap } from '../maps/maps';
+import { FLIP_COST } from '../maps/switches';
 import { GameContext, GameResponse, requireGame } from '../session/context';
 import {
   broadcastSelected,
@@ -605,6 +607,62 @@ export function unlockTile(
   if (game.state !== 'playing' || !hasPendingConquest(game, playerId))
     return { ok: true, game: attacked.game };
   return attackMove(playerId, (game.territoryTroops.get(startId) ?? 0) - 1);
+}
+
+export function flipSwitch(
+  playerId: number,
+  rawSwitchId: unknown,
+): GameResponse {
+  const ctx = requirePlayingTurn(requireGame(playerId), 'attack');
+  if (!ctx.ok) return ctx;
+  const { game } = ctx;
+  if (hasPendingConquest(game, playerId))
+    return { ok: false, error: 'pending conquest move' };
+  if (game.attackSeaTerritoryId !== null)
+    return { ok: false, error: 'sea attack in progress' };
+  const startId = game.attackStartTerritoryId;
+  if (startId === null)
+    return { ok: false, error: 'no start territory selected' };
+  if (!isInteger(rawSwitchId)) return { ok: false, error: 'invalid switch' };
+  const switchId = rawSwitchId;
+  if (!switchesNextTo(game, startId).includes(switchId))
+    return { ok: false, error: 'invalid switch' };
+  const startTroops = game.territoryTroops.get(startId) ?? 0;
+  if (startTroops < FLIP_COST + 1)
+    return { ok: false, error: 'not enough troops' };
+
+  game.territoryTroops.set(startId, startTroops - FLIP_COST);
+  toggleFlipped(game.flippedSwitchIds, switchId);
+  game.attackEndTerritoryId = null;
+  recordReplayFrame(game, {
+    type: 'switch',
+    fromTerritoryId: startId,
+    switchId,
+    cost: FLIP_COST,
+    playerId,
+  });
+
+  fogFilterEmit(
+    game,
+    'game:switchFlipped',
+    callbacks.onSwitchFlipped,
+    (viewerId) => {
+      const visible = visibleTerritoryIdsOrAll(game, viewerId);
+      if (visible !== null && !visible.has(startId)) return null;
+      return { fromTerritoryId: startId, switchId, cost: FLIP_COST, playerId };
+    },
+  );
+
+  if (!isAttackStartCandidate(game, playerId, startId)) {
+    game.attackStartTerritoryId = null;
+    if (
+      !hasAnyAttack(game, playerId) &&
+      !hasReadyNuke(game, playerId) &&
+      !hasAnyShipFight(game, playerId)
+    )
+      advanceTurnPhase(game);
+  }
+  return respondGameState(game, playerId);
 }
 
 export function attackMove(playerId: number, rawTroops: unknown): GameResponse {

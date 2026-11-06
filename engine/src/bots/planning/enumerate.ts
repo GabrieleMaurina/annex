@@ -1,4 +1,5 @@
 import { pickBestSet } from '../../game/progression/cards';
+import { flippedSwitchesKey } from '../../maps/maps';
 import { chooseCardSet } from '../heuristics/cards';
 import { holdsCardsUntilForced } from '../personality/specialists/hoarder';
 import { policeChoice } from '../personality/specialists/police';
@@ -110,6 +111,7 @@ function materialize(
       continentTerritories: ctx.continentTerritories,
       territoryContinent: ctx.territoryContinent,
       unlockedTiles: ctx.game.unlockedTileIds.size,
+      flippedSwitches: flippedSwitchesKey(ctx.game.flippedSwitchIds),
     },
   };
 }

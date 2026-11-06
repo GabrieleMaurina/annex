@@ -30,6 +30,8 @@ export const MAP_REQUIRED = [
   'wraps',
   'timedConnections',
   'directionalConnections',
+  'switches',
+  'switchedLinks',
   'lockedTiles',
   'generation',
   'image',
@@ -115,6 +117,34 @@ export const MAP_PROPERTIES = {
       },
     },
   },
+  switches: {
+    bsonType: 'array',
+    items: {
+      bsonType: 'object',
+      required: ['x', 'y', 'on', 'neighbors'],
+      additionalProperties: false,
+      properties: {
+        x: { bsonType: 'number' },
+        y: { bsonType: 'number' },
+        on: { bsonType: 'bool' },
+        neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
+      },
+    },
+  },
+  switchedLinks: {
+    bsonType: 'array',
+    items: {
+      bsonType: 'object',
+      required: ['a', 'b', 'switches', 'gate'],
+      additionalProperties: false,
+      properties: {
+        a: { bsonType: 'number' },
+        b: { bsonType: 'number' },
+        switches: { bsonType: 'array', items: { bsonType: 'number' } },
+        gate: { enum: ['or', 'and'] },
+      },
+    },
+  },
   lockedTiles: {
     bsonType: 'array',
     items: {
@@ -162,6 +192,7 @@ export const MAP_PROPERTIES = {
       seas: { bsonType: 'bool' },
       timed: { bsonType: 'bool' },
       directional: { bsonType: 'bool' },
+      switched: { bsonType: 'bool' },
       unlockable: { bsonType: 'bool' },
       aspect: { enum: MAP_ASPECT_VALUES },
       mountains: { bsonType: 'bool' },

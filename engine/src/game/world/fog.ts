@@ -12,6 +12,7 @@ export interface FogEventPayloads {
   'game:entrenched': CallbackPayload<'onEntrenched'>;
   'game:toxined': CallbackPayload<'onToxined'>;
   'game:unlocked': CallbackPayload<'onUnlocked'>;
+  'game:switchFlipped': CallbackPayload<'onSwitchFlipped'>;
   'game:toxinExpired': CallbackPayload<'onToxinExpired'>;
   'game:radiationUpcoming': CallbackPayload<'onRadiationUpcoming'>;
   'game:radiationChanged': CallbackPayload<'onRadiationChanged'>;
@@ -31,6 +32,7 @@ export interface LogPayloads {
   'game:entrenched': CallbackPayload<'onEntrenched'>;
   'game:toxined': CallbackPayload<'onToxined'>;
   'game:unlocked': CallbackPayload<'onUnlocked'>;
+  'game:switchFlipped': CallbackPayload<'onSwitchFlipped'>;
   'game:radiationChanged': CallbackPayload<'onRadiationChanged'>;
   'game:nukeLaunched': CallbackPayload<'onNukeLaunched'>;
   'game:cardSetPlayed': CallbackPayload<'onCardSetPlayed'>;
@@ -55,6 +57,7 @@ const LOGGED_EVENTS: Set<string> = new Set<keyof LogPayloads>([
   'game:entrenched',
   'game:toxined',
   'game:unlocked',
+  'game:switchFlipped',
   'game:radiationChanged',
   'game:nukeLaunched',
   'game:attacked',

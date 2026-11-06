@@ -17,6 +17,7 @@ import {
   RIVER_BORDER_COLOR,
   TERRITORY_STROKE_COLOR,
 } from '../../render/palette';
+import { generateSwitches } from '../../switches';
 import { enforceContiguity } from '../contiguity';
 import { cleanLandMask, MIN_COMPONENT_AREA_RATIO } from '../islands';
 import { finishTerrainMap } from '../terrain/terrainGraph';
@@ -272,8 +273,17 @@ function majorityParents(
 }
 
 export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
-  const { seed, size, detail, seas, timed, directional, aspect, features } =
-    params;
+  const {
+    seed,
+    size,
+    detail,
+    seas,
+    timed,
+    directional,
+    switched,
+    aspect,
+    features,
+  } = params;
   const key = `osm::${seed}::${size}::${detail}::${aspect}`;
   const rng = createRng(key);
   const linkRngs = createLinkRngs(key, timed, directional);
@@ -472,6 +482,12 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     name: mapTitle(params.name, features.places, cut, width, height),
     lockedTiles: [],
     ...built,
+    ...generateSwitches(
+      switched ? createRng(`${key}::switches`) : null,
+      built.territories,
+      [...built.timedConnections, ...built.directionalConnections],
+      dims,
+    ),
     borderColors: [TERRITORY_STROKE_COLOR, RIVER_BORDER_COLOR],
     ...names,
   };

@@ -7,6 +7,7 @@ import {
 import TutorialHighlight from '../../tutorials/TutorialHighlight';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
+import { switchesOnAfter } from '../switches/switches';
 import { loadHourglassIcons } from './draw/drawTimedLinks';
 import GameCanvas from './GameCanvas';
 import {
@@ -150,6 +151,7 @@ function GameMap({
     bonuses,
     timedConnections,
     directionalConnections,
+    switching,
     lockedTiles,
     forcedWraps,
     regions: mapRegions,
@@ -266,11 +268,16 @@ function GameMap({
     closedTiles,
     timedLinks,
     directionalLinks,
+    switchOn,
   } = useMapGraph({
     mapTerritories,
     mapRegions,
     timedConnections,
     directionalConnections,
+    switching,
+    switchesOn: replay.switchFlips
+      ? switchesOnAfter(switching.switches, replay.switchFlips)
+      : game.switchesOn,
     lockedTiles,
     unlockedTileIds: replay.unlockedTileIds ?? game.unlockedTileIds,
     round: showReplay ? (replay.roundNumber ?? 0) : roundNumber,
@@ -324,7 +331,12 @@ function GameMap({
     game,
     toxins,
     closedTiles,
-    links: { timedConnections, directionalConnections },
+    switches: switching.switches,
+    links: {
+      timedConnections,
+      directionalConnections,
+      switchedLinks: switching.switchedLinks,
+    },
     cards,
     nextSetBaseValues,
     setGame,
@@ -470,6 +482,7 @@ function GameMap({
     regions,
     imgDims,
     VERTEX_RADIUS,
+    switches: switching.switches,
     gameEnded,
     isMyTurn,
     paused,
@@ -643,6 +656,8 @@ function GameMap({
       regions,
       timedLinks,
       directionalLinks,
+      switches: switching.switches,
+      switchOn,
       unlockTiles: attackFlow.unlockTiles,
       placeNames,
     };

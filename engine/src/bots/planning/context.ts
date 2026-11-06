@@ -3,7 +3,11 @@ import { defenceDiceFor } from '../../game/combat/dice';
 import { calculateDeployTroopsBreakdown } from '../../game/mechanics';
 import { closedTiles, unlockCost } from '../../game/tiles/unlock';
 import { withPortalEdges } from '../../game/world/portals';
-import { gameMapAtRound, getGameMap } from '../../maps/maps';
+import {
+  flippedSwitchesKey,
+  gameMapAtRound,
+  getGameMap,
+} from '../../maps/maps';
 import {
   BotPersonality,
   BotProfile,
@@ -98,13 +102,17 @@ function horizonNeighborsOf(
   map: GameMap,
   botId: number,
   neighbors: Map<number, number[]>,
+  flippedSwitchIds: ReadonlySet<number>,
 ): Map<number, number[]> {
   if (
     map.timedConnections.length === 0 &&
     map.directionalConnections.length === 0
   )
     return neighbors;
-  const next = landNeighbors(game, gameMapAtRound(game, game.roundNumber + 1));
+  const next = landNeighbors(
+    game,
+    gameMapAtRound(game, game.roundNumber + 1, flippedSwitchIds),
+  );
   if (
     !PLACEMENT_PHASES.includes(game.turnPhase) &&
     !othersMoveThisRound(game, botId)
@@ -145,7 +153,12 @@ function withClosedTiles(
   return routes;
 }
 
-function buildTopology(game: Game, map: GameMap, botId: number): MapTopology {
+function buildTopology(
+  game: Game,
+  map: GameMap,
+  botId: number,
+  flippedSwitchIds: ReadonlySet<number> = game.flippedSwitchIds,
+): MapTopology {
   const seaIds = new Set(map.seaTerritories.map((t) => t.id));
   const neighbors = landNeighbors(game, map);
   const seaLinks = new Map<number, number[]>();
@@ -165,7 +178,13 @@ function buildTopology(game: Game, map: GameMap, botId: number): MapTopology {
     else continentTerritories.set(territory.continentId, [territory.id]);
   }
 
-  const horizonNeighbors = horizonNeighborsOf(game, map, botId, neighbors);
+  const horizonNeighbors = horizonNeighborsOf(
+    game,
+    map,
+    botId,
+    neighbors,
+    flippedSwitchIds,
+  );
   const tiles = closedTiles(game);
   return {
     neighbors,
@@ -178,6 +197,7 @@ function buildTopology(game: Game, map: GameMap, botId: number): MapTopology {
     continentTerritories,
     territoryContinent,
     unlockedTiles: game.unlockedTileIds.size,
+    flippedSwitches: flippedSwitchesKey(flippedSwitchIds),
   };
 }
 
@@ -196,6 +216,7 @@ interface FocusCache extends Focus {
   roundNumber: number;
   turnPhase: string;
   ownedCount: number;
+  flippedKey: string;
 }
 
 let focusCache: FocusCache | null = null;
@@ -273,6 +294,7 @@ function cachedFocus(
 ): Focus {
   const cache = focusCache;
   const ownedCount = ownedCountOf(game, botId);
+  const flippedKey = flippedSwitchesKey(game.flippedSwitchIds);
   if (
     cache &&
     game.turnPhase === 'attack' &&
@@ -280,7 +302,8 @@ function cachedFocus(
     cache.botId === botId &&
     cache.roundNumber === game.roundNumber &&
     cache.turnPhase === game.turnPhase &&
-    cache.ownedCount === ownedCount
+    cache.ownedCount === ownedCount &&
+    cache.flippedKey === flippedKey
   )
     return cache;
   const focus = computeFocus(
@@ -298,6 +321,7 @@ function cachedFocus(
     roundNumber: game.roundNumber,
     turnPhase: game.turnPhase,
     ownedCount,
+    flippedKey,
     ...focus,
   };
   return focus;
@@ -331,20 +355,24 @@ function styleOf(
     : erraticStyle();
 }
 
+function planningMap(game: Game, gameMap: GameMap): GameMap {
+  return game.continents !== 'off'
+    ? gameMap
+    : { ...gameMap, bonuses: gameMap.bonuses.map(() => 0) };
+}
+
 export function buildContext(
   game: Game,
   botId: number,
   botProfile: BotProfile,
   cachedPlan: TurnPlan | null,
 ): PlanContext {
-  const gameMap = getGameMap(game);
-  const map =
-    game.continents !== 'off'
-      ? gameMap
-      : { ...gameMap, bonuses: gameMap.bonuses.map(() => 0) };
+  const map = planningMap(game, getGameMap(game));
   const topology =
     isPlanFresh(cachedPlan, game, botId) &&
-    cachedPlan.topology?.unlockedTiles === game.unlockedTileIds.size
+    cachedPlan.topology?.unlockedTiles === game.unlockedTileIds.size &&
+    cachedPlan.topology.flippedSwitches ===
+      flippedSwitchesKey(game.flippedSwitchIds)
       ? cachedPlan.topology
       : buildTopology(game, map, botId);
 
@@ -401,6 +429,26 @@ export function buildContext(
     finisher: focus.finisher,
     stackFocus,
     income: incomeOf(game, botId),
+  };
+}
+
+export function withFlippedSwitch(
+  ctx: PlanContext,
+  flippedSwitchIds: ReadonlySet<number>,
+): PlanContext {
+  const map = planningMap(
+    ctx.game,
+    gameMapAtRound(ctx.game, ctx.game.roundNumber, flippedSwitchIds),
+  );
+  const topology = buildTopology(ctx.game, map, ctx.botId, flippedSwitchIds);
+  return {
+    ...ctx,
+    map,
+    neighbors: topology.neighbors,
+    horizonNeighbors: topology.horizonNeighbors,
+    attackers: topology.attackers,
+    horizonAttackers: topology.horizonAttackers,
+    routeNeighbors: topology.routeNeighbors,
   };
 }
 

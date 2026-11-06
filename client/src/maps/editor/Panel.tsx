@@ -1,4 +1,3 @@
-import { duplicatePlaceNames } from 'engine';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { useRef, useState } from 'react';
 import {
@@ -20,22 +19,18 @@ import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import NumberOdometer from '../../ui/forms/NumberOdometer';
 import { useSmoothEdges } from './canvas/smoothEdges';
 import {
-  allPlaceNames,
   NO_CONTINENT,
-  type LinkMode,
   type EditorTerritory as Territory,
 } from './model/editorTypes';
 import type { PaintTool } from './paint/paintTools';
 import { PALETTE_GROUPS } from './paint/paintTools';
 import { SHAPE_KINDS, shapeSides, type ShapeKind } from './paint/shapes';
 import { continentColor } from './palette';
-import DirectionalLinksTable from './panel/DirectionalLinksTable';
+import GraphTools from './panel/GraphTools';
 import NumberCell from './panel/NumberCell';
-import PlaceNameInput from './panel/PlaceNameInput';
+import PanelSection from './panel/PanelSection';
 import ShapeIcon from './panel/ShapeIcon';
 import TerritorySizeRange from './panel/TerritorySizeRange';
-import TileTool from './panel/TileTool';
-import TimedLinksTable from './panel/TimedLinksTable';
 import ToolGroup, { type ToolOption } from './panel/ToolGroup';
 import type { TileOptions } from './tiles/useTiles';
 
@@ -57,9 +52,7 @@ interface Props {
   setContinentCount: Dispatch<SetStateAction<number>>;
   bonuses: number[];
   setBonuses: Dispatch<SetStateAction<number[]>>;
-  continentNames: string[];
   setContinentNames: Dispatch<SetStateAction<string[]>>;
-  selectedTerritoryId: number | null;
   mapName: string;
   setMapName: (value: string) => void;
   mapSizeText: string;
@@ -110,8 +103,7 @@ interface Props {
   setBorderPreview: (value: boolean) => void;
   borderColors: string[];
   setBorderColors: (value: string[]) => void;
-  linkMode: LinkMode;
-  setLinkMode: (value: LinkMode) => void;
+  onContinentClick: (id: number) => void;
 }
 
 function clampBrush(raw: string, current: number): number {
@@ -182,9 +174,7 @@ function Panel(props: Props) {
     setContinentCount,
     bonuses,
     setBonuses,
-    continentNames,
     setContinentNames,
-    selectedTerritoryId,
     mapName,
     setMapName,
     mapSizeText,
@@ -235,8 +225,7 @@ function Panel(props: Props) {
     setBorderPreview,
     borderColors,
     setBorderColors,
-    linkMode,
-    setLinkMode,
+    onContinentClick,
   } = props;
 
   const brushNumberInput = useNumberInput({
@@ -255,6 +244,8 @@ function Panel(props: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const [smoothEdges, setSmoothEdges] = useSmoothEdges();
+  const [colorsOpen, setColorsOpen] = useState(false);
+  const [continentsOpen, setContinentsOpen] = useState(false);
 
   useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
 
@@ -309,25 +300,6 @@ function Panel(props: Props) {
   function updateBonus(index: number, value: number) {
     setBonuses((prev) => prev.map((b, i) => (i === index ? value : b)));
   }
-
-  function updateContinentName(index: number, value: string) {
-    setContinentNames((prev) => prev.map((n, i) => (i === index ? value : n)));
-  }
-
-  function updateTerritoryName(id: number, value: string) {
-    setTerritories((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, name: value } : t)),
-    );
-  }
-
-  const selectedTerritory = territories.find(
-    (t) => t.id === selectedTerritoryId,
-  );
-  const duplicateNames = duplicatePlaceNames(
-    allPlaceNames(territories, continentNames),
-  );
-  const isDuplicate = (name: string) =>
-    duplicateNames.has(name.trim().toLowerCase());
 
   if (collapsed) {
     return (
@@ -517,6 +489,30 @@ function Panel(props: Props) {
         </div>
       )}
 
+      <Form.Check
+        type="switch"
+        id="editor-border-preview"
+        label="Preview borders"
+        className="mb-2"
+        checked={borderPreview}
+        onChange={(e) => setBorderPreview(e.target.checked)}
+      />
+      <TerritorySizeRange value={cellScale} onChange={setCellScale} />
+      <Form.Check
+        type="switch"
+        id="editor-smooth-edges"
+        label="Preview smoothing"
+        className="mb-2"
+        checked={smoothEdges}
+        onChange={(e) => setSmoothEdges(e.target.checked)}
+      />
+
+      {error && (
+        <Alert variant="danger" className="py-1 px-2 small mb-2">
+          {error}
+        </Alert>
+      )}
+
       <ButtonGroup size="sm" className="w-100 mb-2">
         <Button
           variant={
@@ -537,43 +533,24 @@ function Panel(props: Props) {
       </ButtonGroup>
 
       {mode === 'graph' ? (
-        <>
-          <div className="d-flex gap-2 mb-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              className="w-100"
-              onClick={onFindTerritories}
-            >
-              Find territories
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="w-100"
-              onClick={onLinkTerritories}
-            >
-              Link territories
-            </Button>
-          </div>
-          <div className="d-flex align-items-center gap-3 mb-2">
-            <div className="w-50">
-              <TileTool
-                tool={tool}
-                setTool={setTool}
-                kind={tileOptions.kind}
-                setKind={tileOptions.setKind}
-              />
-            </div>
-            <Form.Check
-              type="switch"
-              id="graph-unlockable"
-              label="Unlockable"
-              checked={tileOptions.unlockable}
-              onChange={(e) => tileOptions.setUnlockable(e.target.checked)}
-            />
-          </div>
-        </>
+        <div className="d-flex gap-2 mb-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-100"
+            onClick={onFindTerritories}
+          >
+            Find territories
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-100"
+            onClick={onLinkTerritories}
+          >
+            Link territories
+          </Button>
+        </div>
       ) : (
         <div className="d-flex gap-2 mb-2">
           <Button
@@ -594,32 +571,6 @@ function Panel(props: Props) {
           </Button>
         </div>
       )}
-      <Form.Check
-        type="switch"
-        id="editor-border-preview"
-        label="Preview borders"
-        className="mb-2"
-        checked={borderPreview}
-        onChange={(e) => setBorderPreview(e.target.checked)}
-      />
-      {(borderPreview || mode === 'paint') && (
-        <TerritorySizeRange value={cellScale} onChange={setCellScale} />
-      )}
-      <Form.Check
-        type="switch"
-        id="editor-smooth-edges"
-        label="Preview smoothing"
-        className="mb-2"
-        checked={smoothEdges}
-        onChange={(e) => setSmoothEdges(e.target.checked)}
-      />
-
-      {error && (
-        <Alert variant="danger" className="py-1 px-2 small mb-2">
-          {error}
-        </Alert>
-      )}
-
       <div>
         {mode === 'paint' ? (
           <>
@@ -754,75 +705,76 @@ function Panel(props: Props) {
                 } as CSSProperties
               }
             />
-            {PALETTE_GROUPS.map((group) => (
-              <div key={group.label} className="mb-1">
-                <div className="small text-muted">{group.label}</div>
-                <div className="d-flex flex-wrap gap-1">
-                  {group.colors.map((s) => (
-                    <ColorSwatch
-                      key={group.label + s}
-                      value={s}
-                      active={color.toLowerCase() === s.toLowerCase()}
-                      onClick={() => setColor(s)}
-                    />
-                  ))}
+            <PanelSection
+              title="Colors"
+              summary={
+                <span
+                  className="d-inline-block rounded border"
+                  style={{ width: 16, height: 16, backgroundColor: color }}
+                />
+              }
+              open={colorsOpen}
+              setOpen={setColorsOpen}
+            >
+              {PALETTE_GROUPS.map((group) => (
+                <div key={group.label} className="mb-1">
+                  <div className="small text-muted">{group.label}</div>
+                  <div className="d-flex flex-wrap gap-1">
+                    {group.colors.map((s) => (
+                      <ColorSwatch
+                        key={group.label + s}
+                        value={s}
+                        active={color.toLowerCase() === s.toLowerCase()}
+                        onClick={() => setColor(s)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {customColors.length > 0 && (
-              <div className="mb-1">
-                <div className="small text-muted">Custom</div>
-                <div className="d-flex flex-wrap gap-1">
-                  {customColors.map((c) => (
-                    <ColorSwatch
-                      key={c}
-                      value={c}
-                      active={color.toLowerCase() === c.toLowerCase()}
-                      onClick={() => setColor(c)}
-                    />
-                  ))}
+              ))}
+              {customColors.length > 0 && (
+                <div className="mb-1">
+                  <div className="small text-muted">Custom</div>
+                  <div className="d-flex flex-wrap gap-1">
+                    {customColors.map((c) => (
+                      <ColorSwatch
+                        key={c}
+                        value={c}
+                        active={color.toLowerCase() === c.toLowerCase()}
+                        onClick={() => setColor(c)}
+                      />
+                    ))}
+                  </div>
                 </div>
+              )}
+              <div className="d-flex align-items-center gap-2 mt-1 mb-2">
+                <span className="small text-muted">Pick</span>
+                <Form.Control
+                  type="color"
+                  size="sm"
+                  value={customPicker}
+                  onFocus={() => {
+                    pickerFocusValue.current = customPicker;
+                  }}
+                  onChange={(e) => {
+                    setCustomPicker(e.target.value);
+                    setColor(e.target.value);
+                  }}
+                  onBlur={() => {
+                    if (customPicker !== pickerFocusValue.current)
+                      addCustomColor(customPicker);
+                  }}
+                  style={{ width: 40, height: 24, padding: 2 }}
+                />
               </div>
-            )}
-            <div className="d-flex align-items-center gap-2 mt-1 mb-2">
-              <span className="small text-muted">Pick</span>
-              <Form.Control
-                type="color"
-                size="sm"
-                value={customPicker}
-                onFocus={() => {
-                  pickerFocusValue.current = customPicker;
-                }}
-                onChange={(e) => {
-                  setCustomPicker(e.target.value);
-                  setColor(e.target.value);
-                }}
-                onBlur={() => {
-                  if (customPicker !== pickerFocusValue.current)
-                    addCustomColor(customPicker);
-                }}
-                style={{ width: 40, height: 24, padding: 2 }}
-              />
-            </div>
+            </PanelSection>
           </>
         ) : (
           <>
-            {selectedTerritory && (
-              <Form.Group className="mb-2">
-                <Form.Label className="small mb-1">
-                  {selectedTerritory.isSea ? 'Sea' : 'Territory'} #
-                  {selectedTerritory.id + 1} name
-                </Form.Label>
-                <PlaceNameInput
-                  value={selectedTerritory.name}
-                  placeholder={`#${selectedTerritory.id + 1}`}
-                  duplicate={isDuplicate(selectedTerritory.name)}
-                  onChange={(value) =>
-                    updateTerritoryName(selectedTerritory.id, value)
-                  }
-                />
-              </Form.Group>
-            )}
+            <GraphTools
+              tool={tool}
+              setTool={setTool}
+              tileOptions={tileOptions}
+            />
             <Table size="sm" borderless className="mb-2 text-center">
               <thead>
                 <tr>
@@ -833,101 +785,90 @@ function Panel(props: Props) {
               </thead>
               <tbody>
                 <tr>
-                  <td>{territories.filter((t) => !t.isSea).length}</td>
+                  <td>
+                    {territories.filter((t) => !t.isSea && !t.switch).length}
+                  </td>
                   <td>{territories.filter((t) => t.isSea).length}</td>
                   <td>{continentCount}</td>
                 </tr>
               </tbody>
             </Table>
-            <Table
-              size="sm"
-              borderless
-              className="mb-2 text-center align-middle"
+            <PanelSection
+              title={`Continents (${continentCount})`}
+              open={continentsOpen}
+              setOpen={setContinentsOpen}
             >
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Name</th>
-                  <th>Size</th>
-                  <th>Bonus</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: continentCount }, (_, i) => (
-                  <tr
-                    key={i}
-                    style={
-                      {
-                        '--bs-table-bg': continentColor(i),
-                        '--bs-table-color': contrastTextColor(
-                          continentColor(i),
-                        ),
-                      } as CSSProperties
-                    }
-                  >
-                    <td>{i + 1}</td>
-                    <td>
-                      <PlaceNameInput
-                        value={continentNames[i]}
-                        placeholder={`#${i + 1}`}
-                        duplicate={isDuplicate(continentNames[i])}
-                        onChange={(value) => updateContinentName(i, value)}
-                      />
-                    </td>
-                    <td>
-                      {
-                        territories.filter(
-                          (t) => !t.isSea && t.continentId === i,
-                        ).length
+              <Table
+                size="sm"
+                borderless
+                className="mb-2 text-center align-middle"
+              >
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Size</th>
+                    <th>Bonus</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: continentCount }, (_, i) => (
+                    <tr
+                      key={i}
+                      style={
+                        {
+                          '--bs-table-bg': continentColor(i),
+                          '--bs-table-color': contrastTextColor(
+                            continentColor(i),
+                          ),
+                        } as CSSProperties
                       }
-                    </td>
-                    <td>
-                      <NumberCell
-                        value={bonuses[i] ?? 2}
-                        min={MIN_BONUS}
-                        max={MAX_BONUS}
-                        onChange={(value) => updateBonus(i, value)}
-                      />
-                    </td>
-                    <td>
+                    >
+                      <td role="button" onClick={() => onContinentClick(i)}>
+                        {i + 1}
+                      </td>
+                      <td role="button" onClick={() => onContinentClick(i)}>
+                        {
+                          territories.filter(
+                            (t) => !t.isSea && t.continentId === i,
+                          ).length
+                        }
+                      </td>
+                      <td>
+                        <NumberCell
+                          value={bonuses[i] ?? 2}
+                          min={MIN_BONUS}
+                          max={MAX_BONUS}
+                          onChange={(value) => updateBonus(i, value)}
+                        />
+                      </td>
+                      <td>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => deleteContinent(i)}
+                          disabled={continentCount <= MIN_CONTINENTS}
+                        >
+                          <WhiteIcon path="/icons/close.svg" size={12} />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td colSpan={4}>
                       <Button
-                        variant="danger"
+                        variant="success"
                         size="sm"
-                        onClick={() => deleteContinent(i)}
-                        disabled={continentCount <= MIN_CONTINENTS}
+                        onClick={addContinent}
+                        disabled={continentCount >= MAX_CONTINENTS}
                       >
-                        <WhiteIcon path="/icons/close.svg" size={12} />
+                        <WhiteIcon path="/icons/plus.svg" size={14} />
                       </Button>
                     </td>
                   </tr>
-                ))}
-                <tr>
-                  <td colSpan={5}>
-                    <Button
-                      variant="success"
-                      size="sm"
-                      onClick={addContinent}
-                      disabled={continentCount >= MAX_CONTINENTS}
-                    >
-                      <WhiteIcon path="/icons/plus.svg" size={14} />
-                    </Button>
-                  </td>
-                </tr>
-              </tbody>
-            </Table>
-            <TimedLinksTable
-              territories={territories}
-              setTerritories={setTerritories}
-              linkMode={linkMode}
-              setLinkMode={setLinkMode}
-            />
-            <DirectionalLinksTable
-              territories={territories}
-              setTerritories={setTerritories}
-              linkMode={linkMode}
-              setLinkMode={setLinkMode}
-            />
+                </tbody>
+              </Table>
+            </PanelSection>
           </>
         )}
       </div>

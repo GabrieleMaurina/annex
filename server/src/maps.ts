@@ -28,6 +28,8 @@ export function persistGameMap(
     wraps: map.wraps,
     timedConnections: map.timedConnections,
     directionalConnections: map.directionalConnections,
+    switches: map.switches,
+    switchedLinks: map.switchedLinks,
     lockedTiles: map.lockedTiles,
     generation: map.generation,
     image: new Binary(image.bytes),

@@ -50,6 +50,7 @@ function runOnce(
     seas,
     timed: false,
     directional: false,
+    switched: false,
     unlockable: false,
     aspect: 'wide',
     mountains: true,

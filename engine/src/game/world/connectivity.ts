@@ -4,6 +4,7 @@ import {
 } from '../../maps/directionalConnections';
 import { withUnlockedTiles } from '../../maps/lockedTiles';
 import { getGameMap } from '../../maps/maps';
+import { switchedLinkKeys } from '../../maps/switches';
 import { Game } from '../../types';
 import { closedTiles } from '../tiles/unlock';
 import { withPortalEdges } from './portals';
@@ -35,6 +36,7 @@ export function wouldSplitAttackMap(
     ),
     map.timedConnections,
     map.directionalConnections,
+    switchedLinkKeys(map.switchedLinks),
   );
   const edges = new Map(
     nodes

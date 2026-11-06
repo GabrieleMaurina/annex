@@ -13,6 +13,7 @@ import {
   hasConnectedFortifyDestination,
 } from '../world/connectivity';
 import { withPortalEdges } from '../world/portals';
+import { canFlipFrom } from '../world/switches';
 import { hasAnySeaBridgeFrom } from './seaBridge';
 
 export function isAttackStartCandidate(
@@ -36,7 +37,8 @@ export function isAttackStartCandidate(
       return isFreeConquestTarget(game, n);
     }) ||
     hasAnySeaBridgeFrom(game, playerId, territoryId) ||
-    canUnlockFrom(game, playerId, territoryId)
+    canUnlockFrom(game, playerId, territoryId) ||
+    canFlipFrom(game, playerId, territoryId)
   );
 }
 

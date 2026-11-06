@@ -8,7 +8,8 @@ import {
   type EditorTerritory as Territory,
   type WrapMark,
 } from '../model/editorTypes';
-import { segmentWouldCross, type Viewport } from './canvasGeometry';
+import { withoutStaleWires } from '../model/switches';
+import { NO_WRAP, segmentWouldCross, type Viewport } from './canvasGeometry';
 
 export interface VertexLinkContext {
   territories: Territory[];
@@ -36,6 +37,10 @@ function edgeWouldCross(
     new Set([from.id, to.id]),
     forced,
   );
+}
+
+function canTouchSwitch(t: Territory): boolean {
+  return !t.isSea && !t.locked && !t.switch;
 }
 
 function flashRejectedEdge(
@@ -68,7 +73,8 @@ export function handleVertexClick(
     setTerritories,
     linkMode,
   } = ctx;
-  if (selectedVertexId === null) {
+  const fromTerritory = territories.find((t) => t.id === selectedVertexId);
+  if (!fromTerritory) {
     setSelectedVertexId(id);
     return;
   }
@@ -76,64 +82,73 @@ export function handleVertexClick(
     setSelectedVertexId(null);
     return;
   }
-  const from = selectedVertexId;
-  const fromTerritory = territories.find((t) => t.id === from);
+  const from = fromTerritory.id;
   const toTerritory = territories.find((t) => t.id === id);
-  const linked = fromTerritory ? fromTerritory.neighbors.includes(id) : false;
-  const timedLinked = fromTerritory
-    ? fromTerritory.timed.some((m) => m.id === id)
-    : false;
-  const directionalLinked = fromTerritory
-    ? fromTerritory.directional.some((m) => m.id === id)
-    : false;
+  const switchPair = !!(fromTerritory.switch || toTerritory?.switch);
+  const wrap = switchPair ? NO_WRAP : forced;
+  const mode =
+    switchPair || linkMode === 'switch' || linkMode === 'select'
+      ? 'normal'
+      : linkMode;
+  const linked = fromTerritory.neighbors.includes(id);
+  const timedLinked = fromTerritory.timed.some((m) => m.id === id);
+  const directionalLinked = fromTerritory.directional.some((m) => m.id === id);
   const exists = linked || timedLinked || directionalLinked;
   const remove =
-    linkMode === 'timed'
+    mode === 'timed'
       ? timedLinked
-      : linkMode === 'directional'
+      : mode === 'directional'
         ? directionalLinked
         : linked;
   if (
-    !exists &&
-    !allowCrossover &&
-    fromTerritory &&
+    switchPair &&
+    !remove &&
     toTerritory &&
-    edgeWouldCross(ctx, fromTerritory, toTerritory, forced)
+    !canTouchSwitch(fromTerritory.switch ? toTerritory : fromTerritory)
   ) {
-    flashRejectedEdge(ctx, fromTerritory, toTerritory, forced);
+    flashRejectedEdge(ctx, fromTerritory, toTerritory, wrap);
     setSelectedVertexId(id);
     return;
   }
   if (
-    linkMode !== 'normal' &&
+    !exists &&
+    !allowCrossover &&
+    toTerritory &&
+    edgeWouldCross(ctx, fromTerritory, toTerritory, wrap)
+  ) {
+    flashRejectedEdge(ctx, fromTerritory, toTerritory, wrap);
+    setSelectedVertexId(id);
+    return;
+  }
+  if (
+    mode !== 'normal' &&
     !remove &&
-    fromTerritory &&
     toTerritory &&
     (fromTerritory.isSea || toTerritory.isSea)
   ) {
-    flashRejectedEdge(ctx, fromTerritory, toTerritory, forced);
+    flashRejectedEdge(ctx, fromTerritory, toTerritory, wrap);
     setSelectedVertexId(id);
     return;
   }
   const wrapMarks = (otherId: number): WrapMark[] =>
-    !exists && (forced.x || forced.y)
-      ? [{ id: otherId, x: forced.x, y: forced.y }]
+    !exists && (wrap.x || wrap.y)
+      ? [{ id: otherId, x: wrap.x, y: wrap.y }]
       : [];
   const relink = (t: Territory, otherId: number, out: boolean): Territory => ({
     ...t,
     neighbors: [
       ...t.neighbors.filter((n) => n !== otherId),
-      ...(linkMode === 'normal' && !remove ? [otherId] : []),
+      ...(mode === 'normal' && !remove ? [otherId] : []),
     ],
     timed: [
       ...t.timed.filter((m) => m.id !== otherId),
-      ...(linkMode === 'timed' && !remove
+      ...(mode === 'timed' && !remove
         ? [{ id: otherId, ...DEFAULT_TIMED }]
         : []),
     ],
     directional: [
       ...t.directional.filter((m) => m.id !== otherId),
-      ...(linkMode === 'directional' && !remove
+      ...(mode === 'directional' && !remove
         ? [{ id: otherId, out, ...DEFAULT_DIRECTIONAL }]
         : []),
     ],
@@ -143,12 +158,14 @@ export function handleVertexClick(
         : [...t.wraps.filter((w) => w.id !== otherId), ...wrapMarks(otherId)],
   });
   setTerritories((ts) =>
-    ts.map((t) =>
-      t.id === from
-        ? relink(t, id, true)
-        : t.id === id
-          ? relink(t, from, false)
-          : t,
+    withoutStaleWires(
+      ts.map((t) =>
+        t.id === from
+          ? relink(t, id, true)
+          : t.id === id
+            ? relink(t, from, false)
+            : t,
+      ),
     ),
   );
   setSelectedVertexId(id);

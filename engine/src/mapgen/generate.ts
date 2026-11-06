@@ -1,7 +1,9 @@
 import {
   DirectionalConnection,
   LockedTile,
+  MapSwitch,
   SeaTerritory,
+  SwitchedLink,
   Territory,
   TimedConnection,
 } from '../types';
@@ -18,6 +20,7 @@ import { generateTerrain } from './pipeline/terrain/terrainMap';
 import { generateTile, layTileShape } from './pipeline/tile/tileMap';
 import { Point } from './pipeline/tile/tiling';
 import { generatedBorderColors } from './render/palette';
+import { generateSwitches } from './switches';
 
 export interface GeneratedMap {
   name: string;
@@ -26,6 +29,8 @@ export interface GeneratedMap {
   bonuses: number[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
@@ -66,6 +71,7 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
     seas,
     timed,
     directional,
+    switched,
     unlockable,
     aspect,
     mountains,
@@ -101,6 +107,12 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
     name: generatedMapName(params),
     lockedTiles: [],
     ...built,
+    ...generateSwitches(
+      switched ? createRng(`${key}::switches`) : null,
+      built.territories,
+      [...built.timedConnections, ...built.directionalConnections],
+      dims,
+    ),
     borderColors: generatedBorderColors(type, rivers),
   };
 }

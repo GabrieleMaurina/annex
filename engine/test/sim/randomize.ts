@@ -159,9 +159,17 @@ export function randomMapParams(
   };
   const unlockable = params.type === 'tile' && rng() < 0.1;
   const directional = rng() < 0.2;
+  const switched = (params.timed || directional) && rng() < 0.5;
   return unlockable
-    ? { ...params, seas: false, timed: false, directional: false, unlockable }
-    : { ...params, directional, unlockable };
+    ? {
+        ...params,
+        seas: false,
+        timed: false,
+        directional: false,
+        switched: false,
+        unlockable,
+      }
+    : { ...params, directional, switched, unlockable };
 }
 
 export interface RandomSettings {

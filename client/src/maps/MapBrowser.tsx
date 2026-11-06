@@ -68,6 +68,7 @@ function MapBrowser({
   const [genSeas, setGenSeas] = useState('');
   const [genTimed, setGenTimed] = useState('');
   const [genDirectional, setGenDirectional] = useState('');
+  const [genSwitched, setGenSwitched] = useState('');
   const [genUnlockable, setGenUnlockable] = useState('');
   const [sort, setSort] = useState<PlayerMapSort>('mostLiked');
   const [page, setPage] = useState(1);
@@ -88,6 +89,7 @@ function MapBrowser({
     genSeas,
     genTimed,
     genDirectional,
+    genSwitched,
     genUnlockable,
   });
 
@@ -113,6 +115,7 @@ function MapBrowser({
       generationDirectional: genDirectional
         ? genDirectional === 'yes'
         : undefined,
+      generationSwitched: genSwitched ? genSwitched === 'yes' : undefined,
       generationUnlockable: genUnlockable ? genUnlockable === 'yes' : undefined,
       sort,
     };
@@ -179,6 +182,7 @@ function MapBrowser({
     setGenSeas('');
     setGenTimed('');
     setGenDirectional('');
+    setGenSwitched('');
     setGenUnlockable('');
     setPage(1);
   }
@@ -336,6 +340,17 @@ function MapBrowser({
                 size="sm"
                 value={genDirectional}
                 onChange={(value) => resetPage(setGenDirectional)(value)}
+              >
+                <option value="">Any</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </Selector>
+            </Field>
+            <Field label="Generated switches">
+              <Selector
+                size="sm"
+                value={genSwitched}
+                onChange={(value) => resetPage(setGenSwitched)(value)}
               >
                 <option value="">Any</option>
                 <option value="yes">Yes</option>

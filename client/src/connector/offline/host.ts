@@ -350,6 +350,7 @@ const callbacks: EngineCallbacks = {
   onEntrenched: forward('game:entrenched'),
   onToxined: forward('game:toxined'),
   onUnlocked: forward('game:unlocked'),
+  onSwitchFlipped: forward('game:switchFlipped'),
   onToxinExpired: forward('game:toxinExpired'),
   onRadiationUpcoming: forward('game:radiationUpcoming'),
   onRadiationChanged: forward('game:radiationChanged'),
@@ -588,6 +589,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
           seas: d.seas as boolean,
           timed: d.timed as boolean,
           directional: d.directional === true,
+          switched: d.switched === true,
           unlockable: d.unlockable as boolean,
           aspect: (d.aspect as MapAspect | undefined) ?? 'wide',
           mountains: (d.mountains as boolean | undefined) ?? false,
@@ -726,6 +728,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       return;
     case 'game:unlock':
       cb?.(engine.unlockTile(id, d.tileId, d.enter));
+      return;
+    case 'game:flipSwitch':
+      cb?.(engine.flipSwitch(id, d.switchId));
       return;
     case 'game:attackSeaSelectStart':
       cb?.(engine.attackSeaSelectStart(id, d.territoryId));

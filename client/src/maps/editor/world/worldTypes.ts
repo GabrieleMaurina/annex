@@ -21,6 +21,7 @@ export interface WorldMapRequest {
   seas: boolean;
   timed: boolean;
   directional: boolean;
+  switched: boolean;
   mountains: boolean;
   rivers: boolean;
   greenAreas: boolean;

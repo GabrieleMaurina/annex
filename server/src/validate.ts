@@ -8,12 +8,17 @@ import {
   GenerationType,
   isStronglyConnected,
   isValidPlaceName,
+  linkKey,
   LockedTile,
   MAP_ASPECT_VALUES,
   MAP_SIZE_VALUES,
   MapAspect,
   MapSize,
+  MapSwitch,
+  MAX_SWITCHES,
   MAX_TIMED_VALUE,
+  SwitchedLink,
+  switchedLinkKeys,
   TILE_SHAPE_VALUES,
   TileShape,
   TimedConnection,
@@ -63,6 +68,7 @@ const MIN_CONTINENT_SIZE = 2;
 const MAX_CONTINENT_SIZE = 40;
 const MAX_TERRITORIES = MAX_CONTINENTS * MAX_CONTINENT_SIZE;
 const MAX_TILE_POINTS = 8;
+const SWITCH_GATES = ['or', 'and'];
 export const MAX_BORDER_COLORS = 8;
 export const BORDER_COLOR_PATTERN = '^#[0-9a-f]{6}$';
 
@@ -146,6 +152,61 @@ function isDirectionalConnection(
     value.a !== value.b &&
     isTimedValue(value.forward, 1) &&
     isTimedValue(value.backward, 0)
+  );
+}
+
+function isUniqueIntegerList(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(isInteger) &&
+    new Set(value).size === value.length
+  );
+}
+
+function isSwitch(value: unknown): value is MapSwitch {
+  return (
+    isObject(value) &&
+    Object.keys(value).length === 4 &&
+    typeof value.x === 'number' &&
+    typeof value.y === 'number' &&
+    typeof value.on === 'boolean' &&
+    isUniqueIntegerList(value.neighbors)
+  );
+}
+
+function isSwitchedLink(value: unknown): value is SwitchedLink {
+  return (
+    isObject(value) &&
+    Object.keys(value).length === 4 &&
+    isInteger(value.a) &&
+    isInteger(value.b) &&
+    isUniqueIntegerList(value.switches) &&
+    SWITCH_GATES.includes(value.gate as string)
+  );
+}
+
+function validSwitches(
+  switches: MapSwitch[],
+  switchedLinks: SwitchedLink[],
+  landIds: Set<number>,
+  linkKeys: Set<string>,
+  inImage: (point: [number, number]) => boolean,
+): boolean {
+  const wired = new Set(switchedLinks.flatMap((link) => link.switches));
+  const keys = switchedLinks.map((link) => linkKey(link.a, link.b));
+  return (
+    switches.every(
+      (s, i) =>
+        inImage([s.x, s.y]) &&
+        s.neighbors.every((n) => landIds.has(n)) &&
+        wired.has(i),
+    ) &&
+    new Set(keys).size === keys.length &&
+    keys.every((key) => linkKeys.has(key)) &&
+    switchedLinks.every((link) =>
+      link.switches.every((i) => i >= 0 && i < switches.length),
+    )
   );
 }
 
@@ -309,6 +370,7 @@ function allConnected(
   seaIds: Set<number>,
   timedConnections: TimedConnection[],
   directionalConnections: DirectionalConnection[],
+  switchedLinks: SwitchedLink[],
   lockedTiles: LockedTile[],
 ): boolean {
   const adjacency = new Map(nodes.map((t) => [t.id, t.neighbors]));
@@ -327,6 +389,7 @@ function allConnected(
     ),
     timedConnections,
     directionalConnections,
+    switchedLinkKeys(switchedLinks),
   );
   return isStronglyConnected(
     nodes.filter((t) => !seaIds.has(t.id)).map((t) => t.id),
@@ -343,6 +406,7 @@ export interface MapGeneration {
   seas: boolean;
   timed: boolean;
   directional: boolean;
+  switched: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;
@@ -360,6 +424,7 @@ export function validateMapGeneration(
   if (!isObject(raw)) return { ok: false, error: 'invalid generation' };
   const { seed, size, type, fill, tile, seas, timed, unlockable } = raw;
   const directional = raw.directional ?? false;
+  const switched = raw.switched ?? false;
   const aspect = raw.aspect ?? 'wide';
   const mountains = raw.mountains ?? false;
   const rivers = raw.rivers ?? false;
@@ -374,6 +439,8 @@ export function validateMapGeneration(
     typeof seas !== 'boolean' ||
     typeof timed !== 'boolean' ||
     typeof directional !== 'boolean' ||
+    typeof switched !== 'boolean' ||
+    (switched && !timed && !directional) ||
     typeof unlockable !== 'boolean' ||
     (unlockable && (type !== 'tile' || seas || timed || directional)) ||
     typeof mountains !== 'boolean' ||
@@ -392,6 +459,7 @@ export function validateMapGeneration(
       seas,
       timed,
       directional,
+      switched,
       unlockable,
       aspect: aspect as MapAspect,
       mountains,
@@ -454,6 +522,8 @@ export function validateMapGeometry(
   wrapsRaw: unknown,
   timedRaw: unknown,
   directionalRaw: unknown,
+  switchesRaw: unknown,
+  switchedLinksRaw: unknown,
   lockedRaw: unknown,
   imageWidth: number,
   imageHeight: number,
@@ -466,6 +536,8 @@ export function validateMapGeometry(
       wraps: MapWrap[];
       timedConnections: TimedConnection[];
       directionalConnections: DirectionalConnection[];
+      switches: MapSwitch[];
+      switchedLinks: SwitchedLink[];
       lockedTiles: LockedTile[];
     }
   | { ok: false; error: string } {
@@ -502,6 +574,15 @@ export function validateMapGeometry(
   )
     return { ok: false, error: 'invalid directional links' };
   if (
+    !Array.isArray(switchesRaw) ||
+    switchesRaw.length > MAX_SWITCHES ||
+    !switchesRaw.every(isSwitch) ||
+    !Array.isArray(switchedLinksRaw) ||
+    switchedLinksRaw.length > MAX_TERRITORIES ||
+    !switchedLinksRaw.every(isSwitchedLink)
+  )
+    return { ok: false, error: 'invalid switches' };
+  if (
     !Array.isArray(lockedRaw) ||
     lockedRaw.length > MAX_TERRITORIES ||
     !lockedRaw.every(isLockedTile)
@@ -514,6 +595,8 @@ export function validateMapGeometry(
   const wraps = wrapsRaw as MapWrap[];
   const timedConnections = timedRaw as TimedConnection[];
   const directionalConnections = directionalRaw as DirectionalConnection[];
+  const switches = switchesRaw as MapSwitch[];
+  const switchedLinks = switchedLinksRaw as SwitchedLink[];
   const lockedTiles = lockedRaw as LockedTile[];
 
   if (territories.length < MIN_CONTINENT_SIZE)
@@ -540,13 +623,12 @@ export function validateMapGeometry(
       return { ok: false, error: 'asymmetric neighbor' };
   }
 
-  const pairKey = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`);
   const landIds = new Set(territories.map((t) => t.id));
   if (seaTerritories.some((s) => !s.neighbors.some((n) => landIds.has(n))))
     return { ok: false, error: 'invalid seas' };
   const timedKeys = new Set<string>();
   for (const c of timedConnections) {
-    const key = pairKey(c.a, c.b);
+    const key = linkKey(c.a, c.b);
     if (
       timedKeys.has(key) ||
       !landIds.has(c.a) ||
@@ -558,7 +640,7 @@ export function validateMapGeometry(
   }
   const directionalKeys = new Set<string>();
   for (const c of directionalConnections) {
-    const key = pairKey(c.a, c.b);
+    const key = linkKey(c.a, c.b);
     if (
       directionalKeys.has(key) ||
       timedKeys.has(key) ||
@@ -572,7 +654,7 @@ export function validateMapGeometry(
 
   const wrapKeys = new Set<string>();
   for (const w of wraps) {
-    const key = pairKey(w.a, w.b);
+    const key = linkKey(w.a, w.b);
     if (
       wrapKeys.has(key) ||
       (!byId.get(w.a)?.neighbors.includes(w.b) &&
@@ -607,11 +689,23 @@ export function validateMapGeometry(
   }
 
   if (
+    !validSwitches(
+      switches,
+      switchedLinks,
+      landIds,
+      new Set([...timedKeys, ...directionalKeys]),
+      inImage,
+    )
+  )
+    return { ok: false, error: 'invalid switches' };
+
+  if (
     !allConnected(
       allNodes,
       new Set(seaTerritories.map((t) => t.id)),
       timedConnections,
       directionalConnections,
+      switchedLinks,
       lockedTiles,
     )
   )
@@ -637,6 +731,8 @@ export function validateMapGeometry(
     wraps,
     timedConnections,
     directionalConnections,
+    switches,
+    switchedLinks,
     lockedTiles,
   };
 }
@@ -654,6 +750,8 @@ interface ParsedInput {
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   fixedTiles: FixedTile[];
   image: Buffer;
@@ -693,6 +791,8 @@ export function parseMapInput(body: Record<string, unknown>): ParseResult {
     body.wraps,
     body.timedConnections,
     body.directionalConnections ?? [],
+    body.switches ?? [],
+    body.switchedLinks ?? [],
     body.lockedTiles,
     dimensions.width,
     dimensions.height,
@@ -732,6 +832,8 @@ export function parseMapInput(body: Record<string, unknown>): ParseResult {
       wraps: geometry.wraps,
       timedConnections: geometry.timedConnections,
       directionalConnections: geometry.directionalConnections,
+      switches: geometry.switches,
+      switchedLinks: geometry.switchedLinks,
       lockedTiles: geometry.lockedTiles,
       fixedTiles,
       image: data,

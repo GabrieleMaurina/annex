@@ -26,4 +26,8 @@ export function registerAttackHandlers(socket: Socket, engine: Engine) {
   registerGameAction(socket, 'game:unlock', (playerId, data) =>
     engine.unlockTile(playerId, data.tileId, data.enter),
   );
+
+  registerGameAction(socket, 'game:flipSwitch', (playerId, data) =>
+    engine.flipSwitch(playerId, data.switchId),
+  );
 }

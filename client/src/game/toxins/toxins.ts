@@ -1,5 +1,6 @@
 import {
   isStronglyConnected,
+  switchedLinkKeys,
   withEventualLinks,
   withUnlockedTiles,
 } from 'engine';
@@ -7,6 +8,7 @@ import type {
   DirectionalConnection,
   GameState,
   LockedTile,
+  SwitchedLink,
   TimedConnection,
 } from '../../lib/types';
 import type { SeaTerritory, Territory } from '../mapData';
@@ -17,6 +19,7 @@ type OwnerById = Map<number, GameState['territories'][number]>;
 export interface ScheduledLinks {
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switchedLinks: SwitchedLink[];
 }
 
 export function toxinsCost(
@@ -62,6 +65,7 @@ export function wouldSplitMap(
     ),
     links.timedConnections,
     links.directionalConnections,
+    switchedLinkKeys(links.switchedLinks),
   );
   const edges = new Map(
     nodes

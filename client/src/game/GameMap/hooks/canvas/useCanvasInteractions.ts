@@ -5,6 +5,12 @@ import { playSound } from '../../../../lib/sounds';
 import type { Ack } from '../../../../lib/types';
 import { ATTACK_EMOJI } from '../../../logic/emoji';
 import { regionAt } from '../../../regions/clickableRegions';
+import {
+  isSwitchVertex,
+  switchAt,
+  switchIdOf,
+  switchVertexId,
+} from '../../../switches/switches';
 import { tileAt } from '../../../tiles/unlock';
 import {
   DRAG_THRESHOLD,
@@ -128,6 +134,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     unlockTileId,
     selectUnlockTile,
     unlock,
+    switches,
+    flipVertexId,
+    selectFlipSwitch,
+    flipSwitch,
   } = params;
   const dragRef = useRef<DragState>(null);
   const pinchRef = useRef<{ lastDistance: number } | null>(null);
@@ -295,7 +305,8 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       if (
         id === attackStartTerritoryId ||
         id === attackEndTerritoryId ||
-        id === unlockTileId
+        id === unlockTileId ||
+        id === flipVertexId
       )
         return 'selected';
       if (id === hoveredId) return 'hovered';
@@ -362,6 +373,8 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     }
     const imageX = (pos.x - offsetX) / scaleX;
     const imageY = (pos.y - offsetY) / scaleY;
+    const switchId = switchAt(switches, imageX, imageY, VERTEX_RADIUS);
+    if (switchId !== null) return { id: switchVertexId(switchId) };
     const tile = tileAt(unlockTiles, imageX, imageY);
     if (tile) return { id: tile.id };
     const regionId = regions ? regionAt(regions, imageX, imageY) : null;
@@ -413,8 +426,14 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     const pos = getPos(e);
     if (!dragRef.current) {
       const vertex = hitVertex(pos);
-      setHoveredId(vertex && isInteractable(vertex) ? vertex.id : null);
-      setTooltipTerritoryId(vertex ? vertex.id : null);
+      setHoveredId(
+        vertex && (isInteractable(vertex) || isSwitchVertex(vertex.id))
+          ? vertex.id
+          : null,
+      );
+      setTooltipTerritoryId(
+        vertex && !isSwitchVertex(vertex.id) ? vertex.id : null,
+      );
       return;
     }
     updateDrag(pos);
@@ -443,9 +462,20 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
 
   function handleTap(pos: Point) {
     const vertex = hitVertex(pos);
+    if (isSyntheticMouseEvent()) {
+      const focusedSwitch =
+        vertex &&
+        isSwitchVertex(vertex.id) &&
+        !isInteractable(vertex) &&
+        vertex.id !== flipVertexId
+          ? vertex.id
+          : null;
+      setHoveredId(focusedSwitch);
+      if (focusedSwitch !== null) return;
+    }
 
     if (pendingAttackEmoji) {
-      if (vertex)
+      if (vertex && !isSwitchVertex(vertex.id))
         sendEmoji(pendingAttackEmoji.targetPlayerId, ATTACK_EMOJI, {
           type: 'territory',
           territoryId: vertex.id,
@@ -592,6 +622,15 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         else cancelAttack();
         return;
       }
+      if (flipVertexId !== null) {
+        if (
+          vertex &&
+          (vertex.id === attackStartTerritoryId || vertex.id === flipVertexId)
+        )
+          submitAttack();
+        else cancelAttack();
+        return;
+      }
       if (!vertex || !isInteractable(vertex)) {
         if (attackStartTerritoryId !== null) {
           if (vertex?.id !== attackStartTerritoryId) cancelAttack();
@@ -608,6 +647,8 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         selectAttackStart(vertex.id);
       } else if (unlockIdSet.has(vertex.id)) {
         selectUnlockTile(vertex.id);
+      } else if (isSwitchVertex(vertex.id)) {
+        selectFlipSwitch(switchIdOf(vertex.id));
       } else {
         selectAttackEnd(vertex.id);
       }
@@ -817,6 +858,13 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       ) {
         unlock(vertex.id, true);
       } else if (
+        !attackRevealing &&
+        vertex &&
+        isSwitchVertex(vertex.id) &&
+        attackEndCandidates.has(vertex.id)
+      ) {
+        flipSwitch(switchIdOf(vertex.id));
+      } else if (
         blitzEnabled &&
         !attackRevealing &&
         vertex &&
@@ -884,6 +932,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       )
         return;
       if (unlockIdSet.has(vertex.id)) unlock(vertex.id, false);
+      else if (isSwitchVertex(vertex.id)) flipSwitch(switchIdOf(vertex.id));
       else if (blitzEnabled) quickAttack(vertex.id, true);
       return;
     }

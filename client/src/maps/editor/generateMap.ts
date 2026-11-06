@@ -6,7 +6,9 @@ import type {
   MapAspect,
   MapSeaTerritory,
   MapSize,
+  MapSwitch,
   MapTerritory,
+  SwitchedLink,
   TileShape,
   TimedConnection,
 } from '../../lib/types';
@@ -20,6 +22,7 @@ export interface GenerateInput {
   seas: boolean;
   timed: boolean;
   directional: boolean;
+  switched: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;
@@ -39,6 +42,8 @@ export interface GeneratedEditorMap {
   bonuses: number[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];

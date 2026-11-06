@@ -3,7 +3,9 @@ import { httpGet } from '../lib/http';
 import type {
   DirectionalConnection,
   LockedTile,
+  MapSwitch,
   MapWrap,
+  SwitchedLink,
   TimedConnection,
 } from '../lib/types';
 
@@ -32,6 +34,8 @@ export interface GeneratedMapData {
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   imageSrc: string;
   borderColors: string[];
@@ -109,6 +113,8 @@ function ensurePlayerMap(
     wraps?: MapWrap[];
     timedConnections?: TimedConnection[];
     directionalConnections?: DirectionalConnection[];
+    switches?: MapSwitch[];
+    switchedLinks?: SwitchedLink[];
     lockedTiles?: LockedTile[];
     image?: string;
     borderColors: string[];
@@ -125,6 +131,8 @@ function ensurePlayerMap(
           wraps: map.wraps ?? [],
           timedConnections: map.timedConnections ?? [],
           directionalConnections: map.directionalConnections ?? [],
+          switches: map.switches ?? [],
+          switchedLinks: map.switchedLinks ?? [],
           lockedTiles: map.lockedTiles ?? [],
           imageSrc: map.image,
           borderColors: map.borderColors,
@@ -145,6 +153,8 @@ const EMPTY_MAP = {
   wraps: [] as MapWrap[],
   timedConnections: [] as TimedConnection[],
   directionalConnections: [] as DirectionalConnection[],
+  switches: [] as MapSwitch[],
+  switchedLinks: [] as SwitchedLink[],
   lockedTiles: [] as LockedTile[],
   imageSrc: null,
   borderColors: DEFAULT_BORDER_COLORS,
@@ -163,6 +173,8 @@ export function loadGameMap(
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   imageSrc: string | null;
   borderColors: string[];

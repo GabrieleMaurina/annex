@@ -11,13 +11,16 @@ import {
   Game,
   GameMap,
   LockedTile,
+  MapSwitch,
   MapWrap,
   SeaTerritory,
+  SwitchedLink,
   Territory,
   TimedConnection,
 } from '../types';
 import { withDirectedConnections } from './directionalConnections';
 import { withUnlockedTiles } from './lockedTiles';
+import { switchedLinkStates, switchStates } from './switches';
 import { withOpenConnections } from './timedConnections';
 
 const maps = new Map<string, GameMap>();
@@ -27,6 +30,7 @@ const openMaps = new WeakMap<
     round: number;
     territories: Territory[];
     unlockedCount: number;
+    flippedKey: string;
     open: GameMap;
   }
 >();
@@ -47,6 +51,8 @@ function baseGameMap(game: Game): GameMap {
       wraps: [],
       timedConnections: game.generatedMap.timedConnections,
       directionalConnections: game.generatedMap.directionalConnections,
+      switches: game.generatedMap.switches,
+      switchedLinks: game.generatedMap.switchedLinks,
       lockedTiles: game.generatedMap.lockedTiles,
     };
   }
@@ -59,6 +65,8 @@ function baseGameMap(game: Game): GameMap {
       wraps: game.playerMap.wraps,
       timedConnections: game.playerMap.timedConnections,
       directionalConnections: game.playerMap.directionalConnections,
+      switches: game.playerMap.switches,
+      switchedLinks: game.playerMap.switchedLinks,
       lockedTiles: game.playerMap.lockedTiles,
     };
   }
@@ -71,6 +79,8 @@ function baseGameMap(game: Game): GameMap {
       wraps: [],
       timedConnections: [],
       directionalConnections: [],
+      switches: [],
+      switchedLinks: [],
       lockedTiles: [],
     }
   );
@@ -90,16 +100,30 @@ function withContinentBonuses(game: Game, map: GameMap): GameMap {
     : { ...map, bonuses: game.continentBonuses };
 }
 
-export function gameMapAtRound(game: Game, round: number): GameMap {
+export function gameMapAtRound(
+  game: Game,
+  round: number,
+  flippedSwitchIds: ReadonlySet<number> = game.flippedSwitchIds,
+): GameMap {
   const base = baseGameMap(game);
   if (isStatic(game, base)) return withContinentBonuses(game, base);
+  const switched = switchedLinkStates(
+    base.switchedLinks,
+    switchStates(base.switches, flippedSwitchIds),
+  );
   return withContinentBonuses(game, {
     ...base,
     territories: withUnlockedTiles(
       withDirectedConnections(
-        withOpenConnections(base.territories, base.timedConnections, round),
+        withOpenConnections(
+          base.territories,
+          base.timedConnections,
+          round,
+          switched,
+        ),
         base.directionalConnections,
         round,
+        switched,
       ),
       base.lockedTiles,
       game.unlockedTileIds,
@@ -107,16 +131,22 @@ export function gameMapAtRound(game: Game, round: number): GameMap {
   });
 }
 
+export function flippedSwitchesKey(ids: ReadonlySet<number>): string {
+  return [...ids].sort((a, b) => a - b).join(',');
+}
+
 export function getGameMap(game: Game): GameMap {
   const base = baseGameMap(game);
   if (isStatic(game, base)) return withContinentBonuses(game, base);
   const cached = openMaps.get(game);
   const unlockedCount = game.unlockedTileIds.size;
+  const flippedKey = flippedSwitchesKey(game.flippedSwitchIds);
   if (
     cached &&
     cached.round === game.roundNumber &&
     cached.territories === base.territories &&
-    cached.unlockedCount === unlockedCount
+    cached.unlockedCount === unlockedCount &&
+    cached.flippedKey === flippedKey
   )
     return withContinentBonuses(game, cached.open);
   const round = game.roundNumber;
@@ -125,6 +155,7 @@ export function getGameMap(game: Game): GameMap {
     round,
     territories: base.territories,
     unlockedCount,
+    flippedKey,
     open,
   });
   return open;
@@ -138,6 +169,8 @@ export interface ArchivedMap {
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   imageSrc: string | null;
   borderColors: string[];
@@ -153,6 +186,7 @@ export interface ArchivedMap {
     seas: boolean;
     timed: boolean;
     directional: boolean;
+    switched: boolean;
     unlockable: boolean;
     aspect: MapAspect;
     mountains: boolean;
@@ -169,6 +203,8 @@ export function getArchivedMap(game: Game): ArchivedMap {
     wraps,
     timedConnections,
     directionalConnections,
+    switches,
+    switchedLinks,
     lockedTiles,
   } = baseGameMap(game);
   const generated = game.generatedMap;
@@ -180,6 +216,8 @@ export function getArchivedMap(game: Game): ArchivedMap {
     wraps,
     timedConnections,
     directionalConnections,
+    switches,
+    switchedLinks,
     lockedTiles,
     imageSrc: generated?.imageSrc ?? game.playerMap?.imageSrc ?? null,
     borderColors:
@@ -199,6 +237,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
           seas: generated.seas,
           timed: generated.timed,
           directional: generated.directional,
+          switched: generated.switched,
           unlockable: generated.unlockable,
           aspect: generated.aspect,
           mountains: generated.mountains,

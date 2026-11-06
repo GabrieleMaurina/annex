@@ -120,6 +120,11 @@ function appendGameFilterParams(
       'mapGenerationDirectional',
       query.mapGenerationDirectional ? '1' : '0',
     );
+  if (query.mapGenerationSwitched !== undefined)
+    params.set(
+      'mapGenerationSwitched',
+      query.mapGenerationSwitched ? '1' : '0',
+    );
   if (query.mapGenerationUnlockable !== undefined)
     params.set(
       'mapGenerationUnlockable',
@@ -336,6 +341,8 @@ export const connector = {
       params.set('genTimed', query.generationTimed ? '1' : '0');
     if (query.generationDirectional !== undefined)
       params.set('genDirectional', query.generationDirectional ? '1' : '0');
+    if (query.generationSwitched !== undefined)
+      params.set('genSwitched', query.generationSwitched ? '1' : '0');
     if (query.generationUnlockable !== undefined)
       params.set('genUnlockable', query.generationUnlockable ? '1' : '0');
     params.set('sort', query.sort);
@@ -899,6 +906,10 @@ export const connector = {
 
   unlockTile(data: { tileId: number; enter: boolean }, cb: AckCallback): void {
     route('game:unlock', data, cb);
+  },
+
+  flipSwitch(data: { switchId: number }, cb: AckCallback): void {
+    route('game:flipSwitch', data, cb);
   },
 
   attackSeaSelectStart(

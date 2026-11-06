@@ -36,6 +36,7 @@ export interface GameSettings {
     seas: boolean;
     timed: boolean;
     directional: boolean;
+    switched: boolean;
     unlockable: boolean;
     aspect: string;
     mountains: boolean;
@@ -100,6 +101,7 @@ export interface HomeFilters {
   mapGenerationSeas: string;
   mapGenerationTimed: string;
   mapGenerationDirectional: string;
+  mapGenerationSwitched: string;
   mapGenerationUnlockable: string;
   playersMin: number;
   playersMax: number;
@@ -339,6 +341,7 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
   mapGenerationSeas: '',
   mapGenerationTimed: '',
   mapGenerationDirectional: '',
+  mapGenerationSwitched: '',
   mapGenerationUnlockable: '',
   playersMin: HOME_PLAYERS_MIN,
   playersMax: HOME_PLAYERS_MAX,
@@ -429,6 +432,7 @@ export const preferencesSchemaProperties = {
           seas: { bsonType: 'bool' },
           timed: { bsonType: 'bool' },
           directional: { bsonType: 'bool' },
+          switched: { bsonType: 'bool' },
           unlockable: { bsonType: 'bool' },
           aspect: { enum: MAP_ASPECTS },
           mountains: { bsonType: 'bool' },
@@ -458,6 +462,7 @@ export const preferencesSchemaProperties = {
       'mapGenerationSeas',
       'mapGenerationTimed',
       'mapGenerationDirectional',
+      'mapGenerationSwitched',
       'mapGenerationUnlockable',
       'playersMin',
       'playersMax',
@@ -494,6 +499,7 @@ export const preferencesSchemaProperties = {
       mapGenerationSeas: { enum: HOME_GENERATION_FLAGS },
       mapGenerationTimed: { enum: HOME_GENERATION_FLAGS },
       mapGenerationDirectional: { enum: HOME_GENERATION_FLAGS },
+      mapGenerationSwitched: { enum: HOME_GENERATION_FLAGS },
       mapGenerationUnlockable: { enum: HOME_GENERATION_FLAGS },
       playersMin: {
         bsonType: 'number',
@@ -586,6 +592,8 @@ function sanitizeMapGeneration(raw: unknown): GameSettings['mapGeneration'] {
     seas: r.seas,
     timed: r.timed === true,
     directional: r.directional === true,
+    switched:
+      r.switched === true && (r.timed === true || r.directional === true),
     unlockable: r.unlockable === true,
     aspect: MAP_ASPECTS.includes(r.aspect as string)
       ? (r.aspect as string)
@@ -724,6 +732,11 @@ export function sanitizeHomeFilters(raw: unknown): HomeFilters {
     ),
     mapGenerationDirectional: pickEnum(
       r.mapGenerationDirectional,
+      HOME_GENERATION_FLAGS,
+      '',
+    ),
+    mapGenerationSwitched: pickEnum(
+      r.mapGenerationSwitched,
       HOME_GENERATION_FLAGS,
       '',
     ),

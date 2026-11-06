@@ -1,7 +1,16 @@
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+
 export const MIN_ZOOM = 0.8;
 export const MAX_ZOOM = 10;
 
 const BORDER_REFERENCE_RADIUS = 12;
+const SETTLE_DURATION = 200;
+
+export interface ViewTransform {
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
+}
 
 export function borderScale(fitVertexRadius: number): number {
   return Math.min(1, fitVertexRadius / BORDER_REFERENCE_RADIUS);
@@ -112,7 +121,7 @@ export function zoomTransform(
   return { zoom: newZoom, offsetX: x, offsetY: y };
 }
 
-export function screenOffset(
+function screenOffset(
   canvasW: number,
   canvasH: number,
   scaleX: number,
@@ -136,7 +145,28 @@ export function screenOffset(
   };
 }
 
-export function createSettleSampler(
+export function viewportFor(
+  canvasW: number,
+  canvasH: number,
+  imgW: number,
+  imgH: number,
+  transform: ViewTransform,
+) {
+  const scale = Math.min(canvasW / imgW, canvasH / imgH) * transform.zoom;
+  const { x: offsetX, y: offsetY } = screenOffset(
+    canvasW,
+    canvasH,
+    scale,
+    scale,
+    imgW,
+    imgH,
+    transform.offsetX,
+    transform.offsetY,
+  );
+  return { imgW, imgH, scaleX: scale, scaleY: scale, offsetX, offsetY };
+}
+
+function createSettleSampler(
   canvasW: number,
   canvasH: number,
   scaleX: number,
@@ -175,7 +205,48 @@ export function createSettleSampler(
   };
 }
 
-export function easeOutCubic(progress: number): number {
+function easeOutCubic(progress: number): number {
   const remaining = 1 - progress;
   return 1 - remaining * remaining * remaining;
+}
+
+export function animateSettle(
+  viewport: { imgW: number; imgH: number; scaleX: number; scaleY: number },
+  canvas: { w: number; h: number },
+  transform: ViewTransform,
+  setTransform: Dispatch<SetStateAction<ViewTransform>>,
+  settleRef: MutableRefObject<number | null>,
+): void {
+  const { offsetX, offsetY } = transform;
+  const { imgW, imgH, scaleX, scaleY } = viewport;
+  const settle = createSettleSampler(
+    canvas.w,
+    canvas.h,
+    scaleX,
+    scaleY,
+    imgW,
+    imgH,
+    offsetX,
+    offsetY,
+  );
+  const { target } = settle;
+  if (settle.settled) {
+    if (offsetX !== target.x || offsetY !== target.y) {
+      setTransform((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
+    }
+    return;
+  }
+  const begin = performance.now();
+  const animate = (now: number) => {
+    const progress = Math.min((now - begin) / SETTLE_DURATION, 1);
+    if (progress >= 1) {
+      setTransform((t) => ({ ...t, offsetX: target.x, offsetY: target.y }));
+      settleRef.current = null;
+      return;
+    }
+    const next = settle.sample(easeOutCubic(progress));
+    setTransform((t) => ({ ...t, offsetX: next.x, offsetY: next.y }));
+    settleRef.current = requestAnimationFrame(animate);
+  };
+  settleRef.current = requestAnimationFrame(animate);
 }

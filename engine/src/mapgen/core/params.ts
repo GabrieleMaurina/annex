@@ -14,6 +14,7 @@ export interface GenerateMapParams {
   seas: boolean;
   timed: boolean;
   directional: boolean;
+  switched: boolean;
   unlockable: boolean;
   aspect: MapAspect;
   mountains: boolean;

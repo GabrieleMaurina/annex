@@ -441,6 +441,13 @@ export function useReplay(
           f.animation.type === 'unlock' ? [f.animation.tileId] : [],
         )
     : null;
+  const switchFlips = replay
+    ? replay.frames
+        .slice(0, index)
+        .flatMap((f) =>
+          f.animation.type === 'switch' ? [f.animation.switchId] : [],
+        )
+    : null;
 
   return {
     index,
@@ -455,6 +462,7 @@ export function useReplay(
     hands,
     playerStates,
     unlockedTileIds,
+    switchFlips,
     log: replay ? replay.log : null,
     turnPhase: currentFrame ? currentFrame.turnPhase : null,
     roundNumber: currentFrame ? currentFrame.roundNumber : null,

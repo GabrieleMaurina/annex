@@ -268,6 +268,7 @@ const callbacks: EngineCallbacks = {
   onEntrenched: relay('onEntrenched', 'game:entrenched'),
   onToxined: relay('onToxined', 'game:toxined'),
   onUnlocked: relay('onUnlocked', 'game:unlocked'),
+  onSwitchFlipped: relay('onSwitchFlipped', 'game:switchFlipped'),
   onToxinExpired: relay('onToxinExpired', 'game:toxinExpired'),
   onRadiationUpcoming: relay('onRadiationUpcoming', 'game:radiationUpcoming'),
   onRadiationChanged: relay('onRadiationChanged', 'game:radiationChanged'),

@@ -6,6 +6,8 @@ import type {
   GenerationType,
   LockedTile,
   MapSize,
+  MapSwitch,
+  SwitchedLink,
   TileShape,
   TimedConnection,
 } from '../lib/types';
@@ -40,6 +42,8 @@ export interface StoredMap {
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   image: string;
   imageMime: string;
@@ -70,6 +74,7 @@ export interface PlayerMapsQuery {
   generationSeas?: boolean;
   generationTimed?: boolean;
   generationDirectional?: boolean;
+  generationSwitched?: boolean;
   generationUnlockable?: boolean;
   sort: PlayerMapSort;
 }
@@ -106,6 +111,8 @@ export interface PlayerMapDetail {
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   fixedTiles: FixedTile[];
   image: string;
@@ -129,6 +136,8 @@ export interface PlayerMapSaveBody {
   wraps: MapWrap[];
   timedConnections: TimedConnection[];
   directionalConnections: DirectionalConnection[];
+  switches: MapSwitch[];
+  switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
   fixedTiles?: FixedTile[];
   image: string;

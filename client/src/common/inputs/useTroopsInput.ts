@@ -3,7 +3,7 @@ import {
   isTroopsPercentage,
   subscribeTroopsPercentage,
 } from '../../lib/player';
-import { detentStep } from './detent';
+import { wrapStep } from './edgeWrap';
 import { useNumberInput } from './useNumberInput';
 
 const PERCENTAGE_THRESHOLD = 100;
@@ -55,11 +55,19 @@ export function stepTroops(
   delta: number,
   min: number,
   max: number,
+  newGesture: boolean,
   at: number,
 ): number {
   const scale = troopsScale(min, max, isTroopsPercentage());
   return scale.toTroops(
-    detentStep(scale.toShown(troops), delta, scale.min, scale.max, at),
+    wrapStep(
+      scale.toShown(troops),
+      delta,
+      scale.min,
+      scale.max,
+      newGesture,
+      at,
+    ),
   );
 }
 

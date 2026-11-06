@@ -6,12 +6,17 @@ import {
   fairBlitz,
   fairBlitzOutcomes,
   gameDiceRules,
+  NO_LUCK,
   attack as rollAttack,
   trueBlitz,
   trueWinProbs,
 } from '../../game/combat/dice';
 import { hasReadyNuke } from '../../game/nukes/nukes';
-import { bumpStat, isBotControlled } from '../../game/progression/stats';
+import {
+  bumpStat,
+  isBotControlled,
+  recordLuck,
+} from '../../game/progression/stats';
 import { recordReplayFrame } from '../../game/replay';
 import { gameState } from '../../game/state';
 import { advanceTurnPhase } from '../../game/turns';
@@ -195,6 +200,7 @@ export function attackSea(
   let defenceLosses: number;
   let attackerDice: number[] = [];
   let defenderDice: number[] = [];
+  let luck = NO_LUCK;
   if (type === 'manual') {
     const roll = () => rollAttack(ships, defendingDice, game.diceTies);
     let result = roll();
@@ -203,6 +209,7 @@ export function attackSea(
     defenceLosses = result.defenceLosses;
     attackerDice = result.attackDice;
     defenderDice = result.defenceDice;
+    luck = result.luck;
   } else {
     const blitz =
       game.blitz === 'true'
@@ -219,7 +226,9 @@ export function attackSea(
       ? Math.min(result.attackLosses, ships - 1)
       : result.attackLosses;
     defenceLosses = game.tutorial ? defendingShips : result.defenceLosses;
+    luck = result.luck;
   }
+  recordLuck(game.stats.get(playerId)!, game.stats.get(defenderId), luck);
 
   const remainingAttackers = attackingShips - attackLosses;
   const remainingDefenders = defendingShips - defenceLosses;

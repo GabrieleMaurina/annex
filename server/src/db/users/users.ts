@@ -254,6 +254,19 @@ export function getUserPicture(id: string): Promise<StoredPicture | null> {
     });
 }
 
+export function pictureDataUrl(picture: StoredPicture | null): string | null {
+  return picture && !picture.dangerous
+    ? `data:${picture.mime};base64,${picture.data}`
+    : null;
+}
+
+export function getUserBio(id: string): Promise<string> {
+  if (!ObjectId.isValid(id)) return Promise.resolve('');
+  return collection()
+    .findOne({ _id: new ObjectId(id) }, { projection: { bio: 1 } })
+    .then((doc) => doc?.bio ?? '');
+}
+
 export function setUserPicture(
   userId: string,
   picture: { id: string; data: Buffer; mime: string },

@@ -83,8 +83,12 @@ function viewResultStat(game: Game, s: ResultStat): ResultStat {
     capitalsConquered: s.capitalsConquered,
     capitalsLost: s.capitalsLost,
     cardsGained: s.cardsGained,
+    cardsStolen: s.cardsStolen,
     turnsPlayed: s.turnsPlayed,
     setsPlayed: s.setsPlayed,
+    setsOnThree: s.setsOnThree,
+    turnsOnThree: s.turnsOnThree,
+    luck: s.luck,
   });
 }
 

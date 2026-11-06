@@ -550,7 +550,7 @@ export function simulateTurn(
       Math.ceil(objective.mustVisit.length * FEASIBILITY_RATIO),
       planDepth(ctx),
     );
-    if (captured >= required && state.conquered) feasible = true;
+    if (captured >= required && attackSteps.length > 0) feasible = true;
   }
 
   const hint = candidate.fortifyHint ?? candidate.objectives[0]?.fortifyHint;

@@ -27,13 +27,16 @@ export function useHideUiShortcut() {
     function onKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target))
         return;
-      if (getShortcutsOpen() || e.key.toLowerCase() !== 'h') return;
+      const key = e.key.toLowerCase();
+      const restoring = key === 'escape' && hidden;
+      if (getShortcutsOpen() || (key !== 'h' && !restoring)) return;
+      if (restoring) e.stopPropagation();
       playSound('click');
       setUiHidden(!hidden);
     }
-    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, true);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onKeyDown, true);
       setUiHidden(false);
     };
   }, []);

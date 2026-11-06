@@ -1,6 +1,10 @@
 import type { TutorialScenario } from 'engine';
 import type { GameState } from '../lib/types';
-import { navalTutorialMap, type TutorialGameMap } from './tutorialMap';
+import {
+  linksTutorialMap,
+  navalTutorialMap,
+  type TutorialGameMap,
+} from './tutorialMap';
 
 export interface Tutorial {
   id: string;
@@ -12,6 +16,7 @@ export interface Tutorial {
   scenario: TutorialScenario;
   map?: () => TutorialGameMap;
   blockedEvents?: string[];
+  allowedEvents?: string[];
   isComplete: (event: string, game: GameState, selfId: number) => boolean;
 }
 
@@ -22,6 +27,8 @@ const CAPITALS = { continents: 'off', gameMode: 'capitals' };
 const NAVAL_SEA = 5;
 const FOG = { continents: 'off', fogOfWar: 'on', gameMode: 'capitals' };
 const HIDDEN_CAPITAL = 2;
+const LINKS = { continents: 'off', cards: 'off' };
+const TIMED_LINK_TARGET = 3;
 
 function territory(id: number, seat: number, troops: number, capital = false) {
   return { id, seat, troops, capital };
@@ -316,6 +323,31 @@ export const TUTORIALS: Tutorial[] = [
       game.seas.some((sea) =>
         sea.ships.every((s) => s.playerId === selfId || s.ships < 2),
       ),
+  },
+  {
+    id: 'links',
+    title: 'Special links',
+    summary: 'Cross the water with one-way, switched and timed links.',
+    instruction:
+      'Arrows work one way, so attack from your 14 troops along the arrow pointing away from you and move most of your troops in. Select that territory and click the switch beside it: flipping costs 2 troops and opens the link it controls. Attack across and move in. The hourglass link opens in 2 rounds: use Next Phase to end your turn, deploy, and repeat, watching its countdown. Once it opens, attack across it and move in.',
+    highlight: 0,
+    settings: LINKS,
+    map: linksTutorialMap,
+    allowedEvents: ['game:flipSwitch', 'game:nextPhase'],
+    scenario: {
+      territories: [
+        territory(0, 0, 14),
+        territory(1, 1, 1),
+        territory(2, 1, 1),
+        territory(3, 1, 2),
+        territory(4, 1, 3),
+      ],
+      phase: 'attack',
+      troopsToDeploy: 0,
+      cards: [],
+    },
+    isComplete: (event, game, selfId) =>
+      movedIn(event, game) && owns(game, selfId, [TIMED_LINK_TARGET]),
   },
 ];
 

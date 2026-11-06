@@ -303,7 +303,8 @@ export function buildGame(spec: ScenarioSpec): {
   for (const [tid, owner] of Object.entries(spec.owners))
     game.territoryOwners.set(Number(tid), owner);
   for (const t of map.territories)
-    game.territoryTroops.set(t.id, spec.troops[t.id] ?? 1);
+    if (game.territoryOwners.has(t.id) || spec.troops[t.id] !== undefined)
+      game.territoryTroops.set(t.id, spec.troops[t.id] ?? 1);
   game.troopsToDeploy = spec.troopsToDeploy ?? 10;
   for (const [seaId, byPlayer] of Object.entries(spec.seaShips ?? {}))
     game.seaShips.set(

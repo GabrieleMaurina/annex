@@ -12,6 +12,7 @@ import {
   fairBlitz,
   fairBlitzOutcomes,
   gameDiceRules,
+  NO_LUCK,
   attack as rollAttack,
   trueBlitz,
   trueWinProbs,
@@ -19,7 +20,11 @@ import {
 import { attackFullPath, hasSeaBridgeTo } from '../game/combat/seaBridge';
 import { finishGame, resolveWinnerIds } from '../game/end';
 import { hasReadyNuke } from '../game/nukes/nukes';
-import { recordConquest, recordElimination } from '../game/progression/stats';
+import {
+  recordConquest,
+  recordElimination,
+  recordLuck,
+} from '../game/progression/stats';
 import { recordReplayFrame } from '../game/replay';
 import { gameState } from '../game/state';
 import { lockedTilesNextTo, unlockCost } from '../game/tiles/unlock';
@@ -271,6 +276,7 @@ export function attack(
   let defenceLosses: number;
   let attackerDice: number[] = [];
   let defenderDice: number[] = [];
+  let luck = NO_LUCK;
   const defendingDice = defenceDiceFor(game, endId);
   if (defenderId === undefined) {
     attackLosses = 0;
@@ -288,6 +294,7 @@ export function attack(
     defenceLosses = result.defenceLosses;
     attackerDice = result.attackDice;
     defenderDice = result.defenceDice;
+    luck = result.luck;
   } else {
     const blitz =
       game.blitz === 'true'
@@ -304,6 +311,7 @@ export function attack(
       ? Math.min(result.attackLosses, troops - 1)
       : result.attackLosses;
     defenceLosses = game.tutorial ? defendingTroops : result.defenceLosses;
+    luck = result.luck;
   }
 
   game.territoryTroops.set(startId, attackingTroops - attackLosses);
@@ -317,6 +325,7 @@ export function attack(
     defenderStats.troopsLost += defenceLosses;
     defenderStats.troopsKilled += attackLosses;
   }
+  recordLuck(attackerStats, defenderStats, luck);
 
   const conquered = defenceLosses >= defendingTroops;
   if (conquered) {
@@ -363,6 +372,7 @@ export function attack(
         attackerHand.push(...defenderHand);
         game.playerCards.set(defenderId, []);
         attackerStats.cardsGained += defenderHand.length;
+        attackerStats.cardsStolen += defenderHand.length;
         cardsTaken = defenderHand.length;
         if (defenderHand.length > 0) {
           sendPlayerCards(game, playerId);

@@ -841,7 +841,7 @@ function isOverwhelming(
   const attackers = game.territoryTroops.get(attack.startId) ?? 0;
   const defenders = game.territoryTroops.get(attack.endId) ?? 0;
   const ratio = ctx.finisher ? FINISHER_OVERWHELMING_RATIO : OVERWHELMING_RATIO;
-  return attackers >= defenders * ratio;
+  return defenders > 0 && attackers >= defenders * ratio;
 }
 
 function stepStatus(

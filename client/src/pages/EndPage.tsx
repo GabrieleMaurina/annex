@@ -175,6 +175,18 @@ function EndPage({
                 </Tip>
               </div>
             )}
+            {connector.canRestart(game.players) && (
+              <div className="d-flex justify-content-center mt-3">
+                <Tip
+                  text="Start a new game with the same settings, players and map"
+                  placement="bottom"
+                >
+                  <Button variant="success" onClick={() => connector.restart()}>
+                    Restart
+                  </Button>
+                </Tip>
+              </div>
+            )}
             {game.spectators.length > 0 && (
               <div className="mt-4">
                 <SpectatorList spectators={game.spectators} isHost={false} />

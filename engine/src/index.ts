@@ -45,7 +45,7 @@ import {
   toggleDraw,
 } from './lifecycle/misc';
 import { updateSettings } from './lifecycle/settings';
-import { startGame } from './lifecycle/start';
+import { restartGame, startGame } from './lifecycle/start';
 import { startTutorial } from './lifecycle/tutorial';
 
 import {
@@ -313,6 +313,7 @@ export function createEngine(
     requestResults,
     updateSettings,
     startGame,
+    restartGame,
     startTutorial,
     cycleColor,
     nextPhase,

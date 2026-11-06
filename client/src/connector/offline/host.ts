@@ -232,7 +232,7 @@ function beginHandoff(next: number, turnStarted: unknown): void {
   const player = lastState?.players.find((p) => p.id === next);
   publish('offline:handoff', {
     toName: player?.name ?? 'Player',
-    color: player?.color ?? 0,
+    playerId: next,
   });
 }
 
@@ -400,6 +400,14 @@ export function isTutorial(): boolean {
   return tutorial !== null;
 }
 
+export function tutorialAllows(event: string): boolean {
+  if (!tutorial) return true;
+  if (tutorialDone || tutorial.blockedEvents?.includes(event)) return false;
+  return (
+    TUTORIAL_EVENTS.includes(event) || !!tutorial.allowedEvents?.includes(event)
+  );
+}
+
 export function startOffline(next: Tutorial | null): void {
   if (active && next === tutorial) return;
   if (active) stopOffline();
@@ -442,6 +450,19 @@ export function startOffline(next: Tutorial | null): void {
     flushQueue();
     engine.requestState(hostId);
   }
+}
+
+export function restartOffline(): void {
+  if (!engine || hostId === null) return;
+  currentActorId = hostId;
+  gameEntered = false;
+  if (lastState) lastState = { ...lastState, paused: false };
+  publish('offline:actor', { selfId: hostId });
+  publish('game:logs', { entries: [] });
+  publish('offline:restarted');
+  const res = engine.restartGame(hostId);
+  if (res.ok) publish('game:state', res.game);
+  handOffAfterAck(res);
 }
 
 export function stopOffline(): void {
@@ -508,12 +529,7 @@ export function dispatch(
   data: unknown,
   cb?: (res: unknown) => void,
 ): void {
-  if (
-    tutorial &&
-    (tutorialDone ||
-      !TUTORIAL_EVENTS.includes(event) ||
-      tutorial.blockedEvents?.includes(event))
-  ) {
+  if (!tutorialAllows(event)) {
     cb?.({ ok: false, error: 'not available in tutorials' });
     return;
   }
@@ -774,7 +790,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
     case 'game:block':
     case 'game:unblock':
     case 'game:report':
-    case 'game:picture':
+    case 'game:profile':
       cb?.({ ok: false, error: 'offline' });
       return;
     default:

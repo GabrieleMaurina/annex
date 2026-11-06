@@ -5,7 +5,7 @@ import type { GameState } from '../lib/types';
 
 interface Handoff {
   toName: string;
-  color: number;
+  playerId: number;
 }
 
 function Blackout({
@@ -64,7 +64,7 @@ function OfflineHandoffGate({ game }: { game: GameState }) {
   if (handoff !== null) {
     return (
       <Blackout
-        color={handoff.color}
+        color={game.players.find((p) => p.id === handoff.playerId)?.color ?? 0}
         title={`Pass to ${handoff.toName}`}
         subtitle="Tap anywhere to continue"
         onClick={proceed}

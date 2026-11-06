@@ -230,6 +230,20 @@ function Game({
   }, []);
 
   useEffect(() => {
+    function onRestarted() {
+      prevStateRef.current = 'lobby';
+      setMission(null);
+      setResults(null);
+      setStoredGameId(null);
+      setEndReplaying(false);
+    }
+    connector.on('offline:restarted', onRestarted);
+    return () => {
+      connector.off('offline:restarted', onRestarted);
+    };
+  }, []);
+
+  useEffect(() => {
     onMapOpenChange(showMap);
     return () => onMapOpenChange(false);
   }, [showMap, onMapOpenChange]);
@@ -435,6 +449,7 @@ function Game({
         />
       ) : (
         <GameMap
+          key={startGates}
           {...gameMapDataProps(shownGame, game.mapName)}
           mission={mission}
           selfId={selfId}
@@ -470,7 +485,7 @@ function Game({
           hidden={uiHidden}
         />
       )}
-      <OfflineHandoffGate game={game} />
+      <OfflineHandoffGate game={shownGame} />
       {tutorial && game.state !== 'lobby' && (
         <TutorialOverlay
           tutorial={tutorial}

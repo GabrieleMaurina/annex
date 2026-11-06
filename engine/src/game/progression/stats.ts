@@ -1,6 +1,8 @@
 import { playersById } from '../../session/players';
 import { AchievementFacts, Game, PlayerStats } from '../../types';
+import type { DiceLuck } from '../combat/dice';
 import { ownsAnyTerritory } from '../mechanics';
+import { hasPlayableSet } from './cards';
 import { isPointsMode } from './points';
 
 export function emptyPlayerStats(): PlayerStats {
@@ -13,9 +15,14 @@ export function emptyPlayerStats(): PlayerStats {
     capitalsConquered: 0,
     capitalsLost: 0,
     cardsGained: 0,
+    cardsStolen: 0,
     playersKilled: [],
     turnsPlayed: 0,
     setsPlayed: 0,
+    setsOnThree: 0,
+    turnsOnThree: 0,
+    luckSurplus: 0,
+    luckVariance: 0,
     peakTurnTroops: 0,
     peakTerritories: 0,
     cornered: false,
@@ -30,6 +37,9 @@ export function emptyPlayerStats(): PlayerStats {
 }
 
 const CORNERED_TERRITORIES = 3;
+const SET_SIZE = 3;
+const AVERAGE_LUCK = 0;
+const LOGISTIC_NORMAL_SCALE = 1.7;
 
 export function isBotControlled(playerId: number): boolean {
   return playersById.get(playerId)?.isBot ?? false;
@@ -38,6 +48,11 @@ export function isBotControlled(playerId: number): boolean {
 export function recordTurnStart(game: Game, playerId: number, troops: number) {
   const stats = game.stats.get(playerId)!;
   stats.turnConquests = 0;
+  const hand = game.playerCards.get(playerId) ?? [];
+  if (hand.length === SET_SIZE) {
+    stats.turnsOnThree++;
+    if (hasPlayableSet(hand)) stats.setsOnThree++;
+  }
   if (isBotControlled(playerId)) return;
   const territories = countTerritories(game, playerId);
   if (
@@ -64,6 +79,26 @@ export function recordCardSet(game: Game, playerId: number, troops: number) {
   stats.setsPlayed++;
   if (!isBotControlled(playerId))
     stats.peakSetTroops = Math.max(stats.peakSetTroops, troops);
+}
+
+export function recordLuck(
+  attacker: PlayerStats,
+  defender: PlayerStats | undefined,
+  luck: DiceLuck,
+) {
+  attacker.luckSurplus += luck.surplus;
+  attacker.luckVariance += luck.variance;
+  if (!defender) return;
+  defender.luckSurplus -= luck.surplus;
+  defender.luckVariance += luck.variance;
+}
+
+export function luckScore(game: Game, playerId: number): number {
+  const stats = game.stats.get(playerId);
+  if (!stats || stats.luckVariance <= 0) return AVERAGE_LUCK;
+  const deviations = stats.luckSurplus / Math.sqrt(stats.luckVariance);
+  const percentile = 1 / (1 + Math.exp(-LOGISTIC_NORMAL_SCALE * deviations));
+  return Math.round(200 * percentile - 100);
 }
 
 function isSoleWinner(game: Game, playerId: number): boolean {

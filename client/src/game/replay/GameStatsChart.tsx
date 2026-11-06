@@ -95,6 +95,10 @@ const CARDS_GAINED: Stat = {
   label: 'Cards Gained',
   value: counter('cardsGained'),
 };
+const CARDS_STOLEN: Stat = {
+  label: 'Cards Stolen',
+  value: counter('cardsStolen'),
+};
 const SETS_PLAYED: Stat = {
   label: 'Sets Played',
   value: counter('setsPlayed'),
@@ -122,6 +126,7 @@ function GameStatsChart({ players, replay, isCapitals, isPointsMode }: Props) {
           TERRITORIES_LOST,
           ...(isCapitals ? [CAPITALS_CONQUERED, CAPITALS_LOST] : []),
           CARDS_GAINED,
+          CARDS_STOLEN,
           SETS_PLAYED,
         ]
       : []),

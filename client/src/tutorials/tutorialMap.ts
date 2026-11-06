@@ -11,6 +11,11 @@ import {
 
 export type TutorialGameMap = PlayerGameMap & { name: string };
 
+type Links = Pick<
+  PlayerGameMap,
+  'timedConnections' | 'directionalConnections' | 'switches' | 'switchedLinks'
+>;
+
 interface Layout {
   name: string;
   coastRadius: number;
@@ -19,6 +24,7 @@ interface Layout {
   continents: number[];
   bonuses: number[];
   seas: { x: number; y: number; neighbors: number[] }[];
+  links?: Links;
 }
 
 const WIDTH = 1800;
@@ -26,6 +32,12 @@ const HEIGHT = 1080;
 const COAST_WOBBLE = 16;
 const BORDER_HALF_WIDTH = 3;
 const SEA = -1;
+const NO_LINKS: Links = {
+  timedConnections: [],
+  directionalConnections: [],
+  switches: [],
+  switchedLinks: [],
+};
 
 export const LAND: Layout = {
   name: 'Tutorial',
@@ -73,6 +85,34 @@ const NAVAL: Layout = {
   continents: [0, 0, 0, 1, 1],
   bonuses: [2, 1],
   seas: [{ x: 1080, y: 540, neighbors: [0, 1, 2, 3, 4] }],
+};
+
+const LINKS: Layout = {
+  name: 'Links Tutorial',
+  coastRadius: 180,
+  centers: [
+    [420, 300],
+    [1400, 300],
+    [1400, 800],
+    [900, 800],
+    [620, 800],
+  ],
+  neighbors: [[], [], [], [4], [3]],
+  continents: [0, 0, 0, 0, 0],
+  bonuses: [1],
+  seas: [],
+  links: {
+    timedConnections: [
+      { a: 1, b: 2, delay: 0, open: 1, closed: 1 },
+      { a: 2, b: 3, delay: 2, open: 3, closed: 1 },
+    ],
+    directionalConnections: [
+      { a: 0, b: 1, forward: 1, backward: 0 },
+      { a: 4, b: 0, forward: 1, backward: 0 },
+    ],
+    switches: [{ x: 1240, y: 400, on: false, neighbors: [1] }],
+    switchedLinks: [{ a: 1, b: 2, switches: [0], gate: 'or' }],
+  },
 };
 
 const cache = new Map<string, TutorialGameMap>();
@@ -167,10 +207,7 @@ function buildMap(layout: Layout): TutorialGameMap {
     })),
     bonuses: layout.bonuses,
     wraps: [],
-    timedConnections: [],
-    directionalConnections: [],
-    switches: [],
-    switchedLinks: [],
+    ...(layout.links ?? NO_LINKS),
     lockedTiles: [],
     imageSrc: drawImage(layout),
     borderColors: DEFAULT_BORDER_COLORS,
@@ -188,4 +225,8 @@ export function tutorialMap(): TutorialGameMap {
 
 export function navalTutorialMap(): TutorialGameMap {
   return buildMap(NAVAL);
+}
+
+export function linksTutorialMap(): TutorialGameMap {
+  return buildMap(LINKS);
 }

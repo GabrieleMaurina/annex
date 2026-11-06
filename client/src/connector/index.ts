@@ -37,6 +37,7 @@ import type {
   StoredMap,
 } from '../lib/types';
 import type { Tutorial } from '../tutorials/tutorials';
+import { appendGameFilterParams } from './gameFilterParams';
 import { subscribe, unsubscribe } from './inbound';
 import {
   consumeConvertedFromOnline,
@@ -48,9 +49,11 @@ import {
   dispatch as offlineDispatch,
   removeLocalPlayer as offlineRemoveLocalPlayer,
   setLocalPlayerName as offlineSetLocalPlayerName,
+  restartOffline,
   seedOffline,
   startOffline,
   stopOffline,
+  tutorialAllows,
 } from './offline/host';
 
 type AuthAck = { ok: true } | { ok: false; error: string };
@@ -94,58 +97,6 @@ function route(event: string, data?: unknown, cb?: (res: never) => void): void {
   else socket.emit(event, data, cb);
 }
 
-function appendGameFilterParams(
-  params: URLSearchParams,
-  query: GamesQuery | HomeGamesQuery,
-): void {
-  for (const id of query.playerIds ?? []) params.append('playerIds', id);
-  if (query.name) params.set('name', query.name);
-  if (query.mode) params.set('mode', query.mode);
-  if (query.mapName) params.set('mapName', query.mapName);
-  if (query.generatedMap) params.set('generatedMap', '1');
-  if (query.mapGenerationSize)
-    params.set('mapGenerationSize', query.mapGenerationSize);
-  if (query.mapGenerationType)
-    params.set('mapGenerationType', query.mapGenerationType);
-  if (query.mapGenerationFill)
-    params.set('mapGenerationFill', query.mapGenerationFill);
-  if (query.mapGenerationTile)
-    params.set('mapGenerationTile', query.mapGenerationTile);
-  if (query.mapGenerationSeas !== undefined)
-    params.set('mapGenerationSeas', query.mapGenerationSeas ? '1' : '0');
-  if (query.mapGenerationTimed !== undefined)
-    params.set('mapGenerationTimed', query.mapGenerationTimed ? '1' : '0');
-  if (query.mapGenerationDirectional !== undefined)
-    params.set(
-      'mapGenerationDirectional',
-      query.mapGenerationDirectional ? '1' : '0',
-    );
-  if (query.mapGenerationSwitched !== undefined)
-    params.set(
-      'mapGenerationSwitched',
-      query.mapGenerationSwitched ? '1' : '0',
-    );
-  if (query.mapGenerationUnlockable !== undefined)
-    params.set(
-      'mapGenerationUnlockable',
-      query.mapGenerationUnlockable ? '1' : '0',
-    );
-  if (query.playersMin !== undefined)
-    params.set('playersMin', String(query.playersMin));
-  if (query.playersMax !== undefined)
-    params.set('playersMax', String(query.playersMax));
-  if (query.minRounds !== undefined)
-    params.set('roundsMin', String(query.minRounds));
-  if (query.maxRounds !== undefined)
-    params.set('roundsMax', String(query.maxRounds));
-  for (const [key, value] of Object.entries(query.settings ?? {}))
-    if (value) params.set(key, value);
-  if (query.hasBots !== undefined)
-    params.set('hasBots', query.hasBots ? '1' : '0');
-  if (query.sort) params.set('sort', query.sort);
-  if (query.sortDir) params.set('sortDir', query.sortDir);
-}
-
 export const connector = {
   get connected(): boolean {
     return isOffline() ? true : isSocketConnected();
@@ -165,6 +116,10 @@ export const connector = {
 
   isTutorial(): boolean {
     return isTutorial();
+  },
+
+  tutorialAllows(event: string): boolean {
+    return tutorialAllows(event);
   },
 
   setMode(offline: boolean, tutorial: Tutorial | null): void {
@@ -198,6 +153,18 @@ export const connector = {
 
   continueHandoff(): void {
     offlineContinueHandoff();
+  },
+
+  canRestart(players: GameState['players']): boolean {
+    return (
+      isOffline() &&
+      !isTutorial() &&
+      players.every((p) => p.isBot || p.eliminated || p.surrendered)
+    );
+  },
+
+  restart(): void {
+    restartOffline();
   },
 
   on(event: string, handler: Listener): void {
@@ -984,12 +951,14 @@ export const connector = {
     route('game:report', { playerId, reason }, cb);
   },
 
-  getPlayerPictureInGame(
+  getPlayerProfileInGame(
     playerId: number,
     cb: (
-      res: { ok: true; picture: string | null } | { ok: false; error: string },
+      res:
+        | { ok: true; picture: string | null; bio: string }
+        | { ok: false; error: string },
     ) => void,
   ): void {
-    route('game:picture', { playerId }, cb);
+    route('game:profile', { playerId }, cb);
   },
 };

@@ -16,8 +16,12 @@ export interface ResultRow {
   capitalsConquered: number;
   capitalsLost: number;
   cardsGained: number;
+  cardsStolen?: number;
   turnsPlayed: number;
   setsPlayed: number;
+  setsOnThree?: number;
+  turnsOnThree?: number;
+  luck?: number;
   userId?: string | null;
   elo?: number | null;
   eloDelta?: number | null;
@@ -28,6 +32,16 @@ const PENALTY_LABELS: Record<EloPenalty, string> = {
   disconnected: 'Disconnected penalty',
   surrender: 'Early surrender penalty',
 };
+
+function formatSetsOnThree(row: ResultRow): string {
+  if (row.setsOnThree == null || row.turnsOnThree == null) return '-';
+  return `${row.setsOnThree}/${row.turnsOnThree}`;
+}
+
+function formatLuck(row: ResultRow): string {
+  if (row.luck == null) return '-';
+  return `${row.luck > 0 ? '+' : ''}${row.luck}%`;
+}
 
 function formatElo(row: ResultRow): string {
   if (row.elo == null || row.eloDelta == null) return '-';
@@ -118,7 +132,10 @@ function ResultsTable({
             {isCapitals && <th>Capitals Conquered</th>}
             {isCapitals && <th>Capitals Lost</th>}
             <th>Cards Gained</th>
+            <th>Cards Stolen</th>
             <th>Sets Played</th>
+            <th>Sets on 3</th>
+            <th>Luck</th>
           </tr>
         </thead>
         <tbody>
@@ -267,7 +284,10 @@ function ResultsTable({
                 )}
                 {isCapitals && <td style={rowStyle}>{stats.capitalsLost}</td>}
                 <td style={rowStyle}>{stats.cardsGained}</td>
+                <td style={rowStyle}>{stats.cardsStolen ?? '-'}</td>
                 <td style={rowStyle}>{stats.setsPlayed}</td>
+                <td style={rowStyle}>{formatSetsOnThree(stats)}</td>
+                <td style={rowStyle}>{formatLuck(stats)}</td>
               </tr>
             );
           })}

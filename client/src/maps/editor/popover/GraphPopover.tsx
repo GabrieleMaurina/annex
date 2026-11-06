@@ -1,6 +1,7 @@
 import { duplicatePlaceNames } from 'engine';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { Button, Form } from 'react-bootstrap';
+import { useUiHidden } from '../../../common/menus/shortcuts/uiHidden';
 import { useDragOffset } from '../../../ui/containers/dragOffset';
 import {
   FIELD_LABEL_CLASS,
@@ -96,6 +97,7 @@ function GraphPopover({ selection, anchor, close, graph }: Props) {
   const { territories, setTerritories, continentNames, setContinentNames } =
     graph;
   const drag = useDragOffset(JSON.stringify(selection));
+  const hiddenClass = useUiHidden() ? ' invisible' : '';
   const duplicates = duplicatePlaceNames(
     allPlaceNames(territories, continentNames),
   );
@@ -172,7 +174,7 @@ function GraphPopover({ selection, anchor, close, graph }: Props) {
     );
   return (
     <div
-      className={`position-absolute z-2 ${PANEL_BG_CLASS} ${PANEL_CLASS}`}
+      className={`position-absolute z-2 ${PANEL_BG_CLASS} ${PANEL_CLASS}${hiddenClass}`}
       style={drag.shift(placement(anchor))}
       onPointerDown={drag.start}
     >

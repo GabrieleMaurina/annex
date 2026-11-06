@@ -457,8 +457,12 @@ export interface PlayerResultStats {
   capitalsConquered: number;
   capitalsLost: number;
   cardsGained: number;
+  cardsStolen: number;
   turnsPlayed: number;
   setsPlayed: number;
+  setsOnThree: number;
+  turnsOnThree: number;
+  luck: number;
   userId?: string | null;
   elo?: number | null;
   eloDelta?: number | null;
@@ -629,8 +633,12 @@ export interface StoredGameResult {
   capitalsConquered: number;
   capitalsLost: number;
   cardsGained: number;
+  cardsStolen?: number;
   turnsPlayed: number;
   setsPlayed: number;
+  setsOnThree?: number;
+  turnsOnThree?: number;
+  luck?: number;
   played?: boolean;
   disconnected?: boolean;
 }

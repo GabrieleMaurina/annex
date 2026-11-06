@@ -9,11 +9,17 @@ import { grudgeAgainst } from '../features/grudge';
 import { seaBridgeTargets } from '../features/navy';
 import { minWinProbability } from '../features/pressure';
 import { Standing, targetPreference } from '../features/standing';
-import { frontierTerritories, hostileNeighbors } from '../features/territory';
+import {
+  freeNeighbors,
+  frontierTerritories,
+  hostileNeighbors,
+  ownedTerritoryIds,
+} from '../features/territory';
 import { Weights } from '../types';
 import { BotView, ownerOf } from '../view';
 
 const PREF_WEIGHT = 0.25;
+const FREE_CLAIM_SCORE = 0.5;
 
 export interface AttackChoice {
   startId: number;
@@ -89,12 +95,13 @@ export function chooseAttack(
     );
     if (winProb < minWin - noise * 0.3) return;
 
-    let score = winProb;
+    let score = FREE_CLAIM_SCORE;
     if (defenderId !== undefined)
-      score +=
+      score =
+        winProb +
         weights.grudge *
-        0.1 *
-        Math.min(grudgeAgainst(game, botId, defenderId) / 10, 1);
+          0.1 *
+          Math.min(grudgeAgainst(game, botId, defenderId) / 10, 1);
     score += PREF_WEIGHT * targetPreference(standing, defenderId);
     if (completeTargets.has(endId)) score += weights.completeContinent * 0.1;
     if (breakTargets.has(endId)) score += weights.breakContinent * 0.1;
@@ -111,6 +118,11 @@ export function chooseAttack(
   for (const startId of frontier) {
     for (const endId of hostileNeighbors(game, view, botId, startId)) {
       consider(startId, endId, ownerOf(game, view, endId));
+    }
+  }
+  for (const startId of ownedTerritoryIds(game, botId)) {
+    for (const endId of freeNeighbors(game, startId)) {
+      consider(startId, endId, undefined);
     }
   }
   for (const bridge of seaBridgeTargets(game, view, botId)) {

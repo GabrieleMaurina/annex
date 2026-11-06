@@ -1,3 +1,4 @@
+import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { withPortalEdges } from '../../game/world/portals';
 import { getGameMap } from '../../maps/maps';
 import { Game, Territory } from '../../types';
@@ -99,6 +100,12 @@ export function hostileNeighbors(
       !isTeammate(game, botId, ownerId)
     );
   });
+}
+
+export function freeNeighbors(game: Game, territoryId: number): number[] {
+  return neighborsOf(game, territoryId).filter((n) =>
+    isFreeConquestTarget(game, n),
+  );
 }
 
 export function isAdjacentToOwned(

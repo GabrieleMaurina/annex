@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useHideUiShortcut } from '../../../common/menus/shortcuts/uiHidden';
 import { playSound } from '../../../lib/sounds';
 import type { PaintTool } from '../paint/paintTools';
 
@@ -21,6 +22,7 @@ export function useEditorShortcuts({
   onUndo,
   onRedo,
 }: Shortcuts) {
+  useHideUiShortcut();
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape' && (mode === 'paint' || tool)) {

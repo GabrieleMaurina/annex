@@ -18,23 +18,29 @@ import { killerWeaknessThreshold } from '../personality/killer';
 import { hoarderCandidates } from '../personality/specialists/hoarder';
 import { snipeCandidates } from '../personality/specialists/opportunist';
 import { policeCandidates } from '../personality/specialists/police';
+import { isVisible } from '../view';
 import { wallsInTeammate } from './board';
 import {
   PlanContext,
   SimState,
   attackersOf,
+  bonusOf,
   botBorderIds,
   cloneState,
   conquerablePath,
   frontierStacks,
+  holdsContinent,
   hostileAttackersOf,
   hostileNeighborsOf,
   isBotBorder,
   isEnemyTerritory,
   isFriendly,
+  isHazard,
+  neighborsOf,
   ownedChokepoints,
   ownedClusters,
   ownedIds,
+  planDepth,
   rankedOpponents,
   strongestThreatAt,
   touchingOf,
@@ -577,6 +583,91 @@ function shrinkBorderCandidates(
   );
 }
 
+const MAX_CLAIM_STARTS = 3;
+const CLAIM_ONWARD_VALUE = 0.1;
+
+function isClaimable(
+  ctx: PlanContext,
+  state: SimState,
+  territoryId: number,
+): boolean {
+  return (
+    !state.owners.has(territoryId) &&
+    isVisible(ctx.view, territoryId) &&
+    !isHazard(ctx, territoryId)
+  );
+}
+
+function claimValue(
+  ctx: PlanContext,
+  state: SimState,
+  territoryId: number,
+): number {
+  const continentId = ctx.territoryContinent.get(territoryId) ?? -1;
+  const territoryIds = ctx.continentTerritories.get(continentId) ?? [];
+  const bonusShare = holdsContinent(ctx, state, territoryIds, ctx.botId)
+    ? 0
+    : bonusOf(ctx, continentId) / Math.max(1, territoryIds.length);
+  const onward = neighborsOf(ctx, territoryId).filter((n) =>
+    isClaimable(ctx, state, n),
+  ).length;
+  return bonusShare + CLAIM_ONWARD_VALUE * onward;
+}
+
+function claimRoute(
+  ctx: PlanContext,
+  state: SimState,
+  startId: number,
+  length: number,
+): number[] {
+  const route: number[] = [];
+  let current = startId;
+  while (route.length < length) {
+    const best = neighborsOf(ctx, current)
+      .filter((n) => isClaimable(ctx, state, n) && !route.includes(n))
+      .map((id) => ({ id, value: claimValue(ctx, state, id) }))
+      .sort((a, b) => b.value - a.value)[0];
+    if (best === undefined) break;
+    route.push(best.id);
+    current = best.id;
+  }
+  return route;
+}
+
+function claimCandidates(
+  ctx: PlanContext,
+  state: SimState,
+  budget: number,
+): Candidate[] {
+  const starts = botBorderIds(ctx, state)
+    .filter(
+      (id) =>
+        supplyConnected(ctx, id) &&
+        neighborsOf(ctx, id).some((n) => isClaimable(ctx, state, n)),
+    )
+    .sort((a, b) => troopsIn(state, b) - troopsIn(state, a))
+    .slice(0, MAX_CLAIM_STARTS);
+  return starts.flatMap((startId) => {
+    const route = claimRoute(
+      ctx,
+      state,
+      startId,
+      Math.min(planDepth(ctx), troopsIn(state, startId) - 1 + budget),
+    );
+    const lengths = new Set([route.length, Math.ceil(route.length / 2)]);
+    return [...lengths]
+      .filter((length) => length > 0)
+      .map((length) => ({
+        objectives: [
+          objective({ kind: 'expand', mustVisit: route.slice(0, length) }),
+        ],
+        deployments: offensiveDeployments(ctx, state, startId, budget, length),
+        stacks: [{ startId, route: route.slice(0, length), objectiveIndex: 0 }],
+        stagingCosts: [{ id: startId, cost: length }],
+      }));
+  });
+}
+
 function holdChokepointCandidates(
   ctx: PlanContext,
   state: SimState,
@@ -768,6 +859,7 @@ export function gatherCandidates(
       ...neutralizeThreatCandidates(ctx, state, budget),
       ...mergeCandidates(ctx, state, budget),
       ...shrinkBorderCandidates(ctx, state, budget),
+      ...claimCandidates(ctx, state, budget),
       ...holdChokepointCandidates(ctx, state, budget),
       ...safeCardCandidates(ctx, state, budget),
       ...cardCandidates(ctx, state, budget, home.ids),
@@ -791,6 +883,7 @@ export function gatherCandidates(
     ...modeCandidates(ctx, state, budget),
     ...mergeCandidates(ctx, state, budget),
     ...shrinkBorderCandidates(ctx, state, budget),
+    ...claimCandidates(ctx, state, budget),
     ...holdChokepointCandidates(ctx, state, budget),
     ...cardCandidates(ctx, state, budget),
     ...defensiveCandidates(ctx, state, budget),

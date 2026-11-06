@@ -2,6 +2,13 @@ import { DiceTies, Game } from '../../types';
 
 export const MAX_DICE = 10;
 
+export interface DiceLuck {
+  surplus: number;
+  variance: number;
+}
+
+export const NO_LUCK: DiceLuck = { surplus: 0, variance: 0 };
+
 export interface DiceRules {
   attack: number;
   defence: number;
@@ -34,6 +41,7 @@ export function attack(
   defenceDice: number[];
   attackLosses: number;
   defenceLosses: number;
+  luck: DiceLuck;
 } {
   const attackDice = Array.from({ length: attackingTroops }, roll).sort(
     (a, b) => b - a,
@@ -52,7 +60,41 @@ export function attack(
     else if (ties === 'attack') defenceLosses++;
   }
 
-  return { attackDice, defenceDice, attackLosses, defenceLosses };
+  const luck =
+    attackLosses + defenceLosses > 0
+      ? outcomeLuck(
+          lossDistribution(attackDice.length, defenceDice.length, ties),
+          attackLosses,
+          defenceLosses,
+        )
+      : NO_LUCK;
+
+  return { attackDice, defenceDice, attackLosses, defenceLosses, luck };
+}
+
+function outcomeLuck(
+  outcomes: {
+    attackLosses: number;
+    defenceLosses: number;
+    probability: number;
+  }[],
+  attackLosses: number,
+  defenceLosses: number,
+): DiceLuck {
+  let total = 0;
+  let swingSum = 0;
+  let swingSquaresSum = 0;
+  for (const outcome of outcomes) {
+    const swing = outcome.defenceLosses - outcome.attackLosses;
+    total += outcome.probability;
+    swingSum += outcome.probability * swing;
+    swingSquaresSum += outcome.probability * swing * swing;
+  }
+  const expectedSwing = swingSum / total;
+  return {
+    surplus: defenceLosses - attackLosses - expectedSwing,
+    variance: swingSquaresSum / total - expectedSwing * expectedSwing,
+  };
 }
 
 interface PlacementState {
@@ -737,7 +779,7 @@ export function balancedBlitz(
   attackingTroops: number,
   defendingTroops: number,
   dice: DiceRules,
-): { attackLosses: number; defenceLosses: number } {
+): { attackLosses: number; defenceLosses: number; luck: DiceLuck } {
   const outcomes = balancedBlitzOutcomes(
     attackingTroops,
     defendingTroops,
@@ -756,6 +798,7 @@ export function balancedBlitz(
   return {
     attackLosses: chosen.attackLosses,
     defenceLosses: chosen.defenceLosses,
+    luck: outcomeLuck(outcomes, chosen.attackLosses, chosen.defenceLosses),
   };
 }
 
@@ -763,9 +806,11 @@ export function trueBlitz(
   attackingTroops: number,
   defendingTroops: number,
   dice: DiceRules,
-): { attackLosses: number; defenceLosses: number } {
+): { attackLosses: number; defenceLosses: number; luck: DiceLuck } {
   let remainingAttackers = attackingTroops;
   let remainingDefenders = defendingTroops;
+  let surplus = 0;
+  let variance = 0;
 
   while (remainingAttackers > 0 && remainingDefenders > 0) {
     const result = attack(
@@ -775,11 +820,14 @@ export function trueBlitz(
     );
     remainingAttackers -= result.attackLosses;
     remainingDefenders -= result.defenceLosses;
+    surplus += result.luck.surplus;
+    variance += result.luck.variance;
   }
 
   return {
     attackLosses: attackingTroops - remainingAttackers,
     defenceLosses: defendingTroops - remainingDefenders,
+    luck: { surplus, variance },
   };
 }
 
@@ -817,9 +865,12 @@ export function fairBlitz(
   attackingTroops: number,
   defendingTroops: number,
   dice: DiceRules,
-): { attackLosses: number; defenceLosses: number } {
+): { attackLosses: number; defenceLosses: number; luck: DiceLuck } {
   const stats = battleStatistics(attackingTroops, defendingTroops, dice);
-  return fairBlitzFromStats(attackingTroops, defendingTroops, stats);
+  return {
+    ...fairBlitzFromStats(attackingTroops, defendingTroops, stats),
+    luck: NO_LUCK,
+  };
 }
 
 export function fairBlitzOutcomes(

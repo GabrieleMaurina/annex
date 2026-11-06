@@ -44,6 +44,10 @@ function currentBot(game: Game): (Player & { botProfile: BotProfile }) | null {
   return player as Player & { botProfile: BotProfile };
 }
 
+export function forgetBotPlan(gameName: string): void {
+  turnPlanByGame.delete(gameName);
+}
+
 function turnKeyOf(game: Game): string {
   return `${game.roundNumber}:${game.turnPlayerIndex}:${game.turnPhase}`;
 }
@@ -186,6 +190,7 @@ function performPhaseStep(
       const current = games.get(gameName);
       if (
         !current ||
+        current !== game ||
         current.state !== 'playing' ||
         current.paused ||
         current.roundNumber !== requestedRoundNumber ||
@@ -219,7 +224,8 @@ function performPhaseStep(
             return;
           }
           stalledSteps.delete(gameName);
-          scheduleBotTurnIfNeeded(current);
+          const latest = games.get(gameName);
+          if (latest) scheduleBotTurnIfNeeded(latest);
         },
       );
     },

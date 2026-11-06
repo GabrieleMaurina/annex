@@ -120,6 +120,7 @@ export interface ReplayPlayerStats {
   capitalsConquered: number;
   capitalsLost: number;
   cardsGained: number;
+  cardsStolen?: number;
   setsPlayed: number;
 }
 

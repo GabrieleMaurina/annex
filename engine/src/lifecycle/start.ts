@@ -1,4 +1,8 @@
+import { forgetBotPlan } from '../bots/controller';
+import { rerollBotProfile } from '../bots/reveal';
+import { endTakeover } from '../bots/takeover';
 import { isAnonymous } from '../game/anonymous';
+import { isLobbyBot } from '../game/draw';
 import {
   assignTerritories,
   assignTerritoryOwners,
@@ -15,7 +19,7 @@ import { initializeHills } from '../game/progression/points';
 import { emptyPlayerStats } from '../game/progression/stats';
 import { initializeRadiation } from '../game/radiation/radiation';
 import { snapshotTerritories } from '../game/replay';
-import { beginNextSpecialPhase } from '../game/turns';
+import { beginNextSpecialPhase, clearTurnTimer } from '../game/turns';
 import { initializeContinent } from '../game/world/continent';
 import { initializePortals } from '../game/world/portals';
 import { getGameMap, hasMap } from '../maps/maps';
@@ -29,6 +33,7 @@ import {
   sendPlayerCards,
 } from '../session/store';
 import { Game } from '../types';
+import { freshGameRun } from './create';
 import { isBlitzOffAllowed } from './settings';
 
 export function startGame(playerId: number): GameResponse {
@@ -68,6 +73,36 @@ export function startGame(playerId: number): GameResponse {
   beginNextSpecialPhase(game);
   broadcastHomeGames();
   return respondGameState(game, player.id);
+}
+
+function resetSeat(id: number): void {
+  const seat = playersById.get(id);
+  if (!seat) return;
+  if (isLobbyBot(id)) rerollBotProfile(seat);
+  else endTakeover(seat);
+}
+
+export function restartGame(playerId: number): GameResponse {
+  const player = playersById.get(playerId);
+  if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
+
+  const game = games.get(player.gameName);
+  if (!game) return { ok: false, error: 'game not found' };
+  if (game.originalHostId !== player.id)
+    return { ok: false, error: 'not the host' };
+  if (!game.offline || game.tutorial)
+    return { ok: false, error: 'not an offline game' };
+  if (game.state === 'lobby') return { ok: false, error: 'game not started' };
+
+  clearTurnTimer(game.name);
+  forgetBotPlan(game.name);
+  game.playerIds.forEach(resetSeat);
+  games.set(game.name, {
+    ...game,
+    ...freshGameRun(),
+    hostId: game.originalHostId,
+  });
+  return startGame(player.id);
 }
 
 export function prepareGameStart(game: Game) {

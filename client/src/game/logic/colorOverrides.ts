@@ -42,7 +42,7 @@ function setOverride(gameKey: string, playerId: number, color: number | null) {
 }
 
 export function useLocalColors(game: GameState | null) {
-  const enabled = !!game && game.state !== 'lobby' && !connector.isOffline();
+  const enabled = !!game && game.state !== 'lobby' && !connector.isTutorial();
   const gameKey = enabled ? `${game.name}:${game.startedAt}` : '';
   const overrides = useSyncExternalStore(
     subscribe,

@@ -244,7 +244,7 @@ function TurnPanel({
       )}
       {isMyTurn &&
         !paused &&
-        !connector.isTutorial() &&
+        connector.tutorialAllows('game:nextPhase') &&
         turnPhase !== 'territory' &&
         turnPhase !== 'troop' &&
         turnPhase !== 'capital' &&

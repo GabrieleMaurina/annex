@@ -142,6 +142,7 @@ function viewPlayerStats(game: Game, s: ReplayPlayerStats): ReplayPlayerStats {
     capitalsConquered: s.capitalsConquered,
     capitalsLost: s.capitalsLost,
     cardsGained: s.cardsGained,
+    cardsStolen: s.cardsStolen,
     setsPlayed: s.setsPlayed,
   });
 }

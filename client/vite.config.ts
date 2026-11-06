@@ -33,7 +33,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,wasm,css,html,woff2}'],
+        globPatterns: [
+          '**/*.{js,wasm,css,html,woff2}',
+          '{achievements,icons,images,ranks}/**',
+        ],
         globIgnores: [
           '**/WorldMapModal-*',
           '**/maplibre-gl-worker-*.js',

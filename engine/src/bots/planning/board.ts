@@ -159,6 +159,7 @@ const DUEL_BREAK = 4;
 const NEARBY_BREAK = 1.2;
 const DUEL_PRESSURE = 2;
 const DUEL_STACK_MASS = 0.05;
+const CLAIM_PAYBACK_TURNS = 4;
 const BASE_ATTACK_RATIO = 1.05;
 const DUEL_ATTACK_EDGE = 0.15;
 const KEY_TERRITORY_RISK = 2;
@@ -229,6 +230,18 @@ function incomeEstimate(
       : 0;
   return (
     (territoryIncome(ctx.game, owned) + capitals) *
+    modeGoalFor(ctx).incomeFactor
+  );
+}
+
+function claimedLand(ctx: PlanContext, state: SimState): number {
+  const claimed = ownedIds(state, ctx.botId).filter(
+    (id) => !ctx.game.territoryOwners.has(id),
+  ).length;
+  return (
+    claimed *
+    CLAIM_PAYBACK_TURNS *
+    ctx.game.troopsPerTerritory *
     modeGoalFor(ctx).incomeFactor
   );
 }
@@ -424,6 +437,7 @@ function scoreState(
   const scale = troopScale(state);
   let score = 0;
   score += INCOME * incomeEstimate(ctx, state, ctx.botId);
+  score += claimedLand(ctx, state);
   score += HELD_BONUS * heldContinentBonus(ctx, state, ctx.botId);
   score += CONTINENT_PROGRESS * continentProgress(ctx, state);
   score += denial(ctx, state);

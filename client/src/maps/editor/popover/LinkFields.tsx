@@ -96,6 +96,7 @@ function LinkFields({ a, b, graph, close }: Props) {
 
   const labels = switchLabels(territories);
   const switchIds = wiredSwitchIds(territories, a, b);
+  const switched = switchIds.length > 0;
   const gate = timed?.gate ?? directional?.gate ?? 'or';
   const [start, end] = directional && !directional.out ? [b, a] : [a, b];
   const nameOf = (id: number) => labels.get(id) ?? id + 1;
@@ -108,7 +109,7 @@ function LinkFields({ a, b, graph, close }: Props) {
   return (
     <>
       <div className={FIELD_LABEL_CLASS}>
-        {timed || directional ? (
+        {(timed || directional) && !switched ? (
           <Tip text={timed ? TIMED_HELP : DIRECTIONAL_HELP}>
             <span>{title}</span>
           </Tip>
@@ -117,6 +118,7 @@ function LinkFields({ a, b, graph, close }: Props) {
         )}
       </div>
       {timed &&
+        !switched &&
         TIMED_KEYS.map(({ key, label, min }) => (
           <NumberRow
             key={key}
@@ -134,6 +136,7 @@ function LinkFields({ a, b, graph, close }: Props) {
           />
         ))}
       {directional &&
+        !switched &&
         DIRECTIONAL_KEYS.map(({ key, label, min }) => (
           <NumberRow
             key={key}
@@ -150,7 +153,7 @@ function LinkFields({ a, b, graph, close }: Props) {
             }
           />
         ))}
-      {switchIds.length > 0 && (
+      {switched && (
         <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
           <Tip text={SWITCHED_HELP}>
             <span className="small">

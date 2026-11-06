@@ -20,6 +20,7 @@ export const TUTORIAL_IDS = [
   'capital-conquest',
   'fog',
   'naval',
+  'links',
 ];
 
 export interface TutorialScenario {

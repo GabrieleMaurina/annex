@@ -15,6 +15,7 @@ import {
   ReplayTerritory,
   TurnPhase,
 } from '../types';
+import { luckScore } from './progression/stats';
 import { isEliminated, territoryStats } from './state';
 
 export interface ReplayHandExport {
@@ -81,8 +82,12 @@ export interface GameResultExport {
   capitalsConquered: number;
   capitalsLost: number;
   cardsGained: number;
+  cardsStolen: number;
   turnsPlayed: number;
   setsPlayed: number;
+  setsOnThree: number;
+  turnsOnThree: number;
+  luck: number;
 }
 
 export interface GameExport {
@@ -256,6 +261,7 @@ function playerStatsDelta(
       prev.capitalsConquered !== s.capitalsConquered ||
       prev.capitalsLost !== s.capitalsLost ||
       prev.cardsGained !== s.cardsGained ||
+      prev.cardsStolen !== s.cardsStolen ||
       prev.setsPlayed !== s.setsPlayed
     );
   });
@@ -367,8 +373,12 @@ function buildResults(game: Game): GameResultExport[] {
       capitalsConquered: s?.capitalsConquered ?? 0,
       capitalsLost: s?.capitalsLost ?? 0,
       cardsGained: s?.cardsGained ?? 0,
+      cardsStolen: s?.cardsStolen ?? 0,
       turnsPlayed: s?.turnsPlayed ?? 0,
       setsPlayed: s?.setsPlayed ?? 0,
+      setsOnThree: s?.setsOnThree ?? 0,
+      turnsOnThree: s?.turnsOnThree ?? 0,
+      luck: luckScore(game, playerId),
     };
   });
 }

@@ -215,6 +215,7 @@ function PlayersPanel({
     !gameEnded &&
     !connector.isTutorial() &&
     (selfId === hostId || connector.isOffline());
+  const canRestart = !gameEnded && connector.canRestart(players);
   const canPause =
     canControl && (connector.isOffline() || paused || !pauseUsed);
   const hasLivingBot = players.some((p) => p.isBot && !p.eliminated);
@@ -634,7 +635,7 @@ function PlayersPanel({
                           </Tip>
                         )}
                         {recoloredIds?.has(p.id) && (
-                          <Tip text="Color changed only for you">
+                          <Tip text="Color changed on this device only">
                             <img
                               src={
                                 isDark
@@ -934,6 +935,20 @@ function PlayersPanel({
                     alt=""
                   />
                   Surrender
+                </Button>
+              </Tip>
+            )}
+            {canRestart && (
+              <Tip
+                text="Start a new game with the same settings, players and map"
+                placement="bottom"
+              >
+                <Button
+                  variant="success"
+                  size="sm"
+                  onClick={() => connector.restart()}
+                >
+                  Restart
                 </Button>
               </Tip>
             )}

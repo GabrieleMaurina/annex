@@ -6,7 +6,7 @@ import {
   unblockUser,
 } from '../../conduct/blockPeers';
 import { fileLiveGameReport, ReportResult } from '../../conduct/reports';
-import { getUserPicture } from '../../db';
+import { getUserBio, getUserPicture, pictureDataUrl } from '../../db';
 import {
   playerIdBySocketId,
   userIdByPlayerId,
@@ -18,8 +18,9 @@ type Target =
   | { ok: true; actorId: number; actorUserId: string; targetUserId: string }
   | { ok: false; error: string };
 
-type PictureResult =
-  { ok: true; picture: string | null } | { ok: false; error: string };
+type ProfileResult =
+  | { ok: true; picture: string | null; bio: string }
+  | { ok: false; error: string };
 
 function resolveTarget(engine: Engine, socket: Socket, data: unknown): Target {
   const actorId = playerIdBySocketId.get(socket.id);
@@ -95,14 +96,14 @@ export function registerConductHandlers(
     },
   );
   socket.on(
-    'game:picture',
-    (data: unknown, callback: (response: PictureResult) => void) => {
+    'game:profile',
+    (data: unknown, callback: (response: ProfileResult) => void) => {
       if (typeof callback !== 'function') return;
       const actorId = playerIdBySocketId.get(socket.id);
       if (actorId === undefined)
         return callback({ ok: false, error: 'not in this game' });
       if (isActorAnonymous(actorId))
-        return callback({ ok: true, picture: null });
+        return callback({ ok: true, picture: null, bio: '' });
       const targetId = fromClient(
         actorId,
         isObject(data) ? data.playerId : null,
@@ -115,15 +116,14 @@ export function registerConductHandlers(
       )
         return callback({ ok: false, error: 'not in this game' });
       const userId = userIdByPlayerId(targetId);
-      if (userId === undefined) return callback({ ok: true, picture: null });
-      getUserPicture(userId)
-        .then((picture) =>
+      if (userId === undefined)
+        return callback({ ok: true, picture: null, bio: '' });
+      Promise.all([getUserPicture(userId), getUserBio(userId)])
+        .then(([picture, bio]) =>
           callback({
             ok: true,
-            picture:
-              picture && !picture.dangerous
-                ? `data:${picture.mime};base64,${picture.data}`
-                : null,
+            picture: pictureDataUrl(picture),
+            bio,
           }),
         )
         .catch(() => callback({ ok: false, error: 'server error' }));

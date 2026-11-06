@@ -16,6 +16,7 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
       ['O', 'Client settings'],
       ['K', 'Shortcuts'],
       ['H', 'Hide or show the UI on the map'],
+      ['Esc', 'Show the hidden UI'],
       ['Esc', 'Close the open menu or popup'],
     ],
   },

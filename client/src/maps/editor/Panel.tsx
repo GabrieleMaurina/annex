@@ -12,6 +12,7 @@ import { flushSync } from 'react-dom';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import { useNumberInput } from '../../common/inputs/useNumberInput';
+import { useUiHidden } from '../../common/menus/shortcuts/uiHidden';
 import PanelHeader from '../../common/PanelHeader';
 import { contrastTextColor } from '../../lib/palette';
 import { titleCase } from '../../lobby/settings/gameSettings';
@@ -244,6 +245,7 @@ function Panel(props: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const [smoothEdges, setSmoothEdges] = useSmoothEdges();
+  const hiddenClass = useUiHidden() ? ' invisible' : '';
   const [colorsOpen, setColorsOpen] = useState(false);
   const [continentsOpen, setContinentsOpen] = useState(false);
 
@@ -306,7 +308,7 @@ function Panel(props: Props) {
       <Button
         variant="secondary"
         size="sm"
-        className="position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center"
+        className={`position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center${hiddenClass}`}
         style={{ width: 28, height: 28, padding: 0 }}
         onClick={() => setCollapsed(false)}
       >
@@ -318,7 +320,7 @@ function Panel(props: Props) {
   return (
     <div
       ref={panelRef}
-      className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3 d-flex flex-column overflow-y-auto overflow-x-hidden no-scrollbar`}
+      className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3 d-flex flex-column overflow-y-auto overflow-x-hidden no-scrollbar${hiddenClass}`}
       style={{
         width: 'min(300px, calc(100vw - 2rem))',
         maxHeight: 'calc(100dvh - 2rem)',

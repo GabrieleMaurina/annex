@@ -51,5 +51,7 @@ export function resolveBotProfile(
     difficultyHidden: difficulty === 'random',
     personality: resolvePersonality(personality),
     personalityHidden: personality === 'random',
+    rolledDifficulty: difficulty === 'random',
+    rolledPersonality: personality === 'random',
   };
 }

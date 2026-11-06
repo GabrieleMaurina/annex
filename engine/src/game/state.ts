@@ -6,7 +6,7 @@ import { attackFullPath } from './combat/seaBridge';
 import { activeDrawVoteIds, capitalStandoffRoundsLeft } from './draw';
 import { supremacyTerritoriesToWin } from './mechanics';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
-import { emptyPlayerStats } from './progression/stats';
+import { emptyPlayerStats, luckScore } from './progression/stats';
 import { fortifyFullPath, sailFullPath } from './world/connectivity';
 import { TERRITORY_CAP, totalTroopsCap } from './world/starvation';
 import { switchesOn } from './world/switches';
@@ -179,8 +179,12 @@ export function gameResultsStats(game: Game) {
       capitalsConquered: stats.capitalsConquered,
       capitalsLost: stats.capitalsLost,
       cardsGained: stats.cardsGained,
+      cardsStolen: stats.cardsStolen,
       turnsPlayed: stats.turnsPlayed,
       setsPlayed: stats.setsPlayed,
+      setsOnThree: stats.setsOnThree,
+      turnsOnThree: stats.turnsOnThree,
+      luck: luckScore(game, id),
     };
   });
 }

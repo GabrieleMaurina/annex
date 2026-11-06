@@ -149,6 +149,8 @@ export interface BotProfile {
   difficultyHidden?: boolean;
   personality: BotPersonality;
   personalityHidden?: boolean;
+  rolledDifficulty?: boolean;
+  rolledPersonality?: boolean;
 }
 
 export type CardSymbol = 'soldier' | 'humvee' | 'tank';
@@ -361,6 +363,7 @@ export interface ReplayPlayerStats {
   capitalsConquered: number;
   capitalsLost: number;
   cardsGained: number;
+  cardsStolen: number;
   setsPlayed: number;
 }
 
@@ -421,9 +424,14 @@ export interface PlayerStats {
   capitalsConquered: number;
   capitalsLost: number;
   cardsGained: number;
+  cardsStolen: number;
   playersKilled: number[];
   turnsPlayed: number;
   setsPlayed: number;
+  setsOnThree: number;
+  turnsOnThree: number;
+  luckSurplus: number;
+  luckVariance: number;
   peakTurnTroops: number;
   peakTerritories: number;
   cornered: boolean;

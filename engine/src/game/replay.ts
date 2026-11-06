@@ -87,6 +87,7 @@ function snapshotPlayerStats(game: Game): ReplayPlayerStats[] {
       capitalsConquered: s?.capitalsConquered ?? 0,
       capitalsLost: s?.capitalsLost ?? 0,
       cardsGained: s?.cardsGained ?? 0,
+      cardsStolen: s?.cardsStolen ?? 0,
       setsPlayed: s?.setsPlayed ?? 0,
     };
   });

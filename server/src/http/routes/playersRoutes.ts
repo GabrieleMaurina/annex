@@ -7,10 +7,14 @@ import {
   findUserByUsername,
   getPlayerHistory,
   getPlayerProfile,
+  getUserBio,
+  getUserPicture,
   listPlayerAchievements,
   listPlayers,
+  pictureDataUrl,
   PlayersQuery,
 } from '../../db';
+import { rateLimited } from '../middleware';
 import { isOnline } from '../presence';
 
 export const playersRouter = Router();
@@ -92,6 +96,21 @@ playersRouter.get('/presence', (req, res) => {
   }
   isBlockPeer(req.headers.cookie, userId)
     .then((blocked) => res.json({ online: !blocked && isOnline(userId) }))
+    .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
+});
+
+playersRouter.get('/players/id/:userId/profile', (req, res) => {
+  if (rateLimited(req)) {
+    res.json({ ok: false, error: 'too many requests' });
+    return;
+  }
+  Promise.all([
+    getUserPicture(req.params.userId),
+    getUserBio(req.params.userId),
+  ])
+    .then(([picture, bio]) =>
+      res.json({ ok: true, picture: pictureDataUrl(picture), bio }),
+    )
     .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
 });
 

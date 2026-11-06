@@ -11,6 +11,7 @@ import {
   type TilePoint,
 } from './editorTiles';
 import { centeredTile, kindPolygon, placeTile, tileAt } from './snapTiles';
+import { gridTiles } from './tileGrid';
 import type { TilesApi } from './useTiles';
 
 interface Props {
@@ -35,6 +36,13 @@ interface ClientPoint {
   ctrlKey?: boolean;
 }
 
+interface GridDrag {
+  seed: TilePoint[];
+  tiles: TilePoint[][];
+  free: (points: TilePoint[]) => boolean;
+  last: ClientPoint;
+}
+
 const DOUBLE_CLICK_MS = 300;
 const GHOST_TERRITORY = -1;
 
@@ -49,11 +57,27 @@ function TileLayer({
   const divRef = useRef<HTMLDivElement>(null);
   const panRef = useRef(false);
   const dragRef = useRef<TileDrag | null>(null);
+  const gridRef = useRef<GridDrag | null>(null);
   const lastClickRef = useRef<{ index: number; at: number } | null>(null);
   const tilesRef = useRef(tiles);
+  const refreshGridRef = useRef(refreshGrid);
   useEffect(() => {
     tilesRef.current = tiles;
+    refreshGridRef.current = refreshGrid;
   });
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const grid = gridRef.current;
+      if (grid && e.key === 'Control') refreshGridRef.current(e.ctrlKey);
+    }
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKey);
+    };
+  }, []);
 
   const { kind, unlockable } = tiles.options;
   useEffect(() => {
@@ -88,19 +112,23 @@ function TileLayer({
     ];
   }
 
-  function ghostAt(p: TilePoint): EditorTile {
+  function ghostOf(points: TilePoint[]): EditorTile {
     return {
-      points: placeTile(
-        tiles.list,
-        tiles.guides,
-        kindPolygon(kind, tiles.side),
-        p,
-        null,
-      ),
+      points,
       unlockable,
       territoryId: GHOST_TERRITORY,
       color: TILE_FILL,
     };
+  }
+
+  function seedAt(p: TilePoint): TilePoint[] {
+    return placeTile(
+      tiles.list,
+      tiles.guides,
+      kindPolygon(kind, tiles.side),
+      p,
+      null,
+    );
   }
 
   function hover(e: ClientPoint) {
@@ -108,8 +136,17 @@ function TileLayer({
     const hit = tileAt(tiles.list, p);
     setCursor(e.ctrlKey ? CURSOR_GRAB : hit === null ? 'crosshair' : 'move');
     tiles.redraw({
-      ghost: hit === null && !e.ctrlKey ? ghostAt(p) : null,
+      ghosts: hit === null && !e.ctrlKey ? [ghostOf(seedAt(p))] : [],
     });
+  }
+
+  function refreshGrid(line: boolean) {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const candidates = gridTiles(grid.seed, toImage(grid.last), line);
+    grid.tiles =
+      candidates.length > 1 ? candidates.filter(grid.free) : [grid.seed];
+    tiles.redraw({ ghosts: grid.tiles.map(ghostOf) });
   }
 
   function isDoubleClick(index: number): boolean {
@@ -142,7 +179,13 @@ function TileLayer({
     playSound('click');
     if (hit === null) {
       lastClickRef.current = null;
-      tiles.add(ghostAt(p).points);
+      const seed = seedAt(p);
+      gridRef.current = {
+        seed,
+        tiles: [seed],
+        free: tiles.freeCheck(),
+        last: { clientX: e.clientX, clientY: e.clientY },
+      };
       return;
     }
     if (isDoubleClick(hit)) {
@@ -162,6 +205,12 @@ function TileLayer({
   function onPointerMove(e: React.PointerEvent) {
     if (panRef.current) {
       onPanMove(e.clientX, e.clientY);
+      return;
+    }
+    const grid = gridRef.current;
+    if (grid) {
+      grid.last = { clientX: e.clientX, clientY: e.clientY };
+      refreshGrid(e.ctrlKey);
       return;
     }
     const drag = dragRef.current;
@@ -188,6 +237,13 @@ function TileLayer({
       hover(e);
       return;
     }
+    const grid = gridRef.current;
+    gridRef.current = null;
+    if (grid) {
+      if (grid.tiles.length > 0) tiles.add(grid.tiles);
+      else hover(e);
+      return;
+    }
     const drag = dragRef.current;
     dragRef.current = null;
     if (drag?.points) tiles.move(drag.index, drag.points, drag.before);
@@ -197,6 +253,7 @@ function TileLayer({
   function onPointerCancel() {
     if (panRef.current) onPanEnd();
     panRef.current = false;
+    gridRef.current = null;
     const drag = dragRef.current;
     dragRef.current = null;
     if (drag?.points) tiles.move(drag.index, drag.points, drag.before);

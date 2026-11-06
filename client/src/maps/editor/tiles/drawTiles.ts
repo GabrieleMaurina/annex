@@ -3,7 +3,7 @@ import { drawPolygon, ERASER_COLOR, sampleColor } from '../paint/paintTools';
 import { tileCenter, type EditorTile } from './editorTiles';
 
 export interface TileDecor {
-  ghost: EditorTile | null;
+  ghosts: EditorTile[];
 }
 
 const LOCKED_FILL = '#d9d9d9';
@@ -39,8 +39,8 @@ export function drawTileOverlay(
   if (canvas.height !== height) canvas.height = height;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, width, height);
-  const ghost = decor?.ghost ?? null;
-  const lineWidth = tileLineWidth(ghost ? [...tiles, ghost] : tiles);
+  const ghosts = decor?.ghosts ?? [];
+  const lineWidth = tileLineWidth([...tiles, ...ghosts]);
   ctx.lineJoin = 'round';
   for (const tile of tiles.filter((t) => !t.unlockable))
     drawTile(ctx, tile, lineWidth, borderColor);
@@ -51,9 +51,8 @@ export function drawTileOverlay(
     ctx.strokeStyle = SELECTED_COLOR;
     ctx.stroke(polygonPath(tiles[selected].points));
   }
-  if (!ghost) return;
   ctx.globalAlpha = GHOST_ALPHA;
-  drawTile(ctx, ghost, lineWidth, borderColor);
+  for (const ghost of ghosts) drawTile(ctx, ghost, lineWidth, borderColor);
   ctx.globalAlpha = 1;
 }
 

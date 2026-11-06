@@ -7,9 +7,10 @@ import { SWITCH_WIDTH_RADII } from '../../../game/switches/switches';
 import { contrastTextColor } from '../../../lib/palette';
 import { edgeKey, wrapEdgeSegments, type Point } from '../mapCanvasGeometry';
 import { borderScale } from '../mapViewport';
-import type {
-  LinkMode,
-  EditorTerritory as Territory,
+import {
+  SEA_BRUSH,
+  type LinkMode,
+  type EditorTerritory as Territory,
 } from '../model/editorTypes';
 import { switchLabels } from '../model/switches';
 import {
@@ -31,6 +32,7 @@ import {
   labelFontSize,
   linkMidpoint,
   linkSegments,
+  pickAt,
   type GraphPick,
 } from './graphPick';
 import type { ClickableCheck } from './useClickableCheck';
@@ -56,6 +58,20 @@ interface DrawGraphParams {
   linkMode: LinkMode;
   pick: GraphPick;
   continentNames: string[];
+  brushId: number;
+}
+
+const GHOST_ALPHA = 0.5;
+const GHOST_ICON_RATIO = 1.4;
+const TOOL_ICONS: Partial<Record<LinkMode, HTMLImageElement>> = {
+  timed: iconImage('/icons/hourglass.svg'),
+  directional: iconImage('/icons/directional.svg'),
+};
+
+function iconImage(src: string): HTMLImageElement {
+  const image = new Image();
+  image.src = src;
+  return image;
 }
 
 const placeNamesCache = new WeakMap<Territory[], PlaceNames>();
@@ -113,6 +129,42 @@ function hexagonPath(
   ctx.closePath();
 }
 
+function drawGhost(
+  ctx: CanvasRenderingContext2D,
+  p: Point,
+  radius: number,
+  scale: number,
+  linkMode: LinkMode,
+  brushId: number,
+) {
+  ctx.save();
+  ctx.globalAlpha = GHOST_ALPHA;
+  if (linkMode === 'switch') {
+    drawSwitchIcon(ctx, p, SWITCH_WIDTH_RADII * radius, 0, scale);
+    ctx.restore();
+    return;
+  }
+  const icon = TOOL_ICONS[linkMode];
+  const isSea = brushId === SEA_BRUSH;
+  ctx.beginPath();
+  if (isSea) hexagonPath(ctx, p.x, p.y, radius * SEA_SIZE_MULTIPLIER);
+  else ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = icon
+    ? '#ffffff'
+    : isSea
+      ? SEA_MARKER_COLOR
+      : continentColor(brushId);
+  ctx.fill();
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2 * scale;
+  ctx.stroke();
+  if (icon?.complete && icon.naturalWidth > 0) {
+    const size = radius * GHOST_ICON_RATIO;
+    ctx.drawImage(icon, p.x - size / 2, p.y - size / 2, size, size);
+  }
+  ctx.restore();
+}
+
 export function drawGraph({
   ctx,
   viewport,
@@ -129,6 +181,7 @@ export function drawGraph({
   linkMode,
   pick,
   continentNames,
+  brushId,
 }: DrawGraphParams) {
   const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = viewport;
   const toScreen = (p: Point): Point => ({
@@ -370,6 +423,28 @@ export function drawGraph({
       (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
     ctx.fillText(text, p.x, baselineY);
   }
+
+  if (
+    linkMode !== 'select' &&
+    mouseWorldPos !== null &&
+    !dragging &&
+    selectedVertexId === null &&
+    hoveredVertexId === null &&
+    !pick &&
+    mouseWorldPos.x >= 0 &&
+    mouseWorldPos.y >= 0 &&
+    mouseWorldPos.x <= imgW &&
+    mouseWorldPos.y <= imgH &&
+    !pickAt(territories, viewport, toScreen(mouseWorldPos))
+  )
+    drawGhost(
+      ctx,
+      toScreen(mouseWorldPos),
+      vertexRadius * scaleX,
+      zoom * vertexBorderScale,
+      linkMode,
+      brushId,
+    );
 
   drawTerritoryNames(
     ctx,

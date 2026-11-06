@@ -1,13 +1,44 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button, Col, Container, ListGroup, Row } from 'react-bootstrap';
+import { Badge, Button, Container, ListGroup } from 'react-bootstrap';
 import type { Account } from '../lib/types';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import TutorialGuide from './guide/TutorialGuide';
 import { loadCompletedTutorials } from './progress';
 import { TUTORIALS } from './tutorials';
 
-const COLUMN_MAX_WIDTH = 800;
-const TWO_COLUMNS_QUERY = `(min-width: ${2 * COLUMN_MAX_WIDTH}px)`;
+const CONTENT_MAX_WIDTH = 800;
+
+const SECTIONS = [
+  { id: 'tutorials', title: 'Tutorials' },
+  { id: 'conquer-the-map', title: 'Conquer the map' },
+  { id: 'taking-turns', title: 'Taking turns' },
+  { id: 'how-attacks-work', title: 'How attacks work' },
+  { id: 'growing-stronger', title: 'Growing stronger' },
+  { id: 'tips', title: 'Tips for new commanders' },
+  { id: 'learn-more', title: 'Learn more' },
+];
+
+const READING_LINE = 0.3;
+
+function scrollToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+}
+
+function findActiveSection() {
+  const atBottom =
+    window.innerHeight + window.scrollY >=
+    document.documentElement.scrollHeight - 2;
+  if (atBottom) return SECTIONS[SECTIONS.length - 1].id;
+  const line = window.innerHeight * READING_LINE;
+  let active = SECTIONS[0].id;
+  for (const section of SECTIONS) {
+    const element = document.getElementById(section.id);
+    if (element && element.getBoundingClientRect().top <= line) {
+      active = section.id;
+    }
+  }
+  return active;
+}
 
 interface Props {
   account: Account | null;
@@ -16,18 +47,26 @@ interface Props {
 
 function TutorialsPage({ account, navigate }: Props) {
   const [completed, setCompleted] = useState<string[] | null>(null);
-  const [twoColumns, setTwoColumns] = useState(
-    () => window.matchMedia(TWO_COLUMNS_QUERY).matches,
-  );
+  const [activeId, setActiveId] = useState(SECTIONS[0].id);
 
   useEffect(() => {
-    const media = window.matchMedia(TWO_COLUMNS_QUERY);
-    function onChange() {
-      setTwoColumns(media.matches);
+    const target = window.location.hash.slice(1);
+    if (target) document.getElementById(target)?.scrollIntoView();
+    function onScroll() {
+      setActiveId(findActiveSection());
     }
-    media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    const hash = activeId === SECTIONS[0].id ? '' : `#${activeId}`;
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${window.location.search}${hash}`,
+    );
+  }, [activeId]);
 
   useEffect(() => {
     let stale = false;
@@ -47,79 +86,99 @@ function TutorialsPage({ account, navigate }: Props) {
     <Container
       fluid
       className="py-5 px-2 px-sm-4"
-      style={{ maxWidth: 2 * COLUMN_MAX_WIDTH }}
+      style={{ maxWidth: CONTENT_MAX_WIDTH }}
     >
-      <h1 className="text-center mb-2">Tutorials</h1>
-      <p className="text-center text-body-secondary mb-4">
-        Short hands-on lessons on a tiny map. Play them in order, or jump to any
-        one you like.
-      </p>
+      <ListGroup
+        className={`${SECTION_CLASS} position-fixed top-50 start-0 translate-middle-y ms-3 d-none d-xxl-flex`}
+      >
+        {SECTIONS.map((section) => (
+          <ListGroup.Item
+            key={section.id}
+            action
+            active={section.id === activeId}
+            onClick={() => scrollToSection(section.id)}
+          >
+            {section.title}
+          </ListGroup.Item>
+        ))}
+      </ListGroup>
+      <div className="d-flex flex-wrap gap-2 mb-4 d-xxl-none">
+        {SECTIONS.map((section) => (
+          <Button
+            key={section.id}
+            size="sm"
+            variant={section.id === activeId ? 'primary' : 'secondary'}
+            onClick={() => scrollToSection(section.id)}
+          >
+            {section.title}
+          </Button>
+        ))}
+      </div>
+      <section id="tutorials">
+        <h1 className="mb-2">Tutorials</h1>
+        <p className="mb-2">
+          Annex is a strategy game of conquest. You and your rivals, humans or
+          bots, fight over a map of territories, and the last commander standing
+          wins.
+        </p>
+        <p className="text-body-secondary mb-4">
+          Start with the short hands-on lessons below, then read the guide. Play
+          the lessons in order, or jump to any one you like.
+        </p>
 
-      <Row>
-        <Col
-          xs={twoColumns ? 6 : 12}
-          className={twoColumns ? 'mx-auto pe-5' : 'mx-auto'}
-          style={{ maxWidth: COLUMN_MAX_WIDTH }}
-        >
-          {completed && (
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-body-secondary">
-                {doneCount}/{TUTORIALS.length} completed
-              </span>
-              <Button
-                onClick={() =>
-                  navigate(`/tutorials/${(upNext ?? TUTORIALS[0]).id}`)
-                }
+        {completed && (
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-body-secondary">
+              {doneCount}/{TUTORIALS.length} completed
+            </span>
+            <Button
+              onClick={() =>
+                navigate(`/tutorials/${(upNext ?? TUTORIALS[0]).id}`)
+              }
+            >
+              {upNext
+                ? doneCount === 0
+                  ? 'Start'
+                  : `Continue: ${upNext.title}`
+                : 'Play again'}
+            </Button>
+          </div>
+        )}
+
+        <ListGroup className={`${SECTION_CLASS} mb-5`}>
+          {TUTORIALS.map((tutorial, index) => {
+            const done = completedIds.includes(tutorial.id);
+            return (
+              <ListGroup.Item
+                key={tutorial.id}
+                className="d-flex align-items-center gap-3"
               >
-                {upNext
-                  ? doneCount === 0
-                    ? 'Start'
-                    : `Continue: ${upNext.title}`
-                  : 'Play again'}
-              </Button>
-            </div>
-          )}
-
-          <ListGroup className={`${SECTION_CLASS} mb-5`}>
-            {TUTORIALS.map((tutorial, index) => {
-              const done = completedIds.includes(tutorial.id);
-              return (
-                <ListGroup.Item
-                  key={tutorial.id}
-                  className="d-flex align-items-center gap-3"
-                >
-                  <span className="fw-bold fs-4 text-body-secondary">
-                    {index + 1}
-                  </span>
-                  <div className="flex-grow-1">
-                    <div className="fw-semibold d-flex align-items-center gap-2">
-                      {tutorial.title}
-                      {done && <Badge bg="success">Done</Badge>}
-                    </div>
-                    <div className="small text-body-secondary">
-                      {tutorial.summary}
-                    </div>
+                <span className="fw-bold fs-4 text-body-secondary">
+                  {index + 1}
+                </span>
+                <div className="flex-grow-1">
+                  <div className="fw-semibold d-flex align-items-center gap-2">
+                    {tutorial.title}
+                    {done && <Badge bg="success">Done</Badge>}
                   </div>
-                  <Button
-                    variant={tutorial === upNext ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={() => navigate(`/tutorials/${tutorial.id}`)}
-                  >
-                    {done ? 'Replay' : 'Play'}
-                  </Button>
-                </ListGroup.Item>
-              );
-            })}
-          </ListGroup>
-        </Col>
-        <Col
-          xs={twoColumns ? 6 : 12}
-          className={twoColumns ? 'mx-auto ps-5' : 'mx-auto'}
-          style={{ maxWidth: COLUMN_MAX_WIDTH }}
-        >
-          <TutorialGuide />
-        </Col>
-      </Row>
+                  <div className="small text-body-secondary">
+                    {tutorial.summary}
+                  </div>
+                </div>
+                <Button
+                  variant={tutorial === upNext ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => navigate(`/tutorials/${tutorial.id}`)}
+                >
+                  {done ? 'Replay' : 'Play'}
+                </Button>
+              </ListGroup.Item>
+            );
+          })}
+        </ListGroup>
+      </section>
+
+      <TutorialGuide />
     </Container>
   );
 }

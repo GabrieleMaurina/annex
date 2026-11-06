@@ -34,6 +34,7 @@ import {
   type TilePoint,
 } from './editorTiles';
 import { centeredTile, placeTile } from './snapTiles';
+import { tileFreeCheck } from './tileFree';
 
 const FOLLOW_TOLERANCE = 0.5;
 
@@ -214,29 +215,39 @@ export function useTiles({
     setList(list.map((t, k) => (k === index ? tile : t)));
   }
 
-  function add(points: TilePoint[]) {
-    const id = nextTerritoryId(territories);
-    const center = tileCenter(points);
-    const vertex = newTerritory(
-      id,
-      ...center,
-      unlockable ? NO_CONTINENT : continentId,
-      continentCount,
-    );
-    setTerritories(
-      placeTileTerritory(
-        [...territories, { ...vertex, locked: unlockable }],
+  function add(all: TilePoint[][]) {
+    let nextTerritories = territories;
+    const added: EditorTile[] = [];
+    for (const points of all) {
+      const id = nextTerritoryId(nextTerritories);
+      const center = tileCenter(points);
+      const vertex = newTerritory(
+        id,
+        ...center,
+        unlockable ? NO_CONTINENT : continentId,
+        continentCount,
+      );
+      nextTerritories = placeTileTerritory(
+        [...nextTerritories, { ...vertex, locked: unlockable }],
         id,
         center,
         [],
-        tileNeighbors(list, points, null),
-      ),
+        tileNeighbors([...list, ...added], points, null),
+      );
+      added.push({ points, unlockable, territoryId: id, color: TILE_FILL });
+    }
+    setTerritories(nextTerritories);
+    setList([...list, ...added]);
+    selectTerritory(added[added.length - 1].territoryId);
+  }
+
+  function freeCheck() {
+    const owned = new Set(list.map((tile) => tile.territoryId));
+    return tileFreeCheck(
+      list,
+      territories.filter((t) => !owned.has(t.id)),
+      paintSurface,
     );
-    setList([
-      ...list,
-      { points, unlockable, territoryId: id, color: TILE_FILL },
-    ]);
-    selectTerritory(id);
   }
 
   function move(
@@ -308,6 +319,7 @@ export function useTiles({
     pointerRef,
     redraw,
     add,
+    freeCheck,
     move,
     drag,
     remove,

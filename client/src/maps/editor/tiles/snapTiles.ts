@@ -50,7 +50,7 @@ function separated(a: TilePoint[], b: TilePoint[], axes: TilePoint[]) {
   });
 }
 
-function overlaps(a: TilePoint[], b: TilePoint[]): boolean {
+export function overlaps(a: TilePoint[], b: TilePoint[]): boolean {
   const [ax, ay] = tileCenter(a);
   const [bx, by] = tileCenter(b);
   if (Math.hypot(ax - bx, ay - by) >= tileRadius(a) + tileRadius(b))
@@ -58,7 +58,7 @@ function overlaps(a: TilePoint[], b: TilePoint[]): boolean {
   return !separated(a, b, a) && !separated(a, b, b);
 }
 
-function contains(points: TilePoint[], [x, y]: TilePoint): boolean {
+export function contains(points: TilePoint[], [x, y]: TilePoint): boolean {
   let inside = false;
   points.forEach(([px, py], i) => {
     const [qx, qy] = points[(i + 1) % points.length];

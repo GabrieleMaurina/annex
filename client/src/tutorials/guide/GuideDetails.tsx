@@ -15,7 +15,9 @@ function Details({ title, children }: { title: string; children: ReactNode }) {
 function GuideDetails() {
   return (
     <>
-      <h4 className="mt-4">Learn more</h4>
+      <h4 id="learn-more" className="mt-4">
+        Learn more
+      </h4>
 
       <Details title="Game modes">
         <p>

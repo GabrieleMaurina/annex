@@ -514,6 +514,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
         linkMode,
         pick,
         continentNames,
+        brushId: brushContinentId,
       });
     }
   });

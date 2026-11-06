@@ -60,7 +60,7 @@ function TutorialGuide() {
     <section>
       <h2 className="mb-3">How to play</h2>
 
-      <h4>Conquer the map</h4>
+      <h4 id="conquer-the-map">Conquer the map</h4>
       <p>
         Annex is a game of strategy, nerve and a little luck. Several players,
         humans or bots, share a map split into territories. Every territory
@@ -70,7 +70,7 @@ function TutorialGuide() {
       </p>
       <TerritoryLegend />
 
-      <h4>Taking turns</h4>
+      <h4 id="taking-turns">Taking turns</h4>
       <p>
         Players take turns one after another. When it is your turn the bar at
         the bottom shows what to do, and the line at the top of the screen shows
@@ -93,7 +93,7 @@ function TutorialGuide() {
         ))}
       </div>
 
-      <h4>How attacks work</h4>
+      <h4 id="how-attacks-work">How attacks work</h4>
       <p>
         Pick one of your territories with at least two troops, then a
         neighbouring enemy territory. One troop always stays behind to hold your
@@ -117,7 +117,7 @@ function TutorialGuide() {
       </p>
       <AttackExample />
 
-      <h4>Growing stronger</h4>
+      <h4 id="growing-stronger">Growing stronger</h4>
       <p>
         At the start of each turn you receive troops based on how many
         territories you hold. Owning a whole continent pays a bonus on top.
@@ -126,7 +126,7 @@ function TutorialGuide() {
       </p>
       <CardSets />
 
-      <h4>Tips for new commanders</h4>
+      <h4 id="tips">Tips for new commanders</h4>
       <ul>
         <li>Big stacks win battles. Do not spread your troops thin.</li>
         <li>Continents are easier to hold when they have few borders.</li>

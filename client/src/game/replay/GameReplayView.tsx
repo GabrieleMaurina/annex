@@ -34,6 +34,7 @@ interface Props {
   settingsMenuOpen?: boolean;
   onPanelOpenChange?: (open: boolean) => void;
   onViewChange?: (view: 'results' | 'replay') => void;
+  onRestart?: () => void;
   showMuted?: boolean;
   shareGameId?: string | null;
   storedGameId?: string;
@@ -62,6 +63,7 @@ function GameReplayView({
   settingsMenuOpen,
   onPanelOpenChange,
   onViewChange,
+  onRestart,
   showMuted,
   shareGameId,
   storedGameId,
@@ -103,6 +105,7 @@ function GameReplayView({
           previousReplayIndexRef.current = null;
           setView('replay');
         }}
+        onRestart={onRestart}
         showYouLabel={showYouLabel}
         rowClickable={rowClickable}
         rowRef={rowRef}

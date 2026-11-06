@@ -28,7 +28,13 @@ import { fitRegions } from './fit';
 import { focusAtoms, matchComponents } from './focus';
 import { groupByParent } from './groups';
 import { mapTitle, nameMap } from './names';
-import { DETAIL_RANKS, lineRank, LOCAL_ZOOM, RIVER_RANK } from './ranks';
+import {
+  DETAIL_RANKS,
+  lineRank,
+  LOCAL_ZOOM,
+  RIVER_LINE_ZOOM,
+  RIVER_RANK,
+} from './ranks';
 import {
   carveLargeAreas,
   greenMask,
@@ -40,6 +46,7 @@ import { extendLine, fillRings, strokeLine } from './raster/rasterize';
 import { reliefMap, ruggedMask } from './raster/relief';
 import { bridgeRivers, majorRiverMask } from './raster/rivers';
 import { smoothBorders, smoothCoast } from './raster/smooth';
+import { waterwayRivers } from './raster/waterways';
 import { Atoms, buildAtoms } from './regions';
 import {
   OsmAreaParams,
@@ -57,6 +64,7 @@ const WHOLE_STATES_COUNTRY = 'United States of America';
 const SEA_AREA_MULTIPLIER = 16;
 const LAKE_AREA_RATIO = 0.1;
 const NATURAL_AREA_RATIO = 0.1;
+const WATERWAY_JOIN_RATIO = 0.02;
 const BORDER_OVERSHOOT = 12;
 const WATER_CLASSES = ['ocean', 'lake'];
 const LIMIT_LEVELS = [8, 7, 6, 5, 4];
@@ -297,7 +305,12 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   smoothCoast(rawLand, width, height);
   const river = params.rivers
     ? majorRiverMask(
-        params.majorRivers,
+        params.zoom >= RIVER_LINE_ZOOM
+          ? waterwayRivers(
+              features.lines,
+              WATERWAY_JOIN_RATIO * Math.sqrt(width * height),
+            )
+          : params.majorRivers,
         rawLand,
         width,
         height,

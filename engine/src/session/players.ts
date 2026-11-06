@@ -39,6 +39,15 @@ export function addPlayer(
   return player;
 }
 
+export function cloneHuman(player: Player): Player {
+  const clone = addPlayer(player.name, player.country, player.elo);
+  clone.gamesPlayed = player.gamesPlayed;
+  clone.accountCreatedAt = player.accountCreatedAt;
+  clone.reputation = player.reputation;
+  clone.reputationRecoveryFrom = player.reputationRecoveryFrom;
+  return clone;
+}
+
 export function createBotPlayer(name: string, botProfile: BotProfile): Player {
   const id = -nextBotId++;
   const player: Player = {

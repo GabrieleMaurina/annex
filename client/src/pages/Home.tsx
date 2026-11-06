@@ -423,10 +423,12 @@ function Home({
 
   function createGame() {
     const base = `Game with ${getPlayerName() || 'Player'}`;
-    const taken = new Set(games.map((g) => g.name));
-    let attempt = 0;
-    while (taken.has(suggestedGameName(base, attempt))) attempt += 1;
-    navigate(gamePath(suggestedGameName(base, attempt)));
+    connector.listGames({ page: 1, pageSize: 100, name: base }, (page) => {
+      const taken = new Set(page.games.map((g) => g.name));
+      let attempt = 0;
+      while (taken.has(suggestedGameName(base, attempt))) attempt += 1;
+      navigate(gamePath(suggestedGameName(base, attempt)));
+    });
   }
 
   return (

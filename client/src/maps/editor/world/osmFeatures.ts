@@ -1,5 +1,5 @@
 import { VectorTile, type VectorTileFeature } from '@mapbox/vector-tile';
-import { OSM_LOCAL_ZOOM, type OsmFeatures } from 'engine';
+import { OSM_LOCAL_ZOOM, OSM_RIVER_LINE_ZOOM, type OsmFeatures } from 'engine';
 import Pbf from 'pbf';
 import { mercatorY, type WorldFrame } from './tileCover';
 
@@ -121,15 +121,27 @@ export function addTileFeatures(
   });
 
   const lineLayers =
-    projection.zoom >= OSM_LOCAL_ZOOM ? LINE_LAYERS : ['boundary'];
+    projection.zoom >= OSM_LOCAL_ZOOM
+      ? LINE_LAYERS
+      : projection.zoom >= OSM_RIVER_LINE_ZOOM
+        ? ['boundary', 'waterway']
+        : ['boundary'];
   for (const layer of lineLayers)
     each(layer, (feature, extent) => {
       const p = feature.properties;
+      const cls = text(p, 'class');
+      if (
+        layer === 'waterway' &&
+        projection.zoom < OSM_LOCAL_ZOOM &&
+        cls !== 'river'
+      )
+        return;
       for (const part of feature.loadGeometry())
         features.lines.push({
           layer,
-          cls: text(p, 'class'),
+          cls,
           adminLevel: number(p, 'admin_level', 0),
+          name: layer === 'waterway' ? nameOf(p) : '',
           points: flatten(part, extent),
         });
     });

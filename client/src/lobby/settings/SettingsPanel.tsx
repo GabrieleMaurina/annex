@@ -180,11 +180,9 @@ function SettingsPanel({
         {image && (
           <img
             src={image}
-            width={480}
-            height={270}
             alt=""
             className="rounded d-block pt-1 mb-1"
-            style={{ objectFit: 'cover' }}
+            style={{ maxWidth: 480, maxHeight: 270 }}
           />
         )}
         {(stats || seed) && (
@@ -375,26 +373,12 @@ function SettingsPanel({
                     />
                     Generate
                   </Dropdown.Item>
-                  <Dropdown.Item
-                    as="button"
-                    eventKey={LIBRARY_MAP_OPTION}
-                    className="selector-option text-nowrap"
-                    style={{ '--selector-row': 1 } as CSSProperties}
-                  >
-                    <img
-                      src={whiteMapIcon ?? '/icons/map.svg'}
-                      width={20}
-                      height={20}
-                      alt=""
-                    />
-                    Choose from library
-                  </Dropdown.Item>
                   {selectEarthMap && (
                     <Dropdown.Item
                       as="button"
                       eventKey={EARTH_MAP_OPTION}
                       className="selector-option text-nowrap"
-                      style={{ '--selector-row': 2 } as CSSProperties}
+                      style={{ '--selector-row': 1 } as CSSProperties}
                     >
                       <img
                         src={whiteGlobeIcon ?? '/icons/globe.svg'}
@@ -405,6 +389,24 @@ function SettingsPanel({
                       Earth
                     </Dropdown.Item>
                   )}
+                  <Dropdown.Item
+                    as="button"
+                    eventKey={LIBRARY_MAP_OPTION}
+                    className="selector-option text-nowrap"
+                    style={
+                      {
+                        '--selector-row': selectEarthMap ? 2 : 1,
+                      } as CSSProperties
+                    }
+                  >
+                    <img
+                      src={whiteMapIcon ?? '/icons/map.svg'}
+                      width={20}
+                      height={20}
+                      alt=""
+                    />
+                    Choose from library
+                  </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
             ) : (

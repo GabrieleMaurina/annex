@@ -194,7 +194,10 @@ export {
   osmAreaMask,
   osmPlaceMask,
 } from './mapgen/pipeline/osm/osmMap';
-export { LOCAL_ZOOM as OSM_LOCAL_ZOOM } from './mapgen/pipeline/osm/ranks';
+export {
+  LOCAL_ZOOM as OSM_LOCAL_ZOOM,
+  RIVER_LINE_ZOOM as OSM_RIVER_LINE_ZOOM,
+} from './mapgen/pipeline/osm/ranks';
 export {
   OsmAreaParams,
   OsmDetail,

@@ -26,7 +26,7 @@ function SaveMapButton({ gameId }: { gameId: string }) {
   }
 
   return (
-    <div className="d-flex flex-column align-items-center mt-3">
+    <div className="d-flex flex-column align-items-center">
       <Button variant="primary" disabled={status !== 'idle'} onClick={save}>
         {status === 'saved'
           ? 'Map saved'
@@ -44,11 +44,7 @@ function SaveMapButton({ gameId }: { gameId: string }) {
 function MapAction({ game, storedGameId, mapSavable = true }: Props) {
   if (!isLoggedIn()) return null;
   if (game.playerMapId && !game.mapGeneration)
-    return (
-      <div className="d-flex justify-content-center mt-3">
-        <MapLikeButton mapId={game.playerMapId} />
-      </div>
-    );
+    return <MapLikeButton mapId={game.playerMapId} />;
   return storedGameId && mapSavable ? (
     <SaveMapButton key={storedGameId} gameId={storedGameId} />
   ) : null;

@@ -1,8 +1,11 @@
 import { OsmRiver, OsmWater } from '../types';
 import { fillRings, strokeLine } from './rasterize';
 
-const MAX_RIVERS = 2;
-const MIN_RIVER_LENGTH_RATIO = 0.4;
+const MAX_RIVERS = 5;
+const MIN_FOLLOWER_SHARE = 0.5;
+const FOLLOWER_RANK_GAP = 1;
+const WORLD_CLASS_RANK = 6;
+const MIN_RIVER_LENGTH_RATIO = 0.25;
 const RIVER_RADIUS = 4;
 const JOIN_RADIUS = 2 * RIVER_RADIUS;
 const CORRIDOR_RATIO = 0.03;
@@ -168,19 +171,29 @@ export function majorRiverMask(
       };
     })
     .filter(({ length }) => length > 0);
-  const chosen = visible
+  const long = visible
     .filter(({ length }) => length >= minLength)
-    .sort((a, b) => a.rank - b.rank || b.length - a.length)
+    .sort((a, b) => a.rank - b.rank || b.length - a.length);
+  if (long.length === 0) return null;
+  const [first] = long;
+  const chosen = long
+    .filter(
+      ({ rank, length }) =>
+        rank <= first.rank + FOLLOWER_RANK_GAP &&
+        length >= MIN_FOLLOWER_SHARE * first.length,
+    )
     .slice(0, MAX_RIVERS);
-  if (chosen.length === 0) return null;
   const line = new Uint8Array(width * height);
   const draw = (segments: number[][]) => {
     for (const segment of segments) strokeLine(line, width, height, segment, 1);
   };
   for (const { segments } of chosen) draw(segments);
-  const lowestRank = Math.max(...chosen.map(({ rank }) => rank));
+  const branchRank = Math.min(
+    WORLD_CLASS_RANK,
+    Math.max(...chosen.map(({ rank }) => rank)),
+  );
   let branches = visible.filter(
-    ({ length, rank }) => length < minLength && rank <= lowestRank,
+    ({ length, rank }) => length < minLength && rank <= branchRank,
   );
   for (let grew = true; grew;) {
     const joined = widen(line, width, height, JOIN_RADIUS);

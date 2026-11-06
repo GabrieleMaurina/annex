@@ -4,6 +4,7 @@ import { Button, Container } from 'react-bootstrap';
 import type { ResultRow } from '../common/ResultsTable';
 import ResultsTable from '../common/ResultsTable';
 import SharePageButton from '../common/menus/SharePageButton';
+import Tip from '../common/tooltips/Tip';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/settings/SettingsPanel';
@@ -24,6 +25,7 @@ interface Props {
   selfId: number | null;
   navigate?: (path: string) => void;
   onWatchReplay: () => void;
+  onRestart?: () => void;
   showYouLabel?: boolean;
   rowClickable?: (player: GameState['players'][number]) => boolean;
   rowRef?: (playerId: number) => (el: HTMLTableRowElement | null) => void;
@@ -43,6 +45,7 @@ function GameEndResults({
   selfId,
   navigate,
   onWatchReplay,
+  onRestart,
   showYouLabel,
   rowClickable,
   rowRef,
@@ -146,17 +149,26 @@ function GameEndResults({
       {belowTable}
       {overlay}
 
-      <div className="d-flex justify-content-center mt-3">
+      <div className="d-flex flex-wrap justify-content-center align-items-start gap-3 mt-3">
         <Button variant="info" onClick={onWatchReplay}>
           Watch Replay
         </Button>
+        {onRestart && (
+          <Tip
+            text="Start a new game with the same settings, players and map"
+            placement="bottom"
+          >
+            <Button variant="success" onClick={onRestart}>
+              Restart
+            </Button>
+          </Tip>
+        )}
+        <MapAction
+          game={game}
+          storedGameId={shareGameId}
+          mapSavable={mapSavable}
+        />
       </div>
-
-      <MapAction
-        game={game}
-        storedGameId={shareGameId}
-        mapSavable={mapSavable}
-      />
 
       {replay && (
         <div className="mt-4">

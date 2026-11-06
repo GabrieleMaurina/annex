@@ -12,6 +12,7 @@ import {
   playerIdBySessionToken,
   playerIdBySocketId,
   playerIdByUserId,
+  rebindPlayer,
   sessionTokenBySocketId,
   setPlayerIdForUser,
   setSocketRoom,
@@ -100,10 +101,19 @@ export function registerHomeHandlers(
         );
 
         const result = engine.resyncPlayer(identity.playerId, room);
-        setSocketRoom(io, identity.playerId, result.gameName);
+        if (result.id !== identity.playerId)
+          rebindPlayer(
+            io,
+            socket,
+            identity.playerId,
+            result.id,
+            identity.token,
+            identity.userId,
+          );
+        setSocketRoom(io, result.id, result.gameName);
         if (result.gameName) {
           emitGameMeta(io, result.gameName, socket);
-          emitBlockedPlayers(io, identity.playerId);
+          emitBlockedPlayers(io, result.id);
         }
 
         callback({

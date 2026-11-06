@@ -1,5 +1,6 @@
 import { endTakeover, startTakeover } from '../bots/takeover';
 import { callbacks } from '../callbacks';
+import { isLobbyBot } from '../game/draw';
 import {
   checkGameEnd,
   endAbandonedGame,
@@ -17,7 +18,7 @@ import { canTakeSeat } from '../lifecycle/eligibility';
 import { openTeam } from '../lifecycle/teams';
 import { getGameMap } from '../maps/maps';
 import { Game, HOME_ROOM, Player } from '../types';
-import { playersById } from './players';
+import { cloneHuman, playersById } from './players';
 
 export const games = new Map<string, Game>();
 
@@ -74,8 +75,7 @@ function hasActiveLobbyMember(game: Game) {
 
 function evictBotPlayers(game: Game) {
   for (const id of game.playerIds) {
-    const member = playersById.get(id);
-    if (member?.isBot) playersById.delete(id);
+    if (isLobbyBot(id)) playersById.delete(id);
   }
 }
 
@@ -277,7 +277,7 @@ function leaveGameImpl(player: Player, permanent: boolean) {
   }
 
   if (game.state === 'playing') {
-    if (game.surrenderedIds.has(player.id) && player.connected)
+    if (game.deathOrder.includes(player.id) && player.connected)
       player.gameName = null;
     else if (!player.connected) startTakeover(game, player);
     checkGameEnd(game);
@@ -289,7 +289,8 @@ function leaveGameImpl(player: Player, permanent: boolean) {
   }
 
   if (game.state === 'ended') {
-    if (player.connected) player.gameName = null;
+    player.gameName = null;
+    endTakeover(player);
     destroyIfEnded(game);
     return;
   }
@@ -512,12 +513,21 @@ export function respondWithGameState(
   broadcastGameStateExcept(game, playerId);
 }
 
+function splitOffSurrenderedSeat(seat: Player, room: string): Player | null {
+  const game = seat.gameName ? games.get(seat.gameName) : undefined;
+  if (!game || game.state !== 'playing' || room === game.name) return null;
+  if (!game.surrenderedIds.has(seat.id)) return null;
+  seat.connected = false;
+  return cloneHuman(seat);
+}
+
 export function resyncPlayer(
   playerId: number,
   room: string,
 ): { id: number; gameName: string | null; name: string } {
-  const player = playersById.get(playerId);
-  if (!player) return { id: playerId, gameName: null, name: '' };
+  const seat = playersById.get(playerId);
+  if (!seat) return { id: playerId, gameName: null, name: '' };
+  const player = splitOffSurrenderedSeat(seat, room) ?? seat;
   player.connected = true;
   const gameBeforeResync = player.gameName
     ? games.get(player.gameName)

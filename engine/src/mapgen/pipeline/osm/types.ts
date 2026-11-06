@@ -25,6 +25,7 @@ export interface OsmLine {
   layer: string;
   cls: string;
   adminLevel: number;
+  name: string;
   points: number[];
 }
 

@@ -133,6 +133,11 @@ function EndPage({
           setView(v);
           onViewChange(v);
         }}
+        onRestart={
+          connector.canRestart(game.players)
+            ? () => connector.restart()
+            : undefined
+        }
         showYouLabel={!connector.isOffline()}
         rowClickable={(p) => tableEmojiEnabled && p.id !== selfId && !p.isBot}
         rowRef={(id) => (el) => {
@@ -171,18 +176,6 @@ function EndPage({
                       height={14}
                       alt="Everyone"
                     />
-                  </Button>
-                </Tip>
-              </div>
-            )}
-            {connector.canRestart(game.players) && (
-              <div className="d-flex justify-content-center mt-3">
-                <Tip
-                  text="Start a new game with the same settings, players and map"
-                  placement="bottom"
-                >
-                  <Button variant="success" onClick={() => connector.restart()}>
-                    Restart
                   </Button>
                 </Tip>
               </div>

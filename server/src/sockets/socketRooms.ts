@@ -64,6 +64,20 @@ export function bindSocket(
   else userIdBySocketId.delete(socket.id);
 }
 
+export function rebindPlayer(
+  io: Server,
+  socket: Socket,
+  oldPlayerId: number,
+  newPlayerId: number,
+  token: string,
+  userId: string | null,
+) {
+  socketIdByPlayerId.delete(oldPlayerId);
+  if (userId) setPlayerIdForUser(userId, newPlayerId);
+  else playerIdBySessionToken.set(token, newPlayerId);
+  bindSocket(io, socket, newPlayerId, token, userId);
+}
+
 export function setSocketRoom(
   io: Server,
   playerId: number,

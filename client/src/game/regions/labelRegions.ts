@@ -20,6 +20,7 @@ const MAX_SEA_AREA_FRACTION = 0.4;
 const GAP_PER_LONGEST_SIDE = 1 / 160;
 const MIN_GAP = 5;
 const POCKET_GAPS = 2;
+const ISLAND_REACH_GAPS = 4;
 
 export function rgbOf(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
@@ -175,13 +176,18 @@ function nearestLabel(
   stamp: number,
   pocket: Int32Array,
   reach: number,
+  through: Set<number>,
 ): number {
   const size = labels.length;
   let found = -1;
   let frontier = Array.from(pocket);
   const visit = (q: number, next: number[]) => {
-    if (labels[q] >= 0) found = labels[q];
-    if (!wall[q] || seen[q] === stamp) return;
+    const label = labels[q];
+    if (label >= 0 && !through.has(label)) {
+      found = label;
+      return;
+    }
+    if (!(wall[q] || label >= 0) || seen[q] === stamp) return;
     seen[q] = stamp;
     next.push(q);
   };
@@ -206,9 +212,11 @@ function absorbPockets(
   width: number,
   height: number,
   queue: Int32Array,
+  seaIds: Set<number>,
 ) {
   const size = labels.length;
   const gap = closingGap(width, height);
+  const noIds = new Set<number>();
   const maxArea = (POCKET_GAPS * gap) ** 2;
   const seen = new Int32Array(size).fill(-1);
   for (let start = 0; start < size; start++) {
@@ -234,7 +242,30 @@ function absorbPockets(
     }
     if (!enclosed || tail > maxArea) continue;
     const pocket = queue.subarray(0, tail);
-    const owner = nearestLabel(labels, wall, width, seen, start, pocket, gap);
+    let owner =
+      seaIds.size > 0
+        ? nearestLabel(
+            labels,
+            wall,
+            width,
+            seen,
+            start,
+            pocket,
+            ISLAND_REACH_GAPS * gap,
+            seaIds,
+          )
+        : -1;
+    if (owner < 0)
+      owner = nearestLabel(
+        labels,
+        wall,
+        width,
+        seen,
+        size + start,
+        pocket,
+        gap,
+        noIds,
+      );
     if (owner >= 0) for (const p of pocket) labels[p] = owner;
   }
 }
@@ -273,7 +304,10 @@ export function labelRegions(
   });
   if (leaked.length > 0)
     closeGaps(labels, wall, width, height, stack, leaked, invalidIds);
-  absorbPockets(labels, wall, width, height, stack);
+  const seaIds = new Set(
+    points.filter((point) => point.isSea).map((point) => point.id),
+  );
+  absorbPockets(labels, wall, width, height, stack, seaIds);
   return { width, height, labels, wall, invalidIds };
 }
 

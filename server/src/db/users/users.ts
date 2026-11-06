@@ -310,6 +310,15 @@ export function markPictureDangerous(
     .then((res) => res.modifiedCount === 1);
 }
 
+export function clearBioIfEquals(
+  userId: string,
+  bio: string,
+): Promise<boolean> {
+  return collection()
+    .updateOne({ _id: new ObjectId(userId), bio }, { $set: { bio: '' } })
+    .then((res) => res.modifiedCount === 1);
+}
+
 export function insertUser(data: {
   username: string;
   email: string;

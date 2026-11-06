@@ -6,6 +6,7 @@ import { hashPassword, verifyPassword } from '../../auth/password';
 import { isSelectableCountry } from '../../countries';
 import {
   findUserById,
+  getUserBio,
   getUserPicture,
   MAX_BIO_LENGTH,
   setBio,
@@ -34,8 +35,12 @@ accountRouter.get('/account', (_req, res) => {
     res.json({ ok: false, error: 'not logged in' });
     return;
   }
-  Promise.all([findUserById(session.userId), getUserPicture(session.userId)])
-    .then(([user, picture]) => {
+  Promise.all([
+    findUserById(session.userId),
+    getUserPicture(session.userId),
+    getUserBio(session.userId),
+  ])
+    .then(([user, picture, bio]) => {
       if (!user) {
         res.json({ ok: false, error: 'not logged in' });
         return;
@@ -50,6 +55,7 @@ accountRouter.get('/account', (_req, res) => {
             ? `data:${picture.mime};base64,${picture.data}`
             : null,
         pictureDangerous: !!picture?.dangerous,
+        bio,
       });
     })
     .catch(() => res.json({ ok: false, error: 'server error' }));

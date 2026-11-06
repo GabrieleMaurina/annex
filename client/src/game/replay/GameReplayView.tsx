@@ -37,6 +37,7 @@ interface Props {
   showMuted?: boolean;
   shareGameId?: string | null;
   storedGameId?: string;
+  mapSavable?: boolean;
   conductFriends?: FriendsOverview;
   conductBlockedUserIds?: string[];
   onConductChange?: () => void;
@@ -64,6 +65,7 @@ function GameReplayView({
   showMuted,
   shareGameId,
   storedGameId,
+  mapSavable,
   conductFriends,
   conductBlockedUserIds,
   onConductChange,
@@ -106,23 +108,12 @@ function GameReplayView({
         rowRef={rowRef}
         nameRef={nameRef}
         onRowClick={onRowClick}
-        belowTable={
-          <>
-            {belowTable}
-            {shareGameId && (
-              <div className="d-flex justify-content-center mt-3">
-                <SharePageButton
-                  title={game.name}
-                  path={`/games/replay/${shareGameId}`}
-                  tooltip="Share this game with friends"
-                />
-              </div>
-            )}
-          </>
-        }
+        belowTable={belowTable}
         overlay={overlay}
         replay={replay}
         showMuted={showMuted}
+        shareGameId={shareGameId}
+        mapSavable={mapSavable}
       />
     );
   }

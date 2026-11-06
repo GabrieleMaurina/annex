@@ -3,10 +3,12 @@ import type { ReactNode } from 'react';
 import { Button, Container } from 'react-bootstrap';
 import type { ResultRow } from '../common/ResultsTable';
 import ResultsTable from '../common/ResultsTable';
+import SharePageButton from '../common/menus/SharePageButton';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/settings/SettingsPanel';
 import GameStatsChart from './replay/GameStatsChart';
+import MapAction from './replay/MapAction';
 import type { FoldedReplay } from './replay/replay';
 
 function formatDuration(ms: number): string {
@@ -31,6 +33,8 @@ interface Props {
   overlay?: ReactNode;
   replay?: FoldedReplay | null;
   showMuted?: boolean;
+  shareGameId?: string | null;
+  mapSavable?: boolean;
 }
 
 function GameEndResults({
@@ -48,6 +52,8 @@ function GameEndResults({
   overlay,
   replay,
   showMuted,
+  shareGameId,
+  mapSavable,
 }: Props) {
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));
   const draw = game.draw;
@@ -101,8 +107,20 @@ function GameEndResults({
             wins!
           </p>
         )}
-        {duration && (
-          <p className="text-body-secondary mb-0 mt-2">Duration: {duration}</p>
+        {(duration || shareGameId) && (
+          <div className="d-flex justify-content-center align-items-center gap-2 mt-2">
+            {duration && (
+              <span className="text-body-secondary">Duration: {duration}</span>
+            )}
+            {shareGameId && (
+              <SharePageButton
+                title={game.name}
+                path={`/games/replay/${shareGameId}`}
+                tooltip="Share this game with friends"
+                size="sm"
+              />
+            )}
+          </div>
         )}
       </div>
 
@@ -133,6 +151,12 @@ function GameEndResults({
           Watch Replay
         </Button>
       </div>
+
+      <MapAction
+        game={game}
+        storedGameId={shareGameId}
+        mapSavable={mapSavable}
+      />
 
       {replay && (
         <div className="mt-4">

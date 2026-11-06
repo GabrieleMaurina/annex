@@ -9,9 +9,10 @@ const MAX_LENGTH = 200;
 interface Props {
   bio: string;
   editable: boolean;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }
 
-function ProfileBio({ bio, editable }: Props) {
+function ProfileBio({ bio, editable, onContextMenu }: Props) {
   const [text, setText] = useState(bio);
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -86,7 +87,11 @@ function ProfileBio({ bio, editable }: Props) {
   return (
     <div className="d-flex align-items-center gap-2">
       {text && (
-        <span className="selectable text-break" style={{ maxWidth: 400 }}>
+        <span
+          className="selectable text-break"
+          style={{ maxWidth: 400 }}
+          onContextMenu={onContextMenu}
+        >
           {text}
         </span>
       )}

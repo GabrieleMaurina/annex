@@ -8,6 +8,7 @@ import { formatError } from '../formatError';
 import Tip from '../tooltips/Tip';
 
 const PICTURE_REASON = 'offensive picture';
+const TEXT_REASON = 'offensive text';
 
 const REASON_DESCRIPTIONS: Record<ReportReason, string> = {
   collusion:
@@ -21,6 +22,8 @@ const REASON_DESCRIPTIONS: Record<ReportReason, string> = {
     'Deliberately wasting time, using the full turn timer on purpose or dragging out a decided game',
   'offensive picture':
     'A profile picture that is sexual, violent, hateful or otherwise inappropriate',
+  'offensive text':
+    'A profile text that is sexual, violent, hateful or otherwise inappropriate',
 };
 
 export type ConductAck = { ok: true } | { ok: false; error: string };
@@ -29,6 +32,7 @@ interface Props {
   show: boolean;
   playerName: string;
   includePicture: boolean;
+  includeText: boolean;
   initialReason?: string;
   onHide: () => void;
   onSubmit: (reason: string, cb: (res: ConductAck) => void) => void;
@@ -39,6 +43,7 @@ function ReportPlayerModal({
   show,
   playerName,
   includePicture,
+  includeText,
   initialReason,
   onHide,
   onSubmit,
@@ -50,7 +55,9 @@ function ReportPlayerModal({
   const [sending, setSending] = useState(false);
   useToggleSound(show);
   const reasons = REPORT_REASONS.filter(
-    (value) => includePicture || value !== PICTURE_REASON,
+    (value) =>
+      (includePicture || value !== PICTURE_REASON) &&
+      (includeText || value !== TEXT_REASON),
   );
   const selected =
     reason ??

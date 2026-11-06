@@ -43,7 +43,7 @@ export function usePanelsUI(
   useToggleSound(panelCollapsed);
 
   const autoOpenCardsPanel = useCallback(() => {
-    outsideCloseBlockedUntilRef.current = Date.now() + 1000;
+    outsideCloseBlockedUntilRef.current = Date.now() + 3000;
     setOpenPanel('cards');
   }, []);
 

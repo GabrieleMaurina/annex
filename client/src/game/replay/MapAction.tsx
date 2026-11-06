@@ -1,0 +1,57 @@
+import { useState } from 'react';
+import { Button } from 'react-bootstrap';
+import { formatError } from '../../common/formatError';
+import { connector } from '../../connector';
+import { isLoggedIn } from '../../lib/player';
+import type { GameState } from '../../lib/types';
+import MapLikeButton from '../../lobby/MapLikeButton';
+
+interface Props {
+  game: GameState;
+  storedGameId: string | null | undefined;
+  mapSavable?: boolean;
+}
+
+function SaveMapButton({ gameId }: { gameId: string }) {
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [error, setError] = useState('');
+
+  function save() {
+    setStatus('saving');
+    setError('');
+    connector.saveReplayMap(gameId, (res) => {
+      setStatus(res.ok ? 'saved' : 'idle');
+      if (!res.ok) setError(res.error);
+    });
+  }
+
+  return (
+    <div className="d-flex flex-column align-items-center mt-3">
+      <Button variant="primary" disabled={status !== 'idle'} onClick={save}>
+        {status === 'saved'
+          ? 'Map saved'
+          : status === 'saving'
+            ? 'Saving…'
+            : 'Save map'}
+      </Button>
+      {error && (
+        <div className="text-danger small mt-1">{formatError(error)}</div>
+      )}
+    </div>
+  );
+}
+
+function MapAction({ game, storedGameId, mapSavable = true }: Props) {
+  if (!isLoggedIn()) return null;
+  if (game.playerMapId && !game.mapGeneration)
+    return (
+      <div className="d-flex justify-content-center mt-3">
+        <MapLikeButton mapId={game.playerMapId} />
+      </div>
+    );
+  return storedGameId && mapSavable ? (
+    <SaveMapButton key={storedGameId} gameId={storedGameId} />
+  ) : null;
+}
+
+export default MapAction;

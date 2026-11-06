@@ -8,6 +8,7 @@ import CareerChart from '../../common/charts/CareerChart';
 import ReportPlayerModal from '../../common/conduct/ReportPlayerModal';
 import { formatError } from '../../common/formatError';
 import { useWhiteIcon } from '../../common/icon';
+import ProfilePictureEditor from '../../common/inputs/ProfilePictureEditor';
 import SharePageButton from '../../common/menus/SharePageButton';
 import ProfileActions from '../../common/ProfileActions';
 import Tip from '../../common/tooltips/Tip';
@@ -89,9 +90,12 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   const [result, setResult] = useState<GamesPage | null>(null);
   const [mapTotal, setMapTotal] = useState<number | null>(null);
   const [history, setHistory] = useState<PlayerHistoryPoint[]>([]);
-  const [reportMenu, setReportMenu] = useState<{ x: number; y: number } | null>(
-    null,
-  );
+  const [reportMenu, setReportMenu] = useState<{
+    x: number;
+    y: number;
+    reason: string;
+    label: string;
+  } | null>(null);
   useToggleSound(reportMenu !== null);
   const [reportMessage, setReportMessage] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
@@ -192,8 +196,31 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
   const allowance = isOwnProfile
     ? newAccountAllowance(profile.createdAt, openedAt)
     : 0;
-  const canReport = canManageFriend && !!profile.picture;
+  const canReportPicture = canManageFriend && !!profile.picture;
+  const canReportText = canManageFriend && !!profile.bio;
   const profileId = profile.id;
+  const profileUsername = profile.username;
+
+  function reloadProfile() {
+    connector.getPlayerProfile(profileUsername, setProfile);
+  }
+
+  function openReportMenu(e: React.MouseEvent, reason: string, label: string) {
+    e.preventDefault();
+    setReportMessage('');
+    setReportMenu({ x: e.clientX, y: e.clientY, reason, label });
+  }
+
+  const onlineDot = (
+    <Tip text={profile.online ? 'Online' : 'Offline'}>
+      <span
+        role="img"
+        aria-label={profile.online ? 'Online' : 'Offline'}
+        className={`position-absolute bottom-0 end-0 m-1 rounded-circle border border-2 border-white ${profile.online ? 'bg-success' : 'bg-secondary'}`}
+        style={{ width: 16, height: 16 }}
+      />
+    </Tip>
+  );
 
   function openReport(reason?: string) {
     setReportMessage('');
@@ -245,41 +272,42 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
       <div
         className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex flex-column flex-md-row align-items-center gap-4 mt-3 mb-4`}
       >
-        <div className="position-relative flex-shrink-0">
-          {profile.picture ? (
-            <img
-              src={profile.picture}
-              alt={profile.username}
-              width={120}
-              height={120}
-              className="rounded d-block"
-              onContextMenu={
-                canReport
-                  ? (e) => {
-                      e.preventDefault();
-                      setReportMessage('');
-                      setReportMenu({ x: e.clientX, y: e.clientY });
-                    }
-                  : undefined
-              }
-            />
-          ) : (
-            <div
-              className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50"
-              style={{ width: 120, height: 120 }}
-            >
-              No picture
-            </div>
-          )}
-          <Tip text={profile.online ? 'Online' : 'Offline'}>
-            <span
-              role="img"
-              aria-label={profile.online ? 'Online' : 'Offline'}
-              className={`position-absolute bottom-0 end-0 m-1 rounded-circle border border-2 border-white ${profile.online ? 'bg-success' : 'bg-secondary'}`}
-              style={{ width: 16, height: 16 }}
-            />
-          </Tip>
-        </div>
+        {isOwnProfile ? (
+          <ProfilePictureEditor
+            picture={profile.picture}
+            dangerous={false}
+            size={120}
+            onChanged={reloadProfile}
+          >
+            {onlineDot}
+          </ProfilePictureEditor>
+        ) : (
+          <div className="position-relative flex-shrink-0">
+            {profile.picture ? (
+              <img
+                src={profile.picture}
+                alt={profile.username}
+                width={120}
+                height={120}
+                className="rounded d-block"
+                onContextMenu={
+                  canReportPicture
+                    ? (e) =>
+                        openReportMenu(e, 'offensive picture', 'Report picture')
+                    : undefined
+                }
+              />
+            ) : (
+              <div
+                className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50"
+                style={{ width: 120, height: 120 }}
+              >
+                No picture
+              </div>
+            )}
+            {onlineDot}
+          </div>
+        )}
         <div className="d-flex flex-column align-items-center align-items-md-start gap-2">
           <h1 className="d-flex align-items-center gap-2 mb-0">
             <Flag country={profile.country} height={30} />
@@ -289,6 +317,11 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
             key={profile.id}
             bio={profile.bio}
             editable={isOwnProfile}
+            onContextMenu={
+              canReportText
+                ? (e) => openReportMenu(e, 'offensive text', 'Report text')
+                : undefined
+            }
           />
           <div className="small text-muted">
             Member since {new Date(profile.createdAt).toLocaleDateString()}
@@ -362,10 +395,10 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
             variant="danger"
             onClick={() => {
               setReportMenu(null);
-              openReport('offensive picture');
+              openReport(reportMenu.reason);
             }}
           >
-            Report picture
+            {reportMenu.label}
           </Button>
         </div>
       )}
@@ -373,6 +406,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
         show={reportOpen}
         playerName={profile.username}
         includePicture={!!profile.picture}
+        includeText={!!profile.bio}
         initialReason={reportReason}
         onHide={() => setReportOpen(false)}
         onSubmit={(reason, cb) =>

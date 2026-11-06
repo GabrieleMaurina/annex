@@ -6,11 +6,13 @@ import {
 } from 'engine';
 import { ObjectId } from 'mongodb';
 import {
+  clearBioIfEquals,
   consumeReports,
   countGamesPlayed,
   countReportsBy,
   findUserById,
   getGameReportInfo,
+  getUserBio,
   getUserPicture,
   hasRecentProfileReport,
   insertPlayerReport,
@@ -34,6 +36,7 @@ const REPORT_PENALTIES: Record<ReportReason, number> = {
   'fake botting': 10,
   stalling: 5,
   'offensive picture': 15,
+  'offensive text': 15,
 };
 
 const EVIDENCE_DAYS = 30;
@@ -129,8 +132,12 @@ function reporterFactor(reporterId: string, now: number): Promise<number> {
   });
 }
 
+function isContentReason(reason: string): boolean {
+  return reason === 'offensive picture' || reason === 'offensive text';
+}
+
 function sourceFactor(source: ReportSource, reason: string): number {
-  return source === 'game' || reason === 'offensive picture'
+  return source === 'game' || isContentReason(reason)
     ? 1
     : PROFILE_REPORT_FACTOR;
 }
@@ -192,17 +199,27 @@ function evidenceOf(weights: WeightedReport[]): {
   return { reporters: bestByReporter.size, evidence };
 }
 
+function hideContent(
+  targetId: string,
+  reason: ReportReason,
+  contentId: string,
+): Promise<boolean> {
+  return reason === 'offensive picture'
+    ? markPictureDangerous(targetId, contentId)
+    : clearBioIfEquals(targetId, contentId);
+}
+
 function confirmReports(
   targetId: string,
   reason: ReportReason,
-  pictureId: string | null,
+  contentId: string | null,
   weights: WeightedReport[],
 ): Promise<void> {
   const eventId = new ObjectId().toString();
   const hidden =
-    pictureId === null
+    contentId === null
       ? Promise.resolve(true)
-      : markPictureDangerous(targetId, pictureId);
+      : hideContent(targetId, reason, contentId);
   return hidden.then((flipped) => {
     if (!flipped) return;
     return consumeReports(
@@ -213,7 +230,7 @@ function confirmReports(
         reason: 'report',
         reportReason: reason,
         gameId: null,
-        refId: pictureId,
+        refId: contentId,
         eventId,
       }).then(
         () => undefined,
@@ -226,13 +243,13 @@ function confirmReports(
 function evaluateReports(
   targetId: string,
   reason: ReportReason,
-  pictureId: string | null,
+  contentId: string | null,
 ): Promise<void> {
   const now = Date.now();
   return listOpenReports(
     targetId,
     reason,
-    pictureId,
+    contentId,
     now - EVIDENCE_DAYS * DAY_MS,
   ).then((reports) => {
     if (
@@ -246,7 +263,7 @@ function evaluateReports(
         evidence < MIN_EVIDENCE - EVIDENCE_TOLERANCE
       )
         return;
-      return confirmReports(targetId, reason, pictureId, weights);
+      return confirmReports(targetId, reason, contentId, weights);
     });
   });
 }
@@ -254,10 +271,10 @@ function evaluateReports(
 function scheduleEvaluation(
   targetId: string,
   reason: ReportReason,
-  pictureId: string | null,
+  contentId: string | null,
 ): void {
   enqueueEvaluation(targetId, () =>
-    evaluateReports(targetId, reason, pictureId),
+    evaluateReports(targetId, reason, contentId),
   ).catch((error) => console.error('failed to evaluate reports', error));
 }
 
@@ -271,31 +288,41 @@ function visiblePictureId(userId: string): Promise<string | null> {
   );
 }
 
+function reportedContentId(
+  userId: string,
+  reason: ReportReason,
+): Promise<string | null> {
+  if (reason === 'offensive picture') return visiblePictureId(userId);
+  if (reason === 'offensive text')
+    return getUserBio(userId).then((bio) => bio || null);
+  return Promise.resolve(null);
+}
+
 function storeReport(
   reporterId: string,
   targetId: string,
   reason: ReportReason,
   gameId: string | null,
-  pictureId: string | null,
+  contentId: string | null,
 ): Promise<ReportResult> {
   const report = {
     source: gameId === null ? ('profile' as const) : ('game' as const),
     gameId,
-    pictureId,
+    pictureId: contentId,
     reporterId,
     targetId,
     reason,
   };
   const limited =
     gameId === null
-      ? hasRecentProfileReport(reporterId, targetId, reason, pictureId)
+      ? hasRecentProfileReport(reporterId, targetId, reason, contentId)
       : Promise.resolve(false);
   return limited
     .then((already) => (already ? false : insertPlayerReport(report)))
     .then((stored) => {
       if (!stored) return failure('already reported');
       return penaliseSpam(reporterId, gameId).then(() => {
-        scheduleEvaluation(targetId, reason, pictureId);
+        scheduleEvaluation(targetId, reason, contentId);
         return { ok: true };
       });
     });
@@ -334,7 +361,7 @@ function isReason(
   return (
     typeof reason === 'string' &&
     REPORT_REASONS.some((value) => value === reason) &&
-    !(gameReport && reason === 'offensive picture')
+    !(gameReport && isContentReason(reason))
   );
 }
 
@@ -344,14 +371,14 @@ function lookupAndStore(
   reason: ReportReason,
   gameId: string | null,
 ): Promise<ReportResult> {
-  const isPicture = reason === 'offensive picture';
   return Promise.all([
     findUserById(targetId),
-    isPicture ? visiblePictureId(targetId) : Promise.resolve(null),
-  ]).then(([user, pictureId]) => {
+    reportedContentId(targetId, reason),
+  ]).then(([user, contentId]) => {
     if (!user) return failure('user not found');
-    if (isPicture && pictureId === null) return failure('no picture');
-    return storeReport(reporterId, targetId, reason, gameId, pictureId);
+    if (isContentReason(reason) && contentId === null)
+      return failure(reason === 'offensive picture' ? 'no picture' : 'no text');
+    return storeReport(reporterId, targetId, reason, gameId, contentId);
   });
 }
 

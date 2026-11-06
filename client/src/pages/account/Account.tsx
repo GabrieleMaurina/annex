@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Button,
@@ -10,11 +10,11 @@ import {
 import { Navigate, useNavigate } from 'react-router-dom';
 import CountrySelect from '../../common/badges/CountrySelect';
 import { formatError } from '../../common/formatError';
-import ImageCropper from '../../common/inputs/ImageCropper';
+import ProfilePictureEditor from '../../common/inputs/ProfilePictureEditor';
 import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
-import { useToggleSound } from '../../lib/sounds';
 import type { Account, AccountResult } from '../../lib/types';
+import ProfileBio from '../social/ProfileBio';
 
 interface Props {
   account: Account;
@@ -25,11 +25,6 @@ function AccountPage({ account, onCountryChange }: Props) {
   const navigate = useNavigate();
   const [details, setDetails] = useState<AccountResult | null>(null);
   const [countryError, setCountryError] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  useToggleSound(file !== null);
-  const [pictureMessage, setPictureMessage] = useState('');
-  const [pictureError, setPictureError] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -42,31 +37,6 @@ function AccountPage({ account, onCountryChange }: Props) {
   useEffect(() => {
     connector.getAccount(setDetails);
   }, []);
-
-  function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0] ?? null;
-    e.target.value = '';
-    if (picked) setFile(picked);
-  }
-
-  function uploadCrop(image: string) {
-    setFile(null);
-    setPictureMessage('');
-    connector.uploadPicture({ image }, (res) => {
-      setPictureError(!res.ok);
-      setPictureMessage(res.ok ? 'profile picture updated' : res.error);
-      if (res.ok) connector.getAccount(setDetails);
-    });
-  }
-
-  function removePicture() {
-    setPictureMessage('');
-    connector.removePicture((res) => {
-      setPictureError(!res.ok);
-      setPictureMessage(res.ok ? 'profile picture removed' : res.error);
-      if (res.ok) connector.getAccount(setDetails);
-    });
-  }
 
   function changeCountry(country: string) {
     setCountryError('');
@@ -122,7 +92,7 @@ function AccountPage({ account, onCountryChange }: Props) {
 
   if (!details.ok) return <Navigate to="/" replace />;
 
-  const { picture, pictureDangerous: dangerous, email, country } = details;
+  const { picture, pictureDangerous: dangerous, email, country, bio } = details;
 
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
@@ -159,61 +129,20 @@ function AccountPage({ account, onCountryChange }: Props) {
               </Alert>
             )}
           </div>
+          <div className="d-flex flex-column gap-1">
+            <div className="small text-muted">Profile text</div>
+            <ProfileBio bio={bio} editable />
+          </div>
         </div>
 
         <div className="d-flex flex-column align-items-start gap-2 px-lg-4">
           <div className="small text-muted">Profile picture</div>
-          {picture ? (
-            <img
-              src={picture}
-              alt="Profile"
-              width={200}
-              height={200}
-              className="rounded"
-              role="button"
-              onClick={() => fileInput.current?.click()}
-            />
-          ) : (
-            <div
-              className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50"
-              role="button"
-              style={{ width: 200, height: 200 }}
-              onClick={() => fileInput.current?.click()}
-            >
-              No picture
-            </div>
-          )}
-          {dangerous && (
-            <Alert variant="warning" className="py-1 px-2 mb-0 small">
-              Your profile picture was hidden after multiple reports. Upload a
-              new one to replace it.
-            </Alert>
-          )}
-          {pictureMessage && (
-            <Alert
-              variant={pictureError ? 'danger' : 'success'}
-              className="py-1 px-2 mb-0 small"
-            >
-              {formatError(pictureMessage)}
-            </Alert>
-          )}
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="d-none"
-            onChange={pickFile}
+          <ProfilePictureEditor
+            picture={picture}
+            dangerous={dangerous}
+            size={200}
+            onChanged={() => connector.getAccount(setDetails)}
           />
-          <div className="d-flex gap-2">
-            <Button size="sm" onClick={() => fileInput.current?.click()}>
-              {picture ? 'Change picture' : 'Upload picture'}
-            </Button>
-            {(picture || dangerous) && (
-              <Button size="sm" variant="secondary" onClick={removePicture}>
-                Remove picture
-              </Button>
-            )}
-          </div>
         </div>
 
         <div>
@@ -269,14 +198,6 @@ function AccountPage({ account, onCountryChange }: Props) {
           </Form>
         </div>
       </div>
-
-      {file && (
-        <ImageCropper
-          file={file}
-          onCancel={() => setFile(null)}
-          onCropped={uploadCrop}
-        />
-      )}
     </Container>
   );
 }

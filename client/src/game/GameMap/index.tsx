@@ -366,20 +366,18 @@ function GameMap({
     setPanelCollapsed,
   } = usePanelsUI(settingsMenuOpen, onPanelOpenChange);
 
-  const { nukeTargeting, setNukeTargeting, nukes } = useNukeControls(
-    {
-      game,
-      roundNumber,
-      turnPlayerIndex,
-      turnPhase,
-      paused,
-      showReplay,
-      setGame,
-      isMyTurn,
-      nukesOpen,
-      setToasts,
-    },
-  );
+  const { nukeTargeting, setNukeTargeting, nukes } = useNukeControls({
+    game,
+    roundNumber,
+    turnPlayerIndex,
+    turnPhase,
+    paused,
+    showReplay,
+    setGame,
+    isMyTurn,
+    nukesOpen,
+    setToasts,
+  });
 
   const deploySeaFlow = useDeploySeaFlow({
     selectedTerritoryId,

@@ -107,6 +107,7 @@ function PlayerConductActions({
         show={reportOpen}
         playerName={name}
         includePicture={false}
+        includeText={false}
         onHide={() => setReportOpen(false)}
         onSubmit={submitReport}
         onReported={() => setReported(true)}

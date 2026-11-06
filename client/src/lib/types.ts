@@ -46,6 +46,7 @@ export type AccountResult =
       country: string;
       picture: string | null;
       pictureDangerous: boolean;
+      bio: string;
     }
   | { ok: false; error: string };
 

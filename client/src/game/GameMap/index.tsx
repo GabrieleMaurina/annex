@@ -24,7 +24,6 @@ import { useGameSocketEvents } from './hooks/useGameSocketEvents';
 import { useMapView } from './hooks/useMapView';
 import {
   useAnimationActiveFlags,
-  useAutoAdvancePhase,
   useGameEndActions,
   useLiveGameRefs,
   useLockViewportZoom,
@@ -179,7 +178,6 @@ function GameMap({
     selfIdRef,
     getTerritoryScreenPosRef,
     getVertexScreenRadiusRef,
-    autoAdvanceKeyRef,
     cardImagesRef,
   } = useLiveGameRefs();
 
@@ -368,7 +366,7 @@ function GameMap({
     setPanelCollapsed,
   } = usePanelsUI(settingsMenuOpen, onPanelOpenChange);
 
-  const { nukeReady, nukeTargeting, setNukeTargeting, nukes } = useNukeControls(
+  const { nukeTargeting, setNukeTargeting, nukes } = useNukeControls(
     {
       game,
       roundNumber,
@@ -523,22 +521,6 @@ function GameMap({
     cardsFlow,
     emojiUI,
     allianceUI,
-  });
-
-  useAutoAdvancePhase({
-    isMyTurn,
-    paused,
-    turnPhase,
-    attackPendingConquest: attackFlow.attackPendingConquest,
-    attackStartCandidatesSize: attackFlow.attackStartCandidates.size,
-    nukeReady,
-    fortifyStartCandidatesSize: turnFlow.fortifyStartCandidates.size,
-    entrenchCandidatesSize: turnFlow.entrenchCandidates.size,
-    toxinsCandidatesSize: turnFlow.toxinsCandidates.size,
-    roundNumber,
-    turnPlayerIndex,
-    autoAdvanceKeyRef,
-    setGame,
   });
 
   useTurnToasts({

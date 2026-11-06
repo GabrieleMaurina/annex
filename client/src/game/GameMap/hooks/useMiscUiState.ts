@@ -1,4 +1,4 @@
-import type { CSSProperties, RefObject } from 'react';
+import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { connector } from '../../../connector';
 import type { Ack, CardSymbol, GameState, TurnPhase } from '../../../lib/types';
@@ -47,7 +47,6 @@ export function useLiveGameRefs() {
     (t: Territory) => { x: number; y: number }
   >(() => ({ x: 0, y: 0 }));
   const getVertexScreenRadiusRef = useRef<() => number>(() => 0);
-  const autoAdvanceKeyRef = useRef<string | null>(null);
   const cardImagesRef = useRef<Record<CardSymbol, HTMLImageElement>>({
     soldier: new Image(),
     humvee: new Image(),
@@ -71,7 +70,6 @@ export function useLiveGameRefs() {
     selfIdRef,
     getTerritoryScreenPosRef,
     getVertexScreenRadiusRef,
-    autoAdvanceKeyRef,
     cardImagesRef,
   };
 }
@@ -365,66 +363,6 @@ export function useAnimationActiveFlags({
     if (hasFogTerritories) startAnimationLoop();
     return () => setFogActive(false);
   }, [hasFogTerritories, startAnimationLoop]);
-}
-
-export function useAutoAdvancePhase({
-  isMyTurn,
-  paused,
-  turnPhase,
-  attackPendingConquest,
-  attackStartCandidatesSize,
-  nukeReady,
-  fortifyStartCandidatesSize,
-  entrenchCandidatesSize,
-  toxinsCandidatesSize,
-  roundNumber,
-  turnPlayerIndex,
-  autoAdvanceKeyRef,
-  setGame,
-}: {
-  isMyTurn: boolean;
-  paused: boolean;
-  turnPhase: TurnPhase;
-  attackPendingConquest: boolean;
-  attackStartCandidatesSize: number;
-  nukeReady: boolean;
-  fortifyStartCandidatesSize: number;
-  entrenchCandidatesSize: number;
-  toxinsCandidatesSize: number;
-  roundNumber: number;
-  turnPlayerIndex: number;
-  autoAdvanceKeyRef: RefObject<string | null>;
-  setGame: (game: GameState) => void;
-}) {
-  useEffect(() => {
-    if (!isMyTurn || paused) return;
-    const noAttackPossible =
-      turnPhase === 'attack' &&
-      !attackPendingConquest &&
-      attackStartCandidatesSize === 0 &&
-      !nukeReady;
-    const noFortifyPossible =
-      turnPhase === 'fortify' && fortifyStartCandidatesSize === 0;
-    const noEntrenchPossible =
-      turnPhase === 'entrench' && entrenchCandidatesSize === 0;
-    const noToxinsPossible =
-      turnPhase === 'toxins' && toxinsCandidatesSize === 0;
-    if (
-      !noAttackPossible &&
-      !noFortifyPossible &&
-      !noEntrenchPossible &&
-      !noToxinsPossible
-    )
-      return;
-
-    const key = `${roundNumber}-${turnPlayerIndex}-${turnPhase}`;
-    if (autoAdvanceKeyRef.current === key) return;
-    autoAdvanceKeyRef.current = key;
-
-    connector.nextPhase((res: Ack) => {
-      if (res.ok) setGame(res.game);
-    });
-  });
 }
 
 export function useSupplyLineOverlay({

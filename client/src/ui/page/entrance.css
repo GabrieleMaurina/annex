@@ -1,0 +1,54 @@
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.rise-1 {
+  --rise-delay: 0.1s;
+}
+
+.rise-2 {
+  --rise-delay: 0.2s;
+}
+
+.rise-3 {
+  --rise-delay: 0.3s;
+}
+
+.rise-4 {
+  --rise-delay: 0.4s;
+}
+
+.rise-5 {
+  --rise-delay: 0.55s;
+}
+
+:root:not(.animations-off) .rise {
+  animation: rise 0.7s var(--rise-delay, 0s) backwards;
+}

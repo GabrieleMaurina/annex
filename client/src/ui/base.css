@@ -19,3 +19,9 @@
   --ui-display-font: 'Barlow Condensed', var(--bs-font-sans-serif);
   --ui-clunk: cubic-bezier(0.3, 1.45, 0.55, 1);
 }
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}

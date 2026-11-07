@@ -78,8 +78,8 @@ function GameReplayView({
   const uiHidden = useUiHidden();
 
   useEffect(() => {
-    onViewChange?.(view);
-  }, [view, onViewChange]);
+    onViewChange?.(view === 'replay' && replay ? 'replay' : 'results');
+  }, [view, replay, onViewChange]);
 
   useEffect(() => {
     const previous = previousReplayIndexRef.current;

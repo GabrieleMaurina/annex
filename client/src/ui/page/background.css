@@ -1,0 +1,68 @@
+.page-background {
+  --page-background-mask: radial-gradient(
+    ellipse at 50% 30%,
+    #000 0,
+    transparent 85%
+  );
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+}
+
+.page-background::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--page-background-image);
+  background-position: center top;
+  background-repeat: var(--page-background-repeat, no-repeat);
+  background-size: var(--page-background-size, cover);
+  mask-image: var(--page-background-mask);
+}
+
+.page-background::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 60% 40% at 50% 0,
+      rgba(var(--bs-primary-rgb), 0.16),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse at 50% 50%,
+      transparent 40%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
+}
+
+.page-background-map {
+  --page-background-image: url('/images/backgrounds/map.svg');
+}
+
+.page-background-hex {
+  --page-background-image: url('/images/backgrounds/hex.svg');
+}
+
+.page-background-topographic {
+  --page-background-image: url('/images/backgrounds/topographic.svg');
+}
+
+.page-background-blueprint {
+  --page-background-image: url('/images/backgrounds/blueprint.svg');
+}
+
+.page-background-steel {
+  --page-background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.03) 0 2px,
+      transparent 2px 7px
+    ),
+    url('/images/backgrounds/grain.svg');
+  --page-background-repeat: repeat;
+  --page-background-size: auto;
+  --page-background-mask: none;
+}

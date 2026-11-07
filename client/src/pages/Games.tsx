@@ -10,6 +10,7 @@ import {
   SortSelect,
 } from '../common/inputs/filterControls';
 import type { SearchSelectItem } from '../common/inputs/SearchMultiSelect';
+import PagePanel from '../common/page/PagePanel';
 import { connector } from '../connector';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type {
@@ -388,229 +389,233 @@ function Games({ account }: Props) {
     <Container fluid className="py-5 px-2 px-sm-4">
       <h1 className="text-center mb-4">Games</h1>
 
-      <SortSelect
-        value={sortOption}
-        onChange={(v) => resetPage(setSortOption)(v as SortOption)}
-        after={
-          account && (
-            <Form.Check
-              type="switch"
-              id="mine-only"
-              label="My games only"
-              checked={mineOnly}
-              onChange={(e) => resetPage(setMineOverride)(e.target.checked)}
-            />
-          )
-        }
-      >
-        <option value="newest">Newest</option>
-        <option value="oldest">Oldest</option>
-        <option value="mostRounds">Most rounds</option>
-        <option value="fewestRounds">Fewest rounds</option>
-        {account && <option value="bestPosition">Best position</option>}
-        {account && <option value="worstPosition">Worst position</option>}
-      </SortSelect>
+      <PagePanel>
+        <SortSelect
+          value={sortOption}
+          onChange={(v) => resetPage(setSortOption)(v as SortOption)}
+          after={
+            account && (
+              <Form.Check
+                type="switch"
+                id="mine-only"
+                label="My games only"
+                checked={mineOnly}
+                onChange={(e) => resetPage(setMineOverride)(e.target.checked)}
+              />
+            )
+          }
+        >
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="mostRounds">Most rounds</option>
+          <option value="fewestRounds">Fewest rounds</option>
+          {account && <option value="bestPosition">Best position</option>}
+          {account && <option value="worstPosition">Worst position</option>}
+        </SortSelect>
 
-      <FilterDetails onClear={clearFilters}>
-        <div className={`${SECTION_CLASS} p-2 mb-2`}>
-          <div className="fw-bold text-muted small mb-2">Match</div>
-          <div className="row g-3">
-            <PlayerFilter
-              selected={selectedPlayers}
-              onChange={resetPage(setSelectedPlayers)}
-            />
-            <Field label="Name">
-              <Form.Control
-                size="sm"
-                placeholder="Game name"
-                maxLength={20}
-                value={name}
-                onChange={(e) => resetPage(setName)(e.target.value)}
+        <FilterDetails onClear={clearFilters}>
+          <div className={`${SECTION_CLASS} p-2 mb-2`}>
+            <div className="fw-bold text-muted small mb-2">Match</div>
+            <div className="row g-3">
+              <PlayerFilter
+                selected={selectedPlayers}
+                onChange={resetPage(setSelectedPlayers)}
               />
-            </Field>
-            <Field label="Mode" help={GAME_MODE_HELP}>
-              <Selector size="sm" value={mode} onChange={resetPage(setMode)}>
-                <option value="">Any</option>
-                {GAME_MODES.map((m) => (
-                  <option key={m} value={m}>
-                    {titleCase(m)}
-                  </option>
-                ))}
-              </Selector>
-            </Field>
-            <Field label="Bots">
-              <Selector
-                size="sm"
-                value={hasBots}
-                onChange={(value) =>
-                  resetPage(setHasBots)(value as '' | 'yes' | 'no')
-                }
-              >
-                <option value="">Any</option>
-                <option value="yes">Has bots</option>
-                <option value="no">No bots</option>
-              </Selector>
-            </Field>
-            <DateRangeField
-              label="Started"
-              from={startedFrom}
-              to={startedTo}
-              setFrom={resetPage(setStartedFrom)}
-              setTo={resetPage(setStartedTo)}
-            />
-            <DateRangeField
-              label="Ended"
-              from={endedFrom}
-              to={endedTo}
-              setFrom={resetPage(setEndedFrom)}
-              setTo={resetPage(setEndedTo)}
-            />
-            <RangeField
-              label="Duration (min)"
-              min={DURATION_MIN}
-              max={DURATION_MAX}
-              lo={durationMin}
-              hi={durationMax}
-              fallbackLo={DURATION_MIN}
-              fallbackHi={DURATION_MAX}
-              setLo={resetPage(setDurationMin)}
-              setHi={resetPage(setDurationMax)}
-            />
-            <RangeField
-              label="Player count"
-              min={PLAYERS_MIN}
-              max={PLAYERS_MAX}
-              lo={playersMin}
-              hi={playersMax}
-              fallbackLo={PLAYERS_MIN}
-              fallbackHi={PLAYERS_MAX}
-              setLo={resetPage(setPlayersMin)}
-              setHi={resetPage(setPlayersMax)}
-            />
-            <RangeField
-              label="Rounds"
-              min={ROUNDS_MIN}
-              max={ROUNDS_MAX}
-              lo={roundsMin}
-              hi={roundsMax}
-              fallbackLo={ROUNDS_MIN}
-              fallbackHi={ROUNDS_MAX}
-              setLo={resetPage(setRoundsMin)}
-              setHi={resetPage(setRoundsMax)}
-            />
-            {account && (
-              <RangeField
-                label="Position"
-                min={POSITION_MIN}
-                max={POSITION_MAX}
-                lo={positionMin}
-                hi={positionMax}
-                fallbackLo={POSITION_MIN}
-                fallbackHi={POSITION_MAX}
-                setLo={resetPage(setPositionMin)}
-                setHi={resetPage(setPositionMax)}
-              />
-            )}
-            {account && (
-              <Field label="Result">
+              <Field label="Name">
+                <Form.Control
+                  size="sm"
+                  placeholder="Game name"
+                  maxLength={20}
+                  value={name}
+                  onChange={(e) => resetPage(setName)(e.target.value)}
+                />
+              </Field>
+              <Field label="Mode" help={GAME_MODE_HELP}>
+                <Selector size="sm" value={mode} onChange={resetPage(setMode)}>
+                  <option value="">Any</option>
+                  {GAME_MODES.map((m) => (
+                    <option key={m} value={m}>
+                      {titleCase(m)}
+                    </option>
+                  ))}
+                </Selector>
+              </Field>
+              <Field label="Bots">
                 <Selector
                   size="sm"
-                  value={outcome}
+                  value={hasBots}
                   onChange={(value) =>
-                    resetPage(setOutcome)(value as '' | 'won' | 'draw' | 'lost')
+                    resetPage(setHasBots)(value as '' | 'yes' | 'no')
                   }
                 >
                   <option value="">Any</option>
-                  <option value="won">Won</option>
-                  <option value="draw">Draw</option>
-                  <option value="lost">Lost</option>
+                  <option value="yes">Has bots</option>
+                  <option value="no">No bots</option>
                 </Selector>
               </Field>
-            )}
+              <DateRangeField
+                label="Started"
+                from={startedFrom}
+                to={startedTo}
+                setFrom={resetPage(setStartedFrom)}
+                setTo={resetPage(setStartedTo)}
+              />
+              <DateRangeField
+                label="Ended"
+                from={endedFrom}
+                to={endedTo}
+                setFrom={resetPage(setEndedFrom)}
+                setTo={resetPage(setEndedTo)}
+              />
+              <RangeField
+                label="Duration (min)"
+                min={DURATION_MIN}
+                max={DURATION_MAX}
+                lo={durationMin}
+                hi={durationMax}
+                fallbackLo={DURATION_MIN}
+                fallbackHi={DURATION_MAX}
+                setLo={resetPage(setDurationMin)}
+                setHi={resetPage(setDurationMax)}
+              />
+              <RangeField
+                label="Player count"
+                min={PLAYERS_MIN}
+                max={PLAYERS_MAX}
+                lo={playersMin}
+                hi={playersMax}
+                fallbackLo={PLAYERS_MIN}
+                fallbackHi={PLAYERS_MAX}
+                setLo={resetPage(setPlayersMin)}
+                setHi={resetPage(setPlayersMax)}
+              />
+              <RangeField
+                label="Rounds"
+                min={ROUNDS_MIN}
+                max={ROUNDS_MAX}
+                lo={roundsMin}
+                hi={roundsMax}
+                fallbackLo={ROUNDS_MIN}
+                fallbackHi={ROUNDS_MAX}
+                setLo={resetPage(setRoundsMin)}
+                setHi={resetPage(setRoundsMax)}
+              />
+              {account && (
+                <RangeField
+                  label="Position"
+                  min={POSITION_MIN}
+                  max={POSITION_MAX}
+                  lo={positionMin}
+                  hi={positionMax}
+                  fallbackLo={POSITION_MIN}
+                  fallbackHi={POSITION_MAX}
+                  setLo={resetPage(setPositionMin)}
+                  setHi={resetPage(setPositionMax)}
+                />
+              )}
+              {account && (
+                <Field label="Result">
+                  <Selector
+                    size="sm"
+                    value={outcome}
+                    onChange={(value) =>
+                      resetPage(setOutcome)(
+                        value as '' | 'won' | 'draw' | 'lost',
+                      )
+                    }
+                  >
+                    <option value="">Any</option>
+                    <option value="won">Won</option>
+                    <option value="draw">Draw</option>
+                    <option value="lost">Lost</option>
+                  </Selector>
+                </Field>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className={`${SECTION_CLASS} p-2 mb-2`}>
-          <div className="fw-bold text-muted small mb-2">Map</div>
-          <div className="row g-3">
-            <MapFilterFields
-              mapName={mapName}
-              size={mapGenerationSize}
-              type={mapGenerationType}
-              fill={mapGenerationFill}
-              tile={mapGenerationTile}
-              seas={mapGenerationSeas}
-              timed={mapGenerationTimed}
-              directional={mapGenerationDirectional}
-              switched={mapGenerationSwitched}
-              unlockable={mapGenerationUnlockable}
-              onMapName={resetPage(setMapName)}
-              onSize={resetPage(setMapGenerationSize)}
-              onType={resetPage(setMapGenerationType)}
-              onFill={resetPage(setMapGenerationFill)}
-              onTile={resetPage(setMapGenerationTile)}
-              onSeas={resetPage(setMapGenerationSeas)}
-              onTimed={resetPage(setMapGenerationTimed)}
-              onDirectional={resetPage(setMapGenerationDirectional)}
-              onSwitched={resetPage(setMapGenerationSwitched)}
-              onUnlockable={resetPage(setMapGenerationUnlockable)}
-            />
-          </div>
-        </div>
-
-        <SettingFilterSections
-          settings={settings}
-          onChange={(key, value) =>
-            resetPage(setSettings)((s) => ({ ...s, [key]: value }))
-          }
-        />
-      </FilterDetails>
-
-      {result === null ? (
-        <div className="text-center">
-          <Spinner size="sm" className="me-2" />
-          Loading...
-        </div>
-      ) : nothing ? (
-        <p className="text-center text-muted">No games match.</p>
-      ) : (
-        <>
-          <div className="table-responsive">
-            <Table striped hover className="align-middle">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Game</th>
-                  <th>Map</th>
-                  <th>Mode</th>
-                  <th>Players</th>
-                  <th>Winner</th>
-                  <th>Rounds</th>
-                  <th>Position</th>
-                </tr>
-              </thead>
-              <tbody>
-                {serverRows.map((row) => (
-                  <GameRow
-                    key={row.id}
-                    row={row}
-                    onOpen={() => navigate(`/games/replay/${row.id}`)}
-                  />
-                ))}
-              </tbody>
-            </Table>
+          <div className={`${SECTION_CLASS} p-2 mb-2`}>
+            <div className="fw-bold text-muted small mb-2">Map</div>
+            <div className="row g-3">
+              <MapFilterFields
+                mapName={mapName}
+                size={mapGenerationSize}
+                type={mapGenerationType}
+                fill={mapGenerationFill}
+                tile={mapGenerationTile}
+                seas={mapGenerationSeas}
+                timed={mapGenerationTimed}
+                directional={mapGenerationDirectional}
+                switched={mapGenerationSwitched}
+                unlockable={mapGenerationUnlockable}
+                onMapName={resetPage(setMapName)}
+                onSize={resetPage(setMapGenerationSize)}
+                onType={resetPage(setMapGenerationType)}
+                onFill={resetPage(setMapGenerationFill)}
+                onTile={resetPage(setMapGenerationTile)}
+                onSeas={resetPage(setMapGenerationSeas)}
+                onTimed={resetPage(setMapGenerationTimed)}
+                onDirectional={resetPage(setMapGenerationDirectional)}
+                onSwitched={resetPage(setMapGenerationSwitched)}
+                onUnlockable={resetPage(setMapGenerationUnlockable)}
+              />
+            </div>
           </div>
 
-          <ListPager
-            page={page}
-            totalPages={totalPages}
-            total={result.total}
-            noun="games"
-            onChange={setPage}
+          <SettingFilterSections
+            settings={settings}
+            onChange={(key, value) =>
+              resetPage(setSettings)((s) => ({ ...s, [key]: value }))
+            }
           />
-        </>
-      )}
+        </FilterDetails>
+
+        {result === null ? (
+          <div className="text-center">
+            <Spinner size="sm" className="me-2" />
+            Loading...
+          </div>
+        ) : nothing ? (
+          <p className="text-center text-muted">No games match.</p>
+        ) : (
+          <>
+            <div className="table-responsive">
+              <Table striped hover className="align-middle">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Game</th>
+                    <th>Map</th>
+                    <th>Mode</th>
+                    <th>Players</th>
+                    <th>Winner</th>
+                    <th>Rounds</th>
+                    <th>Position</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {serverRows.map((row) => (
+                    <GameRow
+                      key={row.id}
+                      row={row}
+                      onOpen={() => navigate(`/games/replay/${row.id}`)}
+                    />
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+
+            <ListPager
+              page={page}
+              totalPages={totalPages}
+              total={result.total}
+              noun="games"
+              onChange={setPage}
+            />
+          </>
+        )}
+      </PagePanel>
     </Container>
   );
 }

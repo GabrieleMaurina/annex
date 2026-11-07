@@ -1,0 +1,3 @@
+.social-links .btn:hover:not(:active) {
+  transform: translateY(-3px);
+}

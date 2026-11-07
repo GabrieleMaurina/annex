@@ -13,6 +13,8 @@ import BurgerMenu from './common/menus/BurgerMenu';
 import SettingsMenu from './common/menus/SettingsMenu';
 import ShortcutsPanel from './common/menus/shortcuts/ShortcutsPanel';
 import { useUiHidden } from './common/menus/shortcuts/uiHidden';
+import PageBackground from './common/page/PageBackground';
+import SiteFooter from './common/page/SiteFooter';
 import RollingTanks from './common/tanks/RollingTanks';
 import { connector } from './connector';
 import {
@@ -40,6 +42,7 @@ import type {
 import MapEditor from './maps/MapEditor';
 import Maps from './maps/Maps';
 import MyMaps from './maps/MyMaps';
+import About from './pages/About';
 import Game from './pages/Game';
 import Games from './pages/Games';
 import Home from './pages/Home';
@@ -106,6 +109,7 @@ const PAGE_TITLES: [RegExp, string][] = [
   [/^\/games\/replay$/, 'Games'],
   [/^\/games\/replay\//, 'Replay'],
   [/^\/games\/offline$/, 'Offline Game'],
+  [/^\/about$/, 'About'],
   [/^\/tutorials$/, 'Tutorials'],
   [/^\/tutorials\//, 'Tutorial'],
 ];
@@ -155,6 +159,8 @@ function App() {
     /^\/games\/replay\/[^/]+$/.test(pathname) && replayMapOpen;
   const onMapEditor = pathname.startsWith('/maps/editor');
   const onGameMap = inGame && gameMapOpen;
+  const showPageChrome = !inGame && !onReplayMap && !onMapEditor;
+  const mapVisible = onGameMap || onReplayMap || onMapEditor;
 
   const updateAccount = useCallback((next: Account | null) => {
     setAccount(next);
@@ -426,10 +432,13 @@ function App() {
         <SettingsMenu hidden={uiHidden} onOpenChange={setSettingsMenuOpen} />
       )}
       <ShortcutsPanel />
-      {!onGameMap && !onReplayMap && !onMapEditor && (
-        <RollingTanks spawnInitial={pathname === '/'} />
+      {!mapVisible && (
+        <>
+          <PageBackground />
+          <RollingTanks spawnInitial={pathname === '/'} />
+        </>
       )}
-      {!inGame && !onReplayMap && !onMapEditor && (
+      {showPageChrome && (
         <div
           className="position-fixed top-0 end-0 m-3"
           style={{ zIndex: 1030 }}
@@ -543,6 +552,7 @@ function App() {
           }
         />
         <Route path="/games/offline" element={gameElement} />
+        <Route path="/about" element={<About />} />
         <Route
           path="/tutorials"
           element={<TutorialsPage account={account} navigate={navigate} />}
@@ -556,6 +566,7 @@ function App() {
         <Route path="/games/live/:gameName" element={gameElement} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {!mapVisible && <SiteFooter />}
       <PageGate />
       <AchievementToasts enabled={!!account} />
     </>

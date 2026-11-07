@@ -1,5 +1,6 @@
 {
   "private": true,
+  "license": "GPL-3.0-only",
   "workspaces": ["server", "client", "engine"],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

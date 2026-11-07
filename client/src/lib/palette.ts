@@ -1,5 +1,3 @@
-import type { GameSummary } from './types';
-
 export const PLAYER_COLORS = [
   '#E53935',
   '#1E88E5',
@@ -26,12 +24,6 @@ export const PLAYER_COLORS = [
 export function playerColor(colorIndex: number): string {
   return PLAYER_COLORS[colorIndex];
 }
-
-export const GAME_STATE_COLORS: Record<GameSummary['state'], string> = {
-  lobby: playerColor(2),
-  playing: playerColor(3),
-  ended: playerColor(0),
-};
 
 export function contrastTextColor(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16);

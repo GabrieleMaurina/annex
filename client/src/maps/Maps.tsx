@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Container } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import PagePanel from '../common/page/PagePanel';
 import type { Account, PlayerMapRow } from '../lib/types';
 import MapBrowser from './MapBrowser';
 import MapPreviewModal from './MapPreviewModal';
@@ -29,7 +30,9 @@ function Maps({
         </div>
       )}
 
-      <MapBrowser account={account} mode="browse" onRowClick={setPreview} />
+      <PagePanel>
+        <MapBrowser account={account} mode="browse" onRowClick={setPreview} />
+      </PagePanel>
 
       <MapPreviewModal
         account={account}

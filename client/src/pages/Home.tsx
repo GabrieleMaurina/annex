@@ -1,14 +1,5 @@
-import { meetsRequirements } from 'engine';
 import { useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Container,
-  Form,
-  Spinner,
-  Table,
-} from 'react-bootstrap';
-import { useWhiteIcon } from '../common/icon';
+import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
 import {
   Field,
   FilterDetails,
@@ -17,11 +8,8 @@ import {
   SortSelect,
 } from '../common/inputs/filterControls';
 import type { SearchSelectItem } from '../common/inputs/SearchMultiSelect';
-import InstallButton from '../common/InstallButton';
-import SharePageButton from '../common/menus/SharePageButton';
-import Tip from '../common/tooltips/Tip';
+import PagePanel from '../common/page/PagePanel';
 import { connector } from '../connector';
-import { GAME_STATE_COLORS, contrastTextColor } from '../lib/palette';
 import {
   getHomeFilters,
   getPlayerName,
@@ -52,6 +40,8 @@ import TutorialInviteModal from '../tutorials/TutorialInviteModal';
 import { TUTORIALS } from '../tutorials/tutorials';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import Selector from '../ui/forms/Selector';
+import GamesTable from './home/GamesTable';
+import HomeHero from './home/HomeHero';
 
 const MAX_GAME_NAME_LENGTH = 20;
 const POLL_MS = 5000;
@@ -145,8 +135,6 @@ function Home({
 }: Props) {
   const [result, setResult] = useState<HomeGamesPage | null>(null);
   const [resumeGame, setResumeGame] = useState<string | null>(null);
-  const whiteGithubIcon = useWhiteIcon('/icons/github.svg');
-  const whiteLockIcon = useWhiteIcon('/icons/lock.svg');
 
   const initial = getHomeFilters() ?? DEFAULT_FILTERS;
   const [selectedPlayers, setSelectedPlayers] = useState<SearchSelectItem[]>(
@@ -432,49 +420,19 @@ function Home({
   }
 
   return (
-    <Container fluid className="pt-5 pb-5 px-2 px-sm-4">
-      <Tip text="View on GitHub">
-        <Button
-          variant="secondary"
-          size="sm"
-          href="https://github.com/GabrieleMaurina/annex"
-          target="_blank"
-          rel="noreferrer"
-          className="position-fixed bottom-0 end-0 m-3"
-        >
-          <img
-            src={whiteGithubIcon ?? '/icons/github.svg'}
-            width={16}
-            height={16}
-            alt="GitHub"
-          />
-        </Button>
-      </Tip>
-      <div className="d-flex justify-content-center mb-4">
-        <div className="d-flex flex-column gap-3">
-          <div className="d-flex flex-nowrap justify-content-center align-items-center gap-3 gap-sm-5">
-            <img
-              src="/favicon.svg"
-              alt=""
-              style={{ height: 'clamp(2rem, 12vw, 4rem)', flexShrink: 0 }}
-            />
-            <Tip text="/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission">
-              <h1
-                className="mb-0 text-nowrap"
-                style={{ fontSize: 'clamp(1.5rem, 9vw, 2.5rem)' }}
-              >
-                Annex
-              </h1>
-            </Tip>
-            <img
-              src="/favicon.svg"
-              alt=""
-              style={{ height: 'clamp(2rem, 12vw, 4rem)', flexShrink: 0 }}
-            />
-          </div>
-          <InstallButton />
-        </div>
-      </div>
+    <Container className="hero-page pb-5">
+      <HomeHero
+        serverUnreachable={serverUnreachable}
+        joiningRandom={joiningRandom}
+        showTutorials={
+          (sessionReady || serverUnreachable) && (!account || tutorialsLeft)
+        }
+        onJoinRandom={() => offerTutorials(() => setJoiningRandom(true))}
+        onCancelJoin={() => setJoiningRandom(false)}
+        onCreateOnline={() => offerTutorials(createGame)}
+        onCreateOffline={() => offerTutorials(() => navigate('/games/offline'))}
+        onTutorials={() => navigate('/tutorials')}
+      />
 
       {kickedMessage && (
         <Alert variant="warning" dismissible onClose={clearKickedMessage}>
@@ -493,54 +451,12 @@ function Home({
         </div>
       )}
 
-      <div className="d-flex justify-content-center mb-4">
-        <div className="d-flex flex-column flex-sm-row gap-2">
-          {!serverUnreachable && (
-            <Button onClick={() => offerTutorials(createGame)}>
-              Create Online
-            </Button>
-          )}
-          {!serverUnreachable &&
-            (joiningRandom ? (
-              <Button
-                variant="secondary"
-                onClick={() => setJoiningRandom(false)}
-              >
-                <Spinner size="sm" className="me-2" />
-                Cancel
-              </Button>
-            ) : (
-              <Button
-                onClick={() => offerTutorials(() => setJoiningRandom(true))}
-              >
-                Join Random Game
-              </Button>
-            ))}
-          <Button
-            variant="secondary"
-            onClick={() => offerTutorials(() => navigate('/games/offline'))}
-          >
-            Create Offline
-          </Button>
-          {(sessionReady || serverUnreachable) &&
-            (!account || tutorialsLeft) && (
-              <Button
-                variant="secondary"
-                onClick={() => navigate('/tutorials')}
-              >
-                Tutorials
-              </Button>
-            )}
-          <SharePageButton
-            title="Annex"
-            path="/"
-            tooltip="Share Annex with friends"
-          />
-        </div>
-      </div>
-
       {!serverUnreachable && (
-        <>
+        <PagePanel
+          title="Open games"
+          count={result?.total}
+          className="rise rise-5"
+        >
           <SortSelect
             value={sortOption}
             onChange={(v) => resetPage(setSortOption)(v as SortOption)}
@@ -686,101 +602,34 @@ function Home({
               }
             />
           </FilterDetails>
-        </>
-      )}
 
-      {serverUnreachable ? null : result === null ? (
-        <div className="text-center">
-          <Spinner size="sm" className="me-2" />
-          Loading...
-        </div>
-      ) : games.length === 0 ? (
-        <p className="text-center text-muted">No games match.</p>
-      ) : (
-        <>
-          <div className="table-responsive">
-            <Table striped hover borderless>
-              <thead>
-                <tr>
-                  <th style={{ width: 1 }} />
-                  <th>Name</th>
-                  <th>Map</th>
-                  <th>Host</th>
-                  <th>Players</th>
-                  <th>State</th>
-                </tr>
-              </thead>
-              <tbody>
-                {games.map((g) => {
-                  const spectateOnly =
-                    g.state === 'lobby' &&
-                    (g.playerCount >= g.slots ||
-                      !meetsRequirements(g, {
-                        elo: account?.elo ?? null,
-                        gamesPlayed: account?.gamesPlayed ?? null,
-                        accountCreatedAt: account?.createdAt ?? null,
-                        reputation: account?.reputation ?? null,
-                        reputationRecoveryFrom: null,
-                      }));
-                  const bg = spectateOnly
-                    ? GAME_STATE_COLORS.playing
-                    : GAME_STATE_COLORS[g.state];
-                  const rowStyle = {
-                    backgroundColor: bg,
-                    color: contrastTextColor(bg),
-                  };
-                  return (
-                    <tr
-                      key={g.name}
-                      role="button"
-                      onClick={() =>
-                        offerTutorials(() => navigate(gamePath(g.name)))
-                      }
-                    >
-                      <td style={rowStyle} className="text-center px-1">
-                        {g.hasPassword && (
-                          <img
-                            src={
-                              contrastTextColor(bg) === '#ffffff'
-                                ? (whiteLockIcon ?? '/icons/lock.svg')
-                                : '/icons/lock.svg'
-                            }
-                            width={14}
-                            height={14}
-                            alt="Password protected"
-                          />
-                        )}
-                      </td>
-                      <td style={rowStyle}>{g.name}</td>
-                      <td style={rowStyle}>{g.mapName}</td>
-                      <td style={rowStyle}>{g.hostName}</td>
-                      <td style={rowStyle}>
-                        {g.playerCount}/{g.slots}
-                        {g.spectatorCount > 0 &&
-                          ` · ${g.spectatorCount} spectating`}
-                      </td>
-                      <td style={rowStyle}>
-                        {g.state === 'lobby'
-                          ? 'Lobby'
-                          : g.state === 'playing'
-                            ? 'Playing'
-                            : 'Ended'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          </div>
+          {result === null ? (
+            <div className="text-center">
+              <Spinner size="sm" className="me-2" />
+              Loading...
+            </div>
+          ) : games.length === 0 ? (
+            <p className="text-center text-muted">No games match.</p>
+          ) : (
+            <>
+              <GamesTable
+                games={games}
+                account={account}
+                onOpen={(name) =>
+                  offerTutorials(() => navigate(gamePath(name)))
+                }
+              />
 
-          <ListPager
-            page={page}
-            totalPages={totalPages}
-            total={result.total}
-            noun="games"
-            onChange={setPage}
-          />
-        </>
+              <ListPager
+                page={page}
+                totalPages={totalPages}
+                total={result.total}
+                noun="games"
+                onChange={setPage}
+              />
+            </>
+          )}
+        </PagePanel>
       )}
       <TutorialInviteModal
         show={pendingAction !== null}

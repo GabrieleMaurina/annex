@@ -1,0 +1,43 @@
+.page-panel-head {
+  background: var(--ui-steel);
+  border-bottom: var(--bs-border-width) solid var(--ui-ink);
+}
+
+.page-panel-title::after {
+  content: none;
+}
+
+.page-panel .table {
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: transparent;
+  --bs-table-hover-bg: var(--ui-hover);
+  --bs-table-hover-color: var(--bs-emphasis-color);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.page-panel .table > thead > tr > th {
+  background: none;
+  border-bottom: var(--bs-border-width) solid var(--bs-border-color);
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+}
+
+.page-panel .table > :not(caption) > * > * {
+  padding: 0.75rem 1rem;
+}
+
+.page-panel .table > tbody > tr > * {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.player-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.player-pip-empty {
+  border: 1px solid var(--bs-border-color);
+}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, Container, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import WhiteIcon from '../common/icons/WhiteIcon';
+import PagePanel from '../common/page/PagePanel';
 import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { useToggleSound } from '../lib/sounds';
@@ -31,37 +32,39 @@ function MyMaps({ account }: { account: Account | null }) {
     <Container fluid className="py-5 px-2 px-sm-4">
       <h1 className="text-center mb-4">My maps</h1>
 
-      <MapBrowser
-        account={account}
-        mode="mine"
-        reloadKey={reloadKey}
-        onRowClick={(row) =>
-          row.dangerous ? undefined : navigate(`/maps/editor/${row.id}`)
-        }
-        footerRow={
-          <Tip text="Create a map" placement="bottom">
-            <Button
-              size="sm"
-              variant="success"
-              onClick={() => navigate('/maps/editor')}
-            >
-              <WhiteIcon path="/icons/plus.svg" size={14} />
-            </Button>
-          </Tip>
-        }
-        rowActions={(row) => (
-          <Tip text="Delete map">
-            <Button
-              variant="danger"
-              className="d-inline-flex align-items-center justify-content-center"
-              style={{ width: 24, height: 24, padding: 0 }}
-              onClick={() => setConfirmRow(row)}
-            >
-              <WhiteIcon path="/icons/close.svg" size={12} />
-            </Button>
-          </Tip>
-        )}
-      />
+      <PagePanel>
+        <MapBrowser
+          account={account}
+          mode="mine"
+          reloadKey={reloadKey}
+          onRowClick={(row) =>
+            row.dangerous ? undefined : navigate(`/maps/editor/${row.id}`)
+          }
+          footerRow={
+            <Tip text="Create a map" placement="bottom">
+              <Button
+                size="sm"
+                variant="success"
+                onClick={() => navigate('/maps/editor')}
+              >
+                <WhiteIcon path="/icons/plus.svg" size={14} />
+              </Button>
+            </Tip>
+          }
+          rowActions={(row) => (
+            <Tip text="Delete map">
+              <Button
+                variant="danger"
+                className="d-inline-flex align-items-center justify-content-center"
+                style={{ width: 24, height: 24, padding: 0 }}
+                onClick={() => setConfirmRow(row)}
+              >
+                <WhiteIcon path="/icons/close.svg" size={12} />
+              </Button>
+            </Tip>
+          )}
+        />
+      </PagePanel>
 
       <Modal show={!!confirmRow} onHide={() => setConfirmRow(null)} centered>
         <Modal.Header closeButton>

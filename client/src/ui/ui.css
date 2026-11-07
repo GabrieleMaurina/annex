@@ -5,6 +5,7 @@
 @import './text/selection.css';
 @import './buttons/buttons.css';
 @import './buttons/closeButton.css';
+@import './buttons/socialLinks.css';
 @import './forms/inputs.css';
 @import './forms/checks.css';
 @import './forms/ranges.css';
@@ -13,6 +14,7 @@
 @import './containers/panels.css';
 @import './containers/collapsible.css';
 @import './containers/tables.css';
+@import './containers/pagePanel.css';
 @import './containers/modals.css';
 @import './containers/gate.css';
 @import './containers/listGroups.css';
@@ -22,3 +24,8 @@
 @import './feedback/badges.css';
 @import './feedback/progress.css';
 @import './feedback/spinners.css';
+@import './page/background.css';
+@import './page/entrance.css';
+@import './page/hero.css';
+@import './page/cta.css';
+@import './page/footer.css';

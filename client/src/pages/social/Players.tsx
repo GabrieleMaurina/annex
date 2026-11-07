@@ -10,6 +10,7 @@ import {
   RangeField,
   SortSelect,
 } from '../../common/inputs/filterControls';
+import PagePanel from '../../common/page/PagePanel';
 import { connector } from '../../connector';
 import { rankForElo } from '../../lib/ranks';
 import type { PlayerRow, PlayersPage, PlayersQuery } from '../../lib/types';
@@ -137,97 +138,99 @@ function Players() {
     <Container fluid className="py-5 px-2 px-sm-4">
       <h1 className="text-center mb-4">Players</h1>
 
-      <SortSelect
-        value={sortOption}
-        onChange={(v) => resetPage(setSortOption)(v as SortOption)}
-      >
-        <option value="highestElo">Highest Elo</option>
-        <option value="lowestElo">Lowest Elo</option>
-        <option value="nameAsc">Name A-Z</option>
-        <option value="nameDesc">Name Z-A</option>
-        <option value="mostGames">Most games</option>
-        <option value="fewestGames">Fewest games</option>
-      </SortSelect>
+      <PagePanel>
+        <SortSelect
+          value={sortOption}
+          onChange={(v) => resetPage(setSortOption)(v as SortOption)}
+        >
+          <option value="highestElo">Highest Elo</option>
+          <option value="lowestElo">Lowest Elo</option>
+          <option value="nameAsc">Name A-Z</option>
+          <option value="nameDesc">Name Z-A</option>
+          <option value="mostGames">Most games</option>
+          <option value="fewestGames">Fewest games</option>
+        </SortSelect>
 
-      <FilterDetails onClear={clearFilters}>
-        <div className={`${SECTION_CLASS} p-2 mb-2`}>
-          <div className="row g-3">
-            <Field label="Username">
-              <Form.Control
-                size="sm"
-                maxLength={10}
-                value={username}
-                onChange={(e) => resetPage(setUsername)(e.target.value)}
+        <FilterDetails onClear={clearFilters}>
+          <div className={`${SECTION_CLASS} p-2 mb-2`}>
+            <div className="row g-3">
+              <Field label="Username">
+                <Form.Control
+                  size="sm"
+                  maxLength={10}
+                  value={username}
+                  onChange={(e) => resetPage(setUsername)(e.target.value)}
+                />
+              </Field>
+              <RangeField
+                label="Elo"
+                min={ELO_MIN}
+                max={ELO_MAX}
+                lo={eloMin}
+                hi={eloMax}
+                fallbackLo={ELO_MIN}
+                fallbackHi={ELO_MAX}
+                setLo={resetPage(setEloMin)}
+                setHi={resetPage(setEloMax)}
               />
-            </Field>
-            <RangeField
-              label="Elo"
-              min={ELO_MIN}
-              max={ELO_MAX}
-              lo={eloMin}
-              hi={eloMax}
-              fallbackLo={ELO_MIN}
-              fallbackHi={ELO_MAX}
-              setLo={resetPage(setEloMin)}
-              setHi={resetPage(setEloMax)}
-            />
-            <RangeField
-              label="Games played"
-              min={GAMES_MIN}
-              max={GAMES_MAX}
-              lo={gamesMin}
-              hi={gamesMax}
-              fallbackLo={GAMES_MIN}
-              fallbackHi={GAMES_MAX}
-              setLo={resetPage(setGamesMin)}
-              setHi={resetPage(setGamesMax)}
-            />
+              <RangeField
+                label="Games played"
+                min={GAMES_MIN}
+                max={GAMES_MAX}
+                lo={gamesMin}
+                hi={gamesMax}
+                fallbackLo={GAMES_MIN}
+                fallbackHi={GAMES_MAX}
+                setLo={resetPage(setGamesMin)}
+                setHi={resetPage(setGamesMax)}
+              />
+            </div>
           </div>
-        </div>
-      </FilterDetails>
+        </FilterDetails>
 
-      {result === null ? (
-        <div className="text-center">
-          <Spinner size="sm" className="me-2" />
-          Loading...
-        </div>
-      ) : nothing ? (
-        <p className="text-center text-muted">No players match.</p>
-      ) : (
-        <>
-          <div className="table-responsive">
-            <Table striped hover className="align-middle">
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>Rank</th>
-                  <th>Elo</th>
-                  <th>Games</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <PlayerRowView
-                    key={row.id}
-                    row={row}
-                    onOpen={() =>
-                      navigate(`/players/${encodeURIComponent(row.username)}`)
-                    }
-                  />
-                ))}
-              </tbody>
-            </Table>
+        {result === null ? (
+          <div className="text-center">
+            <Spinner size="sm" className="me-2" />
+            Loading...
           </div>
+        ) : nothing ? (
+          <p className="text-center text-muted">No players match.</p>
+        ) : (
+          <>
+            <div className="table-responsive">
+              <Table striped hover className="align-middle">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Rank</th>
+                    <th>Elo</th>
+                    <th>Games</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <PlayerRowView
+                      key={row.id}
+                      row={row}
+                      onOpen={() =>
+                        navigate(`/players/${encodeURIComponent(row.username)}`)
+                      }
+                    />
+                  ))}
+                </tbody>
+              </Table>
+            </div>
 
-          <ListPager
-            page={page}
-            totalPages={totalPages}
-            total={result.total}
-            noun="players"
-            onChange={setPage}
-          />
-        </>
-      )}
+            <ListPager
+              page={page}
+              totalPages={totalPages}
+              total={result.total}
+              noun="players"
+              onChange={setPage}
+            />
+          </>
+        )}
+      </PagePanel>
     </Container>
   );
 }

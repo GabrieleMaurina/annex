@@ -1,0 +1,26 @@
+.site-footer-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--bs-border-color) 20%,
+    var(--bs-border-color) 80%,
+    transparent
+  );
+}
+
+.site-footer-logo {
+  border-radius: 24%;
+}
+
+.site-footer-name {
+  font-family: var(--ui-display-font);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+
+.site-footer-label {
+  letter-spacing: 0.2em;
+}

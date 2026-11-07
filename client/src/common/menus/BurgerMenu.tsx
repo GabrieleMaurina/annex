@@ -184,6 +184,14 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
           >
             Shortcuts
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={pathname === '/about'}
+            onClick={() => go('/about')}
+          >
+            About
+          </Button>
           {showAuth &&
             (account ? (
               !hideLogout && (

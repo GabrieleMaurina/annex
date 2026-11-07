@@ -31,18 +31,23 @@ export default function GameToasts({
       >
         <Toast.Body className="text-nowrap fw-bold">Game Paused</Toast.Body>
       </Toast>
-      {toasts.map((t) => (
-        <Toast
-          key={t.id}
-          onClose={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
-          autohide
-          delay={t.delay ?? 5000}
-          className="mx-auto"
-          style={{ width: 'fit-content', maxWidth: 'none' }}
-        >
-          <Toast.Body className="text-nowrap">{t.message}</Toast.Body>
-        </Toast>
-      ))}
+      {toasts.map((t) => {
+        const dismiss = () =>
+          setToasts((prev) => prev.filter((x) => x.id !== t.id));
+        return (
+          <Toast
+            key={t.id}
+            onClose={dismiss}
+            onClick={dismiss}
+            autohide
+            delay={t.delay ?? 5000}
+            className="mx-auto"
+            style={{ width: 'fit-content', maxWidth: 'none' }}
+          >
+            <Toast.Body className="text-nowrap">{t.message}</Toast.Body>
+          </Toast>
+        );
+      })}
     </ToastContainer>
   );
 }

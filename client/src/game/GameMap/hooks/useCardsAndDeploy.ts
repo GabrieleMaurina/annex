@@ -16,6 +16,7 @@ import {
   type EvaluatedCombo,
 } from '../../logic/cards';
 import type { GameToast } from '../overlays/GameToasts';
+import { nextToastId } from '../toastId';
 import { BOT_TOAST_DELAY_MS } from './view/useTurnToasts';
 
 export function useCardsAndDeploy({
@@ -23,7 +24,6 @@ export function useCardsAndDeploy({
   isMyTurn,
   paused,
   selectedTerritoryId,
-  gameEnded,
   ownedTerritoryIds,
   nextSetBaseValues,
   selfId,
@@ -39,7 +39,6 @@ export function useCardsAndDeploy({
   isMyTurn: boolean;
   paused: boolean;
   selectedTerritoryId: number | null;
-  gameEnded: boolean;
   ownedTerritoryIds: Set<number>;
   nextSetBaseValues: GameState['nextSetBaseValues'];
   selfId: number | null;
@@ -80,14 +79,13 @@ export function useCardsAndDeploy({
     if (autoOpenCards) autoOpenCardsPanel();
   }, [autoOpenCards, autoOpenCardsPanel]);
 
-  const cardByTerritoryId =
-    gameEnded && !cardsOpen
-      ? new Map<number, Card>()
-      : new Map(
-          hand
-            .filter((c) => c.territoryId !== null)
-            .map((c) => [c.territoryId as number, c]),
-        );
+  const cardByTerritoryId = !cardsOpen
+    ? new Map<number, Card>()
+    : new Map(
+        hand
+          .filter((c) => c.territoryId !== null)
+          .map((c) => [c.territoryId as number, c]),
+      );
 
   const playCardSet = useCallback(
     (combo: EvaluatedCombo) => {
@@ -182,7 +180,7 @@ export function useCardsAndDeploy({
         setToasts((prev) => [
           ...prev,
           {
-            id: Date.now(),
+            id: nextToastId(),
             message: `${player?.name ?? 'A player'} received ${payload.troops} troops from a set`,
             delay: player?.isBot ? BOT_TOAST_DELAY_MS[botSpeed] : undefined,
           },

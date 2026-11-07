@@ -1,6 +1,8 @@
+import { useRef } from 'react';
 import { Button, Spinner } from 'react-bootstrap';
 import InstallButton from '../../common/InstallButton';
 import Hero from '../../common/page/Hero';
+import useStackOnOverflow from '../../common/page/useStackOnOverflow';
 
 const NAME_DEFINITION =
   '/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission';
@@ -54,8 +56,10 @@ function HomeHero({
   onCreateOffline,
   onTutorials,
 }: Props) {
+  const sectionRef = useRef<HTMLElement>(null);
+  useStackOnOverflow(sectionRef);
   return (
-    <section className="hero-top">
+    <section ref={sectionRef} className="hero-top">
       <Hero
         title="Annex"
         tagline="Multiplayer strategy war game"

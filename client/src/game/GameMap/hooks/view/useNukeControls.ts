@@ -4,6 +4,7 @@ import { connector } from '../../../../connector';
 import type { Ack } from '../../../../lib/types';
 import type { GameToast } from '../../overlays/GameToasts';
 import type { GameMapProps } from '../../props';
+import { nextToastId } from '../../toastId';
 
 export function useNukeControls({
   game,
@@ -52,7 +53,10 @@ export function useNukeControls({
     (res: Ack) => {
       if (res.ok) setGame(res.game);
       else
-        setToasts((prev) => [...prev, { id: Date.now(), message: res.error }]);
+        setToasts((prev) => [
+          ...prev,
+          { id: nextToastId(), message: res.error },
+        ]);
     },
     [setGame, setToasts],
   );

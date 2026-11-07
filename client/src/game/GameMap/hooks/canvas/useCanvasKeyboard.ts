@@ -14,6 +14,7 @@ import {
 import { playSound } from '../../../../lib/sounds';
 import type { Ack } from '../../../../lib/types';
 import { isTypingTarget } from '../../helpers';
+import { nextToastId } from '../../toastId';
 import type { CanvasInteractionsParams } from './types';
 import type { useMapViewportAnimation } from './useMapViewportAnimation';
 
@@ -430,7 +431,7 @@ export function useCanvasKeyboard({
           setToasts((prev) => [
             ...prev,
             {
-              id: Date.now(),
+              id: nextToastId(),
               message: `Troops percentage ${percentage ? 'on' : 'off'}`,
             },
           ]);

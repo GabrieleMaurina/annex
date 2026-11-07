@@ -9,6 +9,7 @@ import type {
   AllianceTerminatedPayload,
   GameState,
 } from '../../../lib/types';
+import { nextToastId } from '../toastId';
 
 export function useAllianceUI({
   allianceStates,
@@ -95,7 +96,7 @@ export function useAllianceUI({
         'A player';
       setToasts((prev) => [
         ...prev,
-        { id: Date.now(), message: `${name} sent you an alliance request` },
+        { id: nextToastId(), message: `${name} sent you an alliance request` },
       ]);
     }
     function onAllianceFormed(payload: AllianceFormedPayload) {
@@ -104,7 +105,7 @@ export function useAllianceUI({
         'A player';
       setToasts((prev) => [
         ...prev,
-        { id: Date.now(), message: `Allied with ${name}` },
+        { id: nextToastId(), message: `Allied with ${name}` },
       ]);
     }
     function onAllianceTerminated(payload: AllianceTerminatedPayload) {
@@ -113,7 +114,7 @@ export function useAllianceUI({
         'A player';
       setToasts((prev) => [
         ...prev,
-        { id: Date.now(), message: `Alliance with ${name} terminated` },
+        { id: nextToastId(), message: `Alliance with ${name} terminated` },
       ]);
     }
     function onAllianceDeclined(payload: AllianceDeclinedPayload) {
@@ -122,7 +123,10 @@ export function useAllianceUI({
         'A player';
       setToasts((prev) => [
         ...prev,
-        { id: Date.now(), message: `${name} declined your alliance request` },
+        {
+          id: nextToastId(),
+          message: `${name} declined your alliance request`,
+        },
       ]);
     }
     connector.on('game:allianceRequested', onAllianceRequested);

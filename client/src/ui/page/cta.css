@@ -62,13 +62,13 @@
 }
 
 @media (orientation: landscape) {
-  .home-actions {
+  :where(.hero-top:not(.hero-top-stacked)) .home-actions {
     --cta-title: 1.7rem;
     align-items: flex-end;
     gap: 0.9rem;
   }
 
-  .btn-cta {
+  :where(.hero-top:not(.hero-top-stacked)) .btn-cta {
     --bs-btn-padding-x: 1.75rem;
     --bs-btn-padding-y: 0.65rem;
     min-width: 0;

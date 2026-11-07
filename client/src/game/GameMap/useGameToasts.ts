@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { GameToast } from './overlays/GameToasts';
+import { nextToastId } from './toastId';
 
 export function useGameToasts() {
   const [toasts, setToasts] = useState<GameToast[]>([]);
@@ -7,7 +8,7 @@ export function useGameToasts() {
     (messages: string[], delay?: number) =>
       setToasts((prev) => [
         ...prev,
-        ...messages.map((m, i) => ({ id: Date.now() + i, message: m, delay })),
+        ...messages.map((m) => ({ id: nextToastId(), message: m, delay })),
       ]),
     [],
   );

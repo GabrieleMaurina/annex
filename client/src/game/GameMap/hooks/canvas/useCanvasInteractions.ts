@@ -21,6 +21,7 @@ import {
   type DragState,
   type Point,
 } from '../../helpers';
+import { nextToastId } from '../../toastId';
 import type { CanvasInteractionsParams } from './types';
 import { useCanvasKeyboard } from './useCanvasKeyboard';
 import { useMapViewportAnimation } from './useMapViewportAnimation';
@@ -172,7 +173,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         else
           setToasts((prev) => [
             ...prev,
-            { id: Date.now(), message: res.error },
+            { id: nextToastId(), message: res.error },
           ]);
       });
     },
@@ -186,7 +187,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         else
           setToasts((prev) => [
             ...prev,
-            { id: Date.now(), message: res.error },
+            { id: nextToastId(), message: res.error },
           ]);
       });
     },
@@ -498,7 +499,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
           else
             setToasts((prev) => [
               ...prev,
-              { id: Date.now(), message: res.error },
+              { id: nextToastId(), message: res.error },
             ]);
         });
       } else {

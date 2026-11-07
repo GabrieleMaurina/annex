@@ -397,7 +397,6 @@ function GameMap({
     isMyTurn,
     paused,
     selectedTerritoryId,
-    gameEnded,
     ownedTerritoryIds,
     nextSetBaseValues,
     selfId,

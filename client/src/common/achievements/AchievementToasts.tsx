@@ -15,6 +15,9 @@ function AchievementToasts({ enabled }: { enabled: boolean }) {
     });
   }, [enabled]);
 
+  const dismiss = (id: string) =>
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+
   return (
     <ToastContainer position="bottom-end" className="position-fixed p-3">
       {toasts.map((achievement) => (
@@ -22,9 +25,8 @@ function AchievementToasts({ enabled }: { enabled: boolean }) {
           key={achievement.id}
           autohide
           delay={8000}
-          onClose={() =>
-            setToasts((prev) => prev.filter((t) => t.id !== achievement.id))
-          }
+          onClick={() => dismiss(achievement.id)}
+          onClose={() => dismiss(achievement.id)}
         >
           <Toast.Header>
             <strong className="me-auto">Achievement unlocked!</strong>

@@ -20,6 +20,7 @@ const INITIAL_TANKS = 3;
 const HOLD_DELAY_MS = 250;
 const REPEAT_MS = 100;
 const GATE_ANIMATION = 'page-gate-left';
+const COVERING_MODAL = '.modal-fullscreen';
 
 interface Props {
   spawnInitial: boolean;
@@ -196,6 +197,10 @@ function RollingTanks({ spawnInitial }: Props) {
       const dt = Math.min(Math.max((now - last) / 1000, 0), MAX_DT);
       last = now;
       if (gateOpening) return;
+      if (document.querySelector(COVERING_MODAL)) {
+        lastScan = -Infinity;
+        return;
+      }
       const busy = world.tanks.length > 0 || world.shells.length > 0;
       const sinceScan = now - lastScan;
       if (busy && ((dirty && sinceScan > SCAN_MS) || sinceScan > RESCAN_MS)) {

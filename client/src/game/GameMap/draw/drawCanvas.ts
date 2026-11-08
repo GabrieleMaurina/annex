@@ -15,6 +15,7 @@ import {
   drawFortifyPath,
   regionRipple,
   trackCaptures,
+  type Capture,
   type Ripple,
 } from '../../animations';
 import { animationNow } from '../../animations/clock';
@@ -143,6 +144,7 @@ export interface DrawCanvasParams {
   switchOn: boolean[];
   unlockTiles: LockedTile[];
   placeNames: PlaceNames;
+  heatMap?: Map<number, string> | null;
   endCard?: EndCardOverlay | null;
   pixelRatio?: number;
 }
@@ -204,6 +206,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     switchOn,
     unlockTiles,
     placeNames,
+    heatMap,
     endCard,
     pixelRatio,
   } = params;
@@ -283,7 +286,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       : UNCLAIMED_TERRITORY_COLOR;
   const fillColorOf = (id: number) => ownerColor(displayOwnerOf(id));
   const view = { scaleX, scaleY, offsetX, offsetY };
-  const captures = trackCaptures(canvas, {
+  const trackedCaptures = trackCaptures(canvas, {
     territories,
     visibleSet,
     ownerOf: displayOwnerOf,
@@ -293,6 +296,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ready: imageRef.current !== null,
     animate: !areAnimationsDisabled(),
   });
+  const captures = heatMap ? new Map<number, Capture>() : trackedCaptures;
   const now = areAnimationsDisabled() ? 0 : animationNow();
   const frame: ModifierFrame = {
     ctx,
@@ -319,9 +323,10 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       if (!regions.shapes.has(t.id)) continue;
       if (cracking.has(t.id)) continue;
       const color =
-        visibleSet && !visibleSet.has(t.id)
+        heatMap?.get(t.id) ??
+        (visibleSet && !visibleSet.has(t.id)
           ? UNCLAIMED_TERRITORY_COLOR
-          : fillColorOf(t.id);
+          : fillColorOf(t.id));
       const tint = STATE_STYLE[nodeState(t.id)].tint;
       fillColors.set(t.id, color);
       tintedFillColors.set(t.id, lighten(color, tint));
@@ -614,7 +619,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       strokeRegion(ctx, shape, style.stroke, style.width * uiScale, view);
     drawOverModifiers(frame, t.id, p);
 
-    if (owner) {
+    if (owner && !heatMap) {
       const fillColor = fillColorOf(t.id);
       const troops =
         isMyTurn && attackPendingConquest && t.id === attackEndTerritoryId

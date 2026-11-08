@@ -26,7 +26,8 @@ type CounterKey = Exclude<keyof ReplayPlayerStats, 'playerId'>;
 
 interface Stat {
   label: string;
-  value: (sample: Sample, playerId: number) => number;
+  stacked?: boolean;
+  value: (sample: Sample, playerId: number, capitalIds: Set<number>) => number;
 }
 
 function counter(key: CounterKey) {
@@ -50,6 +51,26 @@ const TERRITORIES: Stat = {
   label: 'Territories',
   value: (sample, playerId) =>
     sample.territories.filter((t) => t.ownerId === playerId).length,
+};
+
+const CAPITALS: Stat = {
+  label: 'Capitals',
+  value: (sample, playerId, capitalIds) =>
+    sample.territories.filter(
+      (t) => t.ownerId === playerId && capitalIds.has(t.id),
+    ).length,
+};
+
+const TERRITORY_OWNERSHIP: Stat = {
+  ...TERRITORIES,
+  label: 'Territory Ownership',
+  stacked: true,
+};
+
+const CAPITAL_OWNERSHIP: Stat = {
+  ...CAPITALS,
+  label: 'Capital Ownership',
+  stacked: true,
 };
 
 const POINTS: Stat = {
@@ -108,13 +129,23 @@ interface Props {
   players: GameState['players'];
   replay: FoldedReplay;
   isCapitals: boolean;
+  capitalIds: Set<number>;
   isPointsMode: boolean;
 }
 
-function GameStatsChart({ players, replay, isCapitals, isPointsMode }: Props) {
+function GameStatsChart({
+  players,
+  replay,
+  isCapitals,
+  capitalIds,
+  isPointsMode,
+}: Props) {
   const stats = [
+    TERRITORY_OWNERSHIP,
+    ...(isCapitals ? [CAPITAL_OWNERSHIP] : []),
     TROOPS,
     TERRITORIES,
+    ...(isCapitals ? [CAPITALS] : []),
     ...(isPointsMode ? [POINTS] : []),
     PLAYERS_KILLED,
     ...(replay.hasStats
@@ -131,7 +162,7 @@ function GameStatsChart({ players, replay, isCapitals, isPointsMode }: Props) {
         ]
       : []),
   ];
-  const [selected, setSelected] = useState(TROOPS);
+  const [selected, setSelected] = useState(TERRITORY_OWNERSHIP);
 
   const { frames, initial } = replay.data;
   const samples = useMemo<Sample[]>(
@@ -145,9 +176,11 @@ function GameStatsChart({ players, replay, isCapitals, isPointsMode }: Props) {
     () =>
       players.map((p) => ({
         player: p,
-        values: samples.map((sample) => selected.value(sample, p.id)),
+        values: samples.map((sample) =>
+          selected.value(sample, p.id, capitalIds),
+        ),
       })),
-    [players, samples, selected],
+    [players, samples, selected, capitalIds],
   );
   const roundStarts = useMemo(
     () =>
@@ -193,7 +226,23 @@ function GameStatsChart({ players, replay, isCapitals, isPointsMode }: Props) {
     });
   }, [samples.length, series]);
 
-  const maxValue = Math.max(1, ...series.flatMap((s) => s.values));
+  const stackedBands = useMemo(() => {
+    const floors = samples.map(() => 0);
+    return series.map(({ player, values }) => {
+      const lower = [...floors];
+      values.forEach((v, s) => {
+        floors[s] += v;
+      });
+      return { player, lower, upper: [...floors] };
+    });
+  }, [samples, series]);
+
+  const maxValue = Math.max(
+    1,
+    ...(selected.stacked
+      ? (stackedBands.at(-1)?.upper ?? [])
+      : series.flatMap((s) => s.values)),
+  );
   const yStep = Math.ceil(maxValue / Y_TICKS);
   const yMax = yStep * Y_TICKS;
   const plotWidth = WIDTH - MARGIN.left - MARGIN.right;
@@ -264,25 +313,43 @@ function GameStatsChart({ players, replay, isCapitals, isPointsMode }: Props) {
               </text>
             ),
         )}
-        {runs.map(({ player, values, start, end, rank, size }) => (
-          <path
-            key={`${player.id}-${start}`}
-            d={values
-              .slice(start, end + 1)
-              .map((v, k) => `${k === 0 ? 'M' : 'L'}${x(start + k)},${y(v)}`)
-              .join(' ')}
-            fill="none"
-            stroke={playerColor(player.color)}
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeDasharray={
-              size > 1 ? `${DASH} ${(size - 1) * DASH}` : undefined
-            }
-            strokeDashoffset={-rank * DASH}
-          >
-            <title>{player.name}</title>
-          </path>
-        ))}
+        {selected.stacked &&
+          stackedBands.map(({ player, lower, upper }) => (
+            <path
+              key={player.id}
+              d={`${upper
+                .map((v, s) => `${s === 0 ? 'M' : 'L'}${x(s)},${y(v)}`)
+                .join(' ')} ${lower
+                .map((v, s) => `L${x(s)},${y(v)}`)
+                .reverse()
+                .join(' ')} Z`}
+              fill={playerColor(player.color)}
+              stroke="var(--bs-body-bg)"
+              strokeWidth={1}
+            >
+              <title>{player.name}</title>
+            </path>
+          ))}
+        {!selected.stacked &&
+          runs.map(({ player, values, start, end, rank, size }) => (
+            <path
+              key={`${player.id}-${start}`}
+              d={values
+                .slice(start, end + 1)
+                .map((v, k) => `${k === 0 ? 'M' : 'L'}${x(start + k)},${y(v)}`)
+                .join(' ')}
+              fill="none"
+              stroke={playerColor(player.color)}
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeDasharray={
+                size > 1 ? `${DASH} ${(size - 1) * DASH}` : undefined
+              }
+              strokeDashoffset={-rank * DASH}
+            >
+              <title>{player.name}</title>
+            </path>
+          ))}
       </svg>
       <div className="d-flex flex-wrap justify-content-center gap-1 mt-1">
         {players.map((p) => (

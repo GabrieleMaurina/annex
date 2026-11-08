@@ -32,6 +32,7 @@ import {
   DETAIL_RANKS,
   lineRank,
   LOCAL_ZOOM,
+  REGULARIZE_ZOOM,
   RIVER_LINE_ZOOM,
   RIVER_RANK,
 } from './ranks';
@@ -43,6 +44,7 @@ import {
   mountainMask,
 } from './raster/nature';
 import { extendLine, fillRings, strokeLine } from './raster/rasterize';
+import { regularizeBorders } from './raster/regularize';
 import { reliefMap, ruggedMask } from './raster/relief';
 import { bridgeRivers, majorRiverMask } from './raster/rivers';
 import { smoothBorders, smoothCoast } from './raster/smooth';
@@ -410,6 +412,8 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     keepWhole,
   );
   const raw = denseLabels(carved.grid, width, height, carved.seedNames);
+  if (params.zoom >= REGULARIZE_ZOOM)
+    regularizeBorders(raw.labelGrid, width, height, expectedTerritoryArea);
   smoothBorders(raw.labelGrid, width, height);
   const { labelGrid, landCount, seedNames } = denseLabels(
     raw.labelGrid,

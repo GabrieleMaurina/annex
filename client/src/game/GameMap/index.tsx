@@ -40,6 +40,7 @@ import { usePanelsUI } from './hooks/usePanelsUI';
 import { useActionFlows } from './hooks/view/useActionFlows';
 import { useDisplayedGame } from './hooks/view/useDisplayedGame';
 import { useGameCanvasInteractions } from './hooks/view/useGameCanvasInteractions';
+import { useHeatMap } from './hooks/view/useHeatMap';
 import { useMapGraph } from './hooks/view/useMapGraph';
 import { useNukeControls } from './hooks/view/useNukeControls';
 import { useTurnToasts } from './hooks/view/useTurnToasts';
@@ -147,6 +148,7 @@ function GameMap({
   const whiteLogsIcon = useWhiteIcon('/icons/logs.svg');
   const whiteSettingsIcon = useWhiteIcon('/icons/sliders.svg');
   const whiteNukesIcon = useWhiteIcon('/icons/nuke.svg');
+  const whiteHeatMapIcon = useWhiteIcon('/icons/palette.svg');
 
   const {
     canvasRef,
@@ -355,6 +357,8 @@ function GameMap({
     logsOpen,
     settingsOpen,
     nukesOpen,
+    heatMapOpen,
+    heatMapRef,
     cardsButtonsTop,
     cardsPanelRef,
     cardsButtonRef,
@@ -371,6 +375,13 @@ function GameMap({
     panelCollapsed,
     setPanelCollapsed,
   } = usePanelsUI(settingsMenuOpen, onPanelOpenChange);
+
+  const { heatMapPlayerId, setHeatMapPlayerId, heatMap } = useHeatMap(
+    heatMapOpen,
+    replayData,
+    mapTerritories,
+    players,
+  );
 
   const { nukeTargeting, setNukeTargeting, nukes } = useNukeControls({
     game,
@@ -677,6 +688,7 @@ function GameMap({
       switchOn,
       unlockTiles: attackFlow.unlockTiles,
       placeNames,
+      heatMap,
       endCard:
         endCard && endCardStartRef.current !== null
           ? {
@@ -763,7 +775,19 @@ function GameMap({
           nukesButtonRef={nukesButtonRef}
           nukesPanelRef={nukesPanelRef}
           whiteNukesIcon={whiteNukesIcon}
+          whiteHeatMapIcon={whiteHeatMapIcon}
+          heatMapRef={heatMapRef}
           nukes={nukes}
+          heatMap={
+            showReplay
+              ? {
+                  open: heatMapOpen,
+                  players,
+                  playerId: heatMapPlayerId,
+                  onSelectPlayer: setHeatMapPlayerId,
+                }
+              : null
+          }
         />
         <PlayersPanel
           players={displayedPlayers}

@@ -5,6 +5,7 @@ export const CUT_RANKS = [30, 40, 50, 60, 70, 80, 90, 100, LANDMASS_RANK];
 export const RIVER_RANK = 50;
 export const LOCAL_ZOOM = 12;
 export const RIVER_LINE_ZOOM = 9;
+export const REGULARIZE_ZOOM = 11;
 
 export const DETAIL_RANKS: Record<Exclude<OsmDetail, 'auto'>, number> = {
   countries: 100,

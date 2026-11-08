@@ -13,10 +13,11 @@ export function usePanelsUI(
   onPanelOpenChange: (open: boolean) => void,
 ) {
   const [openPanel, setOpenPanel] = useState<
-    'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null
+    'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | 'heatMap' | null
   >(null);
   const cardsOpen = openPanel === 'cards';
   const bonusesOpen = openPanel === 'bonuses';
+  const heatMapOpen = openPanel === 'heatMap';
   const logsOpen = openPanel === 'logs';
   const settingsOpen = openPanel === 'settings';
   const nukesOpen = openPanel === 'nukes';
@@ -32,6 +33,7 @@ export function usePanelsUI(
   const settingsPanelRef = useRef<HTMLDivElement>(null);
   const nukesButtonRef = useRef<HTMLButtonElement>(null);
   const nukesPanelRef = useRef<HTMLDivElement>(null);
+  const heatMapRef = useRef<HTMLDivElement>(null);
   const buttonColumnRef = useRef<HTMLDivElement>(null);
   const [logsPanelTop, setLogsPanelTop] = useState(DEFAULT_CARDS_BUTTONS_TOP);
   const [settingsPanelTop, setSettingsPanelTop] = useState(
@@ -115,6 +117,7 @@ export function usePanelsUI(
       if (logsPanelRef.current?.contains(target)) return;
       if (settingsPanelRef.current?.contains(target)) return;
       if (nukesPanelRef.current?.contains(target)) return;
+      if (heatMapRef.current?.contains(target)) return;
       if (Date.now() < outsideCloseBlockedUntilRef.current) return;
       setOpenPanel(null);
     }
@@ -135,6 +138,8 @@ export function usePanelsUI(
     logsOpen,
     settingsOpen,
     nukesOpen,
+    heatMapOpen,
+    heatMapRef,
     cardsButtonsTop,
     cardsPanelRef,
     cardsButtonRef,

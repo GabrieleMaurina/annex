@@ -31,6 +31,7 @@ const VOID_FRACTION: Record<Fill, number> = {
 
 const VOID_BLOB_RANGE: [number, number] = [2, 5];
 const SEA_BLOB_RANGE: [number, number] = [15, 40];
+const MIN_SEA_CONTACT = 2;
 
 interface PolarGrid {
   nRings: number;
@@ -298,6 +299,7 @@ function toCellLayer(
     pixelCell,
     chambers,
     outsideMask,
+    minSeaContact: MIN_SEA_CONTACT,
   };
 }
 

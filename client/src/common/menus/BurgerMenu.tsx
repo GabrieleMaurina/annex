@@ -137,8 +137,8 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
       {open && (
         <div
           ref={panelRef}
-          className={`${PANEL_BG_CLASS} ${PANEL_CLASS} position-absolute end-0 mt-2 d-flex flex-column gap-2`}
-          style={{ width: 200, zIndex: 10 }}
+          className={`${PANEL_BG_CLASS} ${PANEL_CLASS} position-absolute end-0 mt-2 d-flex flex-column gap-2 overflow-y-auto overflow-x-hidden no-scrollbar`}
+          style={{ width: 200, zIndex: 10, maxHeight: 'calc(100dvh - 72px)' }}
         >
           {name &&
             (account ? (

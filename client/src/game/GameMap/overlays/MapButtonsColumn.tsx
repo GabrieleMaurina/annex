@@ -3,6 +3,7 @@ import { Badge, Button } from 'react-bootstrap';
 import Tip from '../../../common/tooltips/Tip';
 import type { Card, GameState, TurnPhase } from '../../../lib/types';
 import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
+import Selector from '../../../ui/forms/Selector';
 import { comboKey, type EvaluatedCombo } from '../../logic/cards';
 import type { LogEntry } from '../../logs/useGameLogs';
 import CardsPanel, { CardFace } from '../../panels/CardsPanel';
@@ -18,6 +19,13 @@ export interface NukesColumnProps {
   onBuildAntiNuke: () => void;
   onAdvanceNuke: (index: number) => void;
   onArmNuke: (mode: 'launch' | 'antiNuke') => void;
+}
+
+export interface HeatMapColumnProps {
+  open: boolean;
+  players: GameState['players'];
+  playerId: number | null;
+  onSelectPlayer: (playerId: number | null) => void;
 }
 
 export default function MapButtonsColumn({
@@ -65,13 +73,18 @@ export default function MapButtonsColumn({
   nukesButtonRef,
   nukesPanelRef,
   whiteNukesIcon,
+  whiteHeatMapIcon,
+  heatMapRef,
+  heatMap,
 }: {
   cardsButtonsTop: number;
   buttonColumnRef: RefObject<HTMLDivElement | null>;
   bonusesButtonRef: RefObject<HTMLButtonElement | null>;
   whiteBonusIcon: string | undefined;
   setOpenPanel: Dispatch<
-    SetStateAction<'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null>
+    SetStateAction<
+      'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | 'heatMap' | null
+    >
   >;
   bonusesOpen: boolean;
   cardsOpen: boolean;
@@ -112,8 +125,12 @@ export default function MapButtonsColumn({
   nukesButtonRef: RefObject<HTMLButtonElement | null>;
   nukesPanelRef: RefObject<HTMLDivElement | null>;
   whiteNukesIcon: string | undefined;
+  whiteHeatMapIcon: string | undefined;
+  heatMapRef: RefObject<HTMLDivElement | null>;
+  heatMap: HeatMapColumnProps | null;
 }) {
   const nukesOpen = nukes?.open ?? false;
+  const heatMapOpen = heatMap?.open ?? false;
   const nukesReady =
     game.nukes === 'on' &&
     (game.arsenal.nukes > 0 || game.arsenal.antiNukes > 0);
@@ -122,7 +139,12 @@ export default function MapButtonsColumn({
       ? game.arsenal.nukes + game.arsenal.antiNukes + game.nukeProjects.length
       : 0;
   const panelExpanded =
-    cardsOpen || bonusesOpen || logsOpen || settingsOpen || nukesOpen;
+    cardsOpen ||
+    bonusesOpen ||
+    logsOpen ||
+    settingsOpen ||
+    nukesOpen ||
+    heatMapOpen;
   const anyPanelOpen = panelExpanded || settingsMenuOpen;
   const showBadges = !gameEnded || showReplay;
   return (
@@ -154,6 +176,51 @@ export default function MapButtonsColumn({
               />
             </Button>
           </Tip>
+        )}
+        {heatMap && (!anyPanelOpen || heatMapOpen) && (
+          <div
+            ref={heatMapRef}
+            className="d-flex flex-column align-items-start gap-2"
+          >
+            <Tip text="Heat Map">
+              <Button
+                variant={heatMapOpen ? 'primary' : 'secondary'}
+                size="sm"
+                className="d-flex align-items-center justify-content-center"
+                style={{ width: 28, height: 28, padding: 0 }}
+                onClick={() =>
+                  setOpenPanel((p) => (p === 'heatMap' ? null : 'heatMap'))
+                }
+              >
+                <img
+                  src={whiteHeatMapIcon ?? '/icons/palette.svg'}
+                  width={16}
+                  height={16}
+                  alt="Heat Map"
+                />
+              </Button>
+            </Tip>
+            {heatMapOpen && (
+              <div className={`${PANEL_BG_CLASS} border rounded p-2`}>
+                <div className="small fw-semibold mb-1">Heat Map</div>
+                <Selector
+                  size="sm"
+                  aria-label="Heat map player"
+                  value={heatMap.playerId === null ? '' : `${heatMap.playerId}`}
+                  onChange={(value) =>
+                    heatMap.onSelectPlayer(value === '' ? null : Number(value))
+                  }
+                >
+                  <option value="">Everybody</option>
+                  {heatMap.players.map((p) => (
+                    <option key={p.id} value={`${p.id}`}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Selector>
+              </div>
+            )}
+          </div>
         )}
         {game.cards === 'off' ? null : cardsOpen ? (
           <div ref={cardsPanelRef}>

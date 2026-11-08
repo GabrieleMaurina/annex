@@ -8,4 +8,5 @@ export interface CellLayer {
   outsideMask?: Uint8Array;
   cellTerritories?: boolean;
   unlockable?: boolean;
+  minSeaContact?: number;
 }

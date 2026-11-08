@@ -235,6 +235,259 @@ export function computeWallSeamMasks(
   return { wallMask, seamMask };
 }
 
+const WALL_GAP_HALF_WIDTH = 12;
+const WALL_NORMAL_WINDOW = 16;
+
+interface Vector {
+  x: number;
+  y: number;
+}
+
+function directionTowards(
+  labelGrid: Int16Array,
+  width: number,
+  height: number,
+  cx: number,
+  cy: number,
+  isTarget: (label: number) => boolean,
+): Vector | null {
+  let sumX = 0;
+  let sumY = 0;
+  for (let dy = -WALL_NORMAL_WINDOW; dy <= WALL_NORMAL_WINDOW; dy++) {
+    const y = cy + dy;
+    if (y < 0 || y >= height) continue;
+    for (let dx = -WALL_NORMAL_WINDOW; dx <= WALL_NORMAL_WINDOW; dx++) {
+      const x = cx + dx;
+      if (x < 0 || x >= width || !isTarget(labelGrid[y * width + x])) continue;
+      sumX += dx;
+      sumY += dy;
+    }
+  }
+  const length = Math.hypot(sumX, sumY);
+  return length > 0 ? { x: sumX / length, y: sumY / length } : null;
+}
+
+function normalOfWall(
+  wallMask: Uint8Array,
+  width: number,
+  height: number,
+  cx: number,
+  cy: number,
+): Vector | null {
+  let count = 0;
+  let sumX = 0;
+  let sumY = 0;
+  let sumXX = 0;
+  let sumYY = 0;
+  let sumXY = 0;
+  for (let dy = -WALL_NORMAL_WINDOW; dy <= WALL_NORMAL_WINDOW; dy++) {
+    const y = cy + dy;
+    if (y < 0 || y >= height) continue;
+    for (let dx = -WALL_NORMAL_WINDOW; dx <= WALL_NORMAL_WINDOW; dx++) {
+      const x = cx + dx;
+      if (x < 0 || x >= width || !wallMask[y * width + x]) continue;
+      count++;
+      sumX += dx;
+      sumY += dy;
+      sumXX += dx * dx;
+      sumYY += dy * dy;
+      sumXY += dx * dy;
+    }
+  }
+  if (count === 0) return null;
+  const varianceX = sumXX / count - (sumX / count) ** 2;
+  const varianceY = sumYY / count - (sumY / count) ** 2;
+  const covariance = sumXY / count - (sumX / count) * (sumY / count);
+  const axis = 0.5 * Math.atan2(2 * covariance, varianceX - varianceY);
+  return { x: -Math.sin(axis), y: Math.cos(axis) };
+}
+
+interface WallGrid {
+  wallMask: Uint8Array;
+  decorative: Uint8Array;
+  labelGrid: Int16Array;
+  width: number;
+  height: number;
+}
+
+interface WallRun {
+  start: number;
+  end: number;
+}
+
+interface GapPlacement {
+  cx: number;
+  cy: number;
+  normal: Vector;
+  halfDepth: number;
+}
+
+function edgeLine(
+  from: GridPoint,
+  to: GridPoint,
+  width: number,
+  height: number,
+): { pixels: number[]; direction: Vector } {
+  const dx = to.gx - from.gx;
+  const dy = to.gy - from.gy;
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy)));
+  const pixels = Array.from({ length: steps + 1 }, (_, s) => {
+    const px = Math.round(from.gx + (dx * s) / steps);
+    const py = Math.round(from.gy + (dy * s) / steps);
+    const inside = px >= 0 && px < width && py >= 0 && py < height;
+    return inside ? py * width + px : -1;
+  });
+  return { pixels, direction: { x: dx / steps, y: dy / steps } };
+}
+
+function wallRuns(pixels: number[], wallMask: Uint8Array): WallRun[] {
+  const isWall = (pixel: number) => pixel >= 0 && wallMask[pixel] !== 0;
+  const runs: WallRun[] = [];
+  for (let i = 0; i < pixels.length; i++) {
+    if (!isWall(pixels[i])) continue;
+    const start = i;
+    while (i + 1 < pixels.length && isWall(pixels[i + 1])) i++;
+    runs.push({ start, end: i });
+  }
+  return runs;
+}
+
+function gapPlacement(
+  grid: WallGrid,
+  pixels: number[],
+  run: WallRun,
+  lineDirection: Vector,
+  isOwner: (label: number) => boolean,
+): GapPlacement | null {
+  const { wallMask, decorative, labelGrid, width, height } = grid;
+  const before = run.start > 0 ? pixels[run.start - 1] : -1;
+  const after = run.end + 1 < pixels.length ? pixels[run.end + 1] : -1;
+  if (before < 0 || after < 0) return null;
+
+  const labelBefore = labelGrid[before];
+  const labelAfter = labelGrid[after];
+  const isOpenEnd = (label: number) => label < 0 || isOwner(label);
+  const crossesDecoration =
+    isOpenEnd(labelBefore) &&
+    isOpenEnd(labelAfter) &&
+    pixels.slice(run.start, run.end + 1).some((p) => decorative[p] === 1);
+  const insideVoid = labelBefore < 0 && labelAfter < 0;
+  const separatesOwnerFromVoid =
+    (isOwner(labelBefore) && labelAfter < 0) ||
+    (labelBefore < 0 && isOwner(labelAfter));
+  if (!crossesDecoration && !insideVoid && !separatesOwnerFromVoid) return null;
+
+  const middle = pixels[(run.start + run.end) >> 1];
+  const cx = middle % width;
+  const cy = (middle / width) | 0;
+  const normal = crossesDecoration
+    ? lineDirection
+    : ((insideVoid
+        ? normalOfWall(wallMask, width, height, cx, cy)
+        : directionTowards(labelGrid, width, height, cx, cy, isOwner)) ??
+      lineDirection);
+  return {
+    cx,
+    cy,
+    normal,
+    halfDepth: Math.ceil((run.end - run.start + 1) / 2) + 2,
+  };
+}
+
+function markGap(
+  gap: Uint8Array,
+  grid: WallGrid,
+  { cx, cy, normal, halfDepth }: GapPlacement,
+  isOwner: (label: number) => boolean,
+): void {
+  const { labelGrid, width, height } = grid;
+  const reach = Math.ceil(Math.hypot(halfDepth, WALL_GAP_HALF_WIDTH));
+  for (let oy = -reach; oy <= reach; oy++) {
+    const ny = cy + oy;
+    if (ny < 0 || ny >= height) continue;
+    for (let ox = -reach; ox <= reach; ox++) {
+      const nx = cx + ox;
+      if (nx < 0 || nx >= width) continue;
+      const depth = ox * normal.x + oy * normal.y;
+      const along = -ox * normal.y + oy * normal.x;
+      if (
+        Math.abs(depth) > halfDepth ||
+        Math.abs(along) > WALL_GAP_HALF_WIDTH
+      ) {
+        continue;
+      }
+      const ni = ny * width + nx;
+      const label = labelGrid[ni];
+      if (label >= 0 && !isOwner(label)) continue;
+      gap[ni] = 1;
+    }
+  }
+}
+
+function clearGaps(
+  gap: Uint8Array,
+  grid: WallGrid,
+  seamMask: Uint8Array,
+  roundedWalls: boolean,
+): void {
+  const { wallMask, labelGrid, width, height } = grid;
+  const boundary = new Uint8Array(gap.length);
+  for (let i = 0; i < gap.length; i++) {
+    if (!gap[i] || labelGrid[i] < 0) continue;
+    const x = i % width;
+    const y = (i / width) | 0;
+    if (
+      (x > 0 && labelGrid[i - 1] < 0) ||
+      (x + 1 < width && labelGrid[i + 1] < 0) ||
+      (y > 0 && labelGrid[i - width] < 0) ||
+      (y + 1 < height && labelGrid[i + width] < 0)
+    ) {
+      boundary[i] = 1;
+    }
+  }
+  const border = dilate(
+    boundary,
+    width,
+    height,
+    (BORDER_THICKNESS - 1) / 2,
+    roundedWalls,
+  );
+  for (let i = 0; i < gap.length; i++) {
+    if (!gap[i]) continue;
+    wallMask[i] = 0;
+    if (border[i]) seamMask[i] = 1;
+  }
+}
+
+function openWallsAlongSpecialEdges(
+  wallMask: Uint8Array,
+  seamMask: Uint8Array,
+  labelGrid: Int16Array,
+  decorative: Uint8Array,
+  width: number,
+  height: number,
+  connectivity: MazeConnectivity,
+  roundedWalls: boolean,
+): void {
+  const { centroids, specialEdges } = connectivity;
+  const grid = { wallMask, decorative, labelGrid, width, height };
+  const gap = new Uint8Array(wallMask.length);
+
+  for (const { a, b } of specialEdges) {
+    const from = centroids[a];
+    const to = centroids[b];
+    if (!from || !to) continue;
+    const { pixels, direction } = edgeLine(from, to, width, height);
+    const isOwner = (label: number) => label === a || label === b;
+    for (const run of wallRuns(pixels, wallMask)) {
+      const placement = gapPlacement(grid, pixels, run, direction, isOwner);
+      if (placement) markGap(gap, grid, placement, isOwner);
+    }
+  }
+
+  clearGaps(gap, grid, seamMask, roundedWalls);
+}
+
 export function renderMazeImage(
   labelGrid: Int16Array,
   layer: CellLayer,
@@ -263,6 +516,27 @@ export function renderMazeImage(
     seaLayer,
     palette.continentWalls ? continentIdByTerritory : undefined,
   );
+
+  const decorative = new Uint8Array(size);
+  for (let i = 0; i < size; i++) {
+    if (layer.pixelCell[i] < 0 || labelGrid[i] >= 0) continue;
+    if (pixelSea && pixelSea[i] >= 0) continue;
+    decorative[i] = 1;
+    wallMask[i] = 1;
+  }
+
+  if (connectivity) {
+    openWallsAlongSpecialEdges(
+      wallMask,
+      seamMask,
+      labelGrid,
+      decorative,
+      width,
+      height,
+      connectivity,
+      palette.roundedWalls === true,
+    );
+  }
 
   const indices = new Uint8Array(size);
   for (let i = 0; i < size; i++) {

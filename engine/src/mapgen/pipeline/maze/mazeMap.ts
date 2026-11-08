@@ -392,6 +392,9 @@ export function buildMazeMap(
           adjacency,
           eligible,
           false,
+          undefined,
+          undefined,
+          source.minSeaContact,
         )
       : null;
     const hasSea = !!seaBuild && seaBuild.seaCount > 0;

@@ -534,6 +534,7 @@ export function buildSeaTerritories(
   warped: boolean = true,
   seaAreaMultiplier: number = SEA_AREA_MULTIPLIER,
   maxLandNeighborsPerSea: number = MAX_LAND_NEIGHBORS_PER_SEA,
+  minContact: number = 1,
 ): SeaBuild {
   const size = width * height;
   const seaLabelGrid = new Int16Array(size).fill(-1);
@@ -631,10 +632,13 @@ export function buildSeaTerritories(
     seaAdjacency.set(w, new Set());
     seaBorderLength.set(w, new Map());
   }
+  const landSeaContact = new Map<number, number>();
   const bumpLandSea = (landId: number, seaId: number) => {
     let set = landSeaAdjacency.get(landId);
     if (!set) landSeaAdjacency.set(landId, (set = new Set()));
     set.add(seaId);
+    const key = landId * rawSeaCount + seaId;
+    landSeaContact.set(key, (landSeaContact.get(key) ?? 0) + 1);
   };
   const bumpSeaSea = (a: number, b: number) => {
     if (a === b) return;
@@ -664,6 +668,22 @@ export function buildSeaTerritories(
         if (dLand >= 0 && seaId >= 0) bumpLandSea(dLand, seaId);
         if (seaId >= 0 && dSea >= 0) bumpSeaSea(seaId, dSea);
       }
+    }
+  }
+
+  for (const [key, contact] of landSeaContact) {
+    if (contact >= minContact) continue;
+    const landId = Math.floor(key / rawSeaCount);
+    const seaId = key % rawSeaCount;
+    const seas = landSeaAdjacency.get(landId)!;
+    seas.delete(seaId);
+    if (seas.size === 0) landSeaAdjacency.delete(landId);
+  }
+  for (const [a, lengths] of seaBorderLength) {
+    for (const [b, contact] of lengths) {
+      if (contact >= minContact) continue;
+      lengths.delete(b);
+      seaAdjacency.get(a)!.delete(b);
     }
   }
 

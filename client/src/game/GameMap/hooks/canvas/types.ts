@@ -102,7 +102,8 @@ export type CanvasInteractionsParams = {
   setGame: (game: GameState) => void;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
   setPanelCollapsed: Dispatch<SetStateAction<boolean>>;
-  openPanel: 'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null;
+  openPanel:
+    'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | 'heatMap' | null;
   setOpenPanel: (
     panel: 'cards' | 'bonuses' | 'logs' | 'settings' | 'nukes' | null,
   ) => void;

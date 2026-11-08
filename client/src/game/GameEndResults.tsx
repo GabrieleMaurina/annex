@@ -1,5 +1,6 @@
 import { isPointsMode } from 'engine';
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 import { Button, Container } from 'react-bootstrap';
 import type { ResultRow } from '../common/ResultsTable';
 import ResultsTable from '../common/ResultsTable';
@@ -63,6 +64,10 @@ function GameEndResults({
   const won = selfId !== null && game.winnerIds.includes(selfId);
   const isTeamDeathmatch = game.gameMode === 'team deathmatch';
   const isCapitals = game.gameMode === 'capitals';
+  const capitalIds = useMemo(
+    () => new Set(game.territories.filter((t) => t.isCapital).map((t) => t.id)),
+    [game.territories],
+  );
   const pointsMode = isPointsMode(game.gameMode);
   const duration =
     game.startedAt !== null && game.endedAt !== null
@@ -180,6 +185,7 @@ function GameEndResults({
             players={game.players}
             replay={replay}
             isCapitals={isCapitals}
+            capitalIds={capitalIds}
             isPointsMode={pointsMode}
           />
         </div>

@@ -22,6 +22,16 @@ const PLACE_NAMES = {
   items: { bsonType: 'string', maxLength: MAX_PLACE_NAME_LENGTH },
 };
 
+const TILE_POINTS = {
+  bsonType: 'array',
+  items: {
+    bsonType: 'array',
+    minItems: 2,
+    maxItems: 2,
+    items: { bsonType: 'number' },
+  },
+};
+
 export const MAP_REQUIRED = [
   'name',
   'territories',
@@ -155,16 +165,21 @@ export const MAP_PROPERTIES = {
         id: { bsonType: 'number' },
         x: { bsonType: 'number' },
         y: { bsonType: 'number' },
-        points: {
-          bsonType: 'array',
-          items: {
-            bsonType: 'array',
-            minItems: 2,
-            maxItems: 2,
-            items: { bsonType: 'number' },
-          },
-        },
+        points: TILE_POINTS,
         neighbors: { bsonType: 'array', items: { bsonType: 'number' } },
+      },
+    },
+  },
+  fixedTiles: {
+    bsonType: 'array',
+    items: {
+      bsonType: 'object',
+      required: ['id', 'points', 'color'],
+      additionalProperties: false,
+      properties: {
+        id: { bsonType: 'number' },
+        points: TILE_POINTS,
+        color: { bsonType: 'string', pattern: BORDER_COLOR_PATTERN },
       },
     },
   },

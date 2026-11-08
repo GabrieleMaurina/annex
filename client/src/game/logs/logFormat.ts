@@ -439,9 +439,11 @@ export function createLogFormatter() {
           if (p.drawReason) {
             b.line('Result');
             b.append(
-              p.drawReason === 'agreed'
-                ? 'Draw agreed'
-                : `Stalemate (${p.drawReason})`,
+              p.drawReason === 'aborted'
+                ? 'Game aborted'
+                : p.drawReason === 'agreed'
+                  ? 'Draw agreed'
+                  : `Stalemate (${p.drawReason})`,
             );
           }
           if (winnerIds.length > 0) {

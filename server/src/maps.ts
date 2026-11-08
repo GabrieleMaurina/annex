@@ -31,6 +31,7 @@ export function persistGameMap(
     switches: map.switches,
     switchedLinks: map.switchedLinks,
     lockedTiles: map.lockedTiles,
+    fixedTiles: map.fixedTiles,
     generation: map.generation,
     image: new Binary(image.bytes),
     imageMime: image.mime,

@@ -606,13 +606,15 @@ export function drawSmoothImage(
   if (source.fill && source.fill.labels.length !== width * height) return false;
 
   let fieldStale = false;
-  if (source.image !== s.image || source.revision !== s.revision) {
+  const imageChanged =
+    source.image !== s.image || source.revision !== s.revision;
+  if (imageChanged) {
     uploadSource(s, IMAGE_UNIT, source.image);
     s.image = source.image;
     s.revision = source.revision;
     fieldStale = true;
   }
-  if (source.tiles !== s.tiles) {
+  if (source.tiles !== s.tiles || (imageChanged && source.tiles)) {
     if (source.tiles) uploadSource(s, TILES_UNIT, source.tiles);
     s.tiles = source.tiles;
     fieldStale = true;

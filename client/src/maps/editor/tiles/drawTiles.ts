@@ -1,60 +1,19 @@
-import { polygonPath, tileLineWidth } from '../../../game/tiles/tileGeometry';
-import { drawPolygon, ERASER_COLOR, sampleColor } from '../paint/paintTools';
+import { TILE_LINE_WIDTH } from '../../../game/tiles/tileGeometry';
+import {
+  drawLine,
+  drawPolygon,
+  ERASER_COLOR,
+  sampleColor,
+} from '../paint/paintTools';
 import { tileCenter, type EditorTile } from './editorTiles';
+import { edgesOf, fillOf, type TileLook } from './tileRaster';
 
 export interface TileDecor {
   ghosts: EditorTile[];
 }
 
-const LOCKED_FILL = '#d9d9d9';
-const SELECTED_COLOR = '#0d6efd';
-const GHOST_ALPHA = 0.5;
 const ERASE_MARGIN = 2;
 const FOOTPRINT_COLOR = '#000000';
-
-function drawTile(
-  ctx: CanvasRenderingContext2D,
-  tile: EditorTile,
-  lineWidth: number,
-  borderColor: string,
-) {
-  const path = polygonPath(tile.points);
-  ctx.fillStyle = tile.unlockable ? LOCKED_FILL : tile.color;
-  ctx.fill(path);
-  ctx.strokeStyle = borderColor;
-  ctx.lineWidth = lineWidth;
-  ctx.stroke(path);
-}
-
-export function drawTileOverlay(
-  canvas: HTMLCanvasElement,
-  width: number,
-  height: number,
-  tiles: EditorTile[],
-  selected: number | null,
-  decor: TileDecor | null,
-  borderColor: string,
-) {
-  if (canvas.width !== width) canvas.width = width;
-  if (canvas.height !== height) canvas.height = height;
-  const ctx = canvas.getContext('2d')!;
-  ctx.clearRect(0, 0, width, height);
-  const ghosts = decor?.ghosts ?? [];
-  const lineWidth = tileLineWidth([...tiles, ...ghosts]);
-  ctx.lineJoin = 'round';
-  for (const tile of tiles.filter((t) => !t.unlockable))
-    drawTile(ctx, tile, lineWidth, borderColor);
-  for (const tile of tiles.filter((t) => t.unlockable))
-    drawTile(ctx, tile, lineWidth, borderColor);
-  if (selected !== null && tiles[selected]) {
-    ctx.lineWidth = lineWidth;
-    ctx.strokeStyle = SELECTED_COLOR;
-    ctx.stroke(polygonPath(tiles[selected].points));
-  }
-  ctx.globalAlpha = GHOST_ALPHA;
-  for (const ghost of ghosts) drawTile(ctx, ghost, lineWidth, borderColor);
-  ctx.globalAlpha = 1;
-}
 
 function outline(tile: EditorTile) {
   return tile.points.map(([x, y]) => ({ x, y }));
@@ -80,24 +39,40 @@ function fillTiles(
 export function bakeTiles(
   surface: ImageData,
   tiles: EditorTile[],
-  borderColor: string,
+  look: TileLook,
 ): ImageData {
   const baked = copyOf(surface);
-  fillTiles(
-    baked,
-    tiles.filter((t) => !t.unlockable),
-    (tile) => tile.color,
-    borderColor,
-    tileLineWidth(tiles),
-  );
+  for (const tile of tiles.filter((t) => !t.unlockable))
+    drawPolygon(baked, tile.color, outline(tile), 0, true, false);
+  for (const seam of [true, false])
+    for (const [from, to] of edgesOf(
+      tiles,
+      look,
+      seam,
+      (k) => !tiles[k].unlockable,
+    ))
+      drawLine(
+        baked,
+        seam ? look.seam : look.wall,
+        TILE_LINE_WIDTH,
+        { x: from[0], y: from[1] },
+        { x: to[0], y: to[1] },
+      );
   return baked;
 }
 
-export function eraseTiles(surface: ImageData, tiles: EditorTile[]) {
-  const lineWidth = tileLineWidth(tiles) + ERASE_MARGIN;
+export function eraseTiles(
+  surface: ImageData,
+  tiles: EditorTile[],
+  generated: boolean,
+) {
+  const lineWidth = TILE_LINE_WIDTH + ERASE_MARGIN;
+  const backdrop = generated
+    ? (sampleColor(surface, 0, 0) ?? ERASER_COLOR)
+    : ERASER_COLOR;
   for (const tile of tiles.filter((t) => !t.unlockable)) {
-    drawPolygon(surface, ERASER_COLOR, outline(tile), 0, true, false);
-    drawPolygon(surface, ERASER_COLOR, outline(tile), lineWidth, false, false);
+    drawPolygon(surface, backdrop, outline(tile), 0, true, false);
+    drawPolygon(surface, backdrop, outline(tile), lineWidth, false, false);
   }
 }
 
@@ -108,13 +83,7 @@ export function maskTiles(
 ): ImageData {
   if (tiles.length === 0) return surface;
   const masked = copyOf(surface);
-  fillTiles(
-    masked,
-    tiles,
-    () => borderColor,
-    borderColor,
-    tileLineWidth(tiles),
-  );
+  fillTiles(masked, tiles, () => borderColor, borderColor, TILE_LINE_WIDTH);
   return masked;
 }
 
@@ -124,13 +93,7 @@ export function regionTiles(
   borderColor: string,
 ): ImageData {
   const regions = copyOf(surface);
-  fillTiles(
-    regions,
-    tiles,
-    (tile) => (tile.unlockable ? LOCKED_FILL : tile.color),
-    borderColor,
-    tileLineWidth(tiles),
-  );
+  fillTiles(regions, tiles, fillOf, borderColor, TILE_LINE_WIDTH);
   return regions;
 }
 
@@ -141,7 +104,7 @@ function footprint(surface: ImageData, tiles: EditorTile[]): Uint8ClampedArray {
     tiles,
     () => FOOTPRINT_COLOR,
     FOOTPRINT_COLOR,
-    tileLineWidth(tiles),
+    TILE_LINE_WIDTH,
   );
   return mask.data;
 }
@@ -174,20 +137,19 @@ export function fillableTiles(
   borderColor: string,
 ): ImageData {
   const prepared = copyOf(surface);
-  const lineWidth = tileLineWidth(tiles);
   fillTiles(
     prepared,
     tiles.filter((t) => t.unlockable),
     () => borderColor,
     borderColor,
-    lineWidth,
+    TILE_LINE_WIDTH,
   );
   fillTiles(
     prepared,
     tiles.filter((t) => !t.unlockable),
     (tile) => tile.color,
     borderColor,
-    lineWidth,
+    TILE_LINE_WIDTH,
   );
   return prepared;
 }

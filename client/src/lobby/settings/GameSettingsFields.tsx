@@ -26,11 +26,11 @@ import {
 } from '../../ui/containers/panelStyle';
 import Selector from '../../ui/forms/Selector';
 import {
-  defaultSettingValue,
   GAME_SETTING_SECTIONS,
   GAME_SETTINGS,
   type GameSettingDef,
-  SEAT_REQUIREMENT_KEYS,
+  isSettingChanged,
+  isSettingVisible,
 } from './gameSettings';
 import SettingOdometer from './SettingOdometer';
 import { PASSWORD_HELP, VISIBILITY_HELP } from './settingsHelp';
@@ -116,8 +116,7 @@ function GameSettingsFields({
 
   function field(def: GameSettingDef) {
     const value = game[def.key as keyof GameState];
-    const changed =
-      String(value) !== String(defaultSettingValue(def.key, game.gameMode));
+    const changed = isSettingChanged(def, game);
     return (
       <div
         key={def.key}
@@ -174,12 +173,7 @@ function GameSettingsFields({
         const defs = GAME_SETTINGS.filter(
           (d) =>
             d.section === section &&
-            (!d.modes || d.modes.includes(game.gameMode)) &&
-            !(
-              (d.key === 'anonymous' ||
-                SEAT_REQUIREMENT_KEYS.includes(d.key)) &&
-              connector.isOffline()
-            ),
+            isSettingVisible(d, game.gameMode, connector.isOffline()),
         );
         const last = index === GAME_SETTING_SECTIONS.length - 1;
         return (

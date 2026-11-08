@@ -1,9 +1,10 @@
 import { PLAYER_COLORS } from '../../lib/palette';
-import type { Explosion, Mark, Shell, Tank, World } from './world';
+import type { Explosion, Mark, Mine, Shell, Tank, World } from './world';
 import {
   BARRIER_SIZE,
   EXPLOSION_LIFE_MS,
   MARK_LIFE_MS,
+  MINE_RADIUS,
   MUZZLE,
   TRACK_HALF_LENGTH,
   TRACK_OFFSET,
@@ -51,6 +52,9 @@ const MARK_ALPHA = 0.18;
 const MARK_LEVELS = 10;
 const MARK_COLOR = '#ffffff';
 const CONCRETE_COLOR = '#a3a39c';
+const MINE_RIM_COLOR = '#2b2b2b';
+const MINE_BODY_COLOR = '#6b6b6b';
+const MINE_CENTER_COLOR = '#9a9a9a';
 const BARRIER_HALF = BARRIER_SIZE / 2;
 const RIDGE_HALF = BARRIER_HALF - 6;
 
@@ -200,6 +204,25 @@ function drawBarrier(ctx: CanvasRenderingContext2D, barrier: DOMRect) {
   ctx.restore();
 }
 
+function disc(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  fill: string,
+) {
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
+function drawMine(ctx: CanvasRenderingContext2D, mine: Mine) {
+  disc(ctx, mine.x, mine.y, MINE_RADIUS, MINE_RIM_COLOR);
+  disc(ctx, mine.x, mine.y, MINE_RADIUS - 2, MINE_BODY_COLOR);
+  disc(ctx, mine.x, mine.y, 2, MINE_CENTER_COLOR);
+}
+
 function markPath(ctx: CanvasRenderingContext2D, mark: Mark) {
   const ax = (mark.cos * TREAD_WIDTH) / 2;
   const ay = (mark.sin * TREAD_WIDTH) / 2;
@@ -273,6 +296,7 @@ export function drawWorld(
   ctx.clearRect(0, 0, world.width, world.height);
   drawMarks(ctx, world.marks, now);
   world.barriers.forEach((barrier) => drawBarrier(ctx, barrier));
+  world.mines.forEach((mine) => drawMine(ctx, mine));
   world.tanks.forEach((tank) => drawTank(ctx, tank));
   world.shells.forEach((shell) => drawShell(ctx, shell));
   world.explosions.forEach((explosion) => drawExplosion(ctx, explosion, now));

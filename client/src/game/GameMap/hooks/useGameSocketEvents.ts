@@ -30,7 +30,7 @@ import { getFortifyPath } from '../../logic/fortify';
 import type { SeaTerritory, Territory } from '../../mapData';
 import type { ReplayData } from '../../replay/replay';
 import { useReplay } from '../../replay/replay';
-import { insetPolygon, tileLineWidth } from '../../tiles/tileGeometry';
+import { insetPolygon, TILE_LINE_WIDTH } from '../../tiles/tileGeometry';
 import type { DrawCanvasParams } from '../draw/drawCanvas';
 import { drawGameMapCanvas } from '../draw/drawCanvas';
 import type { Point } from '../helpers';
@@ -166,7 +166,7 @@ export function useGameSocketEvents({
       if (tile)
         startUnlockAnimation({
           ...tile,
-          points: insetPolygon(tile.points, tileLineWidth(lockedTiles) / 2),
+          points: insetPolygon(tile.points, TILE_LINE_WIDTH / 2),
         });
       explode(tileId);
     },

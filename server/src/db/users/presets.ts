@@ -64,7 +64,7 @@ export const DEFAULT_PRESETS: (Preset | null)[] = Array.from(
 
 const gameSettingsSchema = preferencesSchemaProperties.gameSettings;
 
-const earthSchema = {
+export const earthSchema = {
   bsonType: ['object', 'null'],
   required: [
     'frame',
@@ -184,7 +184,7 @@ function sanitizeFocus(raw: unknown): EarthFocus | null {
   };
 }
 
-function sanitizeEarth(raw: unknown): EarthRecipe | null {
+export function sanitizeEarth(raw: unknown): EarthRecipe | null {
   if (!raw || typeof raw !== 'object') return null;
   if (JSON.stringify(raw).length > MAX_EARTH_RECIPE_LENGTH) return null;
   const r = raw as Record<string, unknown>;

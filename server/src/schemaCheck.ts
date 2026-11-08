@@ -246,6 +246,7 @@ function replayContentId(doc: Document): string {
       switches: doc.switches,
       switchedLinks: doc.switchedLinks,
       lockedTiles: doc.lockedTiles,
+      fixedTiles: doc.fixedTiles,
       imageMime: doc.imageMime,
       borderColors: doc.borderColors,
       territoryNames: doc.territoryNames,

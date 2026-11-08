@@ -9,6 +9,8 @@ import {
   getMapById,
   listGames,
   listPlayerMapNames,
+  MAP_ASPECTS,
+  MAP_KINDS,
   MAP_SIZES,
   searchUsers,
   TILE_SHAPES,
@@ -55,7 +57,10 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     typeof q.mapName === 'string' && q.mapName.trim()
       ? q.mapName.trim().slice(0, 100)
       : undefined;
-  const generatedMap = q.generatedMap === '1' ? true : undefined;
+  const mapKind =
+    typeof q.mapKind === 'string' && MAP_KINDS.includes(q.mapKind)
+      ? q.mapKind
+      : undefined;
   const mapGenerationSize =
     typeof q.mapGenerationSize === 'string' &&
     MAP_SIZES.includes(q.mapGenerationSize)
@@ -76,11 +81,18 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     TILE_SHAPES.includes(q.mapGenerationTile)
       ? q.mapGenerationTile
       : undefined;
+  const mapGenerationAspect =
+    typeof q.mapGenerationAspect === 'string' &&
+    MAP_ASPECTS.includes(q.mapGenerationAspect)
+      ? q.mapGenerationAspect
+      : undefined;
   const mapGenerationSeas = optBoolParam(q.mapGenerationSeas);
   const mapGenerationTimed = optBoolParam(q.mapGenerationTimed);
   const mapGenerationDirectional = optBoolParam(q.mapGenerationDirectional);
   const mapGenerationSwitched = optBoolParam(q.mapGenerationSwitched);
   const mapGenerationUnlockable = optBoolParam(q.mapGenerationUnlockable);
+  const mapGenerationMountains = optBoolParam(q.mapGenerationMountains);
+  const mapGenerationRivers = optBoolParam(q.mapGenerationRivers);
   const outcome =
     q.outcome === 'won' || q.outcome === 'draw' || q.outcome === 'lost'
       ? q.outcome
@@ -103,16 +115,19 @@ gameHistoryRouter.get('/games/history', (req, res) => {
     endedTo: timeParam(q.endedTo),
     durationMin: optIntParam(q.durationMin, 0, 100000),
     durationMax: optIntParam(q.durationMax, 0, 100000),
-    generatedMap,
+    mapKind,
     mapGenerationSize,
     mapGenerationType,
     mapGenerationFill,
     mapGenerationTile,
+    mapGenerationAspect,
     mapGenerationSeas,
     mapGenerationTimed,
     mapGenerationDirectional,
     mapGenerationSwitched,
     mapGenerationUnlockable,
+    mapGenerationMountains,
+    mapGenerationRivers,
     playersMin: optIntParam(q.playersMin, 1, 100),
     playersMax: optIntParam(q.playersMax, 1, 100),
     minRounds: optIntParam(q.roundsMin, 0, 100000),
@@ -162,7 +177,7 @@ publicGamesRouter.get('/replay-maps/:id', (req, res) => {
   getMapById(req.params.id)
     .then((map) =>
       map
-        ? res.json(map)
+        ? res.json({ ...map, fixedTiles: undefined })
         : res.status(404).json({ ok: false, error: 'not found' }),
     )
     .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
@@ -212,7 +227,6 @@ gameHistoryRouter.post('/games/replay/:id/save-map', (req, res) => {
         }
         return createPlayerMap(session.userId, {
           ...map,
-          fixedTiles: [],
           name: uniqueMapName(map.name, names),
           image: Buffer.from(map.image, 'base64'),
           generation: generation.generation,

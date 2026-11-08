@@ -153,6 +153,8 @@ export function viewGameStateFor(
     winnerIds: aliasesOf(game, s.winnerIds),
     earlyWin: s.earlyWin,
     drawVoteIds: aliasesOf(game, s.drawVoteIds),
+    abortOpen: s.abortOpen,
+    abortVoteIds: aliasesOf(game, s.abortVoteIds),
     draw:
       s.draw === null
         ? null

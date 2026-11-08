@@ -3,7 +3,12 @@ import { playersById } from '../session/players';
 import { AllianceViewState, Game, Player } from '../types';
 import { anonymousName, isAnonymous, isAnonymousPlaying } from './anonymous';
 import { attackFullPath } from './combat/seaBridge';
-import { activeDrawVoteIds, capitalStandoffRoundsLeft } from './draw';
+import {
+  abortOpen,
+  activeAbortVoteIds,
+  activeDrawVoteIds,
+  capitalStandoffRoundsLeft,
+} from './draw';
 import { supremacyTerritoriesToWin } from './mechanics';
 import { nextSetBaseValues, upcomingSetValues } from './progression/cards';
 import { emptyPlayerStats, luckScore } from './progression/stats';
@@ -102,6 +107,13 @@ export function gameSummary(game: Game) {
           rivers: game.generatedMap.rivers,
         }
       : null,
+    mapKind: game.generatedMap
+      ? ('generated' as const)
+      : game.playerMap
+        ? game.playerMap.id === null
+          ? ('earth' as const)
+          : ('library' as const)
+        : null,
     hostName: isAnonymousPlaying(game)
       ? 'Anonymous'
       : isAnonymous(game)
@@ -366,6 +378,8 @@ export function gameState(game: Game) {
     winnerIds: game.winnerIds,
     earlyWin: game.earlyWin,
     drawVoteIds: activeDrawVoteIds(game),
+    abortOpen: abortOpen(game),
+    abortVoteIds: activeAbortVoteIds(game),
     draw: game.draw,
     nextSetBaseValues: nextSetBaseValues(game, turnPlayerId),
     upcomingSetValues: upcomingSetValues(game, turnPlayerId, 3),

@@ -1,3 +1,4 @@
+import { BORDER_THICKNESS } from 'engine';
 import type { LockedTile } from '../../lib/types';
 
 type Point = [number, number];
@@ -11,23 +12,7 @@ export function polygonPath(points: Point[]): Path2D {
   return path;
 }
 
-function polygonArea(points: Point[]): number {
-  let twiceArea = 0;
-  points.forEach(([x, y], k) => {
-    const [nx, ny] = points[(k + 1) % points.length];
-    twiceArea += x * ny - nx * y;
-  });
-  return Math.abs(twiceArea) / 2;
-}
-
-export function tileLineWidth(lockedTiles: { points: Point[] }[]): number {
-  if (lockedTiles.length === 0) return 0;
-  const meanArea =
-    lockedTiles.reduce((sum, tile) => sum + polygonArea(tile.points), 0) /
-    lockedTiles.length;
-  const radius = Math.round(Math.sqrt(meanArea) * 0.025);
-  return 2 * Math.min(5, Math.max(2, radius)) + 2;
-}
+export const TILE_LINE_WIDTH = BORDER_THICKNESS;
 
 function inwardEdges(points: Point[]) {
   const cx = points.reduce((sum, p) => sum + p[0], 0) / points.length;

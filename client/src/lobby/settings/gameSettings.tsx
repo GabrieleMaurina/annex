@@ -20,8 +20,10 @@ import {
 import type { ReactNode } from 'react';
 import {
   GAME_MODES,
+  type GameMeta,
   type GameMode,
   type GameSettingsInput,
+  type GameState,
 } from '../../lib/types';
 import {
   BOT_DIFFICULTIES,
@@ -592,6 +594,48 @@ export const SEAT_REQUIREMENT_KEYS = [
   'minAccountAge',
   'minReputation',
 ];
+
+export function isSettingVisible(
+  def: GameSettingDef,
+  gameMode: GameMode,
+  offline: boolean,
+): boolean {
+  return (
+    (!def.modes || def.modes.includes(gameMode)) &&
+    !(
+      (def.key === 'anonymous' || SEAT_REQUIREMENT_KEYS.includes(def.key)) &&
+      offline
+    )
+  );
+}
+
+export function isSettingChanged(
+  def: GameSettingDef,
+  game: GameState,
+): boolean {
+  return (
+    String(game[def.key as keyof GameState]) !==
+    String(defaultSettingValue(def.key, game.gameMode))
+  );
+}
+
+export function changedSettingCount(
+  game: GameState,
+  gameMeta: GameMeta | null,
+  offline: boolean,
+): number {
+  const changed = GAME_SETTINGS.filter(
+    (def) =>
+      isSettingVisible(def, game.gameMode, offline) &&
+      isSettingChanged(def, game),
+  ).length;
+  return (
+    changed +
+    (game.gameMode !== DEFAULT_GAME_SETTINGS.gameMode ? 1 : 0) +
+    (gameMeta?.visibility === 'private' ? 1 : 0) +
+    (gameMeta?.hasPassword ? 1 : 0)
+  );
+}
 
 const KEEP_CURRENT_KEYS = [
   'anonymous',

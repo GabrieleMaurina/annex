@@ -6,6 +6,7 @@ import {
   type EditorTile,
   type TileKind,
   type TilePoint,
+  type TileSlot,
 } from './editorTiles';
 
 const OVERLAP_TOLERANCE = 0.5;
@@ -74,6 +75,19 @@ export function tileAt(tiles: EditorTile[], p: TilePoint): number | null {
   return null;
 }
 
+function signedArea(points: TilePoint[]): number {
+  return points.reduce((sum, [x, y], i) => {
+    const [nx, ny] = points[(i + 1) % points.length];
+    return sum + x * ny - nx * y;
+  }, 0);
+}
+
+function woundLike(points: TilePoint[], model: TilePoint[]): TilePoint[] {
+  return signedArea(points) * signedArea(model) < 0
+    ? [...points].reverse()
+    : points;
+}
+
 function snapSlots(
   others: TilePoint[][],
   base: TilePoint[],
@@ -81,7 +95,8 @@ function snapSlots(
   reach: number,
 ): TilePoint[][] {
   const slots: TilePoint[][] = [];
-  others.forEach((points) => {
+  others.forEach((other) => {
+    const points = woundLike(other, base);
     const [cx, cy] = tileCenter(points);
     if (
       Math.hypot(cx - at[0], cy - at[1]) >
@@ -113,14 +128,14 @@ function snapSlots(
 
 export function placeTile(
   tiles: EditorTile[],
-  guides: TilePoint[][],
+  guides: TileSlot[],
   base: TilePoint[],
   at: TilePoint,
   skip: number | null,
 ): TilePoint[] {
   const others = [
     ...tiles.flatMap((tile, k) => (k === skip ? [] : [tile.points])),
-    ...guides,
+    ...guides.map((guide) => guide.points),
   ];
   const reach = tileRadius(base) * SNAP_REACH;
   const distance = (points: TilePoint[]) => {

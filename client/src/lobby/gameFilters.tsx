@@ -1,4 +1,9 @@
-import { TILE_SHAPE_VALUES, tileShapeLabel } from 'engine';
+import {
+  aspectLabel,
+  MAP_ASPECT_VALUES,
+  TILE_SHAPE_VALUES,
+  tileShapeLabel,
+} from 'engine';
 import { Button } from 'react-bootstrap';
 import { Field } from '../common/inputs/filterControls';
 import SearchMultiSelect, {
@@ -20,6 +25,8 @@ import {
   DIRECTIONAL_CONNECTIONS_HELP,
   MAP_GEN_HELP,
   MAP_HELP,
+  MOUNTAINS_HELP,
+  RIVERS_HELP,
   SEAS_HELP,
   SWITCHES_HELP,
   TIMED_CONNECTIONS_HELP,
@@ -85,42 +92,54 @@ export function MapFilterFields({
   type,
   fill,
   tile,
+  aspect,
   seas,
   timed,
   directional,
   switched,
   unlockable,
+  mountains,
+  rivers,
   onMapName,
   onSize,
   onType,
   onFill,
   onTile,
+  onAspect,
   onSeas,
   onTimed,
   onDirectional,
   onSwitched,
   onUnlockable,
+  onMountains,
+  onRivers,
 }: {
   mapName: string;
   size: string;
   type: string;
   fill: string;
   tile: string;
+  aspect: string;
   seas: string;
   timed: string;
   directional: string;
   switched: string;
   unlockable: string;
+  mountains: string;
+  rivers: string;
   onMapName: (v: string) => void;
   onSize: (v: string) => void;
   onType: (v: string) => void;
   onFill: (v: string) => void;
   onTile: (v: string) => void;
+  onAspect: (v: string) => void;
   onSeas: (v: string) => void;
   onTimed: (v: string) => void;
   onDirectional: (v: string) => void;
   onSwitched: (v: string) => void;
   onUnlockable: (v: string) => void;
+  onMountains: (v: string) => void;
+  onRivers: (v: string) => void;
 }) {
   return (
     <>
@@ -135,16 +154,21 @@ export function MapFilterFields({
               onType('');
               onFill('');
               onTile('');
+              onAspect('');
               onSeas('');
               onTimed('');
               onDirectional('');
               onSwitched('');
               onUnlockable('');
+              onMountains('');
+              onRivers('');
             }
           }}
         >
           <option value="">Any</option>
           <option value={GENERATED_MAP_VALUE}>Generated</option>
+          <option value="library">Library</option>
+          <option value="earth">Earth</option>
         </Selector>
       </Field>
       {mapName === GENERATED_MAP_VALUE && (
@@ -166,6 +190,10 @@ export function MapFilterFields({
               onChange={(value) => {
                 onType(value);
                 if (value !== 'tile') onTile('');
+                if (value && value !== 'terrain') {
+                  onMountains('');
+                  onRivers('');
+                }
               }}
             >
               <option value="">Any</option>
@@ -194,6 +222,16 @@ export function MapFilterFields({
               {MAP_GENERATION_FILLS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
+                </option>
+              ))}
+            </Selector>
+          </Field>
+          <Field label="Generated map shape" help={MAP_GEN_HELP}>
+            <Selector size="sm" value={aspect} onChange={onAspect}>
+              <option value="">Any</option>
+              {MAP_ASPECT_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {aspectLabel(value)}
                 </option>
               ))}
             </Selector>
@@ -239,6 +277,24 @@ export function MapFilterFields({
               <option value="no">No</option>
             </Selector>
           </Field>
+          {(type === '' || type === 'terrain') && (
+            <>
+              <Field label="Generated map mountains" help={MOUNTAINS_HELP}>
+                <Selector size="sm" value={mountains} onChange={onMountains}>
+                  <option value="">Any</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </Selector>
+              </Field>
+              <Field label="Generated map rivers" help={RIVERS_HELP}>
+                <Selector size="sm" value={rivers} onChange={onRivers}>
+                  <option value="">Any</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </Selector>
+              </Field>
+            </>
+          )}
         </>
       )}
     </>

@@ -20,6 +20,8 @@ import type {
   GamesPage,
   GamesQuery,
   GenerationType,
+  MapAspect,
+  MapKind,
   MapSize,
   TileShape,
 } from '../lib/types';
@@ -84,11 +86,14 @@ interface Filters {
   mapGenerationType: string;
   mapGenerationFill: string;
   mapGenerationTile: string;
+  mapGenerationAspect: string;
   mapGenerationSeas: string;
   mapGenerationTimed: string;
   mapGenerationDirectional: string;
   mapGenerationSwitched: string;
   mapGenerationUnlockable: string;
+  mapGenerationMountains: string;
+  mapGenerationRivers: string;
   settings: Record<string, string>;
   hasBots: '' | 'yes' | 'no';
   outcome: '' | 'won' | 'draw' | 'lost';
@@ -201,11 +206,14 @@ function Games({ account }: Props) {
   const [mapGenerationType, setMapGenerationType] = useState('');
   const [mapGenerationFill, setMapGenerationFill] = useState('');
   const [mapGenerationTile, setMapGenerationTile] = useState('');
+  const [mapGenerationAspect, setMapGenerationAspect] = useState('');
   const [mapGenerationSeas, setMapGenerationSeas] = useState('');
   const [mapGenerationTimed, setMapGenerationTimed] = useState('');
   const [mapGenerationDirectional, setMapGenerationDirectional] = useState('');
   const [mapGenerationSwitched, setMapGenerationSwitched] = useState('');
   const [mapGenerationUnlockable, setMapGenerationUnlockable] = useState('');
+  const [mapGenerationMountains, setMapGenerationMountains] = useState('');
+  const [mapGenerationRivers, setMapGenerationRivers] = useState('');
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [hasBots, setHasBots] = useState<'' | 'yes' | 'no'>('');
   const [outcome, setOutcome] = useState<'' | 'won' | 'draw' | 'lost'>('');
@@ -237,11 +245,14 @@ function Games({ account }: Props) {
     mapGenerationType,
     mapGenerationFill,
     mapGenerationTile,
+    mapGenerationAspect,
     mapGenerationSeas,
     mapGenerationTimed,
     mapGenerationDirectional,
     mapGenerationSwitched,
     mapGenerationUnlockable,
+    mapGenerationMountains,
+    mapGenerationRivers,
     settings,
     hasBots,
     outcome,
@@ -253,6 +264,36 @@ function Games({ account }: Props) {
     positionMax,
   };
   const filterKey = JSON.stringify(filters);
+  const activeFilterCount =
+    [
+      selectedPlayers.length > 0,
+      name.trim() !== '',
+      mode,
+      startedFrom,
+      startedTo,
+      endedFrom,
+      endedTo,
+      durationMin !== DURATION_MIN || durationMax !== DURATION_MAX,
+      mapName,
+      mapGenerationSize,
+      mapGenerationType,
+      mapGenerationFill,
+      mapGenerationTile,
+      mapGenerationAspect,
+      mapGenerationSeas,
+      mapGenerationTimed,
+      mapGenerationDirectional,
+      mapGenerationSwitched,
+      mapGenerationUnlockable,
+      mapGenerationMountains,
+      mapGenerationRivers,
+      hasBots,
+      outcome,
+      roundsMin !== ROUNDS_MIN || roundsMax !== ROUNDS_MAX,
+      playersMin !== PLAYERS_MIN || playersMax !== PLAYERS_MAX,
+      !!account &&
+        (positionMin !== POSITION_MIN || positionMax !== POSITION_MAX),
+    ].filter(Boolean).length + Object.values(settings).filter(Boolean).length;
 
   useEffect(() => {
     let stale = false;
@@ -280,8 +321,7 @@ function Games({ account }: Props) {
       endedTo: endedTo ? new Date(endedTo).getTime() : undefined,
       durationMin: durationNarrowed ? durationMin : undefined,
       durationMax: durationNarrowed ? durationMax : undefined,
-      mapName: mapName && mapName !== GENERATED_MAP_VALUE ? mapName : undefined,
-      generatedMap: mapName === GENERATED_MAP_VALUE ? true : undefined,
+      mapKind: (mapName as MapKind) || undefined,
       mapGenerationSize:
         mapName === GENERATED_MAP_VALUE
           ? (mapGenerationSize as MapSize) || undefined
@@ -297,6 +337,10 @@ function Games({ account }: Props) {
       mapGenerationTile:
         mapName === GENERATED_MAP_VALUE
           ? (mapGenerationTile as TileShape) || undefined
+          : undefined,
+      mapGenerationAspect:
+        mapName === GENERATED_MAP_VALUE
+          ? (mapGenerationAspect as MapAspect) || undefined
           : undefined,
       mapGenerationSeas:
         mapName === GENERATED_MAP_VALUE && mapGenerationSeas
@@ -317,6 +361,14 @@ function Games({ account }: Props) {
       mapGenerationUnlockable:
         mapName === GENERATED_MAP_VALUE && mapGenerationUnlockable
           ? mapGenerationUnlockable === 'yes'
+          : undefined,
+      mapGenerationMountains:
+        mapName === GENERATED_MAP_VALUE && mapGenerationMountains
+          ? mapGenerationMountains === 'yes'
+          : undefined,
+      mapGenerationRivers:
+        mapName === GENERATED_MAP_VALUE && mapGenerationRivers
+          ? mapGenerationRivers === 'yes'
           : undefined,
       settings,
       hasBots: hasBots === 'yes' ? true : hasBots === 'no' ? false : undefined,
@@ -368,11 +420,14 @@ function Games({ account }: Props) {
     setMapGenerationType('');
     setMapGenerationFill('');
     setMapGenerationTile('');
+    setMapGenerationAspect('');
     setMapGenerationSeas('');
     setMapGenerationTimed('');
     setMapGenerationDirectional('');
     setMapGenerationSwitched('');
     setMapGenerationUnlockable('');
+    setMapGenerationMountains('');
+    setMapGenerationRivers('');
     setSettings({});
     setHasBots('');
     setOutcome('');
@@ -413,7 +468,7 @@ function Games({ account }: Props) {
           {account && <option value="worstPosition">Worst position</option>}
         </SortSelect>
 
-        <FilterDetails onClear={clearFilters}>
+        <FilterDetails count={activeFilterCount} onClear={clearFilters}>
           <div className={`${SECTION_CLASS} p-2 mb-2`}>
             <div className="fw-bold text-muted small mb-2">Match</div>
             <div className="row g-3">
@@ -543,21 +598,27 @@ function Games({ account }: Props) {
                 type={mapGenerationType}
                 fill={mapGenerationFill}
                 tile={mapGenerationTile}
+                aspect={mapGenerationAspect}
                 seas={mapGenerationSeas}
                 timed={mapGenerationTimed}
                 directional={mapGenerationDirectional}
                 switched={mapGenerationSwitched}
                 unlockable={mapGenerationUnlockable}
+                mountains={mapGenerationMountains}
+                rivers={mapGenerationRivers}
                 onMapName={resetPage(setMapName)}
                 onSize={resetPage(setMapGenerationSize)}
                 onType={resetPage(setMapGenerationType)}
                 onFill={resetPage(setMapGenerationFill)}
                 onTile={resetPage(setMapGenerationTile)}
+                onAspect={resetPage(setMapGenerationAspect)}
                 onSeas={resetPage(setMapGenerationSeas)}
                 onTimed={resetPage(setMapGenerationTimed)}
                 onDirectional={resetPage(setMapGenerationDirectional)}
                 onSwitched={resetPage(setMapGenerationSwitched)}
                 onUnlockable={resetPage(setMapGenerationUnlockable)}
+                onMountains={resetPage(setMapGenerationMountains)}
+                onRivers={resetPage(setMapGenerationRivers)}
               />
             </div>
           </div>

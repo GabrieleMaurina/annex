@@ -6,7 +6,7 @@ import {
   type OsmGeneratedMap,
 } from 'engine';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Form, Modal, ProgressBar } from 'react-bootstrap';
+import { Button, Form, Modal } from 'react-bootstrap';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
 import PanelHeader from '../../../common/PanelHeader';
 import Help from '../../../common/tooltips/Help';
@@ -20,6 +20,7 @@ import {
   TIMED_CONNECTIONS_HELP,
 } from '../../../lobby/settings/settingsHelp';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../../ui/containers/panelStyle';
+import GenerationProgress from '../../../ui/feedback/GenerationProgress';
 import Selector from '../../../ui/forms/Selector';
 import {
   drawnArea,
@@ -106,23 +107,34 @@ interface EarthSession {
   view: EarthView;
 }
 
-const session: EarthSession = {
-  size: 'medium',
-  aspect: 'wide',
-  detail: 'auto',
-  seas: false,
-  timed: false,
-  directional: false,
-  switched: false,
-  mountains: false,
-  rivers: false,
-  greenAreas: false,
-  place: null,
-  placeBounds: null,
-  extras: [],
-  collapsed: false,
-  view: { center: [10, 30], zoom: 1.5, bearing: 0 },
-};
+const sessions: Record<string, EarthSession> = {};
+
+function newSession(): EarthSession {
+  return {
+    size: 'medium',
+    aspect: 'wide',
+    detail: 'auto',
+    seas: false,
+    timed: false,
+    directional: false,
+    switched: false,
+    mountains: false,
+    rivers: false,
+    greenAreas: false,
+    place: null,
+    placeBounds: null,
+    extras: [],
+    collapsed: false,
+    view: { center: [10, 30], zoom: 1.5, bearing: 0 },
+  };
+}
+
+function sessionFor(key: string): EarthSession {
+  if (!sessions[key]) {
+    sessions[key] = newSession();
+  }
+  return sessions[key];
+}
 
 const CREDITS =
   'Map data © OpenStreetMap contributors · © OpenMapTiles · OpenFreeMap · Elevation: Mapzen Terrain Tiles (SRTM, GMTED, ETOPO1 and others) · Search data: GeoNames (CC BY 4.0), Natural Earth';
@@ -134,6 +146,7 @@ const ERROR_TEXT: Record<string, string> = {
 };
 
 interface Props {
+  sessionKey?: string;
   onHide: () => void;
   onGenerated: (map: OsmGeneratedMap, recipe: EarthRecipe) => void;
 }
@@ -240,7 +253,8 @@ function progressText(progress: WorldMapProgress | null): string {
   return `Downloading map data ${progress.done}/${progress.total}`;
 }
 
-function WorldMapModal({ onHide, onGenerated }: Props) {
+function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
+  const session = sessionFor(sessionKey);
   const [size, setSize] = useState(session.size);
   const [aspect, setAspect] = useState(session.aspect);
   const [detail, setDetail] = useState(session.detail);
@@ -479,7 +493,7 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
           initialView={session.view}
           onFrameChange={setFrame}
           onViewChange={(view) => {
-            session.view = view;
+            sessionFor(sessionKey).view = view;
           }}
           onError={setMapError}
         />
@@ -651,17 +665,15 @@ function WorldMapModal({ onHide, onGenerated }: Props) {
               />
             </div>
             {job && (
-              <>
-                <span className="small">{progressText(progress)}</span>
-                <ProgressBar
-                  now={
-                    progress?.stage === 'download'
-                      ? (progress.done / Math.max(1, progress.total)) * 100
-                      : 100
-                  }
-                  animated={progress?.stage !== 'download'}
-                />
-              </>
+              <GenerationProgress
+                text={progressText(progress)}
+                now={
+                  progress?.stage === 'download'
+                    ? (progress.done / Math.max(1, progress.total)) * 100
+                    : 100
+                }
+                animated={progress?.stage !== 'download'}
+              />
             )}
             {(error || mapError || problem) && (
               <div

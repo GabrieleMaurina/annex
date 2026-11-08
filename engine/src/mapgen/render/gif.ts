@@ -2,6 +2,7 @@ import { SpecialEdge } from '../pipeline/connectivity';
 import { GridPoint } from '../pipeline/placement';
 import { hexToRgb, paletteGif } from './encodeGif';
 import {
+  BORDER_THICKNESS,
   continentEarthTone,
   GREEN_LAND_COLOR,
   MOUNTAIN_RANGE_COLOR,
@@ -11,13 +12,14 @@ import {
   PEAK_SNOW_SHADE_COLOR,
   RIVER_BORDER_COLOR,
   SEA_COLOR,
+  SPECIAL_EDGE_RADIUS,
   TERRITORY_STROKE_COLOR,
   VOID_LAND_COLOR,
 } from './palette';
 import { drawPeaks } from './peaks';
 import { repairSplitTerritories } from './splitRepair';
 
-const BORDER_RADIUS = 2;
+const BORDER_RADIUS = (BORDER_THICKNESS - 1) / 2;
 const DASH_ON = 8;
 const DASH_PERIOD = 22;
 
@@ -198,10 +200,10 @@ function rasterize(
       const py = Math.round(from.gy + (dy * s) / steps);
       if (px < 0 || px >= width || py < 0 || py >= height) continue;
       if (labelGrid[py * width + px] >= 0) continue;
-      for (let ey = -r; ey <= r; ey++) {
+      for (let ey = -SPECIAL_EDGE_RADIUS; ey <= SPECIAL_EDGE_RADIUS; ey++) {
         const ny = py + ey;
         if (ny < 0 || ny >= height) continue;
-        for (let ex = -r; ex <= r; ex++) {
+        for (let ex = -SPECIAL_EDGE_RADIUS; ex <= SPECIAL_EDGE_RADIUS; ex++) {
           const nx = px + ex;
           if (nx >= 0 && nx < width) indices[ny * width + nx] = stroke;
         }

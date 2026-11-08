@@ -1,4 +1,4 @@
-import { generatedTileGrid, tileSide } from 'engine';
+import { continentTileTone, generatedTileGrid, tileSide } from 'engine';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
@@ -13,8 +13,8 @@ import {
   withoutVertex,
   type EditorTerritory as Territory,
 } from '../model/editorTypes';
+import { wallColorsOf } from '../model/wallColors';
 import {
-  drawTileOverlay,
   eraseTiles,
   fillableTiles,
   maskTiles,
@@ -24,7 +24,10 @@ import {
   type TileDecor,
 } from './drawTiles';
 import {
+  alignToTiles,
   placeTileTerritory,
+  remapTiles,
+  seamEdges,
   TILE_FILL,
   tileCenter,
   tileNeighbors,
@@ -32,11 +35,21 @@ import {
   type EditorTile,
   type TileKind,
   type TilePoint,
+  type TileSlot,
 } from './editorTiles';
-import { centeredTile, placeTile } from './snapTiles';
+import { centeredTile, contains, placeTile } from './snapTiles';
 import { tileFreeCheck } from './tileFree';
+import {
+  changedRegion,
+  drawGhostLayer,
+  drawTileLayer,
+  type Drawn,
+  type Rect,
+  type TileLook,
+} from './tileRaster';
 
 const FOLLOW_TOLERANCE = 0.5;
+const NO_TERRITORIES: Territory[] = [];
 
 function tileSideOf(
   sample: TilePoint[] | undefined,
@@ -60,7 +73,7 @@ interface Options {
   generation: GenerateMapInput | null;
   continentId: number;
   continentCount: number;
-  borderColor: string;
+  borderColors: string[];
   onChange: () => void;
   selectedTerritoryId: number | null;
   selectTerritory: (id: number | null) => void;
@@ -82,18 +95,22 @@ export function useTiles({
   generation,
   continentId,
   continentCount,
-  borderColor,
+  borderColors,
   onChange,
   selectedTerritoryId,
   selectTerritory,
 }: Options) {
   const { width, height } = paintSurface;
+  const wallColor = wallColorsOf(generation, borderColors)[0];
+  const generated = generation?.type === 'tile';
   const [list, setList] = useState<EditorTile[]>([]);
   const [kind, setKind] = useState<TileKind>('squares');
   const [unlockable, setDefaultUnlockable] = useState(false);
   const [vertexDrag, setVertexDrag] = useState<VertexDrag | null>(null);
   const [overlay] = useState(() => document.createElement('canvas'));
-  const decorRef = useRef<TileDecor | null>(null);
+  const [ghostOverlay] = useState(() => document.createElement('canvas'));
+  const drawnRef = useRef<Drawn | null>(null);
+  const ghostRectRef = useRef<Rect | null>(null);
   const unbakeRef = useRef(false);
   const pointerRef = useRef<{ clientX: number; clientY: number } | null>(null);
 
@@ -105,11 +122,37 @@ export function useTiles({
     return () => window.removeEventListener('pointermove', onMove);
   }, []);
 
-  const guides = useMemo(() => {
+  const grid = useMemo(() => {
     if (generation?.type !== 'tile') return [];
-    const grid = generatedTileGrid(generation);
-    return grid.width === width && grid.height === height ? grid.tiles : [];
+    const laid = generatedTileGrid(generation);
+    return laid.width === width && laid.height === height ? laid.tiles : [];
   }, [generation, width, height]);
+
+  const guides = useMemo<TileSlot[]>(() => {
+    const owned = new Set(list.map((tile) => tile.territoryId));
+    const bare = territories.filter(
+      (t) => !t.isSea && !t.locked && !t.switch && !owned.has(t.id),
+    );
+    return grid.flatMap((points) => {
+      const vertex = bare.find((t) => contains(points, [t.x, t.y]));
+      return vertex ? [{ points, territoryId: vertex.id }] : [];
+    });
+  }, [grid, list, territories]);
+  const slots = [...list, ...guides];
+
+  const styled = generated && borderColors.length >= 3;
+  const seamSource = styled ? territories : NO_TERRITORIES;
+  const look = useMemo<TileLook>(
+    () =>
+      styled
+        ? {
+            wall: borderColors[1],
+            seam: borderColors[2],
+            seams: seamEdges(list, seamSource),
+          }
+        : { wall: wallColor, seam: wallColor, seams: [] },
+    [styled, borderColors, wallColor, list, seamSource],
+  );
 
   const [prevTerritories, setPrevTerritories] = useState(territories);
   if (territories !== prevTerritories) {
@@ -132,7 +175,7 @@ export function useTiles({
       if (vertexDrag?.index !== k)
         setVertexDrag({
           index: k,
-          before: tileNeighbors(list, tile.points, k),
+          before: tileNeighbors(slots, tile.points, k),
         });
       next.push({
         ...tile,
@@ -154,57 +197,59 @@ export function useTiles({
   );
   const selected = found >= 0 ? found : null;
   useEffect(() => {
-    drawTileOverlay(
+    const next = { tiles: list, selected, look, width, height };
+    const drew = drawTileLayer(
       overlay,
       width,
       height,
       list,
       selected,
-      decorRef.current,
-      borderColor,
+      look,
+      changedRegion(drawnRef.current, next),
     );
-    onChange();
-  }, [overlay, width, height, list, selected, borderColor, onChange]);
+    drawnRef.current = next;
+    if (drew) onChange();
+  }, [overlay, width, height, list, selected, look, onChange]);
 
   const untiled = useMemo(() => {
     const ids = new Set(list.map((tile) => tile.territoryId));
     return territories.filter((t) => !ids.has(t.id) && !t.switch);
   }, [territories, list]);
 
-  const finishRef = useRef(() => {});
-  useEffect(() => {
-    finishRef.current = () => {
-      if (!vertexDrag) return;
-      setVertexDrag(null);
-      move(vertexDrag.index, list[vertexDrag.index].points, vertexDrag.before);
-    };
-  });
-
-  useEffect(() => {
-    if (!vertexDrag) return;
-    const onUp = () => finishRef.current();
-    window.addEventListener('pointerup', onUp);
-    return () => window.removeEventListener('pointerup', onUp);
-  }, [vertexDrag]);
-
   function redraw(decor: TileDecor | null) {
-    decorRef.current = decor;
-    drawTileOverlay(overlay, width, height, list, selected, decor, borderColor);
+    ghostRectRef.current = drawGhostLayer(
+      ghostOverlay,
+      width,
+      height,
+      decor?.ghosts ?? [],
+      look.wall,
+      ghostRectRef.current,
+    );
     onChange();
   }
 
   const load = useCallback(
-    (lockedTiles: LockedTile[], fixedTiles: FixedTile[]) => {
-      setList(toEditorTiles(lockedTiles, fixedTiles));
-      unbakeRef.current = fixedTiles.length > 0;
+    (
+      map: { lockedTiles: LockedTile[]; fixedTiles: FixedTile[] },
+      idMap?: Map<number, number>,
+    ) => {
+      const built = toEditorTiles(map.lockedTiles, map.fixedTiles);
+      const loaded = idMap ? remapTiles(built, idMap) : built;
+      setList(loaded);
+      setTerritories((current) => alignToTiles(current, loaded));
+      unbakeRef.current = loaded.some((tile) => !tile.unlockable);
     },
-    [],
+    [setTerritories],
   );
 
   function unbake(surface: ImageData) {
     if (!unbakeRef.current) return;
     unbakeRef.current = false;
-    eraseTiles(surface, list);
+    eraseTiles(surface, list, generated);
+  }
+
+  function neighborsOf(index: number): number[] {
+    return tileNeighbors(slots, list[index].points, index);
   }
 
   function select(index: number | null) {
@@ -232,9 +277,14 @@ export function useTiles({
         id,
         center,
         [],
-        tileNeighbors([...list, ...added], points, null),
+        tileNeighbors([...list, ...added, ...guides], points, null),
       );
-      added.push({ points, unlockable, territoryId: id, color: TILE_FILL });
+      added.push({
+        points,
+        unlockable,
+        territoryId: id,
+        color: styled ? continentTileTone(continentId) : TILE_FILL,
+      });
     }
     setTerritories(nextTerritories);
     setList([...list, ...added]);
@@ -247,13 +297,14 @@ export function useTiles({
       list,
       territories.filter((t) => !owned.has(t.id)),
       paintSurface,
+      generated,
     );
   }
 
   function move(
     index: number,
     points: TilePoint[],
-    before = tileNeighbors(list, list[index].points, index),
+    before = neighborsOf(index),
   ) {
     const tile = list[index];
     replace(index, { ...tile, points });
@@ -263,10 +314,26 @@ export function useTiles({
         tile.territoryId,
         tileCenter(points),
         before,
-        tileNeighbors(list, points, index),
+        tileNeighbors(slots, points, index),
       ),
     );
   }
+
+  const finishRef = useRef(() => {});
+  useEffect(() => {
+    finishRef.current = () => {
+      if (!vertexDrag) return;
+      setVertexDrag(null);
+      move(vertexDrag.index, list[vertexDrag.index].points, vertexDrag.before);
+    };
+  });
+
+  useEffect(() => {
+    if (!vertexDrag) return;
+    const onUp = () => finishRef.current();
+    window.addEventListener('pointerup', onUp);
+    return () => window.removeEventListener('pointerup', onUp);
+  }, [vertexDrag]);
 
   function drag(index: number, points: TilePoint[]) {
     const tile = list[index];
@@ -312,8 +379,11 @@ export function useTiles({
     load,
     unbake,
     overlay,
-    side: tileSideOf(guides[0] ?? list[0]?.points, width, height),
+    ghostOverlay,
+    side: tileSideOf(list[0]?.points ?? guides[0]?.points, width, height),
     guides,
+    look,
+    neighborsOf,
     selected,
     select,
     pointerRef,
@@ -325,19 +395,19 @@ export function useTiles({
     remove,
     toggle,
     untiled,
-    masked: (surface: ImageData) => maskTiles(surface, list, borderColor),
-    regions: (surface: ImageData) => regionTiles(surface, list, borderColor),
+    masked: (surface: ImageData) => maskTiles(surface, list, wallColor),
+    regions: (surface: ImageData) => regionTiles(surface, list, wallColor),
     paintMasked: (surface: ImageData, paint: (s: ImageData) => boolean) =>
       paintAroundTiles(
         surface,
-        maskTiles(surface, list, borderColor),
+        maskTiles(surface, list, wallColor),
         list,
         paint,
       )?.changed ?? false,
     paintFilled: (surface: ImageData, paint: (s: ImageData) => boolean) => {
       const result = paintAroundTiles(
         surface,
-        fillableTiles(surface, list, borderColor),
+        fillableTiles(surface, list, wallColor),
         list,
         paint,
       );

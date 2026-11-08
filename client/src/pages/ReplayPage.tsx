@@ -169,6 +169,8 @@ function buildGameState(
     winnerIds: doc.winnerIds,
     earlyWin: false,
     drawVoteIds: [],
+    abortOpen: false,
+    abortVoteIds: [],
     draw: doc.draw ?? null,
     finalRanking: [...doc.results]
       .sort((a, b) => a.rank - b.rank)

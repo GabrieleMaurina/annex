@@ -74,9 +74,11 @@ function GameEndResults({
       <div className="text-center mb-4 mt-4 mt-sm-0">
         <h1 className="mb-4">
           {draw
-            ? draw.reason === 'agreed'
-              ? 'Draw'
-              : 'Stalemate'
+            ? draw.reason === 'aborted'
+              ? 'Aborted'
+              : draw.reason === 'agreed'
+                ? 'Draw'
+                : 'Stalemate'
             : won
               ? 'You Win!'
               : 'Game Over'}
@@ -89,7 +91,9 @@ function GameEndResults({
                 ? `Stalemate reached after ${formatDuration(game.maxDuration * 60000)}. Nobody wins.`
                 : draw.reason === 'capital standoff'
                   ? `Stalemate reached after ${game.capitalStandoff} rounds without a capital changing hands. Nobody wins.`
-                  : 'All remaining players agreed to a draw. Nobody wins.'}
+                  : draw.reason === 'aborted'
+                    ? 'Every human player asked to abort the game. Nobody wins.'
+                    : 'All remaining players agreed to a draw. Nobody wins.'}
           </p>
         ) : isTeamDeathmatch ? (
           <p className="fs-4 mb-0">

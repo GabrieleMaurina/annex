@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button, Dropdown, Form, Modal } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
+import { CountBadge } from '../../common/inputs/filterControls';
 import Help from '../../common/tooltips/Help';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
@@ -29,9 +30,11 @@ import MapGenerationModal, {
 } from '../../maps/MapGenerationModal';
 import SpinningGears from '../../ui/buttons/SpinningGears';
 import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
+import GenerationProgress from '../../ui/feedback/GenerationProgress';
 import Selector from '../../ui/forms/Selector';
 import MapLikeButton from '../MapLikeButton';
 import {
+  changedSettingCount,
   DEFAULT_GAME_SETTINGS,
   randomGameSettings,
   titleCase,
@@ -236,6 +239,12 @@ function SettingsPanel({
     </Dropdown.Toggle>
   );
 
+  const changedCount = changedSettingCount(
+    game,
+    gameMeta,
+    connector.isOffline(),
+  );
+
   const settingsBody = (
     <>
       <GameSettingsFields
@@ -437,6 +446,7 @@ function SettingsPanel({
             )}
             {game.playerMapId && <MapLikeButton mapId={game.playerMapId} />}
           </div>
+          {mapPending && <GenerationProgress text="Generating map…" />}
         </div>
 
         {headerActions && <div className="ms-auto">{headerActions}</div>}
@@ -446,6 +456,7 @@ function SettingsPanel({
         <MapGenerationModal
           ref={mapGenRef}
           show={mapGenOpen}
+          sessionKey="lobby"
           onHide={() => setMapGenOpen(false)}
           initial={getGameSettings().mapGeneration}
           current={getGeneratedMapData(game.mapName) ?? null}
@@ -479,6 +490,7 @@ function SettingsPanel({
         <EarthErrorBoundary onClose={() => setEarthOpen(false)}>
           <Suspense fallback={null}>
             <WorldMapModal
+              sessionKey="lobby"
               onHide={() => setEarthOpen(false)}
               onGenerated={(map, recipe) => {
                 setEarthUploading(true);
@@ -499,6 +511,14 @@ function SettingsPanel({
         >
           <summary className="collapsible-summary">
             Settings
+            <CountBadge
+              count={changedCount}
+              tip={
+                changedCount === 1
+                  ? '1 setting is not default'
+                  : `${changedCount} settings are not default`
+              }
+            />
             {settingsOpen && (
               <div className="position-absolute top-50 end-0 translate-middle-y me-2 d-flex gap-2">
                 {settingsActions}

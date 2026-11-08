@@ -17,6 +17,8 @@ import {
   FILL_VALUES,
   GAME_ENUMS,
   GENERATION_TYPES,
+  MAP_ASPECTS,
+  MAP_KINDS,
   MAP_SIZES,
   TILE_SHAPES,
 } from '../../db';
@@ -84,7 +86,10 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
         typeof q.mapName === 'string' && q.mapName.trim()
           ? q.mapName.trim().slice(0, 100)
           : undefined,
-      generatedMap: q.generatedMap === '1' ? true : undefined,
+      mapKind:
+        typeof q.mapKind === 'string' && MAP_KINDS.includes(q.mapKind)
+          ? q.mapKind
+          : undefined,
       mapGenerationSize:
         typeof q.mapGenerationSize === 'string' &&
         MAP_SIZES.includes(q.mapGenerationSize)
@@ -105,11 +110,18 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
         TILE_SHAPES.includes(q.mapGenerationTile)
           ? q.mapGenerationTile
           : undefined,
+      mapGenerationAspect:
+        typeof q.mapGenerationAspect === 'string' &&
+        MAP_ASPECTS.includes(q.mapGenerationAspect)
+          ? q.mapGenerationAspect
+          : undefined,
       mapGenerationSeas: optBoolParam(q.mapGenerationSeas),
       mapGenerationTimed: optBoolParam(q.mapGenerationTimed),
       mapGenerationDirectional: optBoolParam(q.mapGenerationDirectional),
       mapGenerationSwitched: optBoolParam(q.mapGenerationSwitched),
       mapGenerationUnlockable: optBoolParam(q.mapGenerationUnlockable),
+      mapGenerationMountains: optBoolParam(q.mapGenerationMountains),
+      mapGenerationRivers: optBoolParam(q.mapGenerationRivers),
       playersMin: optIntParam(q.playersMin, 1, 100),
       playersMax: optIntParam(q.playersMax, 1, 100),
       minRounds: optIntParam(q.roundsMin, 0, 100000),

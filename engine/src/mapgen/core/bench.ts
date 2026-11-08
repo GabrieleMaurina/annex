@@ -10,10 +10,16 @@ export function stopBench(): Record<string, number> {
   return result;
 }
 
+let stepListener: (() => void) | null = null;
+
+export function setStepListener(listener: (() => void) | null): void {
+  stepListener = listener;
+}
+
 export function timeStep<T>(label: string, fn: () => T): T {
-  if (!sink) return fn();
-  const start = performance.now();
+  const start = sink ? performance.now() : 0;
   const result = fn();
-  sink[label] = (sink[label] ?? 0) + (performance.now() - start);
+  if (sink) sink[label] = (sink[label] ?? 0) + (performance.now() - start);
+  stepListener?.();
   return result;
 }

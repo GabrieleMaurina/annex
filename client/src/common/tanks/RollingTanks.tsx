@@ -1,18 +1,30 @@
 import { useEffect, useRef } from 'react';
+import { isTypingTarget } from '../../game/GameMap/helpers';
+import { PLAYER_COLORS } from '../../lib/palette';
 import { drawWorld } from './draw';
 import { isBackground, scanObstacles } from './obstacles';
 import { updateWorld } from './tank';
 import type { TankKind } from './world';
 import {
   BARRIER_SIZE,
+  MINE_SPACING,
   blast,
   clampTanks,
   createWorld,
-  extendBarrierLine,
+  extendLine,
   spawnBarrier,
+  spawnMine,
   spawnTank,
 } from './world';
 
+type LineKind = 'barrier' | 'mine';
+
+const LINES = {
+  barrier: { size: BARRIER_SIZE, spawn: spawnBarrier },
+  mine: { size: MINE_SPACING, spawn: spawnMine },
+};
+
+const DIGIT_KEY = /^(?:Digit|Numpad)(\d)$/;
 const MAX_DT = 0.1;
 const SCAN_MS = 200;
 const RESCAN_MS = 1000;
@@ -64,9 +76,17 @@ function RollingTanks({ spawnInitial }: Props) {
       moved: boolean;
       onBackground: boolean;
     } | null = null;
-    let barrierHold = false;
-    let barrierAnchor: { x: number; y: number } | null = null;
+    let lineHold: LineKind | null = null;
+    let lineAnchor: { x: number; y: number } | null = null;
     let ctrlDown = false;
+    let lastMouse: PointerEvent | null = null;
+    let keyHold: {
+      code: string;
+      color: string;
+      next: number;
+      checked: PointerEvent;
+      onBackground: boolean;
+    } | null = null;
 
     function tankKind(ctrl: boolean): TankKind {
       return ctrl ? 'gun' : 'cannon';
@@ -76,8 +96,68 @@ function RollingTanks({ spawnInitial }: Props) {
       ctrlDown = event.ctrlKey;
     }
 
-    function addTank(x: number, y: number, kind: TankKind) {
-      spawnTank(world, x, y, kind);
+    function onKeyDown(event: KeyboardEvent) {
+      onKey(event);
+      const digit = DIGIT_KEY.exec(event.code)?.[1];
+      if (digit === undefined) return;
+      if (keyHold?.code === event.code) {
+        if (event.ctrlKey) event.preventDefault();
+        return;
+      }
+      if (
+        !lastMouse ||
+        event.repeat ||
+        event.metaKey ||
+        event.altKey ||
+        isTypingTarget(event.target) ||
+        !isBackground(lastMouse, canvas)
+      ) {
+        return;
+      }
+      if (event.ctrlKey) event.preventDefault();
+      keyHold = {
+        code: event.code,
+        color: PLAYER_COLORS[(Number(digit) + 9) % 10],
+        next: performance.now() + HOLD_DELAY_MS,
+        checked: lastMouse,
+        onBackground: true,
+      };
+      addTank(
+        lastMouse.clientX,
+        lastMouse.clientY,
+        tankKind(event.ctrlKey),
+        keyHold.color,
+      );
+    }
+
+    function onKeyUp(event: KeyboardEvent) {
+      onKey(event);
+      if (keyHold?.code === event.code) keyHold = null;
+    }
+
+    function onBlur() {
+      endHold();
+      keyHold = null;
+    }
+
+    function repeatKeyHold(now: number) {
+      if (!keyHold || !lastMouse || now < keyHold.next) return;
+      keyHold.next = now + REPEAT_MS;
+      if (keyHold.checked !== lastMouse) {
+        keyHold.checked = lastMouse;
+        keyHold.onBackground = isBackground(lastMouse, canvas);
+      }
+      if (!keyHold.onBackground) return;
+      addTank(
+        lastMouse.clientX,
+        lastMouse.clientY,
+        tankKind(ctrlDown),
+        keyHold.color,
+      );
+    }
+
+    function addTank(x: number, y: number, kind: TankKind, color?: string) {
+      spawnTank(world, x, y, kind, color);
       clampTanks(world);
     }
 
@@ -99,30 +179,36 @@ function RollingTanks({ spawnInitial }: Props) {
               onBackground: true,
             }
           : null;
-      barrierHold = pressedOnBackground && mouse && event.button === 1;
-      barrierAnchor = null;
-      if (barrierHold) layBarriers(event);
+      lineHold =
+        pressedOnBackground && mouse && event.button === 1
+          ? event.ctrlKey
+            ? 'mine'
+            : 'barrier'
+          : null;
+      lineAnchor = null;
+      if (lineHold) layLine(event, lineHold);
     }
 
-    function layBarriers(event: PointerEvent) {
+    function layLine(event: PointerEvent, kind: LineKind) {
       const { clientX: x, clientY: y } = event;
+      const { size, spawn } = LINES[kind];
       if (
-        barrierAnchor &&
-        Math.max(Math.abs(x - barrierAnchor.x), Math.abs(y - barrierAnchor.y)) <
-          BARRIER_SIZE
+        lineAnchor &&
+        Math.max(Math.abs(x - lineAnchor.x), Math.abs(y - lineAnchor.y)) < size
       ) {
         return;
       }
-      if (!isBackground(event, canvas)) barrierAnchor = null;
-      else if (barrierAnchor) {
-        barrierAnchor = extendBarrierLine(world, barrierAnchor, x, y);
-      } else barrierAnchor = spawnBarrier(world, x, y);
+      if (!isBackground(event, canvas)) lineAnchor = null;
+      else if (lineAnchor) {
+        lineAnchor = extendLine(world, lineAnchor, x, y, size, spawn);
+      } else lineAnchor = spawn(world, x, y);
       redraw = true;
     }
 
     function onPointerMove(event: PointerEvent) {
       ctrlDown = event.ctrlKey;
-      if (barrierHold) layBarriers(event);
+      if (event.pointerType === 'mouse') lastMouse = event;
+      if (lineHold) layLine(event, lineHold);
       if (!hold) return;
       hold.event = event;
       hold.moved = true;
@@ -135,7 +221,7 @@ function RollingTanks({ spawnInitial }: Props) {
 
     function endHold() {
       hold = null;
-      barrierHold = false;
+      lineHold = null;
     }
 
     function repeatHold(now: number) {
@@ -209,6 +295,7 @@ function RollingTanks({ spawnInitial }: Props) {
         dirty = false;
       }
       repeatHold(now);
+      repeatKeyHold(now);
       updateWorld(world, dt, now);
       const visible =
         busy || world.marks.length > 0 || world.explosions.length > 0;
@@ -231,9 +318,9 @@ function RollingTanks({ spawnInitial }: Props) {
     window.addEventListener('pointermove', onPointerMove, true);
     window.addEventListener('pointerup', onPointerUp, true);
     window.addEventListener('pointercancel', endHold, true);
-    window.addEventListener('blur', endHold);
-    window.addEventListener('keydown', onKey, true);
-    window.addEventListener('keyup', onKey, true);
+    window.addEventListener('blur', onBlur);
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
     window.addEventListener('mousedown', onMouseDown, true);
     window.addEventListener('click', onClick);
     window.addEventListener('contextmenu', onContextMenu);
@@ -250,9 +337,9 @@ function RollingTanks({ spawnInitial }: Props) {
       window.removeEventListener('pointermove', onPointerMove, true);
       window.removeEventListener('pointerup', onPointerUp, true);
       window.removeEventListener('pointercancel', endHold, true);
-      window.removeEventListener('blur', endHold);
-      window.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('keyup', onKey, true);
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('keyup', onKeyUp, true);
       window.removeEventListener('mousedown', onMouseDown, true);
       window.removeEventListener('click', onClick);
       window.removeEventListener('contextmenu', onContextMenu);

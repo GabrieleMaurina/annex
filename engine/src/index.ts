@@ -42,6 +42,7 @@ import {
   requestResults,
   requestState,
   surrender,
+  toggleAbort,
   toggleDraw,
 } from './lifecycle/misc';
 import { updateSettings } from './lifecycle/settings';
@@ -215,6 +216,8 @@ export {
 export { tileSide } from './mapgen/pipeline/tile/tileMap';
 export { tileVariants } from './mapgen/pipeline/tile/tiling';
 export {
+  BORDER_THICKNESS,
+  continentTileTone,
   DEFAULT_BORDER_COLORS,
   DUNGEON_SEAM_COLOR,
   DUNGEON_TONES,
@@ -325,6 +328,7 @@ export function createEngine(
     surrender,
     endGame,
     toggleDraw,
+    toggleAbort,
     sendChat,
 
     generateMap,

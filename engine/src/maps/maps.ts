@@ -8,6 +8,7 @@ import {
 import { DEFAULT_BORDER_COLORS } from '../mapgen/render/palette';
 import {
   DirectionalConnection,
+  FixedTile,
   Game,
   GameMap,
   LockedTile,
@@ -172,6 +173,7 @@ export interface ArchivedMap {
   switches: MapSwitch[];
   switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   imageSrc: string | null;
   borderColors: string[];
   territoryNames: string[] | null;
@@ -219,6 +221,7 @@ export function getArchivedMap(game: Game): ArchivedMap {
     switches,
     switchedLinks,
     lockedTiles,
+    fixedTiles: generated?.fixedTiles ?? [],
     imageSrc: generated?.imageSrc ?? game.playerMap?.imageSrc ?? null,
     borderColors:
       generated?.borderColors ??

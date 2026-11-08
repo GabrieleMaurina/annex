@@ -223,16 +223,18 @@ const callbacks: EngineCallbacks = {
     const gameId = startedGameId(payload.gameName);
     const elos = handleGameEnded(payload);
     endReportableGame(payload.gameName);
-    handleGameEndedReputation(payload, participants, gameId);
-    persistFinishedGame(engine, payload, participants, elos, gameId)
-      .then(() => {
-        if (storedGameId(payload.gameName)) resendResults(payload.gameName);
-        return elos.then((gameElos) =>
-          grantGameAchievements(payload, participants, gameElos),
-        );
-      })
-      .catch(console.error);
-    elos.then(() => resendResults(payload.gameName));
+    if (!payload.aborted) {
+      handleGameEndedReputation(payload, participants, gameId);
+      persistFinishedGame(engine, payload, participants, elos, gameId)
+        .then(() => {
+          if (storedGameId(payload.gameName)) resendResults(payload.gameName);
+          return elos.then((gameElos) =>
+            grantGameAchievements(payload, participants, gameElos),
+          );
+        })
+        .catch(console.error);
+      elos.then(() => resendResults(payload.gameName));
+    }
     for (const [viewerId, name] of gameNameByPlayerId)
       if (name === payload.gameName) emitBlockedPlayers(io, viewerId);
   },

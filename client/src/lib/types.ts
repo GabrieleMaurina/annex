@@ -56,6 +56,8 @@ export interface IdentifyResult {
   name: string;
 }
 
+export type MapKind = 'generated' | 'library' | 'earth';
+
 export interface HomeFilters {
   players: { id: string; label: string }[];
   name: string;
@@ -65,11 +67,14 @@ export interface HomeFilters {
   mapGenerationType: string;
   mapGenerationFill: string;
   mapGenerationTile: string;
+  mapGenerationAspect: string;
   mapGenerationSeas: string;
   mapGenerationTimed: string;
   mapGenerationDirectional: string;
   mapGenerationSwitched: string;
   mapGenerationUnlockable: string;
+  mapGenerationMountains: string;
+  mapGenerationRivers: string;
   playersMin: number;
   playersMax: number;
   roundsMin: number;
@@ -205,7 +210,7 @@ export type Alliances = 'off' | 'on';
 export type Anonymous = 'off' | 'on';
 export type Nukes = 'off' | 'on';
 export type DrawReason =
-  'max rounds' | 'max duration' | 'capital standoff' | 'agreed';
+  'max rounds' | 'max duration' | 'capital standoff' | 'agreed' | 'aborted';
 
 export interface GameDraw {
   reason: DrawReason;
@@ -392,6 +397,8 @@ export interface GameState {
   winnerIds: number[];
   earlyWin: boolean;
   drawVoteIds: number[];
+  abortOpen: boolean;
+  abortVoteIds: number[];
   draw: GameDraw | null;
   finalRanking: number[];
   nextSetBaseValues: Record<SetKind, number>;
@@ -790,16 +797,19 @@ export interface GamesQuery {
   endedTo?: number;
   durationMin?: number;
   durationMax?: number;
-  generatedMap?: boolean;
+  mapKind?: MapKind;
   mapGenerationSize?: MapSize;
   mapGenerationType?: GenerationType;
   mapGenerationFill?: Fill;
   mapGenerationTile?: TileShape;
+  mapGenerationAspect?: MapAspect;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
   mapGenerationDirectional?: boolean;
   mapGenerationSwitched?: boolean;
   mapGenerationUnlockable?: boolean;
+  mapGenerationMountains?: boolean;
+  mapGenerationRivers?: boolean;
   minRounds?: number;
   maxRounds?: number;
   hasBots?: boolean;
@@ -832,16 +842,19 @@ export interface HomeGamesQuery {
   name?: string;
   mode?: string;
   mapName?: string;
-  generatedMap?: boolean;
+  mapKind?: MapKind;
   mapGenerationSize?: MapSize;
   mapGenerationType?: GenerationType;
   mapGenerationFill?: Fill;
   mapGenerationTile?: TileShape;
+  mapGenerationAspect?: MapAspect;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
   mapGenerationDirectional?: boolean;
   mapGenerationSwitched?: boolean;
   mapGenerationUnlockable?: boolean;
+  mapGenerationMountains?: boolean;
+  mapGenerationRivers?: boolean;
   playersMin?: number;
   playersMax?: number;
   minRounds?: number;

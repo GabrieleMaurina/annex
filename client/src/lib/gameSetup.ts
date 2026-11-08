@@ -6,7 +6,11 @@ import {
 } from 'engine';
 import { connector } from '../connector';
 import { publish } from '../connector/inbound';
-import { rememberEarthRecipe, type Preset } from '../lobby/settings/presets';
+import {
+  loadEarthRecipe,
+  rememberEarthRecipe,
+  type Preset,
+} from '../lobby/settings/presets';
 import { readSurface, surfaceToDataUrl } from '../maps/editor/paint/surface';
 import type { EarthRecipe } from '../maps/editor/world/generateWorldMap';
 import { randomMapInput } from '../maps/randomMap';
@@ -95,6 +99,20 @@ function regenerateEarthMap(
     });
 }
 
+function applyOrRandom(res: Ack): void {
+  if (res.ok) apply(res);
+  else generateMap(randomMapInput());
+}
+
+function applySavedEarthMap(): void {
+  loadEarthRecipe()
+    .then((recipe) => {
+      if (recipe) regenerateEarthMap(recipe, applyOrRandom);
+      else generateMap(randomMapInput());
+    })
+    .catch(() => generateMap(randomMapInput()));
+}
+
 function applySavedMap(
   mapGeneration: GenerateMapInput | undefined,
   playerMapId: string | null | undefined,
@@ -102,10 +120,9 @@ function applySavedMap(
   if (mapGeneration) {
     generateMap(mapGeneration);
   } else if (playerMapId) {
-    connector.selectPlayerMap({ mapId: playerMapId }, (res) => {
-      if (res.ok) apply(res);
-      else generateMap(randomMapInput());
-    });
+    connector.selectPlayerMap({ mapId: playerMapId }, applyOrRandom);
+  } else if (isLoggedIn()) {
+    applySavedEarthMap();
   } else {
     generateMap(randomMapInput());
   }

@@ -138,6 +138,7 @@ export function runGame(
     switches: [],
     switchedLinks: [],
     lockedTiles: [],
+    fixedTiles: [],
     imageSrc: '',
     borderColors: [],
     seed: mapName,

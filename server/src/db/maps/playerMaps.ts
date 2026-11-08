@@ -11,7 +11,7 @@ import {
   TimedConnection,
 } from 'engine';
 import { Binary, ObjectId } from 'mongodb';
-import { BORDER_COLOR_PATTERN, MapGeneration } from '../../validate';
+import { MapGeneration } from '../../validate';
 import { CollectionSpec, getCollection } from '../mongo';
 import { getUsernamesByIds, searchUsers } from '../users/users';
 import { likedMapIds } from './mapLikes';
@@ -84,19 +84,6 @@ const schema = {
         _id: {},
         authorId: { bsonType: 'objectId' },
         ...MAP_PROPERTIES,
-        fixedTiles: {
-          bsonType: 'array',
-          items: {
-            bsonType: 'object',
-            required: ['id', 'points', 'color'],
-            additionalProperties: false,
-            properties: {
-              id: { bsonType: 'number' },
-              points: MAP_PROPERTIES.lockedTiles.items.properties.points,
-              color: { bsonType: 'string', pattern: BORDER_COLOR_PATTERN },
-            },
-          },
-        },
         territoryCount: { bsonType: 'number' },
         continentCount: { bsonType: 'number' },
         likeCount: { bsonType: 'number' },

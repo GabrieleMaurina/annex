@@ -2,7 +2,7 @@ import { SpecialEdge } from '../pipeline/connectivity';
 import { CellLayer } from '../pipeline/maze/cellLayer';
 import { GridPoint } from '../pipeline/placement';
 import { PaletteBuilder, paletteGif } from './encodeGif';
-import { SEA_COLOR } from './palette';
+import { BORDER_THICKNESS, SEA_COLOR, SPECIAL_EDGE_RADIUS } from './palette';
 
 export interface MazePalette {
   voidColor: string;
@@ -16,7 +16,6 @@ export interface MazePalette {
   seaColor?: string;
 }
 
-const SPECIAL_EDGE_RADIUS = 2;
 const DASH_ON = 8;
 const DASH_PERIOD = 22;
 
@@ -147,9 +146,7 @@ export function computeWallSeamMasks(
   let navigablePixels = 0;
   for (let i = 0; i < size; i++) if (pixelCell[i] >= 0) navigablePixels++;
   const cellPx = Math.sqrt(navigablePixels / Math.max(1, cellCount));
-  const seamRadius = palette.uniformLines
-    ? clamp(Math.round(cellPx * 0.025), 2, 5)
-    : clamp(Math.round(cellPx * 0.035), 1, 5);
+  const seamRadius = (BORDER_THICKNESS - 1) / 2;
   const wallRadius = palette.uniformLines
     ? seamRadius
     : clamp(Math.round(cellPx * 0.13), 4, 16);
@@ -164,6 +161,10 @@ export function computeWallSeamMasks(
   const wall = new Uint8Array(size);
   const seam = new Uint8Array(size);
   const doorCore = new Uint8Array(size);
+  const markWall = (i: number, j: number) => {
+    wall[i] = 1;
+    if (!palette.uniformLines) wall[j] = 1;
+  };
   const consider = (i: number, j: number) => {
     const ca = pixelCell[i];
     const cb = pixelCell[j];
@@ -178,15 +179,12 @@ export function computeWallSeamMasks(
           continentOf &&
           continentOf[labelGrid[i]] !== continentOf[labelGrid[j]]
         ) {
-          wall[i] = 1;
-          wall[j] = 1;
+          markWall(i, j);
         } else if (labelGrid[i] !== labelGrid[j]) {
           seam[i] = 1;
-          seam[j] = 1;
         }
       } else {
-        wall[i] = 1;
-        wall[j] = 1;
+        markWall(i, j);
       }
       return;
     }
@@ -203,17 +201,13 @@ export function computeWallSeamMasks(
           (!doors || (doors.get(landId)?.has(seaId) ?? false)));
       if (isDoor) {
         seam[i] = 1;
-        seam[j] = 1;
         doorCore[i] = 1;
-        doorCore[j] = 1;
       } else {
-        wall[i] = 1;
-        wall[j] = 1;
+        markWall(i, j);
       }
       return;
     }
-    wall[i] = 1;
-    wall[j] = 1;
+    markWall(i, j);
   };
 
   for (let y = 0; y < height; y++) {

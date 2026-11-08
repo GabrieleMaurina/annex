@@ -6,8 +6,10 @@ import {
 import { updateUserSettings } from '../../auth/auth';
 import {
   addUserTutorial,
+  getUserEarth,
   getUserPresets,
   getUserTutorials,
+  saveUserEarth,
   saveUserPresets,
   takeNewAchievements,
 } from '../../db';
@@ -54,6 +56,29 @@ settingsRouter.post('/presets', (req, res) => {
   }
   saveUserPresets(session.userId, req.body.presets)
     .then((presets) => res.json({ ok: true, presets }))
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+settingsRouter.get('/earth', (_req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  getUserEarth(session.userId)
+    .then((earth) => res.json({ ok: true, earth }))
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+settingsRouter.post('/earth', (req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  const earth = isObject(req.body) ? req.body.earth : undefined;
+  saveUserEarth(session.userId, earth)
+    .then(() => res.json({ ok: true }))
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });
 

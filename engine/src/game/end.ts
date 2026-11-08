@@ -4,6 +4,7 @@ import { playersById } from '../session/players';
 import { broadcastGameResults, broadcastHomeGames } from '../session/store';
 import { AchievementFacts, DrawReason, Game } from '../types';
 import {
+  abortAgreed,
   drawAgreed,
   drawCandidateIds,
   isLobbyBot,
@@ -70,6 +71,7 @@ function emitGameEnded(game: Game): void {
   callbacks.onGameEnded?.({
     gameName: game.name,
     gameMode: game.gameMode,
+    aborted: game.draw?.reason === 'aborted',
     ranking,
   });
 }
@@ -182,6 +184,7 @@ export function checkGameEnd(game: Game, turnAlreadyEnded = false): void {
 
   const winnerIds = resolveWinnerIds(game);
   if (winnerIds !== null) finishGame(game, winnerIds, turnAlreadyEnded);
+  else if (abortAgreed(game)) finishDraw(game, 'aborted', turnAlreadyEnded);
   else if (drawAgreed(game)) finishDraw(game, 'agreed', turnAlreadyEnded);
 }
 

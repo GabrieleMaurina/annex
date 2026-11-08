@@ -6,7 +6,6 @@ import type { Viewport } from '../paint/PaintLayer';
 import {
   TILE_FILL,
   tileCenter,
-  tileNeighbors,
   type EditorTile,
   type TilePoint,
 } from './editorTiles';
@@ -197,7 +196,7 @@ function TileLayer({
     dragRef.current = {
       index: hit,
       grab: [p[0] - cx, p[1] - cy],
-      before: tileNeighbors(tiles.list, tiles.list[hit].points, hit),
+      before: tiles.neighborsOf(hit),
       points: null,
     };
   }

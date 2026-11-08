@@ -185,6 +185,7 @@ function baseGame(name: string): Game {
     capitalStandoff: 50,
     drawOfferRound: 500,
     drawVoteIds: new Set(),
+    abortVoteIds: new Set(),
     draw: null,
     capitalOwnersKey: null,
     capitalStandoffStart: null,

@@ -16,7 +16,7 @@ import { formatTroops } from '../../logic/formatTroops';
 import { getFortifyPath } from '../../logic/fortify';
 import { getSailPath } from '../../logic/sail';
 import type { SeaTerritory, Territory } from '../../mapData';
-import { insetPolygon, tileLineWidth } from '../../tiles/tileGeometry';
+import { insetPolygon, TILE_LINE_WIDTH } from '../../tiles/tileGeometry';
 
 interface EffectWorld {
   game: GameState;
@@ -198,7 +198,7 @@ export function startFrameEffects(
       if (tile)
         startUnlockAnimation({
           ...tile,
-          points: insetPolygon(tile.points, tileLineWidth(lockedTiles) / 2),
+          points: insetPolygon(tile.points, TILE_LINE_WIDTH / 2),
         });
       explode(animation.tileId);
       troopChange('remove', {

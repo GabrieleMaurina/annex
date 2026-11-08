@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { GenerateMapInput } from '../../../lib/types';
 import type { EditorTerritory } from '../model/editorTypes';
+import { wallColorsOf } from '../model/wallColors';
 import { maskTiles } from '../tiles/drawTiles';
 import type { EditorTile } from '../tiles/editorTiles';
 import { DEFAULT_CELL_SCALE, drawTerritoryBorders } from './drawTerritories';
@@ -28,22 +30,24 @@ export function useTerritoryBorders(
   brushSize: number,
   dotted: boolean,
   tiles: EditorTile[],
+  generation: GenerateMapInput | null,
 ): TerritoryBorders {
   const [cellScale, setCellScale] = useState(DEFAULT_CELL_SCALE);
   const [preview, setPreview] = useState(false);
   const [grid, setGrid] = useState<PreviewGrid | null>(null);
+  const walls = useMemo(
+    () => wallColorsOf(generation, borderColors),
+    [generation, borderColors],
+  );
 
   useEffect(() => {
     if (!preview) return;
     const timer = setTimeout(
-      () =>
-        setGrid(
-          previewGrid(maskTiles(surface, tiles, borderColors[0]), borderColors),
-        ),
+      () => setGrid(previewGrid(maskTiles(surface, tiles, walls[0]), walls)),
       GRID_DELAY,
     );
     return () => clearTimeout(timer);
-  }, [preview, surface, paintVersion, borderColors, tiles]);
+  }, [preview, surface, paintVersion, walls, tiles]);
 
   const fittingGrid =
     grid?.imageWidth === surface.width && grid.imageHeight === surface.height
@@ -70,7 +74,7 @@ export function useTerritoryBorders(
       drawTerritoryBorders(
         target,
         territories,
-        borderColors,
+        walls,
         brushSize,
         cellScale,
         dotted,

@@ -47,6 +47,7 @@ export function freshGameRun() {
     arsenal: new Map(),
     antiNukeTerritoryIds: new Set<number>(),
     drawVoteIds: new Set<number>(),
+    abortVoteIds: new Set<number>(),
     draw: null,
     capitalOwnersKey: null,
     capitalStandoffStart: null,

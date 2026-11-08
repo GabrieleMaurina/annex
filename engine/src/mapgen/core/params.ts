@@ -19,6 +19,7 @@ export interface GenerateMapParams {
   aspect: MapAspect;
   mountains: boolean;
   rivers: boolean;
+  reportProgress?: boolean;
 }
 
 export const MAP_SIZE_VALUES: MapSize[] = [

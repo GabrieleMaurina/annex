@@ -98,6 +98,7 @@ export interface GeneratedGameMap {
   switches: MapSwitch[];
   switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   imageSrc: string;
   borderColors: string[];
   seed: string;
@@ -214,7 +215,7 @@ export type Alliances = 'off' | 'on';
 export type Anonymous = 'off' | 'on';
 export type Nukes = 'off' | 'on';
 export type DrawReason =
-  'max rounds' | 'max duration' | 'capital standoff' | 'agreed';
+  'max rounds' | 'max duration' | 'capital standoff' | 'agreed' | 'aborted';
 
 export interface GameDraw {
   reason: DrawReason;
@@ -554,6 +555,7 @@ export interface Game {
   capitalStandoff: number;
   drawOfferRound: number;
   drawVoteIds: Set<number>;
+  abortVoteIds: Set<number>;
   draw: GameDraw | null;
   capitalOwnersKey: string | null;
   capitalStandoffStart: { roundNumber: number; turnPlayerIndex: number } | null;

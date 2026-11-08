@@ -24,6 +24,8 @@ import type {
   HomeFilters,
   HomeGamesPage,
   HomeGamesQuery,
+  MapAspect,
+  MapKind,
   MapSize,
   TileShape,
 } from '../lib/types';
@@ -62,11 +64,14 @@ const DEFAULT_FILTERS: HomeFilters = {
   mapGenerationType: '',
   mapGenerationFill: '',
   mapGenerationTile: '',
+  mapGenerationAspect: '',
   mapGenerationSeas: '',
   mapGenerationTimed: '',
   mapGenerationDirectional: '',
   mapGenerationSwitched: '',
   mapGenerationUnlockable: '',
+  mapGenerationMountains: '',
+  mapGenerationRivers: '',
   playersMin: PLAYERS_MIN,
   playersMax: PLAYERS_MAX,
   roundsMin: ROUNDS_MIN,
@@ -155,6 +160,9 @@ function Home({
   const [mapGenerationTile, setMapGenerationTile] = useState(
     initial.mapGenerationTile,
   );
+  const [mapGenerationAspect, setMapGenerationAspect] = useState(
+    initial.mapGenerationAspect,
+  );
   const [mapGenerationSeas, setMapGenerationSeas] = useState(
     initial.mapGenerationSeas,
   );
@@ -169,6 +177,12 @@ function Home({
   );
   const [mapGenerationUnlockable, setMapGenerationUnlockable] = useState(
     initial.mapGenerationUnlockable,
+  );
+  const [mapGenerationMountains, setMapGenerationMountains] = useState(
+    initial.mapGenerationMountains,
+  );
+  const [mapGenerationRivers, setMapGenerationRivers] = useState(
+    initial.mapGenerationRivers,
   );
   const [playersMin, setPlayersMin] = useState(initial.playersMin);
   const [playersMax, setPlayersMax] = useState(initial.playersMax);
@@ -197,6 +211,33 @@ function Home({
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   const playerIds = selectedPlayers.map((p) => p.id);
+  const playersNarrowed =
+    playersMin !== PLAYERS_MIN || playersMax !== PLAYERS_MAX;
+  const roundsNarrowed = roundsMin !== ROUNDS_MIN || roundsMax !== ROUNDS_MAX;
+  const activeFilterCount =
+    [
+      playerIds.length > 0,
+      name.trim() !== '',
+      mode,
+      mapName,
+      mapGenerationSize,
+      mapGenerationType,
+      mapGenerationFill,
+      mapGenerationTile,
+      mapGenerationAspect,
+      mapGenerationSeas,
+      mapGenerationTimed,
+      mapGenerationDirectional,
+      mapGenerationSwitched,
+      mapGenerationUnlockable,
+      mapGenerationMountains,
+      mapGenerationRivers,
+      playersNarrowed,
+      roundsNarrowed,
+      phase,
+      password,
+      hasBots,
+    ].filter(Boolean).length + Object.values(settings).filter(Boolean).length;
 
   const filterKey = JSON.stringify({
     playerIds,
@@ -207,11 +248,14 @@ function Home({
     mapGenerationType,
     mapGenerationFill,
     mapGenerationTile,
+    mapGenerationAspect,
     mapGenerationSeas,
     mapGenerationTimed,
     mapGenerationDirectional,
     mapGenerationSwitched,
     mapGenerationUnlockable,
+    mapGenerationMountains,
+    mapGenerationRivers,
     playersMin,
     playersMax,
     roundsMin,
@@ -231,11 +275,14 @@ function Home({
     mapGenerationType,
     mapGenerationFill,
     mapGenerationTile,
+    mapGenerationAspect,
     mapGenerationSeas,
     mapGenerationTimed,
     mapGenerationDirectional,
     mapGenerationSwitched,
     mapGenerationUnlockable,
+    mapGenerationMountains,
+    mapGenerationRivers,
     playersMin,
     playersMax,
     roundsMin,
@@ -260,10 +307,6 @@ function Home({
     function refresh() {
       if (document.visibilityState !== 'visible') return;
       const { sort, sortDir } = SORT_TO_QUERY[sortOption];
-      const playersNarrowed =
-        playersMin !== PLAYERS_MIN || playersMax !== PLAYERS_MAX;
-      const roundsNarrowed =
-        roundsMin !== ROUNDS_MIN || roundsMax !== ROUNDS_MAX;
       const generated = mapName === GENERATED_MAP_VALUE;
       const query: HomeGamesQuery = {
         page,
@@ -271,8 +314,7 @@ function Home({
         playerIds: playerIds.length > 0 ? playerIds : undefined,
         name: name.trim() || undefined,
         mode: mode || undefined,
-        mapName: mapName && !generated ? mapName : undefined,
-        generatedMap: generated ? true : undefined,
+        mapKind: (mapName as MapKind) || undefined,
         mapGenerationSize: generated
           ? (mapGenerationSize as MapSize) || undefined
           : undefined,
@@ -284,6 +326,9 @@ function Home({
           : undefined,
         mapGenerationTile: generated
           ? (mapGenerationTile as TileShape) || undefined
+          : undefined,
+        mapGenerationAspect: generated
+          ? (mapGenerationAspect as MapAspect) || undefined
           : undefined,
         mapGenerationSeas:
           generated && mapGenerationSeas
@@ -304,6 +349,14 @@ function Home({
         mapGenerationUnlockable:
           generated && mapGenerationUnlockable
             ? mapGenerationUnlockable === 'yes'
+            : undefined,
+        mapGenerationMountains:
+          generated && mapGenerationMountains
+            ? mapGenerationMountains === 'yes'
+            : undefined,
+        mapGenerationRivers:
+          generated && mapGenerationRivers
+            ? mapGenerationRivers === 'yes'
             : undefined,
         playersMin: playersNarrowed ? playersMin : undefined,
         playersMax: playersNarrowed ? playersMax : undefined,
@@ -378,11 +431,14 @@ function Home({
     setMapGenerationType('');
     setMapGenerationFill('');
     setMapGenerationTile('');
+    setMapGenerationAspect('');
     setMapGenerationSeas('');
     setMapGenerationTimed('');
     setMapGenerationDirectional('');
     setMapGenerationSwitched('');
     setMapGenerationUnlockable('');
+    setMapGenerationMountains('');
+    setMapGenerationRivers('');
     setPlayersMin(PLAYERS_MIN);
     setPlayersMax(PLAYERS_MAX);
     setRoundsMin(ROUNDS_MIN);
@@ -471,7 +527,7 @@ function Home({
             <option value="nameDesc">Name Z-A</option>
           </SortSelect>
 
-          <FilterDetails onClear={clearFilters}>
+          <FilterDetails count={activeFilterCount} onClear={clearFilters}>
             <div className={`${SECTION_CLASS} p-2 mb-2`}>
               <div className="fw-bold text-muted small mb-2">Match</div>
               <div className="row g-3">
@@ -576,21 +632,27 @@ function Home({
                   type={mapGenerationType}
                   fill={mapGenerationFill}
                   tile={mapGenerationTile}
+                  aspect={mapGenerationAspect}
                   seas={mapGenerationSeas}
                   timed={mapGenerationTimed}
                   directional={mapGenerationDirectional}
                   switched={mapGenerationSwitched}
                   unlockable={mapGenerationUnlockable}
+                  mountains={mapGenerationMountains}
+                  rivers={mapGenerationRivers}
                   onMapName={resetPage(setMapName)}
                   onSize={resetPage(setMapGenerationSize)}
                   onType={resetPage(setMapGenerationType)}
                   onFill={resetPage(setMapGenerationFill)}
                   onTile={resetPage(setMapGenerationTile)}
+                  onAspect={resetPage(setMapGenerationAspect)}
                   onSeas={resetPage(setMapGenerationSeas)}
                   onTimed={resetPage(setMapGenerationTimed)}
                   onDirectional={resetPage(setMapGenerationDirectional)}
                   onSwitched={resetPage(setMapGenerationSwitched)}
                   onUnlockable={resetPage(setMapGenerationUnlockable)}
+                  onMountains={resetPage(setMapGenerationMountains)}
+                  onRivers={resetPage(setMapGenerationRivers)}
                 />
               </div>
             </div>

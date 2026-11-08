@@ -85,6 +85,7 @@ export function reconcileGameElos(existing: Set<string>): void {
 export function handleGameEnded(payload: {
   gameName: string;
   gameMode: string;
+  aborted: boolean;
   ranking: {
     playerId: number;
     team: number;
@@ -98,7 +99,8 @@ export function handleGameEnded(payload: {
   gameIdByGame.delete(payload.gameName);
   elosByGame.delete(payload.gameName);
   const noElos = Promise.resolve(new Map<number, GameElo>());
-  if (!participants || participants.size === 0) return noElos;
+  if (!participants || participants.size === 0 || payload.aborted)
+    return noElos;
 
   const ranked = payload.ranking
     .map((entry, rank) => {

@@ -21,8 +21,11 @@ import {
 } from './preferences';
 import {
   DEFAULT_PRESETS,
+  EarthRecipe,
+  earthSchema,
   Preset,
   presetsSchemaProperties,
+  sanitizeEarth,
   sanitizePresets,
 } from './presets';
 
@@ -66,6 +69,7 @@ interface UserDoc {
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
   presets: (Preset | null)[];
+  earth?: EarthRecipe | null;
   tutorials: string[];
   picture: PictureDoc | null;
   bio: string;
@@ -167,6 +171,7 @@ const schema = {
         bio: { bsonType: 'string', maxLength: MAX_BIO_LENGTH },
         ...preferencesSchemaProperties,
         ...presetsSchemaProperties,
+        earth: earthSchema,
         tutorials: {
           bsonType: 'array',
           maxItems: MAX_TUTORIALS,
@@ -215,7 +220,7 @@ export function findUserByUsername(username: string): Promise<User | null> {
   return collection()
     .findOne(
       { username_lower: normalizeUsername(username) },
-      { projection: { picture: 0, presets: 0 } },
+      { projection: { picture: 0, presets: 0, earth: 0 } },
     )
     .then((doc) => (doc ? toUser(doc) : null));
 }
@@ -224,7 +229,7 @@ export function findUserByEmail(email: string): Promise<User | null> {
   return collection()
     .findOne(
       { email_normalized: normalizeEmail(email) },
-      { projection: { picture: 0, presets: 0 } },
+      { projection: { picture: 0, presets: 0, earth: 0 } },
     )
     .then((doc) => (doc ? toUser(doc) : null));
 }
@@ -233,7 +238,7 @@ export function findUserById(id: string): Promise<User | null> {
   return collection()
     .findOne(
       { _id: new ObjectId(id) },
-      { projection: { picture: 0, presets: 0 } },
+      { projection: { picture: 0, presets: 0, earth: 0 } },
     )
     .then((doc) => (doc ? toUser(doc) : null));
 }
@@ -429,6 +434,22 @@ export function getUserPresets(userId: string): Promise<(Preset | null)[]> {
   return collection()
     .findOne({ _id: new ObjectId(userId) }, { projection: { presets: 1 } })
     .then((doc) => sanitizePresets(doc?.presets));
+}
+
+export function getUserEarth(userId: string): Promise<EarthRecipe | null> {
+  return collection()
+    .findOne({ _id: new ObjectId(userId) }, { projection: { earth: 1 } })
+    .then((doc) => sanitizeEarth(doc?.earth));
+}
+
+export function saveUserEarth(
+  userId: string,
+  raw: unknown,
+): Promise<EarthRecipe | null> {
+  const earth = sanitizeEarth(raw);
+  return collection()
+    .updateOne({ _id: new ObjectId(userId) }, { $set: { earth } })
+    .then(() => earth);
 }
 
 export function saveUserPresets(
@@ -716,7 +737,7 @@ export function getPlayerProfile(
   return collection()
     .findOne(
       { username_lower: normalizeUsername(username) },
-      { projection: { presets: 0 } },
+      { projection: { presets: 0, earth: 0 } },
     )
     .then((doc) => {
       if (!doc) return null;

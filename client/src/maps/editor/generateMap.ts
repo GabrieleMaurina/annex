@@ -1,6 +1,7 @@
 import type {
   DirectionalConnection,
   Fill,
+  FixedTile,
   GenerationType,
   LockedTile,
   MapAspect,
@@ -45,14 +46,20 @@ export interface GeneratedEditorMap {
   switches: MapSwitch[];
   switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   imageSrc: string;
   borderColors: string[];
 }
 
 type WorkerReply =
-  { ok: true; result: GeneratedEditorMap } | { ok: false; error: string };
+  | { progress: number }
+  | { ok: true; result: GeneratedEditorMap }
+  | { ok: false; error: string };
 
-export function generateMap(input: GenerateInput): Promise<GeneratedEditorMap> {
+export function generateMap(
+  input: GenerateInput,
+  onProgress: (fraction: number) => void,
+): Promise<GeneratedEditorMap> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(
       new URL(
@@ -62,8 +69,12 @@ export function generateMap(input: GenerateInput): Promise<GeneratedEditorMap> {
       { type: 'module' },
     );
     worker.addEventListener('message', (e: MessageEvent) => {
-      worker.terminate();
       const reply = e.data as WorkerReply;
+      if ('progress' in reply) {
+        onProgress(reply.progress);
+        return;
+      }
+      worker.terminate();
       if (reply.ok) resolve(reply.result);
       else reject(new Error(reply.error));
     });
@@ -71,6 +82,6 @@ export function generateMap(input: GenerateInput): Promise<GeneratedEditorMap> {
       worker.terminate();
       reject(new Error('map generation failed'));
     });
-    worker.postMessage(input);
+    worker.postMessage({ ...input, reportProgress: true });
   });
 }

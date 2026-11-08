@@ -58,6 +58,8 @@ export function createAnimationPathHelpers({
   return { findPosition, territoryPoints, idRunsForPath, arrowRunsForPath };
 }
 
+const readRef = <T>(ref: RefObject<T>): T => ref.current;
+
 export function useAnimationPathHelpers({
   territoriesRef,
   seaTerritoriesRef,
@@ -74,8 +76,8 @@ export function useAnimationPathHelpers({
   return useMemo(
     () =>
       createAnimationPathHelpers({
-        getTerritories: () => territoriesRef.current,
-        getSeaTerritories: () => seaTerritoriesRef.current,
+        getTerritories: () => readRef(territoriesRef),
+        getSeaTerritories: () => readRef(seaTerritoriesRef),
         lockedTiles,
         portalTerritoryIds,
         portalsEnabled,

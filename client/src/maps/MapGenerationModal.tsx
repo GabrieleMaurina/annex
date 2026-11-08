@@ -6,8 +6,8 @@ import {
   tileShapeLabel,
 } from 'engine';
 import type { ReactNode } from 'react';
-import { forwardRef, useImperativeHandle, useState } from 'react';
-import { Button, Form, InputGroup, Modal, Spinner } from 'react-bootstrap';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { Button, Form, InputGroup, Modal } from 'react-bootstrap';
 import Help from '../common/tooltips/Help';
 import Tip from '../common/tooltips/Tip';
 import type {
@@ -28,6 +28,7 @@ import {
   UNLOCKABLE_HELP,
 } from '../lobby/settings/settingsHelp';
 import SpinningGears from '../ui/buttons/SpinningGears';
+import GenerationProgress from '../ui/feedback/GenerationProgress';
 import Selector from '../ui/forms/Selector';
 import { generateMap, type GeneratedEditorMap } from './editor/generateMap';
 import { DEFAULT_MAP_GENERATION, randomSeed } from './randomMap';
@@ -38,6 +39,7 @@ export interface MapGenerationModalHandle {
 
 interface Props {
   show: boolean;
+  sessionKey: string;
   onHide: () => void;
   initial?: GenerateMapInput | null;
   current?: { imageSrc: string; territories: { continentId: number }[] } | null;
@@ -84,67 +86,132 @@ function sameInput(a: GenerateMapInput, b: GenerateMapInput): boolean {
   );
 }
 
+interface FormState {
+  seed: string;
+  type: GenerationType;
+  fill: Fill;
+  size: MapSize;
+  aspect: MapAspect;
+  tile: TileShape;
+  seas: boolean;
+  timed: boolean;
+  directional: boolean;
+  switchedChecked: boolean;
+  unlockableChecked: boolean;
+  mountains: boolean;
+  rivers: boolean;
+}
+
+interface Generated {
+  map: GeneratedEditorMap;
+  input: GenerateMapInput;
+}
+
+interface Session {
+  form: FormState;
+  result: Generated | null;
+  lastGenerated: GenerateMapInput | null;
+}
+
+const sessions: Record<string, Session> = {};
+
+function formOf(initial?: GenerateMapInput | null): FormState {
+  return {
+    seed: initial?.seed ?? randomSeed(),
+    type: initial?.type ?? DEFAULT_MAP_GENERATION.type,
+    fill: initial?.fill ?? DEFAULT_MAP_GENERATION.fill,
+    size: initial?.size ?? DEFAULT_MAP_GENERATION.size,
+    aspect: initial?.aspect ?? DEFAULT_MAP_GENERATION.aspect,
+    tile: initial?.tile ?? DEFAULT_MAP_GENERATION.tile,
+    seas: initial?.seas ?? DEFAULT_MAP_GENERATION.seas,
+    timed: initial?.timed ?? DEFAULT_MAP_GENERATION.timed,
+    directional: initial?.directional ?? DEFAULT_MAP_GENERATION.directional,
+    switchedChecked: initial?.switched ?? DEFAULT_MAP_GENERATION.switched,
+    unlockableChecked: initial?.unlockable ?? DEFAULT_MAP_GENERATION.unlockable,
+    mountains: initial?.mountains ?? DEFAULT_MAP_GENERATION.mountains,
+    rivers: initial?.rivers ?? DEFAULT_MAP_GENERATION.rivers,
+  };
+}
+
 const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
   function MapGenerationModal(
-    { show, onHide, initial, current, note, onUse },
+    { show, sessionKey, onHide, initial, current, note, onUse },
     ref,
   ) {
-    const [seed, setSeed] = useState(() => initial?.seed ?? randomSeed());
-    const [type, setType] = useState<GenerationType>(
-      initial?.type ?? DEFAULT_MAP_GENERATION.type,
-    );
-    const [fill, setFill] = useState<Fill>(
-      initial?.fill ?? DEFAULT_MAP_GENERATION.fill,
-    );
-    const [size, setSize] = useState<MapSize>(
-      initial?.size ?? DEFAULT_MAP_GENERATION.size,
-    );
-    const [aspect, setAspect] = useState<MapAspect>(
-      initial?.aspect ?? DEFAULT_MAP_GENERATION.aspect,
-    );
-    const [tile, setTile] = useState<TileShape>(
-      initial?.tile ?? DEFAULT_MAP_GENERATION.tile,
-    );
-    const [seas, setSeas] = useState(
-      initial?.seas ?? DEFAULT_MAP_GENERATION.seas,
-    );
-    const [timed, setTimed] = useState(
-      initial?.timed ?? DEFAULT_MAP_GENERATION.timed,
-    );
-    const [directional, setDirectional] = useState(
-      initial?.directional ?? DEFAULT_MAP_GENERATION.directional,
-    );
+    const [saved] = useState(() => sessions[sessionKey]);
+    const [start] = useState(() => saved?.form ?? formOf(initial));
+    const [seed, setSeed] = useState(start.seed);
+    const [type, setType] = useState(start.type);
+    const [fill, setFill] = useState(start.fill);
+    const [size, setSize] = useState(start.size);
+    const [aspect, setAspect] = useState(start.aspect);
+    const [tile, setTile] = useState(start.tile);
+    const [seas, setSeas] = useState(start.seas);
+    const [timed, setTimed] = useState(start.timed);
+    const [directional, setDirectional] = useState(start.directional);
     const [switchedChecked, setSwitchedChecked] = useState(
-      initial?.switched ?? DEFAULT_MAP_GENERATION.switched,
+      start.switchedChecked,
     );
     const [unlockableChecked, setUnlockableChecked] = useState(
-      initial?.unlockable ?? DEFAULT_MAP_GENERATION.unlockable,
+      start.unlockableChecked,
     );
-    const [mountains, setMountains] = useState(
-      initial?.mountains ?? DEFAULT_MAP_GENERATION.mountains,
-    );
-    const [rivers, setRivers] = useState(
-      initial?.rivers ?? DEFAULT_MAP_GENERATION.rivers,
-    );
+    const [mountains, setMountains] = useState(start.mountains);
+    const [rivers, setRivers] = useState(start.rivers);
     const unlockable = type === 'tile' && unlockableChecked;
     const switched = switchedChecked && (timed || directional) && !unlockable;
     const [generating, setGenerating] = useState(false);
-    const [lastGenerated, setLastGenerated] = useState(initial ?? null);
-    const [result, setResult] = useState<{
-      map: GeneratedEditorMap;
-      input: GenerateMapInput;
-    } | null>(null);
+    const [progress, setProgress] = useState(0);
+    const [lastGenerated, setLastGenerated] = useState(
+      saved?.lastGenerated ?? initial ?? null,
+    );
+    const [result, setResult] = useState(saved?.result ?? null);
     const [error, setError] = useState('');
     const [applying, setApplying] = useState(false);
     const [shown, setShown] = useState(show);
     const preview = result?.map ?? current ?? null;
 
+    useEffect(() => {
+      sessions[sessionKey] = {
+        form: {
+          seed,
+          type,
+          fill,
+          size,
+          aspect,
+          tile,
+          seas,
+          timed,
+          directional,
+          switchedChecked,
+          unlockableChecked,
+          mountains,
+          rivers,
+        },
+        result,
+        lastGenerated,
+      };
+    }, [
+      sessionKey,
+      seed,
+      type,
+      fill,
+      size,
+      aspect,
+      tile,
+      seas,
+      timed,
+      directional,
+      switchedChecked,
+      unlockableChecked,
+      mountains,
+      rivers,
+      result,
+      lastGenerated,
+    ]);
+
     if (shown !== show) {
       setShown(show);
-      if (show) {
-        setResult(null);
-        setError('');
-      }
+      if (show) setError('');
     }
 
     const trimmedSeed = seed.trim();
@@ -172,8 +239,9 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
         setSeed(input.seed);
       }
       setGenerating(true);
+      setProgress(0);
       setError('');
-      generateMap(input)
+      generateMap(input, setProgress)
         .then((map) => {
           setResult({ map, input });
           setLastGenerated(input);
@@ -414,9 +482,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                   alt=""
                   className="rounded d-block mw-100 mh-100"
                 />
-              ) : generating ? (
-                <Spinner animation="border" />
-              ) : (
+              ) : generating ? null : (
                 <span className="text-body-secondary">
                   Generate a map to preview it here
                 </span>
@@ -425,9 +491,16 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
           </div>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={onHide}>
-            Cancel
-          </Button>
+          {(generating || applying) && (
+            <div className="d-flex align-items-center gap-2 flex-grow-1 me-auto">
+              <GenerationProgress
+                text={generating ? 'Generating map…' : 'Applying map…'}
+                now={generating ? progress * 100 : 100}
+                animated={!generating}
+                className="flex-grow-1"
+              />
+            </div>
+          )}
           <Button
             variant="info"
             disabled={generating || applying || !!seedMessage}
@@ -437,6 +510,9 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
           </Button>
           <Button disabled={!result || applying} onClick={handleUse}>
             {applying ? 'Applying…' : 'Use this map'}
+          </Button>
+          <Button variant="secondary" onClick={onHide}>
+            Cancel
           </Button>
         </Modal.Footer>
       </Modal>

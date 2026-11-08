@@ -24,6 +24,7 @@ export function drawSmoothPaint(
   ctx: CanvasRenderingContext2D,
   paintCanvas: HTMLCanvasElement,
   paintVersion: number | undefined,
+  tileLayer: HTMLCanvasElement | null,
   x: number,
   y: number,
   scale: number,
@@ -33,7 +34,7 @@ export function drawSmoothPaint(
     {
       image: paintCanvas,
       revision: paintVersion ?? 0,
-      tiles: null,
+      tiles: tileLayer,
       fill: null,
     },
     x,

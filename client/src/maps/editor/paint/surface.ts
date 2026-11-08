@@ -1,4 +1,5 @@
 import { isBlankImage } from '../defaultImage';
+import { decodeGif } from './codec/exactGif';
 import { paintContext } from './paintTools';
 
 const PNG_DATA_URL = 'data:image/png;base64,';
@@ -226,6 +227,7 @@ export function readSurface(src: string): Promise<ImageData> {
       blankSurface(img.naturalWidth, img.naturalHeight),
     );
   return decodePng(src).then(
-    (surface) => surface ?? loadImage(src).then(decodeToSurface),
+    (surface) =>
+      surface ?? decodeGif(src) ?? loadImage(src).then(decodeToSurface),
   );
 }

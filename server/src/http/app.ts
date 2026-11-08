@@ -56,6 +56,7 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   api.use('/account/picture', express.json({ limit: '4mb' }));
   api.use('/player-maps', express.json({ limit: '12mb' }));
   api.use('/presets', express.json({ limit: '1mb' }));
+  api.use('/earth', express.json({ limit: '1mb' }));
   api.use(express.json({ limit: '16kb' }));
   api.use(identityMiddleware);
   api.use(playerMapsRouter);

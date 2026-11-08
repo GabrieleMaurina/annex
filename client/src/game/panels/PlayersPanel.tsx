@@ -1,5 +1,5 @@
 import { isPointsMode, ONLINE_PAUSE_SECONDS } from 'engine';
-import type { MutableRefObject, ReactNode } from 'react';
+import type { MutableRefObject } from 'react';
 import { Fragment, memo, useReducer, useRef, useState } from 'react';
 import { Button, Collapse, ListGroup, Table } from 'react-bootstrap';
 import Flag from '../../common/badges/Flag';
@@ -35,51 +35,7 @@ import {
   GLOBAL_TARGET_ID,
   type EmojiPop,
 } from '../logic/emoji';
-
-function formatList(items: string[]): string {
-  if (items.length <= 1) return items.join('');
-  if (items.length === 2) return items.join(' and ');
-  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
-}
-
-function formatMission(
-  mission: Mission,
-  players: GameState['players'],
-  continentNames: Map<number, string>,
-): ReactNode {
-  if (mission.type === 'territories') {
-    const percent = Math.round(mission.fraction * 100);
-    return mission.minTroopsPerTerritory >= 2
-      ? `Occupy ${percent}%+ of the territories, with ${mission.minTroopsPerTerritory}+ troops each.`
-      : `Occupy ${percent}%+ of the territories.`;
-  }
-  if (mission.type === 'continents') {
-    const names = formatList(
-      mission.continentIds.map((id) => continentNames.get(id) ?? `#${id + 1}`),
-    );
-    return `Conquer continents ${names}.`;
-  }
-  const target = players.find((p) => p.id === mission.targetId);
-  return (
-    <>
-      Eliminate{' '}
-      <span
-        className={target ? 'badge' : undefined}
-        style={
-          target
-            ? {
-                backgroundColor: playerColor(target.color),
-                color: contrastTextColor(playerColor(target.color)),
-              }
-            : undefined
-        }
-      >
-        {target?.name ?? 'your target'}
-      </span>
-      . If someone beats you to it, control 75%+ of the territories instead.
-    </>
-  );
-}
+import { formatMission } from './mission/formatMission';
 
 interface Props {
   players: GameState['players'];
@@ -112,6 +68,9 @@ interface Props {
   drawOffersOpen: boolean;
   drawVoteIds: number[];
   onToggleDraw: () => void;
+  abortOpen: boolean;
+  abortVoteIds: number[];
+  onToggleAbort: () => void;
   roundNumber: number;
   turnPhase: TurnPhase;
   turnPlayerId: number | null;
@@ -170,6 +129,9 @@ function PlayersPanel({
   drawOffersOpen,
   drawVoteIds,
   onToggleDraw,
+  abortOpen,
+  abortVoteIds,
+  onToggleAbort,
   roundNumber,
   turnPhase,
   turnPlayerId,
@@ -208,6 +170,8 @@ function PlayersPanel({
     !self.surrendered;
   const canOfferDraw = canSurrender && !earlyWin && drawOffersOpen;
   const drawOffered = selfId !== null && drawVoteIds.includes(selfId);
+  const canAbort = canSurrender && abortOpen;
+  const abortProposed = selfId !== null && abortVoteIds.includes(selfId);
   const canLeave =
     isSpectator ||
     (!!self && (gameEnded || self.surrendered || self.eliminated));
@@ -270,6 +234,7 @@ function PlayersPanel({
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
   const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
   const whiteDrawIcon = useWhiteIcon('/icons/draw.svg');
+  const whiteCloseIcon = useWhiteIcon('/icons/close.svg');
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteTargetIcon = useWhiteIcon('/icons/target.svg');
   const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
@@ -694,6 +659,21 @@ function PlayersPanel({
                             />
                           </Tip>
                         )}
+                        {abortVoteIds.includes(p.id) && (
+                          <Tip text="Wants to abort the game">
+                            <img
+                              src={
+                                isDark
+                                  ? (whiteCloseIcon ?? '/icons/close.svg')
+                                  : '/icons/close.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Wants to abort the game"
+                              className="flex-shrink-0"
+                            />
+                          </Tip>
+                        )}
                         {!isConnected && !p.eliminated && (
                           <Tip text="Disconnected">
                             <img
@@ -899,7 +879,7 @@ function PlayersPanel({
               <Tip
                 text={
                   drawOffered
-                    ? 'Withdraw your draw offer'
+                    ? 'You offered a draw. It happens once every remaining human player offers one. Click to withdraw your offer'
                     : 'Offer a draw. The game ends in a draw once every remaining human player offers one'
                 }
                 placement="bottom"
@@ -917,6 +897,31 @@ function PlayersPanel({
                     alt=""
                   />
                   Draw
+                </Button>
+              </Tip>
+            )}
+            {canAbort && (
+              <Tip
+                text={
+                  abortProposed
+                    ? 'You asked to abort. It happens once every human player asks. Click to withdraw your request'
+                    : 'Abort the game without any penalty. Only available in the first round, and only if every human player asks for it'
+                }
+                placement="bottom"
+              >
+                <Button
+                  variant={abortProposed ? 'success' : 'secondary'}
+                  size="sm"
+                  className="d-flex align-items-center gap-1"
+                  onClick={onToggleAbort}
+                >
+                  <img
+                    src={whiteCloseIcon ?? '/icons/close.svg'}
+                    width={14}
+                    height={14}
+                    alt=""
+                  />
+                  Abort
                 </Button>
               </Tip>
             )}

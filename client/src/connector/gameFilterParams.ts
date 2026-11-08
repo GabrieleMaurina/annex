@@ -8,7 +8,7 @@ export function appendGameFilterParams(
   if (query.name) params.set('name', query.name);
   if (query.mode) params.set('mode', query.mode);
   if (query.mapName) params.set('mapName', query.mapName);
-  if (query.generatedMap) params.set('generatedMap', '1');
+  if (query.mapKind) params.set('mapKind', query.mapKind);
   if (query.mapGenerationSize)
     params.set('mapGenerationSize', query.mapGenerationSize);
   if (query.mapGenerationType)
@@ -17,6 +17,8 @@ export function appendGameFilterParams(
     params.set('mapGenerationFill', query.mapGenerationFill);
   if (query.mapGenerationTile)
     params.set('mapGenerationTile', query.mapGenerationTile);
+  if (query.mapGenerationAspect)
+    params.set('mapGenerationAspect', query.mapGenerationAspect);
   if (query.mapGenerationSeas !== undefined)
     params.set('mapGenerationSeas', query.mapGenerationSeas ? '1' : '0');
   if (query.mapGenerationTimed !== undefined)
@@ -36,6 +38,13 @@ export function appendGameFilterParams(
       'mapGenerationUnlockable',
       query.mapGenerationUnlockable ? '1' : '0',
     );
+  if (query.mapGenerationMountains !== undefined)
+    params.set(
+      'mapGenerationMountains',
+      query.mapGenerationMountains ? '1' : '0',
+    );
+  if (query.mapGenerationRivers !== undefined)
+    params.set('mapGenerationRivers', query.mapGenerationRivers ? '1' : '0');
   if (query.playersMin !== undefined)
     params.set('playersMin', String(query.playersMin));
   if (query.playersMax !== undefined)

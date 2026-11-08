@@ -81,6 +81,9 @@ function Players() {
 
   const eloNarrowed = eloMin !== ELO_MIN || eloMax !== ELO_MAX;
   const gamesNarrowed = gamesMin !== GAMES_MIN || gamesMax !== GAMES_MAX;
+  const activeFilterCount = [username, eloNarrowed, gamesNarrowed].filter(
+    Boolean,
+  ).length;
   const filterKey = JSON.stringify({
     username,
     eloMin,
@@ -151,7 +154,7 @@ function Players() {
           <option value="fewestGames">Fewest games</option>
         </SortSelect>
 
-        <FilterDetails onClear={clearFilters}>
+        <FilterDetails count={activeFilterCount} onClear={clearFilters}>
           <div className={`${SECTION_CLASS} p-2 mb-2`}>
             <div className="row g-3">
               <Field label="Username">

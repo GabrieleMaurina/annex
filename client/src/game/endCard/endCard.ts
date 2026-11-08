@@ -59,7 +59,12 @@ export function loadEndCardLogo(): Promise<HTMLImageElement | null> {
 export function endCardFor(game: GameState): EndCard | null {
   if (game.draw)
     return {
-      text: game.draw.reason === 'agreed' ? 'Draw' : 'Stalemate',
+      text:
+        game.draw.reason === 'aborted'
+          ? 'Aborted'
+          : game.draw.reason === 'agreed'
+            ? 'Draw'
+            : 'Stalemate',
       color: NEUTRAL_COLOR,
     };
   const winners = game.players.filter((p) => game.winnerIds.includes(p.id));

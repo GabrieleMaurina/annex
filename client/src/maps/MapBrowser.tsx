@@ -76,6 +76,21 @@ function MapBrowser({
   const [rows, setRows] = useState<PlayerMapRow[]>([]);
 
   const terrNarrowed = terrMin !== TERR_MIN || terrMax !== TERR_MAX;
+  const activeFilterCount = [
+    q.trim() !== '',
+    owner,
+    like,
+    terrNarrowed,
+    genType,
+    genFill,
+    genSize,
+    genTile,
+    genSeas,
+    genTimed,
+    genDirectional,
+    genSwitched,
+    genUnlockable,
+  ].filter(Boolean).length;
   const filterKey = JSON.stringify({
     q,
     owner,
@@ -200,7 +215,7 @@ function MapBrowser({
         <option value="nameDesc">Name Z-A</option>
       </SortSelect>
 
-      <FilterDetails onClear={clearFilters}>
+      <FilterDetails count={activeFilterCount} onClear={clearFilters}>
         <div className={`${SECTION_CLASS} p-2 mb-2`}>
           <div className="row g-3">
             <Field label="Search">

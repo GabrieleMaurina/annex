@@ -14,7 +14,11 @@ export const EXPLOSION_LIFE_MS = 600;
 export const SOUND_GAIN = 0.3;
 export const STUCK_TIME = 4;
 export const BARRIER_SIZE = 30;
+export const MINE_RADIUS = 8;
+export const MINE_SPACING = MINE_RADIUS * 2;
 
+const MINE_TRIGGER = 12;
+const MINE_EXPLOSION_SIZE = 30;
 const SPAWN_ATTEMPTS = 50;
 const TANK_EXPLOSION_SIZE = 30;
 const SHELL_EXPLOSION_SIZE = 10;
@@ -68,6 +72,11 @@ export interface Explosion {
   spikes: number[];
 }
 
+export interface Mine {
+  x: number;
+  y: number;
+}
+
 export interface World {
   width: number;
   height: number;
@@ -77,6 +86,7 @@ export interface World {
   marks: Mark[];
   explosions: Explosion[];
   barriers: DOMRect[];
+  mines: Mine[];
   spawned: number;
 }
 
@@ -114,7 +124,13 @@ export function blocked(
   );
 }
 
-export function spawnTank(world: World, x: number, y: number, kind: TankKind) {
+export function spawnTank(
+  world: World,
+  x: number,
+  y: number,
+  kind: TankKind,
+  color = PLAYER_COLORS[world.spawned % PLAYER_COLORS.length],
+) {
   world.tanks.push({
     kind,
     x,
@@ -133,9 +149,24 @@ export function spawnTank(world: World, x: number, y: number, kind: TankKind) {
     escape: null,
     leftTread: 0,
     rightTread: 0,
-    color: PLAYER_COLORS[world.spawned % PLAYER_COLORS.length],
+    color,
   });
   world.spawned += 1;
+}
+
+export function spawnMine(
+  world: World,
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  const center = { x: Math.round(x), y: Math.round(y) };
+  const crowded = world.mines.some(
+    (mine) =>
+      Math.max(Math.abs(mine.x - center.x), Math.abs(mine.y - center.y)) <
+      MINE_SPACING,
+  );
+  if (!crowded) world.mines.push(center);
+  return center;
 }
 
 function overlaps(a: DOMRect, b: DOMRect): boolean {
@@ -162,18 +193,20 @@ export function spawnBarrier(
   return center;
 }
 
-export function extendBarrierLine(
+export function extendLine(
   world: World,
   from: { x: number; y: number },
   x: number,
   y: number,
+  size: number,
+  spawn: (world: World, x: number, y: number) => { x: number; y: number },
 ): { x: number; y: number } {
   const dx = x - from.x;
   const dy = y - from.y;
   const reach = Math.max(Math.abs(dx), Math.abs(dy));
   let end = from;
-  for (let step = BARRIER_SIZE; step <= reach; step += BARRIER_SIZE) {
-    end = spawnBarrier(
+  for (let step = size; step <= reach; step += size) {
+    end = spawn(
       world,
       from.x + (dx / reach) * step,
       from.y + (dy / reach) * step,
@@ -197,6 +230,7 @@ export function createWorld(
     marks: [],
     explosions: [],
     barriers: [],
+    mines: [],
     spawned: 0,
   };
   for (let i = 0; i < SPAWN_ATTEMPTS && world.tanks.length < tankCount; i++) {
@@ -235,6 +269,18 @@ export function destroyBarrier(world: World, barrier: DOMRect, now: number) {
     BARRIER_EXPLOSION_SIZE,
     now,
   );
+}
+
+export function detonateMines(world: World, now: number) {
+  world.mines.forEach((mine) => {
+    const tank = world.tanks.find(
+      (other) => Math.hypot(other.x - mine.x, other.y - mine.y) < MINE_TRIGGER,
+    );
+    if (!tank) return;
+    world.mines = world.mines.filter((other) => other !== mine);
+    addExplosion(world, mine.x, mine.y, MINE_EXPLOSION_SIZE, now);
+    destroyTank(world, tank, now);
+  });
 }
 
 export function shellExplosion(world: World, shell: Shell, now: number) {

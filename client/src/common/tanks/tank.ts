@@ -22,6 +22,7 @@ import {
   blocked,
   destroyBarrier,
   destroyTank,
+  detonateMines,
   insideRect,
   random,
   shellExplosion,
@@ -202,7 +203,7 @@ function findAim(tank: Tank, world: World, grid: TankGrid): number | null {
   for (let ring = 0; (ring - 1) * CELL_SIZE < closest; ring++) {
     forEachTankInRing(grid, from.x, from.y, ring, (other) => {
       const distance = Math.hypot(other.x - from.x, other.y - from.y);
-      if (other === tank || distance >= closest) return;
+      if (other.color === tank.color || distance >= closest) return;
       const point = intercept(from, other, shellSpeed(tank));
       if (!point || !clearShot(world, from, point)) return;
       aim = Math.atan2(point.y - from.y, point.x - from.x);
@@ -371,6 +372,7 @@ export function updateWorld(world: World, dt: number, now: number) {
     updateTank(tank, world, obstacles, grid, dt, now),
   );
   updateShells(world, dt, now);
+  detonateMines(world, now);
   const alive = world.marks.findIndex((mark) => now - mark.time < MARK_LIFE_MS);
   world.marks.splice(0, alive === -1 ? world.marks.length : alive);
   world.explosions = world.explosions.filter(

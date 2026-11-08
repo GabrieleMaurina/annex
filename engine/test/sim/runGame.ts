@@ -136,6 +136,7 @@ export function runSimGame(
     switches: generated.switches,
     switchedLinks: generated.switchedLinks,
     lockedTiles: generated.lockedTiles,
+    fixedTiles: generated.fixedTiles,
     imageSrc: generated.imageSrc,
     borderColors: generated.borderColors,
     seed: mapParams.seed,

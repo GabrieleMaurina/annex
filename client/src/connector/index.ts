@@ -686,6 +686,10 @@ export const connector = {
     route('game:toggleDraw', undefined, cb);
   },
 
+  toggleAbort(cb: AckCallback): void {
+    route('game:toggleAbort', undefined, cb);
+  },
+
   chat(data: { message: string }): void {
     route('game:chat', data);
   },

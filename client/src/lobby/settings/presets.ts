@@ -40,6 +40,16 @@ export function savePresets(presets: Presets): Promise<PresetsReply> {
   return httpSend<PresetsReply>('POST', '/presets', { presets });
 }
 
+export function loadEarthRecipe(): Promise<EarthRecipe | null> {
+  return httpGet<
+    { ok: true; earth: EarthRecipe | null } | { ok: false; error: string }
+  >('/earth').then((res) => (res.ok ? res.earth : null));
+}
+
+export function saveEarthRecipe(earth: EarthRecipe | null): void {
+  httpSend('POST', '/earth', { earth }).catch(() => {});
+}
+
 export function rememberEarthRecipe(mapName: string, recipe: EarthRecipe) {
   earthRecipes.set(mapName, recipe);
 }

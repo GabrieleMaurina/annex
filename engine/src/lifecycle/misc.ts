@@ -2,7 +2,7 @@ import { startTakeover } from '../bots/takeover';
 import { nextBotSpeed } from '../bots/thinkTime';
 import { callbacks } from '../callbacks';
 import { isAnonymous } from '../game/anonymous';
-import { drawOffersOpen, drawVoterIds } from '../game/draw';
+import { abortOpen, drawOffersOpen, drawVoterIds } from '../game/draw';
 import { checkGameEnd, finishGame } from '../game/end';
 import { recomputeHost } from '../game/host';
 import {
@@ -184,6 +184,23 @@ export function toggleDraw(playerId: number): GameResponse {
 
   if (game.drawVoteIds.has(player.id)) game.drawVoteIds.delete(player.id);
   else game.drawVoteIds.add(player.id);
+  checkGameEnd(game);
+  return respondGameState(game, player.id);
+}
+
+export function toggleAbort(playerId: number): GameResponse {
+  const player = playersById.get(playerId);
+  if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
+
+  const game = games.get(player.gameName);
+  if (!game) return { ok: false, error: 'game not found' };
+  if (game.state !== 'playing') return { ok: false, error: 'game not started' };
+  if (!abortOpen(game)) return { ok: false, error: 'abort not open' };
+  if (!drawVoterIds(game).includes(player.id))
+    return { ok: false, error: 'not a remaining player' };
+
+  if (game.abortVoteIds.has(player.id)) game.abortVoteIds.delete(player.id);
+  else game.abortVoteIds.add(player.id);
   checkGameEnd(game);
   return respondGameState(game, player.id);
 }

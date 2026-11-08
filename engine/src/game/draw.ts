@@ -43,6 +43,28 @@ export function drawAgreed(game: Game): boolean {
   );
 }
 
+export function abortOpen(game: Game): boolean {
+  return (
+    game.state === 'playing' &&
+    !game.offline &&
+    !game.earlyWin &&
+    game.roundNumber === 0
+  );
+}
+
+export function activeAbortVoteIds(game: Game): number[] {
+  if (!abortOpen(game)) return [];
+  return drawVoterIds(game).filter((id) => game.abortVoteIds.has(id));
+}
+
+export function abortAgreed(game: Game): boolean {
+  if (!abortOpen(game)) return false;
+  const voterIds = drawVoterIds(game);
+  return (
+    voterIds.length > 0 && voterIds.every((id) => game.abortVoteIds.has(id))
+  );
+}
+
 function playedMs(game: Game): number {
   const now = Date.now();
   const pausedNow =

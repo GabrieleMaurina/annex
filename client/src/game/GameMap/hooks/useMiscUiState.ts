@@ -495,7 +495,11 @@ export function useGameEndActions(setGame: (game: GameState) => void) {
     () => connector.toggleDraw(applyAck),
     [applyAck],
   );
-  return { surrender, endGame, toggleDraw };
+  const toggleAbort = useCallback(
+    () => connector.toggleAbort(applyAck),
+    [applyAck],
+  );
+  return { surrender, endGame, toggleDraw, toggleAbort };
 }
 
 export function useLockViewportZoom() {

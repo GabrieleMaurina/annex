@@ -98,11 +98,14 @@ export interface HomeFilters {
   mapGenerationType: string;
   mapGenerationFill: string;
   mapGenerationTile: string;
+  mapGenerationAspect: string;
   mapGenerationSeas: string;
   mapGenerationTimed: string;
   mapGenerationDirectional: string;
   mapGenerationSwitched: string;
   mapGenerationUnlockable: string;
+  mapGenerationMountains: string;
+  mapGenerationRivers: string;
   playersMin: number;
   playersMax: number;
   roundsMin: number;
@@ -119,6 +122,7 @@ export const FILL_VALUES = ['full', 'mixed', 'sparse'];
 export const GENERATION_TYPES = ['terrain', 'dungeon', 'temple', 'tile'];
 export const TILE_SHAPES: string[] = TILE_SHAPE_VALUES;
 export const MAP_ASPECTS: string[] = MAP_ASPECT_VALUES;
+export const MAP_KINDS = ['generated', 'library', 'earth'];
 
 function stalemateRounds(defaultValue: number, min: number): number[] {
   return [
@@ -239,10 +243,9 @@ const MAX_SAVED_BOTS = 19;
 const MAX_SAVED_LOCAL_PLAYERS = 19;
 const MAX_PLAYER_NAME_LENGTH = 10;
 
-const GENERATED_MAP_VALUE = 'generated';
-
 const HOME_MODES = ['', ...(GAME_ENUMS.gameMode as string[])];
-const HOME_MAP_NAMES = ['', GENERATED_MAP_VALUE];
+const HOME_MAP_NAMES = ['', ...MAP_KINDS];
+const HOME_ASPECTS = ['', ...MAP_ASPECTS];
 const HOME_SIZES = ['', ...MAP_SIZES];
 const HOME_GENERATION_TYPES = ['', ...GENERATION_TYPES];
 const HOME_FILLS = ['', ...FILL_VALUES];
@@ -338,11 +341,14 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
   mapGenerationType: '',
   mapGenerationFill: '',
   mapGenerationTile: '',
+  mapGenerationAspect: '',
   mapGenerationSeas: '',
   mapGenerationTimed: '',
   mapGenerationDirectional: '',
   mapGenerationSwitched: '',
   mapGenerationUnlockable: '',
+  mapGenerationMountains: '',
+  mapGenerationRivers: '',
   playersMin: HOME_PLAYERS_MIN,
   playersMax: HOME_PLAYERS_MAX,
   roundsMin: HOME_ROUNDS_MIN,
@@ -496,11 +502,14 @@ export const preferencesSchemaProperties = {
       mapGenerationType: { enum: HOME_GENERATION_TYPES },
       mapGenerationFill: { enum: HOME_FILLS },
       mapGenerationTile: { enum: HOME_TILES },
+      mapGenerationAspect: { enum: HOME_ASPECTS },
       mapGenerationSeas: { enum: HOME_GENERATION_FLAGS },
       mapGenerationTimed: { enum: HOME_GENERATION_FLAGS },
       mapGenerationDirectional: { enum: HOME_GENERATION_FLAGS },
       mapGenerationSwitched: { enum: HOME_GENERATION_FLAGS },
       mapGenerationUnlockable: { enum: HOME_GENERATION_FLAGS },
+      mapGenerationMountains: { enum: HOME_GENERATION_FLAGS },
+      mapGenerationRivers: { enum: HOME_GENERATION_FLAGS },
       playersMin: {
         bsonType: 'number',
         minimum: HOME_PLAYERS_MIN,
@@ -724,6 +733,7 @@ export function sanitizeHomeFilters(raw: unknown): HomeFilters {
     mapGenerationType: pickEnum(r.mapGenerationType, HOME_GENERATION_TYPES, ''),
     mapGenerationFill: pickEnum(r.mapGenerationFill, HOME_FILLS, ''),
     mapGenerationTile: pickEnum(r.mapGenerationTile, HOME_TILES, ''),
+    mapGenerationAspect: pickEnum(r.mapGenerationAspect, HOME_ASPECTS, ''),
     mapGenerationSeas: pickEnum(r.mapGenerationSeas, HOME_GENERATION_FLAGS, ''),
     mapGenerationTimed: pickEnum(
       r.mapGenerationTimed,
@@ -742,6 +752,16 @@ export function sanitizeHomeFilters(raw: unknown): HomeFilters {
     ),
     mapGenerationUnlockable: pickEnum(
       r.mapGenerationUnlockable,
+      HOME_GENERATION_FLAGS,
+      '',
+    ),
+    mapGenerationMountains: pickEnum(
+      r.mapGenerationMountains,
+      HOME_GENERATION_FLAGS,
+      '',
+    ),
+    mapGenerationRivers: pickEnum(
+      r.mapGenerationRivers,
       HOME_GENERATION_FLAGS,
       '',
     ),

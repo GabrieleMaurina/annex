@@ -23,13 +23,14 @@ import {
   wrapAxesOf,
 } from './canvas/canvasGeometry';
 import { drawGraph } from './canvas/drawGraph';
+import { drawPaintLayers, type PaintLayers } from './canvas/drawLayers';
 import {
   pickAt,
   selectionAnchor,
   type GraphPick,
   type GraphSelection,
 } from './canvas/graphPick';
-import { drawSmoothPaint, useSmoothEdges } from './canvas/smoothEdges';
+import { useSmoothEdges } from './canvas/smoothEdges';
 import { wireAt } from './canvas/switchWires';
 import type { ClickableCheck } from './canvas/useClickableCheck';
 import {
@@ -79,7 +80,7 @@ interface Props {
   hideGraph?: boolean;
   onViewport?: (v: Viewport) => void;
   clickable?: ClickableCheck | null;
-  overlays: (HTMLCanvasElement | null)[];
+  layers: PaintLayers;
   linkMode: LinkMode;
   onSelect: (id: number | null) => void;
   continentNames: string[];
@@ -139,7 +140,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
     hideGraph,
     onViewport,
     clickable,
-    overlays,
+    layers,
     linkMode,
     onSelect,
     continentNames,
@@ -487,15 +488,12 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
       10 * zoom,
     );
 
-    ctx.imageSmoothingEnabled = false;
-    const drawLayer = (layer: HTMLCanvasElement) =>
-      ctx.drawImage(layer, offsetX, offsetY, imgW * scaleX, imgH * scaleY);
-    const smoothed =
-      !hideImage &&
-      smoothEdges &&
-      drawSmoothPaint(ctx, paintCanvas, paintVersion, offsetX, offsetY, scaleX);
-    if (!hideImage && !smoothed) drawLayer(paintCanvas);
-    for (const overlay of overlays) if (overlay) drawLayer(overlay);
+    drawPaintLayers(ctx, viewport, layers, {
+      canvas: paintCanvas,
+      version: paintVersion,
+      hidden: hideImage,
+      smooth: smoothEdges,
+    });
 
     if (!hideGraph) {
       drawGraph({

@@ -494,6 +494,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   return {
     name: mapTitle(params.name, features.places, cut, width, height),
     lockedTiles: [],
+    fixedTiles: [],
     ...built,
     ...generateSwitches(
       switched ? createRng(`${key}::switches`) : null,

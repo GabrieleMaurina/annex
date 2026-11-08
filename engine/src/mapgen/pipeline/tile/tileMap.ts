@@ -1,4 +1,4 @@
-import { LockedTile } from '../../../types';
+import { FixedTile, LockedTile } from '../../../types';
 import { timeStep } from '../../core/bench';
 import { Perlin2D } from '../../core/noise';
 import {
@@ -379,6 +379,16 @@ function toLockedTiles(
   return locked;
 }
 
+function toKeptPolygons(
+  tiles: Point[][],
+  kept: Uint8Array,
+): { id: number; points: Point[] }[] {
+  const { cellId } = cellIds(kept);
+  return tiles.flatMap((points, tile) =>
+    kept[tile] ? [{ id: cellId[tile], points: points.map(roundPoint) }] : [],
+  );
+}
+
 export function layTileShape(
   rng: Rng,
   shape: TileShape,
@@ -420,8 +430,8 @@ export function generateTile(
   seas: boolean,
   unlockable: boolean,
   linkRngs: LinkRngs,
-): MazeMap & { lockedTiles: LockedTile[] } {
-  const { layer, lockedTiles } = timeStep('shape', () => {
+): MazeMap & { lockedTiles: LockedTile[]; fixedTiles: FixedTile[] } {
+  const { layer, lockedTiles, keptPolygons } = timeStep('shape', () => {
     const {
       tiles,
       neighbors,
@@ -433,6 +443,7 @@ export function generateTile(
       lockedTiles: unlockable
         ? toLockedTiles(tiles, neighbors, kept, cropped)
         : [],
+      keptPolygons: toKeptPolygons(tiles, kept),
     };
   });
   if (unlockable) {
@@ -465,5 +476,10 @@ export function generateTile(
     seas,
     linkRngs,
   );
-  return { ...map, lockedTiles };
+  const fixedTiles = keptPolygons.map(({ id, points }) => ({
+    id,
+    points,
+    color: continentTileTone(map.territories[id].continentId),
+  }));
+  return { ...map, lockedTiles, fixedTiles };
 }

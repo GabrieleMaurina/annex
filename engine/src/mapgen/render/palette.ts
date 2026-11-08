@@ -32,6 +32,8 @@ export const PEAK_SNOW_COLOR = '#f4f4f2';
 export const PEAK_SNOW_SHADE_COLOR = '#c9ccd2';
 export const RIVER_BORDER_COLOR = '#4a90d9';
 export const TERRITORY_STROKE_COLOR = '#000000';
+export const BORDER_THICKNESS = 3;
+export const SPECIAL_EDGE_RADIUS = 2;
 
 export const DUNGEON_TONES = [
   '#6b6e73',

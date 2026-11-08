@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Button, Form } from 'react-bootstrap';
+import { Badge, Button, Form } from 'react-bootstrap';
 import { playSound } from '../../lib/sounds';
 import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
 import NumberOdometer from '../../ui/forms/NumberOdometer';
 import Selector from '../../ui/forms/Selector';
 import Help from '../tooltips/Help';
+import Tip from '../tooltips/Tip';
 import { useNumberInput } from './useNumberInput';
 
 function clampInt(
@@ -148,10 +149,23 @@ export function SortSelect({
   );
 }
 
+export function CountBadge({ count, tip }: { count: number; tip: string }) {
+  if (count === 0) return null;
+  return (
+    <Tip text={tip}>
+      <Badge pill bg="primary" className="ms-2">
+        {count}
+      </Badge>
+    </Tip>
+  );
+}
+
 export function FilterDetails({
+  count = 0,
   onClear,
   children,
 }: {
+  count?: number;
   onClear: () => void;
   children: ReactNode;
 }) {
@@ -166,6 +180,10 @@ export function FilterDetails({
     >
       <summary className="collapsible-summary">
         Filters
+        <CountBadge
+          count={count}
+          tip={count === 1 ? '1 filter applied' : `${count} filters applied`}
+        />
         {open && (
           <Button
             size="sm"

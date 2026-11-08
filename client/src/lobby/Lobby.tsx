@@ -32,6 +32,7 @@ import PresetBar from './settings/PresetBar';
 import {
   earthRecipeFor,
   rememberEarthRecipe,
+  saveEarthRecipe,
   type Preset,
   type PresetSettings,
 } from './settings/presets';
@@ -294,8 +295,11 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     };
   }
 
+  function isEarthMap(state: GameState): boolean {
+    return !state.mapGeneration && !state.playerMapId && !!state.mapName;
+  }
+
   function currentPreset(name: string): Preset {
-    const isEarth = !game.mapGeneration && !game.playerMapId && !!game.mapName;
     const settings: PresetSettings = {
       mapName: game.mapName,
       mapGeneration: game.mapGeneration,
@@ -307,11 +311,13 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     return {
       name,
       settings,
-      earth: isEarth ? earthRecipeFor(game.mapName) : null,
+      earth: isEarthMap(game) ? earthRecipeFor(game.mapName) : null,
     };
   }
 
   function persistSettings(state: GameState) {
+    if (account && isEarthMap(state))
+      saveEarthRecipe(earthRecipeFor(state.mapName));
     saveGameSettings(
       {
         ...(state.mapGeneration

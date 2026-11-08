@@ -11,6 +11,7 @@ function GenerateMapModal({ show, onHide, onGenerated }: Props) {
   return (
     <MapGenerationModal
       show={show}
+      sessionKey="editor"
       onHide={onHide}
       note="Using a map replaces the current territories and background image. You can then edit and draw on top before saving."
       onUse={(map, input, onSettled) => {

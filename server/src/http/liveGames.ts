@@ -2,7 +2,7 @@ import type { GameSummary } from 'engine';
 
 export type LiveGameSummary = Omit<
   GameSummary,
-  'playerIds' | 'watchablePlayerIds' | 'bannedIds' | 'settings'
+  'playerIds' | 'watchablePlayerIds' | 'bannedIds' | 'settings' | 'mapKind'
 > & {
   hasPassword: boolean;
   minRank: string;
@@ -37,16 +37,19 @@ export interface LiveGamesQuery {
   name?: string;
   mode?: string;
   mapName?: string;
-  generatedMap?: boolean;
+  mapKind?: string;
   mapGenerationSize?: string;
   mapGenerationType?: string;
   mapGenerationFill?: string;
   mapGenerationTile?: string;
+  mapGenerationAspect?: string;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
   mapGenerationDirectional?: boolean;
   mapGenerationSwitched?: boolean;
   mapGenerationUnlockable?: boolean;
+  mapGenerationMountains?: boolean;
+  mapGenerationRivers?: boolean;
   playersMin?: number;
   playersMax?: number;
   minRounds?: number;
@@ -71,7 +74,7 @@ function matches(game: LiveGameRow, query: LiveGamesQuery): boolean {
     return false;
   if (query.mode && game.settings.gameMode !== query.mode) return false;
   if (query.mapName && game.mapName !== query.mapName) return false;
-  if (query.generatedMap && game.mapGeneration === null) return false;
+  if (query.mapKind && game.mapKind !== query.mapKind) return false;
   if (
     query.mapGenerationSize &&
     game.mapGeneration?.size !== query.mapGenerationSize
@@ -90,6 +93,21 @@ function matches(game: LiveGameRow, query: LiveGamesQuery): boolean {
   if (
     query.mapGenerationTile &&
     game.mapGeneration?.tile !== query.mapGenerationTile
+  )
+    return false;
+  if (
+    query.mapGenerationAspect &&
+    game.mapGeneration?.aspect !== query.mapGenerationAspect
+  )
+    return false;
+  if (
+    query.mapGenerationMountains !== undefined &&
+    game.mapGeneration?.mountains !== query.mapGenerationMountains
+  )
+    return false;
+  if (
+    query.mapGenerationRivers !== undefined &&
+    game.mapGeneration?.rivers !== query.mapGenerationRivers
   )
     return false;
   if (

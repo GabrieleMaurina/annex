@@ -1,5 +1,6 @@
 import {
   DirectionalConnection,
+  FixedTile,
   LockedTile,
   MapSwitch,
   SeaTerritory,
@@ -32,6 +33,7 @@ export interface GeneratedMap {
   switches: MapSwitch[];
   switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   imageSrc: string;
   borderColors: string[];
 }
@@ -106,6 +108,7 @@ export function generateMap(params: GenerateMapParams): GeneratedMap {
   return {
     name: generatedMapName(params),
     lockedTiles: [],
+    fixedTiles: [],
     ...built,
     ...generateSwitches(
       switched ? createRng(`${key}::switches`) : null,

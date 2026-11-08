@@ -9,7 +9,7 @@ import type { Territory } from '../../../mapData';
 import type { ClickableRegions } from '../../../regions/clickableRegions';
 import { withUnlockedRegions } from '../../../regions/unlockedRegions';
 import type { MapSwitching } from '../../../switches/switches';
-import { tileLineWidth } from '../../../tiles/tileGeometry';
+import { TILE_LINE_WIDTH } from '../../../tiles/tileGeometry';
 import {
   directionalGraph,
   useDirectionalConnections,
@@ -29,7 +29,7 @@ export function unlockedMap(
       withUnlockedRegions(
         mapRegions,
         lockedTiles.filter((tile) => unlocked.has(tile.id)),
-        tileLineWidth(lockedTiles),
+        TILE_LINE_WIDTH,
       ),
     closedTiles: lockedTiles.filter((tile) => !unlocked.has(tile.id)),
   };

@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import {
   DirectionalConnection,
+  FixedTile,
   LockedTile,
   MapSwitch,
   SwitchedLink,
@@ -31,6 +32,7 @@ export interface MapDoc {
   switches: MapSwitch[];
   switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
+  fixedTiles?: FixedTile[];
   generation: MapGeneration | null;
   image: Binary;
   imageMime: string;
@@ -68,6 +70,7 @@ export function replayMapId(
     | 'switches'
     | 'switchedLinks'
     | 'lockedTiles'
+    | 'fixedTiles'
     | 'imageMime'
     | 'borderColors'
     | 'territoryNames'
@@ -91,6 +94,7 @@ export function replayMapId(
           ? { switches: map.switches, switchedLinks: map.switchedLinks }
           : {}),
         ...(map.lockedTiles.length > 0 ? { lockedTiles: map.lockedTiles } : {}),
+        ...(map.fixedTiles?.length ? { fixedTiles: map.fixedTiles } : {}),
         imageMime: map.imageMime,
         borderColors: map.borderColors,
         ...(map.territoryNames ? { territoryNames: map.territoryNames } : {}),
@@ -130,6 +134,7 @@ export interface StoredMap {
   switches: MapSwitch[];
   switchedLinks: SwitchedLink[];
   lockedTiles: LockedTile[];
+  fixedTiles: FixedTile[];
   image: string;
   imageMime: string;
   borderColors: string[];
@@ -169,6 +174,7 @@ export function getMapById(id: string): Promise<StoredMap | null> {
             switches: doc.switches ?? [],
             switchedLinks: doc.switchedLinks ?? [],
             lockedTiles: doc.lockedTiles ?? [],
+            fixedTiles: doc.fixedTiles ?? [],
             image: Buffer.from(doc.image.buffer).toString('base64'),
             imageMime: doc.imageMime,
             borderColors: doc.borderColors,

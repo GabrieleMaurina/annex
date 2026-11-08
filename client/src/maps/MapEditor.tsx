@@ -1,4 +1,4 @@
-import { DEFAULT_BORDER_COLORS, mapImageSize } from 'engine';
+import { BORDER_THICKNESS, DEFAULT_BORDER_COLORS, mapImageSize } from 'engine';
 import {
   lazy,
   Suspense,
@@ -60,6 +60,7 @@ import { saveError } from './editor/model/saveError';
 import { regionVertices } from './editor/model/switches';
 import { useEarthRoute } from './editor/model/useEarthRoute';
 import { useEditorShortcuts } from './editor/model/useEditorShortcuts';
+import { wallColorsOf } from './editor/model/wallColors';
 import { fillTerritories } from './editor/paint/fillTerritories';
 import PaintLayer, {
   type PaintLayerHandle,
@@ -79,7 +80,6 @@ import ImageFileInput from './editor/panel/ImageFileInput';
 import GraphPopover from './editor/popover/GraphPopover';
 import { sortMapData, sortTerritories } from './editor/sortMap';
 import { bakeTiles } from './editor/tiles/drawTiles';
-import { remapTiles, toEditorTiles } from './editor/tiles/editorTiles';
 import TileLayer from './editor/tiles/TileLayer';
 import { useTiles } from './editor/tiles/useTiles';
 import EarthErrorBoundary from './editor/world/EarthErrorBoundary';
@@ -114,7 +114,6 @@ function MapEditor({ account }: { account: Account | null }) {
   const [currentContinentId, setCurrentContinentId] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   useToggleSound(collapsed);
-
   const [mode, setMode] = useState<'graph' | 'paint'>('graph');
   const [exclusive, setExclusive] = useState(false);
   function handleModeClick(target: 'graph' | 'paint') {
@@ -133,7 +132,7 @@ function MapEditor({ account }: { account: Account | null }) {
       return [...prev, hex].slice(-CUSTOM_COLORS_LIMIT);
     });
   }, []);
-  const [brushSize, setBrushSize] = useState(10);
+  const [brushSize, setBrushSize] = useState(BORDER_THICKNESS);
   const [dotted, setDotted] = useState(false);
   const [filled, setFilled] = useState(false);
   const [shapeKind, setShapeKind] = useState<ShapeKind>('square');
@@ -255,7 +254,7 @@ function MapEditor({ account }: { account: Account | null }) {
     generation,
     continentId: currentContinentId,
     continentCount,
-    borderColor: borderColors[0],
+    borderColors,
     onChange: bumpPaint,
     selectedTerritoryId,
     selectTerritory: (id) => mapCanvasRef.current?.select(id),
@@ -318,11 +317,15 @@ function MapEditor({ account }: { account: Account | null }) {
     brushSize,
     dotted,
     tileList,
+    generation,
   );
   const paintOnly = exclusive && mode === 'paint';
-  const overlays = useMemo(
-    () => [paintOnly ? null : tiles.overlay, borders.overlay],
-    [paintOnly, tiles.overlay, borders.overlay],
+  const layers = useMemo(
+    () => ({
+      tiles: paintOnly ? null : tiles.overlay,
+      overlays: [paintOnly ? null : tiles.ghostOverlay, borders.overlay],
+    }),
+    [paintOnly, tiles.overlay, tiles.ghostOverlay, borders.overlay],
   );
 
   function handleFindTerritories() {
@@ -502,7 +505,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setMapName(map.name);
       setSavedName(map.name);
       setGeneration(map.generation ?? null);
-      loadTiles(map.lockedTiles, map.fixedTiles);
+      loadTiles(map);
       setBorderColors(map.borderColors);
       setCurrentContinentId(0);
       setImageSrc(map.image);
@@ -602,6 +605,7 @@ function MapEditor({ account }: { account: Account | null }) {
     const reader = new FileReader();
     reader.onload = () => {
       replaceImage(reader.result as string);
+      setBorderColors(wallColorsOf(generation, borderColors));
       setGeneration(null);
       if (isDefaultName(mapName)) setMapName(file.name.replace(/\.[^.]+$/, ''));
     };
@@ -692,7 +696,7 @@ function MapEditor({ account }: { account: Account | null }) {
     setContinentCount(Math.max(1, sorted.bonuses.length));
     setCurrentContinentId(0);
     setGeneration(input);
-    setTiles(remapTiles(toEditorTiles(map.lockedTiles, []), sorted.idMap));
+    loadTiles(map, sorted.idMap);
     setBorderColors(map.borderColors);
     setMapName(map.name);
   }
@@ -719,7 +723,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setContinentNames(map.continentNames ?? map.bonuses.map(() => ''));
       setContinentCount(map.bonuses.length);
       setGeneration(map.generation ?? null);
-      loadTiles(map.lockedTiles, map.fixedTiles);
+      loadTiles(map);
       setBorderColors(map.borderColors);
       setMapName(map.name);
       setCurrentContinentId(0);
@@ -758,7 +762,7 @@ function MapEditor({ account }: { account: Account | null }) {
       setDirty(false);
       connector.listMyMapNames(setTakenNames);
     };
-    surfaceToDataUrl(bakeTiles(paintSurface, tileList, borderColors[0]))
+    surfaceToDataUrl(bakeTiles(paintSurface, tileList, tiles.look))
       .then((image) => {
         if (image.length * 0.75 > MAX_IMAGE_BYTES) {
           setSaving(false);
@@ -779,6 +783,7 @@ function MapEditor({ account }: { account: Account | null }) {
     continentNames,
     generation,
     tileList,
+    tiles.look,
     borderColors,
     effectiveId,
     paintSurface,
@@ -828,7 +833,7 @@ function MapEditor({ account }: { account: Account | null }) {
         hideGraph={paintOnly}
         onViewport={handleViewport}
         clickable={showClickable ? clickable : null}
-        overlays={overlays}
+        layers={layers}
         linkMode={linkModeOf(mode === 'graph' ? tool : null)}
         onSelect={setSelectedTerritoryId}
         continentNames={continentNames}

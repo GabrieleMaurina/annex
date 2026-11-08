@@ -32,27 +32,76 @@ function samePoint(a: TilePoint, b: TilePoint): boolean {
   return Math.hypot(a[0] - b[0], a[1] - b[1]) < EDGE_TOLERANCE;
 }
 
+function hasEdge(points: TilePoint[], from: TilePoint, to: TilePoint): boolean {
+  return points.some((r, j) => {
+    const next = points[(j + 1) % points.length];
+    return (
+      (samePoint(from, next) && samePoint(to, r)) ||
+      (samePoint(from, r) && samePoint(to, next))
+    );
+  });
+}
+
 function sharesEdge(a: TilePoint[], b: TilePoint[]): boolean {
   const [ax, ay] = tileCenter(a);
   const [bx, by] = tileCenter(b);
   if (Math.hypot(ax - bx, ay - by) > tileRadius(a) + tileRadius(b))
     return false;
-  return a.some((p, i) => {
-    const q = a[(i + 1) % a.length];
-    return b.some(
-      (r, j) => samePoint(p, b[(j + 1) % b.length]) && samePoint(q, r),
-    );
-  });
+  return a.some((p, i) => hasEdge(b, p, a[(i + 1) % a.length]));
 }
 
+export type TileSlot = Pick<EditorTile, 'points' | 'territoryId'>;
+
 export function tileNeighbors(
-  tiles: EditorTile[],
+  tiles: TileSlot[],
   points: TilePoint[],
   skip: number | null,
 ): number[] {
   return tiles.flatMap((tile, k) =>
     k !== skip && sharesEdge(tile.points, points) ? [tile.territoryId] : [],
   );
+}
+
+export function seamEdges(
+  tiles: EditorTile[],
+  territories: Territory[],
+): boolean[][] {
+  const byId = new Map(territories.map((t) => [t.id, t]));
+  const tileOf = new Map(tiles.map((tile) => [tile.territoryId, tile]));
+  return tiles.map((tile) => {
+    const own = byId.get(tile.territoryId);
+    if (tile.unlockable || !own || own.isSea)
+      return tile.points.map(() => false);
+    const joined = own.neighbors.flatMap((id) => {
+      const other = tileOf.get(id);
+      const vertex = byId.get(id);
+      return other &&
+        !other.unlockable &&
+        vertex &&
+        !vertex.isSea &&
+        vertex.continentId === own.continentId
+        ? [other]
+        : [];
+    });
+    return tile.points.map((p, i) =>
+      joined.some((other) =>
+        hasEdge(other.points, p, tile.points[(i + 1) % tile.points.length]),
+      ),
+    );
+  });
+}
+
+export function alignToTiles(
+  territories: Territory[],
+  tiles: EditorTile[],
+): Territory[] {
+  const tileOf = new Map(tiles.map((tile) => [tile.territoryId, tile]));
+  return territories.map((t) => {
+    const tile = tileOf.get(t.id);
+    if (!tile) return t;
+    const [x, y] = tileCenter(tile.points);
+    return { ...t, x, y };
+  });
 }
 
 export function toEditorTiles(

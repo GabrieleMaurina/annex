@@ -87,16 +87,19 @@ export interface GamesQuery {
   endedTo?: number;
   durationMin?: number;
   durationMax?: number;
-  generatedMap?: boolean;
+  mapKind?: string;
   mapGenerationSize?: string;
   mapGenerationType?: string;
   mapGenerationFill?: string;
   mapGenerationTile?: string;
+  mapGenerationAspect?: string;
   mapGenerationSeas?: boolean;
   mapGenerationTimed?: boolean;
   mapGenerationDirectional?: boolean;
   mapGenerationSwitched?: boolean;
   mapGenerationUnlockable?: boolean;
+  mapGenerationMountains?: boolean;
+  mapGenerationRivers?: boolean;
   minRounds?: number;
   maxRounds?: number;
   hasBots?: boolean;
@@ -786,6 +789,8 @@ export function listGames(query: GamesQuery): Promise<GamesPage> {
   ).then((mapNameIds) => queryGames(query, viewer, mapNameIds));
 }
 
+const NOT_TRUE = { $ne: true };
+
 function queryGames(
   query: GamesQuery,
   viewer: string | undefined,
@@ -809,7 +814,24 @@ function queryGames(
     if (query.endedTo !== undefined) range.$lte = query.endedTo;
     filter.endedAt = range;
   }
-  if (query.generatedMap) filter.mapGeneration = { $ne: null };
+  if (query.mapKind === 'generated') filter.mapGeneration = { $ne: null };
+  else if (query.mapKind) {
+    filter.mapGeneration = null;
+    filter.playerMapId = {
+      $type: query.mapKind === 'library' ? 'string' : 'null',
+    };
+  }
+  if (query.mapGenerationAspect)
+    filter['mapGeneration.aspect'] = query.mapGenerationAspect;
+  if (query.mapGenerationMountains !== undefined) {
+    filter.mapGeneration = { $ne: null };
+    filter['mapGeneration.mountains'] =
+      query.mapGenerationMountains || NOT_TRUE;
+  }
+  if (query.mapGenerationRivers !== undefined) {
+    filter.mapGeneration = { $ne: null };
+    filter['mapGeneration.rivers'] = query.mapGenerationRivers || NOT_TRUE;
+  }
   if (query.mapGenerationSize)
     filter['mapGeneration.size'] = query.mapGenerationSize;
   if (query.mapGenerationType)
@@ -826,9 +848,7 @@ function queryGames(
     filter['mapGeneration.directional'] = query.mapGenerationDirectional;
   if (query.mapGenerationSwitched !== undefined) {
     filter.mapGeneration = { $ne: null };
-    filter['mapGeneration.switched'] = query.mapGenerationSwitched || {
-      $ne: true,
-    };
+    filter['mapGeneration.switched'] = query.mapGenerationSwitched || NOT_TRUE;
   }
   if (query.mapGenerationUnlockable !== undefined)
     filter['mapGeneration.unlockable'] = query.mapGenerationUnlockable;

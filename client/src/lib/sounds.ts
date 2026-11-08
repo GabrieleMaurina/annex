@@ -56,7 +56,7 @@ const musicListeners = new Set<() => void>();
 let musicMapType: string | null = null;
 const playedTracks = new Set<string>();
 
-function perceivedVolume(value: number): number {
+export function perceivedVolume(value: number): number {
   if (value === 0) return 0;
   return 10 ** ((VOLUME_RANGE_DB * (value - 1)) / 20);
 }
@@ -242,6 +242,20 @@ export function changeMusic() {
 
 export function getCurrentTrack(): string | null {
   return music || fadingMusic ? trackHistory[historyIndex] : null;
+}
+
+export function exportTrack(): string | null {
+  const playing = getCurrentTrack();
+  if (playing) return playing;
+  const general = __MUSIC_TRACKS__.filter((track) => trackFolder(track) === '');
+  const themed = musicMapType
+    ? __MUSIC_TRACKS__.filter((track) => trackFolder(track) === musicMapType)
+    : [];
+  const useThemed =
+    themed.length > 0 &&
+    (general.length === 0 || Math.random() < THEMED_TRACK_CHANCE);
+  const pool = useThemed ? themed : general;
+  return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
 }
 
 export function previousTrack() {

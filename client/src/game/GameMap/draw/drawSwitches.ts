@@ -1,4 +1,5 @@
 import type { MapSwitch, SwitchedLink } from '../../../lib/types';
+import { animationNow } from '../../animations/clock';
 import { areAnimationsDisabled, radiusScale } from '../../animations/state';
 import {
   SWITCH_HEIGHT_RADII,
@@ -36,7 +37,7 @@ function slidesOf(image: HTMLImageElement | null): Map<number, Slide> {
 
 function positionAt(slide: Slide, now: number): number {
   const target = slide.on ? 1 : 0;
-  const p = Math.min(1, (now - slide.since) / SLIDE_MS);
+  const p = Math.min(1, Math.max(0, now - slide.since) / SLIDE_MS);
   const eased = 1 - (1 - p) ** 3;
   return slide.from + (target - slide.from) * eased;
 }
@@ -47,7 +48,7 @@ function knobPosition(
   on: boolean,
 ): number {
   if (areAnimationsDisabled()) return on ? 1 : 0;
-  const now = performance.now();
+  const now = animationNow();
   const slides = slidesOf(image);
   const slide = slides.get(switchId);
   if (!slide) {
@@ -187,7 +188,7 @@ export function drawSwitches(
   const { switches, spots, toScreen, screenRadius, uiScale, nodeState } = layer;
   const iconScale = radiusScale(screenRadius);
   const width = SWITCH_WIDTH_RADII * screenRadius;
-  const now = areAnimationsDisabled() ? 0 : performance.now();
+  const now = areAnimationsDisabled() ? 0 : animationNow();
   const focusedSwitch = (i: number) => {
     const state = nodeState(switchVertexId(i));
     return state === 'hovered' || state === 'selected';

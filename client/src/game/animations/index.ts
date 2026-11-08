@@ -1,5 +1,6 @@
 import { buildWrappedPathSegments, type ForcedWraps } from '../mapMath';
 import { drawFortifyPath } from './arrow';
+import { animationNow } from './clock';
 import { drawEntrench } from './entrench';
 import { drawExplosion } from './nukes/explosion';
 import { drawNuke } from './nukes/nuke';
@@ -22,7 +23,7 @@ export function drawAnimations(
   mapH: number,
   forcedWraps: ForcedWraps,
 ) {
-  const now = performance.now();
+  const now = animationNow();
   for (const a of getAnimations()) {
     const p = toScreen({ x: a.x, y: a.y });
     const progress = Math.min(1, (now - a.startedAt) / DURATIONS[a.type]);
@@ -81,12 +82,16 @@ export {
   areAnimationsDisabled,
   CARD_SET_FLASH_DURATION,
   crackingTileIds,
+  createAnimationScope,
   getAnimationDuration,
   hasActiveAnimations,
+  inAnimationScope,
   onAnimationsToggle,
   pruneAnimations,
+  renderStill,
   setAnimationsDisabled,
   setContinuousAnimation,
+  setEndCardActive,
   setFogActive,
   setPortalsActive,
   setRadiationActive,

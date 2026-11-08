@@ -1,10 +1,16 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useWhiteIcon } from '../../common/icon';
 import {
   useHideUiShortcut,
   useUiHidden,
 } from '../../common/menus/shortcuts/uiHidden';
 import TutorialHighlight from '../../tutorials/TutorialHighlight';
+import { setEndCardActive } from '../animations';
+import {
+  END_CARD_SHOWN_MS,
+  endCardFor,
+  loadEndCardLogo,
+} from '../endCard/endCard';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
 import { switchesOnAfter } from '../switches/switches';
@@ -575,6 +581,38 @@ function GameMap({
     loadHourglassIcons().then(startAnimationLoop);
   }, [startAnimationLoop]);
 
+  const endCardShown = showReplay
+    ? replay.totalFrames > 0 && replay.index === replay.totalFrames
+    : game.state === 'ended';
+  const endCard = useMemo(
+    () => (endCardShown ? endCardFor(game) : null),
+    [endCardShown, game],
+  );
+  const endCardStartRef = useRef<number | null>(null);
+  const [endCardLogo, setEndCardLogo] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    loadEndCardLogo().then(setEndCardLogo);
+  }, []);
+
+  useEffect(() => {
+    if (!endCardShown) {
+      endCardStartRef.current = null;
+      return;
+    }
+    endCardStartRef.current = performance.now();
+    setEndCardActive(true);
+    startAnimationLoop();
+    const timer = setTimeout(() => {
+      setEndCardActive(false);
+      startAnimationLoop();
+    }, END_CARD_SHOWN_MS);
+    return () => {
+      clearTimeout(timer);
+      setEndCardActive(false);
+    };
+  }, [endCardShown, startAnimationLoop]);
+
   useEffect(() => {
     drawParamsRef.current = {
       canvasRef,
@@ -639,6 +677,14 @@ function GameMap({
       switchOn,
       unlockTiles: attackFlow.unlockTiles,
       placeNames,
+      endCard:
+        endCard && endCardStartRef.current !== null
+          ? {
+              card: endCard,
+              startedAt: endCardStartRef.current,
+              logo: endCardLogo,
+            }
+          : null,
     };
     startAnimationLoop();
   });

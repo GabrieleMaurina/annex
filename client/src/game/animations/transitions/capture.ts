@@ -2,6 +2,7 @@ import { lighten } from '../../../lib/palette';
 import type { Point } from '../../GameMap/helpers';
 import type { Territory } from '../../mapData';
 import type { ClickableRegions } from '../../regions/clickableRegions';
+import { animationNow, isClockVirtual } from '../clock';
 
 const CAPTURE_MS = 1000;
 const RING_WIDTH = 0.15;
@@ -91,7 +92,7 @@ export function trackCaptures(
     trackers.set(canvas, tracker);
   }
   const { owners, captures } = tracker;
-  const now = performance.now();
+  const now = animationNow();
   for (const [id, capture] of captures)
     if (!view.animate || now - capture.startedAt >= CAPTURE_MS)
       captures.delete(id);
@@ -117,7 +118,8 @@ export function trackCaptures(
       startedAt: now,
       ringWidth: view.vertexRadius * RING_WIDTH,
     });
-    activeUntil = Math.max(activeUntil, now + CAPTURE_MS);
+    if (!isClockVirtual())
+      activeUntil = Math.max(activeUntil, now + CAPTURE_MS);
   }
   return captures;
 }
@@ -130,7 +132,7 @@ function rippleIn(
 ): Ripple {
   const progress = Math.min(
     1,
-    (performance.now() - capture.startedAt) / CAPTURE_MS,
+    (animationNow() - capture.startedAt) / CAPTURE_MS,
   );
   const dir = capture.dir ?? { x: 0, y: 0 };
   const corners = [

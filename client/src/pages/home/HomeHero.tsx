@@ -3,9 +3,14 @@ import { Button, Spinner } from 'react-bootstrap';
 import InstallButton from '../../common/InstallButton';
 import Hero from '../../common/page/Hero';
 import useStackOnOverflow from '../../common/page/useStackOnOverflow';
+import Tip from '../../common/tooltips/Tip';
 
 const NAME_DEFINITION =
   '/ænˈeks/ (verb) : to take possession of an area of land or a country, usually by force or without permission';
+
+const QUICK_PLAY_TIP = 'Jump into a match in seconds';
+const CREATE_ONLINE_TIP = 'Host a game and invite other players';
+const CREATE_OFFLINE_TIP = 'Play against bots';
 
 interface Props {
   serverUnreachable: boolean;
@@ -20,13 +25,20 @@ interface Props {
 
 interface CallToActionProps {
   label: string;
-  hint: string;
+  tip?: string;
+  tipBelow?: boolean;
   busy?: boolean;
   onClick: () => void;
 }
 
-function CallToAction({ label, hint, busy, onClick }: CallToActionProps) {
-  return (
+function CallToAction({
+  label,
+  tip,
+  tipBelow,
+  busy,
+  onClick,
+}: CallToActionProps) {
+  const button = (
     <Button
       variant="primary"
       size="lg"
@@ -38,11 +50,15 @@ function CallToAction({ label, hint, busy, onClick }: CallToActionProps) {
       ) : (
         <img src="/icons/play.svg" width={32} height={32} alt="" />
       )}
-      <span>
-        <span className="btn-cta-title">{label}</span>
-        <span className="btn-cta-hint">{hint}</span>
-      </span>
+      <span className="btn-cta-title">{label}</span>
     </Button>
+  );
+  return tip ? (
+    <Tip text={tip} placement={tipBelow ? 'bottom' : undefined}>
+      {button}
+    </Tip>
+  ) : (
+    button
   );
 }
 
@@ -69,33 +85,33 @@ function HomeHero({
         {serverUnreachable ? (
           <CallToAction
             label="Create Offline"
-            hint="Play against bots"
+            tip={CREATE_OFFLINE_TIP}
+            tipBelow
             onClick={onCreateOffline}
           />
         ) : joiningRandom ? (
-          <CallToAction
-            label="Cancel"
-            hint="Looking for a game"
-            busy
-            onClick={onCancelJoin}
-          />
+          <CallToAction label="Cancel" busy onClick={onCancelJoin} />
         ) : (
           <CallToAction
-            label="Join Random Game"
-            hint="Jump into a match in seconds"
+            label="Quick Play"
+            tip={QUICK_PLAY_TIP}
             onClick={onJoinRandom}
           />
         )}
         <div className="d-flex flex-wrap justify-content-center gap-2">
           {!serverUnreachable && (
-            <Button variant="secondary" size="sm" onClick={onCreateOnline}>
-              Create Online
-            </Button>
+            <Tip text={CREATE_ONLINE_TIP} placement="bottom">
+              <Button variant="secondary" size="sm" onClick={onCreateOnline}>
+                Create Online
+              </Button>
+            </Tip>
           )}
           {!serverUnreachable && (
-            <Button variant="secondary" size="sm" onClick={onCreateOffline}>
-              Create Offline
-            </Button>
+            <Tip text={CREATE_OFFLINE_TIP} placement="bottom">
+              <Button variant="secondary" size="sm" onClick={onCreateOffline}>
+                Create Offline
+              </Button>
+            </Tip>
           )}
           {showTutorials && (
             <Button variant="secondary" size="sm" onClick={onTutorials}>

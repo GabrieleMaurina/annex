@@ -161,7 +161,12 @@ function ReplayPanel({
     <div
       className={`position-fixed bottom-0 start-50 translate-middle-x m-3 py-2 px-3 d-flex align-items-center gap-2 ${PANEL_BG_CLASS} ${PANEL_CLASS}`}
       ref={panelRef}
-      style={{ zIndex: 1, touchAction: 'none' }}
+      style={{
+        zIndex: 1,
+        touchAction: 'none',
+        width: 'max-content',
+        maxWidth: 'calc(100vw - 2rem)',
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
@@ -190,7 +195,9 @@ function ReplayPanel({
           style={{ width: 22, height: 22, backgroundColor: color }}
         />
       </Tip>
-      <span className="fw-bold">Round {roundNumber}</span>
+      <span className="fw-bold text-nowrap flex-shrink-0">
+        Round {roundNumber}
+      </span>
       <Tip text="Jump to start">
         <Button
           size="sm"

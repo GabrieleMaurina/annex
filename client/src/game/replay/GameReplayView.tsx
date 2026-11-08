@@ -5,6 +5,7 @@ import SharePageButton from '../../common/menus/SharePageButton';
 import { useUiHidden } from '../../common/menus/shortcuts/uiHidden';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import type { ResultRow } from '../../common/ResultsTable';
+import Tip from '../../common/tooltips/Tip';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import { playSound } from '../../lib/sounds';
 import type { FriendsOverview, GameState } from '../../lib/types';
@@ -12,6 +13,7 @@ import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
 import GameEndResults from '../GameEndResults';
 import GameMap from '../GameMap';
 import { gameMapDataProps, noopGameMapHandlers } from '../gameMapProps';
+import ExportReplayModal from './clip/ExportReplayModal';
 import type { FoldedReplay } from './replay';
 import ReplayLoading from './ReplayLoading';
 
@@ -76,6 +78,7 @@ function GameReplayView({
   const [replayIndex, setReplayIndex] = useState(0);
   const previousReplayIndexRef = useRef<number | null>(null);
   const uiHidden = useUiHidden();
+  const [clipOpen, setClipOpen] = useState(false);
 
   useEffect(() => {
     onViewChange?.(view === 'replay' && replay ? 'replay' : 'results');
@@ -174,10 +177,30 @@ function GameReplayView({
             size="sm"
           />
         )}
+        {replay.data.frames.length > 0 && (
+          <Tip text="Export the replay as a GIF or MP4">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setClipOpen(true)}
+            >
+              Export Replay
+            </Button>
+          </Tip>
+        )}
         <Button variant="info" size="sm" onClick={() => setView('results')}>
           Results
         </Button>
       </div>
+      {replay.data.frames.length > 0 && (
+        <ExportReplayModal
+          show={clipOpen}
+          onHide={() => setClipOpen(false)}
+          game={game}
+          mapName={mapRenderName}
+          replay={replay.data}
+        />
+      )}
       {(shownChat.length > 0 || shownEmoji.length > 0) && (
         <div
           className={`position-fixed bottom-0 start-0 m-3 p-2 border rounded small ${PANEL_BG_CLASS}${uiHidden ? ' invisible' : ''}`}

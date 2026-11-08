@@ -16,6 +16,34 @@ export interface TimedLink {
   control: SwitchedLink | null;
 }
 
+export function timedGraph(
+  territories: Territory[],
+  timedConnections: TimedConnection[],
+  round: number,
+  switched: ReadonlyMap<string, boolean>,
+  controls: ReadonlyMap<string, SwitchedLink>,
+) {
+  return {
+    territories: withOpenConnections(
+      territories,
+      timedConnections,
+      round,
+      switched,
+    ),
+    timedLinks: timedConnections.map((c): TimedLink => {
+      const key = linkKey(c.a, c.b);
+      const on = switched.get(key);
+      return {
+        a: c.a,
+        b: c.b,
+        open: on ?? isConnectionOpen(c, round),
+        roundsLeft: on === undefined ? roundsUntilToggle(c, round) : null,
+        control: controls.get(key) ?? null,
+      };
+    }),
+  };
+}
+
 export function useTimedConnections(
   territories: Territory[],
   timedConnections: TimedConnection[],
@@ -24,25 +52,7 @@ export function useTimedConnections(
   controls: ReadonlyMap<string, SwitchedLink>,
 ) {
   return useMemo(
-    () => ({
-      territories: withOpenConnections(
-        territories,
-        timedConnections,
-        round,
-        switched,
-      ),
-      timedLinks: timedConnections.map((c): TimedLink => {
-        const key = linkKey(c.a, c.b);
-        const on = switched.get(key);
-        return {
-          a: c.a,
-          b: c.b,
-          open: on ?? isConnectionOpen(c, round),
-          roundsLeft: on === undefined ? roundsUntilToggle(c, round) : null,
-          control: controls.get(key) ?? null,
-        };
-      }),
-    }),
+    () => timedGraph(territories, timedConnections, round, switched, controls),
     [territories, timedConnections, round, switched, controls],
   );
 }

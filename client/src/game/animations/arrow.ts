@@ -1,3 +1,4 @@
+import { animationNow } from './clock';
 import { areAnimationsDisabled, radiusScale } from './state';
 
 const ARROW_CHEVRON_SPACING = 18;
@@ -56,9 +57,7 @@ function drawArrowHeads(
   t1 = 1,
 ) {
   const size = ARROW_CHEVRON_SIZE * scale;
-  const phase = areAnimationsDisabled()
-    ? 0
-    : performance.now() * CHEVRONS_PER_MS;
+  const phase = areAnimationsDisabled() ? 0 : animationNow() * CHEVRONS_PER_MS;
   forEachChevron(from, to, scale, phase, t0, t1, (cx, cy, ux, uy, t) => {
     ctx.globalAlpha = fade === 'start' ? t : fade === 'end' ? 1 - t : 1;
     ctx.beginPath();

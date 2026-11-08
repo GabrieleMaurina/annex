@@ -17,6 +17,13 @@ import {
   trackCaptures,
   type Ripple,
 } from '../../animations';
+import { animationNow } from '../../animations/clock';
+import {
+  drawEndCard,
+  END_CARD_SETTLED_MS,
+  END_CARD_SHOWN_MS,
+  type EndCardOverlay,
+} from '../../endCard/endCard';
 import type { EvaluatedCombo } from '../../logic/cards';
 import { formatTroops } from '../../logic/formatTroops';
 import { drawMapBorder, imageBorder } from '../../mapBorder';
@@ -136,6 +143,8 @@ export interface DrawCanvasParams {
   switchOn: boolean[];
   unlockTiles: LockedTile[];
   placeNames: PlaceNames;
+  endCard?: EndCardOverlay | null;
+  pixelRatio?: number;
 }
 
 export function drawGameMapCanvas(params: DrawCanvasParams) {
@@ -195,11 +204,13 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     switchOn,
     unlockTiles,
     placeNames,
+    endCard,
+    pixelRatio,
   } = params;
 
   const canvas = canvasRef.current;
   if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = pixelRatio ?? (window.devicePixelRatio || 1);
   canvas.width = Math.round(size.w * dpr);
   canvas.height = Math.round(size.h * dpr);
   const ctx = canvas.getContext('2d');
@@ -282,7 +293,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ready: imageRef.current !== null,
     animate: !areAnimationsDisabled(),
   });
-  const now = areAnimationsDisabled() ? 0 : performance.now();
+  const now = areAnimationsDisabled() ? 0 : animationNow();
   const frame: ModifierFrame = {
     ctx,
     shown: trackModifiers(canvas, params, {
@@ -762,5 +773,18 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         ctx.fillText(statsText, cx, boxY + mainH + statsH / 2 - 4 * uiScale);
       }
     }
+  }
+
+  if (endCard) {
+    const sinceStart = animationNow() - endCard.startedAt;
+    if (sinceStart < END_CARD_SHOWN_MS)
+      drawEndCard(
+        ctx,
+        size.w,
+        size.h,
+        endCard.card,
+        areAnimationsDisabled() ? END_CARD_SETTLED_MS : sinceStart,
+        endCard.logo,
+      );
   }
 }

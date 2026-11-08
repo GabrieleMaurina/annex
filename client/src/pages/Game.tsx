@@ -5,6 +5,7 @@ import { formatError } from '../common/formatError';
 import SettingsMenu from '../common/menus/SettingsMenu';
 import { useUiHidden } from '../common/menus/shortcuts/uiHidden';
 import { connector } from '../connector';
+import { END_CARD_SHOWN_MS } from '../game/endCard/endCard';
 import GameMap from '../game/GameMap';
 import { gameMapDataProps } from '../game/gameMapProps';
 import { useLocalColors } from '../game/logic/colorOverrides';
@@ -85,6 +86,7 @@ function Game({
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [gamePanelOpen, setGamePanelOpen] = useState(false);
   const [endReplaying, setEndReplaying] = useState(false);
+  const [celebrating, setCelebrating] = useState(false);
   const [mission, setMission] = useState<Mission | null>(null);
   const [results, setResults] = useState<Map<number, PlayerResultStats> | null>(
     null,
@@ -92,7 +94,9 @@ function Game({
   const [storedGameId, setStoredGameId] = useState<string | null>(null);
   const [startGates, setStartGates] = useState(0);
   const showMap =
-    game?.state === 'playing' || (game?.state === 'ended' && endReplaying);
+    game?.state === 'playing' ||
+    celebrating ||
+    (game?.state === 'ended' && endReplaying);
   const receivedFirstStateRef = useRef(false);
   const prevStateRef = useRef<GameState['state'] | null>(null);
   const prevTurnPhaseRef = useRef<GameState['turnPhase'] | null>(null);
@@ -139,6 +143,7 @@ function Game({
         state.state === 'ended'
       ) {
         playSound('end');
+        setCelebrating(true);
       } else if (
         state.state === 'playing' &&
         prevTurnPhaseRef.current !== null &&
@@ -155,8 +160,10 @@ function Game({
 
   function updateGameFromAction(state: GameState) {
     playPlayerStatusSounds(state);
-    if (prevStateRef.current === 'playing' && state.state === 'ended')
+    if (prevStateRef.current === 'playing' && state.state === 'ended') {
       playSound('end');
+      setCelebrating(true);
+    }
     prevStateRef.current = state.state;
     if (
       game?.state === 'playing' &&
@@ -192,6 +199,12 @@ function Game({
       connector.off('game:turnStarted', onTurnStarted);
     };
   }, [selfId]);
+
+  useEffect(() => {
+    if (!celebrating) return;
+    const timer = setTimeout(() => setCelebrating(false), END_CARD_SHOWN_MS);
+    return () => clearTimeout(timer);
+  }, [celebrating]);
 
   useEffect(() => {
     if (game?.name) onRename(game.name);
@@ -434,7 +447,7 @@ function Game({
             navigate={navigate}
           />
         </Container>
-      ) : ended ? (
+      ) : ended && !celebrating ? (
         <EndPage
           game={shownGame}
           results={results}
@@ -456,7 +469,7 @@ function Game({
           onTogglePause={togglePause}
           onCycleBotSpeed={cycleBotSpeed}
           results={results}
-          gameEnded={false}
+          gameEnded={ended}
           showReplay={false}
           logs={logs}
           setGame={updateGameFromAction}

@@ -1,4 +1,5 @@
 import { CANVAS_FONT_FAMILY } from '../GameMap/helpers';
+import { animationNow, atAnimationTime } from './clock';
 import { makeEntrenchParticles } from './entrench';
 import { makeExplosionParticles } from './nukes/explosion';
 import { capturesActive } from './transitions/capture';
@@ -135,6 +136,7 @@ let toxinsActive = false;
 let radiationActive = false;
 let fogActive = false;
 let timedLinksActive = false;
+let endCardActive = false;
 const toggleListeners = new Set<() => void>();
 
 export function getAnimations(): readonly Animation[] {
@@ -163,7 +165,7 @@ export function startAnimation(
     type,
     x,
     y,
-    startedAt: performance.now(),
+    startedAt: animationNow(),
     label,
     labelColor,
     particles:
@@ -193,7 +195,7 @@ export function startNukeAnimation(
     intercepted,
     interceptFromX: interceptFrom?.x,
     interceptFromY: interceptFrom?.y,
-    startedAt: performance.now(),
+    startedAt: animationNow(),
     particles: makeExplosionParticles(),
   });
 }
@@ -209,14 +211,14 @@ export function startUnlockAnimation(tile: {
     type: 'unlock',
     x: tile.x,
     y: tile.y,
-    startedAt: performance.now(),
+    startedAt: animationNow(),
     tileId: tile.id,
     ...makeUnlockEffect(tile),
   });
 }
 
 export function crackingTileIds(): Set<number> {
-  const now = performance.now();
+  const now = animationNow();
   return new Set(
     animations
       .filter(
@@ -237,12 +239,51 @@ export function setAnimationsDisabled(value: boolean) {
   toggleListeners.forEach((listener) => listener());
 }
 
+interface AnimationScope {
+  animations: Animation[];
+}
+
+export function createAnimationScope(): AnimationScope {
+  return { animations: [] };
+}
+
+export function inAnimationScope<T>(
+  scope: AnimationScope,
+  milliseconds: number,
+  run: () => T,
+): T {
+  const savedAnimations = animations;
+  const savedDisabled = disabled;
+  animations = scope.animations;
+  disabled = false;
+  try {
+    return atAnimationTime(milliseconds, run);
+  } finally {
+    scope.animations = animations;
+    animations = savedAnimations;
+    disabled = savedDisabled;
+  }
+}
+
+export function renderStill<T>(draw: () => T): T {
+  const savedAnimations = animations;
+  const savedDisabled = disabled;
+  animations = [];
+  disabled = true;
+  try {
+    return draw();
+  } finally {
+    animations = savedAnimations;
+    disabled = savedDisabled;
+  }
+}
+
 export function toggleAnimationsDisabled() {
   setAnimationsDisabled(!disabled);
 }
 
 export function pruneAnimations() {
-  const now = performance.now();
+  const now = animationNow();
   animations = animations.filter(
     (a) => now - a.startedAt < animationLifetime(a),
   );
@@ -272,6 +313,10 @@ export function setTimedLinksActive(active: boolean) {
   timedLinksActive = active;
 }
 
+export function setEndCardActive(active: boolean) {
+  endCardActive = active;
+}
+
 export function hasActiveAnimations(): boolean {
   if (animations.length > 0) return true;
   if (disabled) return false;
@@ -283,7 +328,8 @@ export function hasActiveAnimations(): boolean {
     toxinsActive ||
     radiationActive ||
     fogActive ||
-    timedLinksActive
+    timedLinksActive ||
+    endCardActive
   );
 }
 

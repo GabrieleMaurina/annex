@@ -32,25 +32,15 @@
   opacity: 0;
 }
 
-.btn-cta-title,
-.btn-cta-hint {
+.btn-cta-title {
   display: block;
   text-align: left;
-}
-
-.btn-cta-title {
   font-family: var(--ui-display-font);
   font-size: var(--cta-title);
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1;
   text-transform: uppercase;
-}
-
-.btn-cta-hint {
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  opacity: 0.75;
 }
 
 :root:not(.animations-off) .btn-cta::after {
@@ -78,9 +68,5 @@
 @media (orientation: landscape) and (max-height: 520px) {
   .home-actions {
     --cta-title: 1.4rem;
-  }
-
-  .btn-cta-hint {
-    display: none;
   }
 }

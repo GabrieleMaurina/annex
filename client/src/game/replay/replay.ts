@@ -19,7 +19,7 @@ import type {
   StoredGame,
 } from '../../lib/types';
 
-function groupSeaShips(flat: ReplaySeaShips[]): GameState['seas'] {
+export function groupSeaShips(flat: ReplaySeaShips[]): GameState['seas'] {
   const byPlayerBySea = new Map<
     number,
     { playerId: number; ships: number }[]
@@ -209,7 +209,7 @@ export interface ConquestArrow {
   toTerritoryId: number;
 }
 
-function conquestArrowAt(
+export function conquestArrowAt(
   replay: ReplayData,
   index: number,
 ): ConquestArrow | null {
@@ -245,7 +245,36 @@ function conquestArrowAt(
   return null;
 }
 
-function playFrameSounds(replay: ReplayData, index: number) {
+export function replayStops(frames: ReplayFrame[]) {
+  const turnStops: number[] = [];
+  const roundStops: number[] = [];
+  frames.forEach((frame, i) => {
+    const previous = frames[i - 1];
+    const newRound = !previous || previous.roundNumber !== frame.roundNumber;
+    if (newRound) roundStops.push(i + 1);
+    if (newRound || previous.playerId !== frame.playerId) turnStops.push(i + 1);
+  });
+  return { turnStops, roundStops };
+}
+
+export function unlockedTilesAt(replay: ReplayData, index: number): number[] {
+  return replay.frames
+    .slice(0, index)
+    .flatMap((f) =>
+      f.animation.type === 'unlock' ? [f.animation.tileId] : [],
+    );
+}
+
+export function switchFlipsAt(replay: ReplayData, index: number): number[] {
+  return replay.frames
+    .slice(0, index)
+    .flatMap((f) =>
+      f.animation.type === 'switch' ? [f.animation.switchId] : [],
+    );
+}
+
+export function frameSounds(replay: ReplayData, index: number): string[] {
+  const sounds: string[] = [];
   const frame = replay.frames[index];
   const previous = index > 0 ? replay.frames[index - 1] : null;
   const animation = frame.animation;
@@ -254,14 +283,14 @@ function playFrameSounds(replay: ReplayData, index: number) {
     animation.type === 'deploy' &&
     !previousTerritories.some((t) => t.id === animation.territoryId)
   )
-    playSound('select');
+    sounds.push('select');
   const previousRadiation =
     previous?.radiationTerritories ?? replay.initialRadiation;
   if (frame.radiationTerritories.some((id) => !previousRadiation.includes(id)))
-    playSound('radiation');
+    sounds.push('radiation');
   if (index === replay.frames.length - 1) {
-    playSound('end');
-    return;
+    sounds.push('end');
+    return sounds;
   }
   const previousStates = new Map(
     (previous?.playerStates ?? []).map((s) => [s.playerId, s]),
@@ -289,11 +318,16 @@ function playFrameSounds(replay: ReplayData, index: number) {
     previous !== null &&
     (previous.turnPhase !== frame.turnPhase ||
       (frame.turnPhase === 'deploy' && previous.playerId !== frame.playerId));
-  if (newlyEliminated) playSound('bell');
-  if (newlySurrendered) playSound('surrender');
-  if (connectionChanges.includes(true)) playSound('connect');
-  if (connectionChanges.includes(false)) playSound('disconnect');
-  if (phaseChanged) playSound('phase');
+  if (newlyEliminated) sounds.push('bell');
+  if (newlySurrendered) sounds.push('surrender');
+  if (connectionChanges.includes(true)) sounds.push('connect');
+  if (connectionChanges.includes(false)) sounds.push('disconnect');
+  if (phaseChanged) sounds.push('phase');
+  return sounds;
+}
+
+function playFrameSounds(replay: ReplayData, index: number) {
+  for (const sound of frameSounds(replay, index)) playSound(sound);
 }
 
 export function useReplay(
@@ -315,19 +349,10 @@ export function useReplay(
 
   const totalFrames = replay?.frames.length ?? 0;
 
-  const { turnStops, roundStops } = useMemo(() => {
-    const frames = replay?.frames ?? [];
-    const turnStops: number[] = [];
-    const roundStops: number[] = [];
-    frames.forEach((frame, i) => {
-      const previous = frames[i - 1];
-      const newRound = !previous || previous.roundNumber !== frame.roundNumber;
-      if (newRound) roundStops.push(i + 1);
-      if (newRound || previous.playerId !== frame.playerId)
-        turnStops.push(i + 1);
-    });
-    return { turnStops, roundStops };
-  }, [replay]);
+  const { turnStops, roundStops } = useMemo(
+    () => replayStops(replay?.frames ?? []),
+    [replay],
+  );
 
   const stepForward = useCallback(() => {
     const current = indexRef.current;
@@ -434,20 +459,8 @@ export function useReplay(
     ? ((index <= 0 ? replay.frames[0] : replay.frames[index - 1])
         ?.playerStates ?? [])
     : null;
-  const unlockedTileIds = replay
-    ? replay.frames
-        .slice(0, index)
-        .flatMap((f) =>
-          f.animation.type === 'unlock' ? [f.animation.tileId] : [],
-        )
-    : null;
-  const switchFlips = replay
-    ? replay.frames
-        .slice(0, index)
-        .flatMap((f) =>
-          f.animation.type === 'switch' ? [f.animation.switchId] : [],
-        )
-    : null;
+  const unlockedTileIds = replay ? unlockedTilesAt(replay, index) : null;
+  const switchFlips = replay ? switchFlipsAt(replay, index) : null;
 
   return {
     index,

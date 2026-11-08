@@ -5,6 +5,7 @@ import {
   drawDirectionalArrow,
   drawSplitArrow,
 } from '../../animations/arrow';
+import { animationNow } from '../../animations/clock';
 import { areAnimationsDisabled, radiusScale } from '../../animations/state';
 import {
   buildWrappedPathSegments,
@@ -48,7 +49,7 @@ function motionsOf(image: HTMLImageElement | null): Map<string, LinkMotion> {
 }
 
 function phaseAt(motion: LinkMotion, now: number): number {
-  const elapsed = now - motion.since;
+  const elapsed = Math.max(0, now - motion.since);
   const p = Math.min(1, elapsed / TRANSITION_MS);
   if (!motion.open)
     return motion.base + (motion.target - motion.base) * (1 - (1 - p) ** 2);
@@ -58,7 +59,7 @@ function phaseAt(motion: LinkMotion, now: number): number {
 }
 
 function closednessAt(motion: LinkMotion, now: number): number {
-  const p = Math.min(1, (now - motion.since) / TRANSITION_MS);
+  const p = Math.min(1, Math.max(0, now - motion.since) / TRANSITION_MS);
   return motion.open ? (1 - p) ** 2 : p ** 2;
 }
 
@@ -342,7 +343,7 @@ export function drawTimedLinks(
 ) {
   const screenRadius = layout.vertexRadius * layout.mapScale;
   const animated = !areAnimationsDisabled();
-  const now = performance.now();
+  const now = animationNow();
   const motions = motionsOf(layout.backdrop.image);
   for (const link of links) {
     const geometry = linkGeometry(layout, link);
@@ -378,7 +379,7 @@ function flipsOf(image: HTMLImageElement | null): Map<string, FlipMotion> {
 }
 
 function flipPhaseAt(motion: FlipMotion, now: number): number {
-  const elapsed = now - motion.since;
+  const elapsed = Math.max(0, now - motion.since);
   const half = TRANSITION_MS / 2;
   const sign = motion.forward ? 1 : -1;
   const v = TIMED_CHEVRONS_PER_MS;
@@ -394,7 +395,7 @@ function flipPhaseAt(motion: FlipMotion, now: number): number {
 }
 
 function flipTurnAt(motion: FlipMotion, now: number): number {
-  const p = Math.min(1, (now - motion.since) / TRANSITION_MS);
+  const p = Math.min(1, Math.max(0, now - motion.since) / TRANSITION_MS);
   const eased = p * p * (3 - 2 * p);
   return motion.forward ? 2 - 2 * eased : 2 * eased;
 }
@@ -424,7 +425,7 @@ export function drawDirectionalLinks(
 ) {
   const screenRadius = layout.vertexRadius * layout.mapScale;
   const animated = !areAnimationsDisabled();
-  const now = performance.now();
+  const now = animationNow();
   const flips = flipsOf(layout.backdrop.image);
   for (const link of links) {
     const geometry = linkGeometry(layout, link);

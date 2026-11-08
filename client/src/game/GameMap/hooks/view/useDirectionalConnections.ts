@@ -19,6 +19,34 @@ export interface DirectionalLink {
   control: SwitchedLink | null;
 }
 
+export function directionalGraph(
+  territories: Territory[],
+  directionalConnections: DirectionalConnection[],
+  round: number,
+  switched: ReadonlyMap<string, boolean>,
+  controls: ReadonlyMap<string, SwitchedLink>,
+) {
+  return {
+    territories: withDirectedConnections(
+      territories,
+      directionalConnections,
+      round,
+      switched,
+    ),
+    directionalLinks: directionalConnections.map((c): DirectionalLink => {
+      const key = linkKey(c.a, c.b);
+      const on = switched.get(key);
+      return {
+        a: c.a,
+        b: c.b,
+        forward: on ?? pointsForward(c, round),
+        roundsLeft: on === undefined ? roundsUntilFlip(c, round) : null,
+        control: controls.get(key) ?? null,
+      };
+    }),
+  };
+}
+
 export function useDirectionalConnections(
   territories: Territory[],
   directionalConnections: DirectionalConnection[],
@@ -27,25 +55,14 @@ export function useDirectionalConnections(
   controls: ReadonlyMap<string, SwitchedLink>,
 ) {
   return useMemo(
-    () => ({
-      territories: withDirectedConnections(
+    () =>
+      directionalGraph(
         territories,
         directionalConnections,
         round,
         switched,
+        controls,
       ),
-      directionalLinks: directionalConnections.map((c): DirectionalLink => {
-        const key = linkKey(c.a, c.b);
-        const on = switched.get(key);
-        return {
-          a: c.a,
-          b: c.b,
-          forward: on ?? pointsForward(c, round),
-          roundsLeft: on === undefined ? roundsUntilFlip(c, round) : null,
-          control: controls.get(key) ?? null,
-        };
-      }),
-    }),
     [territories, directionalConnections, round, switched, controls],
   );
 }

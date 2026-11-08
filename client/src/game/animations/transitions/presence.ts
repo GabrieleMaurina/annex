@@ -1,4 +1,5 @@
 import type { Point } from '../../GameMap/helpers';
+import { animationNow, isClockVirtual } from '../clock';
 
 const PRESENCE_MS = 300;
 const MAX_STEP_MS = 50;
@@ -59,7 +60,7 @@ export function trackPresence<T>(
   animate: boolean,
 ): Map<string, Shown<T>> {
   const slots = slotsOf(canvas, kind);
-  const now = performance.now();
+  const now = animationNow();
   const shown = new Map<string, Shown<T>>();
   for (const key of new Set([...slots.keys(), ...looks.keys()])) {
     const target = looks.get(key) ?? null;
@@ -68,7 +69,8 @@ export function trackPresence<T>(
       slot = { shown: target!, scale: animate ? 0 : 1, updatedAt: now };
       slots.set(key, slot);
     }
-    const step = Math.min(now - slot.updatedAt, MAX_STEP_MS) / PRESENCE_MS;
+    const step =
+      Math.max(0, Math.min(now - slot.updatedAt, MAX_STEP_MS)) / PRESENCE_MS;
     slot.updatedAt = now;
     const settled = target !== null && target.state === slot.shown.state;
     if (settled || (target && !animate)) {
@@ -85,7 +87,8 @@ export function trackPresence<T>(
       }
       if (slot.scale === 0) slot.shown = target!;
     }
-    if (slot.scale < 1 || !settled) activeUntil = now + MAX_STEP_MS * 2;
+    if ((slot.scale < 1 || !settled) && !isClockVirtual())
+      activeUntil = now + MAX_STEP_MS * 2;
     shown.set(key, {
       ...(slot.shown as Look<T>),
       scale: settled || !animate ? grown(slot.scale) : shrunk(slot.scale),

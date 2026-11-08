@@ -29,3 +29,51 @@
 .form-range::-moz-range-thumb:active {
   background: var(--bs-primary);
 }
+
+.dual-range {
+  position: relative;
+  touch-action: none;
+}
+
+.dual-range .form-range {
+  position: relative;
+  display: block;
+  pointer-events: none;
+}
+
+.dual-range .form-range + .form-range {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.dual-range .form-range::-webkit-slider-runnable-track {
+  background: transparent;
+  box-shadow: none;
+}
+
+.dual-range .form-range::-moz-range-track {
+  background: transparent;
+  box-shadow: none;
+}
+
+.dual-range .form-range::-webkit-slider-thumb {
+  pointer-events: auto;
+}
+
+.dual-range .form-range::-moz-range-thumb {
+  pointer-events: auto;
+}
+
+.dual-range-track {
+  height: 0.5rem;
+  background: var(--bs-secondary-bg);
+  box-shadow: var(--ui-sunken);
+}
+
+.dual-range-marker {
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px var(--ui-ink);
+}

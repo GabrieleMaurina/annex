@@ -1,5 +1,6 @@
 import { territoryIncome } from '../../game/mechanics';
 import { upcomingSetValues } from '../../game/progression/cards';
+import { ClaimEvaluation, evaluateClaims } from '../claims/score';
 import { grudgeAgainst } from '../features/grudge';
 import {
   capitalShortfall,
@@ -17,6 +18,7 @@ import {
   stackScores,
 } from '../goals/stackOpenness';
 import { standingScore } from '../goals/standingScore';
+import { checkPlanClock } from '../timing/planClock';
 import {
   PlanContext,
   SimState,
@@ -246,7 +248,11 @@ function claimedLand(ctx: PlanContext, state: SimState): number {
   );
 }
 
-function continentProgress(ctx: PlanContext, state: SimState): number {
+function continentProgress(
+  ctx: PlanContext,
+  state: SimState,
+  claimed: ClaimEvaluation | null,
+): number {
   let score = 0;
   for (const [continentId, territoryIds] of ctx.continentTerritories) {
     const owned = territoryIds.filter(
@@ -255,7 +261,11 @@ function continentProgress(ctx: PlanContext, state: SimState): number {
     if (owned === 0 || holdsContinent(ctx, state, territoryIds, ctx.botId))
       continue;
     const ratio = owned / territoryIds.length;
-    score += bonusOf(ctx, continentId) * ratio * ratio;
+    score +=
+      bonusOf(ctx, continentId) *
+      ratio *
+      ratio *
+      (claimed?.progressScale.get(continentId) ?? 1);
   }
   return score;
 }
@@ -424,6 +434,7 @@ function scoreState(
   state: SimState,
   cachedProgress?: SideProgress,
 ): number {
+  checkPlanClock();
   const { risk, waste, concentration, largest, scattered } = riskAndWaste(
     ctx,
     state,
@@ -439,7 +450,9 @@ function scoreState(
   score += INCOME * incomeEstimate(ctx, state, ctx.botId);
   score += claimedLand(ctx, state);
   score += HELD_BONUS * heldContinentBonus(ctx, state, ctx.botId);
-  score += CONTINENT_PROGRESS * continentProgress(ctx, state);
+  const claimed = evaluateClaims(ctx, state, scale);
+  score += CONTINENT_PROGRESS * continentProgress(ctx, state, claimed);
+  if (claimed) score += claimed.score;
   score += denial(ctx, state);
   score -= (ctx.weights.defense * FRONTIER_RISK * riskFactor * risk) / scale;
   score -= (INTERIOR_WASTE * waste) / scale;

@@ -16,6 +16,12 @@ import {
   LockedTile,
   TurnPhase,
 } from '../../types';
+import { ClaimContext } from '../claims/model';
+import {
+  buildClaimContext,
+  claimsEnabled,
+  withGreedStanding,
+} from '../claims/snapshot';
 import { difficultyParams } from '../difficulty';
 import { troopsPerDefender } from '../features/combat';
 import { finisherMode } from '../features/finisher';
@@ -61,6 +67,7 @@ export interface PlanContext {
   finisher: boolean;
   stackFocus: number;
   income: number;
+  claims: ClaimContext | null;
 }
 
 const FINISHER_DEPTH = 40;
@@ -403,7 +410,7 @@ export function buildContext(
           topology.neighbors,
         );
 
-  return {
+  const ctx: PlanContext = {
     game,
     map,
     botId,
@@ -429,7 +436,22 @@ export function buildContext(
     finisher: focus.finisher,
     stackFocus,
     income: incomeOf(game, botId),
+    claims: null,
   };
+  if (!claimsEnabled(game, personality, params)) return ctx;
+  const { owners, troops } = snapshotState(ctx);
+  ctx.claims = buildClaimContext(
+    game,
+    ctx.view,
+    botId,
+    ctx.friendlyIds,
+    topology.continentTerritories,
+    map.bonuses,
+    owners,
+    troops,
+  );
+  ctx.standing = withGreedStanding(ctx.standing, ctx.claims.greed);
+  return ctx;
 }
 
 export function withFlippedSwitch(

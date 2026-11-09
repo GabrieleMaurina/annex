@@ -1,3 +1,4 @@
+import { checkPlanClock } from '../timing/planClock';
 import {
   PlanContext,
   SimState,
@@ -87,6 +88,7 @@ function shortestLegs(
   blocked?: Set<number>,
   targetId?: number,
 ): Map<number, Leg> {
+  checkPlanClock();
   const dist = new Map<number, number>([[fromId, 0]]);
   const prev = new Map<number, number>();
   const visited = new Set<number>();

@@ -1,3 +1,5 @@
+import { crushClaimCandidates, punishCandidates } from '../claims/objectives';
+import { contestedShare } from '../claims/score';
 import {
   continentBreakCandidates,
   continentCompletionCandidates,
@@ -607,7 +609,8 @@ function claimValue(
   const territoryIds = ctx.continentTerritories.get(continentId) ?? [];
   const bonusShare = holdsContinent(ctx, state, territoryIds, ctx.botId)
     ? 0
-    : bonusOf(ctx, continentId) / Math.max(1, territoryIds.length);
+    : (bonusOf(ctx, continentId) * (1 - contestedShare(ctx, continentId))) /
+      Math.max(1, territoryIds.length);
   const onward = neighborsOf(ctx, territoryId).filter((n) =>
     isClaimable(ctx, state, n),
   ).length;
@@ -872,6 +875,8 @@ export function gatherCandidates(
     ...snipeCandidates(ctx, state, budget),
     ...completeCandidates(ctx, state, budget),
     ...breakCandidates(ctx, state, budget),
+    ...crushClaimCandidates(ctx, state, budget),
+    ...punishCandidates(ctx, state, budget),
     ...policeCandidates(ctx, state, budget),
     ...duelBreakCandidates(ctx, state, budget),
     ...rollCandidates(ctx, state, budget),

@@ -1,8 +1,15 @@
 import { pickBestSet } from '../../game/progression/cards';
 import { flippedSwitchesKey } from '../../maps/maps';
+import { claimFactor } from '../claims/score';
 import { chooseCardSet } from '../heuristics/cards';
 import { holdsCardsUntilForced } from '../personality/specialists/hoarder';
 import { policeChoice } from '../personality/specialists/police';
+import {
+  PlanTimeout,
+  planExpired,
+  startPlanClock,
+  stopPlanClock,
+} from '../timing/planClock';
 import { Weights } from '../types';
 import { PlanContext, SimState, isFriendly, snapshotState } from './context';
 import {
@@ -44,6 +51,8 @@ const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
   deny: () => 2,
   sortie: () => 0.4,
   snipe: () => 3,
+  crushClaim: () => 0,
+  punish: () => 0,
 };
 
 const DUEL_FINISHER_ELIMINATE_BONUS = 50;
@@ -63,7 +72,10 @@ function personalityBonus(ctx: PlanContext, objectives: Objective[]): number {
   const duelFinisher = isDuelFinisher(ctx);
   objectives.forEach((objective, index) => {
     bonus +=
-      1.4 * KIND_WEIGHT[objective.kind](ctx.weights) * (index === 0 ? 1 : 0.5);
+      1.4 *
+      KIND_WEIGHT[objective.kind](ctx.weights) *
+      claimFactor(ctx, objective) *
+      (index === 0 ? 1 : 0.5);
     if (duelFinisher && index === 0 && objective.kind === 'eliminate')
       bonus += DUEL_FINISHER_ELIMINATE_BONUS;
     if (objective.kind === 'break')
@@ -225,6 +237,20 @@ export function buildTurnPlan(
   ctx: PlanContext,
   troopsToDeploy: number,
   allowCards = true,
+  startedAt = Date.now(),
+): TurnPlan {
+  startPlanClock(startedAt);
+  try {
+    return searchTurnPlan(ctx, troopsToDeploy, allowCards);
+  } finally {
+    stopPlanClock();
+  }
+}
+
+function searchTurnPlan(
+  ctx: PlanContext,
+  troopsToDeploy: number,
+  allowCards: boolean,
 ): TurnPlan {
   const state = snapshotState(ctx);
   const cardSet =
@@ -254,19 +280,46 @@ export function buildTurnPlan(
     }
   };
 
-  const scored = policeChoice(
-    ctx,
-    state,
-    gatherCandidates(ctx, state, budget).map((candidate) => {
+  let timedOut = false;
+  const overBudget = () => timedOut || planExpired();
+  const guarded = (work: () => void) => {
+    if (timedOut) return;
+    try {
+      work();
+    } catch (error) {
+      if (!(error instanceof PlanTimeout)) throw error;
+      timedOut = true;
+      stopPlanClock();
+    }
+  };
+
+  const simulated: {
+    candidate: Candidate;
+    result: SimResult;
+    feasible: boolean;
+    refined: boolean;
+  }[] = [];
+  guarded(() => {
+    for (const candidate of gatherCandidates(ctx, state, budget)) {
+      if (overBudget() && simulated.some((e) => e.feasible)) break;
       const result = simulateTurn(ctx, candidate, false);
       const feasible =
         result.feasible || candidate.objectives[0].kind === 'defensive';
-      return { candidate, result, feasible, refined: false };
-    }),
-    (e) => e.feasible && confidentEnough(ctx, e.candidate, e.result),
-  );
+      simulated.push({ candidate, result, feasible, refined: false });
+    }
+  });
+  let scored = simulated;
+  guarded(() => {
+    scored = policeChoice(
+      ctx,
+      state,
+      simulated,
+      (e) => e.feasible && confidentEnough(ctx, e.candidate, e.result),
+    );
+  });
 
-  if (ctx.params.optimizeFortify)
+  guarded(() => {
+    if (!ctx.params.optimizeFortify || overBudget()) return;
     scored
       .filter((e) => e.feasible && confidentEnough(ctx, e.candidate, e.result))
       .sort(
@@ -280,6 +333,7 @@ export function buildTurnPlan(
         entry.result = simulateTurn(ctx, entry.candidate, true);
         entry.refined = true;
       });
+  });
 
   for (const entry of scored) {
     if (!entry.feasible) continue;
@@ -292,7 +346,14 @@ export function buildTurnPlan(
     );
   }
 
-  if (ctx.params.maxCampaigns >= 2 && budget >= 8 && !ctx.finisher) {
+  guarded(() => {
+    if (
+      ctx.params.maxCampaigns < 2 ||
+      budget < 8 ||
+      ctx.finisher ||
+      overBudget()
+    )
+      return;
     const offensive = scored
       .filter(
         (e) =>
@@ -348,15 +409,22 @@ export function buildTurnPlan(
         }
       }
     }
-  }
+  });
 
-  if (ctx.params.optimizeFortify && bestCandidate && !bestRefined)
-    bestPlan = materialize(
-      ctx,
-      bestCandidate,
-      simulateTurn(ctx, bestCandidate, true),
-      cardSet,
-    );
+  guarded(() => {
+    if (
+      ctx.params.optimizeFortify &&
+      bestCandidate &&
+      !bestRefined &&
+      !overBudget()
+    )
+      bestPlan = materialize(
+        ctx,
+        bestCandidate,
+        simulateTurn(ctx, bestCandidate, true),
+        cardSet,
+      );
+  });
 
   const needsCard =
     !ctx.game.conqueredThisTurn &&

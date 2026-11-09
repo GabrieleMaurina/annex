@@ -19,7 +19,9 @@ export type ObjectiveKind =
   | 'expand'
   | 'deny'
   | 'sortie'
-  | 'snipe';
+  | 'snipe'
+  | 'crushClaim'
+  | 'punish';
 
 export interface Objective {
   kind: ObjectiveKind;

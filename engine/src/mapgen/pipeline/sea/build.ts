@@ -226,7 +226,7 @@ function touchesMultipleLandmasses(
   return false;
 }
 
-function partitionBodyRecursive(
+function partitionBody(
   pixels: number[],
   landLabelGrid: Int16Array,
   landAdjacency: Map<number, Set<number>>,
@@ -241,78 +241,56 @@ function partitionBodyRecursive(
   warp: SeaWarp | null,
   maxLandNeighborsPerSea: number,
 ): number {
-  const targetCount = Math.max(1, Math.round(pixels.length / typicalSize));
-  const lands = touchingLands(pixels, landLabelGrid, width, height);
-  const landCount = lands.size;
-  const spansMultipleLandmasses = touchesMultipleLandmasses(
-    lands,
-    landComponentOf,
-  );
+  const pending: number[][] = [pixels];
+  let nextId = startId;
+  while (pending.length > 0) {
+    const body = pending.pop()!;
+    const targetCount = Math.max(1, Math.round(body.length / typicalSize));
+    const lands = touchingLands(body, landLabelGrid, width, height);
+    const landCount = lands.size;
+    const spansMultipleLandmasses = touchesMultipleLandmasses(
+      lands,
+      landComponentOf,
+    );
 
-  if (
-    targetCount > 1 ||
-    landCount > maxLandNeighborsPerSea ||
-    spansMultipleLandmasses
-  ) {
-    const minPieceSize = spansMultipleLandmasses
-      ? Math.min(typicalSize, expectedLandArea) * SMALL_SEA_MERGE_RATIO
-      : typicalSize * SMALL_SEA_MERGE_RATIO;
-    const split = findChokepointSplit(
-      pixels,
-      distToLand,
+    if (
+      targetCount > 1 ||
+      landCount > maxLandNeighborsPerSea ||
+      spansMultipleLandmasses
+    ) {
+      const minPieceSize = spansMultipleLandmasses
+        ? Math.min(typicalSize, expectedLandArea) * SMALL_SEA_MERGE_RATIO
+        : typicalSize * SMALL_SEA_MERGE_RATIO;
+      const split = findChokepointSplit(
+        body,
+        distToLand,
+        landLabelGrid,
+        landAdjacency,
+        width,
+        height,
+        minPieceSize,
+      );
+      if (split) {
+        pending.push(split[1], split[0]);
+        continue;
+      }
+    }
+
+    nextId = partitionSeaBody(
+      body,
       landLabelGrid,
-      landAdjacency,
+      landComponentOf,
       width,
       height,
-      minPieceSize,
+      expectedLandArea,
+      seaLabelGrid,
+      nextId,
+      warp,
+      maxLandNeighborsPerSea,
+      targetCount,
     );
-    if (split) {
-      const nextId = partitionBodyRecursive(
-        split[0],
-        landLabelGrid,
-        landAdjacency,
-        landComponentOf,
-        width,
-        height,
-        expectedLandArea,
-        typicalSize,
-        distToLand,
-        seaLabelGrid,
-        startId,
-        warp,
-        maxLandNeighborsPerSea,
-      );
-      return partitionBodyRecursive(
-        split[1],
-        landLabelGrid,
-        landAdjacency,
-        landComponentOf,
-        width,
-        height,
-        expectedLandArea,
-        typicalSize,
-        distToLand,
-        seaLabelGrid,
-        nextId,
-        warp,
-        maxLandNeighborsPerSea,
-      );
-    }
   }
-
-  return partitionSeaBody(
-    pixels,
-    landLabelGrid,
-    landComponentOf,
-    width,
-    height,
-    expectedLandArea,
-    seaLabelGrid,
-    startId,
-    warp,
-    maxLandNeighborsPerSea,
-    targetCount,
-  );
+  return nextId;
 }
 
 function mergeSmallSeaTerritories(
@@ -589,7 +567,7 @@ export function buildSeaTerritories(
   const landComponentOf = computeLandComponents(landAdjacency);
   let nextSeaId = 0;
   for (const body of eligibleBodies) {
-    nextSeaId = partitionBodyRecursive(
+    nextSeaId = partitionBody(
       bodyPixels[body],
       landLabelGrid,
       landAdjacency,

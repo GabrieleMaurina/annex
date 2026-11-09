@@ -7,6 +7,8 @@ import { isClaimPhase } from '../../game/state';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
+import { claimHome } from '../claims/score';
+import { claimsEnabled } from '../claims/snapshot';
 import { difficultyParams } from '../difficulty';
 import {
   canHoldSet,
@@ -158,10 +160,11 @@ function resolvePlan(
 }
 
 function choosePlan(ctx: PlanContext, game: Game, botId: number): TurnPlan {
+  const startedAt = Date.now();
   const troops = game.turnPhase === 'deploy' ? game.troopsToDeploy : 0;
   const plan = buildTurnPlan(ctx, troops);
   if (!plan.cardSet || !canHoldCards(ctx) || !holdPays(ctx)) return plan;
-  const held = buildTurnPlan(ctx, troops, false);
+  const held = buildTurnPlan(ctx, troops, false, startedAt);
   if (held.score + HELD_TROOP_VALUE * holdingGain(game, botId) < plan.score)
     return plan;
   held.cardsHeld = true;
@@ -214,10 +217,12 @@ export function planBotTurn(
   const stale = emptyPlan(-1, botId);
 
   if (isClaimPhase(game)) {
+    const params = difficultyParams(botProfile.difficulty);
     const territoryId = chooseTerritoryClaim(
       game,
       botId,
-      difficultyParams(botProfile.difficulty).noise,
+      params.noise,
+      claimsEnabled(game, botProfile.personality, params),
     );
     const event =
       phase === 'capital' ? 'game:selectCapital' : 'game:claimTerritory';
@@ -293,7 +298,7 @@ function plannedPlacement(
   const evenLevel =
     (owned.reduce((sum, id) => sum + troopsIn(state, id), 0) + pool) /
     Math.max(1, owned.length);
-  const home = defensiveHome(ctx).continentId;
+  const home = ctx.claims ? claimHome(ctx) : defensiveHome(ctx).continentId;
   let best: number | null = null;
   let bestGap = -Infinity;
   for (const id of owned) {

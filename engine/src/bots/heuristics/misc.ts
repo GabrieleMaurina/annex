@@ -2,6 +2,7 @@ import { supplyHubTerritoryIds } from '../../game/mechanics';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
+import { setupRivalClaims } from '../claims/setup';
 import { isTeammate } from '../features/mode/mode';
 import {
   isFrontier,
@@ -120,12 +121,18 @@ function claimValue(
   continentId: number,
   claims: ContinentClaims,
   rivalDistance: number,
+  rivalClaim: number | undefined,
 ): number {
   const size = claims.ids.length;
   const bonus = bonusOf(game, continentId);
   const perEntry = bonus / Math.max(1, claims.entries.size);
   const progress = (claims.own + 1) / size;
-  const rivalHeld = claims.strongestRival > claims.own ? RIVAL_HELD_SHARE : 1;
+  const rivalHeld =
+    rivalClaim !== undefined
+      ? 1 - (1 - RIVAL_HELD_SHARE) * rivalClaim
+      : claims.strongestRival > claims.own
+        ? RIVAL_HELD_SHARE
+        : 1;
   const pursuit = perEntry * progress * rivalHeld * (1 - claims.rivals / size);
   const entry =
     claims.own > 0 && claims.entries.has(territoryId)
@@ -151,6 +158,7 @@ export function chooseTerritoryClaim(
   game: Game,
   botId: number,
   noise: number,
+  useClaims = false,
 ): number | null {
   const view = getBotView(game, botId);
   const unclaimed = getGameMap(game).territories.filter(
@@ -161,6 +169,9 @@ export function chooseTerritoryClaim(
   if (unclaimed.length === 0) return null;
   const claims = continentClaims(game, view, botId, continentsOf(game));
   const distances = rivalDistances(game, view, botId, landLinks(game));
+  const rivalClaims = useClaims
+    ? setupRivalClaims(game, view, botId)
+    : new Map<number, number>();
   const ranked = unclaimed
     .map((territory) => ({
       id: territory.id,
@@ -172,6 +183,7 @@ export function chooseTerritoryClaim(
           territory.continentId,
           claims.get(territory.continentId)!,
           distances.get(territory.id) ?? RIVAL_DISTANCE_CAP,
+          rivalClaims.get(territory.continentId),
         ) +
         (Math.random() - 0.5) * noise +
         Math.random() * TIE_BREAK,

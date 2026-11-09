@@ -33,4 +33,5 @@ export interface DifficultyParams {
   strategist: boolean;
   intel: number;
   cardTiming: boolean;
+  claims: boolean;
 }

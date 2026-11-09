@@ -6,6 +6,8 @@ import * as path from 'path';
 import { WorkerDoneMessage, WorkerInput, WorkerMessage } from './worker';
 
 const ROUND_CAP = 1000;
+const MEMORY_SHARE = 0.75;
+const BYTES_PER_MB = 1024 * 1024;
 
 export function gamesFromEnv(name: string): number {
   const games = Number(process.env[name] ?? 0);
@@ -43,6 +45,9 @@ function runWorkers(
 ): Promise<WorkerDoneMessage[]> {
   const totalGames = input.totalGames;
   const workerCount = Math.max(1, Math.min(os.cpus().length, totalGames));
+  const maxOldGenerationSizeMb = Math.floor(
+    (os.totalmem() * MEMORY_SHARE) / BYTES_PER_MB / workerCount,
+  );
   const counter = new SharedArrayBuffer(4);
   new Int32Array(counter).fill(0);
 
@@ -59,6 +64,7 @@ function runWorkers(
     Array.from({ length: workerCount }, () => {
       const worker = new Worker(path.join(__dirname, 'worker.ts'), {
         execArgv: ['--require', 'ts-node/register'],
+        resourceLimits: { maxOldGenerationSizeMb },
         workerData: { ...input, counter } satisfies WorkerInput,
       });
       return new Promise<WorkerDoneMessage>((resolve, reject) => {

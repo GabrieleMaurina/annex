@@ -88,7 +88,9 @@ test('breaker cracks the enemy bonus continent', () => {
 
 test('balanced commits to one of the two offensives', () => {
   assert.ok(
-    ['complete', 'break'].includes(primaryFor(completeVsBreak, 'balanced')),
+    ['complete', 'break', 'crushClaim'].includes(
+      primaryFor(completeVsBreak, 'balanced'),
+    ),
     `balanced picked ${primaryFor(completeVsBreak, 'balanced')}`,
   );
 });

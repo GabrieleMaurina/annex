@@ -28,6 +28,7 @@ import {
   openStackWeight,
 } from '../goals/stackOpenness';
 import { hoardFortify } from '../personality/specialists/hoarder';
+import { checkPlanClock } from '../timing/planClock';
 import { evaluateBoard } from './board';
 import {
   PlanContext,
@@ -503,6 +504,7 @@ export function simulateTurn(
   candidate: Candidate,
   optimizeFortify = ctx.params.optimizeFortify,
 ): SimResult {
+  checkPlanClock();
   const state = snapshotState(ctx);
   applyDeployments(state, candidate.deployments);
 

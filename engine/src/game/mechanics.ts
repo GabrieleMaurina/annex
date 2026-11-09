@@ -309,10 +309,9 @@ export function awardDeployTroops(
   playerId: number,
   troops: number,
 ): number {
-  const awarded = Math.max(
-    0,
-    Math.min(troops, deployCapacity(game, playerId) - game.troopsToDeploy),
-  );
+  const capacity = deployCapacity(game, playerId);
+  game.troopsToDeploy = Math.min(game.troopsToDeploy, capacity);
+  const awarded = Math.max(0, Math.min(troops, capacity - game.troopsToDeploy));
   game.troopsToDeploy += awarded;
   return awarded;
 }

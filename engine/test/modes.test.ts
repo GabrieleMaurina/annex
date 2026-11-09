@@ -354,7 +354,10 @@ test('entrenchment: the bot routes around the hardened tile', () => {
     entrenched: [2],
   };
   const plan = planScenario(spec);
-  assert.ok(kinds(plan).includes('break'), `kinds: ${kinds(plan)}`);
+  assert.ok(
+    kinds(plan).some((kind) => ['break', 'crushClaim'].includes(kind)),
+    `kinds: ${kinds(plan)}`,
+  );
   assert.ok(
     plan.attackSteps.every((s) => s.endId !== 2),
     `routed through the entrenched t2: ${JSON.stringify(

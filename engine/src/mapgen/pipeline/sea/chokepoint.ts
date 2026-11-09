@@ -50,21 +50,6 @@ function unionRoots(
   );
 }
 
-interface SplitCandidate {
-  score: number;
-  a: number[];
-  b: number[];
-}
-
-function betterCandidate(
-  current: SplitCandidate | null,
-  next: SplitCandidate | null,
-): SplitCandidate | null {
-  if (!next) return current;
-  if (!current || next.score > current.score) return next;
-  return current;
-}
-
 const MAX_BOX_AREA_RATIO = 6;
 
 export function findChokepointSplit(
@@ -112,8 +97,13 @@ export function findChokepointSplit(
     localDist[local] = distToLand[pixels[idx]];
   }
 
-  const bucket: number[][] = Array.from({ length: maxDist + 1 }, () => []);
-  for (const local of localPixels) bucket[localDist[local]].push(local);
+  const bucketStart = new Int32Array(maxDist + 2);
+  for (const local of localPixels) bucketStart[localDist[local] + 1]++;
+  for (let d = 0; d <= maxDist; d++) bucketStart[d + 1] += bucketStart[d];
+  const bucketed = new Int32Array(localPixels.length);
+  const bucketFill = bucketStart.slice(0, maxDist + 1);
+  for (const local of localPixels)
+    bucketed[bucketFill[localDist[local]]++] = local;
 
   const parent = new Int32Array(boxWidth * boxHeight).fill(-1);
   const size = new Int32Array(boxWidth * boxHeight);
@@ -123,12 +113,9 @@ export function findChokepointSplit(
 
   const labelOfLocal = new Int8Array(boxWidth * boxHeight);
   const queueLocal = new Int32Array(boxWidth * boxHeight);
+  const bestLabels = new Int8Array(boxWidth * boxHeight);
 
-  const evaluateCandidate = (
-    rootA: number,
-    rootB: number,
-    k: number,
-  ): SplitCandidate => {
+  const scoreCandidate = (rootA: number, rootB: number, k: number): number => {
     for (const local of localPixels) labelOfLocal[local] = -1;
     let tail = 0;
     for (const local of localPixels) {
@@ -164,19 +151,12 @@ export function findChokepointSplit(
     let cutLength = 0;
     const landsA = new Set<number>();
     const landsB = new Set<number>();
-    const a: number[] = [];
-    const b: number[] = [];
     for (let idx = 0; idx < pixels.length; idx++) {
       const global = pixels[idx];
       const local = localPixels[idx];
       const label = labelOfLocal[local];
-      if (label === 0) {
-        sizeA++;
-        a.push(global);
-      } else {
-        sizeB++;
-        b.push(global);
-      }
+      if (label === 0) sizeA++;
+      else sizeB++;
       const lands = label === 0 ? landsA : landsB;
       const gx = global % width;
       const gy = (global / width) | 0;
@@ -217,16 +197,17 @@ export function findChokepointSplit(
     }
 
     const smaller = Math.min(sizeA, sizeB);
-    const score = smaller / Math.max(1, cutLength) / (1 + severedPairs);
-    return { score, a, b };
+    return smaller / Math.max(1, cutLength) / (1 + severedPairs);
   };
 
-  let best: SplitCandidate | null = null;
+  let bestScore = -Infinity;
+  let found = false;
   let lastEvaluatedA = -1;
   let lastEvaluatedB = -1;
 
   for (let d = maxDist; d >= 1; d--) {
-    for (const local of bucket[d]) {
+    for (let at = bucketStart[d]; at < bucketStart[d + 1]; at++) {
+      const local = bucketed[at];
       parent[local] = local;
       size[local] = 1;
       liveRoots.add(local);
@@ -277,9 +258,18 @@ export function findChokepointSplit(
     if (rootA === lastEvaluatedA && rootB === lastEvaluatedB) continue;
     lastEvaluatedA = rootA;
     lastEvaluatedB = rootB;
-    best = betterCandidate(best, evaluateCandidate(rootA, rootB, k));
+    const score = scoreCandidate(rootA, rootB, k);
+    if (!found || score > bestScore) {
+      found = true;
+      bestScore = score;
+      bestLabels.set(labelOfLocal);
+    }
   }
 
-  if (!best) return null;
-  return [best.a, best.b];
+  if (!found) return null;
+  const a: number[] = [];
+  const b: number[] = [];
+  for (let idx = 0; idx < pixels.length; idx++)
+    (bestLabels[localPixels[idx]] === 0 ? a : b).push(pixels[idx]);
+  return [a, b];
 }

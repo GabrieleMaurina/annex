@@ -55,6 +55,7 @@ const ROSTER_SIZE = 6;
 const MAX_TURN_STEPS = 400;
 const MAX_REPEATED_FAILURE = 5;
 const GAME_DEADLINE_MS = 300_000;
+const SLOW_PLAN_ALERT_MS = 1500;
 const SAMPLE_EVERY_ROUNDS = 25;
 const BOARD_EVERY_ROUNDS = 100;
 
@@ -205,6 +206,9 @@ export function runSimGame(
       boards.push({ round: game.roundNumber, board: snapshotBoard(game) });
       nextBoardRound += BOARD_EVERY_ROUNDS;
     }
+    game.replayFrames.length = 0;
+    game.replayTurnMarkers.length = 0;
+    game.replayLog.length = 0;
     const playerId = game.playerIds[game.turnPlayerIndex];
     const identity = identityById.get(playerId)!;
     const planner =
@@ -228,7 +232,8 @@ export function runSimGame(
       game.state === 'playing' &&
       game.playerIds[game.turnPlayerIndex] === playerId &&
       guard < MAX_TURN_STEPS &&
-      repeatedFailures < MAX_REPEATED_FAILURE
+      repeatedFailures < MAX_REPEATED_FAILURE &&
+      Date.now() - gameStartedAt <= GAME_DEADLINE_MS
     ) {
       guard++;
       const beforeSig = `${game.turnPhase}:${game.troopsToDeploy}:${game.attackConquestMinTroops}:${game.territoryOwners.size}`;
@@ -241,6 +246,10 @@ export function runSimGame(
         caches.get(planner) ?? null,
       );
       const elapsed = Number(process.hrtime.bigint() - started) / 1e6;
+      if (elapsed > SLOW_PLAN_ALERT_MS)
+        console.warn(
+          `slow plan ${Math.round(elapsed)}ms at ${new Date().toISOString()} game ${gameNumber} round ${game.roundNumber} ${identity.personality}:${identity.difficulty} ${phaseAtStart}`,
+        );
       caches.set(planner, res.plan);
       if (isDeploy && planMs === 0) {
         planMs = elapsed;

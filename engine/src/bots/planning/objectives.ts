@@ -1,5 +1,9 @@
-import { crushClaimCandidates, punishCandidates } from '../claims/objectives';
-import { contestedShare } from '../claims/score';
+import {
+  crushClaimCandidates,
+  punishCandidates,
+  withoutCovered,
+} from '../claims/objectives';
+import { contestedShare, hopelessContinent } from '../claims/score';
 import {
   continentBreakCandidates,
   continentCompletionCandidates,
@@ -96,8 +100,9 @@ function completeCandidates(
   state: SimState,
   budget: number,
 ): Candidate[] {
-  return continentCompletionCandidates(ctx.game, ctx.view, ctx.botId).flatMap(
-    (c) =>
+  return continentCompletionCandidates(ctx.game, ctx.view, ctx.botId)
+    .filter((c) => !hopelessContinent(ctx, c.continentId))
+    .flatMap((c) =>
       stackCandidates(
         ctx,
         state,
@@ -108,7 +113,7 @@ function completeCandidates(
         }),
         budget,
       ),
-  );
+    );
 }
 
 function breakCandidates(
@@ -871,17 +876,18 @@ export function gatherCandidates(
   }
   if (ctx.personality === 'hoarder')
     return hoarderCandidates(ctx, state, budget);
+  const spoil = spoilContinentCandidates(ctx, state, budget);
   return [
     ...snipeCandidates(ctx, state, budget),
     ...completeCandidates(ctx, state, budget),
     ...breakCandidates(ctx, state, budget),
-    ...crushClaimCandidates(ctx, state, budget),
+    ...withoutCovered(spoil, crushClaimCandidates(ctx, state, budget)),
     ...punishCandidates(ctx, state, budget),
     ...policeCandidates(ctx, state, budget),
     ...duelBreakCandidates(ctx, state, budget),
     ...rollCandidates(ctx, state, budget),
     ...eliminateCandidates(ctx, state, budget),
-    ...spoilContinentCandidates(ctx, state, budget),
+    ...spoil,
     ...neutralizeThreatCandidates(ctx, state, budget),
     ...antiLeaderCandidates(ctx, state, budget),
     ...preyCandidates(ctx, state, budget),

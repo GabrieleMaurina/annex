@@ -143,11 +143,7 @@ test('break: enemy holds a full continent with a soft border', () => {
     },
     troops: { 3: 22, 4: 1, 5: 6, 6: 6, 7: 6 },
   };
-  const plan = planScenario(spec);
-  assert.ok(
-    ['break', 'crushClaim'].includes(primaryKind(plan) ?? ''),
-    `expected a break or a crush, got [${kinds(plan).join(', ')}]`,
-  );
+  expectKind(spec, 'break');
 });
 
 test('break: chip the weakest tile of a bonus continent', () => {

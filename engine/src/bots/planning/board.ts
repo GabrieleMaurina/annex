@@ -312,9 +312,9 @@ function riskAndWaste(
       hasBorder = true;
       const threat = strongestThreatAt(ctx, state, id);
       const deficit = Math.max(0, threat - troops);
-      risk += isKeyTerritory(ctx.game, id)
-        ? deficit
-        : Math.min(deficit, riskCap);
+      risk +=
+        (ctx.claims?.guard.get(id) ?? 1) *
+        (isKeyTerritory(ctx.game, id) ? deficit : Math.min(deficit, riskCap));
       concentration += Math.pow(Math.max(1, troops), 1.15);
       largestBorder = Math.max(largestBorder, troops);
     } else if (!isKeyTerritory(ctx.game, id)) {

@@ -75,7 +75,7 @@ function HomeHero({
   const sectionRef = useRef<HTMLElement>(null);
   useStackOnOverflow(sectionRef);
   return (
-    <section ref={sectionRef} className="hero-top">
+    <section ref={sectionRef} className="hero-top hero-top-split">
       <Hero
         title="Annex"
         tagline="Multiplayer strategy war game"

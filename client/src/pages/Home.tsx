@@ -476,7 +476,7 @@ function Home({
   }
 
   return (
-    <Container fluid="xl" className="hero-page pb-5">
+    <Container fluid className="hero-page pb-5 px-2 px-sm-4">
       <HomeHero
         serverUnreachable={serverUnreachable}
         joiningRandom={joiningRandom}

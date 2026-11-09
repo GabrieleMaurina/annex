@@ -145,7 +145,7 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
               <Button
                 variant="link"
                 size="sm"
-                className="p-0 text-decoration-none fw-semibold text-truncate d-flex align-items-center justify-content-center gap-1"
+                className="flex-shrink-0 p-0 text-decoration-none fw-semibold text-truncate d-flex align-items-center justify-content-center gap-1"
                 disabled={pathname === '/account'}
                 onClick={() => go('/account')}
               >
@@ -154,7 +154,7 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
                 {name}
               </Button>
             ) : (
-              <div className="text-center fw-semibold text-truncate">
+              <div className="flex-shrink-0 text-center fw-semibold text-truncate">
                 {name}
               </div>
             ))}

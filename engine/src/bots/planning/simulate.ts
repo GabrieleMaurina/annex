@@ -676,7 +676,9 @@ export function defensiveDeployments(
           1,
           strongestThreatAt(horizon, state, id) - troopsIn(state, id),
           capitalGap(ctx, state, id),
-        ) * (isKeyTerritory(ctx.game, id) ? KEY_TERRITORY_DEFICIT_WEIGHT : 1),
+        ) *
+        (isKeyTerritory(ctx.game, id) ? KEY_TERRITORY_DEFICIT_WEIGHT : 1) *
+        (ctx.claims?.guard.get(id) ?? 1),
     }))
     .sort((a, b) => b.deficit - a.deficit)
     .slice(0, maxBorders);

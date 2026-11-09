@@ -56,6 +56,7 @@ const MAX_TURN_STEPS = 400;
 const MAX_REPEATED_FAILURE = 5;
 const GAME_DEADLINE_MS = 300_000;
 const SLOW_PLAN_ALERT_MS = 1500;
+const MAP_ATTEMPTS = 5;
 const SAMPLE_EVERY_ROUNDS = 25;
 const BOARD_EVERY_ROUNDS = 100;
 
@@ -104,6 +105,23 @@ export interface SimGameResult {
   turns: TurnLogEntry[];
 }
 
+function generateSimMap(
+  rng: () => number,
+  name: string,
+): { mapParams: GenerateMapParams; generated: ReturnType<typeof generateMap> } {
+  for (let attempt = 1; ; attempt++) {
+    const mapParams = randomMapParams(
+      rng,
+      `${name}-${Math.floor(rng() * 1e9)}`,
+    );
+    try {
+      return { mapParams, generated: generateMap(mapParams) };
+    } catch (error) {
+      if (attempt === MAP_ATTEMPTS) throw error;
+    }
+  }
+}
+
 export function runSimGame(
   gameNumber: number,
   roundCap: number,
@@ -125,8 +143,7 @@ export function runSimGame(
   createGame(host.id, { name }, true);
   const game = games.get(name)!;
 
-  const mapParams = randomMapParams(rng, `${name}-${Math.floor(rng() * 1e9)}`);
-  const generated = generateMap(mapParams);
+  const { mapParams, generated } = generateSimMap(rng, name);
   game.mapName = generated.name;
   game.generatedMap = {
     territories: generated.territories,

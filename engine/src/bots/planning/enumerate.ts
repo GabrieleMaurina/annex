@@ -51,7 +51,7 @@ const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
   deny: () => 2,
   sortie: () => 0.4,
   snipe: () => 3,
-  crushClaim: () => 0,
+  crushClaim: (w) => (w.breakContinent + w.aggression) * 0.6,
   punish: () => 0,
 };
 
@@ -237,9 +237,8 @@ export function buildTurnPlan(
   ctx: PlanContext,
   troopsToDeploy: number,
   allowCards = true,
-  startedAt = Date.now(),
 ): TurnPlan {
-  startPlanClock(startedAt);
+  startPlanClock(ctx.map.territories.length);
   try {
     return searchTurnPlan(ctx, troopsToDeploy, allowCards);
   } finally {

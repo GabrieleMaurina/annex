@@ -17,6 +17,7 @@ import {
   TurnPhase,
 } from '../../types';
 import { ClaimContext } from '../claims/model';
+import { landSeaLinks } from '../claims/proximity';
 import {
   buildClaimContext,
   claimsEnabled,
@@ -447,6 +448,7 @@ export function buildContext(
     ctx.friendlyIds,
     topology.continentTerritories,
     map.bonuses,
+    landSeaLinks(ctx.neighbors, ctx.seaLinks),
     owners,
     troops,
   );

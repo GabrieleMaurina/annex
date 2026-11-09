@@ -99,6 +99,18 @@
     flex-shrink: 0;
   }
 
+  .hero-top-split:not(.hero-top-stacked) {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    width: fit-content;
+    margin-inline: auto;
+  }
+
+  .hero-top-split:not(.hero-top-stacked) .hero-tag {
+    white-space: nowrap;
+  }
+
   :where(.hero-top:not(.hero-top-stacked)) .hero {
     --hero-logo: 80px;
     --hero-title: clamp(2.8rem, 9vh, 4.5rem);

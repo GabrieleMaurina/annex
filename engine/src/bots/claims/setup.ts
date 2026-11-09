@@ -9,6 +9,7 @@ export function setupRivalClaims(
   game: Game,
   view: BotView,
   botId: number,
+  links: Map<number, number[]>,
 ): Map<number, number> {
   const map = getGameMap(game);
   const continentTerritories = new Map<number, number[]>();
@@ -30,6 +31,8 @@ export function setupRivalClaims(
     botId,
     continentTerritories,
     map.bonuses,
+    links,
+    owners,
   );
   const friends = alliedIds(game, botId);
   const rivals = new Map<number, number>();

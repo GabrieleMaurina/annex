@@ -1,21 +1,24 @@
-export const PLAN_TIME_LIMIT_MS = 1000;
+export const PLAN_WORK_LIMIT = 1_500_000;
 
 export class PlanTimeout extends Error {}
 
-let deadline = Infinity;
+let remaining = Infinity;
+let unitCost = 1;
 
-export function startPlanClock(startedAt: number): void {
-  deadline = startedAt + PLAN_TIME_LIMIT_MS;
+export function startPlanClock(territoryCount: number): void {
+  remaining = PLAN_WORK_LIMIT;
+  unitCost = territoryCount;
 }
 
 export function stopPlanClock(): void {
-  deadline = Infinity;
+  remaining = Infinity;
 }
 
 export function planExpired(): boolean {
-  return Date.now() > deadline;
+  return remaining <= 0;
 }
 
 export function checkPlanClock(): void {
-  if (planExpired()) throw new PlanTimeout();
+  remaining -= unitCost;
+  if (remaining <= 0) throw new PlanTimeout();
 }

@@ -1,3 +1,4 @@
+import { claimScore } from '../claims/score';
 import {
   PlanContext,
   SimState,
@@ -37,6 +38,7 @@ function continentScore(
     }
   }
   if (owned === 0) return 0;
+  if (ctx.claims) return claimScore(ctx, continentId);
   const share = owned / territoryIds.length;
   return (bonus * share * (ownTroops + 1)) / (ownTroops + enemyTroops + 1);
 }

@@ -36,6 +36,8 @@ const RIVAL_DISTANCE_WEIGHT = 1;
 const RIVAL_DISTANCE_CAP = 3;
 const RIVAL_HELD_SHARE = 0.3;
 const ENTRY_WEIGHT = 0.5;
+const SPOIL_MIN_CLAIM = 0.4;
+const SPOIL_WEIGHT = 0.15;
 const BLOCK_WEIGHT = 0.5;
 const TIE_BREAK = 0.01;
 
@@ -122,6 +124,7 @@ function claimValue(
   claims: ContinentClaims,
   rivalDistance: number,
   rivalClaim: number | undefined,
+  canSpoil: boolean,
 ): number {
   const size = claims.ids.length;
   const bonus = bonusOf(game, continentId);
@@ -148,10 +151,16 @@ function claimValue(
     claims.strongestRival === size - 1
       ? BLOCK_WEIGHT * bonus
       : 0;
+  const spoil =
+    canSpoil && claims.own === 0 && rivalClaim !== undefined
+      ? SPOIL_WEIGHT * bonus * Math.max(0, rivalClaim - SPOIL_MIN_CLAIM)
+      : 0;
   const distance =
     (RIVAL_DISTANCE_WEIGHT * Math.min(rivalDistance, RIVAL_DISTANCE_CAP)) /
     RIVAL_DISTANCE_CAP;
-  return pursuit + entry + block + distance + CLAIM_ADJACENCY * adjacent;
+  return (
+    pursuit + entry + block + spoil + distance + CLAIM_ADJACENCY * adjacent
+  );
 }
 
 export function chooseTerritoryClaim(
@@ -168,9 +177,10 @@ export function chooseTerritoryClaim(
   );
   if (unclaimed.length === 0) return null;
   const claims = continentClaims(game, view, botId, continentsOf(game));
-  const distances = rivalDistances(game, view, botId, landLinks(game));
+  const links = landLinks(game);
+  const distances = rivalDistances(game, view, botId, links);
   const rivalClaims = useClaims
-    ? setupRivalClaims(game, view, botId)
+    ? setupRivalClaims(game, view, botId, links)
     : new Map<number, number>();
   const ranked = unclaimed
     .map((territory) => ({
@@ -184,6 +194,7 @@ export function chooseTerritoryClaim(
           claims.get(territory.continentId)!,
           distances.get(territory.id) ?? RIVAL_DISTANCE_CAP,
           rivalClaims.get(territory.continentId),
+          game.turnPhase !== 'capital',
         ) +
         (Math.random() - 0.5) * noise +
         Math.random() * TIE_BREAK,

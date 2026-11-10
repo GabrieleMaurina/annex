@@ -80,10 +80,11 @@ const DEFAULT_FILTERS: HomeFilters = {
   password: '',
   hasBots: '',
   settings: {},
-  sort: 'newest',
+  sort: 'almostFull',
 };
 
 type SortOption =
+  | 'almostFull'
   | 'newest'
   | 'oldest'
   | 'mostPlayers'
@@ -95,8 +96,12 @@ type SortOption =
 
 const SORT_TO_QUERY: Record<
   SortOption,
-  { sort: 'newest' | 'players' | 'rounds' | 'name'; sortDir: 'asc' | 'desc' }
+  {
+    sort: 'newest' | 'players' | 'rounds' | 'name' | 'openSlots';
+    sortDir: 'asc' | 'desc';
+  }
 > = {
+  almostFull: { sort: 'openSlots', sortDir: 'asc' },
   newest: { sort: 'newest', sortDir: 'desc' },
   oldest: { sort: 'newest', sortDir: 'asc' },
   mostPlayers: { sort: 'players', sortDir: 'desc' },
@@ -489,6 +494,7 @@ function Home({
     setPassword('');
     setHasBots('');
     setSettings({});
+    setSortOption(DEFAULT_FILTERS.sort as SortOption);
     setPage(1);
   }
 
@@ -559,6 +565,7 @@ function Home({
             value={sortOption}
             onChange={(v) => resetPage(setSortOption)(v as SortOption)}
           >
+            <option value="almostFull">Almost full</option>
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
             <option value="mostPlayers">Most players</option>
@@ -569,7 +576,11 @@ function Home({
             <option value="nameDesc">Name Z-A</option>
           </SortSelect>
 
-          <FilterDetails count={activeFilterCount} onClear={clearFilters}>
+          <FilterDetails
+            count={activeFilterCount}
+            sortChanged={sortOption !== DEFAULT_FILTERS.sort}
+            onClear={clearFilters}
+          >
             <div className={`${SECTION_CLASS} p-2 mb-2`}>
               <div className="fw-bold text-muted small mb-2">Match</div>
               <div className="row g-3">

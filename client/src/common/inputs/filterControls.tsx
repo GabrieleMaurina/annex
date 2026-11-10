@@ -162,10 +162,12 @@ export function CountBadge({ count, tip }: { count: number; tip: string }) {
 
 export function FilterDetails({
   count = 0,
+  sortChanged = false,
   onClear,
   children,
 }: {
   count?: number;
+  sortChanged?: boolean;
   onClear: () => void;
   children: ReactNode;
 }) {
@@ -184,7 +186,7 @@ export function FilterDetails({
           count={count}
           tip={count === 1 ? '1 filter applied' : `${count} filters applied`}
         />
-        {open && (
+        {open && (count > 0 || sortChanged) && (
           <Button
             size="sm"
             variant="secondary"

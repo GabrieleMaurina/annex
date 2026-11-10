@@ -28,6 +28,7 @@ import Selector from '../ui/forms/Selector';
 import { mapImageUrl } from './mapUrl';
 
 const PAGE_SIZE = 24;
+const DEFAULT_SORT: PlayerMapSort = 'mostLiked';
 const TERR_MIN = 0;
 const TERR_MAX = 500;
 
@@ -70,7 +71,7 @@ function MapBrowser({
   const [genDirectional, setGenDirectional] = useState('');
   const [genSwitched, setGenSwitched] = useState('');
   const [genUnlockable, setGenUnlockable] = useState('');
-  const [sort, setSort] = useState<PlayerMapSort>('mostLiked');
+  const [sort, setSort] = useState<PlayerMapSort>(DEFAULT_SORT);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PlayerMapsPage | null>(null);
   const [rows, setRows] = useState<PlayerMapRow[]>([]);
@@ -199,6 +200,7 @@ function MapBrowser({
     setGenDirectional('');
     setGenSwitched('');
     setGenUnlockable('');
+    setSort(DEFAULT_SORT);
     setPage(1);
   }
 
@@ -215,7 +217,11 @@ function MapBrowser({
         <option value="nameDesc">Name Z-A</option>
       </SortSelect>
 
-      <FilterDetails count={activeFilterCount} onClear={clearFilters}>
+      <FilterDetails
+        count={activeFilterCount}
+        sortChanged={sort !== DEFAULT_SORT}
+        onClear={clearFilters}
+      >
         <div className={`${SECTION_CLASS} p-2 mb-2`}>
           <div className="row g-3">
             <Field label="Search">

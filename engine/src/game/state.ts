@@ -88,6 +88,9 @@ function watchablePlayerIds(game: Game): number[] {
 }
 
 export function gameSummary(game: Game) {
+  const botCount = game.playerIds.filter((id) =>
+    isAnonymousPlaying(game) ? id < 0 : (playersById.get(id)?.isBot ?? false),
+  ).length;
   return {
     name: game.name,
     mapName: game.mapName,
@@ -123,9 +126,8 @@ export function gameSummary(game: Game) {
     watchablePlayerIds: watchablePlayerIds(game),
     bannedIds: [...game.bannedIds],
     playerCount: game.playerIds.length,
-    hasBots: game.playerIds.some((id) =>
-      isAnonymousPlaying(game) ? id < 0 : (playersById.get(id)?.isBot ?? false),
-    ),
+    botCount,
+    hasBots: botCount > 0,
     slots: game.slots,
     state: game.state,
     spectatorCount: game.spectatorIds.length,

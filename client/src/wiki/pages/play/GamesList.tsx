@@ -37,16 +37,20 @@ function GamesList() {
       </WikiSection>
       <WikiSection id="list" title="The Open games list">
         <p>
-          Every public game is listed with its name, map, host, players and
-          state: Lobby, Playing or Ended. Click a row to open it. Private games
-          are never listed (<WikiLink to="play/create#visibility" />
+          Every public game is listed with its name, map, mode, host, players
+          and state: Lobby, Playing or Ended. The players column shows one dot
+          per seat, a bot icon for each seat held by a bot, and a binoculars
+          icon for each spectator. Click a row to open it. Private games are
+          never listed (<WikiLink to="play/create#visibility" />
           ).
         </p>
       </WikiSection>
       <WikiSection id="sort" title="Sorting">
         <p>
-          Newest, oldest, most or fewest players, most or fewest rounds, and
-          name A to Z or Z to A.
+          Almost full (the default: lobbies with the fewest open slots come
+          first, and among those the ones with the most players; full games and
+          games already in play go last), newest, oldest, most or fewest
+          players, most or fewest rounds, and name A to Z or Z to A.
         </p>
       </WikiSection>
       <WikiSection id="filters" title="Filters">
@@ -65,8 +69,9 @@ function GamesList() {
           ]}
         />
         <p>
-          A badge counts the active filters, and Clear removes them. With an
-          account, your filters are remembered across visits and devices.
+          A badge counts the active filters, and Clear removes them and restores
+          the default sorting. With an account, your filters are remembered
+          across visits and devices.
         </p>
       </WikiSection>
       <Callout kind="note">

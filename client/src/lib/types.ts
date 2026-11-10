@@ -119,6 +119,8 @@ export interface GameSummary {
   spectatorCount: number;
   hasPassword: boolean;
   hasBots: boolean;
+  botCount: number;
+  gameMode: string;
   createdAt: number;
   roundNumber: number;
   minRank: string;
@@ -875,7 +877,7 @@ export interface HomeGamesQuery {
   phase?: 'lobby' | 'playing' | 'ended';
   hasPassword?: boolean;
   hasBots?: boolean;
-  sort?: 'newest' | 'players' | 'rounds' | 'name';
+  sort?: 'newest' | 'players' | 'rounds' | 'name' | 'openSlots';
   sortDir?: 'asc' | 'desc';
 }
 

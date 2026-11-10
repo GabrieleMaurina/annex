@@ -139,7 +139,10 @@ export function gamesRouter(getGames: () => LiveGameRow[]): Router {
             : undefined,
       hasBots: q.hasBots === '1' ? true : q.hasBots === '0' ? false : undefined,
       sort:
-        q.sort === 'players' || q.sort === 'rounds' || q.sort === 'name'
+        q.sort === 'players' ||
+        q.sort === 'rounds' ||
+        q.sort === 'name' ||
+        q.sort === 'openSlots'
           ? q.sort
           : 'newest',
       sortDir: q.sortDir === 'asc' ? 'asc' : 'desc',

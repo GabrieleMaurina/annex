@@ -5,6 +5,7 @@ export type LiveGameSummary = Omit<
   'playerIds' | 'watchablePlayerIds' | 'bannedIds' | 'settings' | 'mapKind'
 > & {
   hasPassword: boolean;
+  gameMode: string;
   minRank: string;
   minGames: number;
   minAccountAge: string;
@@ -58,7 +59,7 @@ export interface LiveGamesQuery {
   phase?: 'lobby' | 'playing' | 'ended';
   hasPassword?: boolean;
   hasBots?: boolean;
-  sort: 'newest' | 'players' | 'rounds' | 'name';
+  sort: 'newest' | 'players' | 'rounds' | 'name' | 'openSlots';
   sortDir: 'asc' | 'desc';
 }
 
@@ -162,11 +163,25 @@ function cmpName(a: LiveGameRow, b: LiveGameRow): number {
   return a.name.localeCompare(b.name);
 }
 
+const NOT_JOINABLE_OPEN_SLOTS = 1000;
+
+function joinableOpenSlots(game: LiveGameRow): number {
+  const open = game.slots - game.playerCount;
+  return game.state === 'lobby' && open > 0 ? open : NOT_JOINABLE_OPEN_SLOTS;
+}
+
 function compare(
   a: LiveGameRow,
   b: LiveGameRow,
   sort: LiveGamesQuery['sort'],
 ): number {
+  if (sort === 'openSlots')
+    return (
+      joinableOpenSlots(a) - joinableOpenSlots(b) ||
+      b.playerCount - a.playerCount ||
+      b.createdAt - a.createdAt ||
+      cmpName(a, b)
+    );
   if (sort === 'players') return a.playerCount - b.playerCount || cmpName(a, b);
   if (sort === 'rounds') return a.roundNumber - b.roundNumber || cmpName(a, b);
   if (sort === 'name') return cmpName(a, b);
@@ -187,6 +202,8 @@ function toSummary(row: LiveGameRow): LiveGameSummary {
     roundNumber: row.roundNumber,
     hasPassword: row.hasPassword,
     hasBots: row.hasBots,
+    botCount: row.botCount,
+    gameMode: row.settings.gameMode,
     minRank: row.settings.minRank,
     minGames: row.settings.minGames,
     minAccountAge: row.settings.minAccountAge,

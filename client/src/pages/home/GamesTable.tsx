@@ -1,10 +1,13 @@
 import { meetsRequirements } from 'engine';
 import { Badge, Table } from 'react-bootstrap';
 import WhiteIcon from '../../common/icons/WhiteIcon';
+import Tip from '../../common/tooltips/Tip';
 import { playerColor } from '../../lib/palette';
 import type { Account, GameSummary } from '../../lib/types';
+import { titleCase } from '../../lobby/settings/gameSettings';
 
 const MAX_PIPS = 10;
+const MAX_SPECTATOR_ICONS = 5;
 
 const STATE_LABELS: Record<GameSummary['state'], string> = {
   lobby: 'Lobby',
@@ -27,16 +30,62 @@ interface Props {
   onOpen: (name: string) => void;
 }
 
-function PlayerPips({ filled, slots }: { filled: number; slots: number }) {
+function PlayerPips({
+  filled,
+  bots,
+  slots,
+}: {
+  filled: number;
+  bots: number;
+  slots: number;
+}) {
   if (slots > MAX_PIPS) return null;
+  const humans = filled - bots;
   return (
-    <span className="d-inline-flex gap-1 me-2 align-middle">
-      {Array.from({ length: slots }, (_, i) => (
-        <span
-          key={i}
-          className={`player-pip${i < filled ? '' : ' player-pip-empty'}`}
-          style={i < filled ? { backgroundColor: playerColor(i) } : undefined}
-        />
+    <span className="d-inline-flex align-items-center gap-1 me-2 align-middle">
+      {Array.from({ length: slots }, (_, i) =>
+        i >= humans && i < filled ? (
+          <Tip key={i} text="Bot">
+            <span className="d-inline-flex">
+              <WhiteIcon path="/icons/bot.svg" size={12} alt="Bot" />
+            </span>
+          </Tip>
+        ) : (
+          <span
+            key={i}
+            className={`player-pip${i < filled ? '' : ' player-pip-empty'}`}
+            style={i < filled ? { backgroundColor: playerColor(i) } : undefined}
+          />
+        ),
+      )}
+    </span>
+  );
+}
+
+function Spectators({ count }: { count: number }) {
+  if (count === 0) return null;
+  function icon(label: string) {
+    return (
+      <span className="d-inline-flex">
+        <WhiteIcon path="/icons/binoculars.svg" size={14} alt={label} />
+      </span>
+    );
+  }
+  if (count > MAX_SPECTATOR_ICONS)
+    return (
+      <Tip text="Spectators">
+        <span className="d-inline-flex align-items-center gap-1 ms-3 align-middle">
+          {icon('Spectators')}
+          {count}
+        </span>
+      </Tip>
+    );
+  return (
+    <span className="d-inline-flex align-items-center gap-1 ms-3 align-middle">
+      {Array.from({ length: count }, (_, i) => (
+        <Tip key={i} text="Spectator">
+          {icon('Spectator')}
+        </Tip>
       ))}
     </span>
   );
@@ -62,9 +111,9 @@ function GamesTable({ games, account, onOpen }: Props) {
       <Table hover borderless>
         <thead>
           <tr>
-            <th style={{ width: 1 }} />
             <th>Name</th>
             <th>Map</th>
+            <th>Mode</th>
             <th>Host</th>
             <th>Players</th>
             <th>State</th>
@@ -80,23 +129,29 @@ function GamesTable({ games, account, onOpen }: Props) {
                 role="button"
                 onClick={() => onOpen(game.name)}
               >
-                <td className="text-center px-1">
+                <td className="fw-semibold">
                   {game.hasPassword && (
-                    <WhiteIcon
-                      path="/icons/lock.svg"
-                      size={14}
-                      alt="Password protected"
-                    />
+                    <span className="me-2 align-middle">
+                      <WhiteIcon
+                        path="/icons/lock.svg"
+                        size={14}
+                        alt="Password protected"
+                      />
+                    </span>
                   )}
+                  {game.name}
                 </td>
-                <td className="fw-semibold">{game.name}</td>
                 <td>{game.mapName}</td>
+                <td>{titleCase(game.gameMode)}</td>
                 <td>{game.hostName}</td>
                 <td>
-                  <PlayerPips filled={game.playerCount} slots={game.slots} />
+                  <PlayerPips
+                    filled={game.playerCount}
+                    bots={game.botCount}
+                    slots={game.slots}
+                  />
                   {game.playerCount}/{game.slots}
-                  {game.spectatorCount > 0 &&
-                    ` · ${game.spectatorCount} spectating`}
+                  <Spectators count={game.spectatorCount} />
                 </td>
                 <td>
                   <Badge pill bg={badge.bg} text={badge.text}>

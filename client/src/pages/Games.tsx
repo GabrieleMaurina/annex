@@ -37,6 +37,7 @@ import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import Selector from '../ui/forms/Selector';
 
 const PAGE_SIZE = 20;
+const DEFAULT_SORT: SortOption = 'newest';
 
 const ROUNDS_MIN = 0;
 const ROUNDS_MAX = 1000;
@@ -223,7 +224,7 @@ function Games({ account }: Props) {
   const [playersMax, setPlayersMax] = useState(PLAYERS_MAX);
   const [positionMin, setPositionMin] = useState(POSITION_MIN);
   const [positionMax, setPositionMax] = useState(POSITION_MAX);
-  const [sortOption, setSortOption] = useState<SortOption>('newest');
+  const [sortOption, setSortOption] = useState<SortOption>(DEFAULT_SORT);
   const [mineOverride, setMineOverride] = useState<boolean | null>(null);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<GamesPage | null>(null);
@@ -437,6 +438,8 @@ function Games({ account }: Props) {
     setPlayersMax(PLAYERS_MAX);
     setPositionMin(POSITION_MIN);
     setPositionMax(POSITION_MAX);
+    setSortOption(DEFAULT_SORT);
+    setMineOverride(null);
     setPage(1);
   }
 
@@ -468,7 +471,11 @@ function Games({ account }: Props) {
           {account && <option value="worstPosition">Worst position</option>}
         </SortSelect>
 
-        <FilterDetails count={activeFilterCount} onClear={clearFilters}>
+        <FilterDetails
+          count={activeFilterCount}
+          sortChanged={sortOption !== DEFAULT_SORT || mineOnly !== !!account}
+          onClear={clearFilters}
+        >
           <div className={`${SECTION_CLASS} p-2 mb-2`}>
             <div className="fw-bold text-muted small mb-2">Match</div>
             <div className="row g-3">

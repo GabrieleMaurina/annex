@@ -270,6 +270,7 @@ const HOME_PHASES = ['', 'lobby', 'playing', 'ended'];
 const HOME_PASSWORDS = ['', 'yes', 'no'];
 const HOME_HAS_BOTS = ['', 'yes', 'no'];
 const HOME_SORTS = [
+  'almostFull',
   'newest',
   'oldest',
   'mostPlayers',
@@ -374,7 +375,7 @@ export const DEFAULT_HOME_FILTERS: HomeFilters = {
   password: '',
   hasBots: '',
   settings: {},
-  sort: 'newest',
+  sort: 'almostFull',
 };
 
 export const preferencesSchemaProperties = {
@@ -810,6 +811,6 @@ export function sanitizeHomeFilters(raw: unknown): HomeFilters {
     password: pickEnum(r.password, HOME_PASSWORDS, ''),
     hasBots: pickEnum(r.hasBots, HOME_HAS_BOTS, ''),
     settings: sanitizeFilterSettings(r.settings),
-    sort: pickEnum(r.sort, HOME_SORTS, 'newest'),
+    sort: pickEnum(r.sort, HOME_SORTS, 'almostFull'),
   };
 }

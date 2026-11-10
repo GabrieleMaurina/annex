@@ -17,6 +17,7 @@ import type { PlayerRow, PlayersPage, PlayersQuery } from '../../lib/types';
 import { SECTION_CLASS } from '../../ui/containers/panelStyle';
 
 const PAGE_SIZE = 20;
+const DEFAULT_SORT: SortOption = 'highestElo';
 
 const ELO_MIN = 0;
 const ELO_MAX = 3100;
@@ -75,7 +76,7 @@ function Players() {
   const [eloMax, setEloMax] = useState(ELO_MAX);
   const [gamesMin, setGamesMin] = useState(GAMES_MIN);
   const [gamesMax, setGamesMax] = useState(GAMES_MAX);
-  const [sortOption, setSortOption] = useState<SortOption>('highestElo');
+  const [sortOption, setSortOption] = useState<SortOption>(DEFAULT_SORT);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PlayersPage | null>(null);
 
@@ -134,6 +135,7 @@ function Players() {
     setEloMax(ELO_MAX);
     setGamesMin(GAMES_MIN);
     setGamesMax(GAMES_MAX);
+    setSortOption(DEFAULT_SORT);
     setPage(1);
   }
 
@@ -154,7 +156,11 @@ function Players() {
           <option value="fewestGames">Fewest games</option>
         </SortSelect>
 
-        <FilterDetails count={activeFilterCount} onClear={clearFilters}>
+        <FilterDetails
+          count={activeFilterCount}
+          sortChanged={sortOption !== DEFAULT_SORT}
+          onClear={clearFilters}
+        >
           <div className={`${SECTION_CLASS} p-2 mb-2`}>
             <div className="row g-3">
               <Field label="Username">

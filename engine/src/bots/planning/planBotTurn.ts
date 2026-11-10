@@ -4,7 +4,6 @@ import {
   supplyHubTerritoryIds,
 } from '../../game/mechanics';
 import { isClaimPhase } from '../../game/state';
-import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
 import { claimsEnabled } from '../claims/snapshot';
@@ -72,6 +71,7 @@ import {
 } from '../personality/specialists/hoarder';
 import { chooseSnipe } from '../personality/specialists/opportunist';
 import { policeOutranked } from '../personality/specialists/police';
+import { holdValue, positionEnabled } from '../position/context';
 import {
   PlanContext,
   SimState,
@@ -82,21 +82,14 @@ import {
   isStrategist,
   ownedIds,
   planDepth,
-  routeNeighborsOf,
   snapshotState,
   strongestThreatAt,
   timesCards,
   troopsIn,
 } from './context';
-import { buildTurnPlan, repairPlan } from './enumerate';
+import { buildTurnPlan, repairPlan, stepStatus } from './enumerate';
 import { bestFortify } from './simulate';
-import {
-  AttackStep,
-  FortifyMove,
-  TurnPlan,
-  emptyPlan,
-  isPlanFresh,
-} from './turnPlan';
+import { FortifyMove, TurnPlan, emptyPlan, isPlanFresh } from './turnPlan';
 
 export interface BotAction {
   event: string;
@@ -221,6 +214,7 @@ export function planBotTurn(
       botId,
       params.noise,
       claimsEnabled(game, botProfile.personality, params),
+      positionEnabled(botProfile.personality, params),
     );
     const event =
       phase === 'capital' ? 'game:selectCapital' : 'game:claimTerritory';
@@ -251,7 +245,14 @@ export function planBotTurn(
     const territoryId =
       botProfile.personality === 'hoarder'
         ? hoardCapital(game, botId)
-        : chooseCapital(game, botId);
+        : chooseCapital(
+            game,
+            botId,
+            positionEnabled(
+              botProfile.personality,
+              difficultyParams(botProfile.difficulty),
+            ),
+          );
     return result(
       territoryId !== null
         ? [{ event: 'game:selectCapital', payload: { territoryId } }]
@@ -314,7 +315,9 @@ function plannedPlacement(
             Math.max(strongestThreatAt(ctx, state, id), evenLevel),
             ESCALATION_CAP * evenLevel,
           )
-        : INTERIOR_DEPTH * evenLevel) * (grows ? GROWTH_TILT : 1);
+        : INTERIOR_DEPTH * evenLevel) *
+      (grows ? GROWTH_TILT : 1) *
+      (ctx.position?.guard.get(id) ?? 1);
     const gap =
       target -
       troopsIn(state, id) +
@@ -741,6 +744,7 @@ function planAttack(
     ctx.weights,
     ctx.params.noise,
     ctx.standing,
+    ctx.position ? (id) => holdValue(ctx.position!.shape, id) : () => 0,
     (startId, endId) =>
       expectedLoss(startId, endId) > lossLimit ||
       drainsCapital(startId, endId) ||
@@ -845,37 +849,6 @@ function isOverwhelming(
   const defenders = game.territoryTroops.get(attack.endId) ?? 0;
   const ratio = ctx.finisher ? FINISHER_OVERWHELMING_RATIO : OVERWHELMING_RATIO;
   return defenders > 0 && attackers >= defenders * ratio;
-}
-
-function stepStatus(
-  ctx: PlanContext,
-  game: Game,
-  step: AttackStep,
-): 'ok' | 'done' | 'invalid' {
-  if (game.territoryOwners.get(step.endId) === ctx.botId) return 'done';
-  if (game.territoryOwners.get(step.startId) !== ctx.botId) return 'invalid';
-  const startTroops = game.territoryTroops.get(step.startId) ?? 0;
-  if (startTroops < 2) return 'invalid';
-  if (ctx.closedTileIds.has(step.endId))
-    return startTroops >= ctx.unlockCost + 2 &&
-      routeNeighborsOf(ctx, step.startId).includes(step.endId)
-      ? 'ok'
-      : 'invalid';
-  if (!(ctx.neighbors.get(step.startId) ?? []).includes(step.endId))
-    return 'invalid';
-  if (
-    !game.territoryOwners.has(step.endId) &&
-    !isFreeConquestTarget(game, step.endId)
-  )
-    return 'invalid';
-  const endTroops = game.territoryTroops.get(step.endId) ?? 0;
-  const winProb = attackWinProbability(
-    game,
-    startTroops - 1,
-    endTroops,
-    defenceDiceFor(game, step.endId),
-  );
-  return winProb >= step.minWinProb ? 'ok' : 'invalid';
 }
 
 function planSail(

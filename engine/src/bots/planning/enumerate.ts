@@ -1,6 +1,10 @@
+import { defenceDiceFor } from '../../game/combat/dice';
 import { pickBestSet } from '../../game/progression/cards';
+import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { flippedSwitchesKey } from '../../maps/maps';
+import { Game } from '../../types';
 import { claimFactor } from '../claims/score';
+import { attackWinProbability } from '../features/combat';
 import { chooseCardSet } from '../heuristics/cards';
 import { holdsCardsUntilForced } from '../personality/specialists/hoarder';
 import { policeChoice } from '../personality/specialists/police';
@@ -11,7 +15,13 @@ import {
   stopPlanClock,
 } from '../timing/planClock';
 import { Weights } from '../types';
-import { PlanContext, SimState, isFriendly, snapshotState } from './context';
+import {
+  PlanContext,
+  SimState,
+  isFriendly,
+  routeNeighborsOf,
+  snapshotState,
+} from './context';
 import {
   eliminateMustVisitLimit,
   gatherCandidates,
@@ -447,4 +457,35 @@ function searchTurnPlan(
   }
 
   return bestPlan;
+}
+
+export function stepStatus(
+  ctx: PlanContext,
+  game: Game,
+  step: AttackStep,
+): 'ok' | 'done' | 'invalid' {
+  if (game.territoryOwners.get(step.endId) === ctx.botId) return 'done';
+  if (game.territoryOwners.get(step.startId) !== ctx.botId) return 'invalid';
+  const startTroops = game.territoryTroops.get(step.startId) ?? 0;
+  if (startTroops < 2) return 'invalid';
+  if (ctx.closedTileIds.has(step.endId))
+    return startTroops >= ctx.unlockCost + 2 &&
+      routeNeighborsOf(ctx, step.startId).includes(step.endId)
+      ? 'ok'
+      : 'invalid';
+  if (!(ctx.neighbors.get(step.startId) ?? []).includes(step.endId))
+    return 'invalid';
+  if (
+    !game.territoryOwners.has(step.endId) &&
+    !isFreeConquestTarget(game, step.endId)
+  )
+    return 'invalid';
+  const endTroops = game.territoryTroops.get(step.endId) ?? 0;
+  const winProb = attackWinProbability(
+    game,
+    startTroops - 1,
+    endTroops,
+    defenceDiceFor(game, step.endId),
+  );
+  return winProb >= step.minWinProb ? 'ok' : 'invalid';
 }

@@ -1,4 +1,9 @@
-import { PlanContext, SimState, isFriendly } from '../planning/context';
+import {
+  PlanContext,
+  SimState,
+  isFriendly,
+  safetyAt,
+} from '../planning/context';
 import { Objective } from '../planning/turnPlan';
 import { continentClaims } from './model';
 
@@ -62,6 +67,7 @@ export function evaluateClaims(
     const rival = strongestRival(ctx, byPlayer);
     score +=
       continent.bonus *
+      safetyAt(ctx, continent.id) *
       (CLAIM_VALUE * (byPlayer.get(ctx.botId) ?? 0) * (1 - rival) -
         RIVAL_CLAIM_COST * rivalThreat(ctx, byPlayer, claims.greed));
     progressScale.set(continent.id, 1 - CONTEST_DISCOUNT * rival);
@@ -100,6 +106,7 @@ export function claimScore(ctx: PlanContext, continentId: number): number {
   const byPlayer = claims.current.get(continentId);
   return (
     continent.bonus *
+    safetyAt(ctx, continentId) *
     (byPlayer?.get(ctx.botId) ?? 0) *
     (1 - strongestRival(ctx, byPlayer))
   );

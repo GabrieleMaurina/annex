@@ -34,4 +34,5 @@ export interface DifficultyParams {
   intel: number;
   cardTiming: boolean;
   claims: boolean;
+  position: boolean;
 }

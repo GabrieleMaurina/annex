@@ -38,6 +38,11 @@ import { publicIncomes, withPublicIntel } from '../intel';
 import { erraticStyle } from '../personality/erratic';
 import { getWeights } from '../personality/registry';
 import { policeStrongestPreference } from '../personality/specialists/police';
+import {
+  buildPositionContext,
+  PositionContext,
+  positionEnabled,
+} from '../position/context';
 import { BotStyle, DifficultyParams, Weights } from '../types';
 import { BotView, getBotView, isVisible } from '../view';
 import { isPlanFresh, MapTopology, TurnPlan } from './turnPlan';
@@ -69,6 +74,7 @@ export interface PlanContext {
   stackFocus: number;
   income: number;
   claims: ClaimContext | null;
+  position: PositionContext | null;
 }
 
 const FINISHER_DEPTH = 40;
@@ -438,9 +444,26 @@ export function buildContext(
     stackFocus,
     income: incomeOf(game, botId),
     claims: null,
+    position: null,
   };
-  if (!claimsEnabled(game, personality, params)) return ctx;
+  const claiming = claimsEnabled(game, personality, params);
+  const positioned = positionEnabled(personality, params);
+  if (!claiming && !positioned) return ctx;
   const { owners, troops } = snapshotState(ctx);
+  const links = landSeaLinks(ctx.neighbors, ctx.seaLinks);
+  if (positioned)
+    ctx.position = buildPositionContext(
+      game,
+      botId,
+      ctx.friendlyIds,
+      ctx.neighbors,
+      ctx.attackers,
+      links,
+      topology.continentTerritories,
+      map.bonuses,
+      owners,
+    );
+  if (!claiming) return ctx;
   ctx.claims = buildClaimContext(
     game,
     ctx.view,
@@ -448,7 +471,7 @@ export function buildContext(
     ctx.friendlyIds,
     topology.continentTerritories,
     map.bonuses,
-    landSeaLinks(ctx.neighbors, ctx.seaLinks),
+    links,
     owners,
     troops,
   );
@@ -537,6 +560,17 @@ export function touchingOf(ctx: PlanContext, territoryId: number): number[] {
 
 export function bonusOf(ctx: PlanContext, continentId: number): number {
   return ctx.map.bonuses[continentId] ?? 0;
+}
+
+export function safetyAt(ctx: PlanContext, continentId: number): number {
+  return ctx.position?.shape.safety.get(continentId) ?? 1;
+}
+
+export function guardAt(ctx: PlanContext, territoryId: number): number {
+  return (
+    (ctx.claims?.guard.get(territoryId) ?? 1) *
+    (ctx.position?.guard.get(territoryId) ?? 1)
+  );
 }
 
 export function isFriendly(ctx: PlanContext, playerId: number): boolean {

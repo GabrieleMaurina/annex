@@ -18,6 +18,7 @@ import {
   stackScores,
 } from '../goals/stackOpenness';
 import { standingScore } from '../goals/standingScore';
+import { holdValue } from '../position/context';
 import { checkPlanClock } from '../timing/planClock';
 import {
   PlanContext,
@@ -25,6 +26,7 @@ import {
   attackersOf,
   bonusOf,
   cloneState,
+  guardAt,
   heldContinentBonus,
   holdsContinent,
   horizonOf,
@@ -36,6 +38,7 @@ import {
   opponentIds,
   ownedClusters,
   ownedIds,
+  safetyAt,
   strongestOpponent,
   strongestThreatAt,
   timesCards,
@@ -263,6 +266,7 @@ function continentProgress(
     const ratio = owned / territoryIds.length;
     score +=
       bonusOf(ctx, continentId) *
+      safetyAt(ctx, continentId) *
       ratio *
       ratio *
       (claimed?.progressScale.get(continentId) ?? 1);
@@ -292,6 +296,7 @@ function riskAndWaste(
   concentration: number;
   largest: number;
   scattered: number;
+  held: number;
 } {
   let risk = 0;
   let waste = 0;
@@ -299,6 +304,7 @@ function riskAndWaste(
   let largestBorder = 0;
   let largestAny = 0;
   let excess = 0;
+  let held = 0;
   let hasBorder = false;
   const riskCap =
     ctx.game.gameMode === 'capitals'
@@ -307,13 +313,14 @@ function riskAndWaste(
   for (const id of ownedIds(state, ctx.botId)) {
     const troops = troopsIn(state, id);
     largestAny = Math.max(largestAny, troops);
+    if (ctx.position) held += holdValue(ctx.position.shape, id);
     excess += Math.max(0, troops - 1);
     if (isBotBorder(ctx, state, id)) {
       hasBorder = true;
       const threat = strongestThreatAt(ctx, state, id);
       const deficit = Math.max(0, threat - troops);
       risk +=
-        (ctx.claims?.guard.get(id) ?? 1) *
+        guardAt(ctx, id) *
         (isKeyTerritory(ctx.game, id) ? deficit : Math.min(deficit, riskCap));
       concentration += Math.pow(Math.max(1, troops), 1.15);
       largestBorder = Math.max(largestBorder, troops);
@@ -323,7 +330,7 @@ function riskAndWaste(
   }
   const largest = hasBorder ? largestBorder : largestAny;
   const scattered = excess - Math.max(0, largestAny - 1);
-  return { risk, waste, concentration, largest, scattered };
+  return { risk, waste, concentration, largest, scattered, held };
 }
 
 function strandedTeammateTroops(ctx: PlanContext, state: SimState): number {
@@ -435,7 +442,7 @@ function scoreState(
   cachedProgress?: SideProgress,
 ): number {
   checkPlanClock();
-  const { risk, waste, concentration, largest, scattered } = riskAndWaste(
+  const { risk, waste, concentration, largest, scattered, held } = riskAndWaste(
     ctx,
     state,
   );
@@ -449,6 +456,7 @@ function scoreState(
   let score = 0;
   score += INCOME * incomeEstimate(ctx, state, ctx.botId);
   score += claimedLand(ctx, state);
+  score += held;
   score += HELD_BONUS * heldContinentBonus(ctx, state, ctx.botId);
   const claimed = evaluateClaims(ctx, state, scale);
   score += CONTINENT_PROGRESS * continentProgress(ctx, state, claimed);

@@ -37,6 +37,7 @@ import {
   botBorderIds,
   cloneState,
   defenceDiceAt,
+  guardAt,
   horizonOf,
   hostileNeighborsOf,
   isBotBorder,
@@ -678,7 +679,7 @@ export function defensiveDeployments(
           capitalGap(ctx, state, id),
         ) *
         (isKeyTerritory(ctx.game, id) ? KEY_TERRITORY_DEFICIT_WEIGHT : 1) *
-        (ctx.claims?.guard.get(id) ?? 1),
+        guardAt(ctx, id),
     }))
     .sort((a, b) => b.deficit - a.deficit)
     .slice(0, maxBorders);

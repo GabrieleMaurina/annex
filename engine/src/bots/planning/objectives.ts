@@ -24,6 +24,7 @@ import { killerWeaknessThreshold } from '../personality/killer';
 import { hoarderCandidates } from '../personality/specialists/hoarder';
 import { snipeCandidates } from '../personality/specialists/opportunist';
 import { policeCandidates } from '../personality/specialists/police';
+import { holdValue } from '../position/context';
 import { isVisible } from '../view';
 import { wallsInTeammate } from './board';
 import {
@@ -48,6 +49,7 @@ import {
   ownedIds,
   planDepth,
   rankedOpponents,
+  safetyAt,
   strongestThreatAt,
   touchingOf,
   troopsIn,
@@ -614,12 +616,18 @@ function claimValue(
   const territoryIds = ctx.continentTerritories.get(continentId) ?? [];
   const bonusShare = holdsContinent(ctx, state, territoryIds, ctx.botId)
     ? 0
-    : (bonusOf(ctx, continentId) * (1 - contestedShare(ctx, continentId))) /
+    : (bonusOf(ctx, continentId) *
+        safetyAt(ctx, continentId) *
+        (1 - contestedShare(ctx, continentId))) /
       Math.max(1, territoryIds.length);
   const onward = neighborsOf(ctx, territoryId).filter((n) =>
     isClaimable(ctx, state, n),
   ).length;
-  return bonusShare + CLAIM_ONWARD_VALUE * onward;
+  return (
+    bonusShare +
+    CLAIM_ONWARD_VALUE * onward +
+    (ctx.position ? holdValue(ctx.position.shape, territoryId) : 0)
+  );
 }
 
 function claimRoute(

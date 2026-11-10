@@ -61,6 +61,7 @@ export function chooseAttack(
   weights: Weights,
   noise: number,
   standing: Standing,
+  tileValue: (territoryId: number) => number,
   stackRisk: (startId: number, endId: number) => number,
 ): AttackChoice | null {
   const breakTargets = new Set(
@@ -105,6 +106,7 @@ export function chooseAttack(
     score += PREF_WEIGHT * targetPreference(standing, defenderId);
     if (completeTargets.has(endId)) score += weights.completeContinent * 0.1;
     if (breakTargets.has(endId)) score += weights.breakContinent * 0.1;
+    score += tileValue(endId);
     score -= stackRisk(startId, endId);
     score += (Math.random() - 0.5) * noise;
 

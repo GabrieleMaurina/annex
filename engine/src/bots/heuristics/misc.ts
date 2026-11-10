@@ -10,6 +10,7 @@ import {
   neighborsOf,
   ownedTerritoryIds,
 } from '../features/territory';
+import { Shape, shapeOf } from '../position/shape';
 import { Weights } from '../types';
 import { BotView, getBotView, ownerOf } from '../view';
 
@@ -40,6 +41,13 @@ const SPOIL_MIN_CLAIM = 0.4;
 const SPOIL_WEIGHT = 0.15;
 const BLOCK_WEIGHT = 0.5;
 const TIE_BREAK = 0.01;
+const REMOTE_WEIGHT = 1;
+const CAPITAL_GATE_WEIGHT = 0.6;
+
+interface PositionClaim {
+  shape: Shape;
+  fade: number;
+}
 
 interface ContinentClaims {
   ids: number[];
@@ -125,9 +133,11 @@ function claimValue(
   rivalDistance: number,
   rivalClaim: number | undefined,
   canSpoil: boolean,
+  position: PositionClaim | null,
 ): number {
   const size = claims.ids.length;
-  const bonus = bonusOf(game, continentId);
+  const bonus =
+    bonusOf(game, continentId) * (position?.shape.safety.get(continentId) ?? 1);
   const perEntry = bonus / Math.max(1, claims.entries.size);
   const progress = (claims.own + 1) / size;
   const rivalHeld =
@@ -158,9 +168,43 @@ function claimValue(
   const distance =
     (RIVAL_DISTANCE_WEIGHT * Math.min(rivalDistance, RIVAL_DISTANCE_CAP)) /
     RIVAL_DISTANCE_CAP;
+  const remote = position
+    ? REMOTE_WEIGHT *
+      position.fade *
+      (position.shape.remoteness.get(territoryId) ?? 0)
+    : 0;
+  const gate =
+    position &&
+    game.turnPhase === 'capital' &&
+    position.shape.entries.get(continentId)?.has(territoryId)
+      ? CAPITAL_GATE_WEIGHT * perEntry
+      : 0;
   return (
-    pursuit + entry + block + spoil + distance + CLAIM_ADJACENCY * adjacent
+    pursuit +
+    entry +
+    block +
+    spoil +
+    distance +
+    remote +
+    gate +
+    CLAIM_ADJACENCY * adjacent
   );
+}
+
+function positionClaim(
+  game: Game,
+  view: BotView,
+  botId: number,
+  links: Map<number, number[]>,
+): PositionClaim {
+  const territories = getGameMap(game).territories;
+  let owned = 0;
+  for (const { id } of territories)
+    if (ownerOf(game, view, id) === botId) owned++;
+  return {
+    shape: shapeOf(game, links),
+    fade: Math.max(0, 1 - (owned * game.playerIds.length) / territories.length),
+  };
 }
 
 export function chooseTerritoryClaim(
@@ -168,6 +212,7 @@ export function chooseTerritoryClaim(
   botId: number,
   noise: number,
   useClaims = false,
+  usePosition = false,
 ): number | null {
   const view = getBotView(game, botId);
   const unclaimed = getGameMap(game).territories.filter(
@@ -179,6 +224,7 @@ export function chooseTerritoryClaim(
   const claims = continentClaims(game, view, botId, continentsOf(game));
   const links = landLinks(game);
   const distances = rivalDistances(game, view, botId, links);
+  const position = usePosition ? positionClaim(game, view, botId, links) : null;
   const rivalClaims = useClaims
     ? setupRivalClaims(game, view, botId, links)
     : new Map<number, number>();
@@ -195,6 +241,7 @@ export function chooseTerritoryClaim(
           distances.get(territory.id) ?? RIVAL_DISTANCE_CAP,
           rivalClaims.get(territory.continentId),
           game.turnPhase !== 'capital',
+          position,
         ) +
         (Math.random() - 0.5) * noise +
         Math.random() * TIE_BREAK,
@@ -269,13 +316,15 @@ function bonusProtection(
   game: Game,
   botId: number,
   continents: Map<number, number[]>,
+  shape: Shape | null,
 ): Map<number, number> {
   const continentOf = new Map(
     getGameMap(game).territories.map((t) => [t.id, t.continentId]),
   );
   const protection = new Map<number, number>();
   for (const [continentId, ids] of continents) {
-    const bonus = bonusOf(game, continentId);
+    const bonus =
+      bonusOf(game, continentId) * (shape?.safety.get(continentId) ?? 1);
     if (bonus <= 0) continue;
     const share =
       ids.filter((id) => game.territoryOwners.get(id) === botId).length /
@@ -335,13 +384,22 @@ function normalized(values: Map<number, number>): Map<number, number> {
   );
 }
 
-export function chooseCapital(game: Game, botId: number): number | null {
+export function chooseCapital(
+  game: Game,
+  botId: number,
+  usePosition = false,
+): number | null {
   const owned = ownedTerritoryIds(game, botId).filter(
     (id) => !game.capitalTerritoryIds.has(id),
   );
   if (owned.length === 0) return null;
   const links = landLinks(game);
-  const protection = bonusProtection(game, botId, continentsOf(game));
+  const protection = bonusProtection(
+    game,
+    botId,
+    continentsOf(game),
+    usePosition ? shapeOf(game, links) : null,
+  );
   const centrality = normalized(
     new Map(owned.map((id) => [id, -averageDistance(links, id)])),
   );

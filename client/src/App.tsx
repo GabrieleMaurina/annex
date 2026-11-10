@@ -455,7 +455,6 @@ function App() {
           path="/"
           element={
             <Home
-              key={account ? account.username : 'anon'}
               navigate={navigate}
               kickedMessage={kickedMessage}
               clearKickedMessage={() => setKickedMessage('')}

@@ -18,6 +18,7 @@ const musicTracks = readdirSync(
 export default defineConfig({
   define: {
     __MUSIC_TRACKS__: JSON.stringify(musicTracks),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
   plugins: [
     react(),

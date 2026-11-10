@@ -3,12 +3,24 @@ import { GenerateMapParams } from '../mapgen/core/params';
 import { generateMapAsync } from '../mapgen/mapgenPool';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
-import { games, respondWithGameState } from '../session/store';
-import { PlayerGameMap } from '../types';
+import {
+  games,
+  respondGameState,
+  respondWithGameState,
+} from '../session/store';
+import { Game, PlayerGameMap } from '../types';
 import { containsProfanity } from '../util/profanity';
 
 const MAX_SEED_LENGTH = 20;
 const PRINTABLE_ASCII = /^[\x20-\x7e]+$/;
+
+const mapRequests = new WeakMap<Game, number>();
+
+function startMapRequest(game: Game): number {
+  const request = (mapRequests.get(game) ?? 0) + 1;
+  mapRequests.set(game, request);
+  return request;
+}
 
 export function generateMap(
   playerId: number,
@@ -52,10 +64,14 @@ export function generateMap(
     rivers,
   } = input;
 
+  const request = startMapRequest(game);
+
   generateMapAsync({ ...input, seed: trimmedSeed }, (res) => {
     const current = games.get(gameName);
     if (!current || current.state !== 'lobby' || current.hostId !== hostId)
       return callback({ ok: false, error: 'game no longer available' });
+    if (mapRequests.get(current) !== request)
+      return callback({ ok: false, error: 'map request replaced' });
     if (!res.ok) return callback({ ok: false, error: res.error });
 
     const generated = res.result;
@@ -126,6 +142,19 @@ export function mapSelectionError(playerId: number): string | null {
   return null;
 }
 
+export function clearMap(playerId: number): GameResponse {
+  const error = mapSelectionError(playerId);
+  if (error) return { ok: false, error };
+
+  const game = games.get(playersById.get(playerId)?.gameName ?? '');
+  if (!game) return { ok: false, error: 'game not found' };
+  startMapRequest(game);
+  game.mapName = '';
+  game.generatedMap = null;
+  game.playerMap = null;
+  return respondGameState(game, playerId);
+}
+
 export function selectPlayerMap(
   playerId: number,
   map: PlayerGameMap & { name: string },
@@ -142,6 +171,7 @@ export function selectPlayerMap(
   if (game.state !== 'lobby')
     return callback({ ok: false, error: 'game already started' });
 
+  startMapRequest(game);
   game.mapName = map.name;
   game.generatedMap = null;
   game.playerMap = {

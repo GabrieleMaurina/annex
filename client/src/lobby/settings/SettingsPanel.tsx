@@ -10,7 +10,7 @@ import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { getGeneratedMapData, loadGameMap } from '../../game/mapData';
 import { loadClickableRegions } from '../../game/regions/clickableRegions';
-import { isRegeneratingMap } from '../../lib/gameSetup';
+import { cancelMapLoad, isRegeneratingMap } from '../../lib/gameSetup';
 import { getGameSettings } from '../../lib/player';
 import { playSound, useToggleSound } from '../../lib/sounds';
 import type {
@@ -201,11 +201,9 @@ function SettingsPanel({
   }
 
   const mapPending = mapRegenerating || earthUploading;
-  const currentImageSrc = mapPending ? undefined : imageSrcFor(game.mapName);
-  const currentMapLabel = mapPending
-    ? 'Generating…'
-    : game.mapName || 'Pick a map';
-  const currentSeed = mapRegenerating ? undefined : game.mapGeneration?.seed;
+  const currentImageSrc = imageSrcFor(game.mapName);
+  const currentMapLabel = game.mapName || 'Pick a map';
+  const currentSeed = game.mapGeneration?.seed;
 
   function copySeed() {
     if (!currentSeed) return;
@@ -328,7 +326,25 @@ function SettingsPanel({
           <Form.Label className={FIELD_LABEL_CLASS}>
             <Help tip={MAP_HELP}>Map</Help>
           </Form.Label>
-          <div className="d-flex align-items-center gap-2">
+          {mapPending && (
+            <div className="d-flex align-items-center gap-2">
+              <div className="flex-grow-1">
+                <GenerationProgress text="Generating map…" />
+              </div>
+              {mapRegenerating && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => cancelMapLoad()}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+          )}
+          <div
+            className={`d-flex align-items-center gap-2${mapPending ? ' d-none' : ''}`}
+          >
             {isHost ? (
               <Dropdown
                 onToggle={() => playSound('click')}
@@ -446,7 +462,6 @@ function SettingsPanel({
             )}
             {game.playerMapId && <MapLikeButton mapId={game.playerMapId} />}
           </div>
-          {mapPending && <GenerationProgress text="Generating map…" />}
         </div>
 
         {headerActions && <div className="ms-auto">{headerActions}</div>}

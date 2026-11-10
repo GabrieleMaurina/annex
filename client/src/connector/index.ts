@@ -698,6 +698,10 @@ export const connector = {
     route('game:generateMap', data, cb);
   },
 
+  clearMap(cb: AckCallback): void {
+    route('game:clearMap', undefined, cb);
+  },
+
   selectPlayerMap(data: { mapId: string }, cb: AckCallback): void {
     route('game:selectPlayerMap', data, cb);
   },

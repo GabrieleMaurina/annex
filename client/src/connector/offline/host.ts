@@ -614,6 +614,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
         cb ?? (() => {}),
       );
       return;
+    case 'game:clearMap':
+      cb?.(engine.clearMap(id));
+      return;
     case 'game:selectPlayerMap':
       loadPlayerMap(d.mapId as string)
         .then((map) => {

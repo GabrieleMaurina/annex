@@ -916,7 +916,13 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
     rivers?: boolean; // type 'terrain' only (ignored otherwise; false when omitted): rivers run downhill as water channels between territories, never along a coast or lake shore
   }
   ```
-- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid seed`, `invalid size`, `invalid type`, `invalid fill`, `invalid tile`, `invalid seas`, `invalid timed`, `invalid directional`, `invalid switched`, `invalid unlockable`, `invalid aspect`, `invalid mountains`, `invalid rivers`, `server error`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`, `invalid seed`, `invalid size`, `invalid type`, `invalid fill`, `invalid tile`, `invalid seas`, `invalid timed`, `invalid directional`, `invalid switched`, `invalid unlockable`, `invalid aspect`, `invalid mountains`, `invalid rivers`, `map request replaced`, `game no longer available`, `server error`.
+
+### `game:clearMap`
+- **When sent:** the host of a `lobby` game presses "Cancel" while a map is being generated or restored (the lobby shows a progress bar instead of the map picker until it finishes or is cancelled).
+- **Content:** none.
+- **Purpose:** removes the game's map (`GameState.mapName` goes back to `""`, `mapGeneration` and `playerMapId` to `null`) and drops any `game:generateMap` still running, whose Ack then fails with `map request replaced`. Any later `game:generateMap`, `game:selectPlayerMap` or `game:selectEarthMap` likewise drops a `game:generateMap` still running. Sends an Ack to the caller and `game:state` to everyone else. Caller must be host and the game must still be `lobby`.
+- **Ack:** shared Ack response. Errors: `not in a game`, `game not found`, `not the host`, `game already started`.
 
 ### `game:selectPlayerMap`
 - **When sent:** the host of a `lobby` game picks a map from the library ("Choose from library" in the map picker). Sending it replaces whatever map the game currently has (generated or another player map), exactly like `game:generateMap`.

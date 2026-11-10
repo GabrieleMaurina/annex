@@ -39,6 +39,9 @@ const GUEST_BOTS: SavedBot[] = Array.from({ length: 5 }, () => ({
 }));
 
 let regeneratingMap = false;
+let mapLoad = 0;
+let cancelledAt = -1;
+let cancelEarthJob: (() => void) | null = null;
 
 export function isRegeneratingMap(): boolean {
   return regeneratingMap;
@@ -49,16 +52,32 @@ function setRegeneratingMap(value: boolean): void {
   publish('map:regenerating', value);
 }
 
+function startMapLoad(): number {
+  mapLoad += 1;
+  setRegeneratingMap(true);
+  return mapLoad;
+}
+
 function apply(res: Ack): void {
   if (res.ok) publish('game:state', res.game);
+}
+
+export function cancelMapLoad(): void {
+  mapLoad += 1;
+  cancelledAt = mapLoad;
+  cancelEarthJob?.();
+  cancelEarthJob = null;
+  setRegeneratingMap(false);
+  connector.clearMap(apply);
 }
 
 function generateMap(
   input: GenerateMapInput,
   onAck: (res: Ack) => void = apply,
 ): void {
-  setRegeneratingMap(true);
+  const load = startMapLoad();
   connector.generateMap(input, (res) => {
+    if (load !== mapLoad) return;
     setRegeneratingMap(false);
     onAck(res);
   });
@@ -80,20 +99,28 @@ function regenerateEarthMap(
   recipe: EarthRecipe,
   onAck: (res: Ack) => void,
 ): void {
-  setRegeneratingMap(true);
+  const load = startMapLoad();
   import('../maps/editor/world/generateWorldMap')
-    .then(
-      ({ generateEarthMap }) =>
-        generateEarthMap(Promise.resolve(recipe), () => {}).promise,
-    )
-    .then((map) =>
-      uploadEarthMap(map, (res) => {
+    .then(({ generateEarthMap }) => {
+      const job = generateEarthMap(Promise.resolve(recipe), () => {});
+      cancelEarthJob = job.cancel;
+      return job.promise;
+    })
+    .then((map) => {
+      if (load !== mapLoad) return;
+      cancelEarthJob = null;
+      return uploadEarthMap(map, (res) => {
+        if (load !== mapLoad) {
+          if (res.ok && mapLoad === cancelledAt) connector.clearMap(apply);
+          return;
+        }
         setRegeneratingMap(false);
         if (res.ok) rememberEarthRecipe(res.game.mapName, recipe);
         onAck(res);
-      }),
-    )
+      });
+    })
     .catch(() => {
+      if (load !== mapLoad) return;
       setRegeneratingMap(false);
       onAck({ ok: false, error: 'could not regenerate the Earth map' });
     });

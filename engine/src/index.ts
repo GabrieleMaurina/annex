@@ -28,6 +28,7 @@ import {
 import { createGame } from './lifecycle/create';
 import { joinGame } from './lifecycle/join';
 import {
+  clearMap,
   generateMap,
   mapSelectionError,
   selectPlayerMap,
@@ -332,6 +333,7 @@ export function createEngine(
     sendChat,
 
     generateMap,
+    clearMap,
     selectPlayerMap,
     mapSelectionError,
 

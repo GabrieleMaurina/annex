@@ -210,6 +210,42 @@ function Home({
   );
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
+  function applyFilters(filters: HomeFilters) {
+    setSelectedPlayers(filters.players);
+    setName(filters.name);
+    setMode(filters.mode);
+    setMapName(filters.mapName);
+    setMapGenerationSize(filters.mapGenerationSize);
+    setMapGenerationType(filters.mapGenerationType);
+    setMapGenerationFill(filters.mapGenerationFill);
+    setMapGenerationTile(filters.mapGenerationTile);
+    setMapGenerationAspect(filters.mapGenerationAspect);
+    setMapGenerationSeas(filters.mapGenerationSeas);
+    setMapGenerationTimed(filters.mapGenerationTimed);
+    setMapGenerationDirectional(filters.mapGenerationDirectional);
+    setMapGenerationSwitched(filters.mapGenerationSwitched);
+    setMapGenerationUnlockable(filters.mapGenerationUnlockable);
+    setMapGenerationMountains(filters.mapGenerationMountains);
+    setMapGenerationRivers(filters.mapGenerationRivers);
+    setPlayersMin(filters.playersMin);
+    setPlayersMax(filters.playersMax);
+    setRoundsMin(filters.roundsMin);
+    setRoundsMax(filters.roundsMax);
+    setPhase(filters.phase as '' | GameSummary['state']);
+    setPassword(filters.password as '' | 'yes' | 'no');
+    setHasBots(filters.hasBots as '' | 'yes' | 'no');
+    setSettings(filters.settings);
+    setSortOption(filters.sort as SortOption);
+    setPage(1);
+  }
+
+  const filtersAccount = account?.username ?? null;
+  const [appliedAccount, setAppliedAccount] = useState(filtersAccount);
+  if (appliedAccount !== filtersAccount) {
+    setAppliedAccount(filtersAccount);
+    applyFilters(getHomeFilters() ?? DEFAULT_FILTERS);
+  }
+
   const playerIds = selectedPlayers.map((p) => p.id);
   const playersNarrowed =
     playersMin !== PLAYERS_MIN || playersMax !== PLAYERS_MAX;
@@ -297,6 +333,11 @@ function Home({
   const savedFiltersKey = useRef(persistedFiltersKey);
 
   useEffect(() => {
+    savedFiltersKey.current = persistedFiltersKey;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedAccount]);
+
+  useEffect(() => {
     if (persistedFiltersKey === savedFiltersKey.current) return;
     savedFiltersKey.current = persistedFiltersKey;
     if (isLoggedIn()) saveHomeFilters(persistedFilters);
@@ -304,6 +345,7 @@ function Home({
   }, [persistedFiltersKey]);
 
   useEffect(() => {
+    if (!sessionReady && !serverUnreachable) return;
     function refresh() {
       if (document.visibilityState !== 'visible') return;
       const { sort, sortDir } = SORT_TO_QUERY[sortOption];
@@ -385,7 +427,7 @@ function Home({
       document.removeEventListener('visibilitychange', refresh);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterKey, page, sortOption]);
+  }, [filterKey, page, sortOption, sessionReady, serverUnreachable]);
 
   useEffect(() => {
     let stale = false;

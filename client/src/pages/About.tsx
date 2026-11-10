@@ -2,6 +2,8 @@ import { Badge, Col, Container, Row } from 'react-bootstrap';
 import Hero from '../common/page/Hero';
 import PagePanel from '../common/page/PagePanel';
 
+declare const __BUILD_TIME__: string;
+
 const PROMISES = ['Free', 'Open source', 'No ads', 'No microtransactions'];
 
 function About() {
@@ -88,6 +90,9 @@ function About() {
           </PagePanel>
         </Col>
       </Row>
+      <p className="small text-secondary text-center mt-4 mb-0">
+        Build {new Date(__BUILD_TIME__).toLocaleString()}
+      </p>
     </Container>
   );
 }

@@ -19,10 +19,15 @@ import { getPlayerMapById } from '../../db';
 import { isImageAllowed } from '../../moderation';
 import { playerIdBySocketId } from '../../sockets/socketRooms';
 import { isObject, parseMapInput } from '../../validate';
+import { registerGameAction } from '../handlerHelpers';
 
 type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };
 
 export function registerMapGenHandlers(socket: Socket, engine: Engine) {
+  registerGameAction(socket, 'game:clearMap', (playerId) =>
+    engine.clearMap(playerId),
+  );
+
   socket.on(
     'game:selectPlayerMap',
     (data: unknown, callback: (response: GameResponse) => void) => {

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
 import {
   Navigate,
@@ -13,6 +20,7 @@ import BurgerMenu from './common/menus/BurgerMenu';
 import SettingsMenu from './common/menus/SettingsMenu';
 import ShortcutsPanel from './common/menus/shortcuts/ShortcutsPanel';
 import { useUiHidden } from './common/menus/shortcuts/uiHidden';
+import LoadBoundary from './common/page/LoadBoundary';
 import PageBackground from './common/page/PageBackground';
 import SiteFooter from './common/page/SiteFooter';
 import RollingTanks from './common/tanks/RollingTanks';
@@ -58,6 +66,9 @@ import Players from './pages/social/Players';
 import TutorialsPage from './tutorials/TutorialsPage';
 import { tutorialFromPath } from './tutorials/tutorials';
 import PageGate from './ui/containers/PageGate';
+import { WIKI_PATH } from './ui/containers/wikiPath';
+
+const Wiki = lazy(() => import('./wiki/Wiki'));
 
 function EmailConfirmationRoute({
   navigate,
@@ -194,7 +205,8 @@ function App() {
   }, [refreshSession]);
 
   useEffect(() => {
-    document.title = titleFromPath(pathname, room);
+    if (!WIKI_PATH.test(pathname))
+      document.title = titleFromPath(pathname, room);
   }, [pathname, room]);
 
   useEffect(() => {
@@ -560,6 +572,16 @@ function App() {
           path="/tutorials/:id"
           element={
             tutorial ? gameElement : <Navigate to="/tutorials" replace />
+          }
+        />
+        <Route
+          path="/wiki/*"
+          element={
+            <LoadBoundary>
+              <Suspense fallback={null}>
+                <Wiki />
+              </Suspense>
+            </LoadBoundary>
           }
         />
         <Route path="/games/live/:gameName" element={gameElement} />

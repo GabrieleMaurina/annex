@@ -1,0 +1,17 @@
+.list-indicator {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 0;
+  background-color: var(--ui-pressed);
+  box-shadow: var(--ui-selected);
+  pointer-events: none;
+  transition:
+    top 0.3s var(--ui-clunk),
+    height 0.3s var(--ui-clunk);
+}
+
+.list-indicator-instant,
+:root.animations-off .list-indicator {
+  transition: none;
+}

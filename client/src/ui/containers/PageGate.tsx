@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
+import { WIKI_PATH } from './wikiPath';
 
 const EDITOR_EARTH_PATH = /^(\/maps\/editor(?:\/[^/]+)?)\/earth$/;
 
-export function Gate({ silent }: { silent?: boolean }) {
+export function Gate({ silent, local }: { silent?: boolean; local?: boolean }) {
   return (
     <div
-      className="page-gate"
+      className={local ? 'page-gate page-gate-local' : 'page-gate'}
       aria-hidden
       data-no-gate-sound={silent || undefined}
     >
@@ -17,7 +18,9 @@ export function Gate({ silent }: { silent?: boolean }) {
 }
 
 function PageGate() {
-  const page = useLocation().pathname.replace(EDITOR_EARTH_PATH, '$1');
+  const page = useLocation()
+    .pathname.replace(EDITOR_EARTH_PATH, '$1')
+    .replace(WIKI_PATH, '/wiki');
   const navigationType = useNavigationType();
   const [gate, setGate] = useState({ page, opening: 0 });
 

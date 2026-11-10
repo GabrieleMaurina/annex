@@ -11,6 +11,13 @@
   pointer-events: none;
 }
 
+.page-gate-local {
+  --gate-tank: min(36vmin, 280px);
+  position: absolute;
+  z-index: 5;
+  overflow: hidden;
+}
+
 :root.animations-off .page-gate {
   display: none;
 }

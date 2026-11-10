@@ -1,0 +1,9 @@
+.btn-chip {
+  --button-lip: transparent;
+  --button-shine: 0 0 0 transparent;
+  --button-pressed: 0 0 0 transparent;
+}
+
+.btn-chip:active {
+  transform: none;
+}

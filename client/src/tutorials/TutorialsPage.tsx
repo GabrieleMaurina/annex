@@ -8,8 +8,6 @@ import { TUTORIALS } from './tutorials';
 
 const CONTENT_MAX_WIDTH = 800;
 
-const TOP_NAV_BUTTON_STYLE = { width: '12rem' };
-
 const SIDE_NAV_STYLE = {
   width: `clamp(200px, calc((100vw - ${CONTENT_MAX_WIDTH}px) / 2 - 48px), 440px)`,
   fontSize: 'clamp(1rem, calc(1rem + (100vw - 1400px) / 47), 1.5rem)',
@@ -112,11 +110,10 @@ function TutorialsPage({ account, navigate }: Props) {
           </ListGroup.Item>
         ))}
       </ListGroup>
-      <div className="d-flex flex-wrap justify-content-center gap-2 mb-4 d-xxl-none">
+      <div className="d-flex flex-wrap gap-2 mb-4 d-xxl-none">
         {SECTIONS.map((section) => (
           <Button
             key={section.id}
-            style={TOP_NAV_BUTTON_STYLE}
             size="sm"
             variant={section.id === activeId ? 'primary' : 'secondary'}
             onClick={() => scrollToSection(section.id)}

@@ -119,6 +119,8 @@ export interface GameExport {
     blitz: string;
     defenceDice: number;
     attackDice: number;
+    defenceSides: number;
+    attackSides: number;
     diceTies: string;
     continents: string;
     initialTroops: number;
@@ -420,6 +422,8 @@ export function exportGame(gameName: string): GameExport | null {
       blitz: game.blitz,
       defenceDice: game.defenceDice,
       attackDice: game.attackDice,
+      defenceSides: game.defenceSides,
+      attackSides: game.attackSides,
       diceTies: game.diceTies,
       continents: game.continents,
       initialTroops: game.initialTroops,

@@ -148,6 +148,25 @@ export const DEFENCE_DICE_HELP = (
   </>
 );
 
+export const ATTACK_SIDES_HELP = (
+  <>
+    How many sides each attacker die has, from 2 to 20. A die shows a number
+    from 1 up to its sides, so more sides means higher attacker rolls on
+    average. Compare it with Defence Sides to see who rolls higher. Applies on
+    land and at sea.
+  </>
+);
+
+export const DEFENCE_SIDES_HELP = (
+  <>
+    How many sides each defender die has, from 2 to 20. A die shows a number
+    from 1 up to its sides, so more sides means higher defender rolls on
+    average. Compare it with Attack Sides to see who rolls higher. Applies on
+    land and at sea, and to the extra die of capitals and entrenched
+    territories.
+  </>
+);
+
 export const DICE_TIES_HELP = (
   <>
     Who wins when an attacker die and a defender die show the same number, on

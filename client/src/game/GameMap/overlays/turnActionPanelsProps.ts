@@ -144,6 +144,8 @@ export function turnActionPanelsProps({
     blitzEnabled: game.blitz !== 'off',
     attackDice: game.attackDice,
     diceTies: game.diceTies,
+    attackSides: game.attackSides,
+    defenceSides: game.defenceSides,
     blitzInputRef: attackFlow.blitzInputRef,
     attackDiceRoll: attackFlow.attackDiceRoll,
     setAttackDiceRoll: attackFlow.setAttackDiceRoll,

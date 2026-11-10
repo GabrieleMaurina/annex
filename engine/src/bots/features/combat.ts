@@ -1,19 +1,31 @@
 import {
-  DiceRules,
   battleStatistics,
-  defenceDiceFor,
   distortProbability,
-  expectedRollLosses,
-  fairBlitz,
-  gameDiceRules,
   trueWinProb,
+} from '../../game/combat/battleStats';
+import { fairBlitz } from '../../game/combat/blitz';
+import {
+  DEFAULT_SIDES,
+  DiceRules,
+  defenceDiceFor,
+  diceRulesKey,
+  gameDiceRules,
 } from '../../game/combat/dice';
+import { expectedRollLosses } from '../../game/combat/lossDistribution';
 import { Game } from '../../types';
 
-const BASE_DICE: DiceRules = { attack: 3, defence: 2, ties: 'defence' };
+const BASE_DICE: DiceRules = {
+  attack: 3,
+  defence: 2,
+  attackSides: DEFAULT_SIDES,
+  defenceSides: DEFAULT_SIDES,
+  ties: 'defence',
+};
 const BASE_FORTIFIED_DICE: DiceRules = {
   attack: 3,
   defence: 3,
+  attackSides: DEFAULT_SIDES,
+  defenceSides: DEFAULT_SIDES,
   ties: 'defence',
 };
 const BASE_TROOPS_PER_DEFENDER = 0.95;
@@ -27,19 +39,16 @@ export function lossRatio(dice: DiceRules): number {
 const BASE_LOSS_RATIO = lossRatio(BASE_DICE);
 const BASE_FORTIFIED_LOSS_RATIO = lossRatio(BASE_FORTIFIED_DICE);
 
-export function troopsPerDefender(game: Game, defendingDice: number): number {
-  const fortification =
-    (lossRatio(gameDiceRules(game, defendingDice)) - BASE_LOSS_RATIO) /
-    (BASE_FORTIFIED_LOSS_RATIO - BASE_LOSS_RATIO);
-  return (
-    BASE_TROOPS_PER_DEFENDER +
-    fortification *
-      (BASE_FORTIFIED_TROOPS_PER_DEFENDER - BASE_TROOPS_PER_DEFENDER)
-  );
-}
+const FORTIFICATION_EXPONENT =
+  Math.log(BASE_FORTIFIED_TROOPS_PER_DEFENDER / BASE_TROOPS_PER_DEFENDER) /
+  Math.log(BASE_FORTIFIED_LOSS_RATIO / BASE_LOSS_RATIO);
 
-function diceKey(dice: DiceRules): string {
-  return `${dice.attack},${dice.defence},${dice.ties}`;
+export function troopsPerDefender(game: Game, defendingDice: number): number {
+  return (
+    BASE_TROOPS_PER_DEFENDER *
+    (lossRatio(gameDiceRules(game, defendingDice)) / BASE_LOSS_RATIO) **
+      FORTIFICATION_EXPONENT
+  );
 }
 
 const BOT_COMBAT_CAP = 60;
@@ -65,7 +74,7 @@ function cachedWinProb(
 ): number {
   return memoized(
     winMemo,
-    `${attackingTroops},${defendingTroops},${diceKey(dice)}`,
+    `${attackingTroops},${defendingTroops},${diceRulesKey(dice)}`,
     () => trueWinProb(attackingTroops, defendingTroops, dice),
   );
 }
@@ -77,7 +86,7 @@ function cachedStatistics(
 ): ReturnType<typeof battleStatistics> {
   return memoized(
     statsMemo,
-    `${attackingTroops},${defendingTroops},${diceKey(dice)}`,
+    `${attackingTroops},${defendingTroops},${diceRulesKey(dice)}`,
     () => battleStatistics(attackingTroops, defendingTroops, dice),
   );
 }
@@ -89,7 +98,7 @@ function cachedFairBlitz(
 ): ReturnType<typeof fairBlitz> {
   return memoized(
     fairMemo,
-    `${attackingTroops},${defendingTroops},${diceKey(dice)}`,
+    `${attackingTroops},${defendingTroops},${diceRulesKey(dice)}`,
     () => fairBlitz(attackingTroops, defendingTroops, dice),
   );
 }
@@ -129,7 +138,12 @@ export function attackWinProbability(
 ): number {
   if (attackingTroops <= 0) return 0;
   if (defendingTroops <= 0) return 1;
-  if (attackingTroops > 80 && attackingTroops > defendingTroops * 3)
+  if (
+    attackingTroops > 80 &&
+    attackingTroops > defendingTroops * 3 &&
+    game.attackSides === DEFAULT_SIDES &&
+    game.defenceSides === DEFAULT_SIDES
+  )
     return 0.99;
   const dice = gameDiceRules(game, defendingDice);
   const battle = scaledBattle(attackingTroops, defendingTroops, dice);

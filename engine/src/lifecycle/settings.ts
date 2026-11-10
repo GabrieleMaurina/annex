@@ -1,6 +1,6 @@
 import { isDifficultyInput, isPersonalityInput } from '../bots/randomProfile';
 import { callbacks } from '../callbacks';
-import { MAX_DICE } from '../game/combat/dice';
+import { MAX_DICE, MAX_SIDES, MIN_SIDES } from '../game/combat/dice';
 import { addHostCandidate } from '../game/host';
 import { assignRandomColor } from '../game/mechanics';
 import {
@@ -283,6 +283,16 @@ export function updateSettings(
     game.attackIncrement = settings.attackIncrement;
   }
 
+  if (settings.attackSides !== undefined) {
+    if (
+      !isInteger(settings.attackSides) ||
+      settings.attackSides < MIN_SIDES ||
+      settings.attackSides > MAX_SIDES
+    )
+      return { ok: false, error: 'invalid attack sides' };
+    game.attackSides = settings.attackSides;
+  }
+
   if (settings.bannedPlayerIds !== undefined) {
     if (!Array.isArray(settings.bannedPlayerIds))
       return { ok: false, error: 'invalid banned players' };
@@ -365,6 +375,16 @@ export function updateSettings(
     )
       return { ok: false, error: 'invalid defence dice' };
     game.defenceDice = settings.defenceDice;
+  }
+
+  if (settings.defenceSides !== undefined) {
+    if (
+      !isInteger(settings.defenceSides) ||
+      settings.defenceSides < MIN_SIDES ||
+      settings.defenceSides > MAX_SIDES
+    )
+      return { ok: false, error: 'invalid defence sides' };
+    game.defenceSides = settings.defenceSides;
   }
 
   if (settings.diceTies !== undefined) {

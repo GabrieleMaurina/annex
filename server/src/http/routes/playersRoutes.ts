@@ -14,7 +14,8 @@ import {
   pictureDataUrl,
   PlayersQuery,
 } from '../../db';
-import { rateLimited } from '../middleware';
+import { buildPlayerExport } from '../../exports/playerExport';
+import { playerExportLimited, rateLimited } from '../middleware';
 import { isOnline } from '../presence';
 
 export const playersRouter = Router();
@@ -117,6 +118,20 @@ playersRouter.get('/players/id/:userId/profile', (req, res) => {
 playersRouter.get('/players/:username/history', (req, res) => {
   getPlayerHistory(req.params.username)
     .then((history) => res.json(history))
+    .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
+});
+
+playersRouter.get('/players/:username/export', (req, res) => {
+  if (playerExportLimited(req)) {
+    res.status(429).json({ ok: false, error: 'too many requests' });
+    return;
+  }
+  buildPlayerExport(req.params.username)
+    .then((data) =>
+      data
+        ? res.json(data)
+        : res.status(404).json({ ok: false, error: 'not found' }),
+    )
     .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
 });
 

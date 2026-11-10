@@ -514,6 +514,8 @@ export interface Game {
   continentPayouts: number[];
   defenceDice: number;
   attackDice: number;
+  defenceSides: number;
+  attackSides: number;
   diceTies: DiceTies;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';

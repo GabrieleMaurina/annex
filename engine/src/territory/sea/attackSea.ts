@@ -1,16 +1,14 @@
 import { callbacks } from '../../callbacks';
 import { hasAnyAttack, hasAnyShipFight } from '../../game/combat/autoSkip';
+import { balancedWinProbs, trueWinProbs } from '../../game/combat/battleStats';
 import {
   balancedBlitz,
-  balancedWinProbs,
   fairBlitz,
   fairBlitzOutcomes,
-  gameDiceRules,
-  NO_LUCK,
-  attack as rollAttack,
   trueBlitz,
-  trueWinProbs,
-} from '../../game/combat/dice';
+} from '../../game/combat/blitz';
+import { gameDiceRules, NO_LUCK } from '../../game/combat/dice';
+import { attack as rollAttack } from '../../game/combat/roll';
 import { hasReadyNuke } from '../../game/nukes/nukes';
 import {
   bumpStat,
@@ -202,7 +200,8 @@ export function attackSea(
   let defenderDice: number[] = [];
   let luck = NO_LUCK;
   if (type === 'manual') {
-    const roll = () => rollAttack(ships, defendingDice, game.diceTies);
+    const roll = () =>
+      rollAttack(ships, defendingDice, gameDiceRules(game, defendingDice));
     let result = roll();
     while (game.tutorial && result.defenceLosses === 0) result = roll();
     attackLosses = result.attackLosses;

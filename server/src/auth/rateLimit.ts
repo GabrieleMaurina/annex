@@ -5,11 +5,15 @@ interface Counter {
 
 const authAttempts = new Map<string, Counter>();
 const loginFailures = new Map<string, Counter>();
+const gameExports = new Map<string, Counter>();
+const playerExports = new Map<string, Counter>();
 
 const AUTH_MAX = 30;
 const AUTH_WINDOW_MS = 5 * 60 * 1000;
 const LOGIN_FAILURE_MAX = 8;
 const LOGIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const EXPORT_MAX = 10;
+const EXPORT_WINDOW_MS = 10 * 60 * 1000;
 
 function hit(
   store: Map<string, Counter>,
@@ -28,6 +32,14 @@ function hit(
 
 export function allowAuthAttempt(ip: string): boolean {
   return hit(authAttempts, ip, AUTH_WINDOW_MS) <= AUTH_MAX;
+}
+
+export function allowGameExport(ip: string): boolean {
+  return hit(gameExports, ip, EXPORT_WINDOW_MS) <= EXPORT_MAX;
+}
+
+export function allowPlayerExport(ip: string): boolean {
+  return hit(playerExports, ip, EXPORT_WINDOW_MS) <= EXPORT_MAX;
 }
 
 export function loginLockedOut(email: string): boolean {
@@ -52,6 +64,10 @@ setInterval(
       if (now >= entry.resetAt) authAttempts.delete(key);
     for (const [key, entry] of loginFailures)
       if (now >= entry.resetAt) loginFailures.delete(key);
+    for (const [key, entry] of gameExports)
+      if (now >= entry.resetAt) gameExports.delete(key);
+    for (const [key, entry] of playerExports)
+      if (now >= entry.resetAt) playerExports.delete(key);
   },
   10 * 60 * 1000,
 ).unref();

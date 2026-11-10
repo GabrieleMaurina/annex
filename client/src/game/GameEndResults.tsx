@@ -2,10 +2,12 @@ import { isPointsMode } from 'engine';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Button, Container } from 'react-bootstrap';
+import ExportDataButton from '../common/export/ExportDataButton';
+import SharePageButton from '../common/menus/SharePageButton';
 import type { ResultRow } from '../common/ResultsTable';
 import ResultsTable from '../common/ResultsTable';
-import SharePageButton from '../common/menus/SharePageButton';
 import Tip from '../common/tooltips/Tip';
+import { connector } from '../connector';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/settings/SettingsPanel';
@@ -177,6 +179,18 @@ function GameEndResults({
           storedGameId={shareGameId}
           mapSavable={mapSavable}
         />
+        {(shareGameId ||
+          (connector.isOffline() && !connector.isTutorial())) && (
+          <ExportDataButton
+            key={shareGameId}
+            name={game.name}
+            load={(cb) =>
+              shareGameId
+                ? connector.getGameExport(shareGameId, cb)
+                : connector.getOfflineGameExport(cb)
+            }
+          />
+        )}
       </div>
 
       {replay && (

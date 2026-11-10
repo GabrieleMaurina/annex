@@ -95,6 +95,14 @@ function Profiles() {
           </li>
         </ul>
       </WikiSection>
+      <WikiSection id="export" title="Exporting the data">
+        <p>
+          The Export Data button saves everything on the page: profile, career
+          statistics, achievements, the data behind Stats over time, every game
+          and every published map. Choose JSON for a single file, or CSV for a
+          zip with one file per table or chart.
+        </p>
+      </WikiSection>
       <SeeAlso
         pages={['accounts/find-players', 'ranking/elo', 'ranking/reputation']}
       />

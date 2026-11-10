@@ -52,6 +52,7 @@ export * from './conduct/reputationEvents';
 export * from './emailConfirmations';
 export * from './friendships';
 export * from './games';
+export { SETTINGS_ENUM_KEYS } from './gamesSchema';
 export * from './maps/mapLikes';
 export * from './maps/mapReports';
 export * from './maps/playerMaps';

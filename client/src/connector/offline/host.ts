@@ -1,4 +1,5 @@
 import {
+  buildGameDataExport,
   createEngine,
   type Engine,
   type EngineCallbacks,
@@ -13,7 +14,7 @@ import { checkNewAchievements } from '../../common/achievements/newAchievements'
 import { getGeneratedMapData } from '../../game/mapData';
 import { httpSend } from '../../lib/http';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
-import type { EarthMapInput, GameState } from '../../lib/types';
+import type { EarthMapInput, ExportData, GameState } from '../../lib/types';
 import { moveToTeam } from '../../lobby/roster/teamLayout';
 import { tutorialMap } from '../../tutorials/tutorialMap';
 import type { Tutorial } from '../../tutorials/tutorials';
@@ -102,6 +103,8 @@ export function seedOffline(state: GameState): void {
       continents: state.continents,
       defenceDice: state.defenceDice,
       attackDice: state.attackDice,
+      defenceSides: state.defenceSides,
+      attackSides: state.attackSides,
       diceTies: state.diceTies,
       disconnectBotDifficulty: state.disconnectBotDifficulty,
       disconnectBotPersonality: state.disconnectBotPersonality,
@@ -450,6 +453,11 @@ export function startOffline(next: Tutorial | null): void {
     flushQueue();
     engine.requestState(hostId);
   }
+}
+
+export function exportOfflineGame(): ExportData | null {
+  const game = engine?.exportGame(gameName);
+  return game ? buildGameDataExport(game) : null;
 }
 
 export function restartOffline(): void {

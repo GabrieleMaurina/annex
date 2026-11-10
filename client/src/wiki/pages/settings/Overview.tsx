@@ -69,10 +69,10 @@ function Overview() {
       <WikiSection id="defaults" title="Defaults">
         <p>
           Reset sets every rule back to its default: Supremacy, Balanced blitz,
-          3 attack dice, 2 defence dice, ties to the defender, Connected
-          fortification, 3 initial troops, 1/3 troop per territory, 3 minimum
-          troops, Constant cards, 1x continents, 2 minute turns, and every
-          optional feature off.
+          3 attack dice, 2 defence dice, 6-sided dice, ties to the defender,
+          Connected fortification, 3 initial troops, 1/3 troop per territory, 3
+          minimum troops, Constant cards, 1x continents, 2 minute turns, and
+          every optional feature off.
         </p>
       </WikiSection>
       <WikiSection id="random" title="Randomize">

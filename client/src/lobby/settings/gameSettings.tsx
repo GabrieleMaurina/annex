@@ -1,11 +1,13 @@
 import {
   DEFAULT_MIN_REPUTATION,
+  DEFAULT_SIDES,
   defaultMaxPoints,
   isBlitzOffAllowed,
   MAX_DICE,
   MAX_DURATION_VALUES,
   MAX_HILLS,
   MAX_POINTS_VALUES,
+  MAX_SIDES,
   MAX_STALEMATE_ROUNDS,
   MAX_STARTING_CAPITALS,
   MIN_ACCOUNT_AGE_VALUES,
@@ -13,6 +15,7 @@ import {
   MIN_GAMES_VALUES,
   MIN_HILLS,
   MIN_REPUTATION_VALUES,
+  MIN_SIDES,
   MIN_STALEMATE_ROUNDS,
   MIN_STARTING_CAPITALS,
   RANKS,
@@ -36,6 +39,7 @@ import {
   ANONYMOUS_HELP,
   ATTACK_DICE_HELP,
   ATTACK_INCREMENT_HELP,
+  ATTACK_SIDES_HELP,
   BLITZ_HELP,
   BOUNTIES_HELP,
   CAPITAL_REFUND_HELP,
@@ -43,6 +47,7 @@ import {
   CARDS_HELP,
   CONTINENTS_HELP,
   DEFENCE_DICE_HELP,
+  DEFENCE_SIDES_HELP,
   DICE_TIES_HELP,
   DISCONNECT_BOT_DIFFICULTY_HELP,
   DISCONNECT_BOT_PERSONALITY_HELP,
@@ -99,6 +104,8 @@ export const DEFAULT_GAME_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   continents: '1x',
   defenceDice: 2,
   attackDice: 3,
+  defenceSides: DEFAULT_SIDES,
+  attackSides: DEFAULT_SIDES,
   diceTies: 'defence',
   disconnectBotDifficulty: 'random',
   disconnectBotPersonality: 'random',
@@ -211,6 +218,10 @@ const TURN_DURATIONS = [30, 60, 90, 120, 150, 180, 300];
 const ATTACK_INCREMENTS = Array.from({ length: 16 }, (_, i) => i);
 const INITIAL_TROOPS = Array.from({ length: 100 }, (_, i) => i + 1);
 const DICE = Array.from({ length: MAX_DICE }, (_, i) => i + 1);
+const SIDES = Array.from(
+  { length: MAX_SIDES - MIN_SIDES + 1 },
+  (_, i) => MIN_SIDES + i,
+);
 const HILLS = Array.from(
   { length: MAX_HILLS - MIN_HILLS + 1 },
   (_, i) => MIN_HILLS + i,
@@ -326,6 +337,22 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     numeric: true,
     options: options(...DICE.map(String)),
     help: DEFENCE_DICE_HELP,
+  },
+  {
+    key: 'attackSides',
+    label: 'Attack Sides',
+    section: 'Combat',
+    numeric: true,
+    options: options(...SIDES.map(String)),
+    help: ATTACK_SIDES_HELP,
+  },
+  {
+    key: 'defenceSides',
+    label: 'Defence Sides',
+    section: 'Combat',
+    numeric: true,
+    options: options(...SIDES.map(String)),
+    help: DEFENCE_SIDES_HELP,
   },
   {
     key: 'diceTies',

@@ -115,7 +115,16 @@ export {
   viewReplay,
   viewResponse,
 } from './clientView/responses';
-export { MAX_DICE } from './game/combat/dice';
+export {
+  DEFAULT_SIDES,
+  MAX_DICE,
+  MAX_SIDES,
+  MIN_SIDES,
+} from './game/combat/dice';
+export {
+  buildGameDataExport,
+  GameDataSource,
+} from './game/dataExport/gameData';
 export {
   GameExport,
   GameResultExport,

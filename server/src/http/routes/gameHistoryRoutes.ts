@@ -1,3 +1,4 @@
+import { buildGameDataExport } from 'engine';
 import { Router } from 'express';
 import {
   createPlayerMap,
@@ -16,7 +17,7 @@ import {
   TILE_SHAPES,
 } from '../../db';
 import { MAX_NAME_LENGTH, validateMapGeneration } from '../../validate';
-import { identityOf, rateLimited } from '../middleware';
+import { gameExportLimited, identityOf, rateLimited } from '../middleware';
 import {
   intParam,
   optBoolParam,
@@ -168,6 +169,20 @@ publicGamesRouter.get('/games/replay/:id', (req, res) => {
     .then((doc) =>
       doc
         ? res.json(doc)
+        : res.status(404).json({ ok: false, error: 'not found' }),
+    )
+    .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
+});
+
+publicGamesRouter.get('/games/replay/:id/export', (req, res) => {
+  if (gameExportLimited(req)) {
+    res.status(429).json({ ok: false, error: 'too many requests' });
+    return;
+  }
+  getGameById(req.params.id)
+    .then((game) =>
+      game
+        ? res.json(buildGameDataExport(game))
         : res.status(404).json({ ok: false, error: 'not found' }),
     )
     .catch(() => res.status(500).json({ ok: false, error: 'server error' }));

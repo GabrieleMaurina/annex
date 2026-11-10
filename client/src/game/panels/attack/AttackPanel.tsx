@@ -44,6 +44,8 @@ interface Props {
   blitzEnabled: boolean;
   attackDice: number;
   diceTies: DiceTies;
+  attackSides: number;
+  defenceSides: number;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   diceRoll: DiceRoll | null;
   onSelectManual: (troops: number) => void;
@@ -97,10 +99,14 @@ function Die({
 export function DiceRollDisplay({
   diceRoll,
   diceTies,
+  attackSides,
+  defenceSides,
   withDivider,
 }: {
   diceRoll: DiceRoll;
   diceTies: DiceTies;
+  attackSides: number;
+  defenceSides: number;
   withDivider: boolean;
 }) {
   const pairs = Math.min(
@@ -114,10 +120,10 @@ export function DiceRollDisplay({
   const [step, setStep] = useState(0);
   const [sequences] = useState(() => ({
     attacker: diceRoll.attackerDice.map((value) =>
-      generateDiceRollSequence(value, DICE_ROLL_STEPS),
+      generateDiceRollSequence(value, attackSides, DICE_ROLL_STEPS),
     ),
     defender: diceRoll.defenderDice.map((value) =>
-      generateDiceRollSequence(value, DICE_ROLL_STEPS),
+      generateDiceRollSequence(value, defenceSides, DICE_ROLL_STEPS),
     ),
   }));
 
@@ -202,6 +208,8 @@ function AttackPanel({
   blitzEnabled,
   attackDice,
   diceTies,
+  attackSides,
+  defenceSides,
   blitzInputRef,
   diceRoll,
   onSelectManual,
@@ -340,6 +348,8 @@ function AttackPanel({
           key={diceRoll.id}
           diceRoll={diceRoll}
           diceTies={diceTies}
+          attackSides={attackSides}
+          defenceSides={defenceSides}
           withDivider={!diceOnly}
         />
       )}

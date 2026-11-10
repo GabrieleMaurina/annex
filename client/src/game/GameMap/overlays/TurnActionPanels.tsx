@@ -84,6 +84,8 @@ export default function TurnActionPanels({
   blitzEnabled,
   attackDice,
   diceTies,
+  attackSides,
+  defenceSides,
   blitzInputRef,
   attackDiceRoll,
   setAttackDiceRoll,
@@ -188,6 +190,8 @@ export default function TurnActionPanels({
   blitzEnabled: boolean;
   attackDice: number;
   diceTies: DiceTies;
+  attackSides: number;
+  defenceSides: number;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   attackDiceRoll: DiceRoll | null;
   setAttackDiceRoll: Dispatch<SetStateAction<DiceRoll | null>>;
@@ -402,6 +406,8 @@ export default function TurnActionPanels({
               blitzEnabled={blitzEnabled}
               attackDice={attackDice}
               diceTies={diceTies}
+              attackSides={attackSides}
+              defenceSides={defenceSides}
               blitzInputRef={blitzInputRef}
               diceRoll={attackDiceRoll}
               onSelectManual={(troops) => {
@@ -454,6 +460,8 @@ export default function TurnActionPanels({
             blitzShips={attackSeaBlitzShips}
             blitzEnabled={blitzEnabled}
             diceTies={diceTies}
+            attackSides={attackSides}
+            defenceSides={defenceSides}
             inputRef={attackSeaInputRef}
             blitzInputRef={attackSeaBlitzInputRef}
             onSelectManual={() => setAttackSeaSelectedType('manual')}

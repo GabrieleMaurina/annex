@@ -4,19 +4,16 @@ import {
   hasAnyShipFight,
   isAttackStartCandidate,
 } from '../game/combat/autoSkip';
-import { moveIntoConquest, refundCapital } from '../game/combat/conquest';
+import { balancedWinProbs, trueWinProbs } from '../game/combat/battleStats';
 import {
   balancedBlitz,
-  balancedWinProbs,
-  defenceDiceFor,
   fairBlitz,
   fairBlitzOutcomes,
-  gameDiceRules,
-  NO_LUCK,
-  attack as rollAttack,
   trueBlitz,
-  trueWinProbs,
-} from '../game/combat/dice';
+} from '../game/combat/blitz';
+import { moveIntoConquest, refundCapital } from '../game/combat/conquest';
+import { defenceDiceFor, gameDiceRules, NO_LUCK } from '../game/combat/dice';
+import { attack as rollAttack } from '../game/combat/roll';
 import { attackFullPath, hasSeaBridgeTo } from '../game/combat/seaBridge';
 import { finishGame, resolveWinnerIds } from '../game/end';
 import { hasReadyNuke } from '../game/nukes/nukes';
@@ -286,7 +283,7 @@ export function attack(
       rollAttack(
         troops,
         Math.min(defendingTroops, defendingDice),
-        game.diceTies,
+        gameDiceRules(game, defendingDice),
       );
     let result = roll();
     while (game.tutorial && result.defenceLosses === 0) result = roll();

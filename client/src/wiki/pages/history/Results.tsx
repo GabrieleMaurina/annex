@@ -73,6 +73,16 @@ function Results() {
           ).
         </p>
       </WikiSection>
+      <WikiSection id="export" title="Exporting the data">
+        <p>
+          The results screen and the replay page have an Export Data button. It
+          saves the game info, settings, players, the results table and the data
+          behind every chart, one value per player for each step of the game.
+          Choose JSON for a single file, or CSV for a zip with one file per
+          table or chart. Offline games can be exported too, straight from your
+          device.
+        </p>
+      </WikiSection>
       <SeeAlso pages={['ranking/elo', 'history/replays', 'history/games']} />
     </>
   );

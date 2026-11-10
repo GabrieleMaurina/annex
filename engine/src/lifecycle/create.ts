@@ -1,3 +1,4 @@
+import { DEFAULT_SIDES } from '../game/combat/dice';
 import { assignRandomColor } from '../game/mechanics';
 import { GameResponse } from '../session/context';
 import { playersById } from '../session/players';
@@ -154,6 +155,8 @@ export function createGame(
     continents: '1x',
     defenceDice: 2,
     attackDice: 3,
+    defenceSides: DEFAULT_SIDES,
+    attackSides: DEFAULT_SIDES,
     diceTies: 'defence',
     disconnectBotDifficulty: 'random',
     disconnectBotPersonality: 'random',

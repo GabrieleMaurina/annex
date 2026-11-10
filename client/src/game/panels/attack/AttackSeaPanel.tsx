@@ -23,6 +23,8 @@ interface Props {
   blitzShips: number;
   blitzEnabled: boolean;
   diceTies: DiceTies;
+  attackSides: number;
+  defenceSides: number;
   inputRef: RefObject<HTMLInputElement | null>;
   blitzInputRef: RefObject<HTMLInputElement | null>;
   onSelectManual: () => void;
@@ -48,6 +50,8 @@ function AttackSeaPanel({
   blitzShips,
   blitzEnabled,
   diceTies,
+  attackSides,
+  defenceSides,
   inputRef,
   blitzInputRef,
   onSelectManual,
@@ -162,6 +166,8 @@ function AttackSeaPanel({
           key={diceRoll.id}
           diceRoll={diceRoll}
           diceTies={diceTies}
+          attackSides={attackSides}
+          defenceSides={defenceSides}
           withDivider={!diceOnly}
         />
       )}

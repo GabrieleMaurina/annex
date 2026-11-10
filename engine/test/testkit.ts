@@ -5,6 +5,7 @@ import { TurnPlanCache, planBotTurn } from '../src/bots/planning/planBotTurn';
 import { TurnPlan } from '../src/bots/planning/turnPlan';
 import { EngineCallbacks, setCallbacks } from '../src/callbacks';
 import { pairKey } from '../src/game/alliances';
+import { DEFAULT_SIDES } from '../src/game/combat/dice';
 import { emptyPlayerStats } from '../src/game/progression/stats';
 import { clearTurnTimer } from '../src/game/turns';
 import { loadMaps } from '../src/maps/maps';
@@ -144,6 +145,8 @@ function baseGame(name: string): Game {
     continentPayouts: [],
     defenceDice: 2,
     attackDice: 3,
+    defenceSides: DEFAULT_SIDES,
+    attackSides: DEFAULT_SIDES,
     diceTies: 'defence',
     disconnectBotDifficulty: 'random',
     disconnectBotPersonality: 'random',

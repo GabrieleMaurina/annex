@@ -86,6 +86,8 @@ function buildGameState(
     continentBonuses: doc.continentBonuses ?? [],
     defenceDice: s.defenceDice,
     attackDice: s.attackDice,
+    defenceSides: s.defenceSides,
+    attackSides: s.attackSides,
     diceTies: s.diceTies,
     disconnectBotDifficulty: s.disconnectBotDifficulty,
     disconnectBotPersonality: s.disconnectBotPersonality,

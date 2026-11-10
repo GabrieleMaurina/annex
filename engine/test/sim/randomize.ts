@@ -1,4 +1,9 @@
-import { MAX_DICE } from '../../src/game/combat/dice';
+import {
+  DEFAULT_SIDES,
+  MAX_DICE,
+  MAX_SIDES,
+  MIN_SIDES,
+} from '../../src/game/combat/dice';
 import {
   defaultMaxPoints,
   MAX_HILLS,
@@ -177,14 +182,21 @@ export interface RandomSettings {
   teams: number[] | null;
 }
 
+function randomSides(rng: () => number): number {
+  return MIN_SIDES + Math.floor(rng() * (MAX_SIDES - MIN_SIDES + 1));
+}
+
 export function randomGameSettings(
   rng: () => number,
   botCount: number,
 ): RandomSettings {
   const gameMode = pick(rng, GAME_MODES);
-  const defaultDice = rng() < 0.9;
+  const defaultDice = rng() < 0.95;
   const attackDice = defaultDice ? 3 : 1 + Math.floor(rng() * MAX_DICE);
   const defenceDice = defaultDice ? 2 : 1 + Math.floor(rng() * attackDice);
+  const defaultSides = rng() < 0.95;
+  const attackSides = defaultSides ? DEFAULT_SIDES : randomSides(rng);
+  const defenceSides = defaultSides ? DEFAULT_SIDES : randomSides(rng);
   const alliancesAllowed = gameMode !== 'team deathmatch';
   const cards = weightedDefault(rng, CARDS_MODES, 'constant');
   const roundTroops = rng() < 0.3 ? 'on' : 'off';
@@ -206,6 +218,8 @@ export function randomGameSettings(
     gameMode,
     defenceDice,
     attackDice,
+    attackSides,
+    defenceSides,
     diceTies: defaultDice
       ? 'defence'
       : pick(rng, ['defence', 'attack', 'tie'] as const),

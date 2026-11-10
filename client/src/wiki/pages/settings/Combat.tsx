@@ -49,6 +49,14 @@ function Combat() {
               'Most dice a defender rolls, capped by its own troops. 1 to 10, default 2, never above Attack Dice. Capitals and entrenched territories roll one extra, up to 10.',
             ],
             [
+              'Attack Sides',
+              'Sides on each attacker die, 2 to 20, default 6. A die shows 1 up to its sides, so more sides means higher attacker rolls. Applies on land and at sea.',
+            ],
+            [
+              'Defence Sides',
+              'Sides on each defender die, 2 to 20, default 6, set separately from Attack Sides. Also used by the extra die of capitals and entrenched territories.',
+            ],
+            [
               'Dice Ties',
               'Who wins equal dice, on land and at sea: Defence (attacker loses a troop, default), Attack (defender loses a troop) or Tie (nobody loses).',
             ],

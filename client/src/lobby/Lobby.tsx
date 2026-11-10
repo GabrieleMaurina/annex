@@ -255,6 +255,8 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
       blitz: state.blitz,
       defenceDice: state.defenceDice,
       attackDice: state.attackDice,
+      defenceSides: state.defenceSides,
+      attackSides: state.attackSides,
       diceTies: state.diceTies,
       continents: state.continents,
       initialTroops: state.initialTroops,

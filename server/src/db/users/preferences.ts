@@ -1,9 +1,11 @@
 import {
   DEFAULT_MIN_REPUTATION,
+  DEFAULT_SIDES,
   isBlitzOffAllowed,
   MAP_ASPECT_VALUES,
   MAX_DICE,
   MAX_DURATION_VALUES,
+  MAX_SIDES,
   MAX_STALEMATE_ROUNDS,
   MAX_STARTING_CAPITALS,
   MIN_ACCOUNT_AGE_VALUES,
@@ -11,6 +13,7 @@ import {
   MIN_GAMES_VALUES,
   MIN_RANK_VALUES,
   MIN_REPUTATION_VALUES,
+  MIN_SIDES,
   MIN_STALEMATE_ROUNDS,
   MIN_STARTING_CAPITALS,
   TILE_SHAPE_VALUES,
@@ -50,6 +53,8 @@ export interface GameSettings {
   blitz: string;
   defenceDice: number;
   attackDice: number;
+  defenceSides: number;
+  attackSides: number;
   diceTies: string;
   continents: string;
   initialTroops: number;
@@ -134,6 +139,14 @@ function stalemateRounds(defaultValue: number, min: number): number[] {
   ];
 }
 
+const SIDES = [
+  DEFAULT_SIDES,
+  ...Array.from(
+    { length: MAX_SIDES - MIN_SIDES + 1 },
+    (_, i) => MIN_SIDES + i,
+  ).filter((value) => value !== DEFAULT_SIDES),
+];
+
 export const GAME_ENUMS: Record<string, unknown[]> = {
   gameMode: [
     'supremacy',
@@ -154,6 +167,8 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   blitz: ['balanced', 'true', 'fair', 'off'],
   defenceDice: [2, 1, ...Array.from({ length: 8 }, (_, i) => i + 3)],
   attackDice: [3, 1, 2, ...Array.from({ length: 7 }, (_, i) => i + 4)],
+  defenceSides: SIDES,
+  attackSides: SIDES,
   diceTies: ['defence', 'attack', 'tie'],
   continents: [
     '1x',
@@ -293,6 +308,8 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   blitz: 'balanced',
   defenceDice: 2,
   attackDice: 3,
+  defenceSides: DEFAULT_SIDES,
+  attackSides: DEFAULT_SIDES,
   diceTies: 'defence',
   continents: '1x',
   initialTroops: 3,

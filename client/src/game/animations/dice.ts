@@ -16,28 +16,31 @@ export function skipDiceReveals() {
   [...pendingReveals].forEach((run) => run());
 }
 
-function rollDie(...exclude: number[]): number {
-  let value: number;
-  do {
-    value = 1 + Math.floor(Math.random() * 6);
-  } while (exclude.includes(value));
-  return value;
+function rollDie(sides: number, ...exclude: number[]): number {
+  const values = Array.from({ length: sides }, (_, i) => i + 1);
+  const allowed = values.filter((value) => !exclude.includes(value));
+  const choices =
+    allowed.length > 0
+      ? allowed
+      : values.filter((value) => value !== exclude[0]);
+  return choices[Math.floor(Math.random() * choices.length)];
 }
 
 export function generateDiceRollSequence(
   finalValue: number,
+  sides: number,
   steps: number = DICE_ROLL_STEPS,
 ): number[] {
   const sequence: number[] = [];
   let previous = -1;
   for (let i = 0; i < steps - 1; i++) {
-    const value = rollDie(previous);
+    const value = rollDie(sides, previous);
     sequence.push(value);
     previous = value;
   }
   if (sequence.length > 0 && sequence[sequence.length - 1] === finalValue) {
     const priorValue = sequence.length > 1 ? sequence[sequence.length - 2] : -1;
-    sequence[sequence.length - 1] = rollDie(finalValue, priorValue);
+    sequence[sequence.length - 1] = rollDie(sides, finalValue, priorValue);
   }
   sequence.push(finalValue);
   return sequence;

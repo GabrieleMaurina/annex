@@ -7,7 +7,11 @@ import {
   parseCookies,
   serializeSessionCookie,
 } from '../auth/cookies';
-import { allowAuthAttempt } from '../auth/rateLimit';
+import {
+  allowAuthAttempt,
+  allowGameExport,
+  allowPlayerExport,
+} from '../auth/rateLimit';
 import { cachedUserId } from '../conduct/viewerCache';
 import { markSeen } from './presence';
 
@@ -75,6 +79,18 @@ export function identityMiddleware(
 
 export function rateLimited(req: Request): boolean {
   return !allowAuthAttempt(
+    clientIp(req.headers, req.socket.remoteAddress ?? ''),
+  );
+}
+
+export function gameExportLimited(req: Request): boolean {
+  return !allowGameExport(
+    clientIp(req.headers, req.socket.remoteAddress ?? ''),
+  );
+}
+
+export function playerExportLimited(req: Request): boolean {
+  return !allowPlayerExport(
     clientIp(req.headers, req.socket.remoteAddress ?? ''),
   );
 }

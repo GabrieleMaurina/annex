@@ -38,7 +38,9 @@ function Attack() {
         </ol>
         <p>
           Capitals and entrenched territories defend with one extra die, up to
-          10. All of these numbers are settings (
+          10. Dice have 6 sides by default; Attack Sides and Defence Sides let
+          the host give each side bigger or smaller dice. All of these numbers
+          are settings (
           <WikiLink to="settings/combat" />
           ).
         </p>

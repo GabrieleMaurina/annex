@@ -6,6 +6,7 @@ import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import CareerChart from '../../common/charts/CareerChart';
 import ReportPlayerModal from '../../common/conduct/ReportPlayerModal';
+import ExportDataButton from '../../common/export/ExportDataButton';
 import { formatError } from '../../common/formatError';
 import { useWhiteIcon } from '../../common/icon';
 import ProfilePictureEditor from '../../common/inputs/ProfilePictureEditor';
@@ -331,15 +332,22 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
               {formatError(reportMessage)}
             </span>
           )}
-          <SharePageButton
-            title={profile.username}
-            path={`/players/${encodeURIComponent(profile.username)}`}
-            tooltip={
-              isOwnProfile
-                ? 'Share your profile with friends'
-                : 'Share this profile with friends'
-            }
-          />
+          <div className="d-flex align-items-start gap-2">
+            <SharePageButton
+              title={profile.username}
+              path={`/players/${encodeURIComponent(profile.username)}`}
+              tooltip={
+                isOwnProfile
+                  ? 'Share your profile with friends'
+                  : 'Share this profile with friends'
+              }
+            />
+            <ExportDataButton
+              key={profile.id}
+              name={profileUsername}
+              load={(cb) => connector.getPlayerExport(profileUsername, cb)}
+            />
+          </div>
         </div>
         <div
           className={`d-flex flex-wrap flex-grow-1 justify-content-center ${canManageFriend ? '' : 'justify-content-md-end'} align-items-center gap-4`}

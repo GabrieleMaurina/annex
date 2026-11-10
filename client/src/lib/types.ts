@@ -325,6 +325,8 @@ export interface GameState {
   continentBonuses: number[];
   defenceDice: number;
   attackDice: number;
+  defenceSides: number;
+  attackSides: number;
   diceTies: DiceTies;
   disconnectBotDifficulty: BotDifficulty | 'random';
   disconnectBotPersonality: BotPersonality | 'random';
@@ -494,6 +496,8 @@ export interface GameSettingsInput {
   continents?: Continents;
   defenceDice?: number;
   attackDice?: number;
+  defenceSides?: number;
+  attackSides?: number;
   diceTies?: DiceTies;
   disconnectBotDifficulty?: BotDifficulty | 'random';
   disconnectBotPersonality?: BotPersonality | 'random';
@@ -544,6 +548,8 @@ export type GameRulesSettings = Pick<
   | 'continents'
   | 'defenceDice'
   | 'attackDice'
+  | 'defenceSides'
+  | 'attackSides'
   | 'diceTies'
   | 'disconnectBotDifficulty'
   | 'disconnectBotPersonality'
@@ -658,6 +664,8 @@ export interface StoredGameSettings {
   blitz: Blitz;
   defenceDice: number;
   attackDice: number;
+  defenceSides: number;
+  attackSides: number;
   diceTies: DiceTies;
   continents: Continents;
   initialTroops: number;
@@ -749,6 +757,10 @@ export interface CareerTotals {
   capitalsConquered: number;
   setsPlayed: number;
 }
+
+export type ExportData = Record<string, unknown>;
+
+export type ExportCallback = (data: ExportData | null, error?: string) => void;
 
 export interface PlayerAchievement {
   id: string;

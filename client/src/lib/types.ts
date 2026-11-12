@@ -250,7 +250,7 @@ export interface GameMeta {
 }
 
 export type EmojiValue =
-  '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '❓' | '🙏' | '⚔️';
+  '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '❓' | '🙏' | '🎉' | '⚔️';
 export type EmojiAttackTarget =
   | { type: 'player'; playerId: number }
   | { type: 'territory'; territoryId: number };

@@ -510,9 +510,9 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     );
   if (bonusesOpen) {
     ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = continentLineWidth(2.5);
+    ctx.lineWidth = continentLineWidth(5);
     ctx.lineJoin = 'round';
     for (const [continentGroupId, group] of continentGroups) {
       const shape = continentShapesById?.get(continentGroupId);

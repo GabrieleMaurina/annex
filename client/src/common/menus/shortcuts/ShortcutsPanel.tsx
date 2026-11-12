@@ -35,7 +35,7 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
   {
     title: 'Your turn',
     shortcuts: [
-      ['Tab', 'Next phase, or players panel when you cannot advance'],
+      ['Tab', 'Next phase'],
       ['Enter / Space', 'Confirm the open action'],
       ['Esc', 'Cancel the current selection'],
       ['Right-click', 'Deploy all troops, or buy the most ships'],
@@ -81,6 +81,7 @@ const SECTIONS: { title: string; shortcuts: [string, string][] }[] = [
       ['Ctrl + Y / Ctrl + Shift + Z', 'Redo'],
       ['Delete / Backspace', 'Delete the selected territory or shape'],
       ['Double-click / double-tap', 'Delete a territory'],
+      ['P', 'Show or hide the panel'],
       ['Esc', 'Deselect, or collapse the panel'],
       ['Ctrl + click', 'Link wrapping horizontally'],
       ['Shift + click', 'Link wrapping vertically'],

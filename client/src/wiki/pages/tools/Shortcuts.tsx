@@ -43,7 +43,7 @@ function Shortcuts() {
         <WikiTable
           head={['Input', 'Action']}
           rows={[
-            ['Tab', 'Next phase, or the players panel when you cannot advance'],
+            ['Tab', 'Next phase'],
             ['Enter, Space', 'Confirm the open action'],
             ['Esc', 'Cancel the current selection'],
             [
@@ -91,6 +91,7 @@ function Shortcuts() {
             ['Ctrl + Y, Ctrl + Shift + Z', 'Redo'],
             ['Delete, Backspace', 'Delete the selected territory or shape'],
             ['Double-click', 'Delete a territory'],
+            ['P', 'Show or hide the panel'],
             ['Esc', 'Deselect or collapse the panel'],
             ['Ctrl + click', 'Link wrapping horizontally'],
             ['Shift + click', 'Link wrapping vertically'],

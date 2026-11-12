@@ -16,6 +16,20 @@ import { nextToastId } from '../../toastId';
 import type { CanvasInteractionsParams } from './types';
 import type { useMapViewportAnimation } from './useMapViewportAnimation';
 
+function isInsideScrollable(target: EventTarget | null): boolean {
+  let el = target instanceof Element ? target : null;
+  while (el && el !== document.body) {
+    const { overflowY } = getComputedStyle(el);
+    if (
+      (overflowY === 'auto' || overflowY === 'scroll') &&
+      el.scrollHeight > el.clientHeight
+    )
+      return true;
+    el = el.parentElement;
+  }
+  return false;
+}
+
 export function useCanvasKeyboard({
   sailStartTerritoryId,
   sailPanelOpen,
@@ -402,14 +416,40 @@ export function useCanvasKeyboard({
         cycleAttackOption(direction);
         return;
       }
+      if (
+        /^[0-9]$/.test(e.key) &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !isTypingTarget(e.target)
+      ) {
+        const troopInput = deployPanelOpen
+          ? deployInputRef.current
+          : deploySeaPanelOpen
+            ? deploySeaInputRef.current
+            : sailPanelOpen
+              ? sailInputRef.current
+              : fortifyPanelOpen
+                ? fortifyInputRef.current
+                : entrenchPanelOpen
+                  ? entrenchInputRef.current
+                  : attackSeaPanelOpen
+                    ? (attackSeaBlitzInputRef.current ??
+                      attackSeaInputRef.current)
+                    : attackPanelOpen
+                      ? attackShowPendingConquest
+                        ? attackMoveInputRef.current
+                        : blitzInputRef.current
+                      : null;
+        if (troopInput) {
+          troopInput.focus();
+          troopInput.select();
+        }
+      }
       if (isTypingTarget(e.target)) return;
       if (e.key === 'Tab') {
         e.preventDefault();
-        if (canAdvancePhase) {
-          advancePhase();
-        } else {
-          setPanelCollapsed((prev) => !prev);
-        }
+        if (canAdvancePhase) advancePhase();
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         const key = e.key.toLowerCase();
         if (key === 'p') setPanelCollapsed((prev) => !prev);
@@ -516,6 +556,7 @@ export function useCanvasKeyboard({
 
   useEffect(() => {
     function onWheel(e: WheelEvent) {
+      if (isInsideScrollable(e.target)) return;
       e.preventDefault();
       if (
         stepTroopPanel(wheelDirection(e) * modifierStep(e), isNewWheelGesture())

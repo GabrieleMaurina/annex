@@ -46,7 +46,7 @@ function Lobby() {
             [
               'Send an emoji',
               'Players',
-              "Click another player's row, then pick one of nine emojis.",
+              "Click another player's row, then pick one of ten emojis.",
             ],
           ]}
         />

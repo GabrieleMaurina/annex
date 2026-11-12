@@ -28,6 +28,7 @@ import MapBrowser from '../../maps/MapBrowser';
 import MapGenerationModal, {
   type MapGenerationModalHandle,
 } from '../../maps/MapGenerationModal';
+import MapImageModal from '../../maps/MapImageModal';
 import SpinningGears from '../../ui/buttons/SpinningGears';
 import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
 import GenerationProgress from '../../ui/feedback/GenerationProgress';
@@ -121,10 +122,13 @@ function SettingsPanel({
   useToggleSound(earthOpen);
   const [earthUploading, setEarthUploading] = useState(false);
   const [mapRegenerating, setMapRegenerating] = useState(isRegeneratingMap);
+  const [mapViewOpen, setMapViewOpen] = useState(false);
+  useToggleSound(mapViewOpen);
   const [seedCopied, setSeedCopied] = useState(false);
   const mapGenRef = useRef<MapGenerationModalHandle>(null);
   const whiteMapIcon = useWhiteIcon('/icons/map.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
+  const whiteFullscreenIcon = useWhiteIcon('/icons/fullscreen.svg');
 
   useEffect(() => {
     function onRegenerating(value: boolean) {
@@ -176,10 +180,21 @@ function SettingsPanel({
     return mapStats[name];
   }
 
-  function mapTooltip(name: string) {
-    const image = imageSrcFor(name);
+  function mapDetails(name: string): string {
     const stats = statsFor(name);
     const seed = name === game.mapName ? game.mapGeneration?.seed : undefined;
+    return [
+      stats &&
+        `${stats.territories} territories, ${stats.continents} continents`,
+      seed && `Seed: ${seed}`,
+    ]
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  function mapTooltip(name: string) {
+    const image = imageSrcFor(name);
+    const details = mapDetails(name);
     return (
       <div className="text-start">
         {image && (
@@ -190,14 +205,7 @@ function SettingsPanel({
             style={{ maxWidth: 480, maxHeight: 270 }}
           />
         )}
-        {(stats || seed) && (
-          <div>
-            {stats &&
-              `${stats.territories} territories, ${stats.continents} continents`}
-            {stats && seed && ', '}
-            {seed && `Seed: ${seed}`}
-          </div>
-        )}
+        {details && <div>{details}</div>}
       </div>
     );
   }
@@ -465,6 +473,22 @@ function SettingsPanel({
               </Tip>
             )}
             {game.playerMapId && <MapLikeButton mapId={game.playerMapId} />}
+            {currentImageSrc && (
+              <Tip text="View the map">
+                <button
+                  type="button"
+                  className="btn btn-sm p-0 d-inline-flex align-items-center"
+                  onClick={() => setMapViewOpen(true)}
+                >
+                  <img
+                    src={whiteFullscreenIcon ?? '/icons/fullscreen.svg'}
+                    width={18}
+                    height={18}
+                    alt="View the map"
+                  />
+                </button>
+              </Tip>
+            )}
           </div>
         </div>
 
@@ -503,6 +527,15 @@ function SettingsPanel({
             />
           </Modal.Body>
         </Modal>
+      )}
+
+      {mapViewOpen && currentImageSrc && (
+        <MapImageModal
+          title={game.mapName}
+          imageSrc={currentImageSrc}
+          details={mapDetails(game.mapName)}
+          onHide={() => setMapViewOpen(false)}
+        />
       )}
 
       {earthOpen && selectEarthMap && (

@@ -90,7 +90,7 @@
   caret-color: transparent;
   font: inherit;
   text-align: center;
-  cursor: move;
+  cursor: var(--cursor-grab);
   touch-action: none;
   appearance: textfield;
 }

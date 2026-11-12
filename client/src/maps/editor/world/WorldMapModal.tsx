@@ -22,6 +22,7 @@ import {
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../../ui/containers/panelStyle';
 import GenerationProgress from '../../../ui/feedback/GenerationProgress';
 import Selector from '../../../ui/forms/Selector';
+import MapImageModal from '../../MapImageModal';
 import {
   drawnArea,
   labelPoint,
@@ -105,6 +106,7 @@ interface EarthSession {
   extras: GazetteerPlace[];
   collapsed: boolean;
   view: EarthView;
+  result: { map: OsmGeneratedMap; recipe: EarthRecipe } | null;
 }
 
 const sessions: Record<string, EarthSession> = {};
@@ -126,6 +128,7 @@ function newSession(): EarthSession {
     extras: [],
     collapsed: false,
     view: { center: [10, 30], zoom: 1.5, bearing: 0 },
+    result: null,
   };
 }
 
@@ -284,6 +287,8 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
   const [drawing, setDrawing] = useState(false);
   const [index, setIndex] = useState<GazetteerIndex | null>(null);
   const [searchKey, setSearchKey] = useState(0);
+  const [result, setResult] = useState(session.result);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     Object.assign(session, {
@@ -301,6 +306,7 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
       placeBounds,
       extras,
       collapsed,
+      result,
     });
   });
 
@@ -432,6 +438,12 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
     else setExtras((current) => [...current, chosen]);
   }
 
+  function confirmUse() {
+    if (!result) return;
+    onGenerated(result.map, result.recipe);
+    onHide();
+  }
+
   function generate() {
     if (!frame || problem || job) return;
     setError('');
@@ -463,8 +475,7 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
     Promise.all([next.promise, recipe])
       .then(([map, ready]) => {
         setJob(null);
-        onGenerated(map, ready);
-        onHide();
+        setResult({ map, recipe: ready });
       })
       .catch((e: Error) => {
         setJob(null);
@@ -664,6 +675,19 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
                 onChange={(e) => setGreenAreas(e.target.checked)}
               />
             </div>
+            {result && (
+              <Button
+                variant="link"
+                className="p-0 w-100"
+                onClick={() => setPreviewOpen(true)}
+              >
+                <img
+                  src={result.map.imageSrc}
+                  alt=""
+                  className="d-block rounded border w-100"
+                />
+              </Button>
+            )}
             {job && (
               <GenerationProgress
                 text={progressText(progress)}
@@ -692,15 +716,29 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
                 {job ? 'Generating…' : 'Generate'}
               </Button>
               <Button
-                variant="secondary"
                 size="sm"
                 className="w-100"
-                onClick={job ? job.cancel : onHide}
+                onClick={confirmUse}
+                disabled={!result || !!job}
               >
-                Cancel
+                Use this map
               </Button>
             </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={job ? job.cancel : onHide}
+            >
+              Cancel
+            </Button>
           </div>
+        )}
+        {previewOpen && result && (
+          <MapImageModal
+            title={result.map.name}
+            imageSrc={result.map.imageSrc}
+            onHide={() => setPreviewOpen(false)}
+          />
         )}
         <div
           className={`position-absolute bottom-0 end-0 m-2 px-2 ${PANEL_BG_CLASS} rounded small text-muted text-end z-1`}

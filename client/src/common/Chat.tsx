@@ -112,6 +112,7 @@ function Chat({ nameById, colorById, open, setOpen, hidden }: Props) {
           ref={listRef}
           style={{ height: 200, overflowY: 'auto' }}
           className="my-2 border rounded"
+          onWheel={(e) => e.stopPropagation()}
         >
           <ListGroup variant="flush">
             {messages.map((m, i) => {

@@ -15,6 +15,7 @@ const EMOJI_VALUES: EmojiValue[] = [
   '😲',
   '❓',
   '🙏',
+  '🎉',
   '⚔️',
 ];
 const ATTACK_EMOJI: EmojiValue = '⚔️';

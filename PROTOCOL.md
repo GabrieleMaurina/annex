@@ -1453,13 +1453,13 @@ Optional field on a `users` document: `{ id, data (binData), mime ('image/png' |
 - **Ack:** none
 
 ### `game:sendEmoji`
-- **When sent:** a seated player sends a quick emoji to another player, or to every player in the game: right after clicking a player (or the "Everyone" row) in the players list (during a game) or the roster/results table (in the lobby or after the game ends) and picking one of the nine fixed emojis (👍, 👎, ❤️, 🙂, 🙁, 😲, ❓, 🙏, ⚔️), or, for the attack emoji (⚔️) specifically, after the follow-up click on a player or a territory that names its target. The attack emoji's follow-up targeting only exists in the in-game players list, since it relies on the map; the lobby and results tables only ever send it (if at all) without an `attackTarget`. The attack emoji can't be sent to everyone; it always requires a specific `targetPlayerId`.
+- **When sent:** a seated player sends a quick emoji to another player, or to every player in the game: right after clicking a player (or the "Everyone" row) in the players list (during a game) or the roster/results table (in the lobby or after the game ends) and picking one of the ten fixed emojis (👍, 👎, ❤️, 🙂, 🙁, 😲, ❓, 🙏, 🎉, ⚔️), or, for the attack emoji (⚔️) specifically, after the follow-up click on a player or a territory that names its target. The attack emoji's follow-up targeting only exists in the in-game players list, since it relies on the map; the lobby and results tables only ever send it (if at all) without an `attackTarget`. The attack emoji can't be sent to everyone; it always requires a specific `targetPlayerId`.
 - **Purpose:** relay one emoji from the caller to `targetPlayerId`, or, if `targetPlayerId` is omitted, to every seated player and spectator in the game (an emoji sent to everyone). A targeted emoji is delivered only to the two sockets involved; one sent to everyone is delivered individually to every seated player's and every spectator's own socket (see `game:emojiSent` below). Spectators can receive emojis sent to everyone, but can never send one. The caller must be a seated player, in any game state (`lobby`, `playing`, or `ended`); if given, `targetPlayerId` must be a currently seated player other than the caller (a player can't send themselves an emoji) and not a bot (see "Bots" above; a bot can be sent to as part of an emoji sent to everyone, it just can never be targeted directly). Whenever `gameMode` is `'team deathmatch'` or `alliances` is `'on'` (see `GameState` above), a given `targetPlayerId` is additionally rejected unless it names a player currently allied with the caller (a teammate, in `'team deathmatch'`); this has no effect on an emoji sent to everyone, which is always allowed regardless. `attackTarget` is required if and only if `emoji` is `'⚔️'`, which also requires `targetPlayerId` to be given: `{ type: 'player'; playerId }` names any seated player, including the caller or `targetPlayerId`, as the attack's target (unlike `targetPlayerId`, this one may name the caller). `{ type: 'territory'; territoryId }` names any territory on the map, owned by anyone or no one. Silently ignored (no ack) on any invalid input, same as `game:chat`.
 - **Content:**
   ```ts
   {
     targetPlayerId?: number;
-    emoji: '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '❓' | '🙏' | '⚔️';
+    emoji: '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '❓' | '🙏' | '🎉' | '⚔️';
     attackTarget?:
       | { type: 'player'; playerId: number }
       | { type: 'territory'; territoryId: number };
@@ -1648,7 +1648,7 @@ The game list is no longer pushed; the client polls `GET /games/live` while the 
   {
     senderId: number;
     targetPlayerId?: number;
-    emoji: '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '❓' | '🙏' | '⚔️';
+    emoji: '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '❓' | '🙏' | '🎉' | '⚔️';
     attackTarget?:
       | { type: 'player'; playerId: number }
       | { type: 'territory'; territoryId: number };

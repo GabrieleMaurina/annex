@@ -9,6 +9,7 @@ export const EMOJIS: EmojiValue[] = [
   '😲',
   '❓',
   '🙏',
+  '🎉',
   '⚔️',
 ];
 export const ATTACK_EMOJI: EmojiValue = '⚔️';
@@ -22,6 +23,7 @@ export const EMOJI_LABELS: Record<EmojiValue, string> = {
   '😲': 'Surprised',
   '❓': 'Question',
   '🙏': 'Please\nSorry\nThanks',
+  '🎉': 'Good game\nWell played',
   '⚔️': 'Attack',
 };
 export const EMOJI_POP_DURATION = 2200;

@@ -25,7 +25,7 @@ function Chat() {
           head={['Emoji', 'Use']}
           rows={[
             [
-              '👍 👎 ❤️ 🙂 🙁 😲 ❓ 🙏',
+              '👍 👎 ❤️ 🙂 🙁 😲 ❓ 🙏 🎉',
               'Reactions. Send to one player or everyone.',
             ],
             [

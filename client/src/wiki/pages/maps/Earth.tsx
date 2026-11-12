@@ -11,7 +11,8 @@ function Earth() {
           Earth maps turn a real place into a playable map. Territories follow
           real borders: countries on a world view, regions inside a country,
           districts and neighborhoods of a city, all the way down to blocks.
-          They are built from OpenStreetMap data when you press Generate.
+          They are built from OpenStreetMap data when you press Generate. Check
+          the preview, then press Use this map to keep it.
         </p>
       </WikiSection>
       <WikiSection id="choose" title="Choosing a place">

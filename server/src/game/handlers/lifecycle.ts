@@ -186,6 +186,17 @@ export function registerGameHandlers(
     callback(viewResponse(playerId, engine.nextPhase(playerId)));
   });
 
+  socket.on(
+    'game:previousPhase',
+    (callback: (response: GameResponse) => void) => {
+      if (typeof callback !== 'function') return;
+      const playerId = playerIdBySocketId.get(socket.id);
+      if (playerId === undefined)
+        return callback({ ok: false, error: 'not in a game' });
+      callback(viewResponse(playerId, engine.previousPhase(playerId)));
+    },
+  );
+
   socket.on('game:pause', (callback: (response: GameResponse) => void) => {
     if (typeof callback !== 'function') return;
     const playerId = playerIdBySocketId.get(socket.id);

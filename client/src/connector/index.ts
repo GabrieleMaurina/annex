@@ -428,6 +428,10 @@ export const connector = {
     route('game:nextPhase', undefined, cb);
   },
 
+  previousPhase(cb: AckCallback): void {
+    route('game:previousPhase', undefined, cb);
+  },
+
   pause(cb: AckCallback): void {
     route('game:pause', undefined, cb);
   },

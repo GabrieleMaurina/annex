@@ -25,7 +25,8 @@ function GameScreen() {
           The bar at the bottom shows whose turn it is and the current phase (
           <WikiLink to="rules/turns" />
           ). A line along the top of the screen shows the time left in the turn.
-          Press Tab to move to the next phase.
+          Press Tab to move to the next phase, or Shift+Tab to go back if you
+          have not acted yet.
         </p>
       </WikiSection>
       <WikiSection id="panels" title="Panels">

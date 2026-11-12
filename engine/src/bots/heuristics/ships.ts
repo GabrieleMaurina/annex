@@ -1,6 +1,6 @@
 import { defenceDiceFor } from '../../game/combat/dice';
 import { connectedSeaTerritories } from '../../game/world/connectivity';
-import { SHIP_COST } from '../../territory/sea/buyShips';
+import { SHIP_COST } from '../../game/world/seaShips';
 import { Game } from '../../types';
 import { attackWinProbability } from '../features/combat';
 import { isTeammate } from '../features/mode/mode';

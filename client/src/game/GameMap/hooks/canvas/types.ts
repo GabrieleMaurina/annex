@@ -167,4 +167,6 @@ export type CanvasInteractionsParams = {
   flipSwitch: (switchId: number) => void;
   canAdvancePhase: boolean;
   advancePhase: () => void;
+  canReturnPhase: boolean;
+  returnPhase: () => void;
 };

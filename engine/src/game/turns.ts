@@ -4,14 +4,7 @@ import { getGameMap } from '../maps/maps';
 import { playersById } from '../session/players';
 import { broadcastGameState, games, sendPlayerCards } from '../session/store';
 import { Game, TurnPhase } from '../types';
-import {
-  hasAnyAttack,
-  hasAnyEntrench,
-  hasAnyFortify,
-  hasAnySail,
-  hasAnyShipFight,
-  hasAnyToxin,
-} from './combat/autoSkip';
+import { phaseHasAction } from './combat/autoSkip';
 import { moveIntoConquest, snapshotCapitalRefunds } from './combat/conquest';
 import { checkGameEnd, checkStalemate } from './end';
 import {
@@ -25,7 +18,6 @@ import {
   startingPoolBonus,
   turnOrderBonus,
 } from './mechanics';
-import { hasReadyNuke } from './nukes/nukes';
 import { payContinentBonuses } from './progression/bonuses';
 import {
   counterKey,
@@ -874,6 +866,7 @@ export function advanceToNextPlayer(game: Game) {
 
   game.turnPlayerIndex = nextIndex;
   game.turnPhase = 'deploy';
+  game.phaseTrail = [];
   game.selectedTerritoryId = null;
   game.fortifyStartTerritoryId = null;
   game.fortifyEndTerritoryId = null;
@@ -911,47 +904,45 @@ export function advanceToNextPlayer(game: Game) {
   scheduleTurnTimer(game);
 }
 
+function clearPhaseSelections(game: Game) {
+  game.selectedTerritoryId = null;
+  game.fortifyStartTerritoryId = null;
+  game.fortifyEndTerritoryId = null;
+  game.attackStartTerritoryId = null;
+  game.attackEndTerritoryId = null;
+  game.attackConquestMinTroops = null;
+  game.sailStartTerritoryId = null;
+  game.sailEndTerritoryId = null;
+  game.attackSeaTerritoryId = null;
+  game.attackSeaDefenderId = null;
+}
+
 export function advanceTurnPhase(game: Game) {
   const index = PHASE_ORDER.indexOf(game.turnPhase);
   if (index < PHASE_ORDER.length - 1) {
     game.turnPhase = PHASE_ORDER[index + 1];
-    game.selectedTerritoryId = null;
-    game.fortifyStartTerritoryId = null;
-    game.fortifyEndTerritoryId = null;
-    game.attackStartTerritoryId = null;
-    game.attackEndTerritoryId = null;
-    game.attackConquestMinTroops = null;
-    game.sailStartTerritoryId = null;
-    game.sailEndTerritoryId = null;
-    game.attackSeaTerritoryId = null;
-    game.attackSeaDefenderId = null;
+    clearPhaseSelections(game);
 
     const playerId = game.playerIds[game.turnPlayerIndex];
-    if (game.turnPhase === 'sail' && !hasAnySail(game, playerId)) {
-      advanceTurnPhase(game);
-    } else if (
-      game.turnPhase === 'attack' &&
-      !hasAnyAttack(game, playerId) &&
-      !hasReadyNuke(game, playerId) &&
-      !hasAnyShipFight(game, playerId)
-    ) {
-      advanceTurnPhase(game);
-    } else if (game.turnPhase === 'fortify' && !hasAnyFortify(game, playerId)) {
-      advanceTurnPhase(game);
-    } else if (
-      game.turnPhase === 'entrench' &&
-      (game.entrenchments !== 'on' || !hasAnyEntrench(game, playerId))
-    ) {
-      advanceTurnPhase(game);
-    } else if (
-      game.turnPhase === 'toxins' &&
-      (game.toxins === 'off' || !hasAnyToxin(game, playerId))
-    ) {
+    if (!phaseHasAction(game, playerId, game.turnPhase)) {
       advanceTurnPhase(game);
     }
   } else {
     advanceToNextPlayer(game);
   }
+}
+
+export function finishTurnPhase(game: Game) {
+  game.phaseTrail.push({
+    phase: game.turnPhase,
+    replayFrames: game.replayFrames.length,
+  });
+  advanceTurnPhase(game);
+}
+
+export function returnToPreviousPhase(game: Game) {
+  game.turnPhase = game.phaseTrail.pop()!.phase;
+  clearPhaseSelections(game);
 }
 
 function updatePortalsForNewRound(game: Game) {
@@ -978,6 +969,7 @@ export function startTurns(game: Game) {
   game.roundNumber = 0;
   game.turnPlayerIndex = findNextAliveIndexFrom(game, -1) ?? 0;
   game.turnPhase = 'deploy';
+  game.phaseTrail = [];
   game.selectedTerritoryId = null;
   game.fortifyStartTerritoryId = null;
   game.fortifyEndTerritoryId = null;

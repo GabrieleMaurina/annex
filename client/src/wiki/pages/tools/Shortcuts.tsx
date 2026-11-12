@@ -44,6 +44,7 @@ function Shortcuts() {
           head={['Input', 'Action']}
           rows={[
             ['Tab', 'Next phase'],
+            ['Shift, Tab', 'Previous phase, if you have not acted in this one'],
             ['Enter, Space', 'Confirm the open action'],
             ['Esc', 'Cancel the current selection'],
             [

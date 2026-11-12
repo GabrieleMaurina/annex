@@ -2,6 +2,7 @@ import { getGameMap } from '../maps/maps';
 import { playersById } from '../session/players';
 import { AllianceViewState, Game, Player } from '../types';
 import { anonymousName, isAnonymous, isAnonymousPlaying } from './anonymous';
+import { canReturnPhase } from './combat/autoSkip';
 import { attackFullPath } from './combat/seaBridge';
 import {
   abortOpen,
@@ -356,6 +357,7 @@ export function gameState(game: Game) {
     roundNumber: game.roundNumber,
     turnPlayerIndex: game.turnPlayerIndex,
     turnPhase: game.turnPhase,
+    canReturnPhase: canReturnPhase(game),
     troopsToDeploy: game.troopsToDeploy,
     turnStartedAt:
       game.paused && game.pausedAt !== null

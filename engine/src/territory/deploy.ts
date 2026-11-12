@@ -1,9 +1,9 @@
 import { callbacks } from '../callbacks';
+import { hasAnyDeploy } from '../game/combat/autoSkip';
 import {
   depositTroopsOnOwnedTerritory,
   supplyHubTerritoryIds,
 } from '../game/mechanics';
-import { hasPlayableSet } from '../game/progression/cards';
 import { bumpStat } from '../game/progression/stats';
 import { advanceTurnPhase } from '../game/turns';
 import { connectedFortifyTerritories } from '../game/world/connectivity';
@@ -85,13 +85,7 @@ export function deploy(
     if (visible !== null && !visible.has(result.territoryId)) return null;
     return { territoryId: result.territoryId, troops: result.troops, playerId };
   });
-  const hand = game.playerCards.get(playerId) ?? [];
-  if (
-    game.troopsToDeploy <= 0 &&
-    hand.length < 5 &&
-    (game.deployCardMandate || !hasPlayableSet(hand))
-  )
-    advanceTurnPhase(game);
+  if (!hasAnyDeploy(game, playerId)) advanceTurnPhase(game);
 
   return respondGameState(game, playerId);
 }

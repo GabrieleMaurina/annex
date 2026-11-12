@@ -45,6 +45,8 @@ export default function TurnActionPanels({
   nextPhaseEndsTurn,
   tankFire,
   advancePhase,
+  canReturnPhase,
+  returnPhase,
   deployPanelOpen,
   deployTroops,
   deployInputRef,
@@ -142,6 +144,8 @@ export default function TurnActionPanels({
   nextPhaseEndsTurn: boolean;
   tankFire: { id: number; dice?: number };
   advancePhase: () => void;
+  canReturnPhase: boolean;
+  returnPhase: () => void;
   deployPanelOpen: boolean;
   deployTroops: number;
   deployInputRef: RefObject<HTMLInputElement | null>;
@@ -296,6 +300,8 @@ export default function TurnActionPanels({
             endsTurn={nextPhaseEndsTurn}
             tankFire={tankFire}
             advancePhase={advancePhase}
+            canReturnPhase={canReturnPhase}
+            returnPhase={returnPhase}
           />
         </>
       )}

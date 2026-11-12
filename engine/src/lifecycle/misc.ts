@@ -2,6 +2,7 @@ import { startTakeover } from '../bots/takeover';
 import { nextBotSpeed } from '../bots/thinkTime';
 import { callbacks } from '../callbacks';
 import { isAnonymous } from '../game/anonymous';
+import { canReturnPhase } from '../game/combat/autoSkip';
 import { abortOpen, drawOffersOpen, drawVoterIds } from '../game/draw';
 import { checkGameEnd, finishGame } from '../game/end';
 import { recomputeHost } from '../game/host';
@@ -11,10 +12,11 @@ import {
 } from '../game/mechanics';
 import { isClaimPhase } from '../game/state';
 import {
-  advanceTurnPhase,
+  finishTurnPhase,
   pauseTurnTimer,
   pauseTurnTimerWithAutoResume,
   resumeTurnTimer,
+  returnToPreviousPhase,
 } from '../game/turns';
 import { recordLogForAll } from '../game/world/fog';
 import { ArchivedMap, getArchivedMap } from '../maps/maps';
@@ -91,7 +93,23 @@ export function nextPhase(playerId: number): GameResponse {
   if (game.turnPhase === 'attack' && game.attackConquestMinTroops !== null)
     return { ok: false, error: 'pending conquest move' };
 
-  advanceTurnPhase(game);
+  finishTurnPhase(game);
+  return respondGameState(game, player.id);
+}
+
+export function previousPhase(playerId: number): GameResponse {
+  const player = playersById.get(playerId);
+  if (!player || !player.gameName) return { ok: false, error: 'not in a game' };
+
+  const game = games.get(player.gameName);
+  if (!game) return { ok: false, error: 'game not found' };
+  if (game.state !== 'playing') return { ok: false, error: 'game not started' };
+  if (game.paused) return { ok: false, error: 'game paused' };
+  if (game.playerIds[game.turnPlayerIndex] !== player.id)
+    return { ok: false, error: 'not your turn' };
+  if (!canReturnPhase(game)) return { ok: false, error: 'cannot go back' };
+
+  returnToPreviousPhase(game);
   return respondGameState(game, player.id);
 }
 

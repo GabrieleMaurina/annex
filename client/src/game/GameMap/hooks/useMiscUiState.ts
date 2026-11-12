@@ -508,6 +508,12 @@ export function requestNextPhase(setGame: (game: GameState) => void) {
   });
 }
 
+export function requestPreviousPhase(setGame: (game: GameState) => void) {
+  connector.previousPhase((res: Ack) => {
+    if (res.ok) setGame(res.game);
+  });
+}
+
 export function useLeaveGameGuard({
   players,
   spectators,

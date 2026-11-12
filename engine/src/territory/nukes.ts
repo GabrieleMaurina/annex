@@ -1,4 +1,4 @@
-import { hasAnyAttack } from '../game/combat/autoSkip';
+import { hasAnyAttack, hasAnyDeploy } from '../game/combat/autoSkip';
 import { checkGameEnd } from '../game/end';
 import {
   advanceNukeProject,
@@ -7,7 +7,6 @@ import {
   launchNuke,
   startNukeProject,
 } from '../game/nukes/nukes';
-import { hasPlayableSet } from '../game/progression/cards';
 import { advanceTurnPhase } from '../game/turns';
 import { GameContext, GameResponse, requireGame } from '../session/context';
 import { respondGameState } from '../session/store';
@@ -32,13 +31,7 @@ function requireNukePhase(
 }
 
 function maybeAdvanceDeploy(game: Game, playerId: number): void {
-  const hand = game.playerCards.get(playerId) ?? [];
-  if (
-    game.troopsToDeploy <= 0 &&
-    hand.length < 5 &&
-    (game.deployCardMandate || !hasPlayableSet(hand))
-  )
-    advanceTurnPhase(game);
+  if (!hasAnyDeploy(game, playerId)) advanceTurnPhase(game);
 }
 
 function maybeAdvanceAttack(game: Game, playerId: number): void {
@@ -110,6 +103,7 @@ export function deployAntiNukeAction(
     return { ok: false, error: 'invalid territory' };
   const result = deployAntiNuke(game, playerId, rawTerritoryId);
   if (!result.ok) return result;
+  game.phaseTrail = [];
   maybeAdvanceAttack(game, playerId);
   return respondGameState(game, playerId);
 }

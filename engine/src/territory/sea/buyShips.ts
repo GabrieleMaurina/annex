@@ -1,17 +1,19 @@
 import { callbacks } from '../../callbacks';
-import { hasPlayableSet } from '../../game/progression/cards';
+import { hasAnyDeploy } from '../../game/combat/autoSkip';
 import { recordReplayFrame } from '../../game/replay';
 import { advanceTurnPhase } from '../../game/turns';
 import { fogFilterEmit } from '../../game/world/fog';
-import { addSeaShips, isSeaTerritory } from '../../game/world/seaShips';
+import {
+  SHIP_COST,
+  addSeaShips,
+  isSeaTerritory,
+} from '../../game/world/seaShips';
 import { visibleTerritoryIdsOrAll } from '../../game/world/visibility';
 import { getGameMap } from '../../maps/maps';
 import { GameResponse, requireGame } from '../../session/context';
 import { respondGameState } from '../../session/store';
 import { Game } from '../../types';
 import { isInteger } from '../../util/validate';
-
-export const SHIP_COST = 3;
 
 function requireDeployTurn(playerId: number) {
   const ctx = requireGame(playerId);
@@ -108,15 +110,7 @@ export function buyShips(
     },
   );
 
-  if (fromPool) {
-    const hand = game.playerCards.get(playerId) ?? [];
-    if (
-      game.troopsToDeploy <= 0 &&
-      hand.length < 5 &&
-      (game.deployCardMandate || !hasPlayableSet(hand))
-    )
-      advanceTurnPhase(game);
-  }
+  if (fromPool && !hasAnyDeploy(game, playerId)) advanceTurnPhase(game);
 
   return respondGameState(game, playerId);
 }

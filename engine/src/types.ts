@@ -244,6 +244,11 @@ export type TurnPhase =
   | 'entrench'
   | 'toxins';
 
+export interface PhaseTrailEntry {
+  phase: TurnPhase;
+  replayFrames: number;
+}
+
 export type EmojiValue =
   '👍' | '👎' | '❤️' | '🙂' | '🙁' | '😲' | '❓' | '🙏' | '🎉' | '⚔️';
 export type EmojiAttackTarget =
@@ -565,6 +570,7 @@ export interface Game {
   roundNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
+  phaseTrail: PhaseTrailEntry[];
   troopsToDeploy: number;
   remainingSpecialPhases: TurnPhase[];
   placementTroopPools: Map<number, number>;

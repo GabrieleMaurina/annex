@@ -1,6 +1,8 @@
 import { getGameMap } from '../../maps/maps';
-import { Game } from '../../types';
+import { Game, TurnPhase } from '../../types';
 import { ownedTerritoryIds } from '../mechanics';
+import { hasReadyNuke } from '../nukes/nukes';
+import { hasPlayableSet } from '../progression/cards';
 import { canUnlockFrom } from '../tiles/unlock';
 import {
   isFreeConquestTarget,
@@ -13,6 +15,7 @@ import {
   hasConnectedFortifyDestination,
 } from '../world/connectivity';
 import { withPortalEdges } from '../world/portals';
+import { canBuyShipsFromTerritory } from '../world/seaShips';
 import { canFlipFrom } from '../world/switches';
 import { hasAnySeaBridgeFrom } from './seaBridge';
 
@@ -39,6 +42,16 @@ export function isAttackStartCandidate(
     hasAnySeaBridgeFrom(game, playerId, territoryId) ||
     canUnlockFrom(game, playerId, territoryId) ||
     canFlipFrom(game, playerId, territoryId)
+  );
+}
+
+export function hasAnyDeploy(game: Game, playerId: number): boolean {
+  const hand = game.playerCards.get(playerId) ?? [];
+  return (
+    game.troopsToDeploy > 0 ||
+    hand.length >= 5 ||
+    (!game.deployCardMandate && hasPlayableSet(hand)) ||
+    canBuyShipsFromTerritory(game, playerId)
   );
 }
 
@@ -101,4 +114,43 @@ export function hasAnyShipFight(game: Game, playerId: number): boolean {
     }
   }
   return false;
+}
+
+export function phaseHasAction(
+  game: Game,
+  playerId: number,
+  phase: TurnPhase,
+): boolean {
+  switch (phase) {
+    case 'deploy':
+      return hasAnyDeploy(game, playerId);
+    case 'sail':
+      return hasAnySail(game, playerId);
+    case 'attack':
+      return (
+        hasAnyAttack(game, playerId) ||
+        hasReadyNuke(game, playerId) ||
+        hasAnyShipFight(game, playerId)
+      );
+    case 'fortify':
+      return hasAnyFortify(game, playerId);
+    case 'entrench':
+      return game.entrenchments === 'on' && hasAnyEntrench(game, playerId);
+    case 'toxins':
+      return game.toxins !== 'off' && hasAnyToxin(game, playerId);
+    default:
+      return false;
+  }
+}
+
+export function canReturnPhase(game: Game): boolean {
+  const entry = game.phaseTrail[game.phaseTrail.length - 1];
+  if (
+    game.state !== 'playing' ||
+    !entry ||
+    entry.replayFrames !== game.replayFrames.length
+  )
+    return false;
+  const playerId = game.playerIds[game.turnPlayerIndex];
+  return phaseHasAction(game, playerId, entry.phase);
 }

@@ -117,6 +117,8 @@ export function useCanvasKeyboard({
   submitAttack,
   canAdvancePhase,
   advancePhase,
+  canReturnPhase,
+  returnPhase,
   selectTerritory,
   zoomAround,
 }: CanvasInteractionsParams & {
@@ -449,7 +451,9 @@ export function useCanvasKeyboard({
       if (isTypingTarget(e.target)) return;
       if (e.key === 'Tab') {
         e.preventDefault();
-        if (canAdvancePhase) advancePhase();
+        if (e.shiftKey) {
+          if (canReturnPhase) returnPhase();
+        } else if (canAdvancePhase) advancePhase();
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         const key = e.key.toLowerCase();
         if (key === 'p') setPanelCollapsed((prev) => !prev);
@@ -536,6 +540,8 @@ export function useCanvasKeyboard({
     playCardSet,
     canAdvancePhase,
     advancePhase,
+    canReturnPhase,
+    returnPhase,
     setToasts,
     setEmojiPickerFor,
     setAlliancePopupFor,

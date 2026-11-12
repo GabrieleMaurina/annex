@@ -26,6 +26,8 @@ type PassThroughKeys =
   | 'deployMaxTroops'
   | 'tankFire'
   | 'advancePhase'
+  | 'canReturnPhase'
+  | 'returnPhase'
   | 'deployPanelOpen'
   | 'attackSeaDefenderId'
   | 'players';

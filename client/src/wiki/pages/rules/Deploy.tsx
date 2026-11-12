@@ -98,7 +98,8 @@ function Deploy() {
           </li>
         </ul>
         <Callout kind="note">
-          If you hold a set you can still play, the phase waits for you instead
+          If you hold a set you can still play, or a coastal territory with at
+          least 4 troops that could buy ships, the phase waits for you instead
           of moving on once your troops are placed.
         </Callout>
       </WikiSection>

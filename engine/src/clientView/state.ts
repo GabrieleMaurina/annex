@@ -127,6 +127,7 @@ export function viewGameStateFor(
     roundNumber: s.roundNumber,
     turnPlayerIndex: s.turnPlayerIndex,
     turnPhase: s.turnPhase,
+    canReturnPhase: s.canReturnPhase,
     troopsToDeploy: s.troopsToDeploy,
     turnStartedAt: s.turnStartedAt,
     turnExtension: s.turnExtension,

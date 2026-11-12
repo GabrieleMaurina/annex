@@ -55,6 +55,7 @@ export function freshGameRun() {
     roundNumber: 0,
     turnPlayerIndex: 0,
     turnPhase: 'deploy' as const,
+    phaseTrail: [],
     troopsToDeploy: 0,
     remainingSpecialPhases: [],
     placementTroopPools: new Map(),

@@ -146,6 +146,7 @@ function buildGameState(
     roundNumber: doc.roundNumber,
     turnPlayerIndex: 0,
     turnPhase: 'deploy',
+    canReturnPhase: false,
     troopsToDeploy: 0,
     turnStartedAt: Date.now(),
     turnExtension: 0,

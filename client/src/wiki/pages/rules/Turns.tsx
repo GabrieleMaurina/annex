@@ -72,10 +72,21 @@ function Turns() {
           Press Tab or the next-phase button to move on. A phase with nothing to
           do is skipped automatically. Finishing the last phase ends your turn.
         </p>
+        <p>
+          Moved on by mistake? A back button appears next to the next-phase
+          button, and Shift+Tab does the same. It takes you to the phase you
+          just left, as long as you have done nothing since leaving it: no
+          attack, move, entrench or toxin in the phase you are in. The phase you
+          return to must still have something to do, by the same rule that skips
+          empty phases. You can keep stepping back through phases you passed
+          without acting, but never past one where you acted. A phase that ended
+          by itself, such as Fortify after your move, cannot be reopened, and
+          neither can the end of your turn. Going back leaves no trace in the
+          replay.
+        </p>
         <Callout kind="note">
-          After Deploy ends you usually cannot return to it. The exception is
-          capturing enough cards to reach five, which sends you back to Deploy
-          to play a set (<WikiLink to="rules/cards" />
+          Capturing enough cards to reach five sends you back to Deploy to play
+          a set (<WikiLink to="rules/cards" />
           ).
         </Callout>
       </WikiSection>

@@ -124,6 +124,8 @@ interface Props {
   endsTurn: boolean;
   tankFire: { id: number; dice?: number };
   advancePhase: () => void;
+  canReturnPhase: boolean;
+  returnPhase: () => void;
 }
 
 function TurnPanel({
@@ -140,9 +142,12 @@ function TurnPanel({
   endsTurn,
   tankFire,
   advancePhase,
+  canReturnPhase,
+  returnPhase,
 }: Props) {
   const isDark = contrastTextColor(color) === '#ffffff';
   const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
+  const whiteSkipBackIcon = useWhiteIcon('/icons/skip-back.svg');
   const tankIcon = isDark
     ? (whiteTankIcon ?? '/icons/tank.svg')
     : '/icons/tank.svg';
@@ -235,6 +240,18 @@ function TurnPanel({
             ? `${troopsToDeploy}/${troopsRemaining}`
             : troopsToDeploy}
         </span>
+      )}
+      {canReturnPhase && (
+        <Tip text="Previous phase">
+          <Button size="sm" variant="secondary" onClick={returnPhase}>
+            <img
+              src={whiteSkipBackIcon ?? '/icons/skip-back.svg'}
+              width={14}
+              height={14}
+              alt="Previous phase"
+            />
+          </Button>
+        </Tip>
       )}
       {isMyTurn &&
         !paused &&

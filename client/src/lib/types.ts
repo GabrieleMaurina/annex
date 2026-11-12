@@ -377,6 +377,7 @@ export interface GameState {
   roundNumber: number;
   turnPlayerIndex: number;
   turnPhase: TurnPhase;
+  canReturnPhase: boolean;
   troopsToDeploy: number;
   turnStartedAt: number;
   turnExtension: number;

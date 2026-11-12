@@ -29,7 +29,6 @@ import { useEmojiUI } from './hooks/useEmojiUI';
 import { useGameSocketEvents } from './hooks/useGameSocketEvents';
 import { useMapView } from './hooks/useMapView';
 import {
-  requestNextPhase,
   useAnimationActiveFlags,
   useGameEndActions,
   useLeaveGameGuard,
@@ -39,6 +38,7 @@ import {
   useSupplyLineOverlay,
 } from './hooks/useMiscUiState';
 import { usePanelsUI } from './hooks/usePanelsUI';
+import { phaseControls } from './hooks/view/phaseControls';
 import { useActionFlows } from './hooks/view/useActionFlows';
 import { useDisplayedGame } from './hooks/view/useDisplayedGame';
 import { useGameCanvasInteractions } from './hooks/view/useGameCanvasInteractions';
@@ -477,24 +477,20 @@ function GameMap({
     isMyTurn
       ? unclaimedTerritoryIds(territories, ownerById, radiationById)
       : new Set<number>();
-  const canAdvancePhase =
-    isMyTurn &&
-    !paused &&
-    turnPhase !== 'territory' &&
-    turnPhase !== 'troop' &&
-    turnPhase !== 'capital' &&
-    (turnPhase !== 'deploy' || (troopsToDeploy <= 0 && !cardsFlow.mustPlaySet));
-
-  function advancePhase() {
-    if (turnFlow.fortifyPanelOpen) turnFlow.submitFortify();
-    else if (turnFlow.entrenchPanelOpen) turnFlow.confirmEntrenchAndAdvance();
-    else if (sailFlow.sailPanelOpen) sailFlow.submitSail();
-    else if (deploySeaFlow.deploySeaPanelOpen)
-      deploySeaFlow.confirmDeploySeaAndAdvance();
-    else if (attackFlow.attackShowPendingConquest)
-      attackFlow.confirmAttackMoveAndAdvance();
-    else requestNextPhase(setGame);
-  }
+  const { canAdvancePhase, advancePhase, canReturnPhase, returnPhase } =
+    phaseControls({
+      isMyTurn,
+      paused,
+      turnPhase,
+      phaseReturnable: game.canReturnPhase,
+      troopsToDeploy,
+      cardsFlow,
+      turnFlow,
+      sailFlow,
+      deploySeaFlow,
+      attackFlow,
+      setGame,
+    });
 
   const interactions = useGameCanvasInteractions({
     canvasRef,
@@ -542,6 +538,8 @@ function GameMap({
     deployPanelOpen: deployTroopsPanelOpen,
     canAdvancePhase,
     advancePhase,
+    canReturnPhase,
+    returnPhase,
     sailFlow,
     attackSeaFlow,
     attackFlow,
@@ -960,6 +958,8 @@ function GameMap({
             deployMaxTroops,
             tankFire,
             advancePhase,
+            canReturnPhase,
+            returnPhase,
             deployPanelOpen: deployTroopsPanelOpen,
             players,
             cardsFlow,

@@ -583,6 +583,9 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
     case 'game:nextPhase':
       cb?.(engine.nextPhase(id));
       return;
+    case 'game:previousPhase':
+      cb?.(engine.previousPhase(id));
+      return;
     case 'game:pause':
       cb?.(engine.pauseGame(hostId ?? id));
       return;

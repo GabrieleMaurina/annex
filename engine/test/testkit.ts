@@ -195,6 +195,7 @@ function baseGame(name: string): Game {
     roundNumber: 3,
     turnPlayerIndex: 0,
     turnPhase: 'deploy',
+    phaseTrail: [],
     troopsToDeploy: 0,
     remainingSpecialPhases: [],
     placementTroopPools: new Map(),

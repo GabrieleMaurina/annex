@@ -55,7 +55,9 @@ type OwnParamKeys =
   | 'settingsMenuOpen'
   | 'deployPanelOpen'
   | 'canAdvancePhase'
-  | 'advancePhase';
+  | 'advancePhase'
+  | 'canReturnPhase'
+  | 'returnPhase';
 
 interface Flows {
   sailFlow: ReturnType<typeof useSailFlow>;

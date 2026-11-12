@@ -44,6 +44,7 @@ export type AccountResult =
       username: string;
       email: string;
       country: string;
+      preferredColors: number[];
       picture: string | null;
       pictureDangerous: boolean;
       bio: string;

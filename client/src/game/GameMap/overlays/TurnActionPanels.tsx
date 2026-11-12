@@ -42,9 +42,9 @@ export default function TurnActionPanels({
   troopsToDeploy,
   deployMaxTroops,
   mustPlaySet,
-  setGame,
   nextPhaseEndsTurn,
   tankFire,
+  advancePhase,
   deployPanelOpen,
   deployTroops,
   deployInputRef,
@@ -139,9 +139,9 @@ export default function TurnActionPanels({
   troopsToDeploy: number;
   deployMaxTroops: number;
   mustPlaySet: boolean;
-  setGame: (game: GameState) => void;
   nextPhaseEndsTurn: boolean;
   tankFire: { id: number; dice?: number };
+  advancePhase: () => void;
   deployPanelOpen: boolean;
   deployTroops: number;
   deployInputRef: RefObject<HTMLInputElement | null>;
@@ -293,9 +293,9 @@ export default function TurnActionPanels({
             startingCapitals={startingCapitals}
             canLeaveDeploy={troopsToDeploy <= 0 && !mustPlaySet}
             paused={paused}
-            setGame={setGame}
             endsTurn={nextPhaseEndsTurn}
             tankFire={tankFire}
+            advancePhase={advancePhase}
           />
         </>
       )}

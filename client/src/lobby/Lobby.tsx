@@ -50,6 +50,7 @@ interface Props {
 
 function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
   const [settingsError, setSettingsError] = useState('');
+  const [presetsFilled, setPresetsFilled] = useState(false);
   const bannedIdsRef = useRef<number[]>([]);
   const botInputsRef = useRef<Map<number, SavedBot>>(new Map());
   const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
@@ -401,9 +402,11 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
                 currentPreset={currentPreset}
                 applyPreset={applyPresetToLobby}
                 onError={setSettingsError}
+                onFilledChange={setPresetsFilled}
               />
             )
           }
+          presetsFirst={presetsFilled}
           headerActions={
             isHost && (
               <Button

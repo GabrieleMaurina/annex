@@ -19,6 +19,8 @@ import type { GameToast } from '../overlays/GameToasts';
 import { nextToastId } from '../toastId';
 import { BOT_TOAST_DELAY_MS } from './view/useTurnToasts';
 
+const CARD_SET_FLASH_BOT_REFERENCE_MS = 5000;
+
 export function useCardsAndDeploy({
   turnPhase,
   isMyTurn,
@@ -61,6 +63,7 @@ export function useCardsAndDeploy({
   const [cardSetFlash, setCardSetFlash] = useState<{
     id: number;
     cards: Card[];
+    duration: number;
   } | null>(null);
   const cardSetFlashIdRef = useRef(0);
   const [selectedComboKey, setSelectedComboKey] = useState<string | null>(null);
@@ -167,22 +170,25 @@ export function useCardsAndDeploy({
       troops: number;
       cards: Card[];
     }) {
+      const player = playersRef.current.find((p) => p.id === payload.playerId);
+      const botDelay = player?.isBot ? BOT_TOAST_DELAY_MS[botSpeed] : undefined;
+      const duration = botDelay
+        ? (CARD_SET_FLASH_DURATION * botDelay) / CARD_SET_FLASH_BOT_REFERENCE_MS
+        : CARD_SET_FLASH_DURATION;
+
       const id = ++cardSetFlashIdRef.current;
-      setCardSetFlash({ id, cards: payload.cards });
+      setCardSetFlash({ id, cards: payload.cards, duration });
       setTimeout(() => {
         setCardSetFlash((prev) => (prev?.id === id ? null : prev));
-      }, CARD_SET_FLASH_DURATION);
+      }, duration);
 
       if (payload.playerId !== selfId) {
-        const player = playersRef.current.find(
-          (p) => p.id === payload.playerId,
-        );
         setToasts((prev) => [
           ...prev,
           {
             id: nextToastId(),
             message: `${player?.name ?? 'A player'} received ${payload.troops} troops from a set`,
-            delay: player?.isBot ? BOT_TOAST_DELAY_MS[botSpeed] : undefined,
+            delay: botDelay,
           },
         ]);
       }
@@ -193,11 +199,14 @@ export function useCardsAndDeploy({
     };
   }, [selfId, playersRef, botSpeed, setToasts]);
 
+  const dismissCardSetFlash = useCallback(() => setCardSetFlash(null), []);
+
   return {
     hand,
     awardedCards,
     setAwardedCards,
     cardSetFlash,
+    dismissCardSetFlash,
     selectedComboKey,
     setSelectedComboKey,
     combos,

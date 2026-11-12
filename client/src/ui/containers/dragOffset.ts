@@ -1,17 +1,9 @@
 import { useState, type CSSProperties, type PointerEvent } from 'react';
 import { CURSOR_GRAB } from '../cursors/cursors';
+import { swallowNextClick } from '../dnd/dragDrop';
 
 const DRAG_THRESHOLD = 4;
 const TYPING_TARGETS = 'input, textarea, select, .odometer';
-
-function swallowNextClick() {
-  const stop = (e: Event) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
-  window.addEventListener('click', stop, { capture: true, once: true });
-  setTimeout(() => window.removeEventListener('click', stop, true), 0);
-}
 
 export function useDragOffset(resetKey: string) {
   const [drag, setDrag] = useState({ key: resetKey, x: 0, y: 0 });

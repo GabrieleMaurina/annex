@@ -594,6 +594,12 @@ export function setExperience(
   player.accountCreatedAt = accountCreatedAt;
 }
 
+export function setPreferredColors(playerId: number, colors: number[]): void {
+  const player = playersById.get(playerId);
+  if (!player) return;
+  player.preferredColors = colors;
+}
+
 export function setReputation(
   playerId: number,
   reputation: number,

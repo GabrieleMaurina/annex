@@ -1,4 +1,5 @@
 import {
+  COLOR_COUNT,
   effectiveReputation,
   MAX_REPUTATION,
   MIN_REPUTATION,
@@ -45,6 +46,7 @@ export interface User {
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
+  preferredColors: number[];
 }
 
 interface PictureDoc {
@@ -68,6 +70,7 @@ interface UserDoc {
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
+  preferredColors: number[];
   presets: (Preset | null)[];
   earth?: EarthRecipe | null;
   tutorials: string[];
@@ -119,6 +122,7 @@ const schema = {
         'clientSettings',
         'gameSettings',
         'homeFilters',
+        'preferredColors',
         'presets',
         'tutorials',
         'picture',
@@ -129,6 +133,12 @@ const schema = {
         _id: {},
         elo: { bsonType: 'number' },
         country: { enum: COUNTRY_CODES },
+        preferredColors: {
+          bsonType: 'array',
+          maxItems: COLOR_COUNT,
+          uniqueItems: true,
+          items: { bsonType: 'int', minimum: 0, maximum: COLOR_COUNT - 1 },
+        },
         reputation: {
           bsonType: 'int',
           minimum: MIN_REPUTATION,
@@ -213,7 +223,24 @@ function toUser(doc: WithId<UserDoc>): User {
     clientSettings: sanitizeClientSettings(doc.clientSettings),
     gameSettings: sanitizeGameSettings(doc.gameSettings),
     homeFilters: sanitizeHomeFilters(doc.homeFilters),
+    preferredColors: sanitizePreferredColors(doc.preferredColors) ?? [],
   };
+}
+
+export function sanitizePreferredColors(raw: unknown): number[] | null {
+  if (!Array.isArray(raw)) return null;
+  if (
+    !raw.every(
+      (color) =>
+        typeof color === 'number' &&
+        Number.isInteger(color) &&
+        color >= 0 &&
+        color < COLOR_COUNT,
+    )
+  )
+    return null;
+  if (new Set(raw).size !== raw.length) return null;
+  return raw;
 }
 
 export function findUserByUsername(username: string): Promise<User | null> {
@@ -345,6 +372,7 @@ export function insertUser(data: {
       clientSettings: { ...DEFAULT_CLIENT_SETTINGS },
       gameSettings: { ...DEFAULT_GAME_SETTINGS },
       homeFilters: { ...DEFAULT_HOME_FILTERS },
+      preferredColors: [],
       presets: [...DEFAULT_PRESETS],
       tutorials: [],
       picture: null,
@@ -400,6 +428,18 @@ export function setReputationState(
 export function setCountry(userId: string, country: string): Promise<void> {
   return collection()
     .updateOne({ _id: new ObjectId(userId) }, { $set: { country } })
+    .then(() => undefined);
+}
+
+export function setPreferredColors(
+  userId: string,
+  colors: number[],
+): Promise<void> {
+  return collection()
+    .updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { preferredColors: colors } },
+    )
     .then(() => undefined);
 }
 

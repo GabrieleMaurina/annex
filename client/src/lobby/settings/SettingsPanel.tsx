@@ -87,6 +87,7 @@ interface Props {
   ) => void;
   headerActions?: ReactNode;
   presets?: ReactNode;
+  presetsFirst?: boolean;
   collapsible?: boolean;
 }
 
@@ -101,6 +102,7 @@ function SettingsPanel({
   selectEarthMap,
   headerActions,
   presets,
+  presetsFirst = false,
   collapsible = true,
 }: Props) {
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
@@ -244,7 +246,10 @@ function SettingsPanel({
   );
 
   const settingsBody = (
-    <>
+    <div className="d-flex flex-column">
+      <div className={presetsFirst ? 'order-first' : 'order-last'}>
+        {presets}
+      </div>
       <GameSettingsFields
         game={game}
         gameMeta={gameMeta}
@@ -252,8 +257,7 @@ function SettingsPanel({
         account={account}
         applySettings={applySettings}
       />
-      {presets}
-    </>
+    </div>
   );
 
   function settingsAction(label: ReactNode, onClick: () => void) {

@@ -9,6 +9,11 @@ html {
   cursor: var(--cursor-default);
 }
 
+body.dnd-dragging,
+body.dnd-dragging * {
+  cursor: var(--cursor-grabbing) !important;
+}
+
 input,
 textarea,
 [contenteditable='true'] {

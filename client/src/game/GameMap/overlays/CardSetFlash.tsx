@@ -1,22 +1,25 @@
 import type { Card } from '../../../lib/types';
 import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
-import { CARD_SET_FLASH_DURATION } from '../../animations';
 import { CardFace } from '../../panels/CardsPanel';
 
 export default function CardSetFlash({
   cards,
   territoryNames,
+  duration,
+  onDismiss,
 }: {
   cards: Card[];
   territoryNames: Map<number, string>;
+  duration: number;
+  onDismiss: () => void;
 }) {
   return (
     <div
-      className={`position-fixed top-50 start-50 d-flex gap-3 ${PANEL_BG_CLASS} border rounded p-3`}
+      onClick={onDismiss}
+      className={`position-fixed top-50 start-50 d-flex gap-3 cursor-pointer ${PANEL_BG_CLASS} border rounded p-3`}
       style={{
         zIndex: 4,
-        pointerEvents: 'none',
-        animation: `annexCardSetFlash ${CARD_SET_FLASH_DURATION / 1000}s ease-out forwards`,
+        animation: `annexCardSetFlash ${duration / 1000}s ease-out forwards`,
       }}
     >
       <style>{`

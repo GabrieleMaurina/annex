@@ -635,8 +635,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
                   ? owner.troops - fortifyTroops
                   : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
       const fullyClickable = shape && !owner.isCapital;
-      ctx.fillStyle = contrastTextColor(fillColor);
-      ctx.font = `bold ${VERTEX_RADIUS * scaleX * (fullyClickable ? 1.25 : 1)}px ${CANVAS_FONT_FAMILY}`;
+      const fontSize = VERTEX_RADIUS * scaleX * (fullyClickable ? 1.25 : 1);
+      ctx.font = `bold ${fontSize}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
       const text = formatTroops(troops);
@@ -645,6 +645,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         p.y +
         (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
           2;
+      const textColor = contrastTextColor(fillColor);
+      if (style !== STATE_STYLE.normal) {
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = textColor === '#ffffff' ? '#000000' : '#ffffff';
+        ctx.lineWidth = fontSize * 0.15;
+        ctx.strokeText(text, p.x, baselineY);
+      }
+      ctx.fillStyle = textColor;
       ctx.fillText(text, p.x, baselineY);
     }
 

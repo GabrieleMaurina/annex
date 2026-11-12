@@ -9,7 +9,6 @@ import { GridDimensions } from '../../core/params';
 import { Rng } from '../../core/rng';
 import { extractScheduledLinks, LinkRngs } from '../../links';
 import { renderTerrainImage } from '../../render/gif';
-import { computeTerritoryCentroids } from '../centroid';
 import {
   addRedundantBridges,
   addSeaShortcuts,
@@ -17,6 +16,7 @@ import {
   SpecialEdge,
 } from '../connectivity';
 import { computeBonus } from '../continents';
+import { computeTerritoryCentroids } from '../geometry/centroid';
 import { GridPoint } from '../placement';
 import { buildSeaTerritories } from '../sea/build';
 import {

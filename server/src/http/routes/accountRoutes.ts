@@ -9,9 +9,11 @@ import {
   getUserBio,
   getUserPicture,
   MAX_BIO_LENGTH,
+  sanitizePreferredColors,
   setBio,
   setCountry,
   setPassword,
+  setPreferredColors,
   setUserPicture,
   unsetUserPicture,
 } from '../../db';
@@ -50,6 +52,7 @@ accountRouter.get('/account', (_req, res) => {
         username: user.username,
         email: user.email,
         country: user.country,
+        preferredColors: user.preferredColors,
         picture:
           picture && !picture.dangerous
             ? `data:${picture.mime};base64,${picture.data}`
@@ -117,6 +120,22 @@ accountRouter.post('/account/country', (req, res) => {
     return;
   }
   setCountry(session.userId, country)
+    .then(() => res.json({ ok: true }))
+    .catch(() => res.json({ ok: false, error: 'server error' }));
+});
+
+accountRouter.post('/account/preferredColors', (req, res) => {
+  const { session } = identityOf(res);
+  if (!session) {
+    res.json({ ok: false, error: 'not logged in' });
+    return;
+  }
+  const colors = sanitizePreferredColors(bodyOf(req).preferredColors);
+  if (!colors) {
+    res.json({ ok: false, error: 'invalid colors' });
+    return;
+  }
+  setPreferredColors(session.userId, colors)
     .then(() => res.json({ ok: true }))
     .catch(() => res.json({ ok: false, error: 'server error' }));
 });

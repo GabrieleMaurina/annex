@@ -10,11 +10,12 @@ import {
 import { randomInt, Rng } from '../../core/rng';
 import { LinkRngs } from '../../links';
 import { clusterContinents } from '../continents';
+import { regularizeBorders } from '../geometry/regularize';
+import { buildAdjacency, tessellate } from '../geometry/tessellate';
 import { cleanLandMask } from '../islands';
 import { mergeTerritories } from '../merge';
 import { placeTerritoryCenters } from '../placement';
 import { buildLandMask } from '../terrain';
-import { tessellate } from '../tessellate';
 import {
   settleRivers,
   terrainFeatures,
@@ -92,7 +93,7 @@ export function generateTerrain(
       expectedTerritoryArea,
     );
     const labelGrid = tessellation.labelGrid;
-    const { adjacency, centers } = mergeTerritories(
+    const { centers } = mergeTerritories(
       rng,
       labelGrid,
       {
@@ -102,6 +103,8 @@ export function generateTerrain(
       tessellation.centers,
       mergeCount,
     );
+    regularizeBorders(labelGrid, width, height, expectedTerritoryArea);
+    const { adjacency } = buildAdjacency(labelGrid, width, height);
     if (toggles.rivers)
       settleRivers(voidMask, labelGrid, adjacency, width, height);
     return { labelGrid, adjacency, centers };

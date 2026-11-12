@@ -389,6 +389,7 @@ function installGame(game: Game, players: number[], profile: BotProfile): void {
       connected: true,
       isBot: true,
       botProfile: profile,
+      preferredColors: [],
     });
 }
 

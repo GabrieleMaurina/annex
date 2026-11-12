@@ -28,6 +28,7 @@ function SearchBox() {
   }
 
   function choose(result: SearchResult) {
+    (document.activeElement as HTMLElement)?.blur();
     const { pageId, anchor } = result.entry;
     setQuery('');
     navigate(`/wiki/${pageId}${anchor ? `#${anchor}` : ''}`);

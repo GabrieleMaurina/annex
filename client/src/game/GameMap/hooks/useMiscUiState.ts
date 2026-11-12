@@ -502,6 +502,94 @@ export function useGameEndActions(setGame: (game: GameState) => void) {
   return { surrender, endGame, toggleDraw, toggleAbort };
 }
 
+export function requestNextPhase(setGame: (game: GameState) => void) {
+  connector.nextPhase((res: Ack) => {
+    if (res.ok) setGame(res.game);
+  });
+}
+
+export function useLeaveGameGuard({
+  players,
+  spectators,
+  selfId,
+  gameEnded,
+  navigate,
+}: {
+  players: GameState['players'];
+  spectators: GameState['spectators'];
+  selfId: number | null;
+  gameEnded: boolean;
+  navigate: (path: string) => void;
+}) {
+  const isSpectator = spectators.some((s) => s.id === selfId);
+  const self = players.find((p) => p.id === selfId);
+  const guardActive =
+    !gameEnded &&
+    !connector.isTutorial() &&
+    !isSpectator &&
+    !!self &&
+    !self.eliminated &&
+    !self.surrendered;
+  const guardActiveRef = useRef(guardActive);
+  useEffect(() => {
+    guardActiveRef.current = guardActive;
+  }, [guardActive]);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const pendingPathRef = useRef('/');
+
+  useEffect(() => {
+    if (!guardActive) return;
+    window.history.pushState(null, '', window.location.href);
+    function onPopState() {
+      if (!guardActiveRef.current) return;
+      window.history.pushState(null, '', window.location.href);
+      pendingPathRef.current = '/';
+      setConfirmOpen(true);
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [guardActive]);
+
+  useEffect(() => {
+    if (!guardActive) return;
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [guardActive]);
+
+  const guardedNavigate = useCallback(
+    (path: string) => {
+      if (guardActiveRef.current) {
+        pendingPathRef.current = path;
+        setConfirmOpen(true);
+        return;
+      }
+      navigate(path);
+    },
+    [navigate],
+  );
+
+  const confirmLeave = useCallback(() => {
+    setConfirmOpen(false);
+    connector.surrender((res: Ack) => {
+      if (res.ok) navigate(pendingPathRef.current);
+    });
+  }, [navigate]);
+
+  const cancelLeave = useCallback(() => setConfirmOpen(false), []);
+
+  return {
+    navigate: guardedNavigate,
+    leaveConfirmOpen: confirmOpen,
+    confirmLeave,
+    cancelLeave,
+  };
+}
+
 export function useLockViewportZoom() {
   useEffect(() => {
     const meta = document.querySelector('meta[name="viewport"]');

@@ -34,6 +34,7 @@ export function addPlayer(
     gameName: null,
     connected: true,
     isBot: false,
+    preferredColors: [],
   };
   playersById.set(player.id, player);
   return player;
@@ -45,6 +46,7 @@ export function cloneHuman(player: Player): Player {
   clone.accountCreatedAt = player.accountCreatedAt;
   clone.reputation = player.reputation;
   clone.reputationRecoveryFrom = player.reputationRecoveryFrom;
+  clone.preferredColors = player.preferredColors;
   return clone;
 }
 
@@ -63,6 +65,7 @@ export function createBotPlayer(name: string, botProfile: BotProfile): Player {
     connected: true,
     isBot: true,
     botProfile,
+    preferredColors: [],
   };
   playersById.set(player.id, player);
   return player;

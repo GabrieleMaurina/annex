@@ -31,6 +31,7 @@ function SearchBox({ initialQuery, onSelect }: Props) {
   const results = index && open ? searchPlaces(index, query) : [];
 
   function choose(place: GazetteerPlace) {
+    (document.activeElement as HTMLElement)?.blur();
     setQuery(place.name);
     setOpen(false);
     onSelect(place);

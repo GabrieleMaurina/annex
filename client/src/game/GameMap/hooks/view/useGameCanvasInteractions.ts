@@ -54,7 +54,8 @@ type OwnParamKeys =
   | 'nukesEnabled'
   | 'settingsMenuOpen'
   | 'deployPanelOpen'
-  | 'canAdvancePhase';
+  | 'canAdvancePhase'
+  | 'advancePhase';
 
 interface Flows {
   sailFlow: ReturnType<typeof useSailFlow>;

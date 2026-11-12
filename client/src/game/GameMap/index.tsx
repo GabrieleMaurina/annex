@@ -29,8 +29,10 @@ import { useEmojiUI } from './hooks/useEmojiUI';
 import { useGameSocketEvents } from './hooks/useGameSocketEvents';
 import { useMapView } from './hooks/useMapView';
 import {
+  requestNextPhase,
   useAnimationActiveFlags,
   useGameEndActions,
+  useLeaveGameGuard,
   useLiveGameRefs,
   useLockViewportZoom,
   useResetTroopInputOnSelection,
@@ -48,6 +50,7 @@ import AlliancePopupOverlay from './overlays/AlliancePopupOverlay';
 import CardSetFlash from './overlays/CardSetFlash';
 import EmojiOverlay from './overlays/EmojiOverlay';
 import GameToasts from './overlays/GameToasts';
+import LeaveGameModal from './overlays/LeaveGameModal';
 import MapButtonsColumn from './overlays/MapButtonsColumn';
 import TurnActionPanels from './overlays/TurnActionPanels';
 import { turnActionPanelsProps } from './overlays/turnActionPanelsProps';
@@ -129,7 +132,7 @@ function GameMap({
   setChatOpen,
   settingsMenuOpen,
   onPanelOpenChange,
-  navigate,
+  navigate: rawNavigate,
   storedGameId,
   conductFriends,
   conductBlockedUserIds,
@@ -482,6 +485,17 @@ function GameMap({
     turnPhase !== 'capital' &&
     (turnPhase !== 'deploy' || (troopsToDeploy <= 0 && !cardsFlow.mustPlaySet));
 
+  function advancePhase() {
+    if (turnFlow.fortifyPanelOpen) turnFlow.submitFortify();
+    else if (turnFlow.entrenchPanelOpen) turnFlow.confirmEntrenchAndAdvance();
+    else if (sailFlow.sailPanelOpen) sailFlow.submitSail();
+    else if (deploySeaFlow.deploySeaPanelOpen)
+      deploySeaFlow.confirmDeploySeaAndAdvance();
+    else if (attackFlow.attackShowPendingConquest)
+      attackFlow.confirmAttackMoveAndAdvance();
+    else requestNextPhase(setGame);
+  }
+
   const interactions = useGameCanvasInteractions({
     canvasRef,
     territories,
@@ -527,6 +541,7 @@ function GameMap({
     settingsMenuOpen,
     deployPanelOpen: deployTroopsPanelOpen,
     canAdvancePhase,
+    advancePhase,
     sailFlow,
     attackSeaFlow,
     attackFlow,
@@ -703,6 +718,15 @@ function GameMap({
 
   const { surrender, endGame, toggleDraw, toggleAbort } =
     useGameEndActions(setGame);
+
+  const { navigate, leaveConfirmOpen, confirmLeave, cancelLeave } =
+    useLeaveGameGuard({
+      players,
+      spectators,
+      selfId,
+      gameEnded,
+      navigate: rawNavigate,
+    });
 
   return (
     <div className="position-fixed top-0 bottom-0 start-0 end-0 overflow-hidden">
@@ -934,8 +958,8 @@ function GameMap({
             isMyTurn,
             troopsToDeploy,
             deployMaxTroops,
-            setGame,
             tankFire,
+            advancePhase,
             deployPanelOpen: deployTroopsPanelOpen,
             players,
             cardsFlow,
@@ -957,9 +981,16 @@ function GameMap({
             key={cardsFlow.cardSetFlash.id}
             cards={cardsFlow.cardSetFlash.cards}
             territoryNames={placeNames.territories}
+            duration={cardsFlow.cardSetFlash.duration}
+            onDismiss={cardsFlow.dismissCardSetFlash}
           />
         )}
       </div>
+      <LeaveGameModal
+        show={leaveConfirmOpen}
+        onCancel={cancelLeave}
+        onConfirm={confirmLeave}
+      />
     </div>
   );
 }

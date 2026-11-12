@@ -59,6 +59,7 @@ function resolveIdentity(engine: Engine, rawToken: string): Promise<Identity> {
           recoveryFrom: session.reputationRecoveryFrom,
         };
         engine.setReputation(accountPlayerId, reputation, recoveryFrom);
+        engine.setPreferredColors(accountPlayerId, session.preferredColors);
         return { playerId: accountPlayerId, token, userId: session.userId };
       });
     }

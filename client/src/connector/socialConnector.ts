@@ -242,6 +242,15 @@ export const socialConnector = {
       .catch(() => cb({ ok: false, error: 'server error' }));
   },
 
+  setPreferredColors(
+    preferredColors: number[],
+    cb: (res: AuthAck) => void,
+  ): void {
+    httpSend<AuthAck>('POST', '/account/preferredColors', { preferredColors })
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
   setBio(bio: string, cb: (res: AuthAck) => void): void {
     httpSend<AuthAck>('POST', '/account/bio', { bio })
       .then(cb)

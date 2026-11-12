@@ -4,7 +4,7 @@ import { useWhiteIcon } from '../../common/icon';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { contrastTextColor } from '../../lib/palette';
-import type { Ack, GameState, TurnPhase } from '../../lib/types';
+import type { TurnPhase } from '../../lib/types';
 
 const SPARK_BASE_ANGLES = [-50, -35, -20, -7, 7, 20, 35, 50];
 const SPARK_ANGLE_JITTER = 7;
@@ -121,9 +121,9 @@ interface Props {
   startingCapitals: number;
   canLeaveDeploy: boolean;
   paused: boolean;
-  setGame: (game: GameState) => void;
   endsTurn: boolean;
   tankFire: { id: number; dice?: number };
+  advancePhase: () => void;
 }
 
 function TurnPanel({
@@ -137,9 +137,9 @@ function TurnPanel({
   startingCapitals,
   canLeaveDeploy,
   paused,
-  setGame,
   endsTurn,
   tankFire,
+  advancePhase,
 }: Props) {
   const isDark = contrastTextColor(color) === '#ffffff';
   const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
@@ -170,12 +170,6 @@ function TurnPanel({
       manual ? SQUAD_DURATION : TANK_BURST_DURATION,
     );
   }, [tankFire]);
-
-  function nextPhase() {
-    connector.nextPhase((res: Ack) => {
-      if (res.ok) setGame(res.game);
-    });
-  }
 
   return (
     <div
@@ -249,7 +243,7 @@ function TurnPanel({
         turnPhase !== 'troop' &&
         turnPhase !== 'capital' &&
         (turnPhase !== 'deploy' || canLeaveDeploy) && (
-          <Button size="sm" onClick={nextPhase}>
+          <Button size="sm" onClick={advancePhase}>
             {endsTurn ? 'End Turn' : 'Next Phase'}
           </Button>
         )}

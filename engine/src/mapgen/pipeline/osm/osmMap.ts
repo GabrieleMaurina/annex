@@ -19,9 +19,10 @@ import {
 } from '../../render/palette';
 import { generateSwitches } from '../../switches';
 import { enforceContiguity } from '../contiguity';
+import { regularizeBorders } from '../geometry/regularize';
+import { buildAdjacency } from '../geometry/tessellate';
 import { cleanLandMask, MIN_COMPONENT_AREA_RATIO } from '../islands';
 import { finishTerrainMap } from '../terrain/terrainGraph';
-import { buildAdjacency } from '../tessellate';
 import { carveRegions } from './carve';
 import { buildCutLevels, chooseCut, parentCutIndex } from './cut';
 import { fitRegions } from './fit';
@@ -44,7 +45,6 @@ import {
   mountainMask,
 } from './raster/nature';
 import { extendLine, fillRings, strokeLine } from './raster/rasterize';
-import { regularizeBorders } from './raster/regularize';
 import { reliefMap, ruggedMask } from './raster/relief';
 import { bridgeRivers, majorRiverMask } from './raster/rivers';
 import { smoothBorders, smoothCoast } from './raster/smooth';

@@ -27,6 +27,7 @@ import {
   switchVertexId,
 } from '../../switches/switches';
 import { unlockCost, unlockSources, unlockTargets } from '../../tiles/unlock';
+import { requestNextPhase } from './useMiscUiState';
 
 type AttackSelectEndAck =
   | {
@@ -231,13 +232,18 @@ export function useAttackFlow({
   );
 
   const performAttackMove = useCallback(
-    (troops: number, conqueredTerritoryId: number | null) => {
+    (
+      troops: number,
+      conqueredTerritoryId: number | null,
+      onResult?: (game: GameState) => void,
+    ) => {
       connector.attackMove({ troops }, (res: Ack) => {
         if (!res.ok) return;
         setGame(res.game);
         if (conqueredTerritoryId !== null) {
           continueFromConquest(res.game, conqueredTerritoryId);
         }
+        onResult?.(res.game);
       });
     },
     [setGame, continueFromConquest],
@@ -425,6 +431,12 @@ export function useAttackFlow({
     performAttackMove(attackMoveTroops, attackEndTerritoryId);
   }, [attackMoveTroops, attackEndTerritoryId, performAttackMove]);
 
+  const confirmAttackMoveAndAdvance = useCallback(() => {
+    performAttackMove(attackMoveTroops, attackEndTerritoryId, (game) => {
+      if (game.turnPhase === 'attack') requestNextPhase(setGame);
+    });
+  }, [attackMoveTroops, attackEndTerritoryId, performAttackMove, setGame]);
+
   const attackPendingConquest = attackConquestMinTroops !== null;
   const attackActive = turnPhase === 'attack' && isMyTurn;
   const unlockCostValue = unlockCost(cards, nextSetBaseValues);
@@ -604,6 +616,7 @@ export function useAttackFlow({
     quickAttack,
     submitAttack,
     submitAttackMove,
+    confirmAttackMoveAndAdvance,
     attackPendingConquest,
     attackStartCandidates,
     attackEndCandidates,

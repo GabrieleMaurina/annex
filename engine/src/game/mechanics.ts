@@ -1,4 +1,5 @@
 import { getGameMap } from '../maps/maps';
+import { playersById } from '../session/players';
 import { Game } from '../types';
 import { isInteger } from '../util/validate';
 import { recordReplayFrame } from './replay';
@@ -7,7 +8,7 @@ import {
   ownedTerritoryClusters,
 } from './world/connectivity';
 
-const COLOR_COUNT = 20;
+export const COLOR_COUNT = 20;
 
 function colorBound(playerCount: number) {
   return Math.min(COLOR_COUNT, playerCount + 3);
@@ -448,6 +449,13 @@ export function calculateDeployTroopsBreakdown(
 export function assignRandomColor(game: Game, playerId: number) {
   const bound = colorBound(game.playerIds.length);
   const used = new Set(game.playerColors.values());
+  const preferred = playersById
+    .get(playerId)
+    ?.preferredColors.find((color) => color < bound && !used.has(color));
+  if (preferred !== undefined) {
+    game.playerColors.set(playerId, preferred);
+    return;
+  }
   const available = [];
   for (let i = 0; i < bound; i++) {
     if (!used.has(i)) available.push(i);

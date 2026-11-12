@@ -3,6 +3,7 @@ import { connector } from '../../../../connector';
 import { playSound } from '../../../../lib/sounds';
 import type { Ack, GameState } from '../../../../lib/types';
 import type { SeaTerritory, Territory } from '../../../mapData';
+import { requestNextPhase } from '../useMiscUiState';
 
 export const SHIP_COST = 3;
 
@@ -99,7 +100,12 @@ export function useDeploySeaFlow({
   const cancelDeploySea = useCallback(() => setDeploySeaTerritoryId(null), []);
 
   const buyShips = useCallback(
-    (seaTerritoryId: number, combo: boolean, ships: number) => {
+    (
+      seaTerritoryId: number,
+      combo: boolean,
+      ships: number,
+      onResult?: (game: GameState) => void,
+    ) => {
       const sourceTerritoryId = combo
         ? selectedTerritoryId
         : (territories.find(
@@ -114,6 +120,7 @@ export function useDeploySeaFlow({
           if (res.ok) {
             setGame(res.game);
             setDeploySeaTerritoryId(null);
+            onResult?.(res.game);
             if (combo) {
               connector.selectTerritory(
                 { territoryId: null },
@@ -133,6 +140,13 @@ export function useDeploySeaFlow({
     if (deploySeaTerritoryId === null) return;
     buyShips(deploySeaTerritoryId, comboActive, deploySeaShips);
   }, [deploySeaTerritoryId, comboActive, deploySeaShips, buyShips]);
+
+  const confirmDeploySeaAndAdvance = useCallback(() => {
+    if (deploySeaTerritoryId === null) return;
+    buyShips(deploySeaTerritoryId, comboActive, deploySeaShips, (game) => {
+      if (game.turnPhase === 'deploy') requestNextPhase(setGame);
+    });
+  }, [deploySeaTerritoryId, comboActive, deploySeaShips, buyShips, setGame]);
 
   const quickDeploySea = useCallback(
     (seaTerritoryId: number, minimal: boolean) => {
@@ -169,6 +183,7 @@ export function useDeploySeaFlow({
     deploySeaMaxShips,
     deploySeaInputRef,
     submitDeploySea,
+    confirmDeploySeaAndAdvance,
     quickDeploySea,
     deploySeaPanelOpen,
   };

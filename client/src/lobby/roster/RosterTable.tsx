@@ -1,3 +1,4 @@
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { Badge, Button, Table } from 'react-bootstrap';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
@@ -14,6 +15,7 @@ import {
   CURSOR_GRAB,
   CURSOR_POINTER,
 } from '../../ui/cursors/cursors';
+import { GAP } from '../../ui/dnd/dragDrop';
 import Selector from '../../ui/forms/Selector';
 import {
   BOT_DIFFICULTIES,
@@ -24,15 +26,29 @@ import {
 import type { RosterProps } from '../PlayerRoster';
 import { MAX_SLOTS, MIN_SLOTS } from './teamLayout';
 
+type Player = GameState['players'][number];
+
 interface Props {
   roster: RosterProps;
-  rows: (GameState['players'][number] | null)[];
+  rows: (Player | null | typeof GAP)[];
   team?: number;
   addSlot: () => void;
   removeEmptySlot: () => void;
+  startDrag?: (e: ReactPointerEvent, player: Player) => void;
+  register?: (key: string) => (el: HTMLElement | null) => void;
+  draggingId?: number;
 }
 
-function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
+function RosterTable({
+  roster,
+  rows,
+  team,
+  addSlot,
+  removeEmptySlot,
+  startDrag,
+  register,
+  draggingId,
+}: Props) {
   const {
     game,
     isHost,
@@ -55,7 +71,7 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
   const hasBots = game.players.some((p) => p.isBot);
   const draggable = isHost && team !== undefined;
 
-  function rowClick(p: (typeof rows)[number]) {
+  function rowClick(p: Player | null) {
     if (!p) return undefined;
     if (p.id === selfId) return cycleColor;
     if (p.isBot) return isHost ? () => cycleBotColor(p.id) : undefined;
@@ -87,7 +103,21 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((p, i) => {
+          {rows.map((row, i) => {
+            if (row === GAP)
+              return (
+                <tr key="gap" ref={register?.('gap')} style={{ height: 40 }}>
+                  <td colSpan={2 + (hasBots ? 2 : 0) + 1} className="p-1">
+                    <div
+                      className="rounded h-100"
+                      style={{ border: '2px dashed var(--bs-primary)' }}
+                    />
+                  </td>
+                </tr>
+              );
+            const p = row;
+            const key = p ? `p${p.id}` : `e${team}-${i}`;
+            const setGlideRef = register?.(key);
             const onRowClick = rowClick(p);
             const rowStyle = p
               ? {
@@ -102,24 +132,30 @@ function RosterTable({ roster, rows, team, addSlot, removeEmptySlot }: Props) {
               : undefined;
             return (
               <tr
-                key={i}
+                key={key}
                 ref={(el) => {
+                  setGlideRef?.(el);
                   if (!p) return;
                   if (el) rowRefs.current.set(p.id, el);
                   else rowRefs.current.delete(p.id);
                 }}
                 role={onRowClick ? 'button' : undefined}
                 onClick={onRowClick}
-                draggable={draggable && !!p}
-                onDragStart={(e) => {
-                  if (!p) return;
-                  e.dataTransfer.effectAllowed = 'move';
-                  e.dataTransfer.setData('text/plain', String(p.id));
+                onPointerDown={(e) => {
+                  if (
+                    !p ||
+                    !startDrag ||
+                    (e.target as Element).closest('button')
+                  )
+                    return;
+                  startDrag(e, p);
                 }}
                 style={{
                   height: 40,
                   outline: p?.id === selfId ? '2px solid #fff' : undefined,
                   outlineOffset: p?.id === selfId ? '-2px' : undefined,
+                  touchAction: startDrag && p ? 'none' : undefined,
+                  opacity: p && draggingId === p.id ? 0.35 : undefined,
                 }}
               >
                 <td className="align-middle text-nowrap px-3" style={rowStyle}>

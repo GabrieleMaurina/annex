@@ -1,8 +1,8 @@
 import { Perlin2D } from '../../core/noise';
 import { GridDimensions } from '../../core/params';
 import { Rng } from '../../core/rng';
-import { computeTerritoryCentroids } from '../centroid';
 import { enforceContiguity } from '../contiguity';
+import { computeTerritoryCentroids } from '../geometry/centroid';
 import { GridPoint } from '../placement';
 import { findChokepointSplit } from './chokepoint';
 import { hasUsefulPair, MAX_LAND_NEIGHBORS_PER_SEA } from './connectivity';

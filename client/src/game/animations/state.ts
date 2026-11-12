@@ -71,7 +71,7 @@ export const DURATIONS: Record<AnimationType, number> = {
 };
 export const TROOP_CHANGE_RING_COLOR = '255, 255, 255';
 const REFERENCE_RADIUS = 20;
-const LABEL_DURATION = 1500;
+const LABEL_DURATION = 2000;
 const LABEL_GAP = 8;
 const LABEL_RISE = 24;
 export const CARD_SET_FLASH_DURATION = 2000;

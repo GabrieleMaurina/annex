@@ -1,8 +1,11 @@
-import { useState } from 'react';
 import { Button } from 'react-bootstrap';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import Tip from '../../common/tooltips/Tip';
+import { contrastTextColor, playerColor } from '../../lib/palette';
+import type { GameState } from '../../lib/types';
 import { SECTION_CLASS } from '../../ui/containers/panelStyle';
+import { GAP, useDrag, type DropHit } from '../../ui/dnd/dragDrop';
+import DragGhost from '../../ui/dnd/DragGhost';
 import type { RosterProps } from '../PlayerRoster';
 import RosterTable from './RosterTable';
 import {
@@ -14,10 +17,18 @@ import {
 
 const MIN_TEAMS = 2;
 
+type Player = GameState['players'][number];
+
 function TeamRoster({ roster }: { roster: RosterProps }) {
   const { game, isHost, setTeams } = roster;
-  const [dropTeam, setDropTeam] = useState<number | null>(null);
   const layout = teamLayout(game);
+  const { drag, start, register } = useDrag<Player>();
+  const dragged = drag?.item ?? null;
+  const target = drag?.hover?.zone === 'team' ? drag.hover.index : undefined;
+  const moving =
+    dragged !== null && target !== undefined && target !== dragged.team;
+  const shown = moving ? moveToTeam(game, dragged.id, target) : layout;
+  const playerById = new Map(game.players.map((p) => [p.id, p]));
 
   function update(change: (next: TeamLayout) => void) {
     const next = teamLayout(game);
@@ -25,44 +36,32 @@ function TeamRoster({ roster }: { roster: RosterProps }) {
     setTeams(next);
   }
 
-  function drop(e: React.DragEvent, team: number) {
-    e.preventDefault();
-    setDropTeam(null);
-    const player = game.players.find(
-      (p) => p.id === Number(e.dataTransfer.getData('text/plain')),
-    );
-    if (!player || player.team === team) return;
-    const next = moveToTeam(game, player.id, team);
+  function dropPlayer(player: Player, hit: DropHit | null) {
+    if (hit?.zone !== 'team' || hit.index === undefined) return;
+    if (player.team === hit.index) return;
+    const next = moveToTeam(game, player.id, hit.index);
     if (next.reduce((sum, t) => sum + t.slots, 0) > MAX_SLOTS) return;
     setTeams(next);
   }
 
   return (
     <>
-      {layout.map(({ slots }, team) => {
-        const players = game.players.filter((p) => p.team === team);
+      {shown.map(({ slots, playerIds }, team) => {
         const rows = [
-          ...players,
-          ...Array.from({ length: slots - players.length }, () => null),
+          ...playerIds.map((id) =>
+            moving && id === dragged.id ? GAP : playerById.get(id)!,
+          ),
+          ...Array.from({ length: slots - playerIds.length }, () => null),
         ];
-        const canRemove = layout.length > MIN_TEAMS && players.length === 0;
+        const canRemove =
+          layout.length > MIN_TEAMS && layout[team].playerIds.length === 0;
         return (
           <div
             key={team}
-            className={`${SECTION_CLASS} mb-2 ${dropTeam === team ? 'border-primary' : ''}`}
-            onDragOver={
-              isHost
-                ? (e) => {
-                    e.preventDefault();
-                    setDropTeam(team);
-                  }
-                : undefined
-            }
-            onDragLeave={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node))
-                setDropTeam(null);
-            }}
-            onDrop={isHost ? (e) => drop(e, team) : undefined}
+            data-drop-zone={isHost ? 'team' : undefined}
+            data-drop-index={team}
+            data-drop-exact="true"
+            className={`${SECTION_CLASS} mb-2 ${target === team ? 'border-primary' : ''}`}
           >
             <div className="d-flex align-items-center justify-content-between px-2 py-1">
               <span className="fw-semibold">Team {team + 1}</span>
@@ -86,6 +85,14 @@ function TeamRoster({ roster }: { roster: RosterProps }) {
               roster={roster}
               rows={rows}
               team={team}
+              startDrag={
+                isHost
+                  ? (e, player) =>
+                      start(e, player, (hit) => dropPlayer(player, hit))
+                  : undefined
+              }
+              register={register}
+              draggingId={dragged?.id}
               addSlot={() =>
                 update((next) => {
                   next[team].slots++;
@@ -112,6 +119,20 @@ function TeamRoster({ roster }: { roster: RosterProps }) {
           </Button>
         </div>
       )}
+      <DragGhost
+        drag={drag}
+        render={(player) => (
+          <div
+            className="rounded px-3 py-1 fw-semibold text-nowrap"
+            style={{
+              backgroundColor: playerColor(player.color),
+              color: contrastTextColor(playerColor(player.color)),
+            }}
+          >
+            {player.name}
+          </div>
+        )}
+      />
     </>
   );
 }

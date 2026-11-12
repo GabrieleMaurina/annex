@@ -6,13 +6,11 @@ import {
 } from '../../../../common/inputs/useNumberInput';
 import { stepTroops } from '../../../../common/inputs/useTroopsInput';
 import { getShortcutsOpen } from '../../../../common/menus/shortcuts/shortcutsOpen';
-import { connector } from '../../../../connector';
 import {
   isTroopsPercentage,
   saveTroopsPercentage,
 } from '../../../../lib/player';
 import { playSound } from '../../../../lib/sounds';
-import type { Ack } from '../../../../lib/types';
 import { isTypingTarget } from '../../helpers';
 import { nextToastId } from '../../toastId';
 import type { CanvasInteractionsParams } from './types';
@@ -61,7 +59,6 @@ export function useCanvasKeyboard({
   setEmojiPickerFor,
   alliancePopupFor,
   setAlliancePopupFor,
-  setGame,
   setToasts,
   setChatOpen,
   setPanelCollapsed,
@@ -105,6 +102,7 @@ export function useCanvasKeyboard({
   cancelAttack,
   submitAttack,
   canAdvancePhase,
+  advancePhase,
   selectTerritory,
   zoomAround,
 }: CanvasInteractionsParams & {
@@ -408,9 +406,7 @@ export function useCanvasKeyboard({
       if (e.key === 'Tab') {
         e.preventDefault();
         if (canAdvancePhase) {
-          connector.nextPhase((res: Ack) => {
-            if (res.ok) setGame(res.game);
-          });
+          advancePhase();
         } else {
           setPanelCollapsed((prev) => !prev);
         }
@@ -499,7 +495,7 @@ export function useCanvasKeyboard({
     selectedCombo,
     playCardSet,
     canAdvancePhase,
-    setGame,
+    advancePhase,
     setToasts,
     setEmojiPickerFor,
     setAlliancePopupFor,

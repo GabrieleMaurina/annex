@@ -129,6 +129,7 @@ export interface Player {
   connected: boolean;
   isBot: boolean;
   botProfile?: BotProfile;
+  preferredColors: number[];
 }
 
 export type BotDifficulty = 'idle' | 'easy' | 'medium' | 'hard';

@@ -17,7 +17,6 @@ import {
   MazePalette,
   renderMazeImage,
 } from '../../render/maze';
-import { computeTerritoryCentroids } from '../centroid';
 import {
   addRedundantBridges,
   addSeaShortcuts,
@@ -25,6 +24,7 @@ import {
   SpecialEdge,
 } from '../connectivity';
 import { clusterContinents, computeBonus } from '../continents';
+import { computeTerritoryCentroids } from '../geometry/centroid';
 import { buildSeaTerritories } from '../sea/build';
 import {
   ensureGraphConnected,

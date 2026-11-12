@@ -150,7 +150,10 @@ gameHistoryRouter.get('/games/history', (req, res) => {
 
   listGames(query)
     .then((r) => res.json(r))
-    .catch(() => res.json({ games: [], total: 0, page, pageSize }));
+    .catch((error) => {
+      console.error('failed to list games', error);
+      res.json({ games: [], total: 0, page, pageSize });
+    });
 });
 
 publicGamesRouter.get('/games/players/search', (req, res) => {

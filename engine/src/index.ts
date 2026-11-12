@@ -13,6 +13,7 @@ import {
   setBotTurnHook,
   setExperience,
   setName,
+  setPreferredColors,
   setReputation,
 } from './session/store';
 import { setWorkerConfig } from './workers/registry';
@@ -132,6 +133,7 @@ export {
   ReplayTerritoryDelta,
 } from './game/export';
 export {
+  COLOR_COUNT,
   deployableTroops,
   MAX_TERRITORY_TROOPS,
   nextFreeColor,
@@ -315,6 +317,7 @@ export function createEngine(
     setBadges,
     setExperience,
     setReputation,
+    setPreferredColors,
     disconnect,
     listGameSummaries,
     playerGameName,

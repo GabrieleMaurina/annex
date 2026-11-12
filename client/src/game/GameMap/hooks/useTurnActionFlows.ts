@@ -19,6 +19,7 @@ import {
   toxinsCost,
   type ScheduledLinks,
 } from '../../toxins/toxins';
+import { requestNextPhase } from './useMiscUiState';
 
 export function useTurnActionFlows({
   fortifyStartTerritoryId,
@@ -183,6 +184,18 @@ export function useTurnActionFlows({
     );
   }, [selectedTerritoryId, entrenchTroops, setGame]);
 
+  const confirmEntrenchAndAdvance = useCallback(() => {
+    if (selectedTerritoryId === null) return;
+    connector.entrench(
+      { territoryId: selectedTerritoryId, troops: entrenchTroops },
+      (res: Ack) => {
+        if (!res.ok) return;
+        setGame(res.game);
+        if (res.game.turnPhase === 'entrench') requestNextPhase(setGame);
+      },
+    );
+  }, [selectedTerritoryId, entrenchTroops, setGame]);
+
   const toxinsCostValue = toxinsCost(toxins, cards, nextSetBaseValues);
   const toxinsWastedTroops =
     selectedTerritoryId !== null
@@ -255,6 +268,7 @@ export function useTurnActionFlows({
     entrenchMaxTroops,
     entrenchCurrentTurns,
     submitEntrench,
+    confirmEntrenchAndAdvance,
     entrenchPanelOpen,
     toxinsCostValue,
     toxinsWastedTroops,

@@ -53,6 +53,7 @@ export interface SessionInfo {
   clientSettings: ClientSettings;
   gameSettings: GameSettings;
   homeFilters: HomeFilters;
+  preferredColors: number[];
 }
 
 export type LoginResult =
@@ -305,6 +306,7 @@ export function resolveSession(token: string): Promise<SessionInfo | null> {
         clientSettings: user.clientSettings,
         gameSettings: user.gameSettings,
         homeFilters: user.homeFilters,
+        preferredColors: user.preferredColors,
       };
     });
   });

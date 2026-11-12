@@ -166,4 +166,5 @@ export type CanvasInteractionsParams = {
   selectFlipSwitch: (switchId: number) => void;
   flipSwitch: (switchId: number) => void;
   canAdvancePhase: boolean;
+  advancePhase: () => void;
 };

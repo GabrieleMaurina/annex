@@ -1,5 +1,5 @@
-import { GridDimensions } from '../core/params';
-import { GridPoint } from './placement';
+import { GridDimensions } from '../../core/params';
+import { GridPoint } from '../placement';
 
 function bestInteriorPoints(
   labelGrid: Int16Array,

@@ -704,7 +704,7 @@ One document per earned achievement, `{ userId (objectId), achievementId, achiev
 
 ### `GET /account`
 - **When sent:** the "Account" page (`/account`) loads. Logged-in only; the client hides the menu entry and redirects `/account` to home for an anonymous visitor.
-- **Response:** `{ ok: true, username, email, country, picture, pictureDangerous, bio } | { ok: false, error: 'not logged in' }`. `username` and `email` are shown read-only (neither is changeable); `country` is the account's current flag code, editable via `POST /account/country`; `bio` is the profile text (`''` when none), editable via `POST /account/bio`. `picture` is a `data:` URL of the current 1000×1000 profile picture, or `null` when there is none or it has been hidden after reports; `pictureDangerous` is `true` in that hidden-after-reports case, so the page can prompt for a replacement.
+- **Response:** `{ ok: true, username, email, country, preferredColors, picture, pictureDangerous, bio } | { ok: false, error: 'not logged in' }`. `username` and `email` are shown read-only (neither is changeable); `country` is the account's current flag code, editable via `POST /account/country`; `preferredColors` is the account's preferred player-color list (see `users.preferredColors`), editable via `POST /account/preferredColors`; `bio` is the profile text (`''` when none), editable via `POST /account/bio`. `picture` is a `data:` URL of the current 1000×1000 profile picture, or `null` when there is none or it has been hidden after reports; `pictureDangerous` is `true` in that hidden-after-reports case, so the page can prompt for a replacement.
 
 ### `POST /account/country`
 - **When sent:** the player picks a country in the "Country" dropdown on the Account page.
@@ -714,6 +714,15 @@ One document per earned achievement, `{ userId (objectId), achievementId, achiev
 
 ### `users.country` (server-side, not a wire type)
 Required, never-null field on a `users` document, schema-restricted to flag-icons' codes. Set at `POST /auth/register` from the sign-up form's Country dropdown, which is prefilled with a guess from the browser's IANA time zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`, mapped to a country through a table generated from tzdata's `zone.tab` plus its link aliases; left unselected when the zone maps to no country, e.g. `UTC`, and the form then refuses to submit until one is picked) and can be changed before submitting; after that only the owner changes it, via `POST /account/country`. `'xx'` (unknown) is never selectable: both endpoints reject it with `invalid country` and neither dropdown offers it. It exists only so the schema can hold accounts created before the field existed, which get `'xx'` from `npm run checkdb` (it fills a missing enum field with the enum's first value, so `'xx'` is listed first); such an account shows the unknown flag until its owner picks a country on the Account page.
+
+### `POST /account/preferredColors`
+- **When sent:** the player drags a swatch between the "Preferred" and "Available" lists, or reorders the "Preferred" list, in the picker on the Account page.
+- **Body:** `{ preferredColors }`: an array of distinct player-color indices (`0`–`19`, see `PLAYER_COLORS`), in priority order (first = first choice). `[]` when none are preferred.
+- **Purpose:** replace the caller's `users.preferredColors`. A game socket picks the new list up on its next `player:identify`; it only affects color assignment in games joined or created after that (an already-assigned color in a game already in the lobby is untouched).
+- **Response:** `{ ok: true } | { ok: false, error }`. **Errors:** `not logged in`, `invalid colors` (not an array, an index outside `0`–`19`, or a duplicate), `server error`.
+
+### `users.preferredColors` (server-side, not a wire type)
+Required array field on a `users` document (`number[]`, at most 20 entries, each a unique `0`–`19` player-color index), `[]` for a new account; accounts created before it existed get `[]` from `npm run checkdb`. Set via `POST /account/preferredColors`, read by `GET /account`. Pushed into the live engine `Player.preferredColors` by `player:identify` (alongside `country`/`elo`/`reputation`) via a new `setPreferredColors` engine call. `assignRandomColor` (game create, lobby join, spectator/substitute promotion) tries the caller's list in priority order before falling back to its existing random pool, skipping any entry already taken by another player in the game or out of range for the current player count; bots and offline/local players always have `preferredColors: []` and are unaffected. Manually cycling color (`game:cycleColor`) still ignores preferences, as it already does for the existing color.
 
 ### `POST /account/bio`
 - **When sent:** the player saves their profile text on their own profile page (`/players/:username`) or on the Account page.

@@ -514,7 +514,10 @@ function queryGames(
         ? { roundNumber: dir, endedAt: -1, _id: -1 }
         : { endedAt: dir, _id: dir };
 
-  const pipeline: Record<string, unknown>[] = [{ $match: filter }];
+  const pipeline: Record<string, unknown>[] = [
+    { $match: filter },
+    { $project: { replay: 0, serverLog: 0 } },
+  ];
   if (wantsViewerFilter) {
     pipeline.push({
       $addFields: {

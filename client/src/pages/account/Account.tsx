@@ -10,6 +10,7 @@ import {
 import { Navigate, useNavigate } from 'react-router-dom';
 import CountrySelect from '../../common/badges/CountrySelect';
 import { formatError } from '../../common/formatError';
+import PreferredColorsPicker from '../../common/inputs/PreferredColorsPicker';
 import ProfilePictureEditor from '../../common/inputs/ProfilePictureEditor';
 import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
@@ -25,6 +26,7 @@ function AccountPage({ account, onCountryChange }: Props) {
   const navigate = useNavigate();
   const [details, setDetails] = useState<AccountResult | null>(null);
   const [countryError, setCountryError] = useState('');
+  const [colorsError, setColorsError] = useState('');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -47,6 +49,17 @@ function AccountPage({ account, onCountryChange }: Props) {
       }
       connector.getAccount(setDetails);
       onCountryChange();
+    });
+  }
+
+  function changePreferredColors(colors: number[]) {
+    setColorsError('');
+    connector.setPreferredColors(colors, (res) => {
+      if (!res.ok) {
+        setColorsError(res.error);
+        return;
+      }
+      connector.getAccount(setDetails);
     });
   }
 
@@ -92,7 +105,14 @@ function AccountPage({ account, onCountryChange }: Props) {
 
   if (!details.ok) return <Navigate to="/" replace />;
 
-  const { picture, pictureDangerous: dangerous, email, country, bio } = details;
+  const {
+    picture,
+    pictureDangerous: dangerous,
+    email,
+    country,
+    preferredColors,
+    bio,
+  } = details;
 
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
@@ -126,6 +146,18 @@ function AccountPage({ account, onCountryChange }: Props) {
             {countryError && (
               <Alert variant="danger" className="py-1 px-2 mb-0 small">
                 {formatError(countryError)}
+              </Alert>
+            )}
+          </div>
+          <div className="d-flex flex-column gap-1">
+            <div className="small text-muted">Preferred colors</div>
+            <PreferredColorsPicker
+              value={preferredColors}
+              onChange={changePreferredColors}
+            />
+            {colorsError && (
+              <Alert variant="danger" className="py-1 px-2 mb-0 small">
+                {formatError(colorsError)}
               </Alert>
             )}
           </div>

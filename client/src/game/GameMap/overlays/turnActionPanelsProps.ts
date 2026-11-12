@@ -24,8 +24,8 @@ type PassThroughKeys =
   | 'isMyTurn'
   | 'troopsToDeploy'
   | 'deployMaxTroops'
-  | 'setGame'
   | 'tankFire'
+  | 'advancePhase'
   | 'deployPanelOpen'
   | 'attackSeaDefenderId'
   | 'players';

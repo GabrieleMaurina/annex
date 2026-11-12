@@ -1,7 +1,7 @@
-import { Rng } from '../core/rng';
-import { createWarpField, warpAt, WarpField } from '../core/warp';
-import { enforceContiguity } from './contiguity';
-import { GridPoint } from './placement';
+import { Rng } from '../../core/rng';
+import { createWarpField, warpAt, WarpField } from '../../core/warp';
+import { enforceContiguity } from '../contiguity';
+import { GridPoint } from '../placement';
 
 const MIN_LAKE_AREA_RATIO = 0.4;
 

@@ -5,6 +5,7 @@ import PercentageToggle from '../../common/inputs/PercentageToggle';
 import { useTroopsInput } from '../../common/inputs/useTroopsInput';
 import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
 import NumberOdometer from '../../ui/forms/NumberOdometer';
+import TroopSlider from './TroopSlider';
 
 interface Props {
   label: string;
@@ -61,6 +62,12 @@ function TroopPanel({
         </Button>
         <PercentageToggle max={maxTroops} />
       </div>
+      <TroopSlider
+        min={troopsInput.min}
+        max={troopsInput.max}
+        value={troopsInput.value}
+        onChange={troopsInput.onChange}
+      />
       {extra && <span className="small text-body-secondary">{extra}</span>}
     </div>
   );

@@ -10,6 +10,7 @@ import ExportDataButton from '../../common/export/ExportDataButton';
 import { formatError } from '../../common/formatError';
 import { useWhiteIcon } from '../../common/icon';
 import WhiteIcon from '../../common/icons/WhiteIcon';
+import PreferredColorsPicker from '../../common/inputs/PreferredColorsPicker';
 import ProfilePictureEditor from '../../common/inputs/ProfilePictureEditor';
 import SharePageButton from '../../common/menus/SharePageButton';
 import ProfileActions from '../../common/ProfileActions';
@@ -325,6 +326,9 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
                 : undefined
             }
           />
+          {profile.preferredColors.length > 0 && (
+            <PreferredColorsPicker value={profile.preferredColors} readOnly />
+          )}
           <div className="small text-muted">
             Member since {new Date(profile.createdAt).toLocaleDateString()}
           </div>

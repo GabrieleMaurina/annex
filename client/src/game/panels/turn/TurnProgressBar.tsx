@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { playSound } from '../../lib/sounds';
+import { playSound } from '../../../lib/sounds';
 
 const HEARTBEAT_SECONDS = 5;
 

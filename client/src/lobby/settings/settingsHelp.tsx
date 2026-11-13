@@ -582,7 +582,7 @@ export const ANONYMOUS_HELP = (
 );
 
 export const DISCONNECT_BOT_DIFFICULTY_HELP =
-  'The difficulty a bot takes over with when a player disconnects mid-game. Random picks a fresh difficulty (including Idle) each time a takeover happens.';
+  'The difficulty a bot takes over with when a player disconnects mid-game. Random picks a fresh difficulty (never Idle) each time a takeover happens.';
 
 export const DISCONNECT_BOT_PERSONALITY_HELP =
   'The personality a bot takes over with when a player disconnects mid-game. Random picks a fresh personality each time a takeover happens.';

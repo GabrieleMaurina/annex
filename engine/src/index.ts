@@ -14,6 +14,7 @@ import {
   setExperience,
   setName,
   setPreferredColors,
+  setPreferredColorsAndRecolor,
   setReputation,
 } from './session/store';
 import { setWorkerConfig } from './workers/registry';
@@ -320,6 +321,7 @@ export function createEngine(
     setExperience,
     setReputation,
     setPreferredColors,
+    setPreferredColorsAndRecolor,
     disconnect,
     listGameSummaries,
     playerGameName,

@@ -181,6 +181,51 @@ function crossesExistingLink(
   return false;
 }
 
+function landStep(
+  adjacency: Map<number, Set<number>>,
+  edges: SpecialEdge[],
+  x: number,
+  y: number,
+): boolean {
+  if (!adjacency.get(x)?.has(y)) return false;
+  return !edges.some(
+    (edge) => (edge.a === x && edge.b === y) || (edge.a === y && edge.b === x),
+  );
+}
+
+function touchesByLand(
+  adjacency: Map<number, Set<number>>,
+  edges: SpecialEdge[],
+  x: number,
+  y: number,
+): boolean {
+  if (x === y || landStep(adjacency, edges, x, y)) return true;
+  for (const middle of adjacency.get(x) ?? []) {
+    if (
+      landStep(adjacency, edges, x, middle) &&
+      landStep(adjacency, edges, middle, y)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function parallelsExistingLink(
+  adjacency: Map<number, Set<number>>,
+  a: number,
+  b: number,
+  edges: SpecialEdge[],
+): boolean {
+  return edges.some(
+    (edge) =>
+      (touchesByLand(adjacency, edges, a, edge.a) &&
+        touchesByLand(adjacency, edges, b, edge.b)) ||
+      (touchesByLand(adjacency, edges, a, edge.b) &&
+        touchesByLand(adjacency, edges, b, edge.a)),
+  );
+}
+
 function landmassSizes(landmassOf: number[]): Map<number, number> {
   const sizes = new Map<number, number>();
   for (const landmass of landmassOf) {
@@ -294,6 +339,7 @@ export function addRedundantBridges(
           );
           if (geom.crossesLand) continue;
           if (crossesExistingLink(centroids, u, v, specialEdges)) continue;
+          if (parallelsExistingLink(adjacency, u, v, specialEdges)) continue;
           options.push({ u, v, seaSpan: geom.seaSpan });
           if (geom.seaSpan < minSpan) minSpan = geom.seaSpan;
         }
@@ -418,6 +464,7 @@ export function addSeaShortcuts(
         );
         if (geom.crossesLand || geom.seaSpan > maxSpan) continue;
         if (crossesExistingLink(centroids, a, b, specialEdges)) continue;
+        if (parallelsExistingLink(adjacency, a, b, specialEdges)) continue;
         candidates.push({ a, b, score: landHops / geom.seaSpan });
       }
     }
@@ -428,6 +475,7 @@ export function addSeaShortcuts(
       if (added >= SEA_SHORTCUT_MAX_PER_LANDMASS) break;
       if (seaLinked.has(a) || seaLinked.has(b)) continue;
       if (crossesExistingLink(centroids, a, b, specialEdges)) continue;
+      if (parallelsExistingLink(adjacency, a, b, specialEdges)) continue;
       addEdge(adjacency, a, b);
       specialEdges.push({ a, b });
       seaLinked.add(a);
@@ -488,7 +536,10 @@ export function ensureConnected(
         overLand ??= { a, b };
         continue;
       }
-      if (crossesExistingLink(centroids, a, b, addedEdges)) {
+      if (
+        crossesExistingLink(centroids, a, b, addedEdges) ||
+        parallelsExistingLink(adjacency, a, b, addedEdges)
+      ) {
         overLink ??= { a, b };
         continue;
       }

@@ -460,274 +460,293 @@ function PlayersPanel({
               const allianceOnCooldown = allianceCooldownIds.has(p.id);
               return (
                 <Fragment key={p.id}>
-                  <tr
-                    ref={(el) => {
-                      if (el) rowRefs.current.set(p.id, el);
-                      else rowRefs.current.delete(p.id);
-                    }}
-                    role="button"
-                    data-no-click-sound
-                    onClick={() => {
-                      if (!emojiTargeting)
-                        setExpandedId((prev) => (prev === p.id ? null : p.id));
-                      if (rowClickable) onRowClick(p.id);
-                      else if (!emojiTargeting) playSound('click');
-                    }}
-                    style={{
-                      cursor:
-                        rowClickable && emojiTargeting
-                          ? 'crosshair'
+                  <Tip text={p.name} placement="left">
+                    <tr
+                      ref={(el) => {
+                        if (el) rowRefs.current.set(p.id, el);
+                        else rowRefs.current.delete(p.id);
+                      }}
+                      role="button"
+                      data-no-click-sound
+                      onClick={() => {
+                        if (!emojiTargeting)
+                          setExpandedId((prev) =>
+                            prev === p.id ? null : p.id,
+                          );
+                        if (rowClickable) onRowClick(p.id);
+                        else if (!emojiTargeting) playSound('click');
+                      }}
+                      style={{
+                        cursor:
+                          rowClickable && emojiTargeting
+                            ? 'crosshair'
+                            : undefined,
+                        animation: pop
+                          ? `annexEmojiHighlight${pop.id % 2 === 0 ? '' : 'Alt'} ${EMOJI_POP_DURATION}ms ease-out forwards`
                           : undefined,
-                      animation: pop
-                        ? `annexEmojiHighlight${pop.id % 2 === 0 ? '' : 'Alt'} ${EMOJI_POP_DURATION}ms ease-out forwards`
-                        : undefined,
-                      outline: p.id === selfId ? '2px solid #fff' : undefined,
-                      outlineOffset: p.id === selfId ? '-2px' : undefined,
-                    }}
-                  >
-                    <td className="align-middle text-center" style={rowStyle}>
-                      {p.id === turnPlayerId && (
-                        <Tip text="Current turn">
-                          <img
-                            src={
-                              isDark
-                                ? (whiteDotIcon ?? '/icons/dot.svg')
-                                : '/icons/dot.svg'
-                            }
-                            width={12}
-                            height={12}
-                            alt="Current turn"
-                          />
-                        </Tip>
-                      )}
-                    </td>
-                    {showAllianceColumn && (
-                      <td
-                        className="align-middle text-center p-0"
-                        style={rowStyle}
-                        ref={(el) => {
-                          if (el) allianceCellRefs.current.set(p.id, el);
-                          else allianceCellRefs.current.delete(p.id);
-                        }}
-                      >
-                        {p.id !== selfId && !p.isBot && (
-                          <TipSpan
-                            className="d-block"
-                            text={
-                              allianceOnCooldown
-                                ? 'Alliance cooldown'
-                                : ALLIANCE_CELL_LABELS[allianceState]
-                            }
-                          >
-                            <button
-                              type="button"
-                              className="border-0 bg-transparent text-reset d-inline-flex align-items-center justify-content-center lh-1"
-                              style={{ fontSize: 13, width: '100%' }}
-                              data-no-click-sound
-                              disabled={allianceOnCooldown}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                playSound('click');
-                                onAllianceCellClick(p.id);
-                              }}
+                        outline: p.id === selfId ? '2px solid #fff' : undefined,
+                        outlineOffset: p.id === selfId ? '-2px' : undefined,
+                      }}
+                    >
+                      <td className="align-middle text-center" style={rowStyle}>
+                        {p.id === turnPlayerId && (
+                          <Tip text="Current turn">
+                            <img
+                              src={
+                                isDark
+                                  ? (whiteDotIcon ?? '/icons/dot.svg')
+                                  : '/icons/dot.svg'
+                              }
+                              width={12}
+                              height={12}
+                              alt="Current turn"
+                            />
+                          </Tip>
+                        )}
+                      </td>
+                      {showAllianceColumn && (
+                        <td
+                          className="align-middle text-center p-0"
+                          style={rowStyle}
+                          ref={(el) => {
+                            if (el) allianceCellRefs.current.set(p.id, el);
+                            else allianceCellRefs.current.delete(p.id);
+                          }}
+                        >
+                          {p.id !== selfId && !p.isBot && (
+                            <TipSpan
+                              className="d-block"
+                              text={
+                                allianceOnCooldown
+                                  ? 'Alliance cooldown'
+                                  : ALLIANCE_CELL_LABELS[allianceState]
+                              }
                             >
-                              <WhiteIcon
-                                path={ALLIANCE_ICONS[allianceState]}
-                                size={14}
+                              <button
+                                type="button"
+                                className="border-0 bg-transparent text-reset d-inline-flex align-items-center justify-content-center lh-1"
+                                style={{ fontSize: 13, width: '100%' }}
+                                data-no-click-sound
+                                disabled={allianceOnCooldown}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playSound('click');
+                                  onAllianceCellClick(p.id);
+                                }}
+                              >
+                                <WhiteIcon
+                                  path={ALLIANCE_ICONS[allianceState]}
+                                  size={14}
+                                />
+                              </button>
+                            </TipSpan>
+                          )}
+                        </td>
+                      )}
+                      <td className="align-middle" style={rowStyle}>
+                        <div className="d-flex align-items-center gap-1">
+                          <RankIcon elo={p.elo} />
+                          <Flag country={p.country} />
+                          {p.isBot && (
+                            <Tip text="Bot">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whiteBotIcon ?? '/icons/bot.svg')
+                                    : '/icons/bot.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="Bot"
+                                className="flex-shrink-0"
                               />
-                            </button>
-                          </TipSpan>
-                        )}
+                            </Tip>
+                          )}
+                          {p.id === selfId && (
+                            <Tip text="You">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whiteYouIcon ?? '/icons/you.svg')
+                                    : '/icons/you.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="You"
+                                className="flex-shrink-0"
+                              />
+                            </Tip>
+                          )}
+                          {p.id !== selfId && !p.isBot && (
+                            <Tip text="Player">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whitePlayerIcon ?? '/icons/player.svg')
+                                    : '/icons/player.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="Player"
+                                className="flex-shrink-0"
+                              />
+                            </Tip>
+                          )}
+                          {p.id !== selfId && isPlayerMuted(p.id) && (
+                            <Tip text="Muted">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whiteMutedIcon ?? '/icons/muted.svg')
+                                    : '/icons/muted.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="Muted"
+                                className="flex-shrink-0"
+                              />
+                            </Tip>
+                          )}
+                          {recoloredIds?.has(p.id) && (
+                            <Tip text="Color changed on this device only">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whitePaletteIcon ?? '/icons/palette.svg')
+                                    : '/icons/palette.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="Color changed"
+                                className="flex-shrink-0"
+                              />
+                            </Tip>
+                          )}
+                          {p.eliminated && (
+                            <Tip text="Eliminated">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whiteDeathIcon ?? '/icons/death.svg')
+                                    : '/icons/death.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="Eliminated"
+                                className="flex-shrink-0"
+                              />
+                            </Tip>
+                          )}
+                          {p.surrendered && (
+                            <Tip text="Surrendered">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whiteFlagIcon ?? '/icons/flag.svg')
+                                    : '/icons/flag.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="Surrendered"
+                                className="flex-shrink-0"
+                              />
+                            </Tip>
+                          )}
+                          {drawVoteIds.includes(p.id) && (
+                            <Tip text="Offered a draw">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whiteDrawIcon ?? '/icons/draw.svg')
+                                    : '/icons/draw.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="Offered a draw"
+                                className="flex-shrink-0"
+                              />
+                            </Tip>
+                          )}
+                          {abortVoteIds.includes(p.id) && (
+                            <Tip text="Wants to abort the game">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whiteCloseIcon ?? '/icons/close.svg')
+                                    : '/icons/close.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="Wants to abort the game"
+                                className="flex-shrink-0"
+                              />
+                            </Tip>
+                          )}
+                          {!isConnected && !p.eliminated && (
+                            <Tip text="Disconnected">
+                              <img
+                                src={
+                                  isDark
+                                    ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
+                                    : '/icons/no-wifi.svg'
+                                }
+                                width={12}
+                                height={12}
+                                alt="Disconnected"
+                                className="flex-shrink-0"
+                              />
+                            </Tip>
+                          )}
+                        </div>
                       </td>
-                    )}
-                    <td className="align-middle" style={rowStyle}>
-                      <div className="d-flex align-items-center gap-1">
-                        <RankIcon elo={p.elo} />
-                        <Flag country={p.country} />
-                        {p.isBot && (
-                          <Tip text="Bot">
-                            <img
-                              src={
-                                isDark
-                                  ? (whiteBotIcon ?? '/icons/bot.svg')
-                                  : '/icons/bot.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Bot"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                        {p.id === selfId && (
-                          <Tip text="You">
-                            <img
-                              src={
-                                isDark
-                                  ? (whiteYouIcon ?? '/icons/you.svg')
-                                  : '/icons/you.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="You"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                        {p.id !== selfId && !p.isBot && (
-                          <Tip text="Player">
-                            <img
-                              src={
-                                isDark
-                                  ? (whitePlayerIcon ?? '/icons/player.svg')
-                                  : '/icons/player.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Player"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                        {p.id !== selfId && isPlayerMuted(p.id) && (
-                          <Tip text="Muted">
-                            <img
-                              src={
-                                isDark
-                                  ? (whiteMutedIcon ?? '/icons/muted.svg')
-                                  : '/icons/muted.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Muted"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                        {recoloredIds?.has(p.id) && (
-                          <Tip text="Color changed on this device only">
-                            <img
-                              src={
-                                isDark
-                                  ? (whitePaletteIcon ?? '/icons/palette.svg')
-                                  : '/icons/palette.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Color changed"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                        {p.eliminated && (
-                          <Tip text="Eliminated">
-                            <img
-                              src={
-                                isDark
-                                  ? (whiteDeathIcon ?? '/icons/death.svg')
-                                  : '/icons/death.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Eliminated"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                        {p.surrendered && (
-                          <Tip text="Surrendered">
-                            <img
-                              src={
-                                isDark
-                                  ? (whiteFlagIcon ?? '/icons/flag.svg')
-                                  : '/icons/flag.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Surrendered"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                        {drawVoteIds.includes(p.id) && (
-                          <Tip text="Offered a draw">
-                            <img
-                              src={
-                                isDark
-                                  ? (whiteDrawIcon ?? '/icons/draw.svg')
-                                  : '/icons/draw.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Offered a draw"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                        {abortVoteIds.includes(p.id) && (
-                          <Tip text="Wants to abort the game">
-                            <img
-                              src={
-                                isDark
-                                  ? (whiteCloseIcon ?? '/icons/close.svg')
-                                  : '/icons/close.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Wants to abort the game"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                        {!isConnected && !p.eliminated && (
-                          <Tip text="Disconnected">
-                            <img
-                              src={
-                                isDark
-                                  ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
-                                  : '/icons/no-wifi.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Disconnected"
-                              className="flex-shrink-0"
-                            />
-                          </Tip>
-                        )}
-                      </div>
-                    </td>
-                    {isTeamDeathmatch && (
+                      {isTeamDeathmatch && (
+                        <td
+                          className="align-middle text-center"
+                          style={rowStyle}
+                        >
+                          {p.team + 1}
+                        </td>
+                      )}
                       <td className="align-middle text-center" style={rowStyle}>
-                        {p.team + 1}
+                        {p.eliminated ? '-' : (p.territoryCount ?? '?')}
                       </td>
-                    )}
-                    <td className="align-middle text-center" style={rowStyle}>
-                      {p.eliminated ? '-' : (p.territoryCount ?? '?')}
-                    </td>
-                    {isCapitals && (
+                      {isCapitals && (
+                        <td
+                          className="align-middle text-center"
+                          style={rowStyle}
+                        >
+                          {p.eliminated ? '-' : p.capitalCount}
+                        </td>
+                      )}
+                      {showPoints && (
+                        <td
+                          className="align-middle text-center"
+                          style={rowStyle}
+                        >
+                          {p.points}
+                        </td>
+                      )}
+                      {bounties === 'on' && (
+                        <td
+                          className="align-middle text-center"
+                          style={rowStyle}
+                        >
+                          {p.playersKilled?.length ?? '?'}
+                        </td>
+                      )}
                       <td className="align-middle text-center" style={rowStyle}>
-                        {p.eliminated ? '-' : p.capitalCount}
+                        {p.eliminated ? '-' : (p.troopCount ?? '?')}
                       </td>
-                    )}
-                    {showPoints && (
-                      <td className="align-middle text-center" style={rowStyle}>
-                        {p.points}
-                      </td>
-                    )}
-                    {bounties === 'on' && (
-                      <td className="align-middle text-center" style={rowStyle}>
-                        {p.playersKilled?.length ?? '?'}
-                      </td>
-                    )}
-                    <td className="align-middle text-center" style={rowStyle}>
-                      {p.eliminated ? '-' : (p.troopCount ?? '?')}
-                    </td>
-                    {cards !== 'off' && (
-                      <td className="align-middle text-center" style={rowStyle}>
-                        {p.eliminated ? '-' : p.cardCount}
-                      </td>
-                    )}
-                  </tr>
+                      {cards !== 'off' && (
+                        <td
+                          className="align-middle text-center"
+                          style={rowStyle}
+                        >
+                          {p.eliminated ? '-' : p.cardCount}
+                        </td>
+                      )}
+                    </tr>
+                  </Tip>
                   <tr>
                     <td colSpan={columnCount} className="p-0">
                       <Collapse

@@ -151,6 +151,7 @@ export type CanvasInteractionsParams = {
   attackShowPendingConquest: boolean;
   setAttackMoveTroops: Dispatch<SetStateAction<number>>;
   cycleAttackOption: (direction: 1 | -1) => void;
+  stepBlitzTroops: (delta: number, newGesture: boolean) => boolean;
   selectAttackStart: (territoryId: number | null) => void;
   selectAttackEnd: (territoryId: number) => void;
   quickAttack: (territoryId: number, minimal: boolean) => void;

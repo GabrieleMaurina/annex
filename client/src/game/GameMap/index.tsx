@@ -14,6 +14,7 @@ import {
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
 import { switchesOnAfter } from '../switches/switches';
+import { useTurnStart } from '../turnStart/useTurnStart';
 import { loadHourglassIcons } from './draw/drawTimedLinks';
 import GameCanvas from './GameCanvas';
 import {
@@ -140,6 +141,7 @@ function GameMap({
   recoloredIds,
   onCycleColor,
   tutorialHighlight,
+  turnFlash,
 }: GameMapProps) {
   useHideUiShortcut();
   const uiHidden = useUiHidden();
@@ -611,6 +613,7 @@ function GameMap({
     () => (endCardShown ? endCardFor(game) : null),
     [endCardShown, game],
   );
+  const turnRef = useTurnStart(turnFlash, canvasRef, startAnimationLoop);
   const endCardStartRef = useRef<number | null>(null);
   const [endCardLogo, setEndCardLogo] = useState<HTMLImageElement | null>(null);
 
@@ -701,6 +704,7 @@ function GameMap({
       unlockTiles: attackFlow.unlockTiles,
       placeNames,
       heatMap,
+      turnStartRef: turnRef,
       endCard:
         endCard && endCardStartRef.current !== null
           ? {

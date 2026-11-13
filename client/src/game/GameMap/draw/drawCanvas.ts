@@ -44,6 +44,11 @@ import type { RegionShape } from '../../regions/traceRegions';
 import type { ConquestArrow } from '../../replay/replay';
 import type { RailEdge } from '../../supplyLines';
 import { drawSupplyLines } from '../../supplyLines';
+import {
+  drawTurnBanner,
+  drawTurnHalo,
+  type TurnStartOverlay,
+} from '../../turnStart/turnStart';
 import type { Camera } from '../camera';
 import {
   CANVAS_FONT_FAMILY,
@@ -146,6 +151,7 @@ export interface DrawCanvasParams {
   placeNames: PlaceNames;
   heatMap?: Map<number, string> | null;
   endCard?: EndCardOverlay | null;
+  turnStartRef?: RefObject<TurnStartOverlay | null>;
   pixelRatio?: number;
 }
 
@@ -208,6 +214,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     placeNames,
     heatMap,
     endCard,
+    turnStartRef,
     pixelRatio,
   } = params;
 
@@ -220,8 +227,12 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  ctx.fillStyle = '#10151c';
-  ctx.fillRect(0, 0, size.w, size.h);
+  if (pixelRatio === undefined) {
+    ctx.clearRect(0, 0, size.w, size.h);
+  } else {
+    ctx.fillStyle = '#10151c';
+    ctx.fillRect(0, 0, size.w, size.h);
+  }
 
   const transform = camera.get();
   const { zoom } = transform;
@@ -240,6 +251,20 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     imgDims,
   );
   const uiScale = zoom * borderScale((VERTEX_RADIUS * scaleX) / zoom);
+
+  const turnStart = turnStartRef?.current ?? null;
+  const sinceTurnStart = turnStart ? animationNow() - turnStart.startedAt : 0;
+  const turnStartColor = turnStart
+    ? playerColor(players.find((p) => p.id === turnStart.playerId)?.color ?? 0)
+    : '';
+  if (turnStart)
+    drawTurnHalo(
+      ctx,
+      size,
+      { x: offsetX, y: offsetY, w: imgW * scaleX, h: imgH * scaleY },
+      turnStartColor,
+      sinceTurnStart,
+    );
 
   drawMapBorder(
     ctx,
@@ -787,6 +812,9 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       }
     }
   }
+
+  if (turnStart?.bannerShown)
+    drawTurnBanner(ctx, size, turnStartColor, sinceTurnStart);
 
   if (endCard) {
     const sinceStart = animationNow() - endCard.startedAt;

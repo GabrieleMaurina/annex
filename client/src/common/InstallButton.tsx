@@ -33,11 +33,11 @@ function isMarkedInstalled() {
   }
 }
 
-if (window.matchMedia('(display-mode: standalone)').matches) markInstalled();
+if (isStandalone()) markInstalled();
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
-  if (!isMarkedInstalled()) setInstallPrompt(e as BeforeInstallPromptEvent);
+  setInstallPrompt(e as BeforeInstallPromptEvent);
 });
 window.addEventListener('appinstalled', () => {
   markInstalled();
@@ -49,12 +49,21 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-function InstallButton() {
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches;
+}
+
+interface Props {
+  ignoreInstalledFlag?: boolean;
+}
+
+function InstallButton({ ignoreInstalledFlag }: Props) {
   const prompt = useSyncExternalStore(subscribe, () => installPrompt);
-  if (!prompt) return null;
+  if (isStandalone()) return null;
+  if (!prompt || (!ignoreInstalledFlag && isMarkedInstalled())) return null;
 
   function install() {
-    prompt!.prompt();
+    prompt?.prompt();
     setInstallPrompt(null);
   }
 

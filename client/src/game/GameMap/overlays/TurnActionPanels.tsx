@@ -19,8 +19,8 @@ import AttackPanel, {
 import AttackSeaPanel from '../../panels/attack/AttackSeaPanel';
 import ConfirmPanel from '../../panels/ConfirmPanel';
 import TroopPanel from '../../panels/TroopPanel';
-import TurnPanel from '../../panels/TurnPanel';
-import TurnProgressBar from '../../panels/TurnProgressBar';
+import TurnPanel from '../../panels/turn/TurnPanel';
+import TurnProgressBar from '../../panels/turn/TurnProgressBar';
 import { useCameraTransform, type Camera } from '../camera';
 import { CAPITAL_PHASE_DURATION, PLACEMENT_PHASE_DURATION } from '../helpers';
 import { usePanelStyles, type PanelAnchors } from '../hooks/useMiscUiState';

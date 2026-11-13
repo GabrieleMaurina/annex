@@ -140,6 +140,7 @@ export function useGameCanvasInteractions({
     attackShowPendingConquest: attackFlow.attackShowPendingConquest,
     setAttackMoveTroops: attackFlow.setAttackMoveTroops,
     cycleAttackOption: attackFlow.cycleAttackOption,
+    stepBlitzTroops: attackFlow.stepBlitzTroops,
     selectAttackStart: attackFlow.selectAttackStart,
     selectAttackEnd: attackFlow.selectAttackEnd,
     setAwardedCards: cardsFlow.setAwardedCards,

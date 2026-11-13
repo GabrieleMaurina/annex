@@ -139,7 +139,8 @@ export function cycleBotSpeed(playerId: number): GameResponse {
 
   const game = games.get(player.gameName);
   if (!game) return { ok: false, error: 'game not found' };
-  if (game.hostId !== player.id) return { ok: false, error: 'not the host' };
+  if (!game.offline && game.hostId !== player.id)
+    return { ok: false, error: 'not the host' };
   if (game.state !== 'playing') return { ok: false, error: 'game not started' };
   if (isAnonymous(game)) return { ok: false, error: 'anonymous game' };
 

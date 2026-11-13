@@ -32,8 +32,12 @@ export function isPersonalityInput(
 
 export function resolveDifficulty(
   value: BotDifficulty | 'random',
+  allowIdle = true,
 ): BotDifficulty {
-  return value === 'random' ? pick(DIFFICULTIES) : value;
+  if (value !== 'random') return value;
+  return pick(
+    allowIdle ? DIFFICULTIES : DIFFICULTIES.filter((d) => d !== 'idle'),
+  );
 }
 
 export function resolvePersonality(
@@ -45,9 +49,10 @@ export function resolvePersonality(
 export function resolveBotProfile(
   difficulty: BotDifficulty | 'random',
   personality: BotPersonality | 'random',
+  allowIdle = true,
 ): BotProfile {
   return {
-    difficulty: resolveDifficulty(difficulty),
+    difficulty: resolveDifficulty(difficulty, allowIdle),
     difficultyHidden: difficulty === 'random',
     personality: resolvePersonality(personality),
     personalityHidden: personality === 'random',

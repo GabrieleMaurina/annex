@@ -17,8 +17,8 @@ function Takeover() {
         <p>
           The host sets Disconnect Difficulty and Disconnect Personality in the
           Bots group. Random picks a fresh value at each takeover, and for
-          difficulty it can pick Idle, which means your turns are simply skipped
-          (<WikiLink to="bots/difficulty" />
+          difficulty it never picks Idle. Choose Idle yourself if you want turns
+          to be simply skipped (<WikiLink to="bots/difficulty" />
           ).
         </p>
       </WikiSection>

@@ -97,6 +97,7 @@ export {
   setRadiationActive,
   setTimedLinksActive,
   setToxinsActive,
+  setTurnStartActive,
   startAnimation,
   startNukeAnimation,
   startUnlockAnimation,

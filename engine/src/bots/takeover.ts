@@ -7,6 +7,7 @@ export function startTakeover(game: Game, player: Player): void {
   player.botProfile = resolveBotProfile(
     game.disconnectBotDifficulty,
     game.disconnectBotPersonality,
+    false,
   );
 }
 

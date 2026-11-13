@@ -451,12 +451,8 @@ function App() {
         <SettingsMenu hidden={uiHidden} onOpenChange={setSettingsMenuOpen} />
       )}
       <ShortcutsPanel />
-      {!mapVisible && (
-        <>
-          <PageBackground />
-          <RollingTanks spawnInitial={pathname === '/'} />
-        </>
-      )}
+      <PageBackground centered={mapVisible} />
+      {!mapVisible && <RollingTanks spawnInitial={pathname === '/'} />}
       {showPageChrome && (
         <div
           className="position-fixed top-0 end-0 m-3"

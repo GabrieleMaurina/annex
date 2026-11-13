@@ -1,5 +1,6 @@
 import { FLIP_COST } from 'engine';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { stepTroops } from '../../../common/inputs/useTroopsInput';
 import { connector } from '../../../connector';
 import { playSound } from '../../../lib/sounds';
 import type {
@@ -532,6 +533,20 @@ export function useAttackFlow({
     [maxManualTroops, blitzEnabled],
   );
 
+  const stepBlitzTroops = useCallback(
+    (delta: number, newGesture: boolean) => {
+      if (!blitzEnabled) return false;
+      const at = performance.now();
+      setAttackDiceRoll(null);
+      setAttackSelectedType('blitz');
+      setAttackBlitzTroops((prev) =>
+        stepTroops(prev, delta, 1, maxBlitzTroops, newGesture, at),
+      );
+      return true;
+    },
+    [blitzEnabled, maxBlitzTroops],
+  );
+
   if (attackEndTerritoryId === null && attackWinProbabilities !== null) {
     setAttackWinProbabilities(null);
   }
@@ -624,6 +639,7 @@ export function useAttackFlow({
     attackMoveMaxTroops,
     maxManualTroops,
     cycleAttackOption,
+    stepBlitzTroops,
     attackRevealing,
     attackDiceOnly,
     attackShowPendingConquest,

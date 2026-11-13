@@ -19,6 +19,7 @@ import type {
 } from '../../lib/types';
 import type { LogEntry } from '../logs/useGameLogs';
 import type { ReplayData } from '../replay/replay';
+import type { TurnFlash } from '../turnStart/turnStart';
 
 export interface GameMapProps {
   game: GameState;
@@ -110,4 +111,5 @@ export interface GameMapProps {
   recoloredIds?: Set<number>;
   onCycleColor?: (playerId: number) => void;
   tutorialHighlight?: number | 'cards';
+  turnFlash?: TurnFlash | null;
 }

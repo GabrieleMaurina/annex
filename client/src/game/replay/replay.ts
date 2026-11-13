@@ -32,7 +32,7 @@ export function groupSeaShips(flat: ReplaySeaShips[]): GameState['seas'] {
   return [...byPlayerBySea.entries()].map(([id, ships]) => ({ id, ships }));
 }
 
-export const REPLAY_SPEEDS = [0.5, 1, 2, 4, 8];
+export const REPLAY_SPEEDS = [0.5, 1, 2, 4, 8, 16, 32];
 const BASE_FRAME_INTERVAL_MS = 800;
 
 export type ReplayMoveUnit = 'frame' | 'turn' | 'round';

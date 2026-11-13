@@ -277,9 +277,8 @@ function killsComparator(game: Game): (a: number, b: number) => number {
 }
 
 export function computeKillsWinner(game: Game): number {
-  const candidates = game.playerIds.filter(
-    (id) => !game.surrenderedIds.has(id),
-  );
+  const active = game.playerIds.filter((id) => !game.surrenderedIds.has(id));
+  const candidates = active.length > 0 ? active : [...game.playerIds];
   return candidates.sort(killsComparator(game))[0];
 }
 

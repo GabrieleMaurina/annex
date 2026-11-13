@@ -38,6 +38,32 @@
     );
 }
 
+.page-background-centered {
+  --page-background-mask: radial-gradient(
+    ellipse at 50% 50%,
+    #000 0,
+    transparent 85%
+  );
+}
+
+.page-background-centered::before {
+  background-position: center;
+}
+
+.page-background-centered::after {
+  background:
+    radial-gradient(
+      ellipse 60% 40% at 50% 50%,
+      rgba(var(--bs-primary-rgb), 0.16),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse at 50% 50%,
+      transparent 40%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
+}
+
 .page-background-map {
   --page-background-image: url('/images/backgrounds/map.svg');
 }

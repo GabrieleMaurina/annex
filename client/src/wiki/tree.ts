@@ -249,6 +249,11 @@ export const WIKI_SECTIONS: WikiSectionInfo[] = [
         'Picture, profile text, country and password.',
       ],
       [
+        'preferred-colors',
+        'Preferred colors',
+        'How your color list works and which colors a game allows.',
+      ],
+      [
         'profiles',
         'Player profiles',
         'Every number on a profile and what it means.',

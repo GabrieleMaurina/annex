@@ -13,6 +13,7 @@ import { useLocalColors } from '../game/logic/colorOverrides';
 import { useGameLogs } from '../game/logs/useGameLogs';
 import OfflineHandoffGate from '../game/OfflineHandoffGate';
 import RotateDeviceOverlay from '../game/RotateDeviceOverlay';
+import type { TurnFlash } from '../game/turnStart/turnStart';
 import { changeMusic, playSound, setMusicMapType } from '../lib/sounds';
 import type {
   Account,
@@ -94,6 +95,7 @@ function Game({
   );
   const [storedGameId, setStoredGameId] = useState<string | null>(null);
   const [startGates, setStartGates] = useState(0);
+  const [turnFlash, setTurnFlash] = useState<TurnFlash | null>(null);
   const showMap =
     game?.state === 'playing' ||
     celebrating ||
@@ -192,7 +194,9 @@ function Game({
       const isGameStart = prevStateRef.current !== 'playing';
       prevTurnPhaseRef.current = 'deploy';
       if (!isGameStart) {
-        playSound(payload.playerId === selfId ? 'turn' : 'phase');
+        const isOwnTurn = payload.playerId === selfId;
+        playSound(isOwnTurn ? 'turn' : 'phase');
+        if (isOwnTurn) setTurnFlash({ playerId: payload.playerId });
       }
     }
     connector.on('game:turnStarted', onTurnStarted);
@@ -502,6 +506,7 @@ function Game({
           tutorialHighlight={tutorial?.highlight}
           recoloredIds={localColors.recoloredIds}
           onCycleColor={localColors.cycleColor}
+          turnFlash={turnFlash}
         />
       )}
       {!connector.isOffline() && (

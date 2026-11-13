@@ -5,6 +5,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { closeAllTips } from '../../common/tooltips/activeTip';
 import { playSound } from '../../lib/sounds';
 
 const DRAG_THRESHOLD = 4;
@@ -177,6 +178,7 @@ export function useDrag<T>() {
           return;
         active = true;
         document.body.classList.add(DRAGGING_CLASS);
+        closeAllTips();
         playSound('click');
       }
       targets = captureTargets(source);

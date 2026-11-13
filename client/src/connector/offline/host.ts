@@ -12,9 +12,14 @@ import {
 } from 'engine';
 import { checkNewAchievements } from '../../common/achievements/newAchievements';
 import { getGeneratedMapData } from '../../game/mapData';
-import { httpSend } from '../../lib/http';
+import { httpGet, httpSend } from '../../lib/http';
 import { getPlayerName, subscribePlayerName } from '../../lib/player';
-import type { EarthMapInput, ExportData, GameState } from '../../lib/types';
+import type {
+  AccountResult,
+  EarthMapInput,
+  ExportData,
+  GameState,
+} from '../../lib/types';
 import { moveToTeam } from '../../lobby/roster/teamLayout';
 import { tutorialMap } from '../../tutorials/tutorialMap';
 import type { Tutorial } from '../../tutorials/tutorials';
@@ -255,13 +260,17 @@ export function continueHandoff(): void {
   engine.requestState(currentActorId);
 }
 
+function isActiveLocal(state: GameState | null, id: number): boolean {
+  if (!localPlayerIds.includes(id)) return false;
+  const player = state?.players.find((p) => p.id === id);
+  return !player?.eliminated && !player?.surrendered;
+}
+
 function handoffTarget(state: GameState): number | undefined {
-  const alive = state.players.filter(
-    (p) => localPlayerIds.includes(p.id) && !p.eliminated && !p.surrendered,
-  );
+  const alive = state.players.filter((p) => isActiveLocal(state, p.id));
   if (alive.length === 1) return alive[0].id;
   const next = state.players[state.turnPlayerIndex]?.id;
-  return next !== undefined && localPlayerIds.includes(next) ? next : undefined;
+  return next !== undefined && isActiveLocal(state, next) ? next : undefined;
 }
 
 function handOffIfNeeded(state: GameState): boolean {
@@ -313,7 +322,7 @@ function forward(event: string) {
       if (
         (next !== currentActorId ||
           (isFirstTurn && localPlayerIds.length > 1)) &&
-        localPlayerIds.includes(next)
+        isActiveLocal(lastState, next)
       ) {
         beginHandoff(next, payload);
         return;
@@ -452,7 +461,18 @@ export function startOffline(next: Tutorial | null): void {
   } else {
     flushQueue();
     engine.requestState(hostId);
+    applyAccountColors(boundHostId, session);
   }
+}
+
+function applyAccountColors(playerId: number, forSession: number): void {
+  httpGet<AccountResult>('/account')
+    .then((res) => {
+      if (!res.ok || !engine || session !== forSession) return;
+      engine.setPreferredColorsAndRecolor(playerId, res.preferredColors);
+      engine.requestState(currentActorId ?? playerId);
+    })
+    .catch(() => {});
 }
 
 export function exportOfflineGame(): ExportData | null {
@@ -590,7 +610,7 @@ function run(event: string, data: unknown, cb?: (res: unknown) => void): void {
       cb?.(engine.pauseGame(hostId ?? id));
       return;
     case 'game:cycleBotSpeed':
-      cb?.(engine.cycleBotSpeed(hostId ?? id));
+      cb?.(engine.cycleBotSpeed(currentActorId ?? id));
       return;
     case 'game:surrender':
       cb?.(engine.surrender(id));

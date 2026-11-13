@@ -13,6 +13,7 @@ import { formatError } from '../../common/formatError';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import PreferredColorsPicker from '../../common/inputs/PreferredColorsPicker';
 import ProfilePictureEditor from '../../common/inputs/ProfilePictureEditor';
+import InstallButton from '../../common/InstallButton';
 import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
 import type { Account, AccountResult } from '../../lib/types';
@@ -130,6 +131,9 @@ function AccountPage({ account, onCountryChange }: Props) {
           <WhiteIcon path="/icons/player.svg" />
           View Profile
         </Button>
+      </div>
+      <div className="d-flex justify-content-center mb-4">
+        <InstallButton ignoreInstalledFlag />
       </div>
       <div className="d-flex flex-column flex-lg-row justify-content-center align-items-center align-items-lg-start gap-5 py-lg-5">
         <div className="d-flex flex-column gap-3">

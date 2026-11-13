@@ -713,6 +713,7 @@ export interface PlayerProfile extends CareerTotals {
   reputation: number;
   picture: string | null;
   bio: string;
+  preferredColors: number[];
 }
 
 export function listPlayers(query: PlayersQuery): Promise<PlayersPage> {
@@ -818,6 +819,7 @@ export function getPlayerProfile(
                 ).toString('base64')}`
               : null,
           bio: doc.bio,
+          preferredColors: sanitizePreferredColors(doc.preferredColors) ?? [],
         };
       });
     });

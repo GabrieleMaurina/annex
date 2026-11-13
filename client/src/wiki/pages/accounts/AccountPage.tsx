@@ -41,8 +41,10 @@ function AccountPage() {
           Drag colors into Preferred and put them in the order you want. Joining
           or creating a game gives you the first one still free; if none are
           free, you get a random color as before. Colors left under Available
-          have no preference. A change only applies after your next page
-          refresh.
+          have no preference. A change only applies after your next page refresh
+          (
+          <WikiLink to="accounts/preferred-colors" />
+          ).
         </p>
       </WikiSection>
       <WikiSection id="password" title="Password">

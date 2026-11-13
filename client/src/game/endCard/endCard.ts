@@ -26,6 +26,8 @@ const LOGO_DELAY_MS = 450;
 const LOGO_MS = 450;
 const LABEL_DELAY_MS = 700;
 const LABEL_MS = 300;
+const BRIEF_SPEED = 1.5;
+const BRIEF_HOLD_MS = 1200;
 const PULSE_START_MS = 900;
 export const END_CARD_SETTLED_MS = LABEL_DELAY_MS + LABEL_MS;
 const GAME_NAME = 'ANNEX';
@@ -95,10 +97,13 @@ export function drawEndCard(
   width: number,
   height: number,
   card: EndCard,
-  elapsed: number,
+  elapsedMs: number,
   logo: HTMLImageElement | null,
+  brief = false,
 ) {
-  const fade = 1 - progress(elapsed, END_CARD_MS, END_CARD_FADE_MS);
+  const elapsed = elapsedMs * (brief ? BRIEF_SPEED : 1);
+  const holdMs = brief ? BRIEF_HOLD_MS : END_CARD_MS;
+  const fade = 1 - progress(elapsed, holdMs, END_CARD_FADE_MS);
   if (fade <= 0) return;
 
   let fontSize = Math.round(height * 0.14);
@@ -115,7 +120,7 @@ export function drawEndCard(
   const labelSize = height * 0.05;
   const bandHeight = fontSize * 1.8;
   const logoBlock = logo ? logoSize + gap : 0;
-  const total = logoBlock + bandHeight + gap + labelSize * 1.2;
+  const total = logoBlock + bandHeight + (brief ? 0 : gap + labelSize * 1.2);
   const top = (height - total) / 2;
   const bandTop = top + logoBlock;
   const bandCenter = bandTop + bandHeight / 2;
@@ -182,7 +187,7 @@ export function drawEndCard(
   }
 
   const labelProgress = progress(elapsed, LABEL_DELAY_MS, LABEL_MS);
-  if (labelProgress > 0) {
+  if (labelProgress > 0 && !brief) {
     ctx.save();
     ctx.globalAlpha = labelProgress * fade;
     ctx.font = `bold ${labelSize}px ${CANVAS_FONT_FAMILY}`;

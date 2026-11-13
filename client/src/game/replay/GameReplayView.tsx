@@ -174,7 +174,7 @@ function GameReplayView({
         onConductChange={onConductChange}
       />
       <div
-        className={`position-fixed bottom-0 end-0 m-3 d-flex gap-2${uiHidden ? ' invisible' : ''}`}
+        className={`replay-actions position-fixed end-0 m-3 d-flex gap-2${uiHidden ? ' invisible' : ''}`}
         style={{ zIndex: 5 }}
       >
         {shareGameId && (

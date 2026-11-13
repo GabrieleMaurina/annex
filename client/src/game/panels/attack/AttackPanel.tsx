@@ -24,6 +24,7 @@ import {
   DICE_ROLL_STEPS,
   generateDiceRollSequence,
 } from '../../animations';
+import TroopSlider from '../TroopSlider';
 import { attackOptionStyle, formatProbability } from './attackOptionStyle';
 
 export type AttackType = 'manual' | 'blitz';
@@ -281,22 +282,30 @@ function AttackPanel({
       }}
     >
       {diceOnly ? null : pendingConquest ? (
-        <div
-          className="d-flex align-items-center gap-2"
-          style={{ whiteSpace: 'nowrap' }}
-        >
-          <span>Move troops:</span>
-          <NumberOdometer {...moveTroopsInput} style={{ minWidth: 70 }} />
-          <Button
-            className="d-inline-flex align-items-center justify-content-center gap-1"
-            size="sm"
-            onClick={onConfirmMove}
+        <>
+          <div
+            className="d-flex align-items-center gap-2"
+            style={{ whiteSpace: 'nowrap' }}
           >
-            <WhiteIcon path="/icons/check.svg" />
-            Move
-          </Button>
-          <PercentageToggle max={moveMaxTroops} />
-        </div>
+            <span>Move troops:</span>
+            <NumberOdometer {...moveTroopsInput} style={{ minWidth: 70 }} />
+            <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              size="sm"
+              onClick={onConfirmMove}
+            >
+              <WhiteIcon path="/icons/check.svg" />
+              Move
+            </Button>
+            <PercentageToggle max={moveMaxTroops} />
+          </div>
+          <TroopSlider
+            min={moveTroopsInput.min}
+            max={moveTroopsInput.max}
+            value={moveTroopsInput.value}
+            onChange={moveTroopsInput.onChange}
+          />
+        </>
       ) : (
         <div
           className="d-flex flex-wrap align-items-center gap-2"
@@ -353,6 +362,14 @@ function AttackPanel({
           </Button>
           {blitzEnabled && <PercentageToggle max={maxBlitzTroops} />}
         </div>
+      )}
+      {!diceOnly && !pendingConquest && blitzEnabled && (
+        <TroopSlider
+          min={blitzTroopsInput.min}
+          max={blitzTroopsInput.max}
+          value={blitzTroopsInput.value}
+          onChange={blitzTroopsInput.onChange}
+        />
       )}
       {diceRoll && (
         <DiceRollDisplay

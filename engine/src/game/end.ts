@@ -88,10 +88,13 @@ export function endAbandonedGame(game: Game): void {
 
 function soleSurvivorWinnerIds(game: Game, winner: number): number[] {
   if (game.gameMode === 'team deathmatch') {
-    return game.playerIds.filter(
-      (id) =>
-        (game.playerTeams.get(id) ?? 0) ===
-          (game.playerTeams.get(winner) ?? 0) && !game.surrenderedIds.has(id),
+    return withoutSurrendered(
+      game,
+      game.playerIds.filter(
+        (id) =>
+          (game.playerTeams.get(id) ?? 0) ===
+          (game.playerTeams.get(winner) ?? 0),
+      ),
     );
   }
   if (game.gameMode === 'player kills' || game.gameMode === 'troop kills') {
@@ -319,5 +322,10 @@ function checkNonTerritoryPhaseWinner(game: Game): number[] | null {
     winnerIds = owners;
   }
 
-  return winnerIds.filter((id) => !game.surrenderedIds.has(id));
+  return withoutSurrendered(game, winnerIds);
+}
+
+function withoutSurrendered(game: Game, ids: number[]): number[] {
+  const remaining = ids.filter((id) => !game.surrenderedIds.has(id));
+  return remaining.length > 0 ? remaining : ids;
 }

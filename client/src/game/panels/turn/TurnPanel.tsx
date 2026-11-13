@@ -1,11 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
-import { useWhiteIcon } from '../../common/icon';
-import WhiteIcon from '../../common/icons/WhiteIcon';
-import Tip from '../../common/tooltips/Tip';
-import { connector } from '../../connector';
-import { contrastTextColor } from '../../lib/palette';
-import type { TurnPhase } from '../../lib/types';
+import { useWhiteIcon } from '../../../common/icon';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
+import Tip from '../../../common/tooltips/Tip';
+import { connector } from '../../../connector';
+import { contrastTextColor } from '../../../lib/palette';
+import type { TurnPhase } from '../../../lib/types';
 
 const SPARK_BASE_ANGLES = [-50, -35, -20, -7, 7, 20, 35, 50];
 const SPARK_ANGLE_JITTER = 7;

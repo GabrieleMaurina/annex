@@ -1,7 +1,8 @@
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
-import { useId } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import type { OverlayTriggerProps } from 'react-bootstrap';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { clearActiveTip, closeAllTips, setActiveTip } from './activeTip';
 
 type Placement = NonNullable<OverlayTriggerProps['placement']>;
 type Trigger = OverlayTriggerProps['trigger'];
@@ -24,10 +25,35 @@ function Tip({
   children,
 }: Props) {
   const id = useId();
+  const [show, setShow] = useState(false);
+
+  const close = useCallback(() => setShow(false), []);
+
+  useEffect(
+    () => () => {
+      clearActiveTip(close);
+    },
+    [close],
+  );
+
+  function toggle(next: boolean) {
+    if (!next) {
+      setShow(false);
+      clearActiveTip(close);
+      return;
+    }
+    if (document.body.classList.contains('dnd-dragging')) return;
+    closeAllTips();
+    setActiveTip(close);
+    setShow(true);
+  }
+
   return (
     <OverlayTrigger
       placement={placement}
       trigger={trigger}
+      show={show}
+      onToggle={toggle}
       popperConfig={popperConfig}
       delay={{ show: 0, hide: 0 }}
       overlay={

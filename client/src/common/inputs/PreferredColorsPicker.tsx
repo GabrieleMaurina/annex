@@ -30,9 +30,11 @@ function slotsOf(list: number[], gapAt: number | null) {
 function PreferredColorsPicker({
   value,
   onChange,
+  readOnly,
 }: {
   value: number[];
-  onChange: (colors: number[]) => void;
+  onChange?: (colors: number[]) => void;
+  readOnly?: boolean;
 }) {
   const [preferred, setPreferred] = useState(value);
   const { drag, start, snapshot, register } = useDrag<number>();
@@ -40,7 +42,7 @@ function PreferredColorsPicker({
   function commit(next: number[]) {
     if (next.join() === preferred.join()) return;
     setPreferred(next);
-    onChange(next);
+    onChange?.(next);
   }
 
   function dropColor(color: number, hit: DropHit | null) {
@@ -143,6 +145,18 @@ function PreferredColorsPicker({
           {chip(color, rank)}
         </button>
       </Tip>
+    );
+  }
+
+  if (readOnly) {
+    return (
+      <div className="d-flex flex-wrap gap-2">
+        {value.map((color, position) => (
+          <Tip key={color} text={PLAYER_COLOR_NAMES[color]}>
+            <span>{chip(color, position + 1)}</span>
+          </Tip>
+        ))}
+      </div>
     );
   }
 

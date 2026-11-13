@@ -12,3 +12,13 @@
     var(--ui-shine),
     0 4px 0 var(--ui-lip);
 }
+
+.replay-actions {
+  bottom: 0;
+}
+
+@media (max-width: 1500px) {
+  .replay-actions {
+    bottom: 4.5rem;
+  }
+}

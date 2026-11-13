@@ -9,6 +9,7 @@ import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
 import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
 import NumberOdometer from '../../../ui/forms/NumberOdometer';
+import TroopSlider from '../TroopSlider';
 import { attackOptionStyle, formatProbability } from './attackOptionStyle';
 import { DiceRollDisplay, type AttackType, type DiceRoll } from './AttackPanel';
 
@@ -93,6 +94,11 @@ function AttackSeaPanel({
     },
     inputRef: blitzInputRef,
   });
+
+  const sliderInput =
+    selectedType === 'blitz' && blitzEnabled
+      ? blitzShipsInput
+      : manualShipsInput;
 
   return (
     <div
@@ -180,6 +186,14 @@ function AttackSeaPanel({
           </Button>
           {blitzEnabled && <PercentageToggle max={maxBlitzShips} />}
         </div>
+      )}
+      {!diceOnly && defenderId !== null && (
+        <TroopSlider
+          min={sliderInput.min}
+          max={sliderInput.max}
+          value={sliderInput.value}
+          onChange={sliderInput.onChange}
+        />
       )}
       {diceRoll && (
         <DiceRollDisplay

@@ -137,6 +137,7 @@ let radiationActive = false;
 let fogActive = false;
 let timedLinksActive = false;
 let endCardActive = false;
+let turnStartActive = false;
 const toggleListeners = new Set<() => void>();
 
 export function getAnimations(): readonly Animation[] {
@@ -317,6 +318,10 @@ export function setEndCardActive(active: boolean) {
   endCardActive = active;
 }
 
+export function setTurnStartActive(active: boolean) {
+  turnStartActive = active;
+}
+
 export function hasActiveAnimations(): boolean {
   if (animations.length > 0) return true;
   if (disabled) return false;
@@ -329,7 +334,8 @@ export function hasActiveAnimations(): boolean {
     radiationActive ||
     fogActive ||
     timedLinksActive ||
-    endCardActive
+    endCardActive ||
+    turnStartActive
   );
 }
 

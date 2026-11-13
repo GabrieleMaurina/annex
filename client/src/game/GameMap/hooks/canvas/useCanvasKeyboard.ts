@@ -112,6 +112,7 @@ export function useCanvasKeyboard({
   flipVertexId,
   setAttackMoveTroops,
   cycleAttackOption,
+  stepBlitzTroops,
   submitAttackMove,
   cancelAttack,
   submitAttack,
@@ -575,6 +576,13 @@ export function useCanvasKeyboard({
         !attackShowPendingConquest &&
         !attackDiceOnly
       ) {
+        if (
+          stepBlitzTroops(
+            wheelDirection(e) * modifierStep(e),
+            isNewWheelGesture(),
+          )
+        )
+          return;
         playSound('click');
         cycleAttackOption(e.deltaY < 0 ? -1 : 1);
         return;
@@ -593,6 +601,7 @@ export function useCanvasKeyboard({
     attackShowPendingConquest,
     attackDiceOnly,
     cycleAttackOption,
+    stepBlitzTroops,
     zoomAround,
   ]);
 }

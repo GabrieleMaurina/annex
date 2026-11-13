@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button, Dropdown, Form, Modal } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import { CountBadge } from '../../common/inputs/filterControls';
 import Help from '../../common/tooltips/Help';
 import Tip from '../../common/tooltips/Tip';
@@ -126,8 +127,6 @@ function SettingsPanel({
   useToggleSound(mapViewOpen);
   const [seedCopied, setSeedCopied] = useState(false);
   const mapGenRef = useRef<MapGenerationModalHandle>(null);
-  const whiteMapIcon = useWhiteIcon('/icons/map.svg');
-  const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const whiteFullscreenIcon = useWhiteIcon('/icons/fullscreen.svg');
 
   useEffect(() => {
@@ -268,38 +267,48 @@ function SettingsPanel({
     </div>
   );
 
-  function settingsAction(label: ReactNode, onClick: () => void) {
+  function settingsAction(label: ReactNode, tip: string, onClick: () => void) {
     return (
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onClick();
-        }}
-      >
-        {label}
-      </Button>
+      <Tip text={tip}>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClick();
+          }}
+        >
+          {label}
+        </Button>
+      </Tip>
     );
   }
 
   const settingsActions = isHost && (
     <>
-      {settingsAction('Reset', () =>
-        applySettings({
-          ...DEFAULT_GAME_SETTINGS,
-          ...(connector.isOffline() ? { anonymous: undefined } : {}),
-          ...((account?.reputation ?? 0) < DEFAULT_MIN_REPUTATION
-            ? { minReputation: MIN_REPUTATION }
-            : {}),
-        }),
+      {settingsAction(
+        <>
+          <WhiteIcon path="/icons/restart.svg" />
+          Reset
+        </>,
+        'Restore the default settings',
+        () =>
+          applySettings({
+            ...DEFAULT_GAME_SETTINGS,
+            ...(connector.isOffline() ? { anonymous: undefined } : {}),
+            ...((account?.reputation ?? 0) < DEFAULT_MIN_REPUTATION
+              ? { minReputation: MIN_REPUTATION }
+              : {}),
+          }),
       )}
       {settingsAction(
         <>
-          <SpinningGears className="me-1" />
+          <SpinningGears />
           Randomize
         </>,
+        'Randomize the game settings',
         () => applySettings(randomGameSettings()),
       )}
     </>
@@ -345,10 +354,12 @@ function SettingsPanel({
               </div>
               {mapRegenerating && (
                 <Button
+                  className="d-inline-flex align-items-center justify-content-center gap-1"
                   size="sm"
                   variant="secondary"
                   onClick={() => cancelMapLoad()}
                 >
+                  <WhiteIcon path="/icons/close.svg" />
                   Cancel
                 </Button>
               )}
@@ -402,12 +413,7 @@ function SettingsPanel({
                     className="selector-option text-nowrap"
                     style={{ '--selector-row': 0 } as CSSProperties}
                   >
-                    <img
-                      src={whiteMapIcon ?? '/icons/map.svg'}
-                      width={20}
-                      height={20}
-                      alt=""
-                    />
+                    <SpinningGears />
                     Generate
                   </Dropdown.Item>
                   {selectEarthMap && (
@@ -417,12 +423,7 @@ function SettingsPanel({
                       className="selector-option text-nowrap"
                       style={{ '--selector-row': 1 } as CSSProperties}
                     >
-                      <img
-                        src={whiteGlobeIcon ?? '/icons/globe.svg'}
-                        width={20}
-                        height={20}
-                        alt=""
-                      />
+                      <WhiteIcon path="/icons/globe.svg" size={20} />
                       Earth
                     </Dropdown.Item>
                   )}
@@ -436,12 +437,7 @@ function SettingsPanel({
                       } as CSSProperties
                     }
                   >
-                    <img
-                      src={whiteMapIcon ?? '/icons/map.svg'}
-                      width={20}
-                      height={20}
-                      alt=""
-                    />
+                    <WhiteIcon path="/icons/map.svg" size={20} />
                     Choose from library
                   </Dropdown.Item>
                 </Dropdown.Menu>

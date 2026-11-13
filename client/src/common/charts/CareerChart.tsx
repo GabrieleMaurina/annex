@@ -92,6 +92,7 @@ function CareerChart({ history, includeElo }: Props) {
             key={stat.label}
             size="sm"
             variant={stat.label === selected.label ? 'primary' : 'secondary'}
+            aria-pressed={stat.label === selected.label}
             onClick={() => setSelected(stat)}
           >
             {stat.label}

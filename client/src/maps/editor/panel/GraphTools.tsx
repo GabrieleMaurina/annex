@@ -20,7 +20,7 @@ const GRAPH_TOOLS: {
   {
     key: 'timed',
     label: 'Timed',
-    icon: '/icons/hourglass.svg',
+    icon: '/icons/stopwatch.svg',
     help: 'Click two land territories to add or remove a timed link. Select a link to edit its schedule.',
   },
   {

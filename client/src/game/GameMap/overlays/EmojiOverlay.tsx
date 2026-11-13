@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import { isPlayerMuted, toggleMutePlayer } from '../../../common/mutedPlayers';
 import Tip from '../../../common/tooltips/Tip';
 import { contrastTextColor } from '../../../lib/palette';
@@ -153,7 +154,11 @@ export default function EmojiOverlay({
                   navigate(`/players/${encodeURIComponent(pickerPlayer.name)}`)
                 }
               >
-                🧑
+                <WhiteIcon
+                  path="/icons/player.svg"
+                  size={20}
+                  alt="View profile"
+                />
               </button>
             </Tip>
           )}

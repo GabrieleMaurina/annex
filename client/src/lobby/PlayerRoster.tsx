@@ -65,7 +65,7 @@ function PlayerRoster(roster: RosterProps) {
       )}
       {!connector.isOffline() && game.players.some((p) => p.id === selfId) && (
         <div className="d-flex justify-content-start mt-1">
-          <Tip text="Everyone" placement="bottom">
+          <Tip text="Send an emoji to everyone" placement="bottom">
             <Button
               variant="secondary"
               size="sm"

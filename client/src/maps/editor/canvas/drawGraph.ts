@@ -64,7 +64,7 @@ interface DrawGraphParams {
 const GHOST_ALPHA = 0.5;
 const GHOST_ICON_RATIO = 1.4;
 const TOOL_ICONS: Partial<Record<LinkMode, HTMLImageElement>> = {
-  timed: iconImage('/icons/hourglass.svg'),
+  timed: iconImage('/icons/stopwatch.svg'),
   directional: iconImage('/icons/directional.svg'),
 };
 

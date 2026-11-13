@@ -13,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import { formatError } from '../../common/formatError';
+import WhiteIcon from '../../common/icons/WhiteIcon';
+import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import type {
   Account,
@@ -41,13 +43,15 @@ function PersonRow({
     <ListGroup.Item className="d-flex align-items-center gap-2">
       <RankIcon elo={person.elo} size={24} />
       <Flag country={person.country} />
-      <Button
-        variant="link"
-        className="p-0 text-decoration-none flex-grow-1 text-start"
-        onClick={onOpen}
-      >
-        {person.username}
-      </Button>
+      <Tip text="Open profile">
+        <Button
+          variant="outline-secondary"
+          className="flex-grow-1 text-start"
+          onClick={onOpen}
+        >
+          {person.username}
+        </Button>
+      </Tip>
       {children}
     </ListGroup.Item>
   );
@@ -129,13 +133,15 @@ function Friends({ account }: Props) {
                 key={r.id}
                 className="d-flex align-items-center gap-2"
               >
-                <Button
-                  variant="link"
-                  className="p-0 text-decoration-none flex-grow-1 text-start"
-                  onClick={() => open(r.username)}
-                >
-                  {r.username}
-                </Button>
+                <Tip text="Open profile">
+                  <Button
+                    variant="outline-secondary"
+                    className="flex-grow-1 text-start"
+                    onClick={() => open(r.username)}
+                  >
+                    {r.username}
+                  </Button>
+                </Tip>
                 {relationship.has(r.id) ? (
                   <span className="small text-muted">
                     {relationship.get(r.id)}
@@ -144,6 +150,7 @@ function Friends({ account }: Props) {
                   <Button
                     size="sm"
                     variant="success"
+                    className="d-inline-flex align-items-center justify-content-center gap-1"
                     onClick={() =>
                       run(
                         connector.sendFriendRequest,
@@ -152,6 +159,7 @@ function Friends({ account }: Props) {
                       )
                     }
                   >
+                    <WhiteIcon path="/icons/friend-add.svg" />
                     Add friend
                   </Button>
                 )}
@@ -176,6 +184,7 @@ function Friends({ account }: Props) {
                   <Button
                     size="sm"
                     variant="success"
+                    className="d-inline-flex align-items-center justify-content-center gap-1"
                     onClick={() =>
                       run(
                         connector.acceptFriendRequest,
@@ -184,11 +193,13 @@ function Friends({ account }: Props) {
                       )
                     }
                   >
+                    <WhiteIcon path="/icons/friend-accept.svg" />
                     Accept
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="d-inline-flex align-items-center justify-content-center gap-1"
                     onClick={() =>
                       run(
                         connector.removeFriend,
@@ -197,6 +208,7 @@ function Friends({ account }: Props) {
                       )
                     }
                   >
+                    <WhiteIcon path="/icons/friend-remove.svg" />
                     Reject
                   </Button>
                 </PersonRow>
@@ -220,6 +232,7 @@ function Friends({ account }: Props) {
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="d-inline-flex align-items-center justify-content-center gap-1"
                     onClick={() =>
                       run(
                         connector.removeFriend,
@@ -228,6 +241,7 @@ function Friends({ account }: Props) {
                       )
                     }
                   >
+                    <WhiteIcon path="/icons/friend-remove.svg" />
                     Cancel
                   </Button>
                 </PersonRow>
@@ -251,10 +265,12 @@ function Friends({ account }: Props) {
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="d-inline-flex align-items-center justify-content-center gap-1"
                     onClick={() =>
                       run(connector.removeFriend, person.id, 'Friend removed.')
                     }
                   >
+                    <WhiteIcon path="/icons/friend-remove.svg" />
                     Remove
                   </Button>
                 </PersonRow>
@@ -278,10 +294,12 @@ function Friends({ account }: Props) {
                   <Button
                     size="sm"
                     variant="danger"
+                    className="d-inline-flex align-items-center justify-content-center gap-1"
                     onClick={() =>
                       run(connector.unblockUser, person.id, 'Player unblocked.')
                     }
                   >
+                    <WhiteIcon path="/icons/block.svg" />
                     Unblock
                   </Button>
                 </PersonRow>

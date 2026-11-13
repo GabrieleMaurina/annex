@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
+import WhiteIcon from '../icons/WhiteIcon';
 
 const STAGE = 320;
 const WINDOW = 200;
@@ -211,10 +212,20 @@ function ImageCropper({ file, onCancel, onCropped }: Props) {
         />
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={onCancel}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          variant="secondary"
+          onClick={onCancel}
+        >
+          <WhiteIcon path="/icons/close.svg" />
           Cancel
         </Button>
-        <Button onClick={save} disabled={!image}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          onClick={save}
+          disabled={!image}
+        >
+          <WhiteIcon path="/icons/check.svg" />
           Save
         </Button>
       </Modal.Footer>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Form, ListGroup } from 'react-bootstrap';
 import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
+import Tip from '../tooltips/Tip';
 
 export interface SearchSelectItem {
   id: string;
@@ -106,13 +107,15 @@ function SearchMultiSelect({
               className="d-inline-flex align-items-center gap-1"
             >
               {item.label}
-              <button
-                type="button"
-                className="btn-close btn-close-white"
-                style={{ fontSize: '0.55em' }}
-                aria-label="Remove"
-                onClick={() => remove(item.id)}
-              />
+              <Tip text={`Remove ${item.label}`}>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  style={{ fontSize: '0.55em' }}
+                  aria-label="Remove"
+                  onClick={() => remove(item.id)}
+                />
+              </Tip>
             </Badge>
           ))}
         </div>

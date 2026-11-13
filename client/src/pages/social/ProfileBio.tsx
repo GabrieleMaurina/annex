@@ -2,6 +2,7 @@ import { containsProfanity } from 'engine';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { formatError } from '../../common/formatError';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import { connector } from '../../connector';
 
 const MAX_LENGTH = 200;
@@ -67,14 +68,22 @@ function ProfileBio({ bio, editable, onContextMenu }: Props) {
             {draft.length}/{MAX_LENGTH}
           </span>
           <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
             size="sm"
             variant="secondary"
             disabled={saving}
             onClick={() => setDraft(null)}
           >
+            <WhiteIcon path="/icons/close.svg" />
             Cancel
           </Button>
-          <Button size="sm" type="submit" disabled={saving}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            size="sm"
+            type="submit"
+            disabled={saving}
+          >
+            <WhiteIcon path="/icons/check.svg" />
             Save
           </Button>
         </div>
@@ -99,12 +108,13 @@ function ProfileBio({ bio, editable, onContextMenu }: Props) {
         <Button
           size="sm"
           variant="secondary"
-          className="flex-shrink-0"
+          className="flex-shrink-0 d-inline-flex align-items-center justify-content-center gap-1"
           onClick={() => {
             setError('');
             setDraft(text);
           }}
         >
+          <WhiteIcon path={text ? '/icons/pencil.svg' : '/icons/plus.svg'} />
           {text ? 'Edit' : 'Add profile text'}
         </Button>
       )}

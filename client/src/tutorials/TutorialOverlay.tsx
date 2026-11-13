@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import { connector } from '../connector';
 import { playSound } from '../lib/sounds';
 import type { Account } from '../lib/types';
@@ -65,9 +66,10 @@ function TutorialOverlay({ tutorial, account, navigate }: Props) {
           <Button
             variant="secondary"
             size="sm"
-            className="text-nowrap"
+            className="text-nowrap d-inline-flex align-items-center justify-content-center gap-1"
             onClick={() => navigate('/tutorials')}
           >
+            <WhiteIcon path="/icons/exit.svg" />
             Exit tutorial
           </Button>
         </div>
@@ -84,14 +86,28 @@ function TutorialOverlay({ tutorial, account, navigate }: Props) {
           </p>
         </Modal.Body>
         <Modal.Footer className="justify-content-center">
-          <Button variant="secondary" onClick={() => navigate('/tutorials')}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            variant="secondary"
+            onClick={() => navigate('/tutorials')}
+          >
+            <WhiteIcon path="/icons/book.svg" />
             Tutorials
           </Button>
-          <Button variant="secondary" onClick={() => navigate('/')}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            variant="secondary"
+            onClick={() => navigate('/')}
+          >
+            <WhiteIcon path="/icons/globe.svg" />
             Home
           </Button>
           {next && (
-            <Button onClick={() => navigate(`/tutorials/${next.id}`)}>
+            <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              onClick={() => navigate(`/tutorials/${next.id}`)}
+            >
+              <WhiteIcon path="/icons/skip-forward.svg" />
               Next: {TUTORIALS.indexOf(next) + 1}. {next.title}
             </Button>
           )}

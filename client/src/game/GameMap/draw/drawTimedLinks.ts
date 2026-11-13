@@ -22,7 +22,7 @@ import type { DirectionalLink } from '../hooks/view/useDirectionalConnections';
 import type { TimedLink } from '../hooks/view/useTimedConnections';
 import type { SwitchedLinkSpot } from './drawSwitches';
 
-const HOURGLASS_SRC = '/icons/hourglass.svg';
+const HOURGLASS_SRC = '/icons/stopwatch.svg';
 const ICON_RADII = 1;
 const SIDE_OFFSET_RADII = 1.1;
 const COUNT_FONT_RADII = 1.1;

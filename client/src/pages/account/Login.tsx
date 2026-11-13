@@ -4,6 +4,7 @@ import { Alert, Button, Container, Form, InputGroup } from 'react-bootstrap';
 import { guessCountry } from '../../common/badges/countries';
 import CountrySelect from '../../common/badges/CountrySelect';
 import { formatError } from '../../common/formatError';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
 import { getPlayerName } from '../../lib/player';
@@ -163,15 +164,22 @@ function Login({ account, onSessionChange, navigate }: Props) {
                 {formatError(error)}
               </Alert>
             )}
-            <Button variant="secondary" size="sm" onClick={handleLogout}>
+            <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              variant="secondary"
+              size="sm"
+              onClick={handleLogout}
+            >
+              <WhiteIcon path="/icons/logout.svg" />
               Log out
             </Button>
             <Button
-              variant="link"
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              variant="outline-secondary"
               size="sm"
-              className="p-0 text-decoration-none text-start"
               onClick={() => navigate('/')}
             >
+              <WhiteIcon path="/icons/step-back.svg" />
               Back to Annex
             </Button>
           </div>
@@ -179,11 +187,12 @@ function Login({ account, onSessionChange, navigate }: Props) {
           <>
             <p className="mb-2 small">{info}</p>
             <Button
-              variant="link"
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              variant="outline-secondary"
               size="sm"
-              className="p-0 text-decoration-none"
               onClick={() => goto('login')}
             >
+              <WhiteIcon path="/icons/step-back.svg" />
               Back to log in
             </Button>
           </>
@@ -223,10 +232,16 @@ function Login({ account, onSessionChange, navigate }: Props) {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <Button
+                    className="d-inline-flex align-items-center justify-content-center gap-1"
                     variant="secondary"
                     tabIndex={-1}
                     onClick={() => setRevealPassword((v) => !v)}
                   >
+                    <WhiteIcon
+                      path={
+                        revealPassword ? '/icons/eye-off.svg' : '/icons/eye.svg'
+                      }
+                    />
                     {revealPassword ? 'Hide' : 'Show'}
                   </Button>
                 </InputGroup>
@@ -260,27 +275,39 @@ function Login({ account, onSessionChange, navigate }: Props) {
                 {formatError(error)}
               </Alert>
             )}
-            <Button type="submit" size="sm" disabled={busy}>
+            <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              type="submit"
+              size="sm"
+              disabled={busy}
+            >
+              <WhiteIcon
+                path={
+                  mode === 'login' ? '/icons/login.svg' : '/icons/check.svg'
+                }
+              />
               {submitLabel[mode]}
             </Button>
 
             {mode === 'login' && (
-              <div className="d-flex flex-column">
+              <div className="d-flex flex-column gap-2">
                 <Button
-                  variant="link"
+                  className="d-inline-flex align-items-center justify-content-center gap-1"
+                  variant="outline-secondary"
                   size="sm"
-                  className="p-0 text-decoration-none text-start"
                   onClick={() => goto('register')}
                 >
+                  <WhiteIcon path="/icons/friend-add.svg" />
                   Create an account
                 </Button>
                 {loginFailed && (
                   <Button
-                    variant="link"
+                    className="d-inline-flex align-items-center justify-content-center gap-1"
+                    variant="outline-secondary"
                     size="sm"
-                    className="p-0 text-decoration-none text-start"
                     onClick={() => goto('forgotPassword')}
                   >
+                    <WhiteIcon path="/icons/help.svg" />
                     Forgot password?
                   </Button>
                 )}
@@ -288,11 +315,12 @@ function Login({ account, onSessionChange, navigate }: Props) {
             )}
             {mode !== 'login' && (
               <Button
-                variant="link"
+                className="d-inline-flex align-items-center justify-content-center gap-1"
+                variant="outline-secondary"
                 size="sm"
-                className="p-0 text-decoration-none text-start"
                 onClick={() => goto('login')}
               >
+                <WhiteIcon path="/icons/step-back.svg" />
                 Back to log in
               </Button>
             )}

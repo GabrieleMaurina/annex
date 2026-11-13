@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import {
   Field,
   FilterDetails,
@@ -9,6 +10,7 @@ import {
 } from '../common/inputs/filterControls';
 import type { SearchSelectItem } from '../common/inputs/SearchMultiSelect';
 import PagePanel from '../common/page/PagePanel';
+import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import {
   getHomeFilters,
@@ -546,12 +548,16 @@ function Home({
 
       {resumeGame && (
         <div className="text-center mb-4">
-          <Button
-            variant="success"
-            onClick={() => navigate(gamePath(resumeGame))}
-          >
-            Resume {resumeGame}
-          </Button>
+          <Tip text="Return to your game in progress">
+            <Button
+              variant="success"
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              onClick={() => navigate(gamePath(resumeGame))}
+            >
+              <WhiteIcon path="/icons/play.svg" />
+              Resume {resumeGame}
+            </Button>
+          </Tip>
         </div>
       )}
 

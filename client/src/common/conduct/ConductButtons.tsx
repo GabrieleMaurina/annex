@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { connector } from '../../connector';
+import ButtonRows from '../../ui/buttons/ButtonRows';
 import WhiteIcon from '../icons/WhiteIcon';
 import Tip from '../tooltips/Tip';
+import TipSpan from '../tooltips/TipSpan';
 import type { FriendState } from './friendState';
 
-const ICON_BUTTON = 'd-inline-flex align-items-center gap-1';
+const ICON_BUTTON =
+  'd-inline-flex align-items-center justify-content-center gap-1';
 
 interface Props {
   userId: string | null;
@@ -62,17 +65,19 @@ function ConductButtons({
   }
 
   return (
-    <div className="d-flex flex-wrap gap-1">
+    <ButtonRows>
       {showFriend && friendState === 'none' && (
-        <Button
-          size="sm"
-          variant="success"
-          className={ICON_BUTTON}
-          onClick={() => onFriendAction(connector.sendFriendRequest)}
-        >
-          <WhiteIcon path="/icons/friend-add.svg" />
-          Add friend
-        </Button>
+        <Tip text={`Send a friend request to ${username}`}>
+          <Button
+            size="sm"
+            variant="success"
+            className={ICON_BUTTON}
+            onClick={() => onFriendAction(connector.sendFriendRequest)}
+          >
+            <WhiteIcon path="/icons/friend-add.svg" />
+            Add friend
+          </Button>
+        </Tip>
       )}
       {showFriend && friendState === 'outgoing' && (
         <Tip text="Request sent">
@@ -114,53 +119,67 @@ function ConductButtons({
         </Tip>
       )}
       {showFriend && (
-        <Button
-          size="sm"
-          className={ICON_BUTTON}
-          onClick={() =>
-            navigate(`/messages?to=${encodeURIComponent(username)}`)
-          }
-        >
-          <WhiteIcon path="/icons/message.svg" />
-          Send message
-        </Button>
+        <Tip text="Open a private conversation">
+          <Button
+            size="sm"
+            className={ICON_BUTTON}
+            onClick={() =>
+              navigate(`/messages?to=${encodeURIComponent(username)}`)
+            }
+          >
+            <WhiteIcon path="/icons/message.svg" />
+            Send message
+          </Button>
+        </Tip>
       )}
       {userId !== null && !blocked && online && (
-        <Button
-          size="sm"
-          variant="info"
-          className={ICON_BUTTON}
-          disabled={watching}
-          onClick={() => watch(userId)}
-        >
-          <WhiteIcon path="/icons/binoculars.svg" />
-          Watch
-        </Button>
+        <TipSpan className="d-grid" text="Spectate the game this player is in">
+          <Button
+            size="sm"
+            variant="info"
+            className={ICON_BUTTON}
+            disabled={watching}
+            onClick={() => watch(userId)}
+          >
+            <WhiteIcon path="/icons/binoculars.svg" />
+            Watch
+          </Button>
+        </TipSpan>
       )}
       {onReport && (
-        <Button
-          size="sm"
-          variant="danger"
-          className={ICON_BUTTON}
-          disabled={reported}
-          onClick={onReport}
-        >
-          <WhiteIcon path="/icons/report.svg" />
-          {reported ? 'Reported' : 'Report'}
-        </Button>
+        <TipSpan className="d-grid" text="Report this player for bad conduct">
+          <Button
+            size="sm"
+            variant="danger"
+            className={ICON_BUTTON}
+            disabled={reported}
+            onClick={onReport}
+          >
+            <WhiteIcon path="/icons/report.svg" />
+            {reported ? 'Reported' : 'Report'}
+          </Button>
+        </TipSpan>
       )}
       {onToggleBlock && (
-        <Button
-          size="sm"
-          variant="danger"
-          className={ICON_BUTTON}
-          onClick={onToggleBlock}
+        <Tip
+          text={
+            blocked
+              ? 'Stop blocking this player'
+              : 'Block this player: you will never be put in the same game, they are removed from your friends, and their chat and emoji are hidden'
+          }
         >
-          <WhiteIcon path="/icons/block.svg" />
-          {blocked ? 'Unblock' : 'Block'}
-        </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            className={ICON_BUTTON}
+            onClick={onToggleBlock}
+          >
+            <WhiteIcon path="/icons/block.svg" />
+            {blocked ? 'Unblock' : 'Block'}
+          </Button>
+        </Tip>
       )}
-    </div>
+    </ButtonRows>
   );
 }
 

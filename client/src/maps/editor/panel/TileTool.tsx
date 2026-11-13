@@ -1,5 +1,6 @@
 import { tileShapeLabel, tileVariants } from 'engine';
 import { Button, ButtonGroup, Dropdown } from 'react-bootstrap';
+import Tip from '../../../common/tooltips/Tip';
 import type { PaintTool } from '../paint/paintTools';
 import { TILE_KINDS, type TileKind } from '../tiles/editorTiles';
 
@@ -39,18 +40,22 @@ function TileTool({ tool, setTool, kind, setKind }: Props) {
         setTool('tiles');
       }}
     >
-      <Button
-        size="sm"
-        variant={variant}
-        className="d-flex flex-grow-1 align-items-center justify-content-center gap-1"
-        onClick={() => setTool(active ? null : 'tiles')}
-      >
-        <TileIcon kind={kind} />
-        Tiles
-      </Button>
-      <Dropdown.Toggle size="sm" variant={variant} split>
-        <span className="visually-hidden">Choose tile</span>
-      </Dropdown.Toggle>
+      <Tip text="Place tile shapes">
+        <Button
+          size="sm"
+          variant={variant}
+          className="d-flex flex-grow-1 align-items-center justify-content-center gap-1"
+          onClick={() => setTool(active ? null : 'tiles')}
+        >
+          <TileIcon kind={kind} />
+          Tiles
+        </Button>
+      </Tip>
+      <Tip text="Choose tile">
+        <Dropdown.Toggle size="sm" variant={variant} split>
+          <span className="visually-hidden">Choose tile</span>
+        </Dropdown.Toggle>
+      </Tip>
       <Dropdown.Menu>
         {TILE_KINDS.map((k) => (
           <Dropdown.Item

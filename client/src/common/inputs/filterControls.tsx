@@ -5,6 +5,7 @@ import { playSound } from '../../lib/sounds';
 import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
 import NumberOdometer from '../../ui/forms/NumberOdometer';
 import Selector from '../../ui/forms/Selector';
+import WhiteIcon from '../icons/WhiteIcon';
 import Help from '../tooltips/Help';
 import Tip from '../tooltips/Tip';
 import { useNumberInput } from './useNumberInput';
@@ -190,13 +191,14 @@ export function FilterDetails({
           <Button
             size="sm"
             variant="secondary"
-            className="position-absolute top-50 end-0 translate-middle-y me-2"
+            className="position-absolute top-50 end-0 translate-middle-y me-2 d-inline-flex align-items-center justify-content-center gap-1"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               onClear();
             }}
           >
+            <WhiteIcon path="/icons/close.svg" />
             Clear filters
           </Button>
         )}
@@ -224,9 +226,11 @@ export function ListPager({
       <Button
         size="sm"
         variant="secondary"
+        className="d-inline-flex align-items-center justify-content-center gap-1"
         disabled={page <= 1}
         onClick={() => onChange(Math.max(1, page - 1))}
       >
+        <WhiteIcon path="/icons/step-back.svg" />
         Prev
       </Button>
       <span className="small text-muted">
@@ -235,10 +239,12 @@ export function ListPager({
       <Button
         size="sm"
         variant="secondary"
+        className="d-inline-flex align-items-center justify-content-center gap-1"
         disabled={page >= totalPages}
         onClick={() => onChange(page + 1)}
       >
         Next
+        <WhiteIcon path="/icons/step-forward.svg" />
       </Button>
     </div>
   );

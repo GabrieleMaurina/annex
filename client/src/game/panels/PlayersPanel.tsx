@@ -1,4 +1,4 @@
-import { isPointsMode, ONLINE_PAUSE_SECONDS } from 'engine';
+import { isPointsMode } from 'engine';
 import type { MutableRefObject } from 'react';
 import { Fragment, memo, useReducer, useRef, useState } from 'react';
 import { Button, Collapse, ListGroup, Table } from 'react-bootstrap';
@@ -11,6 +11,7 @@ import { useWhiteIcon } from '../../common/icon';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import Tip from '../../common/tooltips/Tip';
+import TipSpan from '../../common/tooltips/TipSpan';
 import { connector } from '../../connector';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import { playSound } from '../../lib/sounds';
@@ -36,6 +37,7 @@ import {
   type EmojiPop,
 } from '../logic/emoji';
 import { formatMission } from './mission/formatMission';
+import PlayerActions from './players/PlayerActions';
 
 interface Props {
   players: GameState['players'];
@@ -183,11 +185,6 @@ function PlayersPanel({
   const canPause =
     canControl && (connector.isOffline() || paused || !pauseUsed);
   const hasLivingBot = players.some((p) => p.isBot && !p.eliminated);
-  const botSpeedLabel: Record<BotSpeed, string> = {
-    slow: 'Slow',
-    medium: 'Medium',
-    fast: 'Fast',
-  };
   const showAllianceColumn = alliances === 'on' && !isSpectator && !gameEnded;
   const totalCapitals = players.reduce((sum, p) => sum + p.capitalCount, 0);
   const contenders = players.filter((p) => !p.eliminated && !p.surrendered);
@@ -237,10 +234,6 @@ function PlayersPanel({
   const whiteCloseIcon = useWhiteIcon('/icons/close.svg');
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteTargetIcon = useWhiteIcon('/icons/target.svg');
-  const whitePauseIcon = useWhiteIcon('/icons/pause.svg');
-  const whitePlayIcon = useWhiteIcon('/icons/play.svg');
-  const whiteStepForwardIcon = useWhiteIcon('/icons/step-forward.svg');
-  const whiteSkipForwardIcon = useWhiteIcon('/icons/skip-forward.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
   const whiteDotIcon = useWhiteIcon('/icons/dot.svg');
   const whiteYouIcon = useWhiteIcon('/icons/you.svg');
@@ -249,15 +242,17 @@ function PlayersPanel({
 
   if (collapsed) {
     return (
-      <Button
-        variant="secondary"
-        size="sm"
-        className="position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center"
-        style={{ width: 28, height: 28, padding: 0 }}
-        onClick={() => setCollapsed(false)}
-      >
-        <WhiteIcon path="/icons/menu.svg" alt="Menu" />
-      </Button>
+      <Tip text="Show players and actions" placement="left">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center"
+          style={{ width: 28, height: 28, padding: 0 }}
+          onClick={() => setCollapsed(false)}
+        >
+          <WhiteIcon path="/icons/menu.svg" alt="Menu" />
+        </Button>
+      </Tip>
     );
   }
 
@@ -516,10 +511,17 @@ function PlayersPanel({
                         }}
                       >
                         {p.id !== selfId && !p.isBot && (
-                          <Tip text={ALLIANCE_CELL_LABELS[allianceState]}>
+                          <TipSpan
+                            className="d-block"
+                            text={
+                              allianceOnCooldown
+                                ? 'Alliance cooldown'
+                                : ALLIANCE_CELL_LABELS[allianceState]
+                            }
+                          >
                             <button
                               type="button"
-                              className="border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
+                              className="border-0 bg-transparent text-reset d-inline-flex align-items-center justify-content-center lh-1"
                               style={{ fontSize: 13, width: '100%' }}
                               data-no-click-sound
                               disabled={allianceOnCooldown}
@@ -529,9 +531,12 @@ function PlayersPanel({
                                 onAllianceCellClick(p.id);
                               }}
                             >
-                              {ALLIANCE_ICONS[allianceState]}
+                              <WhiteIcon
+                                path={ALLIANCE_ICONS[allianceState]}
+                                size={14}
+                              />
                             </button>
-                          </Tip>
+                          </TipSpan>
                         )}
                       </td>
                     )}
@@ -758,7 +763,7 @@ function PlayersPanel({
         {(canSendEmoji || toxins !== 'off') && (
           <div className="d-flex align-items-center mt-1">
             {canSendEmoji && (
-              <Tip text="Everyone" placement="bottom">
+              <Tip text="Send an emoji to everyone" placement="bottom">
                 <Button
                   variant="secondary"
                   size="sm"
@@ -802,174 +807,28 @@ function PlayersPanel({
             </ListGroup>
           </>
         )}
-        {(canPause || (canControl && hasLivingBot)) && (
-          <div className="d-flex mt-2 gap-2 justify-content-end">
-            {canPause && (
-              <Tip
-                text={
-                  paused
-                    ? 'Resume game for everyone'
-                    : connector.isOffline()
-                      ? 'Pause game for everyone'
-                      : `Pause game for everyone for up to ${ONLINE_PAUSE_SECONDS} seconds, once per game`
-                }
-                placement="bottom"
-              >
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="d-flex align-items-center gap-1"
-                  onClick={onTogglePause}
-                >
-                  <img
-                    src={
-                      paused
-                        ? (whitePlayIcon ?? '/icons/play.svg')
-                        : (whitePauseIcon ?? '/icons/pause.svg')
-                    }
-                    width={14}
-                    height={14}
-                    alt=""
-                  />
-                  {paused ? 'Resume' : 'Pause'}
-                </Button>
-              </Tip>
-            )}
-            {hasLivingBot && (
-              <Tip text="Change bots speed" placement="bottom">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="d-flex align-items-center gap-1"
-                  onClick={onCycleBotSpeed}
-                >
-                  <img
-                    src={
-                      botSpeed === 'slow'
-                        ? (whitePlayIcon ?? '/icons/play.svg')
-                        : botSpeed === 'medium'
-                          ? (whiteStepForwardIcon ?? '/icons/step-forward.svg')
-                          : (whiteSkipForwardIcon ?? '/icons/skip-forward.svg')
-                    }
-                    width={14}
-                    height={14}
-                    alt=""
-                  />
-                  {botSpeedLabel[botSpeed]}
-                </Button>
-              </Tip>
-            )}
-          </div>
-        )}
-        {(canSurrender || canLeave) && (
-          <div
-            className={`d-flex gap-2 mt-2 ${canSurrender && canLeave ? 'justify-content-between' : 'justify-content-end'}`}
-          >
-            {canSurrender && earlyWin && (
-              <Tip
-                text="Your victory is locked in. End the game now or keep conquering for fun"
-                placement="bottom"
-              >
-                <Button variant="success" size="sm" onClick={onEndGame}>
-                  End game
-                </Button>
-              </Tip>
-            )}
-            {canOfferDraw && (
-              <Tip
-                text={
-                  drawOffered
-                    ? 'You offered a draw. It happens once every remaining human player offers one. Click to withdraw your offer'
-                    : 'Offer a draw. The game ends in a draw once every remaining human player offers one'
-                }
-                placement="bottom"
-              >
-                <Button
-                  variant={drawOffered ? 'success' : 'secondary'}
-                  size="sm"
-                  className="d-flex align-items-center gap-1"
-                  onClick={onToggleDraw}
-                >
-                  <img
-                    src={whiteDrawIcon ?? '/icons/draw.svg'}
-                    width={14}
-                    height={14}
-                    alt=""
-                  />
-                  Draw
-                </Button>
-              </Tip>
-            )}
-            {canAbort && (
-              <Tip
-                text={
-                  abortProposed
-                    ? 'You asked to abort. It happens once every human player asks. Click to withdraw your request'
-                    : 'Abort the game without any penalty. Only available in the first round, and only if every human player asks for it'
-                }
-                placement="bottom"
-              >
-                <Button
-                  variant={abortProposed ? 'success' : 'secondary'}
-                  size="sm"
-                  className="d-flex align-items-center gap-1"
-                  onClick={onToggleAbort}
-                >
-                  <img
-                    src={whiteCloseIcon ?? '/icons/close.svg'}
-                    width={14}
-                    height={14}
-                    alt=""
-                  />
-                  Abort
-                </Button>
-              </Tip>
-            )}
-            {canSurrender && !earlyWin && (
-              <Tip text="Surrender the game" placement="bottom">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  className="d-flex align-items-center gap-1"
-                  onClick={onSurrender}
-                >
-                  <img
-                    src={whiteFlagIcon ?? '/icons/flag.svg'}
-                    width={14}
-                    height={14}
-                    alt=""
-                  />
-                  Surrender
-                </Button>
-              </Tip>
-            )}
-            {canRestart && (
-              <Tip
-                text="Start a new game with the same settings, players and map"
-                placement="bottom"
-              >
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() => connector.restart()}
-                >
-                  Restart
-                </Button>
-              </Tip>
-            )}
-            {canLeave && (
-              <Tip text="Go back to home" placement="bottom">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => navigate('/')}
-                >
-                  Leave
-                </Button>
-              </Tip>
-            )}
-          </div>
-        )}
+        <PlayerActions
+          paused={paused}
+          botSpeed={botSpeed}
+          canPause={canPause}
+          canControl={canControl}
+          hasLivingBot={hasLivingBot}
+          canSurrender={canSurrender}
+          canLeave={canLeave}
+          earlyWin={earlyWin}
+          canOfferDraw={canOfferDraw}
+          drawOffered={drawOffered}
+          canAbort={canAbort}
+          abortProposed={abortProposed}
+          canRestart={canRestart}
+          onTogglePause={onTogglePause}
+          onCycleBotSpeed={onCycleBotSpeed}
+          onEndGame={onEndGame}
+          onToggleDraw={onToggleDraw}
+          onToggleAbort={onToggleAbort}
+          onSurrender={onSurrender}
+          navigate={navigate}
+        />
       </div>
     </div>
   );

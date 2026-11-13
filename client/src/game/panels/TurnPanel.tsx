@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { contrastTextColor } from '../../lib/palette';
@@ -147,7 +148,6 @@ function TurnPanel({
 }: Props) {
   const isDark = contrastTextColor(color) === '#ffffff';
   const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
-  const whiteSkipBackIcon = useWhiteIcon('/icons/skip-back.svg');
   const tankIcon = isDark
     ? (whiteTankIcon ?? '/icons/tank.svg')
     : '/icons/tank.svg';
@@ -243,13 +243,13 @@ function TurnPanel({
       )}
       {canReturnPhase && (
         <Tip text="Previous phase">
-          <Button size="sm" variant="secondary" onClick={returnPhase}>
-            <img
-              src={whiteSkipBackIcon ?? '/icons/skip-back.svg'}
-              width={14}
-              height={14}
-              alt="Previous phase"
-            />
+          <Button
+            className="d-flex align-items-center justify-content-center"
+            size="sm"
+            variant="secondary"
+            onClick={returnPhase}
+          >
+            <WhiteIcon path="/icons/undo.svg" size={14} alt="Previous phase" />
           </Button>
         </Tip>
       )}
@@ -260,9 +260,19 @@ function TurnPanel({
         turnPhase !== 'troop' &&
         turnPhase !== 'capital' &&
         (turnPhase !== 'deploy' || canLeaveDeploy) && (
-          <Button size="sm" onClick={advancePhase}>
-            {endsTurn ? 'End Turn' : 'Next Phase'}
-          </Button>
+          <Tip text={endsTurn ? 'End your turn' : 'Move to the next phase'}>
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1"
+              onClick={advancePhase}
+            >
+              <WhiteIcon
+                path={endsTurn ? '/icons/exit.svg' : '/icons/skip-forward.svg'}
+                size={14}
+              />
+              {endsTurn ? 'End Turn' : 'Next Phase'}
+            </Button>
+          </Tip>
         )}
       {turnPhase === 'attack' && (
         <span

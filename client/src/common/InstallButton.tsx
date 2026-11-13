@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { Button } from 'react-bootstrap';
-import { useWhiteIcon } from './icon';
+import WhiteIcon from './icons/WhiteIcon';
+import Tip from './tooltips/Tip';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -50,7 +51,6 @@ function subscribe(listener: () => void) {
 
 function InstallButton() {
   const prompt = useSyncExternalStore(subscribe, () => installPrompt);
-  const whiteDownloadIcon = useWhiteIcon('/icons/download.svg');
   if (!prompt) return null;
 
   function install() {
@@ -59,20 +59,17 @@ function InstallButton() {
   }
 
   return (
-    <Button
-      variant="success"
-      size="lg"
-      className="d-flex align-items-center justify-content-center gap-2"
-      onClick={install}
-    >
-      <img
-        src={whiteDownloadIcon ?? '/icons/download.svg'}
-        width={20}
-        height={20}
-        alt=""
-      />
-      Install Game
-    </Button>
+    <Tip text="Install Annex as an app on this device">
+      <Button
+        variant="success"
+        size="lg"
+        className="d-flex align-items-center justify-content-center gap-2"
+        onClick={install}
+      >
+        <WhiteIcon path="/icons/download.svg" size={20} />
+        Install Game
+      </Button>
+    </Tip>
   );
 }
 

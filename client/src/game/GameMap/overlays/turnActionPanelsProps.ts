@@ -144,6 +144,7 @@ export function turnActionPanelsProps({
     attackPanelOpen: attackFlow.attackPanelOpen,
     attackDisplay: attackFlow.attackDisplay,
     blitzEnabled: game.blitz !== 'off',
+    anonymous: game.anonymous === 'on',
     attackDice: game.attackDice,
     diceTies: game.diceTies,
     attackSides: game.attackSides,

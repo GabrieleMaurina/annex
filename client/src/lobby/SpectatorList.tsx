@@ -2,6 +2,7 @@ import { Button, Table } from 'react-bootstrap';
 import Flag from '../common/badges/Flag';
 import RankIcon from '../common/badges/RankIcon';
 import WhiteIcon from '../common/icons/WhiteIcon';
+import Tip from '../common/tooltips/Tip';
 import type { GameState } from '../lib/types';
 
 interface Props {
@@ -39,13 +40,16 @@ function SpectatorList({ spectators, isHost, banId }: Props) {
               </td>
               {isHost && (
                 <td className="text-nowrap align-middle">
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => banId?.(s.id)}
-                  >
-                    <WhiteIcon path="/icons/close.svg" size={12} alt="Ban" />
-                  </Button>
+                  <Tip text={`Ban ${s.name}`}>
+                    <Button
+                      className="d-flex align-items-center justify-content-center"
+                      size="sm"
+                      variant="danger"
+                      onClick={() => banId?.(s.id)}
+                    >
+                      <WhiteIcon path="/icons/block.svg" size={12} alt="Ban" />
+                    </Button>
+                  </Tip>
                 </td>
               )}
             </tr>

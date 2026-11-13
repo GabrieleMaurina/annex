@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
 import { formatError } from '../../common/formatError';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import { connector } from '../../connector';
 
 interface Props {
@@ -39,7 +40,13 @@ function EmailConfirmation({ code, navigate }: Props) {
           {formatError(error)}
         </Alert>
       )}
-      <Button onClick={() => navigate('/')}>Go to Annex</Button>
+      <Button
+        className="d-inline-flex align-items-center justify-content-center gap-1"
+        onClick={() => navigate('/')}
+      >
+        <WhiteIcon path="/icons/globe.svg" />
+        Go to Annex
+      </Button>
     </Container>
   );
 }

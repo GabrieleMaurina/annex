@@ -8,6 +8,7 @@ import {
 import type { ReactNode } from 'react';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { Button, Form, InputGroup, Modal } from 'react-bootstrap';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import Help from '../common/tooltips/Help';
 import Tip from '../common/tooltips/Tip';
 import type {
@@ -292,7 +293,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
                     onChange={(e) => setSeed(e.target.value)}
                     onClick={(e) => e.currentTarget.select()}
                   />
-                  <Tip text="Random seed">
+                  <Tip text="Pick a random seed">
                     <Button
                       variant="secondary"
                       className="d-flex align-items-center"
@@ -502,16 +503,28 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
             </div>
           )}
           <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
             variant="info"
             disabled={generating || applying || !!seedMessage}
             onClick={handleGenerate}
           >
+            <SpinningGears />
             {generating ? 'Generating…' : 'Generate'}
           </Button>
-          <Button disabled={!result || applying} onClick={handleUse}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            disabled={!result || applying}
+            onClick={handleUse}
+          >
+            <WhiteIcon path="/icons/check.svg" />
             {applying ? 'Applying…' : 'Use this map'}
           </Button>
-          <Button variant="secondary" onClick={onHide}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            variant="secondary"
+            onClick={onHide}
+          >
+            <WhiteIcon path="/icons/close.svg" />
             Cancel
           </Button>
         </Modal.Footer>

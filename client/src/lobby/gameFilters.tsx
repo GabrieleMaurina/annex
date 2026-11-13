@@ -5,10 +5,12 @@ import {
   tileShapeLabel,
 } from 'engine';
 import { Button } from 'react-bootstrap';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import { Field } from '../common/inputs/filterControls';
 import SearchMultiSelect, {
   type SearchSelectItem,
 } from '../common/inputs/SearchMultiSelect';
+import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import type { Fill, GenerationType, MapSize } from '../lib/types';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
@@ -327,13 +329,17 @@ function RangeSettingFilter({
       {value === '' ? (
         <span className="small text-muted">Any</span>
       ) : (
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => onChange(def.key, '')}
-        >
-          Any
-        </Button>
+        <Tip text="Clear this filter">
+          <Button
+            className="d-flex align-items-center justify-content-center"
+            size="sm"
+            variant="secondary"
+            aria-label="Clear this filter"
+            onClick={() => onChange(def.key, '')}
+          >
+            <WhiteIcon path="/icons/close.svg" size={12} />
+          </Button>
+        </Tip>
       )}
     </div>
   );

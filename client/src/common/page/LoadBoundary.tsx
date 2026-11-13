@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { Button } from 'react-bootstrap';
+import WhiteIcon from '../icons/WhiteIcon';
 
 interface Props {
   children: ReactNode;
@@ -21,7 +22,12 @@ class LoadBoundary extends Component<Props, State> {
     return (
       <div className="text-center py-4">
         <p>This page could not be loaded.</p>
-        <Button size="sm" onClick={() => window.location.reload()}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          size="sm"
+          onClick={() => window.location.reload()}
+        >
+          <WhiteIcon path="/icons/restart.svg" />
           Reload
         </Button>
       </div>

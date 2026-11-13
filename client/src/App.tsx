@@ -16,6 +16,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import AchievementToasts from './common/achievements/AchievementToasts';
+import WhiteIcon from './common/icons/WhiteIcon';
 import BurgerMenu from './common/menus/BurgerMenu';
 import SettingsMenu from './common/menus/SettingsMenu';
 import ShortcutsPanel from './common/menus/shortcuts/ShortcutsPanel';
@@ -403,7 +404,13 @@ function App() {
         <Alert variant="warning">
           This tab was disconnected: opened in another tab or window.
         </Alert>
-        <Button onClick={() => window.location.reload()}>Reload</Button>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          onClick={() => window.location.reload()}
+        >
+          <WhiteIcon path="/icons/restart.svg" />
+          Reload
+        </Button>
       </Container>
     );
   }

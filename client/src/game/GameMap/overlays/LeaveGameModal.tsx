@@ -1,4 +1,5 @@
 import { Button, Modal } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 
 interface Props {
   show: boolean;
@@ -16,10 +17,20 @@ function LeaveGameModal({ show, onCancel, onConfirm }: Props) {
         Are you sure you want to leave this game? This counts as a surrender.
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={onCancel}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          variant="secondary"
+          onClick={onCancel}
+        >
+          <WhiteIcon path="/icons/close.svg" />
           Cancel
         </Button>
-        <Button variant="danger" onClick={onConfirm}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          variant="danger"
+          onClick={onConfirm}
+        >
+          <WhiteIcon path="/icons/flag.svg" />
           Surrender and leave
         </Button>
       </Modal.Footer>

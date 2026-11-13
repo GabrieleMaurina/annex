@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { Button } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import { isNewWheelGesture } from '../../../common/inputs/edgeWrap';
 import PercentageToggle from '../../../common/inputs/PercentageToggle';
 import {
@@ -286,8 +287,13 @@ function AttackPanel({
         >
           <span>Move troops:</span>
           <NumberOdometer {...moveTroopsInput} style={{ minWidth: 70 }} />
-          <Button size="sm" onClick={onConfirmMove}>
-            Confirm
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            size="sm"
+            onClick={onConfirmMove}
+          >
+            <WhiteIcon path="/icons/check.svg" />
+            Move
           </Button>
           <PercentageToggle max={moveMaxTroops} />
         </div>
@@ -337,7 +343,12 @@ function AttackPanel({
               </div>
             </div>
           )}
-          <Button size="sm" onClick={onConfirm}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            size="sm"
+            onClick={onConfirm}
+          >
+            <WhiteIcon path="/icons/swords.svg" />
             Attack
           </Button>
           {blitzEnabled && <PercentageToggle max={maxBlitzTroops} />}

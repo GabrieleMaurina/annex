@@ -9,6 +9,7 @@ import ReportPlayerModal from '../../common/conduct/ReportPlayerModal';
 import ExportDataButton from '../../common/export/ExportDataButton';
 import { formatError } from '../../common/formatError';
 import { useWhiteIcon } from '../../common/icon';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import ProfilePictureEditor from '../../common/inputs/ProfilePictureEditor';
 import SharePageButton from '../../common/menus/SharePageButton';
 import ProfileActions from '../../common/ProfileActions';
@@ -345,6 +346,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
             <ExportDataButton
               key={profile.id}
               name={profileUsername}
+              tooltip="Download the raw data of this profile"
               load={(cb) => connector.getPlayerExport(profileUsername, cb)}
             />
           </div>
@@ -401,11 +403,13 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
           <Button
             size="sm"
             variant="danger"
+            className="d-inline-flex align-items-center justify-content-center gap-1"
             onClick={() => {
               setReportMenu(null);
               openReport(reportMenu.reason);
             }}
           >
+            <WhiteIcon path="/icons/report.svg" />
             {reportMenu.label}
           </Button>
         </div>
@@ -488,9 +492,11 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
                 <Button
                   size="sm"
                   variant="secondary"
+                  className="d-inline-flex align-items-center justify-content-center gap-1"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
+                  <WhiteIcon path="/icons/step-back.svg" />
                   Prev
                 </Button>
                 <span className="small text-muted">
@@ -499,10 +505,12 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
                 <Button
                   size="sm"
                   variant="secondary"
+                  className="d-inline-flex align-items-center justify-content-center gap-1"
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
                 >
                   Next
+                  <WhiteIcon path="/icons/step-forward.svg" />
                 </Button>
               </div>
             </>

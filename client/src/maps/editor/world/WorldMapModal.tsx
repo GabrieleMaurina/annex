@@ -10,6 +10,8 @@ import { Button, Form, Modal } from 'react-bootstrap';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
 import PanelHeader from '../../../common/PanelHeader';
 import Help from '../../../common/tooltips/Help';
+import Tip from '../../../common/tooltips/Tip';
+import TipSpan from '../../../common/tooltips/TipSpan';
 import {
   DIRECTIONAL_CONNECTIONS_HELP,
   EARTH_GREEN_AREAS_HELP,
@@ -19,6 +21,7 @@ import {
   SWITCHES_HELP,
   TIMED_CONNECTIONS_HELP,
 } from '../../../lobby/settings/settingsHelp';
+import SpinningGears from '../../../ui/buttons/SpinningGears';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../../ui/containers/panelStyle';
 import GenerationProgress from '../../../ui/feedback/GenerationProgress';
 import Selector from '../../../ui/forms/Selector';
@@ -509,15 +512,17 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
           onError={setMapError}
         />
         {collapsed ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="position-absolute top-0 end-0 m-3 z-2 d-flex align-items-center justify-content-center"
-            style={{ width: 28, height: 28, padding: 0 }}
-            onClick={() => setCollapsed(false)}
-          >
-            <WhiteIcon path="/icons/menu.svg" alt="Menu" />
-          </Button>
+          <Tip text="Show the Earth options" placement="left">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="position-absolute top-0 end-0 m-3 z-2 d-flex align-items-center justify-content-center"
+              style={{ width: 28, height: 28, padding: 0 }}
+              onClick={() => setCollapsed(false)}
+            >
+              <WhiteIcon path="/icons/menu.svg" alt="Menu" />
+            </Button>
+          </Tip>
         ) : (
           <div
             className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3 d-flex flex-column gap-2 overflow-y-auto overflow-x-hidden no-scrollbar z-2`}
@@ -543,18 +548,20 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
             {focusPlaces.length > 0 && (
               <div className="badge text-bg-primary text-wrap d-flex align-items-center justify-content-between gap-2">
                 Only {focusLabel(focusPlaces.map((one) => one.name))}
-                <button
-                  type="button"
-                  className="btn-close"
-                  data-bs-theme="light"
-                  aria-label="Include the surroundings"
-                  disabled={!!job}
-                  onClick={() => {
-                    setPlace(null);
-                    setExtras([]);
-                    setSearchKey((key) => key + 1);
-                  }}
-                />
+                <TipSpan text="Include the surroundings">
+                  <button
+                    type="button"
+                    className="btn-close"
+                    data-bs-theme="light"
+                    aria-label="Include the surroundings"
+                    disabled={!!job}
+                    onClick={() => {
+                      setPlace(null);
+                      setExtras([]);
+                      setSearchKey((key) => key + 1);
+                    }}
+                  />
+                </TipSpan>
               </div>
             )}
             <Form.Group className="d-flex align-items-center gap-2">
@@ -676,17 +683,19 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
               />
             </div>
             {result && (
-              <Button
-                variant="link"
-                className="p-0 w-100"
-                onClick={() => setPreviewOpen(true)}
-              >
-                <img
-                  src={result.map.imageSrc}
-                  alt=""
-                  className="d-block rounded border w-100"
-                />
-              </Button>
+              <Tip text="View the generated map full size">
+                <Button
+                  variant="link"
+                  className="p-0 w-100"
+                  onClick={() => setPreviewOpen(true)}
+                >
+                  <img
+                    src={result.map.imageSrc}
+                    alt=""
+                    className="d-block rounded border w-100"
+                  />
+                </Button>
+              </Tip>
             )}
             {job && (
               <GenerationProgress
@@ -707,28 +716,42 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
               </div>
             )}
             <div className="d-flex gap-2">
-              <Button
-                size="sm"
-                className="w-100"
-                onClick={generate}
-                disabled={!!problem || !!job}
+              <TipSpan
+                className="flex-fill d-flex"
+                text={problem || 'Generate a map of the framed area'}
               >
-                {job ? 'Generating…' : 'Generate'}
-              </Button>
-              <Button
-                size="sm"
-                className="w-100"
-                onClick={confirmUse}
-                disabled={!result || !!job}
+                <Button
+                  size="sm"
+                  className="w-100 d-inline-flex align-items-center justify-content-center gap-1"
+                  onClick={generate}
+                  disabled={!!problem || !!job}
+                >
+                  <SpinningGears />
+                  {job ? 'Generating…' : 'Generate'}
+                </Button>
+              </TipSpan>
+              <TipSpan
+                className="flex-fill d-flex"
+                text={result ? 'Use the generated map' : 'Generate a map first'}
               >
-                Use this map
-              </Button>
+                <Button
+                  size="sm"
+                  className="w-100 d-inline-flex align-items-center justify-content-center gap-1"
+                  onClick={confirmUse}
+                  disabled={!result || !!job}
+                >
+                  <WhiteIcon path="/icons/check.svg" />
+                  Use this map
+                </Button>
+              </TipSpan>
             </div>
             <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
               variant="secondary"
               size="sm"
               onClick={job ? job.cancel : onHide}
             >
+              <WhiteIcon path="/icons/close.svg" />
               Cancel
             </Button>
           </div>

@@ -4,7 +4,9 @@ import { Alert, Button } from 'react-bootstrap';
 import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { formatError } from '../common/formatError';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import BurgerMenu from '../common/menus/BurgerMenu';
+import TipSpan from '../common/tooltips/TipSpan';
 import { connector } from '../connector';
 import { applyPreset, uploadEarthMap } from '../lib/gameSetup';
 import {
@@ -135,12 +137,31 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
   const isTeamDeathmatch = game.gameMode === 'team deathmatch';
   const teamCount = new Set(game.players.map((p) => p.team)).size;
   const hasMap = !!game.mapName;
-  const canStart =
-    hasMap &&
-    game.players.length >= 2 &&
-    (!isTeamDeathmatch || teamCount >= 2) &&
-    !(isTeamDeathmatch && game.alliances === 'on') &&
-    (game.blitz !== 'off' || isBlitzOffAllowed(game));
+  const startBlockers = [
+    !hasMap && 'Pick a map',
+    game.players.length < 2 && 'Needs at least 2 players',
+    isTeamDeathmatch &&
+      teamCount < 2 &&
+      'Team deathmatch needs at least 2 teams',
+    isTeamDeathmatch &&
+      game.alliances === 'on' &&
+      'Team deathmatch cannot have alliances',
+    game.blitz === 'off' &&
+      !isBlitzOffAllowed(game) &&
+      'Blitz Off needs round troops off, fixed cards, no troops per territory and low starting and minimum troops',
+  ].filter(Boolean);
+  const canStart = startBlockers.length === 0;
+  const startButton = (
+    <Button
+      size="lg"
+      className="px-5 d-inline-flex align-items-center justify-content-center gap-2"
+      disabled={!canStart}
+      onClick={startGame}
+    >
+      <WhiteIcon path="/icons/play.svg" size={20} />
+      Start
+    </Button>
+  );
 
   function banId(id: number) {
     bannedIdsRef.current = [...bannedIdsRef.current, id];
@@ -408,16 +429,12 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
           }
           presetsFirst={presetsFilled}
           headerActions={
-            isHost && (
-              <Button
-                size="lg"
-                className="px-5"
-                disabled={!canStart}
-                onClick={startGame}
-              >
-                Start
-              </Button>
-            )
+            isHost &&
+            (canStart ? (
+              startButton
+            ) : (
+              <TipSpan text={startBlockers.join('\n')}>{startButton}</TipSpan>
+            ))
           }
         />
       </div>

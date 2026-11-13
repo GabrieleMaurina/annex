@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { loadWhiteIcon } from '../../../common/icon';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
+import Tip from '../../../common/tooltips/Tip';
 import { loadOutline, type GazetteerPlace } from './gazetteer';
 import type { WorldFrame } from './tileCover';
 
@@ -465,22 +466,26 @@ function WorldMap({
         }}
       />
       <div className="position-absolute bottom-0 start-0 m-2 d-flex flex-column gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          aria-label="Rotate the map by 90 degrees"
-          onClick={() =>
-            mapRef.current?.easeTo({ bearing: nextQuarterTurn(bearing) })
-          }
-        >
-          <span
-            className="d-inline-flex"
-            style={{ transform: `rotate(${-bearing}deg)` }}
+        <Tip text="Rotate the map by 90 degrees" placement="right">
+          <Button
+            className="d-flex align-items-center justify-content-center"
+            variant="secondary"
+            size="sm"
+            aria-label="Rotate the map by 90 degrees"
+            onClick={() =>
+              mapRef.current?.easeTo({ bearing: nextQuarterTurn(bearing) })
+            }
           >
-            <WhiteIcon path="/icons/north.svg" />
-          </span>
-        </Button>
+            <span
+              className="d-inline-flex"
+              style={{ transform: `rotate(${-bearing}deg)` }}
+            >
+              <WhiteIcon path="/icons/north.svg" />
+            </span>
+          </Button>
+        </Tip>
         <Button
+          className="d-flex align-items-center justify-content-center"
           variant={drawing ? 'primary' : 'secondary'}
           size="sm"
           aria-label="Draw an area"

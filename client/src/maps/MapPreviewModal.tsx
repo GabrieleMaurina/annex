@@ -1,6 +1,7 @@
 import { tileShapeLabel } from 'engine';
 import { useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import { connector } from '../connector';
 import { useToggleSound } from '../lib/sounds';
 import type { Account, PlayerMapRow } from '../lib/types';
@@ -74,15 +75,23 @@ function MapPreviewModal({
       <Modal.Footer>
         {account && !preview?.mine && (
           <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
             variant="danger"
             size="sm"
             disabled={reported}
             onClick={report}
           >
+            <WhiteIcon path="/icons/report.svg" />
             {reported ? 'Reported' : 'Report'}
           </Button>
         )}
-        <Button variant="secondary" size="sm" onClick={onHide}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          variant="secondary"
+          size="sm"
+          onClick={onHide}
+        >
+          <WhiteIcon path="/icons/close.svg" />
           Close
         </Button>
       </Modal.Footer>

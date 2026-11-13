@@ -20,6 +20,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import { formatError } from '../../common/formatError';
+import WhiteIcon from '../../common/icons/WhiteIcon';
+import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import {
   getMessagesSnapshot,
@@ -265,23 +267,27 @@ function Messages({ account }: Props) {
               <div className="d-flex align-items-center gap-2 mb-3">
                 <RankIcon elo={conversation.elo} />
                 <Flag country={conversation.country} />
-                <Button
-                  variant="link"
-                  className="p-0 text-decoration-none fs-5"
-                  onClick={() =>
-                    navigate(
-                      `/players/${encodeURIComponent(conversation.username)}`,
-                    )
-                  }
-                >
-                  {conversation.username}
-                </Button>
+                <Tip text="Open profile">
+                  <Button
+                    variant="outline-secondary"
+                    className="fs-5"
+                    onClick={() =>
+                      navigate(
+                        `/players/${encodeURIComponent(conversation.username)}`,
+                      )
+                    }
+                  >
+                    {conversation.username}
+                  </Button>
+                </Tip>
                 <div className="flex-grow-1" />
                 <Button
                   size="sm"
                   variant="danger"
+                  className="d-inline-flex align-items-center justify-content-center gap-1"
                   onClick={() => setBlocked(!conversation.blocked)}
                 >
+                  <WhiteIcon path="/icons/block.svg" />
                   {conversation.blocked ? 'Unblock' : 'Block'}
                 </Button>
               </div>
@@ -366,7 +372,13 @@ function Messages({ account }: Props) {
                     <span className="small text-muted">
                       {draft.length}/{MAX_LENGTH}
                     </span>
-                    <Button size="sm" disabled={!draft.trim()} onClick={send}>
+                    <Button
+                      size="sm"
+                      className="d-inline-flex align-items-center justify-content-center gap-1"
+                      disabled={!draft.trim()}
+                      onClick={send}
+                    >
+                      <WhiteIcon path="/icons/message.svg" />
                       Send
                     </Button>
                   </div>

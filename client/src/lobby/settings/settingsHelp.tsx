@@ -76,10 +76,10 @@ export const SEAS_HELP =
   'Splits the water into seas. Players can buy ships, which let them attack across water and attack other ships.';
 
 export const TIMED_CONNECTIONS_HELP =
-  'Turns some of the links drawn across water or void into timed links that open and close every round. A timed link can only be used to attack or move through while it is open. Each one is marked with an hourglass and the number of rounds until it changes, and its arrows stand still while it is closed.';
+  'Turns some of the links drawn across water or void into timed links that open and close every round. A timed link can only be used to attack or move through while it is open. Each one is marked with a stopwatch and the number of rounds until it changes, and its arrows stand still while it is closed.';
 
 export const DIRECTIONAL_CONNECTIONS_HELP =
-  'Turns some of the links drawn across water or void into directional links that only work one way. The moving arrows show the way you can attack, move and see through them. Some flip direction every few rounds and are marked with an hourglass and the number of rounds until they flip, the others never change.';
+  'Turns some of the links drawn across water or void into directional links that only work one way. The moving arrows show the way you can attack, move and see through them. Some flip direction every few rounds and are marked with a stopwatch and the number of rounds until they flip, the others never change.';
 
 export const SWITCHES_HELP =
   'Needs Timed links or Directional links. Puts switches on some of those links. A switch sits on the border between two territories and is either on or off. During your attack phase, a territory next to a switch can flip it for 2 troops, which must leave at least 1 troop behind. A link controlled by switches ignores its schedule: a timed link is open while on and closed while off, and a directional link points one way while on and the other way while off. Some links have two switches and are on when either of them is on (OR) or only when both are (AND). Hover or tap a switch, or the switch on a link, to see what is wired to it.';

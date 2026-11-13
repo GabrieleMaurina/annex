@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import { connector } from '../connector';
 import { registerGeneratedMap } from '../game/mapData';
 import GameReplayView from '../game/replay/GameReplayView';
@@ -307,7 +308,13 @@ function ReplayPage({ navigate, onViewChange, settingsMenuOpen }: Props) {
     return (
       <div className="d-flex flex-column align-items-center gap-3 py-5">
         <p>Replay not found.</p>
-        <Button onClick={() => navigate('/games/replay')}>Games</Button>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          onClick={() => navigate('/games/replay')}
+        >
+          <WhiteIcon path="/icons/step-back.svg" />
+          Back to games
+        </Button>
       </div>
     );
   }

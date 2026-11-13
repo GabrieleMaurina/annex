@@ -7,6 +7,7 @@ import {
   ProgressBar,
   Spinner,
 } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import type { GameState } from '../../../lib/types';
 import DualRange from '../../../ui/forms/DualRange';
 import Selector from '../../../ui/forms/Selector';
@@ -422,28 +423,46 @@ function ExportReplayModal({ show, onHide, game, mapName, replay }: Props) {
           </span>
         )}
         {working ? (
-          <Button variant="secondary" onClick={stop}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            variant="secondary"
+            onClick={stop}
+          >
+            <WhiteIcon path="/icons/close.svg" />
             Cancel
           </Button>
         ) : (
           <>
-            <Button variant="secondary" onClick={close}>
+            <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              variant="secondary"
+              onClick={close}
+            >
+              <WhiteIcon path="/icons/close.svg" />
               Close
             </Button>
             <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
               variant={readyResult ? 'secondary' : 'primary'}
               disabled={!scene || tooMany}
               onClick={startExport}
             >
+              <WhiteIcon path="/icons/upload.svg" />
               {readyResult ? 'Export again' : `Export ${format.toUpperCase()}`}
             </Button>
             {readyResult && (
-              <Button variant="primary" onClick={() => download(readyResult)}>
+              <Button
+                className="d-inline-flex align-items-center justify-content-center gap-1"
+                variant="primary"
+                onClick={() => download(readyResult)}
+              >
+                <WhiteIcon path="/icons/download.svg" />
                 Download
               </Button>
             )}
             {readyResult && canShare && (
               <Button
+                className="d-inline-flex align-items-center justify-content-center gap-1"
                 variant="primary"
                 onClick={() =>
                   navigator
@@ -451,6 +470,7 @@ function ExportReplayModal({ show, onHide, game, mapName, replay }: Props) {
                     .catch(() => {})
                 }
               >
+                <WhiteIcon path="/icons/share.svg" />
                 Share
               </Button>
             )}

@@ -1,7 +1,9 @@
 import { duplicatePlaceNames } from 'engine';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { Button, Form } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import { useUiHidden } from '../../../common/menus/shortcuts/uiHidden';
+import Tip from '../../../common/tooltips/Tip';
 import { useDragOffset } from '../../../ui/containers/dragOffset';
 import {
   FIELD_LABEL_CLASS,
@@ -78,17 +80,20 @@ function SwitchFields({
       <div className="small text-body-secondary mb-2">
         {wires === 1 ? '1 wired link' : `${wires} wired links`}
       </div>
-      <Button
-        variant="danger"
-        size="sm"
-        className="w-100"
-        onClick={() => {
-          setTerritories((prev) => withoutVertex(prev, vertex.id));
-          close();
-        }}
-      >
-        Delete
-      </Button>
+      <Tip text="Delete this switch">
+        <Button
+          variant="danger"
+          size="sm"
+          className="w-100 d-inline-flex align-items-center justify-content-center gap-1"
+          onClick={() => {
+            setTerritories((prev) => withoutVertex(prev, vertex.id));
+            close();
+          }}
+        >
+          <WhiteIcon path="/icons/trash.svg" />
+          Delete
+        </Button>
+      </Tip>
     </>
   );
 }

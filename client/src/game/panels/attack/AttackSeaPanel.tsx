@@ -1,7 +1,9 @@
 import type { RefObject } from 'react';
 import { Button } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import PercentageToggle from '../../../common/inputs/PercentageToggle';
 import { useTroopsInput } from '../../../common/inputs/useTroopsInput';
+import Tip from '../../../common/tooltips/Tip';
 import { contrastTextColor, playerColor } from '../../../lib/palette';
 import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
@@ -11,7 +13,12 @@ import { attackOptionStyle, formatProbability } from './attackOptionStyle';
 import { DiceRollDisplay, type AttackType, type DiceRoll } from './AttackPanel';
 
 interface Props {
-  defenders: { playerId: number; ships: number; color: number }[];
+  defenders: {
+    playerId: number;
+    ships: number;
+    color: number;
+    name: string | null;
+  }[];
   defenderId: number | null;
   onSelectDefender: (defenderId: number) => void;
   blitzWinProbabilities: number[];
@@ -97,21 +104,29 @@ function AttackSeaPanel({
         <div className="d-flex align-items-center gap-2">
           <span>Attack which player's ships?</span>
           {defenders.map((d) => (
-            <Button
+            <Tip
               key={d.playerId}
-              size="sm"
-              style={{
-                backgroundColor: playerColor(d.color),
-                color: contrastTextColor(playerColor(d.color)),
-                border: 'none',
-              }}
-              onClick={() => {
-                playSound('click');
-                onSelectDefender(d.playerId);
-              }}
+              text={
+                d.name
+                  ? `Attack ${d.name}'s ${d.ships} ships`
+                  : `Attack the player with ${d.ships} ships`
+              }
             >
-              {d.ships}
-            </Button>
+              <Button
+                size="sm"
+                style={{
+                  backgroundColor: playerColor(d.color),
+                  color: contrastTextColor(playerColor(d.color)),
+                  border: 'none',
+                }}
+                onClick={() => {
+                  playSound('click');
+                  onSelectDefender(d.playerId);
+                }}
+              >
+                {d.ships}
+              </Button>
+            </Tip>
           ))}
         </div>
       ) : (
@@ -155,7 +170,12 @@ function AttackSeaPanel({
               </div>
             </div>
           )}
-          <Button size="sm" onClick={onConfirm}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            size="sm"
+            onClick={onConfirm}
+          >
+            <WhiteIcon path="/icons/swords.svg" />
             Attack
           </Button>
           {blitzEnabled && <PercentageToggle max={maxBlitzShips} />}

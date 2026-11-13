@@ -7,6 +7,7 @@ import WhiteIcon from '../../common/icons/WhiteIcon';
 import PlayerNameEditor from '../../common/inputs/PlayerNameEditor';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import Tip from '../../common/tooltips/Tip';
+import TipSpan from '../../common/tooltips/TipSpan';
 import { connector } from '../../connector';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import type { BotDifficulty, BotPersonality, GameState } from '../../lib/types';
@@ -233,16 +234,20 @@ function RosterTable({
                         <Button
                           size="sm"
                           variant="success"
+                          className="d-inline-flex align-items-center justify-content-center gap-1"
                           onClick={() => addLocalPlayer(team)}
                         >
+                          <WhiteIcon path="/icons/player.svg" />
                           Add Player
                         </Button>
                       )}
                       <Button
                         size="sm"
                         variant="success"
+                        className="d-inline-flex align-items-center justify-content-center gap-1"
                         onClick={() => addBot(team)}
                       >
+                        <WhiteIcon path="/icons/bot.svg" />
                         Add Bot
                       </Button>
                     </span>
@@ -323,14 +328,14 @@ function RosterTable({
                         className="d-inline-block"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Tip
+                        <TipSpan
                           text={
                             p
                               ? p.isBot
                                 ? 'Remove bot'
                                 : connector.isOffline()
                                   ? 'Remove player'
-                                  : 'Kick/Ban'
+                                  : `Kick and ban ${p.name}`
                               : 'Remove'
                           }
                         >
@@ -351,9 +356,16 @@ function RosterTable({
                                 (team !== undefined && rows.length <= 1))
                             }
                           >
-                            <WhiteIcon path="/icons/close.svg" size={12} />
+                            <WhiteIcon
+                              path={
+                                p && !p.isBot && !connector.isOffline()
+                                  ? '/icons/block.svg'
+                                  : '/icons/close.svg'
+                              }
+                              size={12}
+                            />
                           </Button>
-                        </Tip>
+                        </TipSpan>
                       </span>
                     )}
                   </td>
@@ -367,8 +379,16 @@ function RosterTable({
                 colSpan={2 + (hasBots ? 2 : 0) + 1}
                 className="text-center align-middle"
               >
-                <Tip text="Add slot" placement="bottom">
+                <TipSpan
+                  text={
+                    game.slots >= MAX_SLOTS
+                      ? 'Maximum number of slots reached'
+                      : 'Add slot'
+                  }
+                  placement="bottom"
+                >
                   <Button
+                    className="d-flex align-items-center justify-content-center"
                     size="sm"
                     variant="success"
                     onClick={addSlot}
@@ -376,7 +396,7 @@ function RosterTable({
                   >
                     <WhiteIcon path="/icons/plus.svg" size={14} />
                   </Button>
-                </Tip>
+                </TipSpan>
               </td>
             </tr>
           )}

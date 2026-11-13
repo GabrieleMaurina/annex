@@ -37,7 +37,7 @@ function ConductMenu({ playerId, name, userId, conduct }: ConductMenuProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Tip text="More" placement="bottom">
+      <Tip text="Friend, message, watch, report and block" placement="bottom">
         <button
           type="button"
           className="border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
@@ -190,7 +190,11 @@ function EmojiTableOverlay({
                       )
                     }
                   >
-                    🧑
+                    <WhiteIcon
+                      path="/icons/player.svg"
+                      size={20}
+                      alt="View profile"
+                    />
                   </button>
                 </Tip>
               )}

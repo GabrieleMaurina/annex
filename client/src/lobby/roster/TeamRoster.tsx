@@ -1,6 +1,6 @@
 import { Button } from 'react-bootstrap';
 import WhiteIcon from '../../common/icons/WhiteIcon';
-import Tip from '../../common/tooltips/Tip';
+import TipSpan from '../../common/tooltips/TipSpan';
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import type { GameState } from '../../lib/types';
 import { SECTION_CLASS } from '../../ui/containers/panelStyle';
@@ -66,7 +66,7 @@ function TeamRoster({ roster }: { roster: RosterProps }) {
             <div className="d-flex align-items-center justify-content-between px-2 py-1">
               <span className="fw-semibold">Team {team + 1}</span>
               {isHost && (
-                <Tip text="Remove team">
+                <TipSpan text="Remove team">
                   <Button
                     variant="danger"
                     className="d-inline-flex align-items-center justify-content-center"
@@ -78,7 +78,7 @@ function TeamRoster({ roster }: { roster: RosterProps }) {
                   >
                     <WhiteIcon path="/icons/close.svg" size={12} />
                   </Button>
-                </Tip>
+                </TipSpan>
               )}
             </div>
             <RosterTable
@@ -109,14 +109,24 @@ function TeamRoster({ roster }: { roster: RosterProps }) {
       })}
       {isHost && (
         <div className="text-center mb-2">
-          <Button
-            size="sm"
-            variant="success"
-            onClick={() => setTeams([...layout, { slots: 1, playerIds: [] }])}
-            disabled={game.slots >= MAX_SLOTS}
+          <TipSpan
+            text={
+              game.slots >= MAX_SLOTS
+                ? 'Maximum number of slots reached'
+                : 'Add a team'
+            }
           >
-            Add Team
-          </Button>
+            <Button
+              size="sm"
+              variant="success"
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              onClick={() => setTeams([...layout, { slots: 1, playerIds: [] }])}
+              disabled={game.slots >= MAX_SLOTS}
+            >
+              <WhiteIcon path="/icons/team.svg" />
+              Add Team
+            </Button>
+          </TipSpan>
         </div>
       )}
       <DragGhost

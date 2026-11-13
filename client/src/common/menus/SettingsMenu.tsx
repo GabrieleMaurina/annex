@@ -319,7 +319,7 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
             <SharePageButton
               title={document.title}
               path={`${window.location.pathname}${window.location.search}`}
-              tooltip="Share Annex with friends"
+              tooltip="Share this page with friends"
               size="sm"
             />
           </div>

@@ -43,6 +43,7 @@ function MyMaps({ account }: { account: Account | null }) {
           footerRow={
             <Tip text="Create a map" placement="bottom">
               <Button
+                className="d-flex align-items-center justify-content-center"
                 size="sm"
                 variant="success"
                 onClick={() => navigate('/maps/editor')}
@@ -88,13 +89,21 @@ function MyMaps({ account }: { account: Account | null }) {
         </Modal.Body>
         <Modal.Footer>
           <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
             variant="secondary"
             onClick={() => setConfirmRow(null)}
             disabled={deleting}
           >
+            <WhiteIcon path="/icons/close.svg" />
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDelete} disabled={deleting}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            variant="danger"
+            onClick={confirmDelete}
+            disabled={deleting}
+          >
+            <WhiteIcon path="/icons/trash.svg" />
             {deleting ? 'Deleting…' : 'Delete'}
           </Button>
         </Modal.Footer>

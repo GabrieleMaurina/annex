@@ -1,5 +1,6 @@
 import { MAX_TIMED_VALUE } from 'engine';
 import { Button } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import Tip from '../../../common/tooltips/Tip';
 import { FIELD_LABEL_CLASS } from '../../../ui/containers/panelStyle';
 import type { EditorTerritory as Territory } from '../model/editorTypes';
@@ -31,8 +32,6 @@ const TIMED_HELP =
   'Closed for the first Delay rounds, then open for Open rounds and closed for Closed rounds, repeating forever.';
 const DIRECTIONAL_HELP =
   'Points forward for Forward rounds, then backward for Backward rounds, repeating forever. With Backward at 0 it always points forward.';
-const GATE_HELP =
-  'OR: the link is on while any of its switches is on. AND: only while all of them are on.';
 const SWITCHED_HELP =
   'Wired to switches, so its schedule is ignored: a timed link is open while on, a directional link points forward while on and backward while off.';
 
@@ -161,7 +160,13 @@ function LinkFields({ a, b, graph, close }: Props) {
             </span>
           </Tip>
           {switchIds.length > 1 && (
-            <Tip text={GATE_HELP}>
+            <Tip
+              text={
+                gate === 'or'
+                  ? 'Currently OR: on while any switch is on. Click for AND.'
+                  : 'Currently AND: on only while all switches are on. Click for OR.'
+              }
+            >
               <Button
                 variant="secondary"
                 size="sm"
@@ -182,7 +187,7 @@ function LinkFields({ a, b, graph, close }: Props) {
           <Button
             variant="secondary"
             size="sm"
-            className="w-100"
+            className="w-100 d-inline-flex align-items-center justify-content-center gap-1"
             onClick={() =>
               update((t, otherId) => ({
                 ...t,
@@ -192,12 +197,21 @@ function LinkFields({ a, b, graph, close }: Props) {
               }))
             }
           >
+            <WhiteIcon path="/icons/directional.svg" />
             Reverse
           </Button>
         )}
-        <Button variant="danger" size="sm" className="w-100" onClick={remove}>
-          Delete
-        </Button>
+        <Tip text="Delete this link">
+          <Button
+            variant="danger"
+            size="sm"
+            className="w-100 d-inline-flex align-items-center justify-content-center gap-1"
+            onClick={remove}
+          >
+            <WhiteIcon path="/icons/trash.svg" />
+            Delete
+          </Button>
+        </Tip>
       </div>
     </>
   );

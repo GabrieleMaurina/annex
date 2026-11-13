@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Button, Spinner } from 'react-bootstrap';
 import InstallButton from '../../common/InstallButton';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import Hero from '../../common/page/Hero';
 import useStackOnOverflow from '../../common/page/useStackOnOverflow';
 import Tip from '../../common/tooltips/Tip';
@@ -101,22 +102,42 @@ function HomeHero({
         <div className="d-flex flex-wrap justify-content-center gap-2">
           {!serverUnreachable && (
             <Tip text={CREATE_ONLINE_TIP} placement="bottom">
-              <Button variant="secondary" size="sm" onClick={onCreateOnline}>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="d-inline-flex align-items-center justify-content-center gap-1"
+                onClick={onCreateOnline}
+              >
+                <WhiteIcon path="/icons/globe.svg" />
                 Create Online
               </Button>
             </Tip>
           )}
           {!serverUnreachable && (
             <Tip text={CREATE_OFFLINE_TIP} placement="bottom">
-              <Button variant="secondary" size="sm" onClick={onCreateOffline}>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="d-inline-flex align-items-center justify-content-center gap-1"
+                onClick={onCreateOffline}
+              >
+                <WhiteIcon path="/icons/bot.svg" />
                 Create Offline
               </Button>
             </Tip>
           )}
           {showTutorials && (
-            <Button variant="secondary" size="sm" onClick={onTutorials}>
-              Tutorials
-            </Button>
+            <Tip text="Learn the game step by step" placement="bottom">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="d-inline-flex align-items-center justify-content-center gap-1"
+                onClick={onTutorials}
+              >
+                <WhiteIcon path="/icons/book.svg" />
+                Tutorials
+              </Button>
+            </Tip>
           )}
         </div>
         <InstallButton />

@@ -23,8 +23,8 @@ function Features() {
       <WikiSection id="timed" title="Timed links">
         <p>
           A link across water or void that is open or closed depending on the
-          round. It is marked with an hourglass and the number of rounds until
-          it changes. While open it works like a normal border for attacks,
+          round. It is marked with a stopwatch and the number of rounds until it
+          changes. While open it works like a normal border for attacks,
           fortifying, vision and supply lines. While closed it does not exist,
           and its arrows stand still.
         </p>
@@ -32,7 +32,7 @@ function Features() {
       <WikiSection id="directional" title="Directional links">
         <p>
           A one-way link. Moving arrows show the way you can attack, move and
-          see. Some flip direction every few rounds, marked with an hourglass,
+          see. Some flip direction every few rounds, marked with a stopwatch,
           while others never change. Maps keep every territory reachable by some
           route.
         </p>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Form, ListGroup } from 'react-bootstrap';
+import TipSpan from '../../../common/tooltips/TipSpan';
 import { titleCase } from '../../../lobby/settings/gameSettings';
 import SpinningGears from '../../../ui/buttons/SpinningGears';
 import {
@@ -108,16 +109,21 @@ function SearchBox({ initialQuery, onSelect }: Props) {
           ))}
         </ListGroup>
       )}
-      <Button
-        variant="secondary"
-        size="sm"
-        className="w-100 mt-2"
-        disabled={!index}
-        onClick={chooseRandom}
+      <TipSpan
+        className="d-block"
+        text="Select a random country, city or US state"
       >
-        <SpinningGears className="me-1" />
-        Random location
-      </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-100 mt-2 d-flex align-items-center justify-content-center gap-1"
+          disabled={!index}
+          onClick={chooseRandom}
+        >
+          <SpinningGears />
+          Random location
+        </Button>
+      </TipSpan>
     </div>
   );
 }

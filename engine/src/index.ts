@@ -117,6 +117,7 @@ export {
   viewReplay,
   viewResponse,
 } from './clientView/responses';
+export { PLAYER_COLOR_NAMES } from './game/anonymous';
 export {
   DEFAULT_SIDES,
   MAX_DICE,

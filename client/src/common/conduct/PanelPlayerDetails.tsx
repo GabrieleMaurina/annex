@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { connector } from '../../connector';
 import type { FriendsOverview, GameState } from '../../lib/types';
+import ButtonRows from '../../ui/buttons/ButtonRows';
 import { SECTION_CLASS } from '../../ui/containers/panelStyle';
 import Flag from '../badges/Flag';
 import RankIcon from '../badges/RankIcon';
@@ -101,19 +102,21 @@ function PanelPlayerDetails({
         </div>
       </div>
       {(onCycleColor || showActions) && (
-        <div className="d-flex flex-wrap gap-1">
+        <div className="d-flex flex-column gap-2">
           {onCycleColor && (
-            <Tip text="Only changes the color on this device">
-              <Button
-                size="sm"
-                variant="secondary"
-                className="d-inline-flex align-items-center gap-1"
-                onClick={onCycleColor}
-              >
-                <WhiteIcon path="/icons/palette.svg" />
-                Change color
-              </Button>
-            </Tip>
+            <ButtonRows>
+              <Tip text="Only changes the color on this device">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="d-inline-flex align-items-center justify-content-center gap-1"
+                  onClick={onCycleColor}
+                >
+                  <WhiteIcon path="/icons/palette.svg" />
+                  Change color
+                </Button>
+              </Tip>
+            </ButtonRows>
           )}
           {showActions && (
             <PlayerConductActions

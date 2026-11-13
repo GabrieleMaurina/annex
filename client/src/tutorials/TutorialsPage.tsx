@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Badge, Button, Container, ListGroup } from 'react-bootstrap';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import type { Account } from '../lib/types';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import TutorialGuide from './guide/TutorialGuide';
@@ -140,10 +141,14 @@ function TutorialsPage({ account, navigate }: Props) {
               {doneCount}/{TUTORIALS.length} completed
             </span>
             <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
               onClick={() =>
                 navigate(`/tutorials/${(upNext ?? TUTORIALS[0]).id}`)
               }
             >
+              <WhiteIcon
+                path={upNext ? '/icons/play.svg' : '/icons/restart.svg'}
+              />
               {upNext
                 ? doneCount === 0
                   ? 'Start'
@@ -176,8 +181,12 @@ function TutorialsPage({ account, navigate }: Props) {
                 <Button
                   variant={tutorial === upNext ? 'primary' : 'secondary'}
                   size="sm"
+                  className="d-inline-flex align-items-center justify-content-center gap-1"
                   onClick={() => navigate(`/tutorials/${tutorial.id}`)}
                 >
+                  <WhiteIcon
+                    path={done ? '/icons/restart.svg' : '/icons/play.svg'}
+                  />
                   {done ? 'Replay' : 'Play'}
                 </Button>
               </ListGroup.Item>

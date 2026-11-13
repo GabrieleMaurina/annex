@@ -1,6 +1,6 @@
 import { Game } from '../types';
 
-const PLAYER_COLOR_NAMES = [
+export const PLAYER_COLOR_NAMES = [
   'Red',
   'Blue',
   'Green',

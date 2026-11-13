@@ -4,6 +4,7 @@ import { Alert, Button } from 'react-bootstrap';
 import { connector } from '../../connector';
 import { useToggleSound } from '../../lib/sounds';
 import { formatError } from '../formatError';
+import WhiteIcon from '../icons/WhiteIcon';
 import ImageCropper from './ImageCropper';
 
 interface Props {
@@ -99,11 +100,22 @@ function ProfilePictureEditor({
         onChange={pickFile}
       />
       <div className="d-flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => fileInput.current?.click()}>
+        <Button
+          size="sm"
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          onClick={() => fileInput.current?.click()}
+        >
+          <WhiteIcon path="/icons/upload.svg" />
           {picture ? 'Change picture' : 'Upload picture'}
         </Button>
         {(picture || dangerous) && (
-          <Button size="sm" variant="secondary" onClick={removePicture}>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            onClick={removePicture}
+          >
+            <WhiteIcon path="/icons/trash.svg" />
             Remove picture
           </Button>
         )}

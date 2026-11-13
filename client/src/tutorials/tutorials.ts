@@ -329,7 +329,7 @@ export const TUTORIALS: Tutorial[] = [
     title: 'Special links',
     summary: 'Cross the water with one-way, switched and timed links.',
     instruction:
-      'Arrows work one way, so attack from your 14 troops along the arrow pointing away from you and move most of your troops in. Select that territory and click the switch beside it: flipping costs 2 troops and opens the link it controls. Attack across and move in. The hourglass link opens in 2 rounds: use Next Phase to end your turn, deploy, and repeat, watching its countdown. Once it opens, attack across it and move in.',
+      'Arrows work one way, so attack from your 14 troops along the arrow pointing away from you and move most of your troops in. Select that territory and click the switch beside it: flipping costs 2 troops and opens the link it controls. Attack across and move in. The stopwatch link opens in 2 rounds: use Next Phase to end your turn, deploy, and repeat, watching its countdown. Once it opens, attack across it and move in.',
     highlight: 0,
     settings: LINKS,
     map: linksTutorialMap,

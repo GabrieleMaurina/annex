@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { Button, Modal } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 
 interface Props {
   onClose: () => void;
@@ -31,7 +32,12 @@ class EarthErrorBoundary extends Component<Props, State> {
           </p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={this.props.onClose}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            variant="secondary"
+            onClick={this.props.onClose}
+          >
+            <WhiteIcon path="/icons/close.svg" />
             Close
           </Button>
         </Modal.Footer>

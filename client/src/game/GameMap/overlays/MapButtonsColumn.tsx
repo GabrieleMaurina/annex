@@ -1,5 +1,6 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { Badge, Button } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import Tip from '../../../common/tooltips/Tip';
 import type { Card, GameState, TurnPhase } from '../../../lib/types';
 import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
@@ -73,7 +74,6 @@ export default function MapButtonsColumn({
   nukesButtonRef,
   nukesPanelRef,
   whiteNukesIcon,
-  whiteHeatMapIcon,
   heatMapRef,
   heatMap,
 }: {
@@ -125,7 +125,6 @@ export default function MapButtonsColumn({
   nukesButtonRef: RefObject<HTMLButtonElement | null>;
   nukesPanelRef: RefObject<HTMLDivElement | null>;
   whiteNukesIcon: string | undefined;
-  whiteHeatMapIcon: string | undefined;
   heatMapRef: RefObject<HTMLDivElement | null>;
   heatMap: HeatMapColumnProps | null;
 }) {
@@ -192,12 +191,7 @@ export default function MapButtonsColumn({
                   setOpenPanel((p) => (p === 'heatMap' ? null : 'heatMap'))
                 }
               >
-                <img
-                  src={whiteHeatMapIcon ?? '/icons/palette.svg'}
-                  width={16}
-                  height={16}
-                  alt="Heat Map"
-                />
+                <WhiteIcon path="/icons/palette.svg" alt="Heat Map" />
               </Button>
             </Tip>
             {heatMapOpen && (

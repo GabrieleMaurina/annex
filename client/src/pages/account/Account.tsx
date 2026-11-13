@@ -10,6 +10,7 @@ import {
 import { Navigate, useNavigate } from 'react-router-dom';
 import CountrySelect from '../../common/badges/CountrySelect';
 import { formatError } from '../../common/formatError';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import PreferredColorsPicker from '../../common/inputs/PreferredColorsPicker';
 import ProfilePictureEditor from '../../common/inputs/ProfilePictureEditor';
 import { connector } from '../../connector';
@@ -121,10 +122,12 @@ function AccountPage({ account, onCountryChange }: Props) {
         <Button
           size="sm"
           variant="info"
+          className="d-inline-flex align-items-center justify-content-center gap-1"
           onClick={() =>
             navigate(`/players/${encodeURIComponent(account.username)}`)
           }
         >
+          <WhiteIcon path="/icons/player.svg" />
           View Profile
         </Button>
       </div>
@@ -201,10 +204,14 @@ function AccountPage({ account, onCountryChange }: Props) {
                 onChange={(e) => setNewPassword(e.target.value)}
               />
               <Button
+                className="d-inline-flex align-items-center justify-content-center gap-1"
                 variant="secondary"
                 tabIndex={-1}
                 onClick={() => setReveal((v) => !v)}
               >
+                <WhiteIcon
+                  path={reveal ? '/icons/eye-off.svg' : '/icons/eye.svg'}
+                />
                 {reveal ? 'Hide' : 'Show'}
               </Button>
             </InputGroup>
@@ -224,7 +231,13 @@ function AccountPage({ account, onCountryChange }: Props) {
                 {formatError(passwordMessage)}
               </Alert>
             )}
-            <Button type="submit" size="sm" disabled={busy}>
+            <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              type="submit"
+              size="sm"
+              disabled={busy}
+            >
+              <WhiteIcon path="/icons/check.svg" />
               Change password
             </Button>
           </Form>

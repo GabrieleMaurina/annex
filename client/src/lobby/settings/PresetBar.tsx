@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Button, ButtonGroup, Dropdown, Form } from 'react-bootstrap';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import Help from '../../common/tooltips/Help';
 import Tip from '../../common/tooltips/Tip';
 import { playSound } from '../../lib/sounds';
@@ -21,15 +22,15 @@ import { PRESETS_HELP } from './settingsHelp';
 const MENU_POPPER = { strategy: 'fixed' as const };
 const SHRINK_STYLE = { minWidth: 0 };
 const EMPTY_ACTIONS = [
-  ['save', 'Save current settings'],
-  ['import', 'Import'],
+  ['save', 'Save current settings', '/icons/save.svg'],
+  ['import', 'Import', '/icons/upload.svg'],
 ];
 const PRESET_ACTIONS = [
-  ['save', 'Overwrite with current settings'],
-  ['rename', 'Rename'],
-  ['export', 'Export'],
-  ['import', 'Import'],
-  ['delete', 'Delete'],
+  ['save', 'Overwrite with current settings', '/icons/save.svg'],
+  ['rename', 'Rename', '/icons/pencil.svg'],
+  ['export', 'Export', '/icons/download.svg'],
+  ['import', 'Import', '/icons/upload.svg'],
+  ['delete', 'Delete', '/icons/trash.svg'],
 ];
 
 interface Props {
@@ -233,17 +234,20 @@ function PresetBar({
                         {preset ? preset.name : `${index + 1}. Empty`}
                       </Button>
                     </Tip>
-                    <Dropdown.Toggle
-                      split
-                      className="flex-grow-0"
-                      variant={preset ? 'primary' : 'secondary'}
-                    />
+                    <Tip text="Preset options">
+                      <Dropdown.Toggle
+                        split
+                        className="flex-grow-0"
+                        variant={preset ? 'primary' : 'secondary'}
+                        aria-label="Preset options"
+                      />
+                    </Tip>
                     <Dropdown.Menu
                       className="selector-menu"
                       popperConfig={MENU_POPPER}
                     >
                       {(preset ? PRESET_ACTIONS : EMPTY_ACTIONS).map(
-                        ([action, label], row) => (
+                        ([action, label, icon], row) => (
                           <Dropdown.Item
                             key={action}
                             as="button"
@@ -251,6 +255,7 @@ function PresetBar({
                             className="selector-option text-nowrap"
                             style={{ '--selector-row': row } as CSSProperties}
                           >
+                            <WhiteIcon path={icon} />
                             {label}
                           </Dropdown.Item>
                         ),

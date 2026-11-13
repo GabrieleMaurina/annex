@@ -14,10 +14,14 @@ import WhiteIcon from '../../common/icons/WhiteIcon';
 import { useNumberInput } from '../../common/inputs/useNumberInput';
 import { useUiHidden } from '../../common/menus/shortcuts/uiHidden';
 import PanelHeader from '../../common/PanelHeader';
+import Tip from '../../common/tooltips/Tip';
+import TipSpan from '../../common/tooltips/TipSpan';
 import { contrastTextColor } from '../../lib/palette';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import NumberOdometer from '../../ui/forms/NumberOdometer';
+import EditorActions from './actions/EditorActions';
+import UndoRedo from './actions/UndoRedo';
 import { useSmoothEdges } from './canvas/smoothEdges';
 import {
   NO_CONTINENT,
@@ -124,19 +128,21 @@ function ColorSwatch({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded p-0"
-      style={{
-        width: 24,
-        height: 24,
-        backgroundColor: value,
-        borderWidth: 3,
-        borderStyle: 'solid',
-        borderColor: active ? 'var(--bs-primary)' : 'var(--bs-border-color)',
-      }}
-    />
+    <Tip text={`Draw with ${value}`}>
+      <button
+        type="button"
+        onClick={onClick}
+        className="rounded p-0"
+        style={{
+          width: 24,
+          height: 24,
+          backgroundColor: value,
+          borderWidth: 3,
+          borderStyle: 'solid',
+          borderColor: active ? 'var(--bs-primary)' : 'var(--bs-border-color)',
+        }}
+      />
+    </Tip>
   );
 }
 
@@ -153,16 +159,51 @@ const SELECT_TOOLS: ToolOption[] = [
 const TOOLS: {
   key: PaintTool;
   label: string;
+  tip: string;
   icon?: string;
   group?: ToolOption[];
 }[] = [
-  { key: 'pencil', label: 'Pencil', icon: '/icons/pencil.svg' },
-  { key: 'line', label: 'Line', group: LINE_TOOLS },
-  { key: 'shape', label: 'Shape' },
-  { key: 'fill', label: 'Fill', icon: '/icons/fill.svg' },
-  { key: 'sampler', label: 'Sampler', icon: '/icons/sample.svg' },
-  { key: 'eraser', label: 'Eraser', icon: '/icons/erase.svg' },
-  { key: 'select', label: 'Select', group: SELECT_TOOLS },
+  {
+    key: 'pencil',
+    label: 'Pencil',
+    tip: 'Draw freehand',
+    icon: '/icons/pencil.svg',
+  },
+  {
+    key: 'line',
+    label: 'Line',
+    tip: 'Draw straight or curved lines (arrow to switch)',
+    group: LINE_TOOLS,
+  },
+  {
+    key: 'shape',
+    label: 'Shape',
+    tip: 'Draw the chosen shape (arrow to change)',
+  },
+  {
+    key: 'fill',
+    label: 'Fill',
+    tip: 'Fill a closed area with the color',
+    icon: '/icons/fill.svg',
+  },
+  {
+    key: 'sampler',
+    label: 'Sampler',
+    tip: 'Pick a color from the map',
+    icon: '/icons/sample.svg',
+  },
+  {
+    key: 'eraser',
+    label: 'Eraser',
+    tip: 'Paint white to erase',
+    icon: '/icons/erase.svg',
+  },
+  {
+    key: 'select',
+    label: 'Select',
+    tip: 'Select an area to move or copy (arrow to switch)',
+    group: SELECT_TOOLS,
+  },
 ];
 
 function Panel(props: Props) {
@@ -251,29 +292,6 @@ function Panel(props: Props) {
 
   useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
 
-  const undoRedo = (
-    <div className="d-flex gap-2 mb-2">
-      <Button
-        size="sm"
-        variant="secondary"
-        className="flex-grow-1"
-        disabled={!canUndo}
-        onClick={onUndo}
-      >
-        Undo
-      </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        className="flex-grow-1"
-        disabled={!canRedo}
-        onClick={onRedo}
-      >
-        Redo
-      </Button>
-    </div>
-  );
-
   function addContinent() {
     if (continentCount >= MAX_CONTINENTS) return;
     setBonuses((prev) => [...prev, 2]);
@@ -305,15 +323,17 @@ function Panel(props: Props) {
 
   if (collapsed) {
     return (
-      <Button
-        variant="secondary"
-        size="sm"
-        className={`position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center${hiddenClass}`}
-        style={{ width: 28, height: 28, padding: 0 }}
-        onClick={() => setCollapsed(false)}
-      >
-        <WhiteIcon path="/icons/menu.svg" alt="Menu" />
-      </Button>
+      <Tip text="Show the map editor tools" placement="left">
+        <Button
+          variant="secondary"
+          size="sm"
+          className={`position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center${hiddenClass}`}
+          style={{ width: 28, height: 28, padding: 0 }}
+          onClick={() => setCollapsed(false)}
+        >
+          <WhiteIcon path="/icons/menu.svg" alt="Menu" />
+        </Button>
+      </Tip>
     );
   }
 
@@ -328,68 +348,19 @@ function Panel(props: Props) {
     >
       <PanelHeader title="Map editor" onClose={() => setCollapsed(true)} />
 
-      <div className="d-flex gap-2 mb-2">
-        <Button variant="secondary" size="sm" className="w-100" onClick={onNew}>
-          New
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-100"
-          onClick={onGenerate}
-        >
-          Generate
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-100"
-          onClick={onWorldMap}
-        >
-          Earth
-        </Button>
-      </div>
-      <div className="d-flex gap-2 mb-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-100"
-          onClick={onImportImage}
-        >
-          Import image
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-100"
-          onClick={onImportLibrary}
-        >
-          Import map
-        </Button>
-      </div>
-      <div className="d-flex gap-2 mb-2">
-        <Button
-          variant="primary"
-          size="sm"
-          className="w-100"
-          onClick={onSave}
-          disabled={saving || !dirty || mapEmpty || !!nameError}
-        >
-          {saving
-            ? 'Saving…'
-            : !dirty && !mapEmpty && !nameError
-              ? 'Saved'
-              : 'Save'}
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-100"
-          onClick={onLeave}
-        >
-          Leave
-        </Button>
-      </div>
+      <EditorActions
+        onNew={onNew}
+        onGenerate={onGenerate}
+        onWorldMap={onWorldMap}
+        onImportImage={onImportImage}
+        onImportLibrary={onImportLibrary}
+        onSave={onSave}
+        onLeave={onLeave}
+        saving={saving}
+        dirty={dirty}
+        mapEmpty={mapEmpty}
+        nameError={nameError}
+      />
 
       <Form.Group className="mb-2">
         <div className="d-flex justify-content-between align-items-baseline mb-1">
@@ -408,7 +379,12 @@ function Panel(props: Props) {
         {nameError && <div className="text-danger small mt-1">{nameError}</div>}
       </Form.Group>
 
-      {undoRedo}
+      <UndoRedo
+        onUndo={onUndo}
+        onRedo={onRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+      />
 
       <div className="d-flex justify-content-between align-items-center mb-2">
         <Form.Check
@@ -424,36 +400,40 @@ function Panel(props: Props) {
         <div className="d-flex flex-wrap align-items-center gap-1 mb-2">
           <span className="small me-1">Borders</span>
           {borderColors.map((c) => (
-            <Button
-              key={c}
-              size="sm"
-              variant="secondary"
-              className="d-flex align-items-center gap-1 py-0 px-1"
-              disabled={borderColors.length === 1}
-              onClick={() =>
-                setBorderColors(borderColors.filter((b) => b !== c))
-              }
-            >
-              <span
-                className="d-inline-block rounded border"
-                style={{ width: 14, height: 14, backgroundColor: c }}
-              />
-              <WhiteIcon path="/icons/close.svg" size={10} />
-            </Button>
+            <TipSpan key={c} text="Remove border color">
+              <Button
+                size="sm"
+                variant="secondary"
+                className="d-flex align-items-center gap-1 py-0 px-1"
+                disabled={borderColors.length === 1}
+                onClick={() =>
+                  setBorderColors(borderColors.filter((b) => b !== c))
+                }
+              >
+                <span
+                  className="d-inline-block rounded border"
+                  style={{ width: 14, height: 14, backgroundColor: c }}
+                />
+                <WhiteIcon path="/icons/close.svg" size={10} />
+              </Button>
+            </TipSpan>
           ))}
           {borderPick === null ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="py-0"
-              disabled={borderColors.length >= MAX_BORDER_COLORS}
-              onClick={() => {
-                flushSync(() => setBorderPick(BORDER_PICKER_START));
-                borderPickerRef.current?.showPicker();
-              }}
-            >
-              Add
-            </Button>
+            <TipSpan text="Add a border color">
+              <Button
+                size="sm"
+                variant="secondary"
+                className="py-0 d-flex align-items-center gap-1"
+                disabled={borderColors.length >= MAX_BORDER_COLORS}
+                onClick={() => {
+                  flushSync(() => setBorderPick(BORDER_PICKER_START));
+                  borderPickerRef.current?.showPicker();
+                }}
+              >
+                <WhiteIcon path="/icons/plus.svg" size={12} />
+                Add
+              </Button>
+            </TipSpan>
           ) : (
             <>
               <Form.Control
@@ -463,29 +443,33 @@ function Panel(props: Props) {
                 value={borderPick}
                 onChange={(e) => setBorderPick(e.target.value.toLowerCase())}
               />
-              <Button
-                size="sm"
-                variant="success"
-                className="py-0"
-                disabled={
-                  borderColors.length >= MAX_BORDER_COLORS ||
-                  borderColors.includes(borderPick)
-                }
-                onClick={() => {
-                  setBorderColors([...borderColors, borderPick]);
-                  setBorderPick(null);
-                }}
-              >
-                <WhiteIcon path="/icons/check.svg" size={12} />
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                className="py-0"
-                onClick={() => setBorderPick(null)}
-              >
-                <WhiteIcon path="/icons/close.svg" size={12} />
-              </Button>
+              <TipSpan text="Add this border color">
+                <Button
+                  size="sm"
+                  variant="success"
+                  className="py-0 d-flex align-items-center justify-content-center"
+                  disabled={
+                    borderColors.length >= MAX_BORDER_COLORS ||
+                    borderColors.includes(borderPick)
+                  }
+                  onClick={() => {
+                    setBorderColors([...borderColors, borderPick]);
+                    setBorderPick(null);
+                  }}
+                >
+                  <WhiteIcon path="/icons/check.svg" size={12} />
+                </Button>
+              </TipSpan>
+              <Tip text="Cancel">
+                <Button
+                  size="sm"
+                  variant="danger"
+                  className="py-0 d-flex align-items-center justify-content-center"
+                  onClick={() => setBorderPick(null)}
+                >
+                  <WhiteIcon path="/icons/close.svg" size={12} />
+                </Button>
+              </Tip>
             </>
           )}
         </div>
@@ -516,61 +500,89 @@ function Panel(props: Props) {
       )}
 
       <ButtonGroup size="sm" className="w-100 mb-2">
-        <Button
-          variant={
-            mode === 'graph' ? (exclusive ? 'success' : 'primary') : 'secondary'
-          }
-          onClick={() => onModeClick('graph')}
-        >
-          Graph
-        </Button>
-        <Button
-          variant={
-            mode === 'paint' ? (exclusive ? 'success' : 'primary') : 'secondary'
-          }
-          onClick={() => onModeClick('paint')}
-        >
-          Draw
-        </Button>
+        <Tip text="Edit territories and links">
+          <Button
+            variant={
+              mode === 'graph'
+                ? exclusive
+                  ? 'success'
+                  : 'primary'
+                : 'secondary'
+            }
+            className="d-flex align-items-center justify-content-center gap-1"
+            onClick={() => onModeClick('graph')}
+          >
+            <WhiteIcon path="/icons/territory.svg" />
+            Graph
+          </Button>
+        </Tip>
+        <Tip text="Paint the map image">
+          <Button
+            variant={
+              mode === 'paint'
+                ? exclusive
+                  ? 'success'
+                  : 'primary'
+                : 'secondary'
+            }
+            className="d-flex align-items-center justify-content-center gap-1"
+            onClick={() => onModeClick('paint')}
+          >
+            <WhiteIcon path="/icons/pencil.svg" />
+            Draw
+          </Button>
+        </Tip>
       </ButtonGroup>
 
       {mode === 'graph' ? (
         <div className="d-flex gap-2 mb-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="w-100"
-            onClick={onFindTerritories}
-          >
-            Find territories
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="w-100"
-            onClick={onLinkTerritories}
-          >
-            Link territories
-          </Button>
+          <Tip text="Add a territory in every closed area that has none (in the picked continent, or as sea with the sea brush)">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-100 d-flex align-items-center justify-content-center gap-1"
+              onClick={onFindTerritories}
+            >
+              <WhiteIcon path="/icons/binoculars.svg" />
+              Find territories
+            </Button>
+          </Tip>
+          <Tip text="Link territories whose areas touch">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-100 d-flex align-items-center justify-content-center gap-1"
+              onClick={onLinkTerritories}
+            >
+              <WhiteIcon path="/icons/link.svg" />
+              Link territories
+            </Button>
+          </Tip>
         </div>
       ) : (
         <div className="d-flex gap-2 mb-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="w-100"
-            onClick={onDrawTerritories}
-          >
-            Draw territories
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="w-100"
-            onClick={onFillTerritories}
-          >
-            Fill territories
-          </Button>
+          <Tip text="Paint borders between territories on the map">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-100 d-flex align-items-center justify-content-center gap-1"
+              onClick={onDrawTerritories}
+            >
+              <WhiteIcon path="/icons/line.svg" />
+              Draw territories
+            </Button>
+          </Tip>
+          <Tip text="Color every territory area: land in earth tones, seas in the sea color">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-100 d-flex align-items-center justify-content-center gap-1"
+              onClick={onFillTerritories}
+            >
+              <WhiteIcon path="/icons/fill.svg" />
+              Fill territories
+            </Button>
+          </Tip>
         </div>
       )}
       <div>
@@ -589,24 +601,28 @@ function Panel(props: Props) {
                         setTool('shape');
                       }}
                     >
-                      <Button
-                        size="sm"
-                        variant={tool === 'shape' ? 'primary' : 'secondary'}
-                        className="d-flex flex-grow-1 align-items-center justify-content-center gap-1"
-                        onClick={() =>
-                          setTool(tool === 'shape' ? null : 'shape')
-                        }
-                      >
-                        <ShapeIcon kind={shapeKind} />
-                        {titleCase(shapeKind)}
-                      </Button>
-                      <Dropdown.Toggle
-                        size="sm"
-                        variant={tool === 'shape' ? 'primary' : 'secondary'}
-                        split
-                      >
-                        <span className="visually-hidden">Choose shape</span>
-                      </Dropdown.Toggle>
+                      <Tip text={t.tip}>
+                        <Button
+                          size="sm"
+                          variant={tool === 'shape' ? 'primary' : 'secondary'}
+                          className="d-flex flex-grow-1 align-items-center justify-content-center gap-1"
+                          onClick={() =>
+                            setTool(tool === 'shape' ? null : 'shape')
+                          }
+                        >
+                          <ShapeIcon kind={shapeKind} />
+                          {titleCase(shapeKind)}
+                        </Button>
+                      </Tip>
+                      <Tip text="Choose shape">
+                        <Dropdown.Toggle
+                          size="sm"
+                          variant={tool === 'shape' ? 'primary' : 'secondary'}
+                          split
+                        >
+                          <span className="visually-hidden">Choose shape</span>
+                        </Dropdown.Toggle>
+                      </Tip>
                       <Dropdown.Menu>
                         {SHAPE_KINDS.map((k) => (
                           <Dropdown.Item
@@ -628,20 +644,23 @@ function Panel(props: Props) {
                   ) : t.group ? (
                     <ToolGroup
                       label={t.label}
+                      tooltip={t.tip}
                       options={t.group}
                       tool={tool}
                       setTool={setTool}
                     />
                   ) : (
-                    <Button
-                      size="sm"
-                      variant={tool === t.key ? 'primary' : 'secondary'}
-                      onClick={() => setTool(tool === t.key ? null : t.key)}
-                      className="d-flex w-100 align-items-center justify-content-center gap-1"
-                    >
-                      {t.icon && <WhiteIcon path={t.icon} />}
-                      {t.label}
-                    </Button>
+                    <Tip text={t.tip}>
+                      <Button
+                        size="sm"
+                        variant={tool === t.key ? 'primary' : 'secondary'}
+                        onClick={() => setTool(tool === t.key ? null : t.key)}
+                        className="d-flex w-100 align-items-center justify-content-center gap-1"
+                      >
+                        {t.icon && <WhiteIcon path={t.icon} />}
+                        {t.label}
+                      </Button>
+                    </Tip>
                   )}
                 </div>
               ))}
@@ -845,27 +864,33 @@ function Panel(props: Props) {
                         />
                       </td>
                       <td>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => deleteContinent(i)}
-                          disabled={continentCount <= MIN_CONTINENTS}
-                        >
-                          <WhiteIcon path="/icons/close.svg" size={12} />
-                        </Button>
+                        <TipSpan text="Delete continent">
+                          <Button
+                            className="d-flex align-items-center justify-content-center"
+                            variant="danger"
+                            size="sm"
+                            onClick={() => deleteContinent(i)}
+                            disabled={continentCount <= MIN_CONTINENTS}
+                          >
+                            <WhiteIcon path="/icons/close.svg" size={12} />
+                          </Button>
+                        </TipSpan>
                       </td>
                     </tr>
                   ))}
                   <tr>
                     <td colSpan={4}>
-                      <Button
-                        variant="success"
-                        size="sm"
-                        onClick={addContinent}
-                        disabled={continentCount >= MAX_CONTINENTS}
-                      >
-                        <WhiteIcon path="/icons/plus.svg" size={14} />
-                      </Button>
+                      <TipSpan text="Add continent">
+                        <Button
+                          className="d-flex align-items-center justify-content-center"
+                          variant="success"
+                          size="sm"
+                          onClick={addContinent}
+                          disabled={continentCount >= MAX_CONTINENTS}
+                        >
+                          <WhiteIcon path="/icons/plus.svg" size={14} />
+                        </Button>
+                      </TipSpan>
                     </td>
                   </tr>
                 </tbody>

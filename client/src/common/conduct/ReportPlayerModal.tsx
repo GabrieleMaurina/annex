@@ -5,6 +5,7 @@ import { Button, Form, Modal } from 'react-bootstrap';
 import { useToggleSound } from '../../lib/sounds';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import { formatError } from '../formatError';
+import WhiteIcon from '../icons/WhiteIcon';
 import Tip from '../tooltips/Tip';
 
 const PICTURE_REASON = 'offensive picture';
@@ -121,14 +122,21 @@ function ReportPlayerModal({
         {error && <div className="small text-danger mt-2">{error}</div>}
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={close}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          variant="secondary"
+          onClick={close}
+        >
+          <WhiteIcon path="/icons/close.svg" />
           Cancel
         </Button>
         <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
           variant="danger"
           disabled={!selected || sending}
           onClick={submit}
         >
+          <WhiteIcon path="/icons/report.svg" />
           Report
         </Button>
       </Modal.Footer>

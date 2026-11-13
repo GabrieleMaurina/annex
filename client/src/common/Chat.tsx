@@ -8,6 +8,7 @@ import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../ui/containers/panelStyle';
 import { useDismissOnOutsideClick } from './dismiss/useDismissOnOutsideClick';
+import WhiteIcon from './icons/WhiteIcon';
 
 interface Props {
   nameById: Map<number, string>;
@@ -157,7 +158,13 @@ function Chat({ nameById, colorById, open, setOpen, hidden }: Props) {
               Message contains profanity
             </Form.Control.Feedback>
           </div>
-          <Button onClick={send}>Send</Button>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            onClick={send}
+          >
+            <WhiteIcon path="/icons/message.svg" />
+            Send
+          </Button>
         </Form.Group>
       </details>
     </div>

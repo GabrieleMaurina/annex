@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form, Spinner } from 'react-bootstrap';
 import Chat from '../common/Chat';
 import { formatError } from '../common/formatError';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import SettingsMenu from '../common/menus/SettingsMenu';
 import { useUiHidden } from '../common/menus/shortcuts/uiHidden';
 import { connector } from '../connector';
@@ -283,9 +284,20 @@ function Game({
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
           />
-          <Button type="submit">Join</Button>
-          <Button variant="secondary" onClick={() => navigate('/')}>
-            Home
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            type="submit"
+          >
+            <WhiteIcon path="/icons/lock.svg" />
+            Join
+          </Button>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            variant="secondary"
+            onClick={() => navigate('/')}
+          >
+            <WhiteIcon path="/icons/step-back.svg" />
+            Back to home
           </Button>
         </Form>
         {passwordError && (
@@ -301,7 +313,13 @@ function Game({
     return (
       <Container fluid className="py-5 px-4">
         <Alert variant="danger">{formatError(joinError)}</Alert>
-        <Button onClick={() => navigate('/')}>Home</Button>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          onClick={() => navigate('/')}
+        >
+          <WhiteIcon path="/icons/step-back.svg" />
+          Back to home
+        </Button>
       </Container>
     );
   }

@@ -10,7 +10,9 @@ import {
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import Help from '../../common/tooltips/Help';
+import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import { playSound } from '../../lib/sounds';
 import type {
@@ -255,13 +257,17 @@ function GameSettingsFields({
                           }}
                         />
                         {gameMeta.hasPassword && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => applySettings({ password: null })}
-                          >
-                            Clear
-                          </Button>
+                          <Tip text="Remove the password">
+                            <Button
+                              className="d-inline-flex align-items-center justify-content-center gap-1"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => applySettings({ password: null })}
+                            >
+                              <WhiteIcon path="/icons/close.svg" />
+                              Clear
+                            </Button>
+                          </Tip>
                         )}
                       </div>
                     ) : (

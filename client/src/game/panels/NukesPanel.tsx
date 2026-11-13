@@ -4,7 +4,9 @@ import {
   NUKE_INSTALLMENTS,
 } from 'engine';
 import { Badge, Button, ListGroup, ProgressBar } from 'react-bootstrap';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import PanelHeader from '../../common/PanelHeader';
+import TipSpan from '../../common/tooltips/TipSpan';
 import type { Arsenal, NukeProject } from '../../lib/types';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 
@@ -24,6 +26,9 @@ interface Props {
   onArm: (mode: 'launch' | 'antiNuke') => void;
   onClose: () => void;
 }
+
+const BLOCK_BUTTON =
+  'd-inline-flex align-items-center justify-content-center gap-1 text-nowrap';
 
 function label(kind: NukeProject['kind']): string {
   return kind === 'nuke' ? 'Nuke' : 'Anti-nuke';
@@ -67,24 +72,46 @@ function NukesPanel({
 
       {canUse && (arsenal.nukes > 0 || arsenal.antiNukes > 0) && (
         <div className="d-flex gap-2 mb-2">
-          <Button
-            size="sm"
-            variant={targeting === 'launch' ? 'primary' : 'secondary'}
-            className="flex-fill text-nowrap"
-            disabled={arsenal.nukes < 1}
-            onClick={() => onArm('launch')}
+          <TipSpan
+            className="flex-fill d-flex"
+            text={
+              arsenal.nukes < 1
+                ? 'You have no nuke'
+                : 'Arm a nuke, then pick the target on the map'
+            }
           >
-            {targeting === 'launch' ? 'Pick target…' : 'Launch nuke'}
-          </Button>
-          <Button
-            size="sm"
-            variant={targeting === 'antiNuke' ? 'primary' : 'secondary'}
-            className="flex-fill text-nowrap"
-            disabled={arsenal.antiNukes < 1}
-            onClick={() => onArm('antiNuke')}
+            <Button
+              size="sm"
+              variant={targeting === 'launch' ? 'primary' : 'secondary'}
+              className={`${BLOCK_BUTTON} flex-fill`}
+              disabled={arsenal.nukes < 1}
+              onClick={() => onArm('launch')}
+            >
+              <WhiteIcon path="/icons/nuke.svg" />
+              {targeting === 'launch' ? 'Pick target…' : 'Launch nuke'}
+            </Button>
+          </TipSpan>
+          <TipSpan
+            className="flex-fill d-flex"
+            text={
+              arsenal.antiNukes < 1
+                ? 'You have no anti-nuke'
+                : 'Arm an anti-nuke, then pick the territory'
+            }
           >
-            {targeting === 'antiNuke' ? 'Pick territory…' : 'Deploy anti-nuke'}
-          </Button>
+            <Button
+              size="sm"
+              variant={targeting === 'antiNuke' ? 'primary' : 'secondary'}
+              className={`${BLOCK_BUTTON} flex-fill`}
+              disabled={arsenal.antiNukes < 1}
+              onClick={() => onArm('antiNuke')}
+            >
+              <WhiteIcon path="/icons/anti-nuke.svg" />
+              {targeting === 'antiNuke'
+                ? 'Pick territory…'
+                : 'Deploy anti-nuke'}
+            </Button>
+          </TipSpan>
         </div>
       )}
 
@@ -110,21 +137,27 @@ function NukesPanel({
                     className="flex-fill"
                     style={{ height: 6 }}
                   />
-                  <Button
-                    size="sm"
-                    variant="secondary"
+                  <TipSpan
                     className="ms-1"
-                    disabled={
-                      !canBuild ||
-                      advancedThisRound ||
-                      troopsToDeploy < cost(project.kind)
-                    }
-                    onClick={() => onAdvance(index)}
+                    text={`Pay ${cost(project.kind)} troops, once per round`}
                   >
-                    {advancedThisRound
-                      ? 'Paid'
-                      : `Advance (${cost(project.kind)})`}
-                  </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="d-inline-flex align-items-center justify-content-center gap-1"
+                      disabled={
+                        !canBuild ||
+                        advancedThisRound ||
+                        troopsToDeploy < cost(project.kind)
+                      }
+                      onClick={() => onAdvance(index)}
+                    >
+                      <WhiteIcon path="/icons/skip-forward.svg" />
+                      {advancedThisRound
+                        ? 'Paid'
+                        : `Advance (${cost(project.kind)})`}
+                    </Button>
+                  </TipSpan>
                 </ListGroup.Item>
               );
             })}
@@ -134,24 +167,36 @@ function NukesPanel({
 
       {canBuild && (
         <div className="d-flex gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="flex-fill text-nowrap"
-            disabled={troopsToDeploy < NUKE_INSTALLMENT}
-            onClick={onBuildNuke}
+          <TipSpan
+            className="flex-fill d-flex"
+            text={`Pay the first installment (${NUKE_INSTALLMENT} troops). Later installments are paid one per round`}
           >
-            Build nuke ({NUKE_INSTALLMENT})
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="flex-fill text-nowrap"
-            disabled={troopsToDeploy < ANTI_NUKE_INSTALLMENT}
-            onClick={onBuildAntiNuke}
+            <Button
+              size="sm"
+              variant="secondary"
+              className={`${BLOCK_BUTTON} flex-fill`}
+              disabled={troopsToDeploy < NUKE_INSTALLMENT}
+              onClick={onBuildNuke}
+            >
+              <WhiteIcon path="/icons/plus.svg" />
+              Build nuke ({NUKE_INSTALLMENT})
+            </Button>
+          </TipSpan>
+          <TipSpan
+            className="flex-fill d-flex"
+            text={`Pay the first installment (${ANTI_NUKE_INSTALLMENT} troops). Later installments are paid one per round`}
           >
-            Build anti-nuke ({ANTI_NUKE_INSTALLMENT})
-          </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className={`${BLOCK_BUTTON} flex-fill`}
+              disabled={troopsToDeploy < ANTI_NUKE_INSTALLMENT}
+              onClick={onBuildAntiNuke}
+            >
+              <WhiteIcon path="/icons/plus.svg" />
+              Build anti-nuke ({ANTI_NUKE_INSTALLMENT})
+            </Button>
+          </TipSpan>
         </div>
       )}
 

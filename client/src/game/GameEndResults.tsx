@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Button, Container } from 'react-bootstrap';
 import ExportDataButton from '../common/export/ExportDataButton';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import SharePageButton from '../common/menus/SharePageButton';
 import type { ResultRow } from '../common/ResultsTable';
 import ResultsTable from '../common/ResultsTable';
@@ -161,15 +162,27 @@ function GameEndResults({
       {overlay}
 
       <div className="d-flex flex-wrap justify-content-center align-items-start gap-3 mt-3">
-        <Button variant="info" onClick={onWatchReplay}>
-          Watch Replay
-        </Button>
+        <Tip text="Replay this game round by round">
+          <Button
+            variant="info"
+            className="d-inline-flex align-items-center gap-1"
+            onClick={onWatchReplay}
+          >
+            <WhiteIcon path="/icons/play.svg" />
+            Watch Replay
+          </Button>
+        </Tip>
         {onRestart && (
           <Tip
             text="Start a new game with the same settings, players and map"
             placement="bottom"
           >
-            <Button variant="success" onClick={onRestart}>
+            <Button
+              variant="success"
+              className="d-inline-flex align-items-center gap-1"
+              onClick={onRestart}
+            >
+              <WhiteIcon path="/icons/restart.svg" />
               Restart
             </Button>
           </Tip>
@@ -184,6 +197,7 @@ function GameEndResults({
           <ExportDataButton
             key={shareGameId}
             name={game.name}
+            tooltip="Download the raw data of this game"
             load={(cb) =>
               shareGameId
                 ? connector.getGameExport(shareGameId, cb)

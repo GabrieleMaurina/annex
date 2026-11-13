@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Container, Form } from 'react-bootstrap';
 import { formatError } from '../../common/formatError';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
 
@@ -65,16 +66,22 @@ function PasswordReset({ code, navigate }: Props) {
               {formatError(error)}
             </Alert>
           )}
-          <Button type="submit" disabled={busy}>
+          <Button
+            className="d-inline-flex align-items-center justify-content-center gap-1"
+            type="submit"
+            disabled={busy}
+          >
+            <WhiteIcon path="/icons/check.svg" />
             Update password
           </Button>
         </Form>
       )}
       <Button
-        variant="link"
-        className="px-0 mt-2"
+        variant="outline-secondary"
+        className="mt-2 d-inline-flex align-items-center justify-content-center gap-1"
         onClick={() => navigate('/')}
       >
+        <WhiteIcon path="/icons/globe.svg" />
         Go to Annex
       </Button>
     </Container>

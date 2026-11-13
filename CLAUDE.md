@@ -70,3 +70,4 @@ Whole repo is an npm workspace with 3 modules: `engine`, `server`, and `client`.
 - Vite, React, React-Bootstrap, TypeScript, ESLint, Prettier.
 - Follow PROTOCOL.md for socket.io events and data types.
 - Includes the in-app map editor (`src/maps/editor`) where users draw and/or generate their own maps.
+- For buttons, follow the rules in BUTTONS.md.

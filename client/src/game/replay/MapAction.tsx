@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { formatError } from '../../common/formatError';
+import WhiteIcon from '../../common/icons/WhiteIcon';
+import TipSpan from '../../common/tooltips/TipSpan';
 import { connector } from '../../connector';
 import { isLoggedIn } from '../../lib/player';
 import type { GameState } from '../../lib/types';
@@ -27,13 +29,21 @@ function SaveMapButton({ gameId }: { gameId: string }) {
 
   return (
     <div className="d-flex flex-column align-items-center">
-      <Button variant="primary" disabled={status !== 'idle'} onClick={save}>
-        {status === 'saved'
-          ? 'Map saved'
-          : status === 'saving'
-            ? 'Saving…'
-            : 'Save map'}
-      </Button>
+      <TipSpan text="Save this map to your library">
+        <Button
+          variant="primary"
+          className="d-inline-flex align-items-center gap-1"
+          disabled={status !== 'idle'}
+          onClick={save}
+        >
+          <WhiteIcon path="/icons/save.svg" />
+          {status === 'saved'
+            ? 'Map saved'
+            : status === 'saving'
+              ? 'Saving…'
+              : 'Save map'}
+        </Button>
+      </TipSpan>
       {error && (
         <div className="text-danger small mt-1">{formatError(error)}</div>
       )}

@@ -1,6 +1,7 @@
 import { aspectLabel, MAP_ASPECT_VALUES } from 'engine';
 import { useState } from 'react';
 import { Alert, Button, Form, Modal } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 import type { MapAspect, MapSize } from '../../../lib/types';
 import Selector from '../../../ui/forms/Selector';
 
@@ -53,15 +54,22 @@ function NewMapModal({ show, onHide, dirty, onCreate }: Props) {
         </Form.Group>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          variant="secondary"
+          onClick={onHide}
+        >
+          <WhiteIcon path="/icons/close.svg" />
           Cancel
         </Button>
         <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
           onClick={() => {
             onHide();
             onCreate(size, aspect);
           }}
         >
+          <WhiteIcon path="/icons/check.svg" />
           Create
         </Button>
       </Modal.Footer>

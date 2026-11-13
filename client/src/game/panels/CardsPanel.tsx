@@ -1,6 +1,8 @@
 import { Badge, Button, ListGroup } from 'react-bootstrap';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import PanelHeader from '../../common/PanelHeader';
 import Tip from '../../common/tooltips/Tip';
+import TipSpan from '../../common/tooltips/TipSpan';
 import type { Card } from '../../lib/types';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import { comboKey, sortForDisplay, type EvaluatedCombo } from '../logic/cards';
@@ -225,14 +227,20 @@ function CardsPanel({
                 ))}
               </ListGroup>
             </div>
-            <Button
-              size="sm"
-              className="w-100"
-              disabled={!canPlay || !selectedCombo}
-              onClick={() => selectedCombo && onPlaySet(selectedCombo)}
+            <TipSpan
+              className="d-block"
+              text="Play the selected set (your deploy phase only)"
             >
-              Play Set
-            </Button>
+              <Button
+                size="sm"
+                className="w-100 d-inline-flex align-items-center justify-content-center gap-1"
+                disabled={!canPlay || !selectedCombo}
+                onClick={() => selectedCombo && onPlaySet(selectedCombo)}
+              >
+                <WhiteIcon path="/icons/cards.svg" />
+                Play Set
+              </Button>
+            </TipSpan>
           </>
         )}
       </div>

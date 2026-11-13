@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, ButtonGroup, Dropdown } from 'react-bootstrap';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
+import Tip from '../../../common/tooltips/Tip';
 import type { PaintTool } from '../paint/paintTools';
 
 export interface ToolOption {
@@ -11,12 +12,13 @@ export interface ToolOption {
 
 interface Props {
   label: string;
+  tooltip: string;
   options: ToolOption[];
   tool: PaintTool | null;
   setTool: (tool: PaintTool | null) => void;
 }
 
-function ToolGroup({ label, options, tool, setTool }: Props) {
+function ToolGroup({ label, tooltip, options, tool, setTool }: Props) {
   const [chosen, setChosen] = useState(options[0]);
   const active = options.find((o) => o.key === tool);
   if (active && active !== chosen) setChosen(active);
@@ -30,18 +32,22 @@ function ToolGroup({ label, options, tool, setTool }: Props) {
         if (option) setTool(option.key);
       }}
     >
-      <Button
-        size="sm"
-        variant={variant}
-        className="d-flex flex-grow-1 align-items-center justify-content-center gap-1"
-        onClick={() => setTool(active ? null : chosen.key)}
-      >
-        <WhiteIcon path={chosen.icon} />
-        {chosen.label}
-      </Button>
-      <Dropdown.Toggle size="sm" variant={variant} split>
-        <span className="visually-hidden">Choose {label}</span>
-      </Dropdown.Toggle>
+      <Tip text={tooltip}>
+        <Button
+          size="sm"
+          variant={variant}
+          className="d-flex flex-grow-1 align-items-center justify-content-center gap-1"
+          onClick={() => setTool(active ? null : chosen.key)}
+        >
+          <WhiteIcon path={chosen.icon} />
+          {chosen.label}
+        </Button>
+      </Tip>
+      <Tip text={`Choose ${label}`}>
+        <Dropdown.Toggle size="sm" variant={variant} split>
+          <span className="visually-hidden">Choose {label}</span>
+        </Dropdown.Toggle>
+      </Tip>
       <Dropdown.Menu>
         {options.map((o) => (
           <Dropdown.Item

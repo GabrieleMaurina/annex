@@ -124,6 +124,7 @@ export default function TurnActionPanels({
   attackSeaDiceOnly,
   submitAttackSea,
   players,
+  anonymous,
 }: {
   camera: Camera;
   anchors: PanelAnchors;
@@ -232,6 +233,7 @@ export default function TurnActionPanels({
   attackSeaDiceOnly: boolean;
   submitAttackSea: () => void;
   players: GameState['players'];
+  anonymous: boolean;
 }) {
   const target = attackDisplay.unlock ?? attackDisplay.flip;
   const drag = useDragOffset(
@@ -370,7 +372,8 @@ export default function TurnActionPanels({
         {toxinsPanelOpen && deployPanelStyle && (
           <ConfirmPanel
             label="Release toxin:"
-            buttonLabel="Confirm"
+            buttonLabel="Release"
+            icon="warning"
             onConfirm={submitToxins}
             style={deployPanelStyle}
             extra={
@@ -384,6 +387,7 @@ export default function TurnActionPanels({
           <ConfirmPanel
             label="Unlock tile:"
             buttonLabel="Unlock"
+            icon="lock"
             onConfirm={submitAttack}
             style={unlockPanelStyle}
             extra={`Costs ${attackDisplay.unlock.cost} troops`}
@@ -393,6 +397,7 @@ export default function TurnActionPanels({
           <ConfirmPanel
             label="Flip switch:"
             buttonLabel="Flip"
+            icon="switch"
             onConfirm={submitAttack}
             style={unlockPanelStyle}
             extra={`Costs ${attackDisplay.flip.cost} troops`}
@@ -451,10 +456,14 @@ export default function TurnActionPanels({
           )}
         {attackSeaPanelOpen && attackSeaPanelStyle && (
           <AttackSeaPanel
-            defenders={attackSeaDefenders.map((d) => ({
-              ...d,
-              color: players.find((p) => p.id === d.playerId)?.color ?? 0,
-            }))}
+            defenders={attackSeaDefenders.map((d) => {
+              const defender = players.find((p) => p.id === d.playerId);
+              return {
+                ...d,
+                color: defender?.color ?? 0,
+                name: anonymous ? null : (defender?.name ?? null),
+              };
+            })}
             defenderId={attackSeaDefenderId}
             onSelectDefender={selectAttackSeaDefender}
             blitzWinProbabilities={attackSeaWinProbabilities ?? []}

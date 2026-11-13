@@ -1,4 +1,6 @@
 import { Button, Table } from 'react-bootstrap';
+import WhiteIcon from '../common/icons/WhiteIcon';
+import Tip from '../common/tooltips/Tip';
 import type { GameState } from '../lib/types';
 
 interface Props {
@@ -25,13 +27,17 @@ function BannedList({ bannedPlayers, isHost, unbanPlayer }: Props) {
             <tr key={p.id}>
               <td className="align-middle">{p.name}</td>
               <td className="align-middle">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => unbanPlayer(p.id)}
-                >
-                  Unban
-                </Button>
+                <Tip text="Let this player join again">
+                  <Button
+                    className="d-inline-flex align-items-center justify-content-center gap-1"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => unbanPlayer(p.id)}
+                  >
+                    <WhiteIcon path="/icons/friend-add.svg" />
+                    Unban
+                  </Button>
+                </Tip>
               </td>
             </tr>
           ))}

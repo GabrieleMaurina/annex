@@ -151,7 +151,6 @@ function GameMap({
   const whiteLogsIcon = useWhiteIcon('/icons/logs.svg');
   const whiteSettingsIcon = useWhiteIcon('/icons/sliders.svg');
   const whiteNukesIcon = useWhiteIcon('/icons/nuke.svg');
-  const whiteHeatMapIcon = useWhiteIcon('/icons/palette.svg');
 
   const {
     canvasRef,
@@ -797,7 +796,6 @@ function GameMap({
           nukesButtonRef={nukesButtonRef}
           nukesPanelRef={nukesPanelRef}
           whiteNukesIcon={whiteNukesIcon}
-          whiteHeatMapIcon={whiteHeatMapIcon}
           heatMapRef={heatMapRef}
           nukes={nukes}
           heatMap={

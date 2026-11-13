@@ -10,7 +10,7 @@ import Tip from '../../common/tooltips/Tip';
 import { playSound } from '../../lib/sounds';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import { isTypingTarget } from '../GameMap/helpers';
-import type { ReplayMoveUnit } from '../replay/replay';
+import { REPLAY_SPEEDS, type ReplayMoveUnit } from '../replay/replay';
 
 const SLIDER_WIDTH = 260;
 const MIN_TICK_SPACING = 4;
@@ -200,6 +200,7 @@ function ReplayPanel({
       </span>
       <Tip text="Jump to start">
         <Button
+          className="d-flex align-items-center justify-content-center"
           size="sm"
           variant="secondary"
           disabled={atStart}
@@ -215,6 +216,7 @@ function ReplayPanel({
       </Tip>
       <Tip text="Rewind one frame">
         <Button
+          className="d-flex align-items-center justify-content-center"
           size="sm"
           variant="secondary"
           disabled={atStart}
@@ -228,8 +230,13 @@ function ReplayPanel({
           />
         </Button>
       </Tip>
-      <Tip text={playing ? 'Pause' : 'Play'}>
-        <Button size="sm" variant="secondary" onClick={onTogglePlay}>
+      <Tip text={playing ? 'Pause (Space)' : 'Play (Space)'}>
+        <Button
+          className="d-flex align-items-center justify-content-center"
+          size="sm"
+          variant="secondary"
+          onClick={onTogglePlay}
+        >
           <img
             src={
               playing
@@ -244,6 +251,7 @@ function ReplayPanel({
       </Tip>
       <Tip text="Advance one frame">
         <Button
+          className="d-flex align-items-center justify-content-center"
           size="sm"
           variant="secondary"
           disabled={atEnd}
@@ -259,6 +267,7 @@ function ReplayPanel({
       </Tip>
       <Tip text="Jump to end">
         <Button
+          className="d-flex align-items-center justify-content-center"
           size="sm"
           variant="secondary"
           disabled={atEnd}
@@ -305,7 +314,9 @@ function ReplayPanel({
           {index}/{totalFrames}
         </span>
       </Tip>
-      <Tip text="Playback speed">
+      <Tip
+        text={`Playback speed. Click for ${REPLAY_SPEEDS[(REPLAY_SPEEDS.indexOf(speed) + 1) % REPLAY_SPEEDS.length]}x`}
+      >
         <Button
           size="sm"
           variant="secondary"

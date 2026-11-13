@@ -1,8 +1,10 @@
+import { PLAYER_COLOR_NAMES } from 'engine';
 import { type CSSProperties, useState } from 'react';
 import { contrastTextColor, PLAYER_COLORS } from '../../lib/palette';
 import { SECTION_CLASS } from '../../ui/containers/panelStyle';
 import { type DropHit, GAP, useDrag } from '../../ui/dnd/dragDrop';
 import DragGhost from '../../ui/dnd/DragGhost';
+import Tip from '../tooltips/Tip';
 
 const ALL_COLORS = PLAYER_COLORS.map((_, color) => color);
 const SWATCH_SIZE = 28;
@@ -117,22 +119,30 @@ function PreferredColorsPicker({
 
   function swatch(color: number, zone: string, index: number, rank?: number) {
     return (
-      <button
-        type="button"
+      <Tip
         key={color}
-        ref={register(String(color))}
-        data-drop-zone={zone}
-        data-drop-index={index}
-        className="p-0 border-0 bg-transparent"
-        onClick={() => clickSwatch(color)}
-        onPointerDown={(e) => start(e, color, (hit) => dropColor(color, hit))}
-        style={{
-          touchAction: 'none',
-          opacity: dragged === color && !previewing ? 0.35 : 1,
-        }}
+        text={
+          preferred.includes(color)
+            ? `Remove ${PLAYER_COLOR_NAMES[color]} from preferred colors`
+            : `Prefer ${PLAYER_COLOR_NAMES[color]}`
+        }
       >
-        {chip(color, rank)}
-      </button>
+        <button
+          type="button"
+          ref={register(String(color))}
+          data-drop-zone={zone}
+          data-drop-index={index}
+          className="p-0 border-0 bg-transparent"
+          onClick={() => clickSwatch(color)}
+          onPointerDown={(e) => start(e, color, (hit) => dropColor(color, hit))}
+          style={{
+            touchAction: 'none',
+            opacity: dragged === color && !previewing ? 0.35 : 1,
+          }}
+        >
+          {chip(color, rank)}
+        </button>
+      </Tip>
     );
   }
 

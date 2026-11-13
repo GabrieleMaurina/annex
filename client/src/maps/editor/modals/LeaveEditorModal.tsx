@@ -1,4 +1,5 @@
 import { Button, Modal } from 'react-bootstrap';
+import WhiteIcon from '../../../common/icons/WhiteIcon';
 
 interface Props {
   show: boolean;
@@ -16,10 +17,20 @@ function LeaveEditorModal({ show, onHide, onLeave }: Props) {
         You have unsaved changes. Are you sure you want to leave?
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          variant="secondary"
+          onClick={onHide}
+        >
+          <WhiteIcon path="/icons/close.svg" />
           Cancel
         </Button>
-        <Button variant="danger" onClick={onLeave}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          variant="danger"
+          onClick={onLeave}
+        >
+          <WhiteIcon path="/icons/exit.svg" />
           Leave
         </Button>
       </Modal.Footer>

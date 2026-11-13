@@ -1,4 +1,5 @@
 import { Button, Modal } from 'react-bootstrap';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import { useToggleSound } from '../lib/sounds';
 
 interface Props {
@@ -20,10 +21,21 @@ function TutorialInviteModal({ show, onHide, onContinue, onTutorials }: Props) {
         teach you the basics on a tiny map.
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={onContinue}>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          variant="secondary"
+          onClick={onContinue}
+        >
+          <WhiteIcon path="/icons/close.svg" />
           Not now
         </Button>
-        <Button onClick={onTutorials}>Try the tutorials</Button>
+        <Button
+          className="d-inline-flex align-items-center justify-content-center gap-1"
+          onClick={onTutorials}
+        >
+          <WhiteIcon path="/icons/book.svg" />
+          Try the tutorials
+        </Button>
       </Modal.Footer>
     </Modal>
   );

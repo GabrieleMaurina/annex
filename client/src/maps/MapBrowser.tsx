@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button, Form, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useWhiteIcon } from '../common/icon';
+import WhiteIcon from '../common/icons/WhiteIcon';
 import {
   Field,
   FilterDetails,
@@ -11,6 +12,8 @@ import {
   RangeField,
   SortSelect,
 } from '../common/inputs/filterControls';
+import Tip from '../common/tooltips/Tip';
+import TipSpan from '../common/tooltips/TipSpan';
 import { connector } from '../connector';
 import type {
   Account,
@@ -440,44 +443,56 @@ function MapBrowser({
                     </td>
                     {showAuthor && (
                       <td>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(
-                              `/players/${encodeURIComponent(row.authorName)}`,
-                            );
-                          }}
-                        >
-                          {row.authorName}
-                        </Button>
+                        <Tip text={`View ${row.authorName}'s profile`}>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(
+                                `/players/${encodeURIComponent(row.authorName)}`,
+                              );
+                            }}
+                          >
+                            {row.authorName}
+                          </Button>
+                        </Tip>
                       </td>
                     )}
                     <td>{row.territoryCount}</td>
                     <td>{row.continentCount}</td>
                     <td>
-                      <button
-                        type="button"
-                        className="btn btn-sm p-0 text-white d-inline-flex align-items-center gap-1"
-                        disabled={!account}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleLike(row);
-                        }}
+                      <TipSpan
+                        text={
+                          !account
+                            ? 'Sign in to like maps'
+                            : row.liked
+                              ? 'Unlike this map'
+                              : 'Like this map'
+                        }
                       >
-                        <img
-                          src={
-                            row.liked
-                              ? (whiteHeartFull ?? '/icons/heart_full.svg')
-                              : (whiteHeartEmpty ?? '/icons/heart_empty.svg')
-                          }
-                          width={14}
-                          height={14}
-                          alt={row.liked ? 'Liked' : 'Like'}
-                        />
-                        {row.likeCount}
-                      </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm p-0 text-white d-inline-flex align-items-center gap-1"
+                          disabled={!account}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleLike(row);
+                          }}
+                        >
+                          <img
+                            src={
+                              row.liked
+                                ? (whiteHeartFull ?? '/icons/heart_full.svg')
+                                : (whiteHeartEmpty ?? '/icons/heart_empty.svg')
+                            }
+                            width={14}
+                            height={14}
+                            alt={row.liked ? 'Liked' : 'Like'}
+                          />
+                          {row.likeCount}
+                        </button>
+                      </TipSpan>
                     </td>
                     {actionsCol && (
                       <td
@@ -487,9 +502,10 @@ function MapBrowser({
                         {mode === 'pick' && onRowClick ? (
                           <button
                             type="button"
-                            className="btn btn-sm btn-primary"
+                            className="btn btn-sm btn-primary d-inline-flex align-items-center justify-content-center gap-1"
                             onClick={() => onRowClick(row)}
                           >
+                            <WhiteIcon path="/icons/check.svg" />
                             Select
                           </button>
                         ) : (

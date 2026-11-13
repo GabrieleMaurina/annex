@@ -1,6 +1,7 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
+import WhiteIcon from '../../common/icons/WhiteIcon';
 import SharePageButton from '../../common/menus/SharePageButton';
 import { useUiHidden } from '../../common/menus/shortcuts/uiHidden';
 import { isPlayerMuted } from '../../common/mutedPlayers';
@@ -128,9 +129,16 @@ function GameReplayView({
     return replayFailed ? (
       <div className="d-flex flex-column align-items-center gap-3 py-5">
         <p>Replay unavailable.</p>
-        <Button variant="info" onClick={() => setView('results')}>
-          Results
-        </Button>
+        <Tip text="Back to the results table">
+          <Button
+            variant="info"
+            className="d-inline-flex align-items-center gap-1"
+            onClick={() => setView('results')}
+          >
+            <WhiteIcon path="/icons/trophy.svg" />
+            Results
+          </Button>
+        </Tip>
       </div>
     ) : (
       <ReplayLoading />
@@ -182,15 +190,25 @@ function GameReplayView({
             <Button
               variant="secondary"
               size="sm"
+              className="d-inline-flex align-items-center gap-1"
               onClick={() => setClipOpen(true)}
             >
+              <WhiteIcon path="/icons/download.svg" />
               Export Replay
             </Button>
           </Tip>
         )}
-        <Button variant="info" size="sm" onClick={() => setView('results')}>
-          Results
-        </Button>
+        <Tip text="Back to the results table">
+          <Button
+            variant="info"
+            size="sm"
+            className="d-inline-flex align-items-center gap-1"
+            onClick={() => setView('results')}
+          >
+            <WhiteIcon path="/icons/trophy.svg" />
+            Results
+          </Button>
+        </Tip>
       </div>
       {replay.data.frames.length > 0 && (
         <ExportReplayModal

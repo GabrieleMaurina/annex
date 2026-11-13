@@ -1,4 +1,4 @@
-import { defenceDiceFor } from '../../game/combat/dice';
+import { attackDiceFor, defenceDiceFor } from '../../game/combat/dice';
 import { Game } from '../../types';
 import { attackWinProbability } from '../features/combat';
 import {
@@ -31,11 +31,12 @@ export interface AttackChoice {
 export function attackOrder(
   game: Game,
   troops: number,
+  maxDice: number = game.attackDice,
 ): { type: 'manual' | 'blitz'; troops: number } {
   if (game.blitz === 'off')
     return {
       type: 'manual',
-      troops: Math.min(troops, game.attackDice),
+      troops: Math.min(troops, maxDice),
     };
   return { type: 'blitz', troops };
 }
@@ -93,6 +94,7 @@ export function chooseAttack(
       attackingTroops - 1,
       defendingTroops,
       defenceDiceFor(game, endId),
+      attackDiceFor(game, startId),
     );
     if (winProb < minWin - noise * 0.3) return;
 
@@ -112,7 +114,11 @@ export function chooseAttack(
 
     if (score > bestScore) {
       bestScore = score;
-      const { type, troops } = attackOrder(game, attackingTroops - 1);
+      const { type, troops } = attackOrder(
+        game,
+        attackingTroops - 1,
+        attackDiceFor(game, startId),
+      );
       best = { startId, endId, troops, type };
     }
   };

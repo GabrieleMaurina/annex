@@ -1,0 +1,126 @@
+.player-row {
+  cursor: pointer;
+  background-color: var(--bs-secondary-bg);
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  box-shadow: var(--ui-shine);
+}
+
+.player-row:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--bs-body-color) 8%,
+    var(--bs-secondary-bg)
+  );
+}
+
+.player-row.is-turn {
+  background-color: color-mix(
+    in srgb,
+    var(--player-color) 16%,
+    var(--bs-secondary-bg)
+  );
+}
+
+.player-row.is-self {
+  border-color: var(--player-color);
+  box-shadow:
+    var(--ui-shine),
+    inset 0 0 0 1px var(--player-color);
+}
+
+.player-row.is-selected {
+  box-shadow:
+    var(--ui-shine),
+    inset 0 0 0 2px var(--player-color);
+}
+
+.player-card {
+}
+
+.player-chip {
+  height: 1.75rem;
+}
+
+.player-chips {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--player-rows), auto);
+  grid-auto-columns: 1fr;
+  gap: 0.25rem 0.5rem;
+}
+
+.player-orb {
+  background-color: var(--player-color);
+  color: var(--player-fg);
+  box-shadow:
+    inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 2px 3px rgba(255, 255, 255, 0.25);
+}
+
+.player-card .player-orb {
+  box-shadow:
+    0 0 0 3px var(--bs-secondary-bg),
+    0 0 0 5px color-mix(in srgb, var(--player-color) 60%, transparent);
+}
+
+.player-orb-turn {
+  --turn-ring: 3px;
+  animation: player-turn-pulse 1.4s ease-in-out infinite;
+}
+
+.player-chip .player-orb-turn {
+  --turn-ring: 2px;
+}
+
+:root.animations-off .player-orb-turn {
+  animation: none;
+  box-shadow: 0 0 0 var(--turn-ring) var(--player-color);
+}
+
+@keyframes player-turn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 var(--turn-ring) var(--player-color);
+  }
+  50% {
+    box-shadow: 0 0 0 var(--turn-ring) transparent;
+  }
+}
+
+.player-team-badge {
+  top: -0.25rem;
+  left: -0.25rem;
+  min-width: 0.9rem;
+  height: 0.9rem;
+  padding: 0 0.2rem;
+  background-color: var(--ui-ink);
+  color: var(--bs-body-color);
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  font-size: 0.6rem;
+  line-height: 0.8rem;
+  text-align: center;
+}
+
+.player-progress {
+  height: 0.25rem;
+  background-color: var(--ui-ink);
+}
+
+.player-progress > i {
+  display: block;
+  height: 100%;
+  background-color: var(--player-color);
+}
+
+.player-progress-thin {
+  height: 0.1875rem;
+}
+
+.player-progress-hidden {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--ui-drum) 0 5px,
+    var(--ui-well) 5px 10px
+  );
+}

@@ -135,7 +135,8 @@ export const ATTACK_DICE_HELP = (
     The most dice an attacker rolls per attack exchange, one per attacking troop
     or ship. Also the most troops a manual (non-blitz) attack can send. More
     dice means better odds for the attacker. Lowering it below Defence Dice
-    lowers Defence Dice to match.
+    lowers Defence Dice to match. Territories still entrenched during your
+    attack phase roll 1 extra die, up to 10.
   </>
 );
 
@@ -403,9 +404,12 @@ export const ENTRENCHMENTS_HELP = (
   <>
     Adds an extra phase after fortifying where you can spend troops straight off
     a territory to entrench it: 1 troop buys 1 turn of entrenchment, and an
-    entrenched territory defends with 1 more die than Defence Dice, up to 10.
-    Entrenchment decreases by 1 at the start of your next turn, and is lost if
-    the territory is conquered. Capitals can&apos;t be entrenched.
+    entrenched territory defends with 1 more die than Defence Dice, up to 10,
+    and attacks with 1 more die than Attack Dice, up to 10, if the entrenchment
+    is still active during your attack phase, so a 1 turn entrenchment never
+    attacks with the extra die. Entrenchment decreases by 1 at the start of your
+    next turn, and is lost if the territory is conquered. Capitals can&apos;t be
+    entrenched.
     <ul className="mb-0 ps-3">
       <li>Off: no entrench phase.</li>
       <li>

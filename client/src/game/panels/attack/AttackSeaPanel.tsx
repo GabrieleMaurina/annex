@@ -33,10 +33,8 @@ interface Props {
   diceTies: DiceTies;
   attackSides: number;
   defenceSides: number;
-  inputRef: RefObject<HTMLInputElement | null>;
   blitzInputRef: RefObject<HTMLInputElement | null>;
-  onSelectManual: () => void;
-  onManualShipsChange: (ships: number) => void;
+  onSelectManual: (ships: number) => void;
   onSelectBlitz: () => void;
   onBlitzShipsChange: (ships: number) => void;
   onConfirm: () => void;
@@ -60,10 +58,8 @@ function AttackSeaPanel({
   diceTies,
   attackSides,
   defenceSides,
-  inputRef,
   blitzInputRef,
   onSelectManual,
-  onManualShipsChange,
   onSelectBlitz,
   onBlitzShipsChange,
   onConfirm,
@@ -74,16 +70,6 @@ function AttackSeaPanel({
   const blitzProbability = blitzWinProbabilities[blitzShips - 1] ?? 0;
   const blitzOutcome = blitzOutcomes[blitzShips - 1];
 
-  const manualShipsInput = useTroopsInput({
-    value: manualShips,
-    min: 1,
-    max: maxManualShips,
-    onChange: (ships) => {
-      onSelectManual();
-      onManualShipsChange(ships);
-    },
-    inputRef,
-  });
   const blitzShipsInput = useTroopsInput({
     value: blitzShips,
     min: 1,
@@ -94,11 +80,6 @@ function AttackSeaPanel({
     },
     inputRef: blitzInputRef,
   });
-
-  const sliderInput =
-    selectedType === 'blitz' && blitzEnabled
-      ? blitzShipsInput
-      : manualShipsInput;
 
   return (
     <div
@@ -137,22 +118,23 @@ function AttackSeaPanel({
         </div>
       ) : (
         <div className="d-flex align-items-center gap-2">
-          <div
-            style={attackOptionStyle(selectedType === 'manual')}
-            onClick={() => {
-              playSound('click');
-              onSelectManual();
-            }}
-          >
-            <div className="d-flex align-items-center gap-1">
-              <span>Ships</span>
-              <NumberOdometer
-                onClick={(e) => e.stopPropagation()}
-                {...manualShipsInput}
-                style={{ minWidth: 60 }}
-              />
-            </div>
-          </div>
+          {Array.from({ length: maxManualShips }, (_, i) => {
+            const ships = i + 1;
+            return (
+              <div
+                key={ships}
+                style={attackOptionStyle(
+                  selectedType === 'manual' && manualShips === ships,
+                )}
+                onClick={() => {
+                  playSound('click');
+                  onSelectManual(ships);
+                }}
+              >
+                <div>{ships}</div>
+              </div>
+            );
+          })}
           {blitzEnabled && (
             <div
               style={attackOptionStyle(selectedType === 'blitz')}
@@ -187,12 +169,12 @@ function AttackSeaPanel({
           {blitzEnabled && <PercentageToggle max={maxBlitzShips} />}
         </div>
       )}
-      {!diceOnly && defenderId !== null && (
+      {!diceOnly && defenderId !== null && blitzEnabled && (
         <TroopSlider
-          min={sliderInput.min}
-          max={sliderInput.max}
-          value={sliderInput.value}
-          onChange={sliderInput.onChange}
+          min={blitzShipsInput.min}
+          max={blitzShipsInput.max}
+          value={blitzShipsInput.value}
+          onChange={blitzShipsInput.onChange}
         />
       )}
       {diceRoll && (

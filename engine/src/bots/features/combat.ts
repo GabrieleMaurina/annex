@@ -135,6 +135,7 @@ export function attackWinProbability(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  attackDice: number = game.attackDice,
 ): number {
   if (attackingTroops <= 0) return 0;
   if (defendingTroops <= 0) return 1;
@@ -145,7 +146,7 @@ export function attackWinProbability(
     game.defenceSides === DEFAULT_SIDES
   )
     return 0.99;
-  const dice = gameDiceRules(game, defendingDice);
+  const dice = gameDiceRules(game, defendingDice, attackDice);
   const battle = scaledBattle(attackingTroops, defendingTroops, dice);
   const trueProb = cachedWinProb(battle.attackers, battle.defenders, dice);
   if (game.blitz === 'fair') return trueProb >= 0.5 ? 1 : 0;
@@ -183,6 +184,7 @@ export function expectedOutcome(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  attackDice: number = game.attackDice,
 ): ExpectedOutcome {
   if (attackingTroops <= 0)
     return { winProbability: 0, attackerSurvivorsMean: 0 };
@@ -192,7 +194,7 @@ export function expectedOutcome(
     const outcome = cachedFairBlitz(
       attackingTroops,
       defendingTroops,
-      gameDiceRules(game, defendingDice),
+      gameDiceRules(game, defendingDice, attackDice),
     );
     const win = outcome.defenceLosses >= defendingTroops;
     return {
@@ -203,7 +205,7 @@ export function expectedOutcome(
   const stats = cachedStatistics(
     attackingTroops,
     defendingTroops,
-    gameDiceRules(game, defendingDice),
+    gameDiceRules(game, defendingDice, attackDice),
   );
   return {
     winProbability:
@@ -219,17 +221,19 @@ export function scaledOutcome(
   attackingTroops: number,
   defendingTroops: number,
   defendingDice: number,
+  attackDice: number = game.attackDice,
 ): ExpectedOutcome {
   const battle = scaledBattle(
     attackingTroops,
     defendingTroops,
-    gameDiceRules(game, defendingDice),
+    gameDiceRules(game, defendingDice, attackDice),
   );
   const outcome = expectedOutcome(
     game,
     battle.attackers,
     battle.defenders,
     defendingDice,
+    attackDice,
   );
   if (battle.scale === 1) return outcome;
   const losses =

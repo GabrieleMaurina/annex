@@ -7,6 +7,10 @@ import { requestNextPhase } from '../useMiscUiState';
 
 export const SHIP_COST = 3;
 
+export function canBuyShipFrom(troops: number): boolean {
+  return troops - 1 >= SHIP_COST;
+}
+
 export function useDeploySeaFlow({
   selectedTerritoryId,
   territories,
@@ -63,7 +67,9 @@ export function useDeploySeaFlow({
             if (adjacentOwned.length === 0) return false;
             if (troopsToDeploy >= SHIP_COST) return true;
             return adjacentOwned.some(
-              (t) => (ownerById.get(t.id)?.troops ?? 0) - 1 >= SHIP_COST,
+              (t) =>
+                t.id === selectedTerritoryId &&
+                canBuyShipFrom(ownerById.get(t.id)?.troops ?? 0),
             );
           })
           .map((s) => s.id),

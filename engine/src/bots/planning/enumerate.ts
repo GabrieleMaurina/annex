@@ -1,4 +1,4 @@
-import { defenceDiceFor } from '../../game/combat/dice';
+import { attackDiceFor, defenceDiceFor } from '../../game/combat/dice';
 import { pickBestSet } from '../../game/progression/cards';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { flippedSwitchesKey } from '../../maps/maps';
@@ -486,6 +486,7 @@ export function stepStatus(
     startTroops - 1,
     endTroops,
     defenceDiceFor(game, step.endId),
+    attackDiceFor(game, step.startId),
   );
   return winProb >= step.minWinProb ? 'ok' : 'invalid';
 }

@@ -118,7 +118,6 @@ export default function TurnActionPanels({
   attackSeaMaxBlitzShips,
   attackSeaWinProbabilities,
   attackSeaBlitzOutcomes,
-  attackSeaInputRef,
   attackSeaBlitzInputRef,
   attackSeaDiceRoll,
   attackSeaDiceOnly,
@@ -227,7 +226,6 @@ export default function TurnActionPanels({
   attackSeaMaxBlitzShips: number;
   attackSeaWinProbabilities: number[] | null;
   attackSeaBlitzOutcomes: BlitzOutcome[] | null;
-  attackSeaInputRef: RefObject<HTMLInputElement | null>;
   attackSeaBlitzInputRef: RefObject<HTMLInputElement | null>;
   attackSeaDiceRoll: DiceRoll | null;
   attackSeaDiceOnly: boolean;
@@ -477,10 +475,11 @@ export default function TurnActionPanels({
             diceTies={diceTies}
             attackSides={attackSides}
             defenceSides={defenceSides}
-            inputRef={attackSeaInputRef}
             blitzInputRef={attackSeaBlitzInputRef}
-            onSelectManual={() => setAttackSeaSelectedType('manual')}
-            onManualShipsChange={setAttackSeaManualShips}
+            onSelectManual={(ships) => {
+              setAttackSeaSelectedType('manual');
+              setAttackSeaManualShips(ships);
+            }}
             onSelectBlitz={() => setAttackSeaSelectedType('blitz')}
             onBlitzShipsChange={setAttackSeaBlitzShips}
             onConfirm={submitAttackSea}

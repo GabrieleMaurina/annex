@@ -46,9 +46,19 @@ export function defenceDiceFor(game: Game, territoryId: number): number {
   return game.defenceDice;
 }
 
-export function gameDiceRules(game: Game, defence: number): DiceRules {
+export function attackDiceFor(game: Game, territoryId: number): number {
+  if ((game.territoryEntrenchment.get(territoryId) ?? 0) > 0)
+    return Math.min(MAX_DICE, game.attackDice + 1);
+  return game.attackDice;
+}
+
+export function gameDiceRules(
+  game: Game,
+  defence: number,
+  attack: number = game.attackDice,
+): DiceRules {
   return {
-    attack: game.attackDice,
+    attack,
     defence,
     attackSides: game.attackSides,
     defenceSides: game.defenceSides,

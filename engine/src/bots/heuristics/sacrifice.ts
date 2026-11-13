@@ -1,4 +1,8 @@
-import { defenceDiceFor, gameDiceRules } from '../../game/combat/dice';
+import {
+  attackDiceFor,
+  defenceDiceFor,
+  gameDiceRules,
+} from '../../game/combat/dice';
 import { Game } from '../../types';
 import { lossRatio } from '../features/combat';
 import { seaBridgeTargets } from '../features/navy';
@@ -35,8 +39,12 @@ const CONTESTED_SCORE = 0.5;
 const PREFERENCE_SCORE = 0.5;
 const FIXED_POINT_PASSES = 3;
 
-function killsPerLoss(game: Game, defenceDice: number): number {
-  return 1 / lossRatio(gameDiceRules(game, defenceDice));
+function killsPerLoss(
+  game: Game,
+  defenceDice: number,
+  attackDice: number = game.attackDice,
+): number {
+  return 1 / lossRatio(gameDiceRules(game, defenceDice, attackDice));
 }
 
 function protectedTerritories(ctx: PlanContext): Set<number> {
@@ -149,7 +157,11 @@ function evaluatePair(
   const ownerId = ownerOf(game, view, endId)!;
   const defenders = troopsAt(game, view, endId);
   if (defenders < 2) return null;
-  const efficiency = killsPerLoss(game, defenceDiceFor(game, endId));
+  const efficiency = killsPerLoss(
+    game,
+    defenceDiceFor(game, endId),
+    attackDiceFor(game, startId),
+  );
   if (efficiency < FRUSTRATED_MIN_EFFICIENCY) return null;
 
   const preference = targetPreference(ctx.standing, ownerId);
@@ -205,7 +217,11 @@ function evaluatePair(
     PREFERENCE_SCORE * preference +
     (Math.random() - 0.5) * ctx.params.noise;
   return {
-    choice: { startId, endId, ...attackOrder(game, commit) },
+    choice: {
+      startId,
+      endId,
+      ...attackOrder(game, commit, attackDiceFor(game, startId)),
+    },
     score,
   };
 }

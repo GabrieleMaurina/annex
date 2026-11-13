@@ -42,7 +42,7 @@ function Combat() {
           rows={[
             [
               'Attack Dice',
-              'Most dice an attacker rolls per exchange, one per attacking troop or ship. Also the most troops a manual attack can send. 1 to 10, default 3. It cannot be set below Defence Dice.',
+              'Most dice an attacker rolls per exchange, one per attacking troop or ship. Also the most troops a manual attack can send. 1 to 10, default 3. It cannot be set below Defence Dice. Territories still entrenched during your attack phase roll one extra, up to 10.',
             ],
             [
               'Defence Dice',
@@ -73,6 +73,12 @@ function Combat() {
           an entrenched territory defends with one extra die, up to 10.
         </p>
         <ul>
+          <li>
+            It also attacks with one extra die, up to 10, but only while the
+            entrenchment is still active during your attack phase. A territory
+            entrenched for a single turn has lost it by then, so it only
+            defends.
+          </li>
           <li>It decreases by 1 at the start of your next turn.</li>
           <li>It is lost if the territory is conquered.</li>
           <li>Capitals cannot be entrenched.</li>

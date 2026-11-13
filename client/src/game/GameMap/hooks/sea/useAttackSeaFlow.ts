@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { stepTroops } from '../../../../common/inputs/useTroopsInput';
 import { connector } from '../../../../connector';
 import { playSound } from '../../../../lib/sounds';
 import type { Ack, BlitzOutcome, GameState } from '../../../../lib/types';
@@ -55,6 +56,7 @@ export function useAttackSeaFlow({
   isMyTurn,
   paused,
   attackDice,
+  blitzEnabled,
   setGame,
 }: {
   attackSeaTerritoryId: number | null;
@@ -66,6 +68,7 @@ export function useAttackSeaFlow({
   isMyTurn: boolean;
   paused: boolean;
   attackDice: number;
+  blitzEnabled: boolean;
   setGame: (game: GameState) => void;
 }) {
   const [attackSeaManualShips, setAttackSeaManualShips] = useState(1);
@@ -84,7 +87,6 @@ export function useAttackSeaFlow({
   );
   const [attackSeaDiceSettled, setAttackSeaDiceSettled] = useState(true);
   const attackSeaDiceRollIdRef = useRef(0);
-  const attackSeaInputRef = useRef<HTMLInputElement>(null);
   const attackSeaBlitzInputRef = useRef<HTMLInputElement>(null);
 
   const attackSeaStartCandidates =
@@ -123,6 +125,20 @@ export function useAttackSeaFlow({
       setAttackSeaBlitzShips(attackSeaMaxBlitzShips);
   }
 
+  const stepAttackSeaBlitzShips = useCallback(
+    (delta: number, newGesture: boolean) => {
+      if (!blitzEnabled || attackSeaDefenderId === null) return false;
+      const at = performance.now();
+      setAttackSeaDiceRoll(null);
+      setAttackSeaSelectedType('blitz');
+      setAttackSeaBlitzShips((prev) =>
+        stepTroops(prev, delta, 1, attackSeaMaxBlitzShips, newGesture, at),
+      );
+      return true;
+    },
+    [blitzEnabled, attackSeaDefenderId, attackSeaMaxBlitzShips],
+  );
+
   const selectAttackSeaStart = useCallback(
     (territoryId: number | null) => {
       setAttackSeaDiceRoll(null);
@@ -153,6 +169,24 @@ export function useAttackSeaFlow({
     },
     [setGame],
   );
+
+  const soleDefenderId =
+    attackSeaDefenders.length === 1 ? attackSeaDefenders[0].playerId : null;
+
+  useEffect(() => {
+    if (
+      attackSeaTerritoryId === null ||
+      attackSeaDefenderId !== null ||
+      soleDefenderId === null
+    )
+      return;
+    requestAttackSeaDefender(soleDefenderId);
+  }, [
+    attackSeaTerritoryId,
+    attackSeaDefenderId,
+    soleDefenderId,
+    requestAttackSeaDefender,
+  ]);
 
   const selectAttackSeaDefender = useCallback(
     (defenderId: number) => {
@@ -293,13 +327,13 @@ export function useAttackSeaFlow({
     attackSeaMaxBlitzShips,
     attackSeaWinProbabilities,
     attackSeaBlitzOutcomes,
-    attackSeaInputRef,
     attackSeaBlitzInputRef,
     attackSeaDiceRoll,
     setAttackSeaDiceRoll,
     attackSeaRevealing,
     attackSeaDiceOnly,
     attackSeaStartCandidates,
+    stepAttackSeaBlitzShips,
     attackSeaDefenders,
     selectAttackSeaStart,
     selectAttackSeaDefender,

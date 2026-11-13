@@ -15,6 +15,7 @@
 @import './containers/panels.css';
 @import './containers/collapsible.css';
 @import './containers/tables.css';
+@import './containers/playerRows.css';
 @import './containers/pagePanel.css';
 @import './containers/modals.css';
 @import './containers/gate.css';

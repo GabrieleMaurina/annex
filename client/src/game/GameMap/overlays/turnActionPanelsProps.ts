@@ -178,7 +178,6 @@ export function turnActionPanelsProps({
     attackSeaMaxBlitzShips: attackSeaFlow.attackSeaMaxBlitzShips,
     attackSeaWinProbabilities: attackSeaFlow.attackSeaWinProbabilities,
     attackSeaBlitzOutcomes: attackSeaFlow.attackSeaBlitzOutcomes,
-    attackSeaInputRef: attackSeaFlow.attackSeaInputRef,
     attackSeaBlitzInputRef: attackSeaFlow.attackSeaBlitzInputRef,
     attackSeaDiceRoll: attackSeaFlow.attackSeaDiceRoll,
     attackSeaDiceOnly: attackSeaFlow.attackSeaDiceOnly,

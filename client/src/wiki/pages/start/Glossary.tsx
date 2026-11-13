@@ -110,7 +110,7 @@ function Glossary() {
           ],
           [
             'Entrenchment',
-            'Troops spent to give a territory an extra defence die for a while.',
+            'Troops spent to give a territory an extra defence die, and an extra attack die if it lasts into your attack phase (a 1 turn entrenchment never does).',
             <WikiLink key="a" to="settings/combat#entrenchments" />,
           ],
           [

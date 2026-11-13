@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react';
 import { Button } from 'react-bootstrap';
-import { connector } from '../../connector';
 import type { FriendsOverview, GameState } from '../../lib/types';
 import ButtonRows from '../../ui/buttons/ButtonRows';
 import { SECTION_CLASS } from '../../ui/containers/panelStyle';
@@ -11,7 +9,7 @@ import WhiteIcon from '../icons/WhiteIcon';
 import Tip from '../tooltips/Tip';
 import type { PanelConduct } from './panelConduct';
 import PlayerConductActions from './PlayerConductActions';
-import { fetchPlayerProfile } from './playerProfile';
+import { usePlayerProfile } from './usePlayerProfile';
 
 const PICTURE_SIZE = 72;
 
@@ -43,30 +41,8 @@ function PanelPlayerDetails({
     !player.isBot &&
     player.id !== conduct.viewerId &&
     (conduct.live ? conduct.masked || knownAccount : userId !== null);
-  const [picture, setPicture] = useState<string | null>(null);
-  const [bio, setBio] = useState('');
   const whitePlayerIcon = useWhiteIcon('/icons/player.svg');
-  const hasProfile = !player.isBot && (!live || !connector.isOffline());
-  useEffect(() => {
-    if (!hasProfile) return;
-    let stale = false;
-    if (live) {
-      connector.getPlayerProfileInGame(player.id, (res) => {
-        if (stale || !res.ok) return;
-        setPicture(res.picture);
-        setBio(res.bio);
-      });
-    } else if (userId !== null) {
-      fetchPlayerProfile(userId, (storedPicture, storedBio) => {
-        if (stale) return;
-        setPicture(storedPicture);
-        setBio(storedBio);
-      });
-    }
-    return () => {
-      stale = true;
-    };
-  }, [hasProfile, live, player.id, userId]);
+  const { hasProfile, picture, bio } = usePlayerProfile(player, live);
   return (
     <div className={`${SECTION_CLASS} d-flex flex-column gap-2 p-2 m-1 mb-2`}>
       <div className="d-flex gap-2">

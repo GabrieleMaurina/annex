@@ -22,6 +22,7 @@ import {
   type Point,
 } from '../../helpers';
 import { nextToastId } from '../../toastId';
+import { canBuyShipFrom } from '../sea/useDeploySeaFlow';
 import type { CanvasInteractionsParams } from './types';
 import { useCanvasKeyboard } from './useCanvasKeyboard';
 import { useMapViewportAnimation } from './useMapViewportAnimation';
@@ -224,9 +225,15 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     if (turnPhase === 'deploy' || turnPhase === 'troop') {
       if (seaIdSet.has(t.id))
         return turnPhase === 'deploy' && deploySeaCandidates.has(t.id);
+      const canBuyShips = () =>
+        turnPhase === 'deploy' &&
+        canBuyShipFrom(ownerById.get(t.id)?.troops ?? 0) &&
+        (territories.find((o) => o.id === t.id)?.neighbors ?? []).some((n) =>
+          seaIdSet.has(n),
+        );
       return (
-        troopsToDeploy > 0 &&
         ownerById.get(t.id)?.ownerId === selfId &&
+        (troopsToDeploy > 0 || canBuyShips()) &&
         (supplyConnectedTerritoryIds === null ||
           supplyConnectedTerritoryIds.has(t.id))
       );
@@ -441,7 +448,8 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
   }
 
   function consumeDoubleTap(pos: Point): boolean {
-    if (hitVertex(pos)) {
+    const vertex = hitVertex(pos);
+    if (vertex && (isInteractable(vertex) || isSwitchVertex(vertex.id))) {
       lastTapAtRef.current = 0;
       return false;
     }

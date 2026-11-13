@@ -420,6 +420,8 @@ export function tutorialAllows(event: string): boolean {
   );
 }
 
+let cachedPreferredColors: number[] = [];
+
 export function startOffline(next: Tutorial | null): void {
   if (active && next === tutorial) return;
   if (active) stopOffline();
@@ -446,6 +448,7 @@ export function startOffline(next: Tutorial | null): void {
     engine.setName(boundHostId, localHostName());
     if (currentActorId !== null) engine.requestState(currentActorId);
   });
+  engine.setPreferredColors(hostId, cachedPreferredColors);
   if (!engine.createGame(hostId, { name: gameName }, true).ok) {
     gameName = `${URL_ROOM}-${session}`;
     engine.createGame(hostId, { name: gameName }, true);
@@ -468,7 +471,9 @@ export function startOffline(next: Tutorial | null): void {
 function applyAccountColors(playerId: number, forSession: number): void {
   httpGet<AccountResult>('/account')
     .then((res) => {
-      if (!res.ok || !engine || session !== forSession) return;
+      if (!res.ok) return;
+      cachedPreferredColors = res.preferredColors;
+      if (!engine || session !== forSession) return;
       engine.setPreferredColorsAndRecolor(playerId, res.preferredColors);
       engine.requestState(currentActorId ?? playerId);
     })

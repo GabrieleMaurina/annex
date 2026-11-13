@@ -39,6 +39,17 @@ function playerState(sample: Sample, playerId: number) {
   return sample.playerStates.find((s) => s.playerId === playerId);
 }
 
+type Takeover = 'surrendered' | 'disconnected' | null;
+
+function takeoverOf(sample: Sample, playerId: number): Takeover {
+  const state = playerState(sample, playerId);
+  if (state?.surrendered) return 'surrendered';
+  if (state?.connected === false && !state.eliminated) return 'disconnected';
+  return null;
+}
+
+const TAKEOVER_DASH = { surrendered: '10 6', disconnected: '2 6' };
+
 const TROOPS: Stat = {
   label: 'Troops',
   value: (sample, playerId) =>
@@ -179,6 +190,7 @@ function GameStatsChart({
         values: samples.map((sample) =>
           selected.value(sample, p.id, capitalIds),
         ),
+        takeovers: samples.slice(1).map((sample) => takeoverOf(sample, p.id)),
       })),
     [players, samples, selected, capitalIds],
   );
@@ -211,13 +223,18 @@ function GameStatsChart({
         ),
       ),
     );
-    return series.flatMap(({ player, values }, p) => {
+    return series.flatMap(({ player, values, takeovers }, p) => {
       const starts = groups.flatMap((group, s) =>
-        s === 0 || group[p].join() !== groups[s - 1][p].join() ? [s] : [],
+        s === 0 ||
+        group[p].join() !== groups[s - 1][p].join() ||
+        takeovers[s] !== takeovers[s - 1]
+          ? [s]
+          : [],
       );
       return starts.map((start, k) => ({
         player,
         values,
+        takeover: takeovers[start],
         start,
         end: starts[k + 1] ?? groups.length,
         rank: groups[start][p].indexOf(p),
@@ -228,14 +245,25 @@ function GameStatsChart({
 
   const stackedBands = useMemo(() => {
     const floors = samples.map(() => 0);
-    return series.map(({ player, values }) => {
+    return series.map(({ player, values, takeovers }) => {
       const lower = [...floors];
       values.forEach((v, s) => {
         floors[s] += v;
       });
-      return { player, lower, upper: [...floors] };
+      const spans = takeovers.flatMap((takeover, s) => {
+        if (!takeover || takeovers[s - 1] === takeover) return [];
+        const next = takeovers.findIndex((t, i) => i > s && t !== takeover);
+        return [
+          { takeover, start: s, end: next === -1 ? takeovers.length : next },
+        ];
+      });
+      return { player, lower, upper: [...floors], spans };
     });
   }, [samples, series]);
+
+  const takeoverKinds = (['surrendered', 'disconnected'] as const).filter(
+    (kind) => series.some((s) => s.takeovers.includes(kind)),
+  );
 
   const maxValue = Math.max(
     1,
@@ -313,25 +341,65 @@ function GameStatsChart({
               </text>
             ),
         )}
+        <defs>
+          <pattern
+            id="takeover-surrendered"
+            width={8}
+            height={8}
+            patternUnits="userSpaceOnUse"
+            patternTransform="rotate(45)"
+          >
+            <rect width={4} height={8} fill="var(--bs-body-bg)" opacity={0.6} />
+          </pattern>
+          <pattern
+            id="takeover-disconnected"
+            width={6}
+            height={6}
+            patternUnits="userSpaceOnUse"
+          >
+            <circle
+              cx={3}
+              cy={3}
+              r={1.5}
+              fill="var(--bs-body-bg)"
+              opacity={0.6}
+            />
+          </pattern>
+        </defs>
         {selected.stacked &&
-          stackedBands.map(({ player, lower, upper }) => (
-            <path
-              key={player.id}
-              d={`${upper
-                .map((v, s) => `${s === 0 ? 'M' : 'L'}${x(s)},${y(v)}`)
+          stackedBands.map(({ player, lower, upper, spans }) => {
+            const area = (start: number, end: number) =>
+              `${upper
+                .slice(start, end + 1)
+                .map((v, k) => `${k === 0 ? 'M' : 'L'}${x(start + k)},${y(v)}`)
                 .join(' ')} ${lower
-                .map((v, s) => `L${x(s)},${y(v)}`)
+                .slice(start, end + 1)
+                .map((v, k) => `L${x(start + k)},${y(v)}`)
                 .reverse()
-                .join(' ')} Z`}
-              fill={playerColor(player.color)}
-              stroke="var(--bs-body-bg)"
-              strokeWidth={1}
-            >
-              <title>{player.name}</title>
-            </path>
-          ))}
+                .join(' ')} Z`;
+            return (
+              <g key={player.id}>
+                <path
+                  d={area(0, upper.length - 1)}
+                  fill={playerColor(player.color)}
+                  stroke="var(--bs-body-bg)"
+                  strokeWidth={1}
+                >
+                  <title>{player.name}</title>
+                </path>
+                {spans.map(({ takeover, start, end }) => (
+                  <path
+                    key={start}
+                    d={area(start, end)}
+                    fill={`url(#takeover-${takeover})`}
+                    pointerEvents="none"
+                  />
+                ))}
+              </g>
+            );
+          })}
         {!selected.stacked &&
-          runs.map(({ player, values, start, end, rank, size }) => (
+          runs.map(({ player, values, takeover, start, end, rank, size }) => (
             <path
               key={`${player.id}-${start}`}
               d={values
@@ -342,8 +410,13 @@ function GameStatsChart({
               stroke={playerColor(player.color)}
               strokeWidth={2}
               strokeLinejoin="round"
+              strokeLinecap={takeover === 'disconnected' ? 'round' : undefined}
               strokeDasharray={
-                size > 1 ? `${DASH} ${(size - 1) * DASH}` : undefined
+                size > 1
+                  ? `${DASH} ${(size - 1) * DASH}`
+                  : takeover
+                    ? TAKEOVER_DASH[takeover]
+                    : undefined
               }
               strokeDashoffset={-rank * DASH}
             >
@@ -365,6 +438,17 @@ function GameStatsChart({
           </span>
         ))}
       </div>
+      {takeoverKinds.length > 0 && (
+        <div className="text-center text-body-secondary small mt-1">
+          {takeoverKinds
+            .map((kind) =>
+              kind === 'surrendered'
+                ? 'Dashed or striped: bot after surrender'
+                : 'Dotted: disconnected',
+            )
+            .join(' · ')}
+        </div>
+      )}
     </div>
   );
 }

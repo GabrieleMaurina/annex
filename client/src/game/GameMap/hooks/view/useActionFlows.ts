@@ -1,3 +1,4 @@
+import { MAX_DICE } from 'engine';
 import type { GameMapProps } from '../../props';
 import { useAttackSeaFlow } from '../sea/useAttackSeaFlow';
 import { useSailFlow } from '../sea/useSailFlow';
@@ -43,7 +44,7 @@ export function useActionFlows({
   setGame,
 }: Omit<AttackParams, 'blitzEnabled' | 'attackDice'> &
   SailParams &
-  Omit<AttackSeaParams, 'attackDice'> &
+  Omit<AttackSeaParams, 'attackDice' | 'blitzEnabled'> &
   Omit<
     TurnParams,
     'hillTerritoryIds' | 'blockedById' | 'upcomingBlockedById'
@@ -51,6 +52,9 @@ export function useActionFlows({
     game: GameMapProps['game'];
     upcomingUnusableTerritoryById: TurnParams['upcomingBlockedById'];
   }) {
+  const attackStartEntrenched =
+    attackStartTerritoryId !== null &&
+    (ownerById.get(attackStartTerritoryId)?.entrenchedTurns ?? 0) > 0;
   const attackFlow = useAttackFlow({
     attackStartTerritoryId,
     attackEndTerritoryId,
@@ -67,7 +71,9 @@ export function useActionFlows({
     isMyTurn,
     paused,
     blitzEnabled: game.blitz !== 'off',
-    attackDice: game.attackDice,
+    attackDice: attackStartEntrenched
+      ? Math.min(MAX_DICE, game.attackDice + 1)
+      : game.attackDice,
     closedTiles,
     switches,
     cards,
@@ -97,6 +103,7 @@ export function useActionFlows({
     isMyTurn,
     paused,
     attackDice: game.attackDice,
+    blitzEnabled: game.blitz !== 'off',
     setGame,
   });
 

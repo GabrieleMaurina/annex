@@ -41,8 +41,8 @@ export function useCanvasKeyboard({
   attackSeaTerritoryId,
   attackSeaDefenderId,
   attackSeaPanelOpen,
-  attackSeaInputRef,
   attackSeaBlitzInputRef,
+  stepAttackSeaBlitzShips,
   attackSeaRevealing,
   attackSeaDiceOnly,
   setAttackSeaDiceRoll,
@@ -369,7 +369,6 @@ export function useCanvasKeyboard({
       ) {
         if (
           !isTypingTarget(e.target) ||
-          e.target === attackSeaInputRef.current ||
           e.target === attackSeaBlitzInputRef.current
         ) {
           e.preventDefault();
@@ -437,8 +436,7 @@ export function useCanvasKeyboard({
                 : entrenchPanelOpen
                   ? entrenchInputRef.current
                   : attackSeaPanelOpen
-                    ? (attackSeaBlitzInputRef.current ??
-                      attackSeaInputRef.current)
+                    ? attackSeaBlitzInputRef.current
                     : attackPanelOpen
                       ? attackShowPendingConquest
                         ? attackMoveInputRef.current
@@ -556,7 +554,6 @@ export function useCanvasKeyboard({
     fortifyInputRef,
     entrenchInputRef,
     attackMoveInputRef,
-    attackSeaInputRef,
     attackSeaBlitzInputRef,
     blitzInputRef,
   ]);
@@ -565,10 +562,13 @@ export function useCanvasKeyboard({
     function onWheel(e: WheelEvent) {
       if (isInsideScrollable(e.target)) return;
       e.preventDefault();
-      if (
-        stepTroopPanel(wheelDirection(e) * modifierStep(e), isNewWheelGesture())
-      )
+      const delta = wheelDirection(e) * modifierStep(e);
+      const newGesture = isNewWheelGesture();
+      if (stepTroopPanel(delta, newGesture)) return;
+      if (attackSeaPanelOpen && !attackSeaDiceOnly) {
+        stepAttackSeaBlitzShips(delta, newGesture);
         return;
+      }
       if (
         attackPanelOpen &&
         unlockTileId === null &&
@@ -576,13 +576,7 @@ export function useCanvasKeyboard({
         !attackShowPendingConquest &&
         !attackDiceOnly
       ) {
-        if (
-          stepBlitzTroops(
-            wheelDirection(e) * modifierStep(e),
-            isNewWheelGesture(),
-          )
-        )
-          return;
+        if (stepBlitzTroops(delta, newGesture)) return;
         playSound('click');
         cycleAttackOption(e.deltaY < 0 ? -1 : 1);
         return;
@@ -595,6 +589,9 @@ export function useCanvasKeyboard({
     return () => window.removeEventListener('wheel', onWheel);
   }, [
     stepTroopPanel,
+    attackSeaPanelOpen,
+    attackSeaDiceOnly,
+    stepAttackSeaBlitzShips,
     attackPanelOpen,
     unlockTileId,
     flipVertexId,

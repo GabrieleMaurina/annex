@@ -1,20 +1,15 @@
 import { isPointsMode } from 'engine';
 import type { MutableRefObject } from 'react';
-import { Fragment, memo, useReducer, useRef, useState } from 'react';
-import { Button, Collapse, ListGroup, Table } from 'react-bootstrap';
+import { memo, useReducer, useRef, useState } from 'react';
+import { Button, ListGroup } from 'react-bootstrap';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import { panelConduct } from '../../common/conduct/panelConduct';
-import PanelPlayerDetails from '../../common/conduct/PanelPlayerDetails';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useWhiteIcon } from '../../common/icon';
 import WhiteIcon from '../../common/icons/WhiteIcon';
-import { isPlayerMuted } from '../../common/mutedPlayers';
 import Tip from '../../common/tooltips/Tip';
-import TipSpan from '../../common/tooltips/TipSpan';
 import { connector } from '../../connector';
-import { contrastTextColor, playerColor } from '../../lib/palette';
-import { playSound } from '../../lib/sounds';
 import type {
   Alliances,
   BotSpeed,
@@ -30,14 +25,16 @@ import type {
 } from '../../lib/types';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
-import { ALLIANCE_CELL_LABELS, ALLIANCE_ICONS } from '../logic/alliance';
-import {
-  EMOJI_POP_DURATION,
-  GLOBAL_TARGET_ID,
-  type EmojiPop,
-} from '../logic/emoji';
+import { GLOBAL_TARGET_ID, type EmojiPop } from '../logic/emoji';
 import { formatMission } from './mission/formatMission';
 import PlayerActions from './players/PlayerActions';
+import PlayerDetailsPopover from './players/PlayerDetailsPopover';
+import { levelFor } from './players/playerLevels';
+import PlayersRoster from './players/PlayersRoster';
+import { statDefs } from './players/playerStats';
+import { registerRef } from './players/registerRef';
+import { playerStatuses } from './players/rows/playerStatuses';
+import { useSingleColumnFit } from './players/useSingleColumnFit';
 
 interface Props {
   players: GameState['players'];
@@ -197,8 +194,14 @@ function PlayersPanel({
     : leaderTerritoryCount;
 
   const panelRef = useRef<HTMLDivElement>(null);
-  useDismissOnOutsideClick(!collapsed, panelRef, () => setCollapsed(true));
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const collapse = () => {
+    setSelectedId(null);
+    setCollapsed(true);
+  };
+  useDismissOnOutsideClick(!collapsed, panelRef, collapse);
   const [, bumpConductVersion] = useReducer((c: number) => c + 1, 0);
   const conduct = panelConduct(
     players,
@@ -208,37 +211,28 @@ function PlayersPanel({
     gameEnded,
     anonymous,
   );
-  const columnCount =
-    4 +
-    [
-      showAllianceColumn,
-      isTeamDeathmatch,
-      isCapitals,
-      showPoints,
-      bounties === 'on',
-      cards !== 'off',
-    ].filter(Boolean).length;
+  const level = levelFor(players.length);
+  const stats = statDefs({
+    isTeamDeathmatch,
+    isCapitals,
+    showPoints,
+    showBounties: bounties === 'on',
+    showCards: cards !== 'off',
+  });
+  const singleColumnFits = useSingleColumnFit(
+    level === 'chips' && !collapsed,
+    panelRef,
+    scrollRef,
+    gridRef,
+  );
+  const selectedPlayer = players.find((p) => p.id === selectedId);
+  const live = storedGameId === undefined;
+  const closeDetails = () => setSelectedId(null);
+  const selectPlayer = (playerId: number) =>
+    setSelectedId((prev) => (prev === playerId ? null : playerId));
 
-  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
-  const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
-  const whiteTeamIcon = useWhiteIcon('/icons/team.svg');
-  const whiteTerritoryIcon = useWhiteIcon('/icons/territory.svg');
-  const whiteCapitalIcon = useWhiteIcon('/icons/capital.svg');
-  const whitePointsIcon = useWhiteIcon('/icons/points.svg');
-  const whiteBountyIcon = useWhiteIcon('/icons/bounty.svg');
-  const whiteTankIcon = useWhiteIcon('/icons/tank.svg');
-  const whiteCardsIcon = useWhiteIcon('/icons/cards.svg');
-  const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
-  const whiteFlagIcon = useWhiteIcon('/icons/flag.svg');
-  const whiteDrawIcon = useWhiteIcon('/icons/draw.svg');
-  const whiteCloseIcon = useWhiteIcon('/icons/close.svg');
-  const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteTargetIcon = useWhiteIcon('/icons/target.svg');
   const whiteGlobeIcon = useWhiteIcon('/icons/globe.svg');
-  const whiteDotIcon = useWhiteIcon('/icons/dot.svg');
-  const whiteYouIcon = useWhiteIcon('/icons/you.svg');
-  const whitePlayerIcon = useWhiteIcon('/icons/player.svg');
-  const whitePaletteIcon = useWhiteIcon('/icons/palette.svg');
 
   if (collapsed) {
     return (
@@ -260,7 +254,10 @@ function PlayersPanel({
     <div
       ref={panelRef}
       className={`position-absolute top-0 end-0 ${PANEL_BG_CLASS} ${PANEL_CLASS} m-3 d-flex flex-column`}
-      style={{ maxHeight: 'calc(100vh - 2rem)' }}
+      style={{
+        maxHeight: 'calc(100vh - 2rem)',
+        width: 'max-content',
+      }}
     >
       <style>{`
         @keyframes annexEmojiHighlight {
@@ -277,9 +274,9 @@ function PlayersPanel({
       <div
         role="button"
         tabIndex={0}
-        onClick={() => setCollapsed(true)}
+        onClick={collapse}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') setCollapsed(true);
+          if (e.key === 'Enter' || e.key === ' ') collapse();
         }}
       >
         <div className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold">
@@ -336,449 +333,46 @@ function PlayersPanel({
         </div>
       )}
       <div
+        ref={scrollRef}
         className="no-scrollbar"
         style={{ overflowY: 'auto', minHeight: 0 }}
         onWheel={(e) => e.stopPropagation()}
       >
-        <Table
-          size="sm"
-          borderless
-          className="mb-0 table-flat"
-          style={{ width: '100%' }}
-        >
-          <thead>
-            <tr>
-              <th style={{ width: 16 }}></th>
-              {showAllianceColumn && <th style={{ width: 24 }}></th>}
-              <th style={{ width: '1%' }}></th>
-              {isTeamDeathmatch && (
-                <th className="text-center" style={{ width: 34 }}>
-                  <Tip text="Team">
-                    <img
-                      src={whiteTeamIcon ?? '/icons/team.svg'}
-                      width={14}
-                      height={14}
-                      alt="Team"
-                      className="align-middle"
-                    />
-                  </Tip>
-                </th>
-              )}
-              <th className="text-center" style={{ width: 34 }}>
-                <Tip text="Territories">
-                  <img
-                    src={whiteTerritoryIcon ?? '/icons/territory.svg'}
-                    width={14}
-                    height={14}
-                    alt="Territories"
-                    className="align-middle"
-                  />
-                </Tip>
-              </th>
-              {isCapitals && (
-                <th className="text-center" style={{ width: 34 }}>
-                  <Tip text="Capitals">
-                    <img
-                      src={whiteCapitalIcon ?? '/icons/capital.svg'}
-                      width={14}
-                      height={14}
-                      alt="Capitals"
-                      className="align-middle"
-                    />
-                  </Tip>
-                </th>
-              )}
-              {showPoints && (
-                <th className="text-center" style={{ width: 34 }}>
-                  <Tip text="Points">
-                    <img
-                      src={whitePointsIcon ?? '/icons/points.svg'}
-                      width={14}
-                      height={14}
-                      alt="Points"
-                      className="align-middle"
-                    />
-                  </Tip>
-                </th>
-              )}
-              {bounties === 'on' && (
-                <th className="text-center" style={{ width: 34 }}>
-                  <Tip text="Bounties">
-                    <img
-                      src={whiteBountyIcon ?? '/icons/bounty.svg'}
-                      width={14}
-                      height={14}
-                      alt="Bounties"
-                      className="align-middle"
-                    />
-                  </Tip>
-                </th>
-              )}
-              <th className="text-center" style={{ width: 34 }}>
-                <Tip text="Troops">
-                  <img
-                    src={whiteTankIcon ?? '/icons/tank.svg'}
-                    width={14}
-                    height={14}
-                    alt="Troops"
-                    className="align-middle"
-                  />
-                </Tip>
-              </th>
-              {cards !== 'off' && (
-                <th className="text-center" style={{ width: 34 }}>
-                  <Tip text="Cards">
-                    <img
-                      src={whiteCardsIcon ?? '/icons/cards.svg'}
-                      width={14}
-                      height={14}
-                      alt="Cards"
-                      className="align-middle"
-                    />
-                  </Tip>
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {players.map((p) => {
-              const bg = playerColor(p.color);
-              const fg = contrastTextColor(bg);
-              const rowStyle = { backgroundColor: bg, color: fg };
-              const isDark = fg === '#ffffff';
-              const isConnected = p.connected;
-              const pop = emojiPops.find((e) => e.rowPlayerId === p.id);
-              const rowClickable =
-                canSendEmoji &&
-                !p.isBot &&
-                (emojiTargeting ||
-                  (p.id !== selfId &&
-                    (emojiAllowedIds === null || emojiAllowedIds.has(p.id))));
-              const allianceState =
-                allianceStates.find((a) => a.playerId === p.id)?.state ??
-                'none';
-              const allianceOnCooldown = allianceCooldownIds.has(p.id);
-              return (
-                <Fragment key={p.id}>
-                  <Tip text={p.name} placement="left">
-                    <tr
-                      ref={(el) => {
-                        if (el) rowRefs.current.set(p.id, el);
-                        else rowRefs.current.delete(p.id);
-                      }}
-                      role="button"
-                      data-no-click-sound
-                      onClick={() => {
-                        if (!emojiTargeting)
-                          setExpandedId((prev) =>
-                            prev === p.id ? null : p.id,
-                          );
-                        if (rowClickable) onRowClick(p.id);
-                        else if (!emojiTargeting) playSound('click');
-                      }}
-                      style={{
-                        cursor:
-                          rowClickable && emojiTargeting
-                            ? 'crosshair'
-                            : undefined,
-                        animation: pop
-                          ? `annexEmojiHighlight${pop.id % 2 === 0 ? '' : 'Alt'} ${EMOJI_POP_DURATION}ms ease-out forwards`
-                          : undefined,
-                        outline: p.id === selfId ? '2px solid #fff' : undefined,
-                        outlineOffset: p.id === selfId ? '-2px' : undefined,
-                      }}
-                    >
-                      <td className="align-middle text-center" style={rowStyle}>
-                        {p.id === turnPlayerId && (
-                          <Tip text="Current turn">
-                            <img
-                              src={
-                                isDark
-                                  ? (whiteDotIcon ?? '/icons/dot.svg')
-                                  : '/icons/dot.svg'
-                              }
-                              width={12}
-                              height={12}
-                              alt="Current turn"
-                            />
-                          </Tip>
-                        )}
-                      </td>
-                      {showAllianceColumn && (
-                        <td
-                          className="align-middle text-center p-0"
-                          style={rowStyle}
-                          ref={(el) => {
-                            if (el) allianceCellRefs.current.set(p.id, el);
-                            else allianceCellRefs.current.delete(p.id);
-                          }}
-                        >
-                          {p.id !== selfId && !p.isBot && (
-                            <TipSpan
-                              className="d-block"
-                              text={
-                                allianceOnCooldown
-                                  ? 'Alliance cooldown'
-                                  : ALLIANCE_CELL_LABELS[allianceState]
-                              }
-                            >
-                              <button
-                                type="button"
-                                className="border-0 bg-transparent text-reset d-inline-flex align-items-center justify-content-center lh-1"
-                                style={{ fontSize: 13, width: '100%' }}
-                                data-no-click-sound
-                                disabled={allianceOnCooldown}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  playSound('click');
-                                  onAllianceCellClick(p.id);
-                                }}
-                              >
-                                <WhiteIcon
-                                  path={ALLIANCE_ICONS[allianceState]}
-                                  size={14}
-                                />
-                              </button>
-                            </TipSpan>
-                          )}
-                        </td>
-                      )}
-                      <td className="align-middle" style={rowStyle}>
-                        <div className="d-flex align-items-center gap-1">
-                          <RankIcon elo={p.elo} />
-                          <Flag country={p.country} />
-                          {p.isBot && (
-                            <Tip text="Bot">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whiteBotIcon ?? '/icons/bot.svg')
-                                    : '/icons/bot.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="Bot"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                          {p.id === selfId && (
-                            <Tip text="You">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whiteYouIcon ?? '/icons/you.svg')
-                                    : '/icons/you.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="You"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                          {p.id !== selfId && !p.isBot && (
-                            <Tip text="Player">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whitePlayerIcon ?? '/icons/player.svg')
-                                    : '/icons/player.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="Player"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                          {p.id !== selfId && isPlayerMuted(p.id) && (
-                            <Tip text="Muted">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whiteMutedIcon ?? '/icons/muted.svg')
-                                    : '/icons/muted.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="Muted"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                          {recoloredIds?.has(p.id) && (
-                            <Tip text="Color changed on this device only">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whitePaletteIcon ?? '/icons/palette.svg')
-                                    : '/icons/palette.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="Color changed"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                          {p.eliminated && (
-                            <Tip text="Eliminated">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whiteDeathIcon ?? '/icons/death.svg')
-                                    : '/icons/death.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="Eliminated"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                          {p.surrendered && (
-                            <Tip text="Surrendered">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whiteFlagIcon ?? '/icons/flag.svg')
-                                    : '/icons/flag.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="Surrendered"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                          {drawVoteIds.includes(p.id) && (
-                            <Tip text="Offered a draw">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whiteDrawIcon ?? '/icons/draw.svg')
-                                    : '/icons/draw.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="Offered a draw"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                          {abortVoteIds.includes(p.id) && (
-                            <Tip text="Wants to abort the game">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whiteCloseIcon ?? '/icons/close.svg')
-                                    : '/icons/close.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="Wants to abort the game"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                          {!isConnected && !p.eliminated && (
-                            <Tip text="Disconnected">
-                              <img
-                                src={
-                                  isDark
-                                    ? (whiteNoWifiIcon ?? '/icons/no-wifi.svg')
-                                    : '/icons/no-wifi.svg'
-                                }
-                                width={12}
-                                height={12}
-                                alt="Disconnected"
-                                className="flex-shrink-0"
-                              />
-                            </Tip>
-                          )}
-                        </div>
-                      </td>
-                      {isTeamDeathmatch && (
-                        <td
-                          className="align-middle text-center"
-                          style={rowStyle}
-                        >
-                          {p.team + 1}
-                        </td>
-                      )}
-                      <td className="align-middle text-center" style={rowStyle}>
-                        {p.eliminated ? '-' : (p.territoryCount ?? '?')}
-                      </td>
-                      {isCapitals && (
-                        <td
-                          className="align-middle text-center"
-                          style={rowStyle}
-                        >
-                          {p.eliminated ? '-' : p.capitalCount}
-                        </td>
-                      )}
-                      {showPoints && (
-                        <td
-                          className="align-middle text-center"
-                          style={rowStyle}
-                        >
-                          {p.points}
-                        </td>
-                      )}
-                      {bounties === 'on' && (
-                        <td
-                          className="align-middle text-center"
-                          style={rowStyle}
-                        >
-                          {p.playersKilled?.length ?? '?'}
-                        </td>
-                      )}
-                      <td className="align-middle text-center" style={rowStyle}>
-                        {p.eliminated ? '-' : (p.troopCount ?? '?')}
-                      </td>
-                      {cards !== 'off' && (
-                        <td
-                          className="align-middle text-center"
-                          style={rowStyle}
-                        >
-                          {p.eliminated ? '-' : p.cardCount}
-                        </td>
-                      )}
-                    </tr>
-                  </Tip>
-                  <tr>
-                    <td colSpan={columnCount} className="p-0">
-                      <Collapse
-                        in={expandedId === p.id}
-                        mountOnEnter
-                        unmountOnExit
-                      >
-                        <div style={{ width: 0, minWidth: '100%' }}>
-                          <PanelPlayerDetails
-                            player={p}
-                            name={p.id === selfId ? 'You' : p.name}
-                            live={storedGameId === undefined}
-                            conduct={conduct}
-                            friends={conductFriends}
-                            blockedUserIds={conductBlockedUserIds}
-                            onChange={() => {
-                              bumpConductVersion();
-                              onConductChange?.();
-                            }}
-                            onCycleColor={
-                              onCycleColor && (() => onCycleColor(p.id))
-                            }
-                          />
-                        </div>
-                      </Collapse>
-                    </td>
-                  </tr>
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </Table>
+        <PlayersRoster
+          players={players}
+          level={level}
+          twoColumns={level === 'chips' && !singleColumnFits}
+          gridRef={gridRef}
+          stats={stats}
+          progressContext={{
+            isCapitals,
+            totalCapitals,
+            showPoints,
+            maxPoints,
+            territoriesToWin,
+          }}
+          isTeamDeathmatch={isTeamDeathmatch}
+          selfId={selfId}
+          turnPlayerId={turnPlayerId}
+          selectedId={selectedId}
+          drawVoteIds={drawVoteIds}
+          abortVoteIds={abortVoteIds}
+          recoloredIds={recoloredIds}
+          anonymous={anonymous}
+          live={live}
+          canSendEmoji={canSendEmoji}
+          emojiTargeting={emojiTargeting}
+          emojiPops={emojiPops}
+          emojiAllowedIds={emojiAllowedIds}
+          showAllianceColumn={showAllianceColumn}
+          allianceStates={allianceStates}
+          allianceCooldownIds={allianceCooldownIds}
+          allianceCellRefs={allianceCellRefs}
+          onAllianceCellClick={onAllianceCellClick}
+          rowRefs={rowRefs}
+          onSelect={selectPlayer}
+          onEmojiClick={onRowClick}
+        />
         {(canSendEmoji || toxins !== 'off') && (
           <div className="d-flex align-items-center mt-1">
             {canSendEmoji && (
@@ -790,10 +384,9 @@ function PlayersPanel({
                   style={{ width: 28, height: 28, padding: 0 }}
                   disabled={emojiTargeting}
                   onClick={() => onRowClick(GLOBAL_TARGET_ID)}
-                  ref={(el) => {
-                    if (el) rowRefs.current.set(GLOBAL_TARGET_ID, el);
-                    else rowRefs.current.delete(GLOBAL_TARGET_ID);
-                  }}
+                  ref={(el: HTMLButtonElement | null) =>
+                    registerRef(rowRefs, GLOBAL_TARGET_ID, el)
+                  }
                 >
                   <img
                     src={whiteGlobeIcon ?? '/icons/globe.svg'}
@@ -849,6 +442,40 @@ function PlayersPanel({
           navigate={navigate}
         />
       </div>
+      {selectedPlayer && (
+        <PlayerDetailsPopover
+          key={selectedPlayer.id}
+          player={selectedPlayer}
+          name={selectedPlayer.id === selfId ? 'You' : selectedPlayer.name}
+          live={live}
+          conduct={conduct}
+          friends={conductFriends}
+          blockedUserIds={conductBlockedUserIds}
+          onChange={() => {
+            bumpConductVersion();
+            onConductChange?.();
+          }}
+          onCycleColor={onCycleColor && (() => onCycleColor(selectedPlayer.id))}
+          stats={stats}
+          statuses={playerStatuses({
+            player: selectedPlayer,
+            isSelf: selectedPlayer.id === selfId,
+            recolored: !!recoloredIds?.has(selectedPlayer.id),
+            drawVoted: drawVoteIds.includes(selectedPlayer.id),
+            abortVoted: abortVoteIds.includes(selectedPlayer.id),
+          })}
+          panelRef={panelRef}
+          scrollRef={scrollRef}
+          avoidPicker={
+            canSendEmoji &&
+            !selectedPlayer.isBot &&
+            selectedPlayer.id !== selfId &&
+            (emojiAllowedIds === null || emojiAllowedIds.has(selectedPlayer.id))
+          }
+          rowRefs={rowRefs}
+          onClose={closeDetails}
+        />
+      )}
     </div>
   );
 }

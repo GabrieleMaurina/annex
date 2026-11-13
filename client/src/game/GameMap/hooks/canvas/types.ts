@@ -34,8 +34,8 @@ export type CanvasInteractionsParams = {
   attackSeaDefenderId: number | null;
   attackSeaStartCandidates: Set<number>;
   attackSeaPanelOpen: boolean;
-  attackSeaInputRef: RefObject<HTMLInputElement | null>;
   attackSeaBlitzInputRef: RefObject<HTMLInputElement | null>;
+  stepAttackSeaBlitzShips: (delta: number, newGesture: boolean) => boolean;
   attackSeaRevealing: boolean;
   attackSeaDiceOnly: boolean;
   setAttackSeaDiceRoll: Dispatch<SetStateAction<DiceRoll | null>>;

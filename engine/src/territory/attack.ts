@@ -12,7 +12,13 @@ import {
   trueBlitz,
 } from '../game/combat/blitz';
 import { moveIntoConquest, refundCapital } from '../game/combat/conquest';
-import { defenceDiceFor, gameDiceRules, NO_LUCK } from '../game/combat/dice';
+import {
+  attackDiceFor,
+  defenceDiceFor,
+  DiceRules,
+  gameDiceRules,
+  NO_LUCK,
+} from '../game/combat/dice';
 import { attack as rollAttack } from '../game/combat/roll';
 import { attackFullPath, hasSeaBridgeTo } from '../game/combat/seaBridge';
 import { finishGame, resolveWinnerIds } from '../game/end';
@@ -76,12 +82,11 @@ function computeBlitzWinProbabilities(
   game: Game,
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
+  dice: DiceRules,
 ): number[] {
   const maxBlitz = attackingTroops - 1;
   if (game.blitz === 'off') return new Array<number>(maxBlitz).fill(0);
   if (game.tutorial) return new Array<number>(maxBlitz).fill(1);
-  const dice = gameDiceRules(game, defendingDice);
   if (game.blitz === 'fair')
     return trueWinProbs(maxBlitz, defendingTroops, dice).map((p) =>
       p >= 0.5 ? 1 : 0,
@@ -94,14 +99,10 @@ function computeBlitzOutcomes(
   game: Game,
   attackingTroops: number,
   defendingTroops: number,
-  defendingDice: number,
+  dice: DiceRules,
 ): BlitzOutcome[] | undefined {
   if (game.blitz !== 'fair') return undefined;
-  return fairBlitzOutcomes(
-    attackingTroops - 1,
-    defendingTroops,
-    gameDiceRules(game, defendingDice),
-  );
+  return fairBlitzOutcomes(attackingTroops - 1, defendingTroops, dice);
 }
 
 function isAttackEndCandidate(
@@ -210,18 +211,22 @@ export function attackSelectEnd(
   const attackingTroops =
     game.territoryTroops.get(game.attackStartTerritoryId) ?? 0;
   const defendingTroops = game.territoryTroops.get(territoryId) ?? 0;
-  const defendingDice = defenceDiceFor(game, territoryId);
+  const dice = gameDiceRules(
+    game,
+    defenceDiceFor(game, territoryId),
+    attackDiceFor(game, game.attackStartTerritoryId),
+  );
   const blitzWinProbabilities = computeBlitzWinProbabilities(
     game,
     attackingTroops,
     defendingTroops,
-    defendingDice,
+    dice,
   );
   const blitzOutcomes = computeBlitzOutcomes(
     game,
     attackingTroops,
     defendingTroops,
-    defendingDice,
+    dice,
   );
 
   broadcastSelected(game, territoryId);
@@ -260,7 +265,7 @@ export function attack(
   const attackingTroops = game.territoryTroops.get(startId) ?? 0;
   const maxTroops =
     type === 'manual'
-      ? Math.min(attackingTroops - 1, game.attackDice)
+      ? Math.min(attackingTroops - 1, attackDiceFor(game, startId))
       : attackingTroops - 1;
   if (!isInteger(rawTroops)) return { ok: false, error: 'invalid troops' };
   const troops = rawTroops;
@@ -275,16 +280,14 @@ export function attack(
   let defenderDice: number[] = [];
   let luck = NO_LUCK;
   const defendingDice = defenceDiceFor(game, endId);
+  const attackingDice = attackDiceFor(game, startId);
+  const dice = gameDiceRules(game, defendingDice, attackingDice);
   if (defenderId === undefined) {
     attackLosses = 0;
     defenceLosses = 0;
   } else if (type === 'manual') {
     const roll = () =>
-      rollAttack(
-        troops,
-        Math.min(defendingTroops, defendingDice),
-        gameDiceRules(game, defendingDice),
-      );
+      rollAttack(troops, Math.min(defendingTroops, defendingDice), dice);
     let result = roll();
     while (game.tutorial && result.defenceLosses === 0) result = roll();
     attackLosses = result.attackLosses;
@@ -299,11 +302,7 @@ export function attack(
         : game.blitz === 'fair'
           ? fairBlitz
           : balancedBlitz;
-    const result = blitz(
-      troops,
-      defendingTroops,
-      gameDiceRules(game, defendingDice),
-    );
+    const result = blitz(troops, defendingTroops, dice);
     attackLosses = game.tutorial
       ? Math.min(result.attackLosses, troops - 1)
       : result.attackLosses;
@@ -359,7 +358,7 @@ export function attack(
       const remainingAttackers = attackingTroops - attackLosses;
       const minMoveTroops = Math.min(
         troops,
-        game.attackDice,
+        attackingDice,
         remainingAttackers - 1,
       );
 
@@ -394,13 +393,13 @@ export function attack(
         game,
         remainingAttackers,
         remainingDefenders,
-        defendingDice,
+        dice,
       );
       blitzOutcomes = computeBlitzOutcomes(
         game,
         remainingAttackers,
         remainingDefenders,
-        defendingDice,
+        dice,
       );
     } else {
       game.attackStartTerritoryId = null;
@@ -607,7 +606,7 @@ export function unlockTile(
   const attacked = attack(
     playerId,
     'manual',
-    Math.min(startTroops - cost - 1, game.attackDice),
+    Math.min(startTroops - cost - 1, attackDiceFor(game, startId)),
     true,
   );
   if (!attacked.ok) return attacked;

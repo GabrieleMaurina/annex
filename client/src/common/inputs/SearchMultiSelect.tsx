@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Form, ListGroup } from 'react-bootstrap';
 import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 import Tip from '../tooltips/Tip';
 
 export interface SearchSelectItem {
@@ -88,7 +89,7 @@ function SearchMultiSelect({
         {!atLimit && open && suggestions.length > 0 && (
           <ListGroup
             className="position-absolute shadow-sm"
-            style={{ zIndex: 10, minWidth: 200, width: '100%' }}
+            style={{ zIndex: 10, minWidth: scaled(200), width: '100%' }}
           >
             {suggestions.map((item) => (
               <ListGroup.Item key={item.id} action onClick={() => pick(item)}>

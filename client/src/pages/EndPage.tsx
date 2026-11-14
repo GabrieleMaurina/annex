@@ -18,6 +18,7 @@ import type {
   PlayerResultStats,
 } from '../lib/types';
 import SpectatorList from '../lobby/SpectatorList';
+import { scaled } from '../ui/uiScale';
 
 interface Props {
   game: GameState;
@@ -158,7 +159,11 @@ function EndPage({
                     variant="secondary"
                     size="sm"
                     className="d-inline-flex align-items-center justify-content-center"
-                    style={{ width: 28, height: 28, padding: 0 }}
+                    style={{
+                      width: scaled(28),
+                      height: scaled(28),
+                      padding: 0,
+                    }}
                     onClick={() => handleRowClick(GLOBAL_TARGET_ID)}
                     ref={(el) => {
                       if (el) {

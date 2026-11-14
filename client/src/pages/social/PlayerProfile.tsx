@@ -31,6 +31,7 @@ import { titleCase } from '../../lobby/settings/gameSettings';
 import MapBrowser from '../../maps/MapBrowser';
 import MapPreviewModal from '../../maps/MapPreviewModal';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 import Achievements from './Achievements';
 import ProfileBio from './ProfileBio';
 
@@ -220,7 +221,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
         role="img"
         aria-label={profile.online ? 'Online' : 'Offline'}
         className={`position-absolute bottom-0 end-0 m-1 rounded-circle border border-2 border-white ${profile.online ? 'bg-success' : 'bg-secondary'}`}
-        style={{ width: 16, height: 16 }}
+        style={{ width: scaled(16), height: scaled(16) }}
       />
     </Tip>
   );
@@ -303,7 +304,7 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
             ) : (
               <div
                 className="rounded bg-secondary d-flex align-items-center justify-content-center text-white-50"
-                style={{ width: 120, height: 120 }}
+                style={{ width: scaled(120), height: scaled(120) }}
               >
                 No picture
               </div>

@@ -12,7 +12,7 @@
 }
 
 .hero {
-  --hero-logo: 112px;
+  --hero-logo: calc(112px * var(--ui-scale, 1));
   --hero-title: clamp(3.5rem, 14vw, 6.5rem);
   display: flex;
   flex-direction: column;
@@ -112,7 +112,7 @@
   }
 
   :where(.hero-top:not(.hero-top-stacked)) .hero {
-    --hero-logo: 80px;
+    --hero-logo: calc(80px * var(--ui-scale, 1));
     --hero-title: clamp(2.8rem, 9vh, 4.5rem);
     flex-direction: row;
     gap: 1.25rem;
@@ -144,7 +144,7 @@
   }
 
   .hero {
-    --hero-logo: 52px;
+    --hero-logo: calc(52px * var(--ui-scale, 1));
     --hero-title: 2.4rem;
   }
 }

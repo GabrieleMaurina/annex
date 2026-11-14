@@ -11,6 +11,7 @@ import { contrastTextColor, playerColor } from '../../lib/palette';
 import { playSound } from '../../lib/sounds';
 import type { FriendsOverview, GameState } from '../../lib/types';
 import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 import GameEndResults from '../GameEndResults';
 import GameMap from '../GameMap';
 import { gameMapDataProps, noopGameMapHandlers } from '../gameMapProps';
@@ -224,7 +225,7 @@ function GameReplayView({
           className={`position-fixed bottom-0 start-0 m-3 p-2 border rounded small ${PANEL_BG_CLASS}${uiHidden ? ' invisible' : ''}`}
           style={{
             zIndex: 5,
-            maxWidth: 280,
+            maxWidth: scaled(280),
             maxHeight: '40vh',
             overflowY: 'auto',
           }}

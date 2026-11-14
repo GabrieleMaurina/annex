@@ -10,7 +10,7 @@
 }
 
 .help-tooltip {
-  --bs-tooltip-max-width: 480px;
+  --bs-tooltip-max-width: calc(480px * var(--ui-scale, 1));
 }
 
 .help-tooltip .tooltip-inner {

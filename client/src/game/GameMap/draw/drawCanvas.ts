@@ -8,6 +8,7 @@ import type {
   LockedTile,
   MapSwitch,
 } from '../../../lib/types';
+import { getUiScale } from '../../../ui/uiScale';
 import {
   areAnimationsDisabled,
   crackingTileIds,
@@ -250,7 +251,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     transform.offsetY,
     imgDims,
   );
-  const uiScale = zoom * borderScale((VERTEX_RADIUS * scaleX) / zoom);
+  const uiScale =
+    zoom * borderScale((VERTEX_RADIUS * scaleX) / zoom) * getUiScale();
 
   const turnStart = turnStartRef?.current ?? null;
   const sinceTurnStart = turnStart ? animationNow() - turnStart.startedAt : 0;

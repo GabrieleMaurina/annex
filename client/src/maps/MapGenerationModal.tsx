@@ -31,6 +31,7 @@ import {
 import SpinningGears from '../ui/buttons/SpinningGears';
 import GenerationProgress from '../ui/feedback/GenerationProgress';
 import Selector from '../ui/forms/Selector';
+import { scaled } from '../ui/uiScale';
 import { generateMap, type GeneratedEditorMap } from './editor/generateMap';
 import { DEFAULT_MAP_GENERATION, randomSeed } from './randomMap';
 
@@ -54,7 +55,7 @@ interface Props {
 
 const MAX_SEED_LENGTH = 20;
 const PRINTABLE_ASCII = /^[\x20-\x7e]+$/;
-const LABEL_STYLE = { width: 56 };
+const LABEL_STYLE = { width: scaled(56) };
 
 function seedError(seed: string): string | null {
   if (
@@ -279,7 +280,7 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
           <div className="d-flex flex-column flex-lg-row gap-4">
             <div
               className="d-flex flex-column gap-2 flex-shrink-0"
-              style={{ width: 280 }}
+              style={{ width: scaled(280) }}
             >
               <div className="d-flex align-items-center gap-2">
                 <Form.Label className="mb-0 flex-shrink-0" style={LABEL_STYLE}>

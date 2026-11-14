@@ -20,6 +20,7 @@ import { contrastTextColor } from '../../lib/palette';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import NumberOdometer from '../../ui/forms/NumberOdometer';
+import { scaled } from '../../ui/uiScale';
 import EditorActions from './actions/EditorActions';
 import UndoRedo from './actions/UndoRedo';
 import { useSmoothEdges } from './canvas/smoothEdges';
@@ -134,8 +135,8 @@ function ColorSwatch({
         onClick={onClick}
         className="rounded p-0"
         style={{
-          width: 24,
-          height: 24,
+          width: scaled(24),
+          height: scaled(24),
           backgroundColor: value,
           borderWidth: 3,
           borderStyle: 'solid',
@@ -328,7 +329,7 @@ function Panel(props: Props) {
           variant="secondary"
           size="sm"
           className={`position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center${hiddenClass}`}
-          style={{ width: 28, height: 28, padding: 0 }}
+          style={{ width: scaled(28), height: scaled(28), padding: 0 }}
           onClick={() => setCollapsed(false)}
         >
           <WhiteIcon path="/icons/menu.svg" alt="Menu" />
@@ -412,7 +413,11 @@ function Panel(props: Props) {
               >
                 <span
                   className="d-inline-block rounded border"
-                  style={{ width: 14, height: 14, backgroundColor: c }}
+                  style={{
+                    width: scaled(14),
+                    height: scaled(14),
+                    backgroundColor: c,
+                  }}
                 />
                 <WhiteIcon path="/icons/close.svg" size={10} />
               </Button>
@@ -691,7 +696,7 @@ function Panel(props: Props) {
                   setBrushSize(clampBrush(e.target.value, brushSize))
                 }
                 {...brushNumberInput}
-                style={{ minWidth: 64 }}
+                style={{ minWidth: scaled(64) }}
               />
               <span className="small text-muted">px</span>
             </div>
@@ -731,7 +736,11 @@ function Panel(props: Props) {
               summary={
                 <span
                   className="d-inline-block rounded border"
-                  style={{ width: 16, height: 16, backgroundColor: color }}
+                  style={{
+                    width: scaled(16),
+                    height: scaled(16),
+                    backgroundColor: color,
+                  }}
                 />
               }
               open={colorsOpen}
@@ -784,7 +793,7 @@ function Panel(props: Props) {
                     if (customPicker !== pickerFocusValue.current)
                       addCustomColor(customPicker);
                   }}
-                  style={{ width: 40, height: 24, padding: 2 }}
+                  style={{ width: scaled(40), height: scaled(24), padding: 2 }}
                 />
               </div>
             </PanelSection>

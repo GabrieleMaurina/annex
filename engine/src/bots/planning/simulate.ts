@@ -58,6 +58,7 @@ export interface StackPlan {
   startId: number;
   route: number[];
   objectiveIndex: number;
+  move?: number;
 }
 
 export interface Candidate {
@@ -187,6 +188,7 @@ export function walkStack(
       endId: next,
       objectiveIndex: stack.objectiveIndex,
       minWinProb: Math.max(0.3, outcome.winProbability - 0.3),
+      ...(stack.move !== undefined ? { move: stack.move } : {}),
     });
     if (risks && outcome.winProbability < RISKY_STEP_WIN)
       risks.push({
@@ -216,11 +218,22 @@ export function walkStack(
     const survivors = Math.max(1, Math.round(outcome.attackerSurvivorsMean));
     const refund = capitalRefundAt(ctx, next);
     state.troopsLost -= refund;
-    state.troops.set(cur, 1);
+    const moved =
+      stack.move === undefined
+        ? survivors
+        : Math.min(
+            survivors,
+            Math.max(
+              1,
+              stack.move,
+              Math.min(attackDiceFor(ctx.game, cur), survivors),
+            ),
+          );
+    state.troops.set(cur, 1 + survivors - moved);
     state.owners.set(next, ctx.botId);
     state.troops.set(
       next,
-      survivors + capturedCardTroops(ctx, state, defenderId) + refund,
+      moved + capturedCardTroops(ctx, state, defenderId) + refund,
     );
     if (defenderId !== undefined) state.conquered = true;
     lastConquest = { fromId: cur, toId: next };
@@ -231,7 +244,7 @@ export function walkStack(
     if (objectiveProb < CHAIN_FLOOR) break;
   }
   const sortie = taken > 1 && guardedCapitals(ctx).includes(stack.startId);
-  if (lastConquest && !sortie)
+  if (lastConquest && !sortie && stack.move === undefined)
     settleConquest(ctx, state, lastConquest.fromId, lastConquest.toId);
   return objectiveProb;
 }
@@ -434,15 +447,22 @@ export function bestFortify(
         MAX_TERRITORY_TROOPS - targetTroops,
       );
       if (troops < 1) continue;
-      state.troops.set(source, 1);
-      state.troops.set(target, targetTroops + troops);
-      let score = evaluateBoard(ctx, state, cachedProgress);
-      state.troops.set(source, sourceTroops);
-      state.troops.set(target, targetTroops);
-      if (target === hint) score += 3;
-      if (score > bestScore) {
-        bestScore = score;
-        best = { startId: source, endId: target, troops };
+      const partial = Math.ceil(
+        strongestThreatAt(horizon, state, target) * 1.2 - targetTroops,
+      );
+      const amounts =
+        partial >= 1 && partial < troops ? [troops, partial] : [troops];
+      for (const amount of amounts) {
+        state.troops.set(source, amount === troops ? 1 : sourceTroops - amount);
+        state.troops.set(target, targetTroops + amount);
+        let score = evaluateBoard(ctx, state, cachedProgress);
+        state.troops.set(source, sourceTroops);
+        state.troops.set(target, targetTroops);
+        if (target === hint) score += 3;
+        if (score > bestScore) {
+          bestScore = score;
+          best = { startId: source, endId: target, troops: amount };
+        }
       }
     }
   }

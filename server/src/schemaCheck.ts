@@ -28,6 +28,7 @@ const FIELD_DEFAULTS: Record<string, unknown> = {
   borderColors: DEFAULT_BORDER_COLORS,
   effectsVolume: DEFAULT_CLIENT_SETTINGS.effectsVolume,
   musicVolume: DEFAULT_CLIENT_SETTINGS.musicVolume,
+  uiScale: DEFAULT_CLIENT_SETTINGS.uiScale,
   minReputation: DEFAULT_MIN_REPUTATION,
   presets: DEFAULT_PRESETS,
 };

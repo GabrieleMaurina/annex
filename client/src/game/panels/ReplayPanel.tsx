@@ -9,6 +9,7 @@ import {
 import Tip from '../../common/tooltips/Tip';
 import { playSound } from '../../lib/sounds';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 import { isTypingTarget } from '../GameMap/helpers';
 import { REPLAY_SPEEDS, type ReplayMoveUnit } from '../replay/replay';
 
@@ -192,7 +193,11 @@ function ReplayPanel({
       <Tip text="Current player">
         <span
           className="d-inline-block rounded-circle flex-shrink-0"
-          style={{ width: 22, height: 22, backgroundColor: color }}
+          style={{
+            width: scaled(22),
+            height: scaled(22),
+            backgroundColor: color,
+          }}
         />
       </Tip>
       <span className="fw-bold text-nowrap flex-shrink-0">
@@ -289,7 +294,7 @@ function ReplayPanel({
               className="position-absolute bg-secondary"
               style={{
                 top: '0.25rem',
-                width: 1,
+                width: scaled(1),
                 height: '1rem',
                 left: `calc(0.5rem + (100% - 1rem) * ${stop / totalFrames})`,
               }}
@@ -321,7 +326,7 @@ function ReplayPanel({
           size="sm"
           variant="secondary"
           onClick={onCycleSpeed}
-          style={{ minWidth: 44 }}
+          style={{ minWidth: scaled(44) }}
         >
           {speed}x
         </Button>

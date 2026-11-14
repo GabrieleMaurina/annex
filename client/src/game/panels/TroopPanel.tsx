@@ -5,6 +5,7 @@ import PercentageToggle from '../../common/inputs/PercentageToggle';
 import { useTroopsInput } from '../../common/inputs/useTroopsInput';
 import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
 import NumberOdometer from '../../ui/forms/NumberOdometer';
+import { scaled } from '../../ui/uiScale';
 import TroopSlider from './TroopSlider';
 
 interface Props {
@@ -51,7 +52,7 @@ function TroopPanel({
     >
       <div className="d-flex align-items-center gap-2">
         <span>{label}</span>
-        <NumberOdometer {...troopsInput} style={{ minWidth: 70 }} />
+        <NumberOdometer {...troopsInput} style={{ minWidth: scaled(70) }} />
         <Button
           className="d-inline-flex align-items-center justify-content-center gap-1"
           size="sm"

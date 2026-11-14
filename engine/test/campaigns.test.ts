@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { difficultyParams } from '../src/bots/difficulty';
 import { ScenarioSpec, kinds, planScenario, primaryKind } from './testkit';
 
 function line(...ids: number[]): [number, number][] {
   const edges: [number, number][] = [];
   for (let i = 0; i < ids.length - 1; i++) edges.push([ids[i], ids[i + 1]]);
   return edges;
+}
+
+function expectCaptures(spec: ScenarioSpec, territoryId: number): void {
+  const plan = planScenario(spec);
+  assert.ok(
+    plan.attackSteps.some((step) => step.endId === territoryId),
+    `expected the plan to take ${territoryId}, got [${kinds(plan).join(', ')}]`,
+  );
 }
 
 function expectKind(spec: ScenarioSpec, kind: string, primary = true): void {
@@ -531,7 +540,13 @@ test('merge: link two stacks through one enemy tile', () => {
     troopsToDeploy: 5,
     difficulty: 'hard',
   };
-  expectKind(spec, 'merge');
+  const params = difficultyParams('hard');
+  params.cleanup = false;
+  try {
+    expectKind(spec, 'merge');
+  } finally {
+    params.cleanup = true;
+  }
 });
 
 test('merge: two stacks two hops apart', () => {
@@ -571,7 +586,7 @@ test('merge: two stacks two hops apart', () => {
   expectKind(spec, 'merge');
 });
 
-test('shrinkBorder: eat the enclosed pocket in our region', () => {
+test('shrinkBorder: the enclosed pocket in our region is eaten', () => {
   const spec: ScenarioSpec = {
     map: {
       continents: [
@@ -612,7 +627,7 @@ test('shrinkBorder: eat the enclosed pocket in our region', () => {
     troops: { 0: 10, 1: 5, 2: 5, 3: 7, 4: 2, 5: 8, 6: 8, 7: 6, 8: 10 },
     troopsToDeploy: 5,
   };
-  expectKind(spec, 'shrinkBorder');
+  expectCaptures(spec, 4);
 });
 
 test('shrinkBorder: swallow the notch that keeps three tiles exposed', () => {
@@ -657,7 +672,7 @@ test('shrinkBorder: swallow the notch that keeps three tiles exposed', () => {
     troops: { 0: 4, 1: 5, 2: 5, 3: 5, 4: 8, 5: 2, 6: 9, 7: 9, 8: 14, 9: 14 },
     troopsToDeploy: 5,
   };
-  expectKind(spec, 'shrinkBorder');
+  expectCaptures(spec, 5);
 });
 
 test('holdChokepoint: stack the sole link between our two halves', () => {

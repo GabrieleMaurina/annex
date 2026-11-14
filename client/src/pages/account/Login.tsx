@@ -9,6 +9,7 @@ import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
 import { getPlayerName } from '../../lib/player';
 import type { Account } from '../../lib/types';
+import { scaled } from '../../ui/uiScale';
 import { takeLoginReturnPath } from './loginReturn';
 
 type Mode = 'login' | 'register' | 'forgotPassword' | 'info';
@@ -144,7 +145,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
   return (
     <Container fluid className="py-5 px-2 px-sm-4">
       <h1 className="text-center mb-4">{account ? 'Account' : title[mode]}</h1>
-      <div className="mx-auto" style={{ maxWidth: 360 }}>
+      <div className="mx-auto" style={{ maxWidth: scaled(360) }}>
         <div className="small mb-3 text-center">
           {account ? (
             <>

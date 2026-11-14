@@ -34,6 +34,7 @@ import SpinningGears from '../../ui/buttons/SpinningGears';
 import { FIELD_LABEL_CLASS } from '../../ui/containers/panelStyle';
 import GenerationProgress from '../../ui/feedback/GenerationProgress';
 import Selector from '../../ui/forms/Selector';
+import { scaled } from '../../ui/uiScale';
 import MapLikeButton from '../MapLikeButton';
 import {
   changedSettingCount,
@@ -44,9 +45,9 @@ import {
 import GameSettingsFields from './GameSettingsFields';
 import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
 
-const HEADER_FIELD_STYLE = { minWidth: 220 };
+const HEADER_FIELD_STYLE = { minWidth: scaled(220) };
 const MAP_TOOLTIP_STYLE = {
-  '--bs-tooltip-max-width': '500px',
+  '--bs-tooltip-max-width': scaled(500),
 } as CSSProperties;
 const MAP_TOOLTIP_POPPER = {
   modifiers: [
@@ -201,7 +202,7 @@ function SettingsPanel({
             src={image}
             alt=""
             className="rounded d-block pt-1 mb-1"
-            style={{ maxWidth: 480, maxHeight: 270 }}
+            style={{ maxWidth: scaled(480), maxHeight: scaled(270) }}
           />
         )}
         {details && <div>{details}</div>}

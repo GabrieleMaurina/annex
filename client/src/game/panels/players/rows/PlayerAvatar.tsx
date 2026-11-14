@@ -1,5 +1,6 @@
 import WhiteIcon from '../../../../common/icons/WhiteIcon';
 import Tip from '../../../../common/tooltips/Tip';
+import { scaled } from '../../../../ui/uiScale';
 import type { Player } from './rowTypes';
 
 interface Props {
@@ -25,16 +26,10 @@ function PlayerAvatar({
     <Tip text={isTurn ? `${kind}\nCurrent turn` : kind}>
       <span
         className={`player-orb position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-circle ${isTurn ? 'player-orb-turn' : ''}`}
-        style={{ width: size, height: size }}
+        style={{ width: scaled(size), height: scaled(size) }}
       >
         {picture ? (
-          <img
-            src={picture}
-            alt=""
-            width={size}
-            height={size}
-            className="rounded-circle"
-          />
+          <img src={picture} alt="" className="rounded-circle w-100 h-100" />
         ) : (
           <WhiteIcon path={icon} size={Math.round(size * 0.5)} />
         )}

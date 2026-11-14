@@ -4,6 +4,7 @@ import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
 import type { MapAspect, MapSize } from '../../../lib/types';
 import Selector from '../../../ui/forms/Selector';
+import { scaled } from '../../../ui/uiScale';
 
 interface Props {
   show: boolean;
@@ -28,7 +29,7 @@ function NewMapModal({ show, onHide, dirty, onCreate }: Props) {
           </Alert>
         )}
         <Form.Group className="d-flex align-items-center gap-2">
-          <Form.Label className="mb-0" style={{ minWidth: 50 }}>
+          <Form.Label className="mb-0" style={{ minWidth: scaled(50) }}>
             Size
           </Form.Label>
           <Selector

@@ -4,6 +4,7 @@ import {
   withoutCovered,
 } from '../claims/objectives';
 import { contestedShare, hopelessContinent } from '../claims/score';
+import { cleanupCandidates } from '../cleanup/cleanup';
 import {
   continentBreakCandidates,
   continentCompletionCandidates,
@@ -887,6 +888,7 @@ export function gatherCandidates(
   const spoil = spoilContinentCandidates(ctx, state, budget);
   return [
     ...snipeCandidates(ctx, state, budget),
+    ...cleanupCandidates(ctx, state, budget),
     ...completeCandidates(ctx, state, budget),
     ...breakCandidates(ctx, state, budget),
     ...withoutCovered(spoil, crushClaimCandidates(ctx, state, budget)),

@@ -26,12 +26,13 @@ function ClientSettings() {
       <WikiSection id="volume" title="Volume">
         <ul>
           <li>
-            The master slider controls all sound. It snaps to the middle, and
-            keyboard arrows move it freely.
+            The master slider controls all sound. It snaps to the middle (the
+            knob flashes when it does), the mouse wheel moves it, and keyboard
+            arrows move it freely.
           </li>
           <li>
-            The mixer button reveals separate sliders for sound effects and
-            music.
+            The mixer button, next to the sound button, reveals separate sliders
+            for sound effects and music.
           </li>
           <li>
             When music plays, the current song is named, with buttons for
@@ -39,6 +40,16 @@ function ClientSettings() {
           </li>
           <li>Each slider starts at the middle.</li>
         </ul>
+      </WikiSection>
+      <WikiSection id="ui-scale" title="UI scale">
+        <p>
+          The UI scale slider makes all text, icons, buttons and panels larger
+          or smaller. It updates live while you drag, and the middle of the
+          slider is the normal size (half size at the far left, double at the
+          far right). This panel keeps its size until you let go of the slider.
+          Territory markers, troop numbers and names scale too, but the map
+          image and animated effects such as fog and radiation do not.
+        </p>
       </WikiSection>
       <WikiSection id="troops" title="Troop inputs">
         <p>

@@ -25,6 +25,7 @@ import type {
 } from '../../lib/types';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 import { GLOBAL_TARGET_ID, type EmojiPop } from '../logic/emoji';
 import { formatMission } from './mission/formatMission';
 import PlayerActions from './players/PlayerActions';
@@ -241,7 +242,7 @@ function PlayersPanel({
           variant="secondary"
           size="sm"
           className="position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center"
-          style={{ width: 28, height: 28, padding: 0 }}
+          style={{ width: scaled(28), height: scaled(28), padding: 0 }}
           onClick={() => setCollapsed(false)}
         >
           <WhiteIcon path="/icons/menu.svg" alt="Menu" />
@@ -381,7 +382,7 @@ function PlayersPanel({
                   variant="secondary"
                   size="sm"
                   className="d-inline-flex align-items-center justify-content-center"
-                  style={{ width: 28, height: 28, padding: 0 }}
+                  style={{ width: scaled(28), height: scaled(28), padding: 0 }}
                   disabled={emojiTargeting}
                   onClick={() => onRowClick(GLOBAL_TARGET_ID)}
                   ref={(el: HTMLButtonElement | null) =>

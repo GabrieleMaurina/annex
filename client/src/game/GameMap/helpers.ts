@@ -438,3 +438,15 @@ export function strokeContinentOutline(
   if (tinted) ctx.fill();
   ctx.stroke();
 }
+
+const VERTEX_DIAMETERS_PER_LONGEST_SIDE = 50;
+
+export function vertexRadiusFor(
+  imgDims: { w: number; h: number },
+  uiScale: number,
+): number {
+  return (
+    (Math.max(imgDims.w, imgDims.h) / (VERTEX_DIAMETERS_PER_LONGEST_SIDE * 2)) *
+    uiScale
+  );
+}

@@ -35,4 +35,5 @@ export interface DifficultyParams {
   cardTiming: boolean;
   claims: boolean;
   position: boolean;
+  cleanup: boolean;
 }

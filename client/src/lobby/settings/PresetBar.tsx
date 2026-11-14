@@ -8,6 +8,7 @@ import { playSound } from '../../lib/sounds';
 import { SECTION_CLASS } from '../../ui/containers/panelStyle';
 import { GAP, useDrag } from '../../ui/dnd/dragDrop';
 import DragGhost from '../../ui/dnd/DragGhost';
+import { scaled } from '../../ui/uiScale';
 import {
   exportPreset,
   loadPresets,
@@ -164,7 +165,7 @@ function PresetBar({
                   data-drop-exact="true"
                   className="rounded"
                   style={{
-                    height: 31,
+                    height: scaled(31),
                     border: '2px dashed var(--bs-primary)',
                   }}
                 />

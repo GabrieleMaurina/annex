@@ -4,6 +4,7 @@ import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { flippedSwitchesKey } from '../../maps/maps';
 import { Game } from '../../types';
 import { claimFactor } from '../claims/score';
+import { cleanupExtension } from '../cleanup/cleanup';
 import { attackWinProbability } from '../features/combat';
 import { chooseCardSet } from '../heuristics/cards';
 import { holdsCardsUntilForced } from '../personality/specialists/hoarder';
@@ -63,10 +64,12 @@ const KIND_WEIGHT: Record<ObjectiveKind, (w: Weights) => number> = {
   snipe: () => 3,
   crushClaim: (w) => (w.breakContinent + w.aggression) * 0.6,
   punish: () => 0,
+  cleanup: () => 0.4,
 };
 
 const DUEL_FINISHER_ELIMINATE_BONUS = 50;
 const DUEL_BREAK_URGENCY_BONUS = 15;
+const CLEANUP_TERRITORY_BONUS = 0.5;
 
 function isDuelFinisher(ctx: PlanContext): boolean {
   if (!ctx.finisher) return false;
@@ -81,6 +84,7 @@ function personalityBonus(ctx: PlanContext, objectives: Objective[]): number {
   let bonus = 0;
   const duelFinisher = isDuelFinisher(ctx);
   objectives.forEach((objective, index) => {
+    if (objective.kind === 'cleanup' && index > 0) return;
     bonus +=
       1.4 *
       KIND_WEIGHT[objective.kind](ctx.weights) *
@@ -90,6 +94,8 @@ function personalityBonus(ctx: PlanContext, objectives: Objective[]): number {
       bonus += DUEL_FINISHER_ELIMINATE_BONUS;
     if (objective.kind === 'break')
       bonus += DUEL_BREAK_URGENCY_BONUS * ctx.duel.breakUrgency;
+    if (objective.kind === 'cleanup' && index === 0)
+      bonus += CLEANUP_TERRITORY_BONUS * objective.mustVisit.length;
   });
   return bonus;
 }
@@ -148,7 +154,8 @@ export function repairPlan(ctx: PlanContext, plan: TurnPlan): boolean {
     objective.kind === 'card' ||
     objective.kind === 'sortie' ||
     objective.kind === 'holdChokepoint' ||
-    objective.kind === 'snipe'
+    objective.kind === 'snipe' ||
+    objective.kind === 'cleanup'
   )
     return false;
 
@@ -227,6 +234,7 @@ function combine(
 const MIN_CONFIDENCE = 0.15;
 const CARD_LOSS_TURNS = 2;
 const FORTIFY_REFINE_COUNT = 5;
+const EXTENSION_COUNT = 3;
 
 function confidentEnough(
   ctx: PlanContext,
@@ -325,6 +333,38 @@ function searchTurnPlan(
       simulated,
       (e) => e.feasible && confidentEnough(ctx, e.candidate, e.result),
     );
+  });
+
+  guarded(() => {
+    if (!ctx.params.cleanup || overBudget()) return;
+    scored
+      .filter(
+        (e) =>
+          e.feasible &&
+          !e.candidate.objectives.some((o) => o.kind === 'cleanup') &&
+          confidentEnough(ctx, e.candidate, e.result),
+      )
+      .sort(
+        (a, b) =>
+          b.result.score +
+          personalityBonus(ctx, b.candidate.objectives) -
+          (a.result.score + personalityBonus(ctx, a.candidate.objectives)),
+      )
+      .slice(0, EXTENSION_COUNT)
+      .forEach((entry) => {
+        const extended = cleanupExtension(ctx, state, entry.candidate, budget);
+        if (!extended) return;
+        const result = simulateTurn(ctx, extended, false);
+        scored = [
+          ...scored,
+          {
+            candidate: extended,
+            result,
+            feasible: result.feasible,
+            refined: false,
+          },
+        ];
+      });
   });
 
   guarded(() => {

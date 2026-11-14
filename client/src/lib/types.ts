@@ -26,6 +26,7 @@ export interface ClientSettings {
   effectsVolume: number;
   musicVolume: number;
   troopsPercentage: boolean;
+  uiScale: number;
 }
 
 export interface Account {

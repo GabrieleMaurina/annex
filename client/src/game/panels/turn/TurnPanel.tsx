@@ -276,7 +276,7 @@ function TurnPanel({
         )}
       {turnPhase === 'attack' && (
         <span
-          className="position-relative d-inline-block ms-auto"
+          className="ui-zoom position-relative d-inline-block ms-auto"
           style={{ width: 20, height: 20 }}
         >
           <img

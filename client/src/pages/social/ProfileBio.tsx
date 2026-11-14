@@ -4,6 +4,7 @@ import { Button, Form } from 'react-bootstrap';
 import { formatError } from '../../common/formatError';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import { connector } from '../../connector';
+import { scaled } from '../../ui/uiScale';
 
 const MAX_LENGTH = 200;
 
@@ -98,7 +99,7 @@ function ProfileBio({ bio, editable, onContextMenu }: Props) {
       {text && (
         <span
           className="selectable text-break"
-          style={{ maxWidth: 400 }}
+          style={{ maxWidth: scaled(400) }}
           onContextMenu={onContextMenu}
         >
           {text}

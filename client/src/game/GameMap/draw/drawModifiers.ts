@@ -1,5 +1,6 @@
 import { contrastTextColor, playerColor } from '../../../lib/palette';
 import type { CardSymbol, GameState } from '../../../lib/types';
+import { getUiScale } from '../../../ui/uiScale';
 import {
   areAnimationsDisabled,
   drawFogCloud,
@@ -303,7 +304,7 @@ export function drawFog(
   const fog = frame.shown.fog.get(String(id));
   if (!fog) return;
   drawScaled(frame.ctx, p, fog.scale, () =>
-    drawFogCloud(frame.ctx, p.x, p.y, radius, frame.now, id),
+    drawFogCloud(frame.ctx, p.x, p.y, radius / getUiScale(), frame.now, id),
   );
 }
 
@@ -368,7 +369,7 @@ export function drawUnderModifiers(frame: ModifierFrame, id: number, p: Point) {
   const radiation = frame.shown.radiation.get(key);
   if (radiation?.state === 'active')
     drawScaled(ctx, p, radiation.scale, () =>
-      drawRadiationCloud(ctx, p.x, p.y, radius, now, false, id),
+      drawRadiationCloud(ctx, p.x, p.y, radius / getUiScale(), now, false, id),
     );
 }
 
@@ -393,7 +394,7 @@ export function drawOverModifiers(frame: ModifierFrame, id: number, p: Point) {
         ctx,
         p.x,
         p.y,
-        radius,
+        radius / getUiScale(),
         now,
         toxin.data.permanent,
         toxin.data.roundsRemaining,
@@ -418,7 +419,7 @@ export function drawOverModifiers(frame: ModifierFrame, id: number, p: Point) {
   const radiation = shown.radiation.get(key);
   if (radiation?.state === 'upcoming')
     drawScaled(ctx, p, radiation.scale, () =>
-      drawRadiationCloud(ctx, p.x, p.y, radius, now, true, id),
+      drawRadiationCloud(ctx, p.x, p.y, radius / getUiScale(), now, true, id),
     );
 
   const antiNuke = shown.antiNuke.get(key);

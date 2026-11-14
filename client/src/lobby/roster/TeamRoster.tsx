@@ -6,6 +6,7 @@ import type { GameState } from '../../lib/types';
 import { SECTION_CLASS } from '../../ui/containers/panelStyle';
 import { GAP, useDrag, type DropHit } from '../../ui/dnd/dragDrop';
 import DragGhost from '../../ui/dnd/DragGhost';
+import { scaled } from '../../ui/uiScale';
 import type { RosterProps } from '../PlayerRoster';
 import RosterTable from './RosterTable';
 import {
@@ -70,7 +71,11 @@ function TeamRoster({ roster }: { roster: RosterProps }) {
                   <Button
                     variant="danger"
                     className="d-inline-flex align-items-center justify-content-center"
-                    style={{ width: 24, height: 24, padding: 0 }}
+                    style={{
+                      width: scaled(24),
+                      height: scaled(24),
+                      padding: 0,
+                    }}
                     onClick={() =>
                       setTeams(layout.filter((_, index) => index !== team))
                     }

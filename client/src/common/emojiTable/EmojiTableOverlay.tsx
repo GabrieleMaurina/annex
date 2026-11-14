@@ -9,6 +9,7 @@ import {
 } from '../../game/logic/emoji';
 import type { EmojiValue, FriendsOverview, GameState } from '../../lib/types';
 import { PANEL_BG_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 import PlayerConductActions from '../conduct/PlayerConductActions';
 import { useWhiteIcon } from '../icon';
 import WhiteIcon from '../icons/WhiteIcon';
@@ -42,7 +43,7 @@ function ConductMenu({ playerId, name, userId, conduct }: ConductMenuProps) {
           type="button"
           className="border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
           style={{
-            fontSize: 24,
+            fontSize: scaled(24),
             padding: '3px 2px 5px 2px',
             borderRadius: 4,
           }}
@@ -139,7 +140,10 @@ function EmojiTableOverlay({
                     <button
                       type="button"
                       className="border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
-                      style={{ fontSize: 24, padding: '3px 2px 5px 2px' }}
+                      style={{
+                        fontSize: scaled(24),
+                        padding: '3px 2px 5px 2px',
+                      }}
                       data-no-click-sound
                       onClick={() => onPick(emojiPickerFor, emoji)}
                     >
@@ -153,7 +157,7 @@ function EmojiTableOverlay({
                     type="button"
                     className="border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
                     style={{
-                      fontSize: 24,
+                      fontSize: scaled(24),
                       padding: '3px 2px 5px 2px',
                       borderRadius: 4,
                     }}
@@ -180,7 +184,7 @@ function EmojiTableOverlay({
                     type="button"
                     className="border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
                     style={{
-                      fontSize: 24,
+                      fontSize: scaled(24),
                       padding: '3px 2px 5px 2px',
                       borderRadius: 4,
                     }}
@@ -251,7 +255,7 @@ function EmojiTableOverlay({
                 <span
                   className="d-inline-flex align-items-center justify-content-center lh-1"
                   style={{
-                    fontSize: 24,
+                    fontSize: scaled(24),
                     padding: '3px 2px 5px 2px',
                     pointerEvents: 'auto',
                   }}

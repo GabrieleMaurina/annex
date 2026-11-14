@@ -18,6 +18,7 @@ import {
 } from '../../ui/cursors/cursors';
 import { GAP } from '../../ui/dnd/dragDrop';
 import Selector from '../../ui/forms/Selector';
+import { scaled } from '../../ui/uiScale';
 import {
   BOT_DIFFICULTIES,
   BOT_DIFFICULTY_LABELS,
@@ -107,7 +108,11 @@ function RosterTable({
           {rows.map((row, i) => {
             if (row === GAP)
               return (
-                <tr key="gap" ref={register?.('gap')} style={{ height: 40 }}>
+                <tr
+                  key="gap"
+                  ref={register?.('gap')}
+                  style={{ height: scaled(40) }}
+                >
                   <td colSpan={2 + (hasBots ? 2 : 0) + 1} className="p-1">
                     <div
                       className="rounded h-100"
@@ -152,7 +157,7 @@ function RosterTable({
                   startDrag(e, p);
                 }}
                 style={{
-                  height: 40,
+                  height: scaled(40),
                   outline: p?.id === selfId ? '2px solid #fff' : undefined,
                   outlineOffset: p?.id === selfId ? '-2px' : undefined,
                   touchAction: startDrag && p ? 'none' : undefined,
@@ -342,7 +347,11 @@ function RosterTable({
                           <Button
                             variant="danger"
                             className="d-inline-flex align-items-center justify-content-center"
-                            style={{ width: 24, height: 24, padding: 0 }}
+                            style={{
+                              width: scaled(24),
+                              height: scaled(24),
+                              padding: 0,
+                            }}
                             onClick={() =>
                               p
                                 ? p.isBot

@@ -5,6 +5,7 @@ import Tip from '../../common/tooltips/Tip';
 import TipSpan from '../../common/tooltips/TipSpan';
 import type { Card } from '../../lib/types';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 import { comboKey, sortForDisplay, type EvaluatedCombo } from '../logic/cards';
 
 interface Props {
@@ -44,7 +45,7 @@ export function CardFace({
   if (card.symbol === null) {
     return (
       <div
-        className="d-flex flex-column align-items-center justify-content-between border rounded bg-white p-1"
+        className="ui-zoom d-flex flex-column align-items-center justify-content-between border rounded bg-white p-1"
         style={{ width, height, ...borderStyle }}
       >
         {(['soldier', 'humvee', 'tank'] as const).map((symbol) => (
@@ -62,7 +63,7 @@ export function CardFace({
   const name = territoryNames.get(territoryId);
   const face = (
     <div
-      className="d-flex flex-column align-items-center justify-content-center border rounded bg-white position-relative"
+      className="ui-zoom d-flex flex-column align-items-center justify-content-center border rounded bg-white position-relative"
       style={{ width, height, ...borderStyle }}
     >
       <img
@@ -166,7 +167,7 @@ function CardsPanel({
   return (
     <div
       className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex flex-column`}
-      style={{ width: 268, maxHeight: 'calc(100vh - 2rem)' }}
+      style={{ width: scaled(268), maxHeight: 'calc(100vh - 2rem)' }}
     >
       <PanelHeader title={title ?? 'Your Cards'} onClose={onClose} />
       <div

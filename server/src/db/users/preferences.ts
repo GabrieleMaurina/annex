@@ -26,6 +26,7 @@ export interface ClientSettings {
   musicVolume: number;
   animationsDisabled: boolean;
   troopsPercentage: boolean;
+  uiScale: number;
 }
 
 export interface GameSettings {
@@ -293,6 +294,7 @@ export const DEFAULT_CLIENT_SETTINGS: ClientSettings = {
   musicVolume: 0.5,
   animationsDisabled: false,
   troopsPercentage: false,
+  uiScale: 1,
 };
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
@@ -388,6 +390,7 @@ export const preferencesSchemaProperties = {
       'musicVolume',
       'animationsDisabled',
       'troopsPercentage',
+      'uiScale',
     ],
     additionalProperties: false,
     properties: {
@@ -397,6 +400,7 @@ export const preferencesSchemaProperties = {
       musicVolume: { bsonType: 'number', minimum: 0, maximum: 1 },
       animationsDisabled: { bsonType: 'bool' },
       troopsPercentage: { bsonType: 'bool' },
+      uiScale: { bsonType: 'number', minimum: 0.5, maximum: 2 },
     },
   },
   gameSettings: {
@@ -594,6 +598,10 @@ export function sanitizeClientSettings(raw: unknown): ClientSettings {
       typeof r.troopsPercentage === 'boolean'
         ? r.troopsPercentage
         : DEFAULT_CLIENT_SETTINGS.troopsPercentage,
+    uiScale:
+      typeof r.uiScale === 'number' && r.uiScale >= 0.5 && r.uiScale <= 2
+        ? r.uiScale
+        : DEFAULT_CLIENT_SETTINGS.uiScale,
   };
 }
 

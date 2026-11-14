@@ -19,6 +19,7 @@ import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
 import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
 import NumberOdometer from '../../../ui/forms/NumberOdometer';
+import { scaled } from '../../../ui/uiScale';
 import {
   DICE_ROLL_STEP_DURATION,
   DICE_ROLL_STEPS,
@@ -81,9 +82,9 @@ function Die({
     <div
       className={`d-flex align-items-center justify-content-center border rounded fw-bold${isWin ? '' : ' bg-body text-body'}`}
       style={{
-        width: 28,
-        height: 28,
-        fontSize: 16,
+        width: scaled(28),
+        height: scaled(28),
+        fontSize: scaled(16),
         opacity: outcome === 'lose' ? 0.4 : 1,
         backgroundColor: isWin ? WIN_COLOR : undefined,
         color: isWin ? '#000000' : undefined,

@@ -1,0 +1,11 @@
+img[width],
+svg[width],
+.ui-zoom {
+  zoom: var(--ui-scale, 1);
+}
+
+.ui-zoom img[width],
+.ui-zoom svg[width],
+.ui-zoom .ui-zoom {
+  zoom: 1;
+}

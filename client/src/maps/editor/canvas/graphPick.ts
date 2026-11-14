@@ -4,7 +4,7 @@ import {
   type Point,
 } from '../mapCanvasGeometry';
 import type { EditorTerritory as Territory } from '../model/editorTypes';
-import { getVertexRadius, wrapOf, type Viewport } from './canvasGeometry';
+import { getShownVertexRadius, wrapOf, type Viewport } from './canvasGeometry';
 
 export type GraphPick =
   | { kind: 'link'; a: number; b: number }
@@ -54,7 +54,7 @@ export function continentLabels(
 
 export function labelFontSize(viewport: Viewport): number {
   return (
-    getVertexRadius(viewport.imgW, viewport.imgH) *
+    getShownVertexRadius(viewport.imgW, viewport.imgH) *
     viewport.scaleX *
     LABEL_FONT_RADII
   );
@@ -75,7 +75,7 @@ export function linkAt(
   scheduledOnly: boolean,
 ): { a: number; b: number } | null {
   const { imgW, imgH } = viewport;
-  const reach = getVertexRadius(imgW, imgH) * viewport.scaleX * 0.6;
+  const reach = getShownVertexRadius(imgW, imgH) * viewport.scaleX * 0.6;
   const byId = new Map(territories.map((t) => [t.id, t]));
   for (const t of territories) {
     const ids = [

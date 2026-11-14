@@ -4,6 +4,7 @@ import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
 import type { BotDifficulty, BotPersonality, GameState } from '../lib/types';
+import { scaled } from '../ui/uiScale';
 import RosterTable from './roster/RosterTable';
 import type { TeamLayout } from './roster/teamLayout';
 import TeamRoster from './roster/TeamRoster';
@@ -70,7 +71,7 @@ function PlayerRoster(roster: RosterProps) {
               variant="secondary"
               size="sm"
               className="d-inline-flex align-items-center justify-content-center"
-              style={{ width: 28, height: 28, padding: 0 }}
+              style={{ width: scaled(28), height: scaled(28), padding: 0 }}
               onClick={() => onEmojiRowClick(GLOBAL_TARGET_ID)}
               ref={(el) => {
                 if (el) {

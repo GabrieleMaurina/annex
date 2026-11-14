@@ -21,7 +21,8 @@ export type ObjectiveKind =
   | 'sortie'
   | 'snipe'
   | 'crushClaim'
-  | 'punish';
+  | 'punish'
+  | 'cleanup';
 
 export interface Objective {
   kind: ObjectiveKind;
@@ -41,6 +42,7 @@ export interface AttackStep {
   endId: number;
   objectiveIndex: number;
   minWinProb: number;
+  move?: number;
 }
 
 export interface FortifyMove {

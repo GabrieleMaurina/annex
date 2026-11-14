@@ -1,3 +1,5 @@
+import { scaled } from '../../ui/uiScale';
+
 interface Props {
   path: string;
   size?: number;
@@ -13,8 +15,8 @@ function WhiteIcon({ path, size = 16, alt = '' }: Props) {
       aria-label={alt || undefined}
       aria-hidden={alt ? undefined : true}
       style={{
-        width: size,
-        height: size,
+        width: scaled(size),
+        height: scaled(size),
         maskImage: mask,
         WebkitMaskImage: mask,
       }}

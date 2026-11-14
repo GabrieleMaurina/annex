@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { playSound } from '../../../lib/sounds';
+import { scaled } from '../../../ui/uiScale';
 
 const HEARTBEAT_SECONDS = 5;
 
@@ -52,7 +53,7 @@ function TurnProgressBar({
   return (
     <div
       className="position-fixed top-0 start-0 end-0 pe-none"
-      style={{ height: 4, zIndex: 2 }}
+      style={{ height: scaled(4), zIndex: 2 }}
     >
       <style>{`
         @keyframes annexTurnProgress {

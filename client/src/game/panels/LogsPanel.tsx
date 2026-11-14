@@ -4,6 +4,7 @@ import { useWhiteIcon } from '../../common/icon';
 import PanelHeader from '../../common/PanelHeader';
 import { contrastTextColor } from '../../lib/palette';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 import type { LogColorRange } from '../logs/logFormat';
 
 interface LogEntry {
@@ -172,7 +173,7 @@ function LogsPanel({ logs, stats, top, onClose }: Props) {
     <div
       className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex flex-column`}
       style={{
-        width: 820,
+        width: scaled(820),
         maxHeight: `calc(100vh - ${top}px - ${BOTTOM_MARGIN}px)`,
       }}
     >

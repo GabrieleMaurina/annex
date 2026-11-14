@@ -9,6 +9,7 @@ import { playSound } from '../../../lib/sounds';
 import type { BlitzOutcome, DiceTies } from '../../../lib/types';
 import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
 import NumberOdometer from '../../../ui/forms/NumberOdometer';
+import { scaled } from '../../../ui/uiScale';
 import TroopSlider from '../TroopSlider';
 import { attackOptionStyle, formatProbability } from './attackOptionStyle';
 import { DiceRollDisplay, type AttackType, type DiceRoll } from './AttackPanel';
@@ -148,7 +149,7 @@ function AttackSeaPanel({
                 <NumberOdometer
                   onClick={(e) => e.stopPropagation()}
                   {...blitzShipsInput}
-                  style={{ minWidth: 60 }}
+                  style={{ minWidth: scaled(60) }}
                 />
                 <span className="small">
                   {blitzOutcome

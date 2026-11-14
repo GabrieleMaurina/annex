@@ -9,6 +9,7 @@ import PanelHeader from '../../common/PanelHeader';
 import TipSpan from '../../common/tooltips/TipSpan';
 import type { Arsenal, NukeProject } from '../../lib/types';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 
 interface Props {
   arsenal: Arsenal;
@@ -58,7 +59,10 @@ function NukesPanel({
   const canUse = !readOnly && isMyTurn && !paused && turnPhase === 'attack';
 
   return (
-    <div className={`${PANEL_BG_CLASS} ${PANEL_CLASS}`} style={{ width: 344 }}>
+    <div
+      className={`${PANEL_BG_CLASS} ${PANEL_CLASS}`}
+      style={{ width: scaled(344) }}
+    >
       <PanelHeader title="Nukes" onClose={onClose} />
 
       <div className="d-flex gap-2 mb-2">
@@ -126,7 +130,9 @@ function NukesPanel({
                   key={index}
                   className="d-flex align-items-center gap-2 py-1"
                 >
-                  <span style={{ minWidth: 58 }}>{label(project.kind)}</span>
+                  <span style={{ minWidth: scaled(58) }}>
+                    {label(project.kind)}
+                  </span>
                   <span className="text-muted small">
                     {project.installmentsPaid}/{NUKE_INSTALLMENTS}
                   </span>
@@ -135,7 +141,7 @@ function NukesPanel({
                     max={NUKE_INSTALLMENTS}
                     variant="secondary"
                     className="flex-fill"
-                    style={{ height: 6 }}
+                    style={{ height: scaled(6) }}
                   />
                   <TipSpan
                     className="ms-1"

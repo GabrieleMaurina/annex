@@ -16,6 +16,7 @@ import {
 import { drawMapBorder, mapBorder } from '../../game/mapBorder';
 import type { WrapAxes } from '../../game/mapMath';
 import { playSound } from '../../lib/sounds';
+import { useUiScale } from '../../ui/uiScale';
 import {
   canvasCursor,
   hitVertex,
@@ -190,6 +191,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
   });
   const [selectedVertexId, setSelectedVertexId] = useState<number | null>(null);
   const [pick, setPick] = useState<GraphPick>(null);
+  useUiScale();
   useEffect(() => onSelect(selectedVertexId), [selectedVertexId, onSelect]);
   const [hoveredVertexId, setHoveredVertexId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);

@@ -20,6 +20,7 @@ import { useToggleSound } from '../../lib/sounds';
 import type { Account } from '../../lib/types';
 import { setLoginReturnPath } from '../../pages/account/loginReturn';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 import Flag from '../badges/Flag';
 import RankIcon from '../badges/RankIcon';
 import { useWhiteIcon } from '../icon';
@@ -118,7 +119,7 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
             variant="secondary"
             size="sm"
             className="d-flex align-items-center justify-content-center"
-            style={{ width: 28, height: 28, padding: 0 }}
+            style={{ width: scaled(28), height: scaled(28), padding: 0 }}
             onClick={() => setOpen(true)}
           >
             <img
@@ -144,7 +145,11 @@ function BurgerMenu({ navigate, account, onSessionChange, hideLogout }: Props) {
         <div
           ref={panelRef}
           className={`${PANEL_BG_CLASS} ${PANEL_CLASS} position-absolute end-0 mt-2 d-flex flex-column gap-2 overflow-y-auto overflow-x-hidden no-scrollbar`}
-          style={{ width: 200, zIndex: 10, maxHeight: 'calc(100dvh - 72px)' }}
+          style={{
+            width: scaled(200),
+            zIndex: 10,
+            maxHeight: 'calc(100dvh - 72px)',
+          }}
         >
           {name &&
             (account ? (

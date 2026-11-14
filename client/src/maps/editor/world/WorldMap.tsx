@@ -16,6 +16,7 @@ import { Button } from 'react-bootstrap';
 import { loadWhiteIcon } from '../../../common/icon';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
 import Tip from '../../../common/tooltips/Tip';
+import { scaled } from '../../../ui/uiScale';
 import { loadOutline, type GazetteerPlace } from './gazetteer';
 import type { WorldFrame } from './tileCover';
 
@@ -35,7 +36,7 @@ const MIN_DRAWN_POINTS = 3;
 const HIGHLIGHT_COLOR = '#ffffff';
 const HIGHLIGHT_WIDTH = 3;
 const ELLIPSE_POINTS = 64;
-const CHOICE_SIZE = '24px';
+const CHOICE_SIZE = scaled(24);
 
 const NO_HIGHLIGHT: GeoJSON.FeatureCollection = {
   type: 'FeatureCollection',

@@ -7,6 +7,7 @@ import { contrastTextColor, playerColor } from '../lib/palette';
 import { playSound } from '../lib/sounds';
 import type { ChatMessage } from '../lib/types';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../ui/containers/panelStyle';
+import { scaled } from '../ui/uiScale';
 import { useDismissOnOutsideClick } from './dismiss/useDismissOnOutsideClick';
 import WhiteIcon from './icons/WhiteIcon';
 
@@ -111,7 +112,7 @@ function Chat({ nameById, colorById, open, setOpen, hidden }: Props) {
         </summary>
         <div
           ref={listRef}
-          style={{ height: 200, overflowY: 'auto' }}
+          style={{ height: scaled(200), overflowY: 'auto' }}
           className="my-2 border rounded"
           onWheel={(e) => e.stopPropagation()}
         >

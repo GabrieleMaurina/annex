@@ -5,6 +5,7 @@ import {
   useUiHidden,
 } from '../../common/menus/shortcuts/uiHidden';
 import TutorialHighlight from '../../tutorials/TutorialHighlight';
+import { useUiScale } from '../../ui/uiScale';
 import { setEndCardActive } from '../animations';
 import {
   END_CARD_SHOWN_MS,
@@ -22,6 +23,7 @@ import {
   getTerritoryScreenPos,
   maxDeployTroops,
   unclaimedTerritoryIds,
+  vertexRadiusFor,
 } from './helpers';
 import { useDeploySeaFlow } from './hooks/sea/useDeploySeaFlow';
 import { useAllianceUI } from './hooks/useAllianceUI';
@@ -175,9 +177,7 @@ function GameMap({
 
   useLockViewportZoom();
 
-  const vertexDiametersPerLongestSide = 50;
-  const VERTEX_RADIUS =
-    Math.max(imgDims.w, imgDims.h) / (vertexDiametersPerLongestSide * 2);
+  const VERTEX_RADIUS = vertexRadiusFor(imgDims, useUiScale());
 
   const {
     ownerByIdRef,

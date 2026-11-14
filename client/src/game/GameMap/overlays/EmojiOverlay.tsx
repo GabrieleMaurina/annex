@@ -5,6 +5,7 @@ import Tip from '../../../common/tooltips/Tip';
 import { contrastTextColor } from '../../../lib/palette';
 import type { EmojiValue, GameState } from '../../../lib/types';
 import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
+import { scaled } from '../../../ui/uiScale';
 import {
   ATTACK_EMOJI,
   EMOJI_LABELS,
@@ -96,7 +97,7 @@ export default function EmojiOverlay({
                 type="button"
                 className="annex-emoji-btn border-0 bg-transparent d-inline-flex align-items-center justify-content-center lh-1"
                 style={{
-                  fontSize: 24,
+                  fontSize: scaled(24),
                   padding: '3px 2px 5px 2px',
                 }}
                 data-no-click-sound
@@ -115,7 +116,7 @@ export default function EmojiOverlay({
                 type="button"
                 className="annex-emoji-btn border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
                 style={{
-                  fontSize: 24,
+                  fontSize: scaled(24),
                   padding: '3px 2px 5px 2px',
                   borderRadius: 4,
                 }}
@@ -146,7 +147,7 @@ export default function EmojiOverlay({
                 type="button"
                 className="annex-emoji-btn border-0 border-start bg-body-secondary d-inline-flex align-items-center justify-content-center lh-1"
                 style={{
-                  fontSize: 24,
+                  fontSize: scaled(24),
                   padding: '3px 2px 5px 2px',
                   borderRadius: 4,
                 }}
@@ -202,7 +203,7 @@ export default function EmojiOverlay({
                 <span
                   className="d-inline-flex align-items-center justify-content-center lh-1"
                   style={{
-                    fontSize: 24,
+                    fontSize: scaled(24),
                     padding: '3px 2px 5px 2px',
                     pointerEvents: 'auto',
                   }}
@@ -230,7 +231,7 @@ export default function EmojiOverlay({
                     color: pop.attackColor
                       ? contrastTextColor(pop.attackColor)
                       : undefined,
-                    fontSize: 14,
+                    fontSize: scaled(14),
                   }}
                 >
                   {pop.attackText}
@@ -248,7 +249,7 @@ export default function EmojiOverlay({
             {
               left: flight.from.x,
               top: flight.from.y,
-              fontSize: 28,
+              fontSize: scaled(28),
               zIndex: 3,
               pointerEvents: 'none',
               transform: 'translate(-50%, -50%)',

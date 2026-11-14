@@ -4,6 +4,7 @@ import {
   CURSOR_GRABBING,
   CURSOR_POINTER,
 } from '../../../ui/cursors/cursors';
+import { getUiScale } from '../../../ui/uiScale';
 import {
   edgeKey,
   pointToSegmentDistance,
@@ -48,6 +49,10 @@ export function getVertexRadius(imgW: number, imgH: number): number {
   return Math.max(imgW, imgH) / (VERTEX_DIAMETERS_PER_LONGEST_SIDE * 2);
 }
 
+export function getShownVertexRadius(imgW: number, imgH: number): number {
+  return getVertexRadius(imgW, imgH) * getUiScale();
+}
+
 export function hitVertex(
   territories: Territory[],
   viewport: Viewport,
@@ -55,7 +60,7 @@ export function hitVertex(
 ): Territory | null {
   const { imgW, imgH, scaleX, scaleY, offsetX, offsetY } = viewport;
   const baseHitRadius =
-    getVertexRadius(imgW, imgH) * HIT_RADIUS_MULTIPLIER * scaleX;
+    getShownVertexRadius(imgW, imgH) * HIT_RADIUS_MULTIPLIER * scaleX;
   let nearest: Territory | null = null;
   let nearestDist = Infinity;
   for (const t of territories) {
@@ -96,7 +101,7 @@ export function segmentWouldCross(
       ([p1, p2]) => [toScreenPos(p1), toScreenPos(p2)] as [Point, Point],
     );
   const candidateSegments = toScreenSegments(from, to, forced);
-  const radius = getVertexRadius(imgW, imgH) * scaleX;
+  const radius = getShownVertexRadius(imgW, imgH) * scaleX;
   const byId = new Map(territories.map((t) => [t.id, t]));
 
   for (const v of territories) {

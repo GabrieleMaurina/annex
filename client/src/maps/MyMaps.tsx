@@ -7,6 +7,7 @@ import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { useToggleSound } from '../lib/sounds';
 import type { Account, PlayerMapRow } from '../lib/types';
+import { scaled } from '../ui/uiScale';
 import MapBrowser from './MapBrowser';
 import { mapImageUrl } from './mapUrl';
 
@@ -57,7 +58,7 @@ function MyMaps({ account }: { account: Account | null }) {
               <Button
                 variant="danger"
                 className="d-inline-flex align-items-center justify-content-center"
-                style={{ width: 24, height: 24, padding: 0 }}
+                style={{ width: scaled(24), height: scaled(24), padding: 0 }}
                 onClick={() => setConfirmRow(row)}
               >
                 <WhiteIcon path="/icons/close.svg" size={12} />

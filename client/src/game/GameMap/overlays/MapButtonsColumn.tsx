@@ -5,6 +5,7 @@ import Tip from '../../../common/tooltips/Tip';
 import type { Card, GameState, TurnPhase } from '../../../lib/types';
 import { PANEL_BG_CLASS } from '../../../ui/containers/panelStyle';
 import Selector from '../../../ui/forms/Selector';
+import { scaled } from '../../../ui/uiScale';
 import { comboKey, type EvaluatedCombo } from '../../logic/cards';
 import type { LogEntry } from '../../logs/useGameLogs';
 import CardsPanel, { CardFace } from '../../panels/CardsPanel';
@@ -162,7 +163,7 @@ export default function MapButtonsColumn({
               variant="secondary"
               size="sm"
               className="d-flex align-items-center justify-content-center"
-              style={{ width: 28, height: 28, padding: 0 }}
+              style={{ width: scaled(28), height: scaled(28), padding: 0 }}
               onClick={() =>
                 setOpenPanel((p) => (p === 'bonuses' ? null : 'bonuses'))
               }
@@ -186,7 +187,7 @@ export default function MapButtonsColumn({
                 variant={heatMapOpen ? 'primary' : 'secondary'}
                 size="sm"
                 className="d-flex align-items-center justify-content-center"
-                style={{ width: 28, height: 28, padding: 0 }}
+                style={{ width: scaled(28), height: scaled(28), padding: 0 }}
                 onClick={() =>
                   setOpenPanel((p) => (p === 'heatMap' ? null : 'heatMap'))
                 }
@@ -239,7 +240,7 @@ export default function MapButtonsColumn({
               variant="secondary"
               size="sm"
               className="position-relative d-flex align-items-center justify-content-center"
-              style={{ width: 28, height: 28, padding: 0 }}
+              style={{ width: scaled(28), height: scaled(28), padding: 0 }}
               onClick={() => {
                 setOpenPanel('cards');
                 setAwardedCards([]);
@@ -256,7 +257,7 @@ export default function MapButtonsColumn({
                   bg={hasSetToPlay ? 'danger' : 'secondary'}
                   pill
                   className="position-absolute top-0 start-100 translate-middle"
-                  style={{ fontSize: 10 }}
+                  style={{ fontSize: scaled(10) }}
                 >
                   {hand.length}
                   {hasSetToPlay && '!'}
@@ -281,7 +282,7 @@ export default function MapButtonsColumn({
               variant="secondary"
               size="sm"
               className="d-flex align-items-center justify-content-center"
-              style={{ width: 28, height: 28, padding: 0 }}
+              style={{ width: scaled(28), height: scaled(28), padding: 0 }}
               onClick={() => setOpenPanel('logs')}
             >
               <img
@@ -308,7 +309,7 @@ export default function MapButtonsColumn({
               variant="secondary"
               size="sm"
               className="d-flex align-items-center justify-content-center"
-              style={{ width: 28, height: 28, padding: 0 }}
+              style={{ width: scaled(28), height: scaled(28), padding: 0 }}
               onClick={() => setOpenPanel('settings')}
             >
               <img
@@ -348,7 +349,7 @@ export default function MapButtonsColumn({
                 variant="secondary"
                 size="sm"
                 className="position-relative d-flex align-items-center justify-content-center"
-                style={{ width: 28, height: 28, padding: 0 }}
+                style={{ width: scaled(28), height: scaled(28), padding: 0 }}
                 onClick={() => setOpenPanel('nukes')}
               >
                 <img
@@ -362,7 +363,7 @@ export default function MapButtonsColumn({
                     bg={nukesReady ? 'danger' : 'secondary'}
                     pill
                     className="position-absolute top-0 start-100 translate-middle"
-                    style={{ fontSize: 10 }}
+                    style={{ fontSize: scaled(10) }}
                   >
                     {nukeQueue}
                   </Badge>

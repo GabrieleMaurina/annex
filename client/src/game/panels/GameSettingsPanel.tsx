@@ -2,6 +2,7 @@ import PanelHeader from '../../common/PanelHeader';
 import type { GameState } from '../../lib/types';
 import SettingsPanel from '../../lobby/settings/SettingsPanel';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import { scaled } from '../../ui/uiScale';
 
 interface Props {
   game: GameState;
@@ -16,7 +17,7 @@ function GameSettingsPanel({ game, top, onClose }: Props) {
     <div
       className={`${PANEL_BG_CLASS} ${PANEL_CLASS} d-flex flex-column`}
       style={{
-        width: 960,
+        width: scaled(960),
         maxHeight: `calc(100vh - ${top}px - ${BOTTOM_MARGIN}px)`,
       }}
     >

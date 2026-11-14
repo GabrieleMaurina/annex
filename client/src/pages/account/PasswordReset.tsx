@@ -4,6 +4,7 @@ import { formatError } from '../../common/formatError';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import { connector } from '../../connector';
 import { passwordProblem } from '../../lib/password';
+import { scaled } from '../../ui/uiScale';
 
 interface Props {
   code: string;
@@ -41,7 +42,7 @@ function PasswordReset({ code, navigate }: Props) {
   }
 
   return (
-    <Container className="py-5" style={{ maxWidth: 360 }}>
+    <Container className="py-5" style={{ maxWidth: scaled(360) }}>
       {status === 'ok' ? (
         <Alert variant="success">Password updated. You can now log in.</Alert>
       ) : (

@@ -35,6 +35,7 @@ import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
 import { GAME_MODE_HELP } from '../lobby/settings/settingsHelp';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import Selector from '../ui/forms/Selector';
+import { scaled } from '../ui/uiScale';
 
 const PAGE_SIZE = 20;
 const DEFAULT_SORT: SortOption = 'newest';
@@ -171,7 +172,7 @@ function DateRangeField({
         <Form.Control
           size="sm"
           type="datetime-local"
-          style={{ width: 190 }}
+          style={{ width: scaled(190) }}
           value={from}
           onChange={(e) => setFrom(e.target.value)}
         />
@@ -179,7 +180,7 @@ function DateRangeField({
         <Form.Control
           size="sm"
           type="datetime-local"
-          style={{ width: 190 }}
+          style={{ width: scaled(190) }}
           value={to}
           onChange={(e) => setTo(e.target.value)}
         />

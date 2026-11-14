@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { scaled } from '../ui/uiScale';
 
 function matches(query: string): boolean {
   return typeof window.matchMedia === 'function'
@@ -48,8 +49,8 @@ function RotateDeviceOverlay() {
       <div
         className="border border-2 rounded-3"
         style={{
-          width: 60,
-          height: 100,
+          width: scaled(60),
+          height: scaled(100),
           animation: 'annexRotateHint 2s ease-in-out infinite alternate',
         }}
       />

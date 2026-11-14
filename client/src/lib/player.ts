@@ -2,6 +2,7 @@ import {
   areAnimationsDisabled,
   setAnimationsDisabled,
 } from '../game/animations';
+import { getUiScale, setUiScale } from '../ui/uiScale';
 import { httpSend } from './http';
 import {
   getEffectsVolume,
@@ -89,6 +90,7 @@ function currentClientSettings(): ClientSettings {
     effectsVolume: getEffectsVolume(),
     musicVolume: getMusicVolume(),
     troopsPercentage,
+    uiScale: getUiScale(),
   };
 }
 
@@ -106,6 +108,7 @@ export function applyServerSettings(
     if (typeof client.musicVolume === 'number')
       setMusicVolume(client.musicVolume);
     setTroopsPercentage(!!client.troopsPercentage);
+    if (typeof client.uiScale === 'number') setUiScale(client.uiScale);
   }
   startMusic();
   if (game) {

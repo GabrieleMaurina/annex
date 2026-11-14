@@ -1,11 +1,5 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
-import { Button, Form } from 'react-bootstrap';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Button } from 'react-bootstrap';
 import {
   areAnimationsDisabled,
   toggleAnimationsDisabled,
@@ -30,60 +24,31 @@ import {
 } from '../../lib/sounds';
 import { titleCase } from '../../lobby/settings/gameSettings';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
+import SnapRange from '../../ui/forms/SnapRange';
+import { scaled, setUiScale, useUiScale } from '../../ui/uiScale';
 import { useWhiteIcon } from '../icon';
 import Tip from '../tooltips/Tip';
 import SharePageButton from './SharePageButton';
 
-interface VolumeRangeProps {
-  tip: string;
-  value: number;
-  onChange: (value: number) => void;
+function scaleToPosition(scale: number): number {
+  return (Math.log2(scale) + 1) / 2;
 }
 
-const VOLUME_SNAP = 0.04;
-
-function snapToMiddle(value: number): number {
-  return Math.abs(value - 0.5) <= VOLUME_SNAP ? 0.5 : value;
+function positionToScale(position: number): number {
+  return 2 ** (position * 2 - 1);
 }
 
-function VolumeRange({ tip, value, onChange }: VolumeRangeProps) {
-  const keyboardRef = useRef(false);
-  return (
-    <Tip text={tip}>
-      <Form.Range
-        className="annex-volume-range"
-        min={0}
-        max={1}
-        step={0.01}
-        value={value}
-        onKeyDown={() => {
-          keyboardRef.current = true;
-        }}
-        onPointerDown={() => {
-          keyboardRef.current = false;
-        }}
-        onChange={(e) => {
-          const next = Number(e.target.value);
-          onChange(keyboardRef.current ? next : snapToMiddle(next));
-        }}
-        style={
-          {
-            '--annex-volume-progress': `${value * 100}%`,
-          } as React.CSSProperties
-        }
-      />
-    </Tip>
-  );
-}
+const FIT_STYLE = { width: 0, minWidth: '100%' };
 
 interface IconButtonProps {
   tip: string;
   icon: string;
   active?: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }
 
-function IconButton({ tip, icon, active, onClick }: IconButtonProps) {
+function IconButton({ tip, icon, active, disabled, onClick }: IconButtonProps) {
   const whiteIcon = useWhiteIcon(icon);
   return (
     <Tip text={tip}>
@@ -92,6 +57,7 @@ function IconButton({ tip, icon, active, onClick }: IconButtonProps) {
         size="sm"
         className="d-flex align-items-center justify-content-center"
         active={active}
+        disabled={disabled}
         onClick={onClick}
       >
         <img src={whiteIcon ?? icon} width={16} height={16} alt={tip} />
@@ -126,8 +92,8 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
   useSyncExternalStore(subscribeMusic, getMusicVersion);
   const currentTrack = getCurrentTrack();
   const panelRef = useRef<HTMLDivElement>(null);
-  const buttonRowRef = useRef<HTMLDivElement>(null);
-  const [buttonRowWidth, setButtonRowWidth] = useState<number>();
+  const uiScale = useUiScale();
+  const [lockedScale, setLockedScale] = useState<number | null>(null);
 
   const whiteGearIcon = useWhiteIcon('/icons/gear.svg');
   const whiteSoundOnIcon = useWhiteIcon('/icons/sound-on.svg');
@@ -190,10 +156,6 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  useLayoutEffect(() => {
-    if (open) setButtonRowWidth(buttonRowRef.current?.offsetWidth);
-  }, [open]);
-
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: MouseEvent) {
@@ -216,7 +178,10 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
       className={`position-fixed top-0 start-0 m-3${
         hidden && !open ? ' invisible' : ''
       }`}
-      style={{ zIndex: 1 }}
+      style={{
+        zIndex: 1,
+        zoom: lockedScale === null ? undefined : lockedScale / uiScale,
+      }}
     >
       {!open ? (
         <Tip text="Settings">
@@ -224,7 +189,7 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
             variant="secondary"
             size="sm"
             className="d-flex align-items-center justify-content-center"
-            style={{ width: 28, height: 28, padding: 0 }}
+            style={{ width: scaled(28), height: scaled(28), padding: 0 }}
             onClick={() => setOpen(true)}
           >
             <img
@@ -244,7 +209,7 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
             setOpen(false);
           }}
         >
-          <div className="d-flex gap-2" ref={buttonRowRef}>
+          <div className="d-flex gap-2">
             <Tip text={isSoundMuted() ? 'Unmute sounds' : 'Mute sounds'}>
               <Button
                 variant="secondary"
@@ -268,6 +233,13 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
                 />
               </Button>
             </Tip>
+            <IconButton
+              tip={mixerOpen ? 'Hide volume mixer' : 'Show volume mixer'}
+              icon="/icons/sliders.svg"
+              active={mixerOpen}
+              disabled={isSoundMuted()}
+              onClick={() => setMixerOpen((prev) => !prev)}
+            />
             <Tip
               text={
                 areAnimationsDisabled()
@@ -341,33 +313,22 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
             }
           `}</style>
           {!isSoundMuted() && (
-            <div
-              className="d-flex flex-column gap-1"
-              style={{ width: buttonRowWidth ?? 0 }}
-            >
-              <div className="d-flex align-items-center gap-2">
-                <VolumeRange
-                  tip="Master volume"
-                  value={getSoundVolume()}
-                  onChange={changeVolume(setSoundVolume)}
-                />
-                <IconButton
-                  tip={mixerOpen ? 'Hide volume mixer' : 'Show volume mixer'}
-                  icon="/icons/sliders.svg"
-                  active={mixerOpen}
-                  onClick={() => setMixerOpen((prev) => !prev)}
-                />
-              </div>
+            <div className="d-flex flex-column gap-1" style={FIT_STYLE}>
+              <SnapRange
+                tip="Master volume"
+                value={getSoundVolume()}
+                onChange={changeVolume(setSoundVolume)}
+              />
               {mixerOpen && (
                 <>
                   <div className="small">Sound effects</div>
-                  <VolumeRange
+                  <SnapRange
                     tip="Sound effects volume"
                     value={getEffectsVolume()}
                     onChange={changeVolume(setEffectsVolume)}
                   />
                   <div className="small">Music</div>
-                  <VolumeRange
+                  <SnapRange
                     tip="Music volume"
                     value={getMusicVolume()}
                     onChange={changeVolume(setMusicVolume)}
@@ -397,6 +358,20 @@ function SettingsMenu({ hidden, onOpenChange, lockScrollOnFullscreen }: Props) {
               )}
             </div>
           )}
+          <div className="d-flex flex-column gap-1" style={FIT_STYLE}>
+            <div className="small">UI scale</div>
+            <SnapRange
+              tip="UI scale"
+              step={0.005}
+              value={scaleToPosition(uiScale)}
+              onChange={(position) => {
+                setUiScale(positionToScale(position));
+                pushSettings();
+              }}
+              onDragStart={() => setLockedScale(uiScale)}
+              onDragEnd={() => setLockedScale(null)}
+            />
+          </div>
         </div>
       )}
     </div>

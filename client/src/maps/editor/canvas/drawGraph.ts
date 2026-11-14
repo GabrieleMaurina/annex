@@ -5,6 +5,7 @@ import type { PlaceNames } from '../../../game/mapData';
 import type { WrapAxes } from '../../../game/mapMath';
 import { SWITCH_WIDTH_RADII } from '../../../game/switches/switches';
 import { contrastTextColor } from '../../../lib/palette';
+import { getUiScale } from '../../../ui/uiScale';
 import { edgeKey, wrapEdgeSegments, type Point } from '../mapCanvasGeometry';
 import { borderScale } from '../mapViewport';
 import {
@@ -19,7 +20,7 @@ import {
   SEA_MARKER_COLOR,
 } from '../palette';
 import {
-  getVertexRadius,
+  getShownVertexRadius,
   NO_WRAP,
   SEA_SIZE_MULTIPLIER,
   segmentWouldCross,
@@ -253,7 +254,7 @@ export function drawGraph({
   drawEdges((t) => t.timed.map((m) => m.id));
   drawEdges((t) => t.directional.map((m) => m.id));
   ctx.setLineDash([]);
-  const headInset = getVertexRadius(imgW, imgH) * scaleX * 1.2;
+  const headInset = getShownVertexRadius(imgW, imgH) * scaleX * 1.2;
   const headSize = 8 * zoom;
   for (const t of territories) {
     for (const m of t.directional) {
@@ -351,8 +352,9 @@ export function drawGraph({
     }
   }
 
-  const vertexRadius = getVertexRadius(imgW, imgH);
-  const vertexBorderScale = borderScale((vertexRadius * scaleX) / zoom);
+  const vertexRadius = getShownVertexRadius(imgW, imgH);
+  const vertexBorderScale =
+    borderScale((vertexRadius * scaleX) / zoom) * getUiScale();
   const labels = switchLabels(territories);
   for (const t of territories) {
     const p = toScreen(t);

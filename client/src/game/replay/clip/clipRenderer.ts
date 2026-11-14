@@ -1,5 +1,6 @@
 import { withUnlockedTiles } from 'engine';
 import type { CardSymbol, GameState } from '../../../lib/types';
+import { withoutUiScale } from '../../../ui/uiScale';
 import {
   createAnimationScope,
   inAnimationScope,
@@ -256,11 +257,12 @@ export function createClipSession(
     card: { card: EndCard; elapsed: number } | null,
   ) {
     const { params, round } = paramsAt(index);
-    if (time === null) renderStill(() => drawGameMapCanvas(params));
+    const draw = () => withoutUiScale(() => drawGameMapCanvas(params));
+    if (time === null) renderStill(draw);
     else
       inAnimationScope(scope, time, () => {
         pruneAnimations();
-        drawGameMapCanvas(params);
+        draw();
       });
     const ctx = canvas.getContext('2d')!;
     if (showRound) drawRoundLabel(ctx, size, round);

@@ -7,6 +7,7 @@ import { isClaimPhase } from '../../game/state';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
 import { BotProfile, Game, GameMap } from '../../types';
 import { claimsEnabled } from '../claims/snapshot';
+import { plannedMove } from '../cleanup/plannedMove';
 import { difficultyParams } from '../difficulty';
 import {
   canHoldSet,
@@ -449,6 +450,12 @@ function planAttack(
   plan: TurnPlan,
 ): PlanBotTurnResult {
   if (game.attackConquestMinTroops !== null) {
+    const planned = plannedMove(game, plan);
+    if (planned !== null)
+      return result(
+        [{ event: 'game:attackMove', payload: { troops: planned } }],
+        plan,
+      );
     const chained =
       continuesFromConquest(ctx, game, plan) ||
       returnsToCapital(ctx, game, plan);
@@ -603,8 +610,15 @@ function planAttack(
         plan,
       );
     }
-    if (!repaired && repairPlan(ctx, plan)) {
+    if (!repaired && !ctx.params.adaptivePlanning && repairPlan(ctx, plan)) {
       repaired = true;
+      continue;
+    }
+    if (
+      status === 'invalid' &&
+      plan.objectives[step.objectiveIndex]?.kind === 'cleanup'
+    ) {
+      plan.step++;
       continue;
     }
     break;
@@ -920,9 +934,10 @@ function planFortify(
       );
   }
 
-  const choice = gathering
-    ? null
-    : chooseFortify(game, ctx.view, ctx.botId, ctx.weights);
+  const choice =
+    gathering || plan.fortify === null
+      ? null
+      : chooseFortify(game, ctx.view, ctx.botId, ctx.weights);
   if (!choice) return result([NEXT_PHASE], plan);
   const choiceTroops = cappedFortifyTroops(game, choice);
   if (choiceTroops < 1) return result([NEXT_PHASE], plan);

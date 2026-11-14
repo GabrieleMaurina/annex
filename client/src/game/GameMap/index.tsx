@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 import { useWhiteIcon } from '../../common/icon';
 import {
   useHideUiShortcut,
@@ -6,12 +6,7 @@ import {
 } from '../../common/menus/shortcuts/uiHidden';
 import TutorialHighlight from '../../tutorials/TutorialHighlight';
 import { useUiScale } from '../../ui/uiScale';
-import { setEndCardActive } from '../animations';
-import {
-  END_CARD_SHOWN_MS,
-  endCardFor,
-  loadEndCardLogo,
-} from '../endCard/endCard';
+import { useEndCard } from '../endCard/useEndCard';
 import PlayersPanel from '../panels/PlayersPanel';
 import ReplayPanel from '../panels/ReplayPanel';
 import { switchesOnAfter } from '../switches/switches';
@@ -26,6 +21,7 @@ import {
   vertexRadiusFor,
 } from './helpers';
 import { useDeploySeaFlow } from './hooks/sea/useDeploySeaFlow';
+import { useShipPreview } from './hooks/sea/useShipPreview';
 import { useAllianceUI } from './hooks/useAllianceUI';
 import { useCardsAndDeploy } from './hooks/useCardsAndDeploy';
 import { useEmojiUI } from './hooks/useEmojiUI';
@@ -217,6 +213,7 @@ function GameMap({
     seaTerritoriesRef,
     seasRef,
     lockedTiles,
+    regions: mapRegions,
     ownerByIdRef,
     colorByPlayerIdRef,
     visibleTerritoryIdsRef,
@@ -224,6 +221,14 @@ function GameMap({
     adjustToxinTerritories,
     setRadiationTerritoryIds,
     setRadiationUpcomingTerritoryIds,
+  });
+  useShipPreview({
+    pathRuns: [...fortifyPathTerritoryIds, ...attackPathTerritoryIds],
+    selfId,
+    regions: mapRegions,
+    territoriesRef,
+    seaTerritoriesRef,
+    startAnimationLoop,
   });
   useEffect(() => {
     onReplayIndexChange?.(replay.index);
@@ -609,35 +614,8 @@ function GameMap({
   const endCardShown = showReplay
     ? replay.totalFrames > 0 && replay.index === replay.totalFrames
     : game.state === 'ended';
-  const endCard = useMemo(
-    () => (endCardShown ? endCardFor(game) : null),
-    [endCardShown, game],
-  );
   const turnRef = useTurnStart(turnFlash, canvasRef, startAnimationLoop);
-  const endCardStartRef = useRef<number | null>(null);
-  const [endCardLogo, setEndCardLogo] = useState<HTMLImageElement | null>(null);
-
-  useEffect(() => {
-    loadEndCardLogo().then(setEndCardLogo);
-  }, []);
-
-  useEffect(() => {
-    if (!endCardShown) {
-      endCardStartRef.current = null;
-      return;
-    }
-    endCardStartRef.current = performance.now();
-    setEndCardActive(true);
-    startAnimationLoop();
-    const timer = setTimeout(() => {
-      setEndCardActive(false);
-      startAnimationLoop();
-    }, END_CARD_SHOWN_MS);
-    return () => {
-      clearTimeout(timer);
-      setEndCardActive(false);
-    };
-  }, [endCardShown, startAnimationLoop]);
+  const getEndCard = useEndCard(game, endCardShown, startAnimationLoop);
 
   useEffect(() => {
     drawParamsRef.current = {
@@ -697,6 +675,7 @@ function GameMap({
         game.continentBonuses.length > 0 ? game.continentBonuses : bonuses,
       forcedWraps,
       regions,
+      selfId,
       timedLinks,
       directionalLinks,
       switches: switching.switches,
@@ -705,14 +684,7 @@ function GameMap({
       placeNames,
       heatMap,
       turnStartRef: turnRef,
-      endCard:
-        endCard && endCardStartRef.current !== null
-          ? {
-              card: endCard,
-              startedAt: endCardStartRef.current,
-              logo: endCardLogo,
-            }
-          : null,
+      endCard: getEndCard(),
     };
     startAnimationLoop();
   });

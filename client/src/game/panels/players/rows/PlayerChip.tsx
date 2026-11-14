@@ -19,7 +19,7 @@ function PlayerChip({ row, showName }: Props) {
         {...rowRootProps(row)}
         className={rowClassName(
           row,
-          'player-chip rounded-pill d-flex align-items-center gap-2 ps-1 pe-2',
+          'player-chip rounded-2 d-flex align-items-center gap-2 ps-1 pe-2',
         )}
       >
         <PlayerAvatar

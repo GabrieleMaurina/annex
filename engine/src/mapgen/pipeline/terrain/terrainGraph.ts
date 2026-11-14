@@ -99,6 +99,8 @@ export function finishTerrainMap({
           true,
           seaAreaMultiplier,
           maxLandNeighborsPerSea,
+          1,
+          true,
         )
       : null;
     const hasSea = !!seaBuild && seaBuild.seaCount > 0;

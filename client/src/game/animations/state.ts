@@ -4,7 +4,13 @@ import { makeEntrenchParticles } from './entrench';
 import { makeExplosionParticles } from './nukes/explosion';
 import { capturesActive } from './transitions/capture';
 import { presenceActive } from './transitions/presence';
-import { type DustPuff, makeUnlockEffect, type RockPiece } from './unlock';
+import {
+  clearShipMoves,
+  pruneShipMoves,
+  shipMovesActive,
+  type ArrowPoint,
+} from './transitions/shipMoves';
+import { makeUnlockEffect, type DustPuff, type RockPiece } from './unlock';
 
 export type AnimationType =
   | 'add'
@@ -38,7 +44,7 @@ export interface Animation {
   label?: string;
   labelColor?: string;
   particles?: Particle[];
-  arrowPath?: { x: number; y: number }[][];
+  arrowPath?: ArrowPoint[][];
   arrowFades?: ('start' | 'end' | undefined)[][];
   fromX?: number;
   fromY?: number;
@@ -130,6 +136,7 @@ function animationLifetime(a: Animation): number {
 
 let animations: Animation[] = [];
 let disabled = false;
+let startDelay = 0;
 let continuousAnimationActive = false;
 let portalsActive = false;
 let toxinsActive = false;
@@ -149,13 +156,23 @@ export function onAnimationsToggle(listener: () => void): () => void {
   return () => toggleListeners.delete(listener);
 }
 
+export function withAnimationDelay<T>(milliseconds: number, run: () => T): T {
+  const saved = startDelay;
+  startDelay = milliseconds;
+  try {
+    return run();
+  } finally {
+    startDelay = saved;
+  }
+}
+
 export function startAnimation(
   type: AnimationType,
   x: number,
   y: number,
   label?: string,
   labelColor?: string,
-  arrowPath?: { x: number; y: number }[][],
+  arrowPath?: ArrowPoint[][],
   arrowFades?: ('start' | 'end' | undefined)[][],
 ) {
   if (disabled) return;
@@ -166,7 +183,7 @@ export function startAnimation(
     type,
     x,
     y,
-    startedAt: animationNow(),
+    startedAt: animationNow() + startDelay,
     label,
     labelColor,
     particles:
@@ -235,7 +252,10 @@ export function areAnimationsDisabled(): boolean {
 
 export function setAnimationsDisabled(value: boolean) {
   disabled = value;
-  if (disabled) animations = [];
+  if (disabled) {
+    animations = [];
+    clearShipMoves();
+  }
   document.documentElement.classList.toggle('animations-off', value);
   toggleListeners.forEach((listener) => listener());
 }
@@ -288,6 +308,7 @@ export function pruneAnimations() {
   animations = animations.filter(
     (a) => now - a.startedAt < animationLifetime(a),
   );
+  pruneShipMoves();
 }
 
 export function setContinuousAnimation(active: boolean) {
@@ -325,6 +346,7 @@ export function setTurnStartActive(active: boolean) {
 export function hasActiveAnimations(): boolean {
   if (animations.length > 0) return true;
   if (disabled) return false;
+  if (shipMovesActive()) return true;
   return (
     capturesActive() ||
     presenceActive() ||

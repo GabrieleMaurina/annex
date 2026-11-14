@@ -3,6 +3,7 @@ import { GridDimensions } from '../../core/params';
 import { Rng } from '../../core/rng';
 import { enforceContiguity } from '../contiguity';
 import { computeTerritoryCentroids } from '../geometry/centroid';
+import { regularizeBorders } from '../geometry/regularize';
 import { GridPoint } from '../placement';
 import { findChokepointSplit } from './chokepoint';
 import { hasUsefulPair, MAX_LAND_NEIGHBORS_PER_SEA } from './connectivity';
@@ -513,6 +514,7 @@ export function buildSeaTerritories(
   seaAreaMultiplier: number = SEA_AREA_MULTIPLIER,
   maxLandNeighborsPerSea: number = MAX_LAND_NEIGHBORS_PER_SEA,
   minContact: number = 1,
+  regularize: boolean = false,
 ): SeaBuild {
   const size = width * height;
   const seaLabelGrid = new Int16Array(size).fill(-1);
@@ -602,6 +604,8 @@ export function buildSeaTerritories(
   );
   seaLabelGrid.set(globalRegionOfPixel);
   enforceContiguity(seaLabelGrid, width, height);
+  if (regularize)
+    regularizeBorders(seaLabelGrid, width, height, expectedSeaArea);
 
   const landSeaAdjacency = new Map<number, Set<number>>();
   const seaAdjacency = new Map<number, Set<number>>();

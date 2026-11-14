@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { useWhiteIcon } from '../../../common/icon';
@@ -178,13 +179,16 @@ function TurnPanel({
 
   return (
     <div
-      className="position-fixed bottom-0 start-50 translate-middle-x m-3 py-2 px-3 border rounded d-flex align-items-center gap-2"
+      className={`position-fixed bottom-0 start-50 translate-middle-x m-3 py-2 px-3 border rounded d-flex align-items-center gap-2 ${isMyTurn ? 'player-orb-turn' : ''}`}
       data-no-click-sound
-      style={{
-        zIndex: 1,
-        backgroundColor: color,
-        color: contrastTextColor(color),
-      }}
+      style={
+        {
+          '--player-color': color,
+          zIndex: 1,
+          backgroundColor: color,
+          color: contrastTextColor(color),
+        } as CSSProperties
+      }
     >
       <style>{`
         @keyframes annexTankFire {

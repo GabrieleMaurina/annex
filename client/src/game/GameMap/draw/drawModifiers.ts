@@ -11,6 +11,7 @@ import {
   ENTRENCHED_OCTAGON_SCALE,
   fillWithRipple,
   markerRipple,
+  shipPull,
   traceOctagon,
   trackPresence,
   type Capture,
@@ -48,6 +49,7 @@ interface ToxinData {
 
 interface ShipData {
   seaId: number;
+  playerId: number;
   index: number;
   count: number;
   color: string;
@@ -222,6 +224,7 @@ function collectMapLooks(
         state: 'ship',
         data: {
           seaId: s.id,
+          playerId: b.playerId,
           index,
           count: ships.length,
           color: playerColor(colorByPlayerId.get(b.playerId) ?? 0),
@@ -308,53 +311,102 @@ export function drawFog(
   );
 }
 
+function shipPlacement(
+  frame: ModifierFrame,
+  sea: Point,
+  hexRadius: number,
+  data: ShipData,
+): {
+  position: Point;
+  angle: number;
+  ships: number;
+  joiner?: { position: Point; ships: number };
+} {
+  const dist = hexRadius + frame.radius * 1.3 + 4 * frame.uiScale;
+  const angle = (Math.PI * 2 * data.index) / data.count - Math.PI / 2;
+  const ring = {
+    x: sea.x + (dist * Math.cos(angle)) / frame.scaleX,
+    y: sea.y + (dist * Math.sin(angle)) / frame.scaleX,
+  };
+  const pull = areAnimationsDisabled()
+    ? null
+    : shipPull(data.seaId, data.playerId);
+  if (!pull) return { position: ring, angle, ships: data.ships };
+  const pulled = {
+    x: ring.x + (pull.target.x - ring.x) * pull.weight,
+    y: ring.y + (pull.target.y - ring.y) * pull.weight,
+  };
+  if (pull.joining !== undefined && data.ships > pull.joining)
+    return {
+      position: ring,
+      angle,
+      ships: data.ships - pull.joining,
+      joiner: { position: pulled, ships: pull.joining },
+    };
+  return { position: pulled, angle, ships: data.ships };
+}
+
+export function shipPosition(
+  frame: ModifierFrame,
+  sea: Point,
+  hexRadius: number,
+  seaId: number,
+  playerId: number,
+): Point | undefined {
+  const ship = frame.shown.ship.get(`${seaId}:${playerId}`);
+  if (!ship) return undefined;
+  return shipPlacement(frame, sea, hexRadius, ship.data).position;
+}
+
 export function drawShips(
   frame: ModifierFrame,
-  seaId: number,
-  p: Point,
+  sea: Point & { id: number },
   hexRadius: number,
 ) {
   const { ctx, radius, uiScale } = frame;
   const circleRadius = radius * 0.7;
   const triangleRadius = radius * 1.3;
-  const dist = hexRadius + triangleRadius + 4 * uiScale;
   for (const { data, scale } of frame.shown.ship.values()) {
-    if (data.seaId !== seaId) continue;
-    const angle = (Math.PI * 2 * data.index) / data.count - Math.PI / 2;
-    const center = {
-      x: p.x + dist * Math.cos(angle),
-      y: p.y + dist * Math.sin(angle),
-    };
-    drawScaled(ctx, center, scale, () => {
-      ctx.save();
-      ctx.translate(center.x, center.y);
-      ctx.rotate(angle + Math.PI / 2);
-      ctx.beginPath();
-      ctx.moveTo(triangleRadius, 0);
-      ctx.lineTo(-triangleRadius * 0.6, triangleRadius * 0.7);
-      ctx.lineTo(-triangleRadius * 0.6, -triangleRadius * 0.7);
-      ctx.closePath();
-      ctx.fillStyle = data.color;
-      ctx.fill();
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2 * uiScale;
-      ctx.stroke();
-      ctx.restore();
+    if (data.seaId !== sea.id) continue;
+    const placement = shipPlacement(frame, sea, hexRadius, data);
+    const icons = [
+      { position: placement.position, ships: placement.ships },
+      ...(placement.joiner ? [placement.joiner] : []),
+    ];
+    for (const icon of icons) {
+      const center = frame.toScreen(icon.position);
+      drawScaled(ctx, center, scale, () => {
+        ctx.save();
+        ctx.translate(center.x, center.y);
+        ctx.rotate(placement.angle + Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(triangleRadius, 0);
+        ctx.lineTo(-triangleRadius * 0.6, triangleRadius * 0.7);
+        ctx.lineTo(-triangleRadius * 0.6, -triangleRadius * 0.7);
+        ctx.closePath();
+        ctx.fillStyle = data.color;
+        ctx.fill();
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2 * uiScale;
+        ctx.stroke();
+        ctx.restore();
 
-      ctx.fillStyle = contrastTextColor(data.color);
-      ctx.font = `bold ${circleRadius}px ${CANVAS_FONT_FAMILY}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-      const text = String(data.ships);
-      const metrics = ctx.measureText(text);
-      ctx.fillText(
-        text,
-        center.x,
-        center.y +
-          (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) /
-            2,
-      );
-    });
+        ctx.fillStyle = contrastTextColor(data.color);
+        ctx.font = `bold ${circleRadius}px ${CANVAS_FONT_FAMILY}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        const text = String(icon.ships);
+        const metrics = ctx.measureText(text);
+        ctx.fillText(
+          text,
+          center.x,
+          center.y +
+            (metrics.actualBoundingBoxAscent -
+              metrics.actualBoundingBoxDescent) /
+              2,
+        );
+      });
+    }
   }
 }
 

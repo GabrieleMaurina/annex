@@ -13,6 +13,7 @@ import {
   DICE_ROLL_STEPS,
   scheduleDiceReveal,
   skipDiceReveals,
+  startShipArrival,
 } from '../../../animations';
 import { getSailPath } from '../../../logic/sail';
 import type { SeaTerritory, Territory } from '../../../mapData';
@@ -67,14 +68,14 @@ export function useSeaSocketEvents({
     arrowFades?: ('start' | 'end' | undefined)[][],
   ) => void;
   explode: (territoryId: number) => void;
-  flashArrowRuns: (pathRuns: number[][]) => void;
+  flashArrowRuns: (pathRuns: number[][], shipOwnerId?: number) => void;
   startAnimationLoop: () => void;
 }) {
   const frozenSeaShipsRef = useRef<
     Map<number, GameState['seas'][number]['ships']>
   >(new Map());
 
-  const { arrowRunsForPath } = useAnimationPathHelpers({
+  const { arrowRunsForPath, findPosition } = useAnimationPathHelpers({
     territoriesRef,
     seaTerritoriesRef,
     lockedTiles,
@@ -82,10 +83,32 @@ export function useSeaSocketEvents({
     portalsEnabled,
   });
 
+  const shipArrives = useCallback(
+    (payload: {
+      sourceTerritoryId: number;
+      seaTerritoryId: number;
+      ships: number;
+      fromPool: boolean;
+      playerId: number;
+    }) => {
+      if (payload.fromPool || areAnimationsDisabled()) return;
+      const origin = findPosition(payload.sourceTerritoryId);
+      if (origin)
+        startShipArrival(
+          payload.seaTerritoryId,
+          payload.playerId,
+          { x: origin.x, y: origin.y },
+          payload.ships,
+        );
+    },
+    [findPosition],
+  );
+
   const playSeaFrameAnimation = useCallback(
     (animation: SeaFrameAnimation) => {
       if (animation.type === 'buyShips') {
         playSound('deploy');
+        shipArrives(animation);
         animateAdd({
           territoryId: animation.seaTerritoryId,
           troops: animation.ships,
@@ -102,6 +125,7 @@ export function useSeaSocketEvents({
           pathIds.length > 1
             ? pathIds
             : [animation.fromSeaTerritoryId, animation.toSeaTerritoryId],
+          animation.playerId,
         );
         animateRemove({
           territoryId: animation.fromSeaTerritoryId,
@@ -135,7 +159,14 @@ export function useSeaSocketEvents({
           });
       }
     },
-    [animateAdd, animateRemove, explode, seaTerritoriesRef, arrowRunsForPath],
+    [
+      animateAdd,
+      animateRemove,
+      explode,
+      seaTerritoriesRef,
+      arrowRunsForPath,
+      shipArrives,
+    ],
   );
 
   useEffect(() => {
@@ -147,6 +178,7 @@ export function useSeaSocketEvents({
       playerId: number;
     }) {
       playSound('deploy');
+      shipArrives(payload);
       if (!payload.fromPool) {
         adjustTerritoryTroops([
           {
@@ -176,7 +208,7 @@ export function useSeaSocketEvents({
       shipsAdded?: number;
     }) {
       playSound('fortify');
-      flashArrowRuns(payload.path);
+      flashArrowRuns(payload.path, payload.playerId);
       if (payload.shipsRemoved !== undefined)
         animateRemove({
           territoryId: payload.fromSeaTerritoryId,
@@ -202,6 +234,7 @@ export function useSeaSocketEvents({
     animateRemove,
     adjustTerritoryTroops,
     flashArrowRuns,
+    shipArrives,
     startAnimationLoop,
   ]);
 

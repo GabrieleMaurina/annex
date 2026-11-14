@@ -11,6 +11,7 @@ import {
   radiusScale,
   TROOP_CHANGE_RING_COLOR,
 } from './state';
+import type { ArrowPoint } from './transitions/shipMoves';
 import { drawUnlock } from './unlock';
 
 const TROOP_CHANGE_RING_WIDTH = 4;
@@ -22,9 +23,11 @@ export function drawAnimations(
   mapW: number,
   mapH: number,
   forcedWraps: ForcedWraps,
+  resolveArrowPoint: (p: ArrowPoint) => { x: number; y: number } = (p) => p,
 ) {
   const now = animationNow();
   for (const a of getAnimations()) {
+    if (now < a.startedAt) continue;
     const p = toScreen({ x: a.x, y: a.y });
     const progress = Math.min(1, (now - a.startedAt) / DURATIONS[a.type]);
 
@@ -51,7 +54,7 @@ export function drawAnimations(
         const runFades = a.arrowFades?.[r];
         for (let i = 0; i < run.length - 1; i++) {
           const segments = buildWrappedPathSegments(
-            [run[i], run[i + 1]],
+            [resolveArrowPoint(run[i]), resolveArrowPoint(run[i + 1])],
             toScreen,
             mapW,
             mapH,
@@ -102,6 +105,7 @@ export {
   startNukeAnimation,
   startUnlockAnimation,
   toggleAnimationsDisabled,
+  withAnimationDelay,
 } from './state';
 export type { AnimationType } from './state';
 export { drawToxinCloud } from './toxin';
@@ -115,3 +119,12 @@ export {
 export type { Capture, Ripple } from './transitions/capture';
 export { drawScaled, trackPresence } from './transitions/presence';
 export type { Look, Shown } from './transitions/presence';
+export {
+  holdShip,
+  releaseShip,
+  SHIP_SLIDE_MS,
+  shipPull,
+  startShipArrival,
+  startShipShuttle,
+} from './transitions/shipMoves';
+export type { ArrowPoint } from './transitions/shipMoves';

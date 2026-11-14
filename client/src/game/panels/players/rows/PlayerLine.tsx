@@ -1,3 +1,4 @@
+import Flag from '../../../../common/badges/Flag';
 import AllianceCell from './AllianceCell';
 import PlayerAvatar from './PlayerAvatar';
 import PlayerProgress from './PlayerProgress';
@@ -28,6 +29,7 @@ function PlayerLine({ row }: Props) {
         teamBadge={row.showTeamBadge}
       />
       <span className="fw-semibold text-truncate flex-grow-1">{row.label}</span>
+      <Flag country={player.country} height={12} />
       <PlayerStatusIcons statuses={row.statuses} />
       <PlayerStatValues
         player={player}

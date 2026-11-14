@@ -3,7 +3,9 @@
   background-color: var(--bs-secondary-bg);
   border: var(--bs-border-width) solid var(--bs-border-color);
   border-radius: var(--bs-border-radius);
-  box-shadow: var(--ui-shine);
+  box-shadow:
+    0 3px 0 var(--ui-lip),
+    var(--ui-shine);
 }
 
 .player-row:hover {
@@ -25,17 +27,20 @@
 .player-row.is-self {
   border-color: var(--player-color);
   box-shadow:
+    0 3px 0 var(--ui-lip),
     var(--ui-shine),
     inset 0 0 0 1px var(--player-color);
 }
 
 .player-row.is-selected {
   box-shadow:
+    0 3px 0 var(--ui-lip),
     var(--ui-shine),
     inset 0 0 0 2px var(--player-color);
 }
 
-.player-card {
+.player-rows {
+  padding-bottom: 3px;
 }
 
 .player-chip {
@@ -47,7 +52,8 @@
   grid-auto-flow: column;
   grid-template-rows: repeat(var(--player-rows), auto);
   grid-auto-columns: 1fr;
-  gap: 0.25rem 0.5rem;
+  gap: 0.5rem 0.5rem;
+  padding-bottom: 3px;
 }
 
 .player-orb {
@@ -59,14 +65,21 @@
 }
 
 .player-card .player-orb {
+  --orb-lip: 0 4px 0 color-mix(in srgb, var(--player-color) 60%, #000);
   box-shadow:
-    0 0 0 3px var(--bs-secondary-bg),
-    0 0 0 5px color-mix(in srgb, var(--player-color) 60%, transparent);
+    var(--orb-lip),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 2px 3px rgba(255, 255, 255, 0.35);
 }
 
 .player-orb-turn {
+  --orb-lip: 0 0 0 transparent;
   --turn-ring: 3px;
   animation: player-turn-pulse 1.4s ease-in-out infinite;
+}
+
+.player-card .player-orb-turn {
+  --orb-lip: 0 0 0 transparent;
 }
 
 .player-chip .player-orb-turn {
@@ -75,16 +88,22 @@
 
 :root.animations-off .player-orb-turn {
   animation: none;
-  box-shadow: 0 0 0 var(--turn-ring) var(--player-color);
+  box-shadow:
+    0 0 0 var(--turn-ring) var(--player-color),
+    var(--orb-lip);
 }
 
 @keyframes player-turn-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 var(--turn-ring) var(--player-color);
+    box-shadow:
+      0 0 0 var(--turn-ring) var(--player-color),
+      var(--orb-lip);
   }
   50% {
-    box-shadow: 0 0 0 var(--turn-ring) transparent;
+    box-shadow:
+      0 0 0 var(--turn-ring) transparent,
+      var(--orb-lip);
   }
 }
 

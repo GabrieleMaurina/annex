@@ -16,6 +16,7 @@ import {
   drawFortifyPath,
   regionRipple,
   trackCaptures,
+  type ArrowPoint,
   type Capture,
   type Ripple,
 } from '../../animations';
@@ -72,6 +73,7 @@ import {
   drawOverModifiers,
   drawShips,
   drawUnderModifiers,
+  shipPosition,
   trackModifiers,
   type ModifierFrame,
 } from './drawModifiers';
@@ -154,6 +156,7 @@ export interface DrawCanvasParams {
   endCard?: EndCardOverlay | null;
   turnStartRef?: RefObject<TurnStartOverlay | null>;
   pixelRatio?: number;
+  selfId?: number | null;
 }
 
 export function drawGameMapCanvas(params: DrawCanvasParams) {
@@ -217,6 +220,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     endCard,
     turnStartRef,
     pixelRatio,
+    selfId,
   } = params;
 
   const canvas = canvasRef.current;
@@ -435,6 +439,16 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     uiScale,
     image: imageRef.current,
   });
+  const seaById = new Map(seaTerritories.map((s) => [s.id, s]));
+  const seaHexRadius = VERTEX_RADIUS * scaleX * SEA_SIZE_MULTIPLIER;
+  const shipAnchor = (p: ArrowPoint): Point => {
+    if (p.seaId === undefined || p.shipOwnerId === undefined) return p;
+    const sea = seaById.get(p.seaId);
+    return (
+      (sea && shipPosition(frame, sea, seaHexRadius, p.seaId, p.shipOwnerId)) ||
+      p
+    );
+  };
   drawAnimations(
     ctx,
     toScreen,
@@ -442,6 +456,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     imgW,
     imgH,
     forcedWraps,
+    shipAnchor,
   );
 
   const fadeForPair = (
@@ -467,7 +482,13 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     for (const run of runs) {
       if (run.length < 2) continue;
       const worldPath = run
-        .map((id) => pathPointById.get(id))
+        .map((id) => {
+          const point = pathPointById.get(id);
+          if (!point) return undefined;
+          return seaById.has(id) && selfId !== undefined && selfId !== null
+            ? shipAnchor({ ...point, seaId: id, shipOwnerId: selfId })
+            : point;
+        })
         .filter((p): p is Point => !!p);
       if (worldPath.length !== run.length) continue;
       for (let i = 0; i < worldPath.length - 1; i++) {
@@ -609,7 +630,6 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   for (const s of seaTerritories) {
     const isVisible = visibleSet === null || visibleSet.has(s.id);
     const p = toScreen(s);
-    const hexRadius = VERTEX_RADIUS * scaleX * SEA_SIZE_MULTIPLIER;
     const seaShape = regions?.shapes.get(s.id);
     const seaStyle = STATE_STYLE[nodeState(s.id)];
     if (isVisible && seaShape && seaStyle !== STATE_STYLE.normal)
@@ -622,15 +642,15 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       );
     if (isVisible && !seaShape) {
       ctx.beginPath();
-      hexagonPath(ctx, p.x, p.y, hexRadius);
+      hexagonPath(ctx, p.x, p.y, seaHexRadius);
       ctx.fillStyle = SEA_COLOR;
       ctx.fill();
       ctx.strokeStyle = seaStyle.stroke;
       ctx.lineWidth = seaStyle.width * uiScale;
       ctx.stroke();
     }
-    drawShips(frame, s.id, p, hexRadius);
-    drawFog(frame, s.id, p, hexRadius);
+    drawShips(frame, s, seaHexRadius);
+    drawFog(frame, s.id, p, seaHexRadius);
   }
 
   for (const t of territories) {

@@ -11,7 +11,7 @@ import type { PanelConduct } from './panelConduct';
 import PlayerConductActions from './PlayerConductActions';
 import { usePlayerProfile } from './usePlayerProfile';
 
-const PICTURE_SIZE = 72;
+const PICTURE_SIZE = 104;
 
 interface Props {
   player: GameState['players'][number];
@@ -53,7 +53,7 @@ function PanelPlayerDetails({
               alt=""
               width={PICTURE_SIZE}
               height={PICTURE_SIZE}
-              className="rounded border flex-shrink-0"
+              className="rounded-2 border flex-shrink-0 object-fit-cover"
             />
           ) : (
             <img
@@ -61,7 +61,7 @@ function PanelPlayerDetails({
               alt=""
               width={PICTURE_SIZE}
               height={PICTURE_SIZE}
-              className="rounded border bg-body-secondary p-3 flex-shrink-0"
+              className="rounded-2 border bg-body-secondary p-4 flex-shrink-0"
             />
           ))}
         <div className="d-flex flex-column gap-1 overflow-hidden">

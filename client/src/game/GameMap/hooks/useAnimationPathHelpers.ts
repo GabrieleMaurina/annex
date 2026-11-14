@@ -1,9 +1,9 @@
 import type { RefObject } from 'react';
 import { useMemo } from 'react';
 import type { LockedTile } from '../../../lib/types';
+import type { ArrowPoint } from '../../animations';
 import type { SeaTerritory, Territory } from '../../mapData';
 import { isPortalHop } from '../../portals';
-import type { Point } from '../helpers';
 
 export function createAnimationPathHelpers({
   getTerritories,
@@ -23,10 +23,21 @@ export function createAnimationPathHelpers({
     getSeaTerritories().find((t) => t.id === id) ??
     lockedTiles.find((t) => t.id === id);
 
-  const territoryPoints = (territoryIds: number[]): Point[] =>
-    territoryIds
-      .map(findPosition)
-      .filter((t): t is { x: number; y: number } => !!t);
+  const territoryPoints = (
+    territoryIds: number[],
+    shipOwnerId?: number,
+    seas: Set<number> | null = shipOwnerId === undefined
+      ? null
+      : new Set(getSeaTerritories().map((s) => s.id)),
+  ): ArrowPoint[] => {
+    return territoryIds.flatMap((id) => {
+      const position = findPosition(id);
+      if (!position) return [];
+      return seas?.has(id)
+        ? [{ x: position.x, y: position.y, seaId: id, shipOwnerId }]
+        : [position];
+    });
+  };
 
   const idRunsForPath = (territoryIds: number[]): number[][] => {
     const runs: number[][] = [];
@@ -50,10 +61,18 @@ export function createAnimationPathHelpers({
     return runs;
   };
 
-  const arrowRunsForPath = (territoryIds: number[]): Point[][] =>
-    idRunsForPath(territoryIds)
-      .map((run) => territoryPoints(run))
+  const arrowRunsForPath = (
+    territoryIds: number[],
+    shipOwnerId?: number,
+  ): ArrowPoint[][] => {
+    const seas =
+      shipOwnerId === undefined
+        ? null
+        : new Set(getSeaTerritories().map((s) => s.id));
+    return idRunsForPath(territoryIds)
+      .map((run) => territoryPoints(run, shipOwnerId, seas))
       .filter((points) => points.length > 1);
+  };
 
   return { findPosition, territoryPoints, idRunsForPath, arrowRunsForPath };
 }

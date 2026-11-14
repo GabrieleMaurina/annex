@@ -122,7 +122,7 @@ function PlayersRoster({
 
   if (level === 'cards')
     return (
-      <div ref={gridRef} className="d-flex flex-column gap-2">
+      <div ref={gridRef} className="player-rows d-flex flex-column gap-3">
         {rows.map((row) => (
           <PlayerCard
             key={row.player.id}
@@ -137,7 +137,7 @@ function PlayersRoster({
 
   if (level === 'lines')
     return (
-      <div ref={gridRef} className="d-flex flex-column gap-1">
+      <div ref={gridRef} className="player-rows d-flex flex-column gap-2">
         {rows.map((row) => (
           <PlayerLine key={row.player.id} row={row} />
         ))}

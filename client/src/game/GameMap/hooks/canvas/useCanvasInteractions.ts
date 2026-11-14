@@ -23,6 +23,7 @@ import {
 } from '../../helpers';
 import { nextToastId } from '../../toastId';
 import { canBuyShipFrom } from '../sea/useDeploySeaFlow';
+import { touchDistance, touchMidpoint } from './touchGestures';
 import type { CanvasInteractionsParams } from './types';
 import { useCanvasKeyboard } from './useCanvasKeyboard';
 import { useMapViewportAnimation } from './useMapViewportAnimation';
@@ -30,23 +31,6 @@ import { useMapViewportAnimation } from './useMapViewportAnimation';
 const SYNTHETIC_MOUSE_WINDOW_MS = 500;
 const DOUBLE_TAP_MS = 300;
 const DOUBLE_TAP_DIST = 24;
-
-function touchDistance(touches: React.TouchList): number {
-  return Math.hypot(
-    touches[0].clientX - touches[1].clientX,
-    touches[0].clientY - touches[1].clientY,
-  );
-}
-
-function touchMidpoint(touches: React.TouchList): {
-  clientX: number;
-  clientY: number;
-} {
-  return {
-    clientX: (touches[0].clientX + touches[1].clientX) / 2,
-    clientY: (touches[0].clientY + touches[1].clientY) / 2,
-  };
-}
 
 export function useCanvasInteractions(params: CanvasInteractionsParams) {
   const {
@@ -593,7 +577,11 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         }
         return;
       }
-      if (vertex && seaIdSet.has(vertex.id)) {
+      if (
+        vertex &&
+        seaIdSet.has(vertex.id) &&
+        (attackSeaTerritoryId !== null || isInteractable(vertex))
+      ) {
         if (attackSeaRevealing && vertex.id !== attackSeaTerritoryId) return;
         if (attackSeaTerritoryId !== null) {
           if (vertex.id === attackSeaTerritoryId) {
@@ -923,23 +911,29 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     e.preventDefault();
     if (gameEnded || !isMyTurn || paused || nukeTargeting) return;
     const vertex = hitVertex(getPos(e));
-    if (!vertex) return;
     if (turnPhase === 'sail') {
-      if (sailEndCandidates.has(vertex.id)) quickSail(vertex.id, true);
+      if (vertex && sailEndCandidates.has(vertex.id))
+        quickSail(vertex.id, true);
+      else if (sailStartTerritoryId !== null) cancelSail();
       return;
     }
     if (turnPhase === 'fortify') {
-      if (fortifyEndCandidates.has(vertex.id)) quickFortify(vertex.id, true);
+      if (vertex && fortifyEndCandidates.has(vertex.id))
+        quickFortify(vertex.id, true);
+      else if (fortifyStartTerritoryId !== null) cancelFortify();
       return;
     }
     if (turnPhase === 'attack') {
       if (
         attackPendingConquest ||
         attackSeaTerritoryId !== null ||
-        attackRevealing ||
-        !attackEndCandidates.has(vertex.id)
+        attackRevealing
       )
         return;
+      if (!vertex || !attackEndCandidates.has(vertex.id)) {
+        if (attackStartTerritoryId !== null) cancelAttack();
+        return;
+      }
       if (unlockIdSet.has(vertex.id)) unlock(vertex.id, false);
       else if (isSwitchVertex(vertex.id)) flipSwitch(switchIdOf(vertex.id));
       else if (blitzEnabled) quickAttack(vertex.id, true);
@@ -947,6 +941,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     }
     if (
       (turnPhase === 'deploy' || turnPhase === 'troop') &&
+      vertex &&
       isInteractable(vertex)
     ) {
       if (seaIdSet.has(vertex.id)) {
@@ -955,6 +950,16 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       }
       if (deploySeaTerritoryId !== null) cancelDeploySea();
       quickDeploy(vertex.id, 1);
+      return;
+    }
+    if (deploySeaTerritoryId !== null) {
+      playSound('click');
+      cancelDeploySea();
+      return;
+    }
+    if (selectedTerritoryId !== null) {
+      playSound('click');
+      selectTerritory(null);
     }
   }
 

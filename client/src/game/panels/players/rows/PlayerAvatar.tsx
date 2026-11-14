@@ -25,11 +25,15 @@ function PlayerAvatar({
   return (
     <Tip text={isTurn ? `${kind}\nCurrent turn` : kind}>
       <span
-        className={`player-orb position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-circle ${isTurn ? 'player-orb-turn' : ''}`}
+        className={`player-orb position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-2 ${isTurn ? 'player-orb-turn' : ''}`}
         style={{ width: scaled(size), height: scaled(size) }}
       >
         {picture ? (
-          <img src={picture} alt="" className="rounded-circle w-100 h-100" />
+          <img
+            src={picture}
+            alt=""
+            className="rounded-2 w-100 h-100 object-fit-cover"
+          />
         ) : (
           <WhiteIcon path={icon} size={Math.round(size * 0.5)} />
         )}

@@ -46,6 +46,7 @@ export const CHIP_STATS: StatKey[] = [
   'troops',
   'capitals',
   'points',
+  'cards',
 ];
 
 export function statDefs(options: StatOptions): StatDef[] {

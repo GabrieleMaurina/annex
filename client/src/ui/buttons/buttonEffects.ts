@@ -137,7 +137,9 @@ function buttonAt(target: EventTarget | null): HTMLElement | null {
 export function initButtonEffects() {
   document.addEventListener('pointerover', (e) => {
     if (e.pointerType !== 'mouse' || areAnimationsDisabled()) return;
-    const button = buttonAt(e.target);
+    const target = e.target instanceof Element ? e.target : null;
+    const button =
+      buttonAt(e.target) ?? target?.closest<HTMLElement>('.player-row');
     if (!button || button.contains(e.relatedTarget as Node | null)) return;
     jiggle(button);
   });

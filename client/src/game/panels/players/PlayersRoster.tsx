@@ -152,7 +152,7 @@ function PlayersRoster({
       style={{ '--player-rows': gridRows } as CSSProperties}
     >
       {rows.map((row) => (
-        <PlayerChip key={row.player.id} row={row} showName={!twoColumns} />
+        <PlayerChip key={row.player.id} row={row} />
       ))}
     </div>
   );

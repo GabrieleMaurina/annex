@@ -44,7 +44,6 @@ export const LINE_STATS: StatKey[] = [
 export const CHIP_STATS: StatKey[] = [
   'territories',
   'troops',
-  'capitals',
   'points',
   'cards',
 ];

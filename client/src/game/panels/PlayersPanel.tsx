@@ -30,11 +30,11 @@ import { GLOBAL_TARGET_ID, type EmojiPop } from '../logic/emoji';
 import { formatMission } from './mission/formatMission';
 import PlayerActions from './players/PlayerActions';
 import PlayerDetailsPopover from './players/PlayerDetailsPopover';
-import { levelFor } from './players/playerLevels';
 import PlayersRoster from './players/PlayersRoster';
 import { statDefs } from './players/playerStats';
 import { registerRef } from './players/registerRef';
 import { playerStatuses } from './players/rows/playerStatuses';
+import { useFittingLevel } from './players/useFittingLevel';
 import { useSingleColumnFit } from './players/useSingleColumnFit';
 
 interface Props {
@@ -212,7 +212,12 @@ function PlayersPanel({
     gameEnded,
     anonymous,
   );
-  const level = levelFor(players.length);
+  const level = useFittingLevel(
+    !collapsed,
+    `${players.length}:${spectators.length}`,
+    panelRef,
+    scrollRef,
+  );
   const stats = statDefs({
     isTeamDeathmatch,
     isCapitals,

@@ -14,13 +14,13 @@ export const PLAYER_COLOR_NAMES = [
   'Brown',
   'Lime',
   'Indigo',
-  'Amber',
-  'Magenta',
+  'Sand',
+  'Rose',
   'Forest',
-  'Steel',
+  'Teal',
+  'Mauve',
   'Crimson',
   'Olive',
-  'Violet',
 ];
 
 export function usesAliases(game: Game): boolean {

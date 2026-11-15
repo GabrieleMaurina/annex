@@ -8,10 +8,9 @@ import { rowClassName, rowRootProps } from './rowTypes';
 
 interface Props {
   row: RowProps;
-  showName: boolean;
 }
 
-function PlayerChip({ row, showName }: Props) {
+function PlayerChip({ row }: Props) {
   const { player } = row;
   return (
     <Tip text={row.label} placement="left">
@@ -29,16 +28,11 @@ function PlayerChip({ row, showName }: Props) {
           size={22}
           teamBadge={row.showTeamBadge}
         />
-        {showName && (
-          <span className="fw-semibold text-truncate flex-grow-1">
-            {row.label}
-          </span>
-        )}
         <PlayerStatValues
           player={player}
           stats={row.stats}
           iconSize={11}
-          className={`gap-2 small ${showName ? '' : 'flex-grow-1 justify-content-between'}`}
+          className="gap-2 small flex-grow-1 justify-content-between"
         />
         <PlayerStatusIcons statuses={row.statuses} size={11} />
         {row.alliance && (

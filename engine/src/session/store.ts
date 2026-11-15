@@ -33,6 +33,27 @@ const pendingInactiveDestroy = new Map<string, NodeJS.Timeout>();
 const pendingEndedDestroy = new Map<string, NodeJS.Timeout>();
 const pendingLobbyDestroy = new Map<string, NodeJS.Timeout>();
 const pendingAbandonEnd = new Map<string, NodeJS.Timeout>();
+const TAKEOVER_DELAY_MS = 10000;
+const pendingTakeovers = new Map<number, NodeJS.Timeout>();
+
+function scheduleTakeover(game: Game, player: Player) {
+  if (player.isBot || pendingTakeovers.has(player.id)) return;
+  const timer = setTimeout(() => {
+    pendingTakeovers.delete(player.id);
+    if (player.connected || games.get(game.name) !== game) return;
+    if (game.state !== 'playing') return;
+    startTakeover(game, player);
+    checkGameEnd(game);
+    recomputeHost(game);
+    broadcastGameState(game);
+  }, TAKEOVER_DELAY_MS);
+  pendingTakeovers.set(player.id, timer);
+}
+
+function cancelTakeover(playerId: number) {
+  clearTimeout(pendingTakeovers.get(playerId));
+  pendingTakeovers.delete(playerId);
+}
 
 function scheduleDestroy(
   pending: Map<string, NodeJS.Timeout>,
@@ -279,7 +300,7 @@ function leaveGameImpl(player: Player, permanent: boolean) {
   if (game.state === 'playing') {
     if (game.deathOrder.includes(player.id) && player.connected)
       player.gameName = null;
-    else if (!player.connected) startTakeover(game, player);
+    else if (!player.connected) scheduleTakeover(game, player);
     checkGameEnd(game);
     recomputeHost(game);
     scheduleAbandonEnd(game);
@@ -529,6 +550,7 @@ export function resyncPlayer(
   if (!seat) return { id: playerId, gameName: null, name: '' };
   const player = splitOffSurrenderedSeat(seat, room) ?? seat;
   player.connected = true;
+  cancelTakeover(player.id);
   const gameBeforeResync = player.gameName
     ? games.get(player.gameName)
     : undefined;

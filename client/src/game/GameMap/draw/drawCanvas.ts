@@ -38,11 +38,11 @@ import {
 } from '../../mapMath';
 import { isPortalHop } from '../../portals';
 import {
+  continentLand,
   continentShapes,
   type ClickableRegions,
 } from '../../regions/clickableRegions';
 import { drawSmoothImage } from '../../regions/smoothImage';
-import type { RegionShape } from '../../regions/traceRegions';
 import type { ConquestArrow } from '../../replay/replay';
 import type { RailEdge } from '../../supplyLines';
 import { drawSupplyLines } from '../../supplyLines';
@@ -81,8 +81,8 @@ import { drawTerritoryNames } from './drawNames';
 import {
   outlineContinentRegion,
   regionFillLayer,
+  strokeContinentInside,
   strokeRegion,
-  strokeSharedBorders,
   unlockedTileLayer,
 } from './drawRegions';
 import { drawSwitches, type SwitchedLinkSpot } from './drawSwitches';
@@ -572,8 +572,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.save();
     ctx.lineWidth = continentLineWidth(3);
     ctx.lineJoin = 'round';
-    const ownedShapes: { shape: RegionShape; color: string }[] = [];
-    for (const [continentGroupId, group] of continentGroups) {
+    for (const group of continentGroups.values()) {
       if (visibleSet && group.some((t) => !visibleSet.has(t.id))) continue;
       const ownerId = continentBonusOwnerOf(group);
       if (ownerId === undefined) continue;
@@ -582,23 +581,13 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         STATE_STYLE.hovered.tint,
       );
       ctx.strokeStyle = color;
-      const shape = continentShapesById?.get(continentGroupId);
-      if (shape) {
-        outlineContinentRegion(ctx, shape, view, false);
-        ownedShapes.push({ shape, color });
-      } else
+      const land = regions
+        ? continentLand(regions, group, territories)
+        : undefined;
+      if (land) strokeContinentInside(ctx, land, color, 3 * uiScale, view);
+      else
         strokeContinentOutline(ctx, group, toScreen, continentHullPad, false);
     }
-    for (const { shape, color } of ownedShapes)
-      strokeSharedBorders(
-        ctx,
-        shape,
-        ownedShapes
-          .filter((other) => other.color !== color)
-          .map((other) => other.shape),
-        color,
-        view,
-      );
     ctx.restore();
   }
 

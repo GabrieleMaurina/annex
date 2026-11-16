@@ -3,6 +3,7 @@ import { fillWithRipple, type Ripple } from '../../animations';
 import {
   regionAt,
   type ClickableRegions,
+  type ContinentLand,
 } from '../../regions/clickableRegions';
 import type { RegionShape } from '../../regions/traceRegions';
 import { polygonPath, tileEdges } from '../../tiles/tileGeometry';
@@ -118,19 +119,20 @@ export function outlineContinentRegion(
   ctx.restore();
 }
 
-export function strokeSharedBorders(
+export function strokeContinentInside(
   ctx: CanvasRenderingContext2D,
-  shape: RegionShape,
-  neighbors: RegionShape[],
+  { outline, land }: ContinentLand,
   color: string,
+  depth: number,
   view: ImageView,
 ) {
-  const width = ctx.lineWidth;
   enterImageSpace(ctx, view);
-  ctx.clip(shape.outline);
+  ctx.clip(outline);
+  ctx.clip(land);
   ctx.strokeStyle = color;
-  ctx.lineWidth = (width * 2) / view.scaleX;
-  for (const neighbor of neighbors) ctx.stroke(neighbor.outline);
+  ctx.lineWidth = (depth * 2) / view.scaleX;
+  ctx.lineJoin = 'round';
+  ctx.stroke(outline);
   ctx.restore();
 }
 

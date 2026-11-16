@@ -137,7 +137,9 @@ export {
 } from './game/export';
 export {
   COLOR_COUNT,
+  continentHolderId,
   deployableTroops,
+  deployBreakdownFor,
   MAX_TERRITORY_TROOPS,
   nextFreeColor,
 } from './game/mechanics';
@@ -146,6 +148,7 @@ export {
   NUKE_INSTALLMENT,
   NUKE_INSTALLMENTS,
 } from './game/nukes/nukes';
+export { isProgressive, progressiveBonuses } from './game/progression/bonuses';
 export {
   defaultMaxPoints,
   isPointsMode,

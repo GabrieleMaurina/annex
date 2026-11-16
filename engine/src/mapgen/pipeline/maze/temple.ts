@@ -1,6 +1,6 @@
 import { timeStep } from '../../core/bench';
 import { Fill, GridDimensions, MapSize } from '../../core/params';
-import { randomInt, Rng } from '../../core/rng';
+import { randomFloat, randomInt, Rng } from '../../core/rng';
 import { LinkRngs } from '../../links';
 import {
   continentTempleTone,
@@ -19,7 +19,13 @@ const RING_RANGES: Record<MapSize, [number, number]> = {
 };
 const BASE_SECTORS = 5;
 const MAX_ARC_ASPECT = 2.2;
-const MAX_RADIUS_FRACTION = 0.47;
+const MIN_RINGS = 3;
+const MAX_CENTERS = 3;
+const RADIUS_FACTOR_RANGE: [number, number] = [0.65, 1];
+const OVERLAP_RANGE: [number, number] = [-0.21, 0.5];
+const LAYOUT_MARGIN_FRACTION = 0.03;
+const CROSS_OPEN_CHANCE = 0.85;
+const MIN_CROSS_CONTACT_THICKNESS = 0.4;
 const RING_JITTER = 0.32;
 const DEAD_END_BRAID_CHANCE = 0.55;
 
@@ -42,6 +48,21 @@ interface PolarGrid {
   potential: number[][];
   open: Set<number>;
   navigable: Uint8Array;
+}
+
+interface Maze {
+  grid: PolarGrid;
+  clusters: number[][];
+  cx: number;
+  cy: number;
+  radius: number;
+  priority: number;
+  offset: number;
+}
+
+interface Point {
+  x: number;
+  y: number;
 }
 
 function pairKey(a: number, b: number): number {
@@ -232,6 +253,67 @@ function carveVoid(
   }
 }
 
+function layoutMazes(
+  relativeRadii: number[],
+  overlaps: number[],
+  dims: GridDimensions,
+): { centers: Point[]; radii: number[] } {
+  const { width, height } = dims;
+  const margin = LAYOUT_MARGIN_FRACTION * Math.min(width, height);
+  const distance = (a: number, b: number, overlap: number) =>
+    relativeRadii[a] +
+    relativeRadii[b] -
+    overlap * Math.min(relativeRadii[a], relativeRadii[b]);
+
+  const rough: Point[] = [{ x: 0, y: 0 }];
+  if (relativeRadii.length >= 2) {
+    rough.push({ x: distance(0, 1, overlaps[0]), y: 0 });
+  }
+  if (relativeRadii.length === 3) {
+    const ab = rough[1].x;
+    const ac = distance(0, 2, overlaps[1]);
+    const bc = distance(1, 2, overlaps[2]);
+    const x = (ac * ac - bc * bc + ab * ab) / (2 * ab);
+    rough.push({ x, y: -Math.sqrt(Math.max(0, ac * ac - x * x)) });
+  }
+
+  const minX = Math.min(...rough.map((p, k) => p.x - relativeRadii[k]));
+  const maxX = Math.max(...rough.map((p, k) => p.x + relativeRadii[k]));
+  const minY = Math.min(...rough.map((p, k) => p.y - relativeRadii[k]));
+  const maxY = Math.max(...rough.map((p, k) => p.y + relativeRadii[k]));
+  const scale = Math.min(
+    (width - 2 * margin) / (maxX - minX),
+    (height - 2 * margin) / (maxY - minY),
+  );
+  return {
+    centers: rough.map((p) => ({
+      x: width / 2 + (p.x - (minX + maxX) / 2) * scale,
+      y: height / 2 + (p.y - (minY + maxY) / 2) * scale,
+    })),
+    radii: relativeRadii.map((r) => r * scale),
+  };
+}
+
+function buildMaze(
+  rng: Rng,
+  rings: number,
+  fill: Fill,
+  seas: boolean,
+): { grid: PolarGrid; clusters: number[][] } {
+  const grid = buildPolarGrid(rng, rings);
+  carveMaze(rng, grid);
+  const clusters = addChambers(rng, grid, Math.round(grid.nRings * 1.6));
+  carveVoid(
+    rng,
+    grid,
+    VOID_FRACTION[fill],
+    seas ? SEA_BLOB_RANGE : VOID_BLOB_RANGE,
+  );
+  fillHoles(grid);
+  braid(rng, grid);
+  return { grid, clusters };
+}
+
 function ringOf(grid: PolarGrid, radiusFraction: number): number {
   for (let i = 1; i < grid.ringRadii.length; i++) {
     if (radiusFraction < grid.ringRadii[i]) return i - 1;
@@ -239,62 +321,199 @@ function ringOf(grid: PolarGrid, radiusFraction: number): number {
   return grid.nRings - 1;
 }
 
-function toCellLayer(
-  grid: PolarGrid,
+function cellAt(maze: Maze, dx: number, dy: number, distance: number): number {
+  const { grid } = maze;
+  const ring = ringOf(grid, distance / maze.radius);
+  const count = grid.sectors[ring];
+  let angle = Math.atan2(dy, dx) / (2 * Math.PI);
+  if (angle < 0) angle += 1;
+  const sector = Math.min(count - 1, Math.floor(angle * count));
+  return maze.offset + grid.ringOffset[ring] + sector;
+}
+
+function dropDetachedFragments(
+  pixelCell: Int32Array,
+  outsideMask: Uint8Array,
   dims: GridDimensions,
-  clusters: number[][],
-): CellLayer {
+  cellCount: number,
+): void {
   const { width, height } = dims;
-  const cx = width / 2;
-  const cy = height / 2;
-  const maxRadius = MAX_RADIUS_FRACTION * Math.min(width, height);
+  const component = new Int32Array(pixelCell.length).fill(-1);
+  const sizes: number[] = [];
+  const largest = new Int32Array(cellCount);
+  const stack: number[] = [];
+  for (let start = 0; start < pixelCell.length; start++) {
+    const cell = pixelCell[start];
+    if (cell < 0 || component[start] !== -1) continue;
+    const id = sizes.length;
+    let size = 0;
+    component[start] = id;
+    stack.push(start);
+    while (stack.length > 0) {
+      const i = stack.pop()!;
+      size++;
+      const x = i % width;
+      const y = (i - x) / width;
+      const around = [
+        x > 0 ? i - 1 : -1,
+        x + 1 < width ? i + 1 : -1,
+        y > 0 ? i - width : -1,
+        y + 1 < height ? i + width : -1,
+      ];
+      for (const j of around) {
+        if (j < 0 || component[j] !== -1 || pixelCell[j] !== cell) continue;
+        component[j] = id;
+        stack.push(j);
+      }
+    }
+    sizes.push(size);
+    largest[cell] = Math.max(largest[cell], size);
+  }
+  for (let i = 0; i < pixelCell.length; i++) {
+    const cell = pixelCell[i];
+    if (cell < 0 || sizes[component[i]] === largest[cell]) continue;
+    pixelCell[i] = -1;
+    outsideMask[i] = 1;
+  }
+}
 
-  const cellNeighbors: number[][] = Array.from(
-    { length: grid.cellCount },
-    (_, cell) =>
-      grid.potential[cell].filter(
-        (n) =>
-          grid.navigable[cell] &&
-          grid.navigable[n] &&
-          grid.open.has(pairKey(cell, n)),
-      ),
-  );
+function dropEmptyCells(
+  pixelCell: Int32Array,
+  cellNeighbors: number[][],
+): void {
+  const present = new Uint8Array(cellNeighbors.length);
+  for (const cell of pixelCell) if (cell >= 0) present[cell] = 1;
+  cellNeighbors.forEach((list, cell) => {
+    cellNeighbors[cell] = present[cell] ? list.filter((n) => present[n]) : [];
+  });
+}
 
-  const cellAt = (px: number, py: number): number => {
-    const dx = px + 0.5 - cx;
-    const dy = py + 0.5 - cy;
-    const radius = Math.hypot(dx, dy);
-    if (radius >= maxRadius) return -1;
-    const ring = ringOf(grid, radius / maxRadius);
-    const count = grid.sectors[ring];
-    let angle = Math.atan2(dy, dx) / (2 * Math.PI);
-    if (angle < 0) angle += 1;
-    const sector = Math.min(count - 1, Math.floor(angle * count));
-    return grid.ringOffset[ring] + sector;
+function openCrossLinks(
+  rng: Rng,
+  mazes: Maze[],
+  pixelCell: Int32Array,
+  dims: GridDimensions,
+  cellNeighbors: number[][],
+): void {
+  const { width, height } = dims;
+  const cellCount = cellNeighbors.length;
+  const mazeOfCell = new Uint8Array(cellCount);
+  mazes.forEach((maze, k) => {
+    mazeOfCell.fill(k, maze.offset, maze.offset + maze.grid.cellCount);
+  });
+
+  const contacts = new Map<number, number>();
+  const touch = (i: number, j: number) => {
+    const a = pixelCell[i];
+    const b = pixelCell[j];
+    if (a < 0 || b < 0 || mazeOfCell[a] === mazeOfCell[b]) return;
+    const key = a < b ? a * cellCount + b : b * cellCount + a;
+    contacts.set(key, (contacts.get(key) ?? 0) + 1);
   };
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      if (x + 1 < width) touch(i, i + 1);
+      if (y + 1 < height) touch(i, i + width);
+    }
+  }
+
+  const thickness = Math.min(
+    ...mazes.map((maze) => maze.radius / maze.grid.nRings),
+  );
+  const minContact = Math.max(
+    2,
+    Math.round(MIN_CROSS_CONTACT_THICKNESS * thickness),
+  );
+  const candidatesByPair = new Map<number, [number, number][]>();
+  for (const [key, length] of contacts) {
+    if (length < minContact) continue;
+    const a = Math.floor(key / cellCount);
+    const pair = mazeOfCell[a] * MAX_CENTERS + mazeOfCell[key % cellCount];
+    const list = candidatesByPair.get(pair) ?? [];
+    list.push([key, length]);
+    candidatesByPair.set(pair, list);
+  }
+
+  for (const candidates of candidatesByPair.values()) {
+    let opened = candidates.filter(() => rng() < CROSS_OPEN_CHANCE);
+    if (opened.length === 0) {
+      opened = [candidates.reduce((best, c) => (c[1] > best[1] ? c : best))];
+    }
+    for (const [key] of opened) {
+      const a = Math.floor(key / cellCount);
+      const b = key % cellCount;
+      cellNeighbors[a].push(b);
+      cellNeighbors[b].push(a);
+    }
+  }
+}
+
+function toCellLayer(rng: Rng, mazes: Maze[], dims: GridDimensions): CellLayer {
+  const { width, height } = dims;
+
+  const cellNeighbors: number[][] = [];
+  for (const { grid, offset } of mazes) {
+    for (let cell = 0; cell < grid.cellCount; cell++) {
+      cellNeighbors.push(
+        grid.potential[cell]
+          .filter(
+            (n) =>
+              grid.navigable[cell] &&
+              grid.navigable[n] &&
+              grid.open.has(pairKey(cell, n)),
+          )
+          .map((n) => n + offset),
+      );
+    }
+  }
 
   const pixelCell = new Int32Array(width * height).fill(-1);
   const outsideMask = new Uint8Array(width * height);
   for (let py = 0; py < height; py++) {
     for (let px = 0; px < width; px++) {
-      const cell = cellAt(px, py);
+      const x = px + 0.5;
+      const y = py + 0.5;
+      let owner = -1;
+      let ownerDistance = 0;
+      for (let k = 0; k < mazes.length; k++) {
+        const dx = x - mazes[k].cx;
+        const dy = y - mazes[k].cy;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance >= mazes[k].radius) continue;
+        if (owner >= 0 && mazes[k].priority < mazes[owner].priority) continue;
+        owner = k;
+        ownerDistance = distance;
+      }
       const i = py * width + px;
-      if (cell < 0) {
+      if (owner < 0) {
         outsideMask[i] = 1;
         continue;
       }
-      if (grid.navigable[cell]) pixelCell[i] = cell;
+      const maze = mazes[owner];
+      const cell = cellAt(maze, x - maze.cx, y - maze.cy, ownerDistance);
+      if (maze.grid.navigable[cell - maze.offset]) pixelCell[i] = cell;
     }
   }
 
-  const chambers = clusters
-    .map((group) => group.filter((cell) => grid.navigable[cell]))
-    .filter((group) => group.length >= 2);
+  if (mazes.length > 1) {
+    dropDetachedFragments(pixelCell, outsideMask, dims, cellNeighbors.length);
+    dropEmptyCells(pixelCell, cellNeighbors);
+    openCrossLinks(rng, mazes, pixelCell, dims, cellNeighbors);
+  }
+
+  const chambers = mazes.flatMap(({ grid, clusters, offset }) =>
+    clusters
+      .map((group) =>
+        group.filter((cell) => grid.navigable[cell]).map((c) => c + offset),
+      )
+      .filter((group) => group.length >= 2),
+  );
 
   return {
     width,
     height,
-    cellCount: grid.cellCount,
+    cellCount: cellNeighbors.length,
     cellNeighbors,
     pixelCell,
     chambers,
@@ -312,19 +531,36 @@ export function generateTemple(
   linkRngs: LinkRngs,
 ): MazeMap {
   const layer = timeStep('shape', () => {
-    const grid = buildPolarGrid(rng, randomInt(rng, ...RING_RANGES[size]));
-    carveMaze(rng, grid);
-    const clusters = addChambers(rng, grid, Math.round(grid.nRings * 1.6));
-    carveVoid(
-      rng,
-      grid,
-      VOID_FRACTION[fill],
-      seas ? SEA_BLOB_RANGE : VOID_BLOB_RANGE,
+    const count = randomInt(rng, 1, MAX_CENTERS);
+    const relativeRadii = Array.from({ length: count }, () =>
+      randomFloat(rng, ...RADIUS_FACTOR_RANGE),
     );
-    fillHoles(grid);
-    braid(rng, grid);
+    const overlaps = Array.from({ length: (count * (count - 1)) / 2 }, () =>
+      randomFloat(rng, ...OVERLAP_RANGE),
+    );
+    const { centers, radii } = layoutMazes(relativeRadii, overlaps, dims);
+    const baseRings = randomInt(rng, ...RING_RANGES[size]);
+    const totalArea = radii.reduce((sum, r) => sum + r * r, 0);
 
-    return toCellLayer(grid, dims, clusters);
+    let offset = 0;
+    const mazes: Maze[] = centers.map((center, k) => {
+      const rings = Math.max(
+        MIN_RINGS,
+        Math.round(baseRings * Math.sqrt((radii[k] * radii[k]) / totalArea)),
+      );
+      const maze: Maze = {
+        ...buildMaze(rng, rings, fill, seas),
+        cx: center.x,
+        cy: center.y,
+        radius: radii[k],
+        priority: rng(),
+        offset,
+      };
+      offset += maze.grid.cellCount;
+      return maze;
+    });
+
+    return toCellLayer(rng, mazes, dims);
   });
   return buildMazeMap(
     rng,

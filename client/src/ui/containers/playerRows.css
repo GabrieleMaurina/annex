@@ -56,6 +56,14 @@
   padding-bottom: 3px;
 }
 
+.split-columns {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.split-columns > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .player-orb {
   background-color: var(--player-color);
   color: var(--player-fg);

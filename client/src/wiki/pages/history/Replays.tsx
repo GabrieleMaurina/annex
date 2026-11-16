@@ -43,8 +43,10 @@ function Replays() {
       <WikiSection id="charts" title="Charts and heat map">
         <p>
           The stats chart plots each player against time. Switch between Troops,
-          Territories, Capitals, ownership, Points, kills, troops gained, killed
-          and lost, conquests, cards and sets played.
+          Territories, Capitals, Bonuses (continents held), Generation (the
+          troops each player received at the start of their turn, not counting
+          card sets), ownership, Points, kills, troops gained, killed and lost,
+          conquests, cards and sets played.
         </p>
         <p>
           The heat map button on the replay map shades every territory by how

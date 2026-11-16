@@ -8,6 +8,7 @@ import { panelConduct } from '../../common/conduct/panelConduct';
 import { useDismissOnOutsideClick } from '../../common/dismiss/useDismissOnOutsideClick';
 import { useWhiteIcon } from '../../common/icon';
 import WhiteIcon from '../../common/icons/WhiteIcon';
+import { FLIP_POPPER } from '../../common/tooltips/flipPopper';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
 import type {
@@ -231,6 +232,13 @@ function PlayersPanel({
     scrollRef,
     gridRef,
   );
+  const twoColumns = level === 'chips' && !singleColumnFits;
+  const hasInfoLines =
+    starvation === 'territory' ||
+    starvation === 'total' ||
+    isCapitals ||
+    showPoints ||
+    leaderTerritoryCount !== null;
   const selectedPlayer = players.find((p) => p.id === selectedId);
   const live = storedGameId === undefined;
   const closeDetails = () => setSelectedId(null);
@@ -285,57 +293,69 @@ function PlayersPanel({
           if (e.key === 'Enter' || e.key === ' ') collapse();
         }}
       >
-        <div className="d-flex align-items-center justify-content-center gap-1 mb-1 fw-bold">
-          <span>{titleCase(gameMode)}</span>
-          {mission && (
-            <Tip
-              text={
-                <>
-                  Your mission:{' '}
-                  {formatMission(mission, players, continentNames)}
-                </>
-              }
-            >
-              <img
-                src={whiteTargetIcon ?? '/icons/target.svg'}
-                width={14}
-                height={14}
-                alt="Your mission"
-                style={{ cursor: 'help' }}
-              />
-            </Tip>
-          )}
-        </div>
-        <div className="text-center fw-bold mb-3">
-          Round{' '}
-          {['territory', 'troop', 'capital'].includes(turnPhase)
-            ? 0
-            : roundNumber + 1}
+        <div
+          className={`d-flex gap-1 mb-3 fw-bold ${twoColumns ? 'justify-content-center column-gap-3' : 'flex-column'}`}
+          data-split={twoColumns ? '' : undefined}
+        >
+          <div className="d-flex align-items-center justify-content-center gap-1">
+            <span>{titleCase(gameMode)}</span>
+            {mission && (
+              <Tip
+                text={
+                  <>
+                    Your mission:{' '}
+                    {formatMission(mission, players, continentNames)}
+                  </>
+                }
+              >
+                <img
+                  src={whiteTargetIcon ?? '/icons/target.svg'}
+                  width={14}
+                  height={14}
+                  alt="Your mission"
+                  style={{ cursor: 'help' }}
+                />
+              </Tip>
+            )}
+          </div>
+          <div className="text-center">
+            Round{' '}
+            {['territory', 'troop', 'capital'].includes(turnPhase)
+              ? 0
+              : roundNumber + 1}
+          </div>
         </div>
       </div>
-      {starvation === 'territory' && (
-        <div className="text-center small mb-2">
-          Territory troops cap: {territoryTroopsCap}
-        </div>
-      )}
-      {starvation === 'total' && (
-        <div className="text-center small mb-2">
-          Total troops cap: {totalTroopsCap}
-        </div>
-      )}
-      {isCapitals && (
-        <div className="text-center small mb-2">
-          Leader {leaderCapitals}/{totalCapitals}
-        </div>
-      )}
-      {showPoints && (
-        <div className="text-center small mb-2">
-          Leader {leaderPoints}/{maxPoints}
-        </div>
-      )}
-      {leaderTerritoryCount !== null && (
-        <div className="text-center small mb-2">
-          Leader {leaderTerritories}/{territoriesToWin}
+      {hasInfoLines && (
+        <div
+          className={`d-grid gap-2 mb-2 ${twoColumns ? 'split-columns' : ''}`}
+          data-split={twoColumns ? '' : undefined}
+        >
+          {starvation === 'territory' && (
+            <div className="text-center small">
+              Territory troops cap: {territoryTroopsCap}
+            </div>
+          )}
+          {starvation === 'total' && (
+            <div className="text-center small">
+              Total troops cap: {totalTroopsCap}
+            </div>
+          )}
+          {isCapitals && (
+            <div className="text-center small">
+              Leader {leaderCapitals}/{totalCapitals}
+            </div>
+          )}
+          {showPoints && (
+            <div className="text-center small">
+              Leader {leaderPoints}/{maxPoints}
+            </div>
+          )}
+          {leaderTerritoryCount !== null && (
+            <div className="text-center small">
+              Leader {leaderTerritories}/{territoriesToWin}
+            </div>
+          )}
         </div>
       )}
       <div
@@ -347,7 +367,7 @@ function PlayersPanel({
         <PlayersRoster
           players={players}
           level={level}
-          twoColumns={level === 'chips' && !singleColumnFits}
+          twoColumns={twoColumns}
           gridRef={gridRef}
           stats={stats}
           progressContext={{
@@ -382,7 +402,11 @@ function PlayersPanel({
         {(canSendEmoji || toxins !== 'off') && (
           <div className="d-flex align-items-center mt-1">
             {canSendEmoji && (
-              <Tip text="Send an emoji to everyone" placement="bottom">
+              <Tip
+                text="Send an emoji to everyone"
+                placement="bottom"
+                popperConfig={FLIP_POPPER}
+              >
                 <Button
                   variant="secondary"
                   size="sm"
@@ -411,7 +435,11 @@ function PlayersPanel({
         {spectators.length > 0 && (
           <>
             <div className="fw-bold mt-2 mb-1">Spectators</div>
-            <ListGroup variant="flush">
+            <ListGroup
+              variant="flush"
+              className={twoColumns ? 'd-grid split-columns' : ''}
+              data-split={twoColumns ? '' : undefined}
+            >
               {spectators.map((s) => (
                 <ListGroup.Item
                   key={s.id}
@@ -446,6 +474,7 @@ function PlayersPanel({
           onToggleAbort={onToggleAbort}
           onSurrender={onSurrender}
           navigate={navigate}
+          twoColumns={twoColumns}
         />
       </div>
       {selectedPlayer && (

@@ -42,7 +42,7 @@ function isExponential(mode: Continents): boolean {
   return mode === 'exponential' || mode === 'exponential per continent';
 }
 
-function isProgressive(mode: Continents): boolean {
+export function isProgressive(mode: Continents): boolean {
   return isLinear(mode) || isExponential(mode);
 }
 
@@ -57,6 +57,16 @@ function progressiveBonus(mode: Continents, payouts: number): number {
   return Math.min(
     MAX_BONUS,
     Math.round(EXPONENTIAL_START * EXPONENTIAL_RATE ** payouts),
+  );
+}
+
+export function progressiveBonuses(
+  mode: Continents,
+  payouts: number[],
+): number[] {
+  const total = payouts.reduce((sum, n) => sum + n, 0);
+  return payouts.map((count) =>
+    progressiveBonus(mode, isPerContinent(mode) ? count : total),
   );
 }
 
@@ -78,8 +88,5 @@ export function payContinentBonuses(game: Game, playerId: number) {
   if (!isProgressive(mode)) return;
   for (const id of heldContinentIds(game, playerId))
     game.continentPayouts[id]++;
-  const total = game.continentPayouts.reduce((sum, n) => sum + n, 0);
-  game.continentBonuses = game.continentPayouts.map((payouts) =>
-    progressiveBonus(mode, isPerContinent(mode) ? payouts : total),
-  );
+  game.continentBonuses = progressiveBonuses(mode, game.continentPayouts);
 }

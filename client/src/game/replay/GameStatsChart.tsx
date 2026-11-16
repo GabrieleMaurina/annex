@@ -7,6 +7,8 @@ import type {
   ReplayPlayerStats,
   ReplayTerritory,
 } from '../../lib/types';
+import type { ChartMap } from './chartMetrics';
+import { continentsHeldBySample, generationBySample } from './chartMetrics';
 import type { FoldedReplay } from './replay';
 
 const WIDTH = 1000;
@@ -20,6 +22,8 @@ interface Sample {
   territories: ReplayTerritory[];
   playerStates: ReplayPlayerState[];
   playerStats: ReplayPlayerStats[];
+  continentsHeld?: Map<number, number>;
+  generation?: Map<number, number>;
 }
 
 type CounterKey = Exclude<keyof ReplayPlayerStats, 'playerId'>;
@@ -84,6 +88,19 @@ const CAPITAL_OWNERSHIP: Stat = {
   stacked: true,
 };
 
+const CONTINENT_BONUSES: Stat = {
+  label: 'Bonuses',
+  value: (sample, playerId) => sample.continentsHeld?.get(playerId) ?? 0,
+};
+
+const GENERATION: Stat = {
+  label: 'Generation',
+  value: (sample, playerId) =>
+    playerState(sample, playerId)?.eliminated
+      ? 0
+      : (sample.generation?.get(playerId) ?? 0),
+};
+
 const POINTS: Stat = {
   label: 'Points',
   value: (sample, playerId) => playerState(sample, playerId)?.points ?? 0,
@@ -137,6 +154,8 @@ const SETS_PLAYED: Stat = {
 };
 
 interface Props {
+  game: GameState;
+  map: ChartMap | null;
   players: GameState['players'];
   replay: FoldedReplay;
   isCapitals: boolean;
@@ -145,18 +164,27 @@ interface Props {
 }
 
 function GameStatsChart({
+  game,
+  map,
   players,
   replay,
   isCapitals,
   capitalIds,
   isPointsMode,
 }: Props) {
+  const hasContinents =
+    map !== null &&
+    game.continents !== 'off' &&
+    map.territories.some((t) => t.continentId >= 0);
+  const hasGeneration = map !== null && replay.turnMarkers.length > 0;
   const stats = [
     TERRITORY_OWNERSHIP,
     ...(isCapitals ? [CAPITAL_OWNERSHIP] : []),
     TROOPS,
     TERRITORIES,
     ...(isCapitals ? [CAPITALS] : []),
+    ...(hasContinents ? [CONTINENT_BONUSES] : []),
+    ...(hasGeneration ? [GENERATION] : []),
     ...(isPointsMode ? [POINTS] : []),
     PLAYERS_KILLED,
     ...(replay.hasStats
@@ -176,13 +204,32 @@ function GameStatsChart({
   const [selected, setSelected] = useState(TERRITORY_OWNERSHIP);
 
   const { frames, initial } = replay.data;
-  const samples = useMemo<Sample[]>(
-    () => [
+  const continentsHeld = useMemo(
+    () =>
+      map && selected === CONTINENT_BONUSES
+        ? continentsHeldBySample(map, replay.data)
+        : null,
+    [map, replay.data, selected],
+  );
+  const generation = useMemo(
+    () =>
+      map && selected === GENERATION
+        ? generationBySample(game, map, replay, capitalIds)
+        : null,
+    [game, map, replay, capitalIds, selected],
+  );
+  const samples = useMemo<Sample[]>(() => {
+    const base = [
       { territories: initial, playerStates: [], playerStats: [] },
       ...frames,
-    ],
-    [frames, initial],
-  );
+    ];
+    if (!continentsHeld && !generation) return base;
+    return base.map((sample, i) => ({
+      ...sample,
+      continentsHeld: continentsHeld?.[i],
+      generation: generation?.[i],
+    }));
+  }, [frames, initial, continentsHeld, generation]);
   const series = useMemo(
     () =>
       players.map((p) => ({

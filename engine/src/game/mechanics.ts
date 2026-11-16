@@ -169,7 +169,10 @@ export function startingPoolBonus(game: Game, index: number): number {
     : 0;
 }
 
-function firstTurnBonus(game: Game, index: number): number {
+function firstTurnBonus(
+  game: Pick<Game, 'gameMode' | 'placement'>,
+  index: number,
+): number {
   return game.gameMode !== 'capitals' && game.placement !== 'custom'
     ? turnOrderBonus(index)
     : 0;
@@ -374,11 +377,26 @@ export interface DeployTroopsBreakdown {
   turnOrder: number;
 }
 
-export function territoryIncome(game: Game, territoryCount: number): number {
+export function territoryIncome(
+  game: Pick<Game, 'minTroops' | 'troopsPerTerritory'>,
+  territoryCount: number,
+): number {
   return Math.max(
     game.minTroops,
     Math.floor(territoryCount * game.troopsPerTerritory),
   );
+}
+
+export function continentHolderId(
+  owners: (number | undefined)[],
+): number | null {
+  const holder = owners.find((ownerId) => ownerId !== undefined);
+  if (holder === undefined) return null;
+  const owned = owners.filter((ownerId) => ownerId === holder).length;
+  const controlsContinent =
+    owned * 2 > owners.length &&
+    owners.every((ownerId) => ownerId === undefined || ownerId === holder);
+  return controlsContinent ? holder : null;
 }
 
 export function heldContinentIds(game: Game, playerId: number): number[] {
@@ -398,13 +416,45 @@ export function heldContinentIds(game: Game, playerId: number): number[] {
           !game.radiationTerritoryIds.has(id) && !game.territoryToxins.has(id),
       )
       .map((id) => game.territoryOwners.get(id));
-    const owned = owners.filter((ownerId) => ownerId === playerId).length;
-    const controlsContinent =
-      owned * 2 > owners.length &&
-      owners.every((ownerId) => ownerId === undefined || ownerId === playerId);
-    if (controlsContinent) held.push(continentId);
+    if (continentHolderId(owners) === playerId) held.push(continentId);
   }
   return held;
+}
+
+export type DeploySettings = Pick<
+  Game,
+  | 'minTroops'
+  | 'troopsPerTerritory'
+  | 'continents'
+  | 'gameMode'
+  | 'roundTroops'
+  | 'bounties'
+  | 'placement'
+>;
+
+export interface DeployFacts {
+  roundNumber: number;
+  playerIndex: number;
+  territoryCount: number;
+  heldBonuses: number;
+  capitalsControlled: number;
+  kills: number;
+}
+
+export function deployBreakdownFor(
+  settings: DeploySettings,
+  facts: DeployFacts,
+): DeployTroopsBreakdown {
+  return {
+    territories: territoryIncome(settings, facts.territoryCount),
+    bonuses: settings.continents === 'off' ? 0 : facts.heldBonuses,
+    capitals:
+      settings.gameMode === 'capitals' ? facts.capitalsControlled * 2 : 0,
+    roundTroops: settings.roundTroops === 'on' ? facts.roundNumber + 1 : 0,
+    bounties: settings.bounties === 'on' ? facts.kills * 10 : 0,
+    turnOrder:
+      facts.roundNumber === 0 ? firstTurnBonus(settings, facts.playerIndex) : 0,
+  };
 }
 
 export function calculateDeployTroopsBreakdown(
@@ -412,38 +462,24 @@ export function calculateDeployTroopsBreakdown(
   playerId: number,
 ): DeployTroopsBreakdown {
   const map = getGameMap(game);
-  const territoryCount = [...game.territoryOwners.values()].filter(
-    (ownerId) => ownerId === playerId,
-  ).length;
-  const territories = territoryIncome(game, territoryCount);
-
-  let bonuses = 0;
+  let heldBonuses = 0;
   if (game.continents !== 'off') {
     for (const continentId of heldContinentIds(game, playerId))
-      bonuses += map.bonuses[continentId] ?? 0;
+      heldBonuses += map.bonuses[continentId] ?? 0;
   }
 
-  let capitals = 0;
-  if (game.gameMode === 'capitals') {
-    const capitalsControlled = [...game.capitalTerritoryIds].filter(
+  return deployBreakdownFor(game, {
+    roundNumber: game.roundNumber,
+    playerIndex: game.playerIds.indexOf(playerId),
+    territoryCount: [...game.territoryOwners.values()].filter(
+      (ownerId) => ownerId === playerId,
+    ).length,
+    heldBonuses,
+    capitalsControlled: [...game.capitalTerritoryIds].filter(
       (id) => game.territoryOwners.get(id) === playerId,
-    ).length;
-    capitals = capitalsControlled * 2;
-  }
-
-  const roundTroops = game.roundTroops === 'on' ? game.roundNumber + 1 : 0;
-
-  const bounties =
-    game.bounties === 'on'
-      ? (game.stats.get(playerId)?.playersKilled.length ?? 0) * 10
-      : 0;
-
-  const turnOrder =
-    game.roundNumber === 0
-      ? firstTurnBonus(game, game.playerIds.indexOf(playerId))
-      : 0;
-
-  return { territories, bonuses, capitals, roundTroops, bounties, turnOrder };
+    ).length,
+    kills: game.stats.get(playerId)?.playersKilled.length ?? 0,
+  });
 }
 
 export function assignRandomColor(game: Game, playerId: number) {

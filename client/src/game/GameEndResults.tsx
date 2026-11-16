@@ -12,6 +12,7 @@ import { connector } from '../connector';
 import { contrastTextColor, playerColor } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/settings/SettingsPanel';
+import { getGeneratedMapData } from './mapData';
 import GameStatsChart from './replay/GameStatsChart';
 import MapAction from './replay/MapAction';
 import type { FoldedReplay } from './replay/replay';
@@ -38,6 +39,7 @@ interface Props {
   belowTable?: ReactNode;
   overlay?: ReactNode;
   replay?: FoldedReplay | null;
+  mapRenderName: string;
   showMuted?: boolean;
   shareGameId?: string | null;
   mapSavable?: boolean;
@@ -58,6 +60,7 @@ function GameEndResults({
   belowTable,
   overlay,
   replay,
+  mapRenderName,
   showMuted,
   shareGameId,
   mapSavable,
@@ -210,6 +213,8 @@ function GameEndResults({
       {replay && (
         <div className="mt-4">
           <GameStatsChart
+            game={game}
+            map={getGeneratedMapData(mapRenderName) ?? null}
             players={game.players}
             replay={replay}
             isCapitals={isCapitals}

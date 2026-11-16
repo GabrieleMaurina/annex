@@ -32,6 +32,8 @@ const SYNTHETIC_MOUSE_WINDOW_MS = 500;
 const DOUBLE_TAP_MS = 300;
 const DOUBLE_TAP_DIST = 24;
 
+type TapResult = 'action' | 'select' | 'none';
+
 export function useCanvasInteractions(params: CanvasInteractionsParams) {
   const {
     canvasRef,
@@ -431,14 +433,16 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     updateDrag(pos);
   }
 
-  function consumeDoubleTap(pos: Point): boolean {
-    const vertex = hitVertex(pos);
-    if (vertex && (isInteractable(vertex) || isSwitchVertex(vertex.id))) {
-      lastTapAtRef.current = 0;
-      return false;
-    }
+  function registerTap(pos: Point) {
+    const result = handleTap(pos);
+    if (result === 'action') lastTapAtRef.current = 0;
+    else consumeDoubleTap(pos, result === 'none');
+  }
+
+  function consumeDoubleTap(pos: Point, canReset: boolean) {
     const now = Date.now();
     const isDouble =
+      canReset &&
       now - lastTapAtRef.current < DOUBLE_TAP_MS &&
       Math.hypot(
         pos.x - lastTapPosRef.current.x,
@@ -450,10 +454,9 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       playSound('click');
       resetView();
     }
-    return isDouble;
   }
 
-  function handleTap(pos: Point) {
+  function handleTap(pos: Point): TapResult {
     const vertex = hitVertex(pos);
     if (isSyntheticMouseEvent()) {
       const focusedSwitch =
@@ -464,7 +467,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
           ? vertex.id
           : null;
       setHoveredId(focusedSwitch);
-      if (focusedSwitch !== null) return;
+      if (focusedSwitch !== null) return 'none';
     }
 
     if (pendingAttackEmoji) {
@@ -475,10 +478,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         });
       else playSound('click');
       setPendingAttackEmoji(null);
-      return;
+      return 'action';
     }
 
-    if (gameEnded || !isMyTurn || paused) return;
+    if (gameEnded || !isMyTurn || paused) return 'none';
 
     if (nukeTargeting && turnPhase === 'attack') {
       if (vertex && nukeCandidates.has(vertex.id)) {
@@ -498,17 +501,19 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         playSound('click');
       }
       setNukeTargeting(null);
-      return;
+      return 'action';
     }
 
     if (turnPhase === 'territory') {
-      if (vertex && isInteractable(vertex)) claimTerritory(vertex.id);
-      return;
+      if (!vertex || !isInteractable(vertex)) return 'none';
+      claimTerritory(vertex.id);
+      return 'action';
     }
 
     if (turnPhase === 'capital') {
-      if (vertex && isInteractable(vertex)) selectCapital(vertex.id);
-      return;
+      if (!vertex || !isInteractable(vertex)) return 'none';
+      selectCapital(vertex.id);
+      return 'action';
     }
 
     if (turnPhase === 'sail') {
@@ -519,10 +524,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
             vertex.id === sailEndTerritoryId)
         ) {
           submitSail();
-        } else {
-          cancelSail();
+          return 'action';
         }
-        return;
+        cancelSail();
+        return 'none';
       }
       if (!vertex || !isInteractable(vertex)) {
         if (
@@ -530,14 +535,14 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
           vertex?.id !== sailStartTerritoryId
         )
           cancelSail();
-        return;
+        return 'none';
       }
       if (sailStartTerritoryId === null) {
         selectSailStart(vertex.id);
       } else {
         selectSailEnd(vertex.id);
       }
-      return;
+      return 'select';
     }
 
     if (turnPhase === 'fortify') {
@@ -548,10 +553,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
             vertex.id === fortifyEndTerritoryId)
         ) {
           submitFortify();
-        } else {
-          cancelFortify();
+          return 'action';
         }
-        return;
+        cancelFortify();
+        return 'none';
       }
       if (!vertex || !isInteractable(vertex)) {
         if (
@@ -559,44 +564,46 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
           vertex?.id !== fortifyStartTerritoryId
         )
           cancelFortify();
-        return;
+        return 'none';
       }
       if (fortifyStartTerritoryId === null) {
         selectFortifyStart(vertex.id);
       } else {
         selectFortifyEnd(vertex.id);
       }
-      return;
+      return 'select';
     }
 
     if (turnPhase === 'attack') {
       if (attackPendingConquest) {
-        if (vertex && vertex.id === attackEndTerritoryId) {
-          if (attackRevealing) submitAttack();
-          else submitAttackMove();
-        }
-        return;
+        if (!vertex || vertex.id !== attackEndTerritoryId) return 'none';
+        if (attackRevealing) submitAttack();
+        else submitAttackMove();
+        return 'action';
       }
       if (
         vertex &&
         seaIdSet.has(vertex.id) &&
         (attackSeaTerritoryId !== null || isInteractable(vertex))
       ) {
-        if (attackSeaRevealing && vertex.id !== attackSeaTerritoryId) return;
+        if (attackSeaRevealing && vertex.id !== attackSeaTerritoryId)
+          return 'none';
         if (attackSeaTerritoryId !== null) {
-          if (vertex.id === attackSeaTerritoryId) {
-            if (attackSeaDefenderId !== null) submitAttackSea();
-          } else {
+          if (vertex.id !== attackSeaTerritoryId) {
             cancelAttackSea();
+            return 'none';
           }
-        } else if (isInteractable(vertex)) {
-          selectAttackSeaStart(vertex.id);
+          if (attackSeaDefenderId === null) return 'none';
+          submitAttackSea();
+          return 'action';
         }
-        return;
+        if (!isInteractable(vertex)) return 'none';
+        selectAttackSeaStart(vertex.id);
+        return 'select';
       }
       if (attackSeaTerritoryId !== null) {
         if (!attackSeaRevealing) cancelAttackSea();
-        return;
+        return 'none';
       }
       if (attackEndTerritoryId !== null) {
         if (
@@ -605,28 +612,32 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
             vertex.id === attackEndTerritoryId)
         ) {
           submitAttack();
-        } else {
-          cancelAttack();
+          return 'action';
         }
-        return;
+        cancelAttack();
+        return 'none';
       }
       if (unlockTileId !== null) {
         if (
           vertex &&
           (vertex.id === attackStartTerritoryId || vertex.id === unlockTileId)
-        )
+        ) {
           submitAttack();
-        else cancelAttack();
-        return;
+          return 'action';
+        }
+        cancelAttack();
+        return 'none';
       }
       if (flipVertexId !== null) {
         if (
           vertex &&
           (vertex.id === attackStartTerritoryId || vertex.id === flipVertexId)
-        )
+        ) {
           submitAttack();
-        else cancelAttack();
-        return;
+          return 'action';
+        }
+        cancelAttack();
+        return 'none';
       }
       if (!vertex || !isInteractable(vertex)) {
         if (attackStartTerritoryId !== null) {
@@ -638,7 +649,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
           playSound('click');
           setAttackDiceRoll(null);
         }
-        return;
+        return 'none';
       }
       if (attackStartTerritoryId === null) {
         selectAttackStart(vertex.id);
@@ -649,7 +660,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
       } else {
         selectAttackEnd(vertex.id);
       }
-      return;
+      return 'select';
     }
 
     if (turnPhase === 'entrench') {
@@ -661,14 +672,14 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
           playSound('click');
           selectTerritory(null);
         }
-        return;
+        return 'none';
       }
       if (selectedTerritoryId === vertex.id) {
         submitEntrench();
-        return;
+        return 'action';
       }
       selectTerritory(vertex.id);
-      return;
+      return 'select';
     }
 
     if (turnPhase === 'toxins') {
@@ -680,14 +691,14 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
           playSound('click');
           selectTerritory(null);
         }
-        return;
+        return 'none';
       }
       if (selectedTerritoryId === vertex.id) {
         submitToxins();
-        return;
+        return 'action';
       }
       selectTerritory(vertex.id);
-      return;
+      return 'select';
     }
 
     if (!vertex || !isInteractable(vertex)) {
@@ -702,12 +713,12 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         playSound('click');
         cancelDeploySea();
       }
-      return;
+      return 'none';
     }
     if (turnPhase === 'deploy' && seaIdSet.has(vertex.id)) {
       if (deploySeaTerritoryId === vertex.id) {
         submitDeploySea();
-        return;
+        return 'action';
       }
       if (
         selectedTerritoryId === null ||
@@ -716,12 +727,12 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
         selectTerritory(null);
       setToasts([]);
       selectDeploySea(vertex.id);
-      return;
+      return 'select';
     }
     if (selectedTerritoryId === vertex.id) {
       if (comboActive) submitDeploySea();
       else submitDeploy();
-      return;
+      return 'action';
     }
     if (turnPhase === 'deploy') setToasts([]);
     if (
@@ -730,6 +741,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     )
       cancelDeploySea();
     selectTerritory(vertex.id);
+    return 'select';
   }
 
   function handleMouseUp(e: React.MouseEvent) {
@@ -738,9 +750,7 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     dragRef.current = null;
     setIsDragging(false);
     if (drag && !drag.moved) {
-      const pos = getPos(e);
-      if (consumeDoubleTap(pos)) return;
-      handleTap(pos);
+      registerTap(getPos(e));
     }
     startSettle();
   }
@@ -793,9 +803,10 @@ export function useCanvasInteractions(params: CanvasInteractionsParams) {
     dragRef.current = null;
     setIsDragging(false);
     if (drag && !drag.moved && e.changedTouches.length > 0) {
-      const pos = getPos(e.changedTouches[0]);
-      if (consumeDoubleTap(pos)) return;
-      handleTap(pos);
+      e.preventDefault();
+      if (document.activeElement instanceof HTMLElement)
+        document.activeElement.blur();
+      registerTap(getPos(e.changedTouches[0]));
     }
     startSettle();
   }

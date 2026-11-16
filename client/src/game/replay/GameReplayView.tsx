@@ -119,6 +119,7 @@ function GameReplayView({
         belowTable={belowTable}
         overlay={overlay}
         replay={replay}
+        mapRenderName={mapRenderName}
         showMuted={showMuted}
         shareGameId={shareGameId}
         mapSavable={mapSavable}

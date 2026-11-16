@@ -1,6 +1,21 @@
 import type { RefObject } from 'react';
 import { useLayoutEffect, useState } from 'react';
 
+function singleColumnExtra(panel: HTMLElement): number {
+  let extra = 0;
+  panel.querySelectorAll<HTMLElement>('[data-split]').forEach((element) => {
+    const items = Array.from(element.children).filter(
+      (child) => (child as HTMLElement).offsetHeight > 0,
+    ) as HTMLElement[];
+    const gap = parseFloat(getComputedStyle(element).rowGap) || 0;
+    const single =
+      items.reduce((sum, item) => sum + item.offsetHeight, 0) +
+      Math.max(0, items.length - 1) * gap;
+    extra += single - element.offsetHeight;
+  });
+  return extra;
+}
+
 function fitsInViewport(
   panel: HTMLElement,
   scroll: HTMLElement,
@@ -19,7 +34,8 @@ function fitsInViewport(
     scroll.offsetHeight +
     scroll.scrollHeight -
     grid.offsetHeight +
-    singleHeight;
+    singleHeight +
+    singleColumnExtra(panel);
   return total <= window.innerHeight - margins;
 }
 
@@ -41,6 +57,7 @@ export function useSingleColumnFit(
 
     measure();
     const observer = new ResizeObserver(measure);
+    observer.observe(panel);
     observer.observe(scroll);
     observer.observe(grid);
     window.addEventListener('resize', measure);

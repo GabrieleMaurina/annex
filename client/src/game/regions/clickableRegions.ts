@@ -263,6 +263,130 @@ export function continentShapes(
   return shapes;
 }
 
+function continentReach(regions: ClickableRegions): number {
+  return Math.ceil(regions.borderWidth / 2) + 1;
+}
+
+export interface ContinentLand {
+  outline: Path2D;
+  land: Path2D;
+}
+
+interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const continentLandByRegions = new WeakMap<
+  ClickableRegions,
+  Map<string, ContinentLand | undefined>
+>();
+
+function memberBounds(
+  regions: ClickableRegions,
+  isMember: Uint8Array,
+  margin: number,
+): Bounds | null {
+  const { width, height, fillLabels } = regions;
+  let left = width;
+  let top = height;
+  let right = -1;
+  let bottom = -1;
+  for (let p = 0; p < fillLabels.length; p++) {
+    const id = fillLabels[p];
+    if (id < 0 || !isMember[id]) continue;
+    const x = p % width;
+    const y = (p - x) / width;
+    left = Math.min(left, x);
+    right = Math.max(right, x);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+  }
+  if (right < 0) return null;
+  return {
+    x: left - margin,
+    y: top - margin,
+    width: right - left + 1 + 2 * margin,
+    height: bottom - top + 1 + 2 * margin,
+  };
+}
+
+function copyWindow(regions: ClickableRegions, bounds: Bounds): Int16Array {
+  const { x, y, width, height } = bounds;
+  const copy = new Int16Array(width * height).fill(-1);
+  const from = Math.max(0, x);
+  const to = Math.min(regions.width, x + width);
+  for (let row = 0; row < height; row++) {
+    const sourceY = y + row;
+    if (sourceY < 0 || sourceY >= regions.height) continue;
+    const source = sourceY * regions.width;
+    copy.set(
+      regions.fillLabels.subarray(source + from, source + to),
+      row * width + from - x,
+    );
+  }
+  return copy;
+}
+
+function buildContinentLand(
+  regions: ClickableRegions,
+  group: ContinentTerritory[],
+  allTerritories: ContinentTerritory[],
+): ContinentLand | undefined {
+  const isMember = new Uint8Array(1 << 15);
+  for (const t of group) isMember[t.id] = 1;
+  const isLand = new Uint8Array(1 << 15);
+  for (const t of allTerritories) isLand[t.id] = 1;
+  const reach = continentReach(regions) * CHAMFER_STEP;
+  const bounds = memberBounds(regions, isMember, continentReach(regions) + 2);
+  if (!bounds) return undefined;
+
+  const { x, y, width, height } = bounds;
+  const size = width * height;
+  const fills = copyWindow(regions, bounds);
+  const belongs = (p: number) => fills[p] >= 0 && isMember[fills[p]] === 1;
+  const memberDistance = borderDistance((p) => !belongs(p), width, size);
+  const nearMember = (p: number) =>
+    belongs(p) || (fills[p] < 0 && memberDistance[p] <= reach);
+  const farDistance = borderDistance(nearMember, width, size);
+  const labels = new Int16Array(size);
+  for (let p = 0; p < size; p++) {
+    if (belongs(p) || (nearMember(p) && farDistance[p] > reach)) labels[p] = 0;
+    else labels[p] = fills[p] >= 0 && isLand[fills[p]] ? -2 : -1;
+  }
+  fillEnclosedGaps(labels, width);
+  const traced = traceRegionShapes(labels, width, height, Infinity).get(0);
+  if (!traced) return undefined;
+
+  const outline = new Path2D();
+  outline.addPath(traced.outline, new DOMMatrix().translate(x, y));
+  const land = new Path2D();
+  for (const t of group) land.addPath(regions.shapes.get(t.id)!.fill);
+  return { outline, land };
+}
+
+export function continentLand(
+  unlockedRegions: ClickableRegions,
+  group: ContinentTerritory[],
+  allTerritories: ContinentTerritory[],
+): ContinentLand | undefined {
+  const regions = unlockedRegions.base ?? unlockedRegions;
+  let cache = continentLandByRegions.get(regions);
+  if (!cache) {
+    cache = new Map();
+    continentLandByRegions.set(regions, cache);
+  }
+  const key = group.map((t) => t.id).join(',');
+  if (cache.has(key)) return cache.get(key);
+  const built = group.every((t) => regions.shapes.has(t.id))
+    ? buildContinentLand(regions, group, allTerritories)
+    : undefined;
+  cache.set(key, built);
+  return built;
+}
+
 export function sharedBorders(
   image: ImageData,
   points: RegionPoint[],

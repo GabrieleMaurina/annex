@@ -1,6 +1,7 @@
 import { ONLINE_PAUSE_SECONDS } from 'engine';
 import { Button } from 'react-bootstrap';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
+import { FLIP_POPPER } from '../../../common/tooltips/flipPopper';
 import Tip from '../../../common/tooltips/Tip';
 import { connector } from '../../../connector';
 import type { BotSpeed } from '../../../lib/types';
@@ -27,6 +28,7 @@ interface Props {
   onToggleAbort: () => void;
   onSurrender: () => void;
   navigate: (path: string) => void;
+  twoColumns: boolean;
 }
 
 const botSpeedLabel: Record<BotSpeed, string> = {
@@ -62,12 +64,13 @@ function PlayerActions({
   onToggleAbort,
   onSurrender,
   navigate,
+  twoColumns,
 }: Props) {
   return (
     <>
       {(canPause || (canControl && hasLivingBot)) && (
         <div className="mt-2">
-          <ButtonRows>
+          <ButtonRows twoColumns={twoColumns}>
             {canPause && (
               <Tip
                 text={
@@ -78,6 +81,7 @@ function PlayerActions({
                       : `Pause game for everyone for up to ${ONLINE_PAUSE_SECONDS} seconds, once per game`
                 }
                 placement="bottom"
+                popperConfig={FLIP_POPPER}
               >
                 <Button
                   variant="secondary"
@@ -97,6 +101,7 @@ function PlayerActions({
               <Tip
                 text={`Change bots speed. Click for ${nextBotSpeedName[botSpeed]}`}
                 placement="bottom"
+                popperConfig={FLIP_POPPER}
               >
                 <Button
                   variant="secondary"
@@ -123,11 +128,12 @@ function PlayerActions({
       )}
       {(canSurrender || canLeave) && (
         <div className="mt-2">
-          <ButtonRows>
+          <ButtonRows twoColumns={twoColumns}>
             {canSurrender && earlyWin && (
               <Tip
                 text="Your victory is locked in. End the game now or keep conquering for fun"
                 placement="bottom"
+                popperConfig={FLIP_POPPER}
               >
                 <Button
                   variant="success"
@@ -148,6 +154,7 @@ function PlayerActions({
                     : 'Offer a draw. The game ends in a draw once every remaining human player offers one'
                 }
                 placement="bottom"
+                popperConfig={FLIP_POPPER}
               >
                 <Button
                   variant={drawOffered ? 'success' : 'secondary'}
@@ -168,6 +175,7 @@ function PlayerActions({
                     : 'Abort the game without any penalty. Only available in the first round, and only if every human player asks for it'
                 }
                 placement="bottom"
+                popperConfig={FLIP_POPPER}
               >
                 <Button
                   variant={abortProposed ? 'success' : 'secondary'}
@@ -181,7 +189,11 @@ function PlayerActions({
               </Tip>
             )}
             {canSurrender && !earlyWin && (
-              <Tip text="Surrender the game" placement="bottom">
+              <Tip
+                text="Surrender the game"
+                placement="bottom"
+                popperConfig={FLIP_POPPER}
+              >
                 <Button
                   variant="danger"
                   size="sm"
@@ -197,6 +209,7 @@ function PlayerActions({
               <Tip
                 text="Start a new game with the same settings, players and map"
                 placement="bottom"
+                popperConfig={FLIP_POPPER}
               >
                 <Button
                   variant="success"
@@ -210,7 +223,11 @@ function PlayerActions({
               </Tip>
             )}
             {canLeave && (
-              <Tip text="Go back to home" placement="bottom">
+              <Tip
+                text="Go back to home"
+                placement="bottom"
+                popperConfig={FLIP_POPPER}
+              >
                 <Button
                   variant="secondary"
                   size="sm"

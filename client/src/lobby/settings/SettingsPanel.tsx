@@ -376,7 +376,7 @@ function SettingsPanel({
                   if (!key) return;
                   if (key === GENERATE_MAP_OPTION) {
                     setMapGenOpen(true);
-                    if (!getGeneratedMapData(game.mapName)) {
+                    if (game.mapName && !getGeneratedMapData(game.mapName)) {
                       mapGenRef.current?.generate();
                     }
                     return;

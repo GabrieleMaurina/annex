@@ -724,8 +724,10 @@ const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas(
           pos,
         );
         const picked = !wired && pickAt(territories, getViewport(), pos);
-        if (wired) setTerritories(wired);
-        else if (picked) {
+        if (wired) {
+          setTerritories(wired);
+          lastTapAtRef.current = 0;
+        } else if (picked) {
           setSelectedVertexId(null);
           setPick(picked);
         } else if (selectedVertexId !== null || pick) {

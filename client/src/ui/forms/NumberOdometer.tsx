@@ -1,6 +1,8 @@
 import type { ComponentProps, CSSProperties } from 'react';
 import { useRef, useState } from 'react';
+import { DRAG_THRESHOLD } from '../../common/inputs/useNumberInput';
 
+const DRAG_SETTLE_MS = 500;
 const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 const STOP_TYPING_KEYS = [
   'ArrowUp',
@@ -23,6 +25,8 @@ function NumberOdometer({
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
   const pointerDown = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const lastDragAt = useRef(0);
   const digits = String(value ?? '').replace(/\D/g, '') || '0';
 
   function stopTyping() {
@@ -30,21 +34,40 @@ function NumberOdometer({
     setDraft(null);
   }
 
+  function justDragged() {
+    return Date.now() - lastDragAt.current < DRAG_SETTLE_MS;
+  }
+
+  function endPointer() {
+    pointerDown.current = false;
+    if (lastDragAt.current !== 0) lastDragAt.current = Date.now();
+  }
+
   return (
     <span
       className={`odometer ${typing ? 'odometer-typing' : ''} ${className}`}
       style={style}
-      onPointerDownCapture={() => {
+      onPointerDownCapture={(e) => {
         pointerDown.current = true;
+        lastDragAt.current = 0;
+        dragStart.current = { x: e.clientX, y: e.clientY };
       }}
-      onPointerUpCapture={() => {
-        pointerDown.current = false;
+      onPointerMoveCapture={(e) => {
+        if (!pointerDown.current) return;
+        const moved = Math.max(
+          Math.abs(e.clientX - dragStart.current.x),
+          Math.abs(e.clientY - dragStart.current.y),
+        );
+        if (moved >= DRAG_THRESHOLD) lastDragAt.current = Date.now();
       }}
-      onPointerCancelCapture={() => {
-        pointerDown.current = false;
+      onPointerUpCapture={endPointer}
+      onPointerCancelCapture={endPointer}
+      onMouseDownCapture={(e) => {
+        if (justDragged()) e.preventDefault();
       }}
       onClickCapture={(e) => {
-        if (e.target === document.activeElement) setTyping(true);
+        if (!justDragged() && e.target === document.activeElement)
+          setTyping(true);
       }}
       onWheelCapture={stopTyping}
       onKeyDownCapture={(e) => {
@@ -71,6 +94,10 @@ function NumberOdometer({
         className="odometer-input"
         value={draft ?? value}
         onFocus={(e) => {
+          if (justDragged()) {
+            e.currentTarget.blur();
+            return;
+          }
           if (!pointerDown.current) setTyping(true);
           onFocus?.(e);
         }}

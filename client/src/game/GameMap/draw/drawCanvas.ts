@@ -19,6 +19,7 @@ import {
   type ArrowPoint,
   type Capture,
   type Ripple,
+  type Shown,
 } from '../../animations';
 import { animationNow } from '../../animations/clock';
 import {
@@ -41,6 +42,7 @@ import {
   continentLand,
   continentShapes,
   type ClickableRegions,
+  type ContinentLand,
 } from '../../regions/clickableRegions';
 import { drawSmoothImage } from '../../regions/smoothImage';
 import type { ConquestArrow } from '../../replay/replay';
@@ -87,6 +89,12 @@ import {
 } from './drawRegions';
 import { drawSwitches, type SwitchedLinkSpot } from './drawSwitches';
 import { drawDirectionalLinks, drawTimedLinks } from './drawTimedLinks';
+import {
+  drawCached,
+  identityOf,
+  resetCanvas,
+  type LayerView,
+} from './layerCache';
 
 export interface DrawCanvasParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -226,10 +234,9 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   const canvas = canvasRef.current;
   if (!canvas) return;
   const dpr = pixelRatio ?? (window.devicePixelRatio || 1);
-  canvas.width = Math.round(size.w * dpr);
-  canvas.height = Math.round(size.h * dpr);
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
+  resetCanvas(canvas, ctx, Math.round(size.w * dpr), Math.round(size.h * dpr));
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   if (pixelRatio === undefined) {
@@ -368,48 +375,92 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
 
   const image = imageRef.current;
   const minified = scaleX * dpr < 1;
-  const smoothed =
-    image !== null &&
-    !minified &&
-    drawSmoothImage(
-      ctx,
-      {
-        image,
-        revision: 0,
-        tiles: tileLayer,
-        fill: regions && {
-          labels: regions.fillLabels,
-          colors: tintedFillColors,
-          ripples,
+  const layerView: LayerView = {
+    dpr,
+    width: canvas.width,
+    height: canvas.height,
+    offsetX,
+    offsetY,
+    scaleX,
+    scaleY,
+    uiScale,
+  };
+  const paintBase = (target: CanvasRenderingContext2D) => {
+    const smoothed =
+      image !== null &&
+      !minified &&
+      drawSmoothImage(
+        target,
+        {
+          image,
+          revision: 0,
+          tiles: tileLayer,
+          fill: regions && {
+            labels: regions.fillLabels,
+            colors: tintedFillColors,
+            ripples,
+          },
         },
-      },
-      offsetX,
-      offsetY,
-      scaleX,
-    );
-  if (!smoothed) {
+        offsetX,
+        offsetY,
+        scaleX,
+      );
+    if (smoothed) return;
     const drawLayer = (layer: CanvasImageSource) => {
-      ctx.imageSmoothingEnabled = minified;
-      ctx.drawImage(layer, offsetX, offsetY, imgW * scaleX, imgH * scaleY);
-      ctx.imageSmoothingEnabled = true;
+      target.imageSmoothingEnabled = minified;
+      target.drawImage(layer, offsetX, offsetY, imgW * scaleX, imgH * scaleY);
+      target.imageSmoothingEnabled = true;
     };
     if (image) drawLayer(image);
     if (tileLayer) drawLayer(tileLayer);
     if (regions) drawLayer(regionFillLayer(regions, tintedFillColors, ripples));
-  }
+  };
+  drawCached(
+    ctx,
+    {
+      name: 'base',
+      content:
+        image && ripples.size === 0
+          ? `${identityOf(image)}|${identityOf(tileLayer)}|${identityOf(regions)}|${[...tintedFillColors].map(([id, color]) => `${id}${color}`).join(',')}`
+          : null,
+      view: layerView,
+      reuse: 'translate',
+    },
+    paintBase,
+  );
 
   if (frame.shown.supply.size > 0) {
-    drawSupplyLines(
-      ctx,
-      frame.shown.supply.values(),
-      pathPointById,
-      new Set(seaTerritories.map((t) => t.id)),
-      toScreen,
-      imgW,
-      imgH,
-      uiScale,
-      forcedWraps,
-    );
+    const settledRails: Shown<RailEdge>[] = [];
+    const growingRails: Shown<RailEdge>[] = [];
+    for (const rail of frame.shown.supply.values())
+      (rail.scale === 1 ? settledRails : growingRails).push(rail);
+    const paintRails = (
+      target: CanvasRenderingContext2D,
+      rails: Shown<RailEdge>[],
+    ) =>
+      drawSupplyLines(
+        target,
+        rails,
+        pathPointById,
+        new Set(seaTerritories.map((t) => t.id)),
+        toScreen,
+        imgW,
+        imgH,
+        uiScale,
+        forcedWraps,
+      );
+    if (settledRails.length > 0)
+      drawCached(
+        ctx,
+        {
+          name: 'rails',
+          content: `${identityOf(image)}|${settledRails.map((r) => `${r.data.fromId}>${r.data.toId}`).join(',')}`,
+          view: layerView,
+          reuse: 'transform',
+        },
+        (target) => paintRails(target, settledRails),
+      );
+    if (growingRails.length > 0) paintRails(ctx, growingRails);
   }
 
   ctx.save();
@@ -548,9 +599,8 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   };
 
   const continentHullPad = (VERTEX_RADIUS + 30) * scaleX;
-  const continentShapesById = regions
-    ? continentShapes(regions, territories)
-    : null;
+  const continentShapesOf = () =>
+    regions ? continentShapes(regions, territories) : null;
   const continentLineWidth = (width: number) =>
     Math.max(
       width * uiScale,
@@ -562,6 +612,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = continentLineWidth(5);
     ctx.lineJoin = 'round';
+    const continentShapesById = continentShapesOf();
     for (const [continentGroupId, group] of continentGroups) {
       const shape = continentShapesById?.get(continentGroupId);
       if (shape) outlineContinentRegion(ctx, shape, view, true);
@@ -569,26 +620,56 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     }
     ctx.restore();
   } else if (continentsEnabled) {
-    ctx.save();
-    ctx.lineWidth = continentLineWidth(3);
-    ctx.lineJoin = 'round';
+    const owned: {
+      group: Territory[];
+      color: string;
+      land: ContinentLand | undefined | null;
+    }[] = [];
     for (const group of continentGroups.values()) {
       if (visibleSet && group.some((t) => !visibleSet.has(t.id))) continue;
       const ownerId = continentBonusOwnerOf(group);
       if (ownerId === undefined) continue;
-      const color = lighten(
-        playerColor(colorByPlayerId.get(ownerId) ?? 0),
-        STATE_STYLE.hovered.tint,
-      );
-      ctx.strokeStyle = color;
-      const land = regions
-        ? continentLand(regions, group, territories)
-        : undefined;
-      if (land) strokeContinentInside(ctx, land, color, 3 * uiScale, view);
-      else
-        strokeContinentOutline(ctx, group, toScreen, continentHullPad, false);
+      owned.push({
+        group,
+        color: lighten(
+          playerColor(colorByPlayerId.get(ownerId) ?? 0),
+          STATE_STYLE.hovered.tint,
+        ),
+        land: regions
+          ? continentLand(regions, group, territories, pixelRatio === undefined)
+          : undefined,
+      });
     }
-    ctx.restore();
+    if (owned.length > 0)
+      drawCached(
+        ctx,
+        {
+          name: 'continents',
+          content: `${identityOf(image)}|${identityOf(regions)}|${owned.map(({ group, color, land }) => `${group[0].continentId}:${color}:${land === null ? 'pending' : land ? 'land' : 'hull'}`).join(',')}`,
+          view: layerView,
+          reuse: 'transform',
+        },
+        (target) => {
+          target.save();
+          target.lineWidth = continentLineWidth(3);
+          target.lineJoin = 'round';
+          for (const { group, color, land } of owned) {
+            if (land === null) continue;
+            target.strokeStyle = color;
+            if (land)
+              strokeContinentInside(target, land, color, 3 * uiScale, view);
+            else
+              strokeContinentOutline(
+                target,
+                group,
+                toScreen,
+                continentHullPad,
+                false,
+              );
+          }
+          target.restore();
+        },
+      );
   }
 
   if (gameMode === 'continent' && continentId !== null) {
@@ -600,7 +681,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.lineWidth = continentLineWidth(3.5);
       ctx.lineJoin = 'round';
-      const shape = continentShapesById?.get(continentId);
+      const shape = continentShapesOf()?.get(continentId);
       if (shape) outlineContinentRegion(ctx, shape, view, false);
       else
         strokeContinentOutline(

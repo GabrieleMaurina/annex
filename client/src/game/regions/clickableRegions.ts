@@ -1,7 +1,17 @@
 import type { LockedTile } from '../../lib/types';
 import { loadGameMap } from '../mapData';
 import { polygonPath } from '../tiles/tileGeometry';
+import {
+  continentOutlineSvg,
+  type ContinentOutlineInput,
+} from './continentOutline';
 import { labelRegions, WALL_MAX_ALPHA, type RegionPoint } from './labelRegions';
+import {
+  borderDistance,
+  CHAMFER_STEP,
+  fillEnclosedGaps,
+  forEachNeighbor,
+} from './regionPixels';
 import { traceRegionShapes, type RegionShape } from './traceRegions';
 
 export interface ClickableRegions {
@@ -19,22 +29,6 @@ export interface ClickableRegions {
 const BORDER_REACH = 8;
 const PAIR_STRIDE = 1 << 15;
 const VERTEX_DIAMETERS_PER_LONGEST_SIDE = 50;
-const CHAMFER_STEP = 3;
-const CHAMFER_DIAGONAL = 4;
-const UNREACHED = 1 << 29;
-
-function forEachNeighbor(
-  p: number,
-  width: number,
-  size: number,
-  visit: (q: number) => void,
-) {
-  const x = p % width;
-  if (x > 0) visit(p - 1);
-  if (x < width - 1) visit(p + 1);
-  if (p >= width) visit(p - width);
-  if (p + width < size) visit(p + width);
-}
 
 function growIntoBorders(labels: Int16Array, wall: Uint8Array, width: number) {
   const size = labels.length;
@@ -106,64 +100,6 @@ function splitWalls(
   const reach = (Math.ceil(borderWidth / 2) + 1) * CHAMFER_STEP;
   for (let p = 0; p < size; p++) if (distance[p] > reach) splitLabels[p] = -1;
   return { splitLabels, borderWidth };
-}
-
-function borderDistance(
-  border: (p: number) => boolean,
-  width: number,
-  size: number,
-): Int32Array {
-  const distance = new Int32Array(size);
-  for (let p = 0; p < size; p++) if (border(p)) distance[p] = UNREACHED;
-  const relax = (p: number, dx: number, dy: number, step: number) => {
-    const x = (p % width) + dx;
-    const q = p + dy * width + dx;
-    if (x < 0 || x >= width || q < 0 || q >= size) return;
-    distance[p] = Math.min(distance[p], distance[q] + step);
-  };
-  for (let p = 0; p < size; p++) {
-    if (distance[p] === 0) continue;
-    relax(p, -1, 0, CHAMFER_STEP);
-    relax(p, 0, -1, CHAMFER_STEP);
-    relax(p, -1, -1, CHAMFER_DIAGONAL);
-    relax(p, 1, -1, CHAMFER_DIAGONAL);
-  }
-  for (let p = size - 1; p >= 0; p--) {
-    if (distance[p] === 0) continue;
-    relax(p, 1, 0, CHAMFER_STEP);
-    relax(p, 0, 1, CHAMFER_STEP);
-    relax(p, 1, 1, CHAMFER_DIAGONAL);
-    relax(p, -1, 1, CHAMFER_DIAGONAL);
-  }
-  return distance;
-}
-
-function fillEnclosedGaps(labels: Int16Array, width: number) {
-  const size = labels.length;
-  const seen = new Uint8Array(size);
-  for (let start = 0; start < size; start++) {
-    if (labels[start] !== -1 || seen[start]) continue;
-    seen[start] = 1;
-    const gap = [start];
-    const around = new Set<number>();
-    let touchesEdge = false;
-    for (let i = 0; i < gap.length; i++) {
-      const p = gap[i];
-      const x = p % width;
-      if (x === 0 || x === width - 1 || p < width || p + width >= size)
-        touchesEdge = true;
-      forEachNeighbor(p, width, size, (q) => {
-        if (labels[q] !== -1) around.add(labels[q]);
-        else if (!seen[q]) {
-          seen[q] = 1;
-          gap.push(q);
-        }
-      });
-    }
-    const [label] = around;
-    if (touchesEdge || around.size !== 1 || label < 0) continue;
-    for (const p of gap) labels[p] = label;
-  }
 }
 
 export function buildClickableRegions(
@@ -279,30 +215,60 @@ interface Bounds {
   height: number;
 }
 
+export type Box = [number, number, number, number];
+
+type LandEntry = ContinentLand | undefined | null;
+
 const continentLandByRegions = new WeakMap<
   ClickableRegions,
-  Map<string, ContinentLand | undefined>
+  Map<string, LandEntry>
 >();
+const boxesByRegions = new WeakMap<ClickableRegions, Box[]>();
+const landJobs = new Map<number, (svg: string | null) => void>();
+let landWorker: Worker | null = null;
+let lastLandJobId = 0;
+
+export function regionBoxes(regions: ClickableRegions): Box[] {
+  const cached = boxesByRegions.get(regions);
+  if (cached) return cached;
+  const boxes: Box[] = [];
+  const { fillLabels, width } = regions;
+  for (let i = 0; i < fillLabels.length; i++) {
+    const id = fillLabels[i];
+    if (id < 0) continue;
+    const x = i % width;
+    const y = (i - x) / width;
+    const box = boxes[id];
+    if (!box) {
+      boxes[id] = [x, y, x + 1, y + 1];
+      continue;
+    }
+    box[0] = Math.min(box[0], x);
+    box[1] = Math.min(box[1], y);
+    box[2] = Math.max(box[2], x + 1);
+    box[3] = Math.max(box[3], y + 1);
+  }
+  boxesByRegions.set(regions, boxes);
+  return boxes;
+}
 
 function memberBounds(
   regions: ClickableRegions,
-  isMember: Uint8Array,
+  group: ContinentTerritory[],
   margin: number,
 ): Bounds | null {
-  const { width, height, fillLabels } = regions;
-  let left = width;
-  let top = height;
+  const boxes = regionBoxes(regions);
+  let left = regions.width;
+  let top = regions.height;
   let right = -1;
   let bottom = -1;
-  for (let p = 0; p < fillLabels.length; p++) {
-    const id = fillLabels[p];
-    if (id < 0 || !isMember[id]) continue;
-    const x = p % width;
-    const y = (p - x) / width;
-    left = Math.min(left, x);
-    right = Math.max(right, x);
-    top = Math.min(top, y);
-    bottom = Math.max(bottom, y);
+  for (const { id } of group) {
+    const box = boxes[id];
+    if (!box) continue;
+    left = Math.min(left, box[0]);
+    top = Math.min(top, box[1]);
+    right = Math.max(right, box[2] - 1);
+    bottom = Math.max(bottom, box[3] - 1);
   }
   if (right < 0) return null;
   return {
@@ -330,48 +296,88 @@ function copyWindow(regions: ClickableRegions, bounds: Bounds): Int16Array {
   return copy;
 }
 
-function buildContinentLand(
+function continentJob(
   regions: ClickableRegions,
   group: ContinentTerritory[],
   allTerritories: ContinentTerritory[],
-): ContinentLand | undefined {
+): { bounds: Bounds; input: ContinentOutlineInput } | null {
+  const bounds = memberBounds(regions, group, continentReach(regions) + 2);
+  if (!bounds) return null;
   const isMember = new Uint8Array(1 << 15);
   for (const t of group) isMember[t.id] = 1;
   const isLand = new Uint8Array(1 << 15);
   for (const t of allTerritories) isLand[t.id] = 1;
-  const reach = continentReach(regions) * CHAMFER_STEP;
-  const bounds = memberBounds(regions, isMember, continentReach(regions) + 2);
-  if (!bounds) return undefined;
+  return {
+    bounds,
+    input: {
+      fills: copyWindow(regions, bounds),
+      width: bounds.width,
+      height: bounds.height,
+      isMember,
+      isLand,
+      reach: continentReach(regions) * CHAMFER_STEP,
+    },
+  };
+}
 
-  const { x, y, width, height } = bounds;
-  const size = width * height;
-  const fills = copyWindow(regions, bounds);
-  const belongs = (p: number) => fills[p] >= 0 && isMember[fills[p]] === 1;
-  const memberDistance = borderDistance((p) => !belongs(p), width, size);
-  const nearMember = (p: number) =>
-    belongs(p) || (fills[p] < 0 && memberDistance[p] <= reach);
-  const farDistance = borderDistance(nearMember, width, size);
-  const labels = new Int16Array(size);
-  for (let p = 0; p < size; p++) {
-    if (belongs(p) || (nearMember(p) && farDistance[p] > reach)) labels[p] = 0;
-    else labels[p] = fills[p] >= 0 && isLand[fills[p]] ? -2 : -1;
-  }
-  fillEnclosedGaps(labels, width);
-  const traced = traceRegionShapes(labels, width, height, Infinity).get(0);
-  if (!traced) return undefined;
-
+function assembleContinentLand(
+  regions: ClickableRegions,
+  group: ContinentTerritory[],
+  bounds: Bounds,
+  svg: string,
+): ContinentLand {
   const outline = new Path2D();
-  outline.addPath(traced.outline, new DOMMatrix().translate(x, y));
+  outline.addPath(
+    new Path2D(svg),
+    new DOMMatrix().translate(bounds.x, bounds.y),
+  );
   const land = new Path2D();
   for (const t of group) land.addPath(regions.shapes.get(t.id)!.fill);
   return { outline, land };
+}
+
+function startLandJob(
+  input: ContinentOutlineInput,
+  done: (svg: string | null) => void,
+) {
+  if (!landWorker) {
+    const worker = new Worker(
+      new URL('./continentWorker.ts', import.meta.url),
+      { type: 'module' },
+    );
+    worker.onmessage = (
+      event: MessageEvent<{ id: number; svg: string | null }>,
+    ) => {
+      const finish = landJobs.get(event.data.id);
+      landJobs.delete(event.data.id);
+      finish?.(event.data.svg);
+    };
+    worker.onerror = () => {
+      worker.terminate();
+      const unfinished = [...landJobs.values()];
+      landJobs.clear();
+      landWorker = null;
+      for (const finish of unfinished) finish(null);
+    };
+    landWorker = worker;
+  }
+  lastLandJobId += 1;
+  landJobs.set(lastLandJobId, done);
+  landWorker.postMessage({ id: lastLandJobId, ...input }, [
+    input.fills.buffer as ArrayBuffer,
+  ]);
+}
+
+export function continentLandsPending(): boolean {
+  return landJobs.size > 0;
 }
 
 export function continentLand(
   unlockedRegions: ClickableRegions,
   group: ContinentTerritory[],
   allTerritories: ContinentTerritory[],
-): ContinentLand | undefined {
+  background: boolean,
+): LandEntry {
   const regions = unlockedRegions.base ?? unlockedRegions;
   let cache = continentLandByRegions.get(regions);
   if (!cache) {
@@ -379,12 +385,29 @@ export function continentLand(
     continentLandByRegions.set(regions, cache);
   }
   const key = group.map((t) => t.id).join(',');
-  if (cache.has(key)) return cache.get(key);
-  const built = group.every((t) => regions.shapes.has(t.id))
-    ? buildContinentLand(regions, group, allTerritories)
-    : undefined;
-  cache.set(key, built);
-  return built;
+  if (cache.has(key)) {
+    const cached = cache.get(key);
+    if (cached !== null || background) return cached;
+  }
+  const job = group.every((t) => regions.shapes.has(t.id))
+    ? continentJob(regions, group, allTerritories)
+    : null;
+  if (!job) {
+    cache.set(key, undefined);
+    return undefined;
+  }
+  const finish = (svg: string | null) =>
+    cache.set(
+      key,
+      svg ? assembleContinentLand(regions, group, job.bounds, svg) : undefined,
+    );
+  if (!background) {
+    finish(continentOutlineSvg(job.input));
+    return cache.get(key);
+  }
+  cache.set(key, null);
+  startLandJob(job.input, finish);
+  return null;
 }
 
 export function sharedBorders(

@@ -29,12 +29,16 @@ import { getAttackPath } from '../../logic/attack';
 import { formatTroops } from '../../logic/formatTroops';
 import { getFortifyPath } from '../../logic/fortify';
 import type { SeaTerritory, Territory } from '../../mapData';
-import type { ClickableRegions } from '../../regions/clickableRegions';
+import {
+  continentLandsPending,
+  type ClickableRegions,
+} from '../../regions/clickableRegions';
 import type { ReplayData } from '../../replay/replay';
 import { useReplay } from '../../replay/replay';
 import { insetPolygon, TILE_LINE_WIDTH } from '../../tiles/tileGeometry';
 import type { DrawCanvasParams } from '../draw/drawCanvas';
 import { drawGameMapCanvas } from '../draw/drawCanvas';
+import { layersSettling } from '../draw/layerCache';
 import type { Point } from '../helpers';
 import { useArrowFlash } from './canvas/useArrowFlash';
 import { useTroopAnimations } from './canvas/useTroopAnimations';
@@ -108,9 +112,10 @@ export function useGameSocketEvents({
     function step() {
       pruneAnimations();
       if (drawParamsRef.current) drawGameMapCanvas(drawParamsRef.current);
-      animationFrameRef.current = hasActiveAnimations()
-        ? requestAnimationFrame(step)
-        : null;
+      animationFrameRef.current =
+        hasActiveAnimations() || layersSettling() || continentLandsPending()
+          ? requestAnimationFrame(step)
+          : null;
     }
     animationFrameRef.current = requestAnimationFrame(step);
   }, []);

@@ -494,40 +494,41 @@ const MapGenerationModal = forwardRef<MapGenerationModalHandle, Props>(
         </Modal.Body>
         <Modal.Footer>
           {(generating || applying) && (
-            <div className="d-flex align-items-center gap-2 flex-grow-1 me-auto">
+            <div className="d-flex flex-column flex-grow-1 w-50 me-auto">
               <GenerationProgress
                 text={generating ? 'Generating map…' : 'Applying map…'}
                 now={generating ? progress * 100 : 100}
                 animated={!generating}
-                className="flex-grow-1"
               />
             </div>
           )}
-          <Button
-            className="d-inline-flex align-items-center justify-content-center gap-1"
-            variant="info"
-            disabled={generating || applying || !!seedMessage}
-            onClick={handleGenerate}
-          >
-            <SpinningGears />
-            {generating ? 'Generating…' : 'Generate'}
-          </Button>
-          <Button
-            className="d-inline-flex align-items-center justify-content-center gap-1"
-            disabled={!result || applying}
-            onClick={handleUse}
-          >
-            <WhiteIcon path="/icons/check.svg" />
-            {applying ? 'Applying…' : 'Use this map'}
-          </Button>
-          <Button
-            className="d-inline-flex align-items-center justify-content-center gap-1"
-            variant="secondary"
-            onClick={onHide}
-          >
-            <WhiteIcon path="/icons/close.svg" />
-            Cancel
-          </Button>
+          <div className="d-flex gap-2">
+            <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              variant="info"
+              disabled={generating || applying || !!seedMessage}
+              onClick={handleGenerate}
+            >
+              <SpinningGears />
+              {generating ? 'Generating…' : 'Generate'}
+            </Button>
+            <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              disabled={!result || applying}
+              onClick={handleUse}
+            >
+              <WhiteIcon path="/icons/check.svg" />
+              {applying ? 'Applying…' : 'Use this map'}
+            </Button>
+            <Button
+              className="d-inline-flex align-items-center justify-content-center gap-1"
+              variant="secondary"
+              onClick={onHide}
+            >
+              <WhiteIcon path="/icons/close.svg" />
+              Cancel
+            </Button>
+          </div>
         </Modal.Footer>
       </Modal>
     );

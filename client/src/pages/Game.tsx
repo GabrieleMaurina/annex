@@ -452,7 +452,7 @@ function Game({
 
   return (
     <>
-      {startGates > 0 && <Gate key={startGates} silent />}
+      {startGates > 0 && <Gate key={`gate-${startGates}`} silent />}
       <SettingsMenu
         hidden={(showMap && gamePanelOpen) || uiHidden}
         onOpenChange={setSettingsMenuOpen}

@@ -1,14 +1,16 @@
 import { lighten } from '../../../lib/palette';
 import type { Point } from '../../GameMap/helpers';
 import type { Territory } from '../../mapData';
-import type { ClickableRegions } from '../../regions/clickableRegions';
+import {
+  regionBoxes,
+  type Box,
+  type ClickableRegions,
+} from '../../regions/clickableRegions';
 import { animationNow, isClockVirtual } from '../clock';
 
 const CAPTURE_MS = 1000;
 const RING_WIDTH = 0.15;
 export const RING_LIGHTEN = 0.6;
-
-type Box = [number, number, number, number];
 
 export interface Capture {
   from: string;
@@ -44,7 +46,6 @@ interface Tracker {
 
 const trackers = new WeakMap<HTMLCanvasElement, Tracker>();
 const sources = new Map<number, number>();
-const boxesByRegions = new WeakMap<ClickableRegions, Box[]>();
 let activeUntil = 0;
 
 export function noteCaptureSource(territoryId: number, sourceId: number) {
@@ -158,30 +159,6 @@ function rippleIn(
     ring: Math.sin(Math.PI * progress),
     ringWidth,
   };
-}
-
-function regionBoxes(regions: ClickableRegions): Box[] {
-  const cached = boxesByRegions.get(regions);
-  if (cached) return cached;
-  const boxes: Box[] = [];
-  const { fillLabels, width } = regions;
-  for (let i = 0; i < fillLabels.length; i++) {
-    const id = fillLabels[i];
-    if (id < 0) continue;
-    const x = i % width;
-    const y = (i - x) / width;
-    const box = boxes[id];
-    if (!box) {
-      boxes[id] = [x, y, x + 1, y + 1];
-      continue;
-    }
-    box[0] = Math.min(box[0], x);
-    box[1] = Math.min(box[1], y);
-    box[2] = Math.max(box[2], x + 1);
-    box[3] = Math.max(box[3], y + 1);
-  }
-  boxesByRegions.set(regions, boxes);
-  return boxes;
 }
 
 export function regionRipple(

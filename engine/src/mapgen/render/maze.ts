@@ -375,17 +375,31 @@ function gapPlacement(
   const separatesOwnerFromVoid =
     (isOwner(labelBefore) && labelAfter < 0) ||
     (labelBefore < 0 && isOwner(labelAfter));
-  if (!crossesDecoration && !insideVoid && !separatesOwnerFromVoid) return null;
+  const separatesOwners =
+    labelBefore >= 0 &&
+    labelAfter >= 0 &&
+    labelBefore !== labelAfter &&
+    isOwner(labelBefore) &&
+    isOwner(labelAfter);
+  if (
+    !crossesDecoration &&
+    !insideVoid &&
+    !separatesOwnerFromVoid &&
+    !separatesOwners
+  ) {
+    return null;
+  }
 
   const middle = pixels[(run.start + run.end) >> 1];
   const cx = middle % width;
   const cy = (middle / width) | 0;
-  const normal = crossesDecoration
-    ? lineDirection
-    : ((insideVoid
-        ? normalOfWall(wallMask, width, height, cx, cy)
-        : directionTowards(labelGrid, width, height, cx, cy, isOwner)) ??
-      lineDirection);
+  const normal =
+    crossesDecoration || separatesOwners
+      ? lineDirection
+      : ((insideVoid
+          ? normalOfWall(wallMask, width, height, cx, cy)
+          : directionTowards(labelGrid, width, height, cx, cy, isOwner)) ??
+        lineDirection);
   return {
     cx,
     cy,
@@ -436,11 +450,13 @@ function clearGaps(
     if (!gap[i] || labelGrid[i] < 0) continue;
     const x = i % width;
     const y = (i / width) | 0;
+    const bordersOther = (j: number) =>
+      labelGrid[j] < 0 || (gap[j] === 1 && labelGrid[j] !== labelGrid[i]);
     if (
-      (x > 0 && labelGrid[i - 1] < 0) ||
-      (x + 1 < width && labelGrid[i + 1] < 0) ||
-      (y > 0 && labelGrid[i - width] < 0) ||
-      (y + 1 < height && labelGrid[i + width] < 0)
+      (x > 0 && bordersOther(i - 1)) ||
+      (x + 1 < width && bordersOther(i + 1)) ||
+      (y > 0 && bordersOther(i - width)) ||
+      (y + 1 < height && bordersOther(i + width))
     ) {
       boundary[i] = 1;
     }

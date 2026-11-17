@@ -365,12 +365,55 @@ export function getAnimationDuration(type: AnimationType): number {
   return DURATIONS[type];
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  return [
-    parseInt(hex.slice(1, 3), 16),
-    parseInt(hex.slice(3, 5), 16),
-    parseInt(hex.slice(5, 7), 16),
-  ];
+interface LabelSprite {
+  canvas: HTMLCanvasElement;
+  width: number;
+  height: number;
+  baseline: number;
+}
+
+const MAX_LABEL_SPRITES = 256;
+const labelSprites = new Map<string, LabelSprite>();
+
+function labelSprite(
+  text: string,
+  color: string,
+  radius: number,
+  dpr: number,
+): LabelSprite {
+  const key = `${text}|${color}|${radius}|${dpr}`;
+  const cached = labelSprites.get(key);
+  if (cached) return cached;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
+  const font = `bold ${radius}px ${CANVAS_FONT_FAMILY}`;
+  const lineWidth = radius * 0.15;
+  ctx.font = font;
+  const metrics = ctx.measureText(text);
+  const ascent = metrics.actualBoundingBoxAscent;
+  canvas.width = Math.ceil((metrics.width + 2 * lineWidth) * dpr);
+  canvas.height = Math.ceil(
+    (ascent + metrics.actualBoundingBoxDescent + 2 * lineWidth) * dpr,
+  );
+  const width = canvas.width / dpr;
+  ctx.scale(dpr, dpr);
+  ctx.font = font;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.lineWidth = lineWidth;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.strokeText(text, width / 2, lineWidth + ascent);
+  ctx.fillStyle = color;
+  ctx.fillText(text, width / 2, lineWidth + ascent);
+  if (labelSprites.size >= MAX_LABEL_SPRITES) labelSprites.clear();
+  const sprite = {
+    canvas,
+    width,
+    height: canvas.height / dpr,
+    baseline: lineWidth + ascent,
+  };
+  labelSprites.set(key, sprite);
+  return sprite;
 }
 
 export function drawLabel(
@@ -382,19 +425,24 @@ export function drawLabel(
 ) {
   if (!a.label) return;
   const labelProgress = Math.min(1, (now - a.startedAt) / LABEL_DURATION);
-  const alpha = 1 - labelProgress;
-  const [r, g, b] = hexToRgb(a.labelColor ?? '#ffffff');
   const scale = radiusScale(radius);
-  const x = p.x;
-  const y = p.y - radius - (LABEL_GAP + labelProgress * LABEL_RISE) * scale;
+  const sprite = labelSprite(
+    a.label,
+    a.labelColor ?? '#ffffff',
+    Math.round(radius * 2) / 2,
+    ctx.getTransform().a,
+  );
   ctx.save();
-  ctx.font = `bold ${radius}px ${CANVAS_FONT_FAMILY}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.lineWidth = radius * 0.15;
-  ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
-  ctx.strokeText(a.label, x, y);
-  ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  ctx.fillText(a.label, x, y);
+  ctx.globalAlpha = 1 - labelProgress;
+  ctx.drawImage(
+    sprite.canvas,
+    p.x - sprite.width / 2,
+    p.y -
+      radius -
+      (LABEL_GAP + labelProgress * LABEL_RISE) * scale -
+      sprite.baseline,
+    sprite.width,
+    sprite.height,
+  );
   ctx.restore();
 }

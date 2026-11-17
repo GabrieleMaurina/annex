@@ -3,6 +3,32 @@ export interface RegionShape {
   outline: Path2D;
 }
 
+interface PathSink {
+  moveTo(x: number, y: number): void;
+  lineTo(x: number, y: number): void;
+  closePath(): void;
+}
+
+class SvgPath implements PathSink {
+  private commands: string[] = [];
+
+  moveTo(x: number, y: number) {
+    this.commands.push(`M${x} ${y}`);
+  }
+
+  lineTo(x: number, y: number) {
+    this.commands.push(`L${x} ${y}`);
+  }
+
+  closePath() {
+    this.commands.push('Z');
+  }
+
+  toString() {
+    return this.commands.join('');
+  }
+}
+
 const CORNER_CUT = 0.5;
 
 function boundaryEdges(
@@ -81,14 +107,14 @@ function signedArea(points: number[]): number {
   return area / 2;
 }
 
-function appendLoop(path: Path2D, points: number[]) {
+function appendLoop(path: PathSink, points: number[]) {
   path.moveTo(points[0], points[1]);
   for (let i = 2; i < points.length; i += 2)
     path.lineTo(points[i], points[i + 1]);
   path.closePath();
 }
 
-function appendCutLoop(path: Path2D, points: number[]) {
+function appendCutLoop(path: PathSink, points: number[]) {
   const n = points.length;
   for (let i = 0; i < n; i += 2) {
     const x = points[i];
@@ -142,4 +168,24 @@ export function traceRegionShapes(
     shapes.set(id, { fill, outline });
   }
   return shapes;
+}
+
+export function traceOutlineSvgs(
+  labels: Int16Array,
+  width: number,
+  height: number,
+  minHoleArea: number,
+): Map<number, string> {
+  const stride = width + 1;
+  const outlines = new Map<number, string>();
+  for (const [id, edges] of boundaryEdges(labels, width, height)) {
+    const outline = new SvgPath();
+    for (const loop of chainLoops(edges)) {
+      const points = corners(loop, stride);
+      const area = signedArea(points);
+      if (area > 0 || area <= -minHoleArea) appendCutLoop(outline, points);
+    }
+    outlines.set(id, outline.toString());
+  }
+  return outlines;
 }

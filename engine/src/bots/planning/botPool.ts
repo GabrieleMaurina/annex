@@ -19,10 +19,16 @@ function getPool(): WorkerPool<PlanBotTurnInput, PlanBotTurnResult> {
   return pool;
 }
 
+function withoutImage<T extends { imageSrc: string }>(map: T | null): T | null {
+  return map && { ...map, imageSrc: '' };
+}
+
 function planningGame(game: Game, botId: number): Game {
   const botLog = game.logs.get(botId);
   return {
     ...game,
+    generatedMap: withoutImage(game.generatedMap),
+    playerMap: withoutImage(game.playerMap),
     replayFrames: [],
     replayTurnMarkers: [],
     replayChat: [],

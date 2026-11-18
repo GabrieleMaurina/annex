@@ -13,6 +13,7 @@ function Personalities() {
       <WikiTable
         head={['Personality', 'Style']}
         rows={[
+          ['Random', 'Picks one for you. Revealed when the game ends.'],
           [
             'Balanced',
             'A blend of Taker, Breaker, Killer and Vengeful. A solid default.',
@@ -53,7 +54,6 @@ function Personalities() {
             'Opportunist',
             'Picks off weakly held territories, especially ones guarded by a single troop.',
           ],
-          ['Random', 'Picks one for you. Revealed when the game ends.'],
         ]}
       />
       <p>

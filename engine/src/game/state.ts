@@ -1,6 +1,6 @@
 import { getGameMap } from '../maps/maps';
 import { playersById } from '../session/players';
-import { AllianceViewState, Game, Player } from '../types';
+import { AllianceViewState, DEFAULT_PLAYER_ODDS, Game, Player } from '../types';
 import { anonymousName, isAnonymous, isAnonymousPlaying } from './anonymous';
 import { canReturnPhase } from './combat/autoSkip';
 import { attackFullPath } from './combat/seaBridge';
@@ -165,6 +165,8 @@ export function gameSummary(game: Game) {
       fogOfWar: game.fogOfWar,
       alliances: game.alliances,
       anonymous: game.anonymous,
+      gameType: game.gameType,
+      odds: game.odds,
       turnDuration: game.turnDuration,
       attackIncrement: game.attackIncrement,
       maxRounds: game.maxRounds,
@@ -287,6 +289,8 @@ export function gameState(game: Game) {
       cooldownUntil?: number;
     }[],
     anonymous: game.anonymous,
+    gameType: game.gameType,
+    odds: game.odds,
     blitz: game.blitz,
     bounties: game.bounties,
     capitalRefund: game.capitalRefund,
@@ -400,6 +404,8 @@ export function gameState(game: Game) {
         ...player,
         team: game.playerTeams.get(player.id) ?? 0,
         color: game.playerColors.get(player.id) ?? 0,
+        odds: game.playerOdds.get(player.id) ?? { ...DEFAULT_PLAYER_ODDS },
+        ready: game.hostId !== player.id && game.readyIds.has(player.id),
         territoryCount: territoryCount as number | null,
         troopCount: (stats.get(player.id)?.troopCount ?? 0) as number | null,
         capitalCount: stats.get(player.id)?.capitalCount ?? 0,

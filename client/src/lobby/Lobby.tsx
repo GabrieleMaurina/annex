@@ -5,12 +5,14 @@ import EmojiTableOverlay from '../common/emojiTable/EmojiTableOverlay';
 import { useTableEmojiReactions } from '../common/emojiTable/useTableEmojiReactions';
 import { formatError } from '../common/formatError';
 import WhiteIcon from '../common/icons/WhiteIcon';
+import InviteFriendsButton from '../common/invites/InviteFriendsButton';
 import BurgerMenu from '../common/menus/BurgerMenu';
 import TipSpan from '../common/tooltips/TipSpan';
 import { connector } from '../connector';
 import { applyPreset, uploadEarthMap } from '../lib/gameSetup';
 import {
   getGameLocalPlayers,
+  getGameSettings,
   getRestoredBotInput,
   saveGameSettings,
 } from '../lib/player';
@@ -23,6 +25,7 @@ import type {
   GameSettingsInput,
   GameState,
   GenerateMapInput,
+  PlayerOdds,
   SavedBot,
 } from '../lib/types';
 import type { EarthRecipe } from '../maps/editor/world/generateWorldMap';
@@ -187,6 +190,12 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     });
   }
 
+  function setReady(ready: boolean) {
+    connector.setReady(ready, (res: Ack) => {
+      if (res.ok) setGame(res.game);
+    });
+  }
+
   function cycleBotColor(botPlayerId: number) {
     connector.cycleBotColor({ botPlayerId }, (res: Ack) => {
       if (res.ok) setGame(res.game);
@@ -234,6 +243,10 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
     });
   }
 
+  function setPlayerOdds(playerId: number, odds: PlayerOdds) {
+    applySettings({ playerOdds: [{ playerId, ...odds }] });
+  }
+
   function setBotProfile(
     botPlayerId: number,
     difficulty: BotDifficulty | 'random',
@@ -274,6 +287,10 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
   function ruleSettings(state: GameState) {
     return {
       gameMode: state.gameMode,
+      gameType: connector.isOffline()
+        ? getGameSettings().gameType
+        : state.gameType,
+      odds: state.gameType === 'casual' ? state.odds : 'off',
       blitz: state.blitz,
       defenceDice: state.defenceDice,
       attackDice: state.attackDice,
@@ -362,15 +379,6 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
   }
 
   function startGame() {
-    if (
-      !connector.isOffline() &&
-      game.players.filter((p) => !p.isBot).length < 2
-    ) {
-      persistSettings(game);
-      connector.convertToOffline(game);
-      navigate('/games/offline');
-      return;
-    }
     connector.startGame((res: Ack) => {
       if (!res.ok) {
         setSettingsError(res.error);
@@ -378,6 +386,11 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
       }
       setSettingsError('');
       persistSettings(game);
+      if (res.game.state === 'lobby') {
+        connector.convertToOffline(res.game);
+        navigate('/games/offline');
+        return;
+      }
       setGame(res.game);
     });
   }
@@ -439,6 +452,12 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
         />
       </div>
 
+      {!connector.isOffline() && account && game.gameType === 'casual' && (
+        <div className="text-center mb-3">
+          <InviteFriendsButton />
+        </div>
+      )}
+
       <PlayerRoster
         game={game}
         isHost={isHost}
@@ -446,6 +465,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
         selfId={selfId}
         setTeams={setTeams}
         cycleColor={cycleColor}
+        setReady={setReady}
         cycleBotColor={cycleBotColor}
         removePlayer={removePlayer}
         removeEmptySlot={removeEmptySlot}
@@ -465,6 +485,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
           connector.isOffline() ? cycleLocalPlayerColor : undefined
         }
         setBotProfile={setBotProfile}
+        setPlayerOdds={setPlayerOdds}
         removeBot={removeBot}
         rowRefs={rowRefs}
         nameCellRefs={nameCellRefs}

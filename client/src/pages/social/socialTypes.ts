@@ -37,3 +37,36 @@ export interface MessagesOverview {
   conversations: Conversation[];
   blocked: BlockedPlayer[];
 }
+
+export type InviteKind = 'challenge' | 'invite';
+
+export interface IncomingInvite {
+  id: string;
+  kind: InviteKind;
+  fromUserId: string;
+  fromName: string;
+  gameName: string;
+  newGame: boolean;
+  accepted: boolean;
+  ready: boolean;
+}
+
+export interface OutgoingInvite {
+  id: string;
+  kind: InviteKind;
+  toUserId: string;
+  toName: string;
+  gameName: string;
+  newGame: boolean;
+  accepted: boolean;
+  ready: boolean;
+}
+
+export interface InviteSetup {
+  casual: boolean;
+}
+
+export interface InvitesOverview {
+  incoming: IncomingInvite[];
+  outgoing: OutgoingInvite[];
+}

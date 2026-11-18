@@ -120,6 +120,15 @@ export function getFriendsOverview(userId: string): Promise<FriendsOverview> {
   });
 }
 
+export function areFriends(a: string, b: string): Promise<boolean> {
+  if (!ObjectId.isValid(a) || !ObjectId.isValid(b))
+    return Promise.resolve(false);
+  const [userA, userB] = sortedPair(a, b);
+  return collection()
+    .findOne({ userA, userB, status: 'accepted' })
+    .then((doc) => doc !== null);
+}
+
 type MutationResult = { ok: true } | { ok: false; error: string };
 
 export function sendFriendRequest(

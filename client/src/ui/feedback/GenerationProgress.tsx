@@ -15,7 +15,7 @@ export default function GenerationProgress({
 }: Props) {
   return (
     <>
-      <span className="small">{text}</span>
+      <span className="small text-nowrap">{text}</span>
       <ProgressBar now={now} animated={animated} className={className} />
     </>
   );

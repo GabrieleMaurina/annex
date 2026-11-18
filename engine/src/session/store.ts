@@ -179,6 +179,8 @@ export function removePlayerFromGame(game: Game, playerId: number) {
   game.playerIds = game.playerIds.filter((id) => id !== playerId);
   game.playerTeams.delete(playerId);
   game.playerColors.delete(playerId);
+  game.playerOdds.delete(playerId);
+  game.readyIds.delete(playerId);
 
   const promotedIndex =
     idx !== -1 && game.state === 'lobby' && game.playerIds.length < game.slots
@@ -236,10 +238,15 @@ function handleLobbyDisconnect(game: Game, player: Player) {
   const team = game.playerTeams.get(playerId) ?? 0;
   game.playerTeams.set(substituteId, team);
   game.playerTeams.delete(playerId);
+  game.readyIds.delete(playerId);
 
   const color = game.playerColors.get(playerId);
   if (color !== undefined) game.playerColors.set(substituteId, color);
   game.playerColors.delete(playerId);
+
+  const odds = game.playerOdds.get(playerId);
+  if (odds) game.playerOdds.set(substituteId, odds);
+  game.playerOdds.delete(playerId);
 
   addHostCandidate(game, substituteId);
   game.substituteFor.set(substituteId, ownerId);
@@ -263,6 +270,10 @@ export function reclaimSubstitutedSeat(game: Game, ownerId: number) {
   game.playerTeams.set(ownerId, game.playerTeams.get(substituteId) ?? 0);
   game.playerTeams.delete(substituteId);
   game.playerColors.delete(substituteId);
+  const odds = game.playerOdds.get(substituteId);
+  if (odds) game.playerOdds.set(ownerId, odds);
+  game.playerOdds.delete(substituteId);
+  game.readyIds.delete(substituteId);
   game.spectatorIds.unshift(substituteId);
 
   recomputeHost(game);

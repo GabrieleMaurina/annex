@@ -5,6 +5,49 @@ import WikiSection from '../../parts/WikiSection';
 function Setup() {
   return (
     <>
+      <WikiSection id="game-type" title="Game Type">
+        <p>
+          Ranked (the default) or Casual. A Casual game never changes
+          anyone&apos;s Elo, abandon penalties included (
+          <WikiLink to="ranking/elo" />
+          ). It is marked with a Casual badge in the lobby, the games list, the
+          players panel and the results. Everything else works exactly as in a
+          Ranked game. The setting is hidden in offline games, and Randomize
+          leaves it untouched.
+        </p>
+      </WikiSection>
+      <WikiSection id="odds" title="Odds">
+        <p>
+          Off by default, and only available in Casual games (offline games are
+          exempt). Odds handicap individual players so people of different skill
+          can enjoy the same game. When on, the players table gains three
+          columns the host sets for each player, bots included, and everyone
+          sees them.
+        </p>
+        <ul>
+          <li>
+            <strong>Territories:</strong> a percentage, 100% by default. The map
+            is split in proportion to everyone&apos;s percentage, so a player at
+            200% starts with twice the territories of a player at 100%. Every
+            player keeps at least one. It applies to Random, Semi and Custom
+            placement; with Custom, a player who has claimed their share is
+            skipped. Single placement gives everyone one territory.
+          </li>
+          <li>
+            <strong>Initial Troops:</strong> the player&apos;s starting troops
+            per territory, replacing Initial Troops for them.
+          </li>
+          <li>
+            <strong>Min Troops:</strong> the player&apos;s minimum
+            reinforcements per turn, replacing Min Troops for them.
+          </li>
+        </ul>
+        <p>
+          With Blitz Off, Initial Troops and Min Troops stop at 10. Turning Odds
+          off resets every player to the normal settings, and Randomize leaves
+          the setting untouched.
+        </p>
+      </WikiSection>
       <WikiSection id="placement" title="Placement">
         <p>
           Random, Semi, Custom or Single decides how territories and starting

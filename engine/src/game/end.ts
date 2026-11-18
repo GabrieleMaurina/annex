@@ -71,6 +71,7 @@ function emitGameEnded(game: Game): void {
   callbacks.onGameEnded?.({
     gameName: game.name,
     gameMode: game.gameMode,
+    gameType: game.gameType,
     aborted: game.draw?.reason === 'aborted',
     ranking,
   });

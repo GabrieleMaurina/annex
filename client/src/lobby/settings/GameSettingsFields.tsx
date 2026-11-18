@@ -84,11 +84,23 @@ function GameSettingsFields({
   const disabledKeys = new Set<string>();
   if (game.defenceDice >= MAX_DICE) disabledKeys.add('entrenchments');
   if (game.gameMode === 'team deathmatch') disabledKeys.add('alliances');
-  const blitzOffAllowed = isBlitzOffAllowed(game);
+  const blitzOffAllowed =
+    isBlitzOffAllowed(game) &&
+    !game.players.some(
+      (p) =>
+        (p.odds.troops ?? 0) > MAX_BLITZ_OFF_TROOPS ||
+        (p.odds.minTroops ?? 0) > MAX_BLITZ_OFF_TROOPS,
+    );
 
   function optionDisabled(def: GameSettingDef, option: string): boolean {
     const value = def.numeric ? Number(option) : option;
     if (def.key === 'blitz') return value === 'off' && !blitzOffAllowed;
+    if (def.key === 'gameType')
+      return value === 'ranked' && game.odds === 'on' && !connector.isOffline();
+    if (def.key === 'odds')
+      return (
+        value === 'on' && game.gameType === 'ranked' && !connector.isOffline()
+      );
     if (
       game.blitz === 'off' &&
       !isBlitzOffAllowed({ ...game, [def.key]: value })

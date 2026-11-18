@@ -75,6 +75,7 @@ export function generateMap(
     if (!res.ok) return callback({ ok: false, error: res.error });
 
     const generated = res.result;
+    current.readyIds.clear();
     current.mapName = generated.name;
     current.playerMap = null;
     current.generatedMap = {
@@ -149,6 +150,7 @@ export function clearMap(playerId: number): GameResponse {
   const game = games.get(playersById.get(playerId)?.gameName ?? '');
   if (!game) return { ok: false, error: 'game not found' };
   startMapRequest(game);
+  game.readyIds.clear();
   game.mapName = '';
   game.generatedMap = null;
   game.playerMap = null;
@@ -172,6 +174,7 @@ export function selectPlayerMap(
     return callback({ ok: false, error: 'game already started' });
 
   startMapRequest(game);
+  game.readyIds.clear();
   game.mapName = map.name;
   game.generatedMap = null;
   game.playerMap = {

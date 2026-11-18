@@ -70,6 +70,7 @@ import {
 import { registerHomeHandlers } from './home';
 import { createHttpApp } from './http/app';
 import { LiveGameRow, SeatProfile } from './http/liveGames';
+import { setInvitesEngine } from './invites/invites';
 import { gameRoomName } from './sockets/rooms';
 import {
   emitTo,
@@ -296,6 +297,7 @@ export const engine = createEngine(callbacks, {
 });
 setReputationEngine(engine);
 setBlockPeersEngine(engine);
+setInvitesEngine(engine);
 
 io.on('connection', (socket) => {
   const game = socket.handshake.query.game;

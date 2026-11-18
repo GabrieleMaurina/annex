@@ -6,6 +6,7 @@ export type LiveGameSummary = Omit<
 > & {
   hasPassword: boolean;
   gameMode: string;
+  gameType: string;
   minRank: string;
   minGames: number;
   minAccountAge: string;
@@ -204,6 +205,7 @@ function toSummary(row: LiveGameRow): LiveGameSummary {
     hasBots: row.hasBots,
     botCount: row.botCount,
     gameMode: row.settings.gameMode,
+    gameType: row.settings.gameType,
     minRank: row.settings.minRank,
     minGames: row.settings.minGames,
     minAccountAge: row.settings.minAccountAge,

@@ -6,14 +6,14 @@ export const GAME_MODE_HELP = (
     <ul className="mb-0 ps-3">
       <li>Supremacy: own every territory on the map.</li>
       <li>
+        Capitals: everyone places a capital at the start; win by owning every
+        territory, or by owning every capital from round 4 onward.
+      </li>
+      <li>
         Supremacy 3/4: control at least 3/4 of the map&apos;s territories.
       </li>
       <li>
         Supremacy 2/3: control at least 2/3 of the map&apos;s territories.
-      </li>
-      <li>
-        Capitals: everyone places a capital at the start; win by owning every
-        territory, or by owning every capital from round 4 onward.
       </li>
       <li>
         Team Deathmatch: players are split into teams; your team wins by owning
@@ -582,6 +582,63 @@ export const ANONYMOUS_HELP = (
         &quot;Game with &lt;number&gt;&quot;.
       </li>
     </ul>
+  </>
+);
+
+export const GAME_TYPE_HELP = (
+  <>
+    Whether the game counts toward player ratings.
+    <ul className="mb-0 ps-3">
+      <li>Ranked: ratings change for every player when the game ends.</li>
+      <li>
+        Casual: ratings never change. The game is marked as Casual everywhere it
+        is listed or played. Everything else works the same.
+      </li>
+    </ul>
+  </>
+);
+
+export const ODDS_HELP = (
+  <>
+    Handicaps that let players of different skill levels play each other. Only
+    available in Casual games.
+    <ul className="mb-0 ps-3">
+      <li>Off: every player starts equal.</li>
+      <li>
+        On: the players table gains three columns the host can set for each
+        player. Territories scales the share of the map a player starts with.
+        Initial Troops sets their starting troops per territory. Min Troops sets
+        their minimum reinforcements per turn. Everyone sees every player&apos;s
+        odds, bots included. Turning Odds off resets them.
+      </li>
+    </ul>
+  </>
+);
+
+export const TERRITORIES_ODDS_HELP = (
+  <>
+    Scales this player&apos;s share of the map at the start. Everyone starts at
+    100%, and the map is split in proportion to these values, so a player at
+    200% gets twice as many territories as a player at 100%. Other players do
+    not need to change. Every player keeps at least one territory.
+  </>
+);
+
+export const INITIAL_TROOPS_ODDS_HELP = (
+  <>
+    {INITIAL_TROOPS_HELP}
+    <div className="mt-1">
+      Set for this player only. A highlighted value replaces the game setting.
+    </div>
+  </>
+);
+
+export const MIN_TROOPS_ODDS_HELP = (
+  <>
+    {MIN_TROOPS_HELP}
+    <div className="mt-1">
+      Set for this player only. A highlighted value replaces the game setting.
+    </div>
   </>
 );
 

@@ -4,6 +4,7 @@ import ConductButtons from './conduct/ConductButtons';
 import type { FriendState } from './conduct/friendState';
 import { friendStateOf } from './conduct/friendState';
 import { formatError } from './formatError';
+import InviteButtons from './invites/InviteButtons';
 
 interface Props {
   userId: string;
@@ -37,7 +38,7 @@ function ProfileActions({ userId, username, onReport }: Props) {
   }
 
   return (
-    <div className="d-flex flex-column align-items-center gap-1">
+    <div className="d-flex flex-column gap-1">
       <ConductButtons
         userId={userId}
         username={username}
@@ -51,7 +52,15 @@ function ProfileActions({ userId, username, onReport }: Props) {
             : connector.blockUser(userId, done)
         }
       />
-      {notice && <div className="small text-danger">{notice}</div>}
+      {state !== 'blocked' && (
+        <InviteButtons
+          key={userId}
+          userId={userId}
+          username={username}
+          isFriend={state === 'friends'}
+        />
+      )}
+      {notice && <div className="small text-danger text-center">{notice}</div>}
     </div>
   );
 }

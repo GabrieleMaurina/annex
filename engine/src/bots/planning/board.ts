@@ -1,4 +1,4 @@
-import { territoryIncome } from '../../game/mechanics';
+import { minTroopsFor, territoryIncome } from '../../game/mechanics';
 import { upcomingSetValues } from '../../game/progression/cards';
 import { ClaimEvaluation, evaluateClaims } from '../claims/score';
 import { grudgeAgainst } from '../features/grudge';
@@ -234,7 +234,8 @@ function incomeEstimate(
         ).length * 2
       : 0;
   return (
-    (territoryIncome(ctx.game, owned) + capitals) *
+    (territoryIncome(ctx.game, owned, minTroopsFor(ctx.game, playerId)) +
+      capitals) *
     modeGoalFor(ctx).incomeFactor
   );
 }

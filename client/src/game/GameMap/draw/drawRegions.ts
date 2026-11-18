@@ -1,7 +1,8 @@
 import { TILE_SEAM_COLOR, TILE_WALL_COLOR } from 'engine';
-import { fillWithRipple, type Ripple } from '../../animations';
+import { paintRipple, type Ripple } from '../../animations';
 import {
   regionAt,
+  regionBoxes,
   type ClickableRegions,
   type ContinentLand,
 } from '../../regions/clickableRegions';
@@ -28,6 +29,33 @@ interface FillLayer {
 }
 
 const fillLayers = new WeakMap<ClickableRegions, FillLayer>();
+const scratch = document.createElement('canvas');
+const scratchCtx = scratch.getContext('2d')!;
+
+function fillRippledRegion(
+  ctx: CanvasRenderingContext2D,
+  regions: ClickableRegions,
+  id: number,
+  color: string,
+  ripple: Ripple,
+) {
+  const [left, top, right, bottom] = regionBoxes(regions)[id];
+  const x = left - 1;
+  const y = top - 1;
+  const width = right - x + 1;
+  const height = bottom - y + 1;
+  if (scratch.width < width) scratch.width = width;
+  if (scratch.height < height) scratch.height = height;
+  scratchCtx.setTransform(1, 0, 0, 1, -x, -y);
+  scratchCtx.clearRect(x, y, width, height);
+  scratchCtx.fillStyle = ripple.from;
+  scratchCtx.fill(regions.shapes.get(id)!.fill);
+  scratchCtx.globalCompositeOperation = 'source-atop';
+  paintRipple(scratchCtx, color, ripple);
+  scratchCtx.globalAlpha = 1;
+  scratchCtx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(scratch, 0, 0, width, height, x, y, width, height);
+}
 
 export function regionFillLayer(
   regions: ClickableRegions,
@@ -50,7 +78,12 @@ export function regionFillLayer(
   for (const [id, color] of colors) {
     const ripple = ripples.get(id);
     if (!ripple && layer.colors.get(id) === color) continue;
-    fillWithRipple(ctx, regions.shapes.get(id)!.fill, color, ripple);
+    if (ripple) {
+      fillRippledRegion(ctx, regions, id, color, ripple);
+    } else {
+      ctx.fillStyle = color;
+      ctx.fill(regions.shapes.get(id)!.fill);
+    }
   }
   layer.colors = new Map(colors);
   for (const id of ripples.keys()) if (colors.has(id)) layer.colors.set(id, '');

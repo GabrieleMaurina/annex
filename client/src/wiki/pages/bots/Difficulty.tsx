@@ -20,6 +20,10 @@ function Difficulty() {
           head={['Level', 'Behavior']}
           rows={[
             [
+              'Random',
+              'Picks a difficulty for you. The real one is revealed when the game ends.',
+            ],
+            [
               'Idle',
               'Never acts. Its turns are skipped at once. Turn-boundary effects like starvation and countdowns still apply. A target dummy for practice.',
             ],
@@ -35,10 +39,6 @@ function Difficulty() {
               'Hard',
               'Plans deeply, pursues several objectives at once, adapts during its turn, chooses when to cash in cards, and goes for continents and strong positions on purpose. Under fog it remembers what it saw.',
             ],
-            [
-              'Random',
-              'Picks a difficulty for you. The real one is revealed when the game ends.',
-            ],
           ]}
         />
       </WikiSection>
@@ -50,8 +50,9 @@ function Difficulty() {
             ).
           </li>
           <li>
-            Online games need at least two humans. A lone human with bots plays
-            offline instead (<WikiLink to="play/offline" />
+            Online games need at least two ready humans. If no other human is
+            ready when the host starts, the game plays offline instead (
+            <WikiLink to="play/offline" />
             ).
           </li>
         </ul>

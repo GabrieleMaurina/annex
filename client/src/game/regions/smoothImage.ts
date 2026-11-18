@@ -496,22 +496,21 @@ function uploadRipples(s: Smoother, ripples: Map<number, Ripple>) {
     const x = word(ripple.x + RIPPLE_OFFSET);
     const y = word(ripple.y + RIPPLE_OFFSET);
     const radius = word(ripple.radius);
-    pixels.set(
-      [
-        parseInt(ripple.from.slice(1, 3), 16),
-        parseInt(ripple.from.slice(3, 5), 16),
-        parseInt(ripple.from.slice(5, 7), 16),
-        255,
-        x >> 8,
-        x & 255,
-        y >> 8,
-        y & 255,
-        radius >> 8,
-        radius & 255,
-        Math.round(ripple.ring * 255),
-        Math.min(255, Math.round(ripple.ringWidth * RIPPLE_SCALE)),
-      ],
-      id * RIPPLE_TEXELS * 4,
+    const offset = id * RIPPLE_TEXELS * 4;
+    pixels[offset] = parseInt(ripple.from.slice(1, 3), 16);
+    pixels[offset + 1] = parseInt(ripple.from.slice(3, 5), 16);
+    pixels[offset + 2] = parseInt(ripple.from.slice(5, 7), 16);
+    pixels[offset + 3] = 255;
+    pixels[offset + 4] = x >> 8;
+    pixels[offset + 5] = x & 255;
+    pixels[offset + 6] = y >> 8;
+    pixels[offset + 7] = y & 255;
+    pixels[offset + 8] = radius >> 8;
+    pixels[offset + 9] = radius & 255;
+    pixels[offset + 10] = Math.round(ripple.ring * 255);
+    pixels[offset + 11] = Math.min(
+      255,
+      Math.round(ripple.ringWidth * RIPPLE_SCALE),
     );
   }
   uploadPixels(

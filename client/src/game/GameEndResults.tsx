@@ -2,6 +2,7 @@ import { isPointsMode } from 'engine';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Button, Container } from 'react-bootstrap';
+import CasualBadge from '../common/badges/CasualBadge';
 import ExportDataButton from '../common/export/ExportDataButton';
 import WhiteIcon from '../common/icons/WhiteIcon';
 import SharePageButton from '../common/menus/SharePageButton';
@@ -125,8 +126,9 @@ function GameEndResults({
             wins!
           </p>
         )}
-        {(duration || shareGameId) && (
+        {(duration || shareGameId || game.gameType === 'casual') && (
           <div className="d-flex justify-content-center align-items-center gap-2 mt-2">
+            <CasualBadge gameType={game.gameType} />
             {duration && (
               <span className="text-body-secondary">Duration: {duration}</span>
             )}

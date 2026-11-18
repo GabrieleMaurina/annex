@@ -1,6 +1,7 @@
 import {
   DEFAULT_MIN_REPUTATION,
   joinReputation,
+  MIN_REPUTATION,
   MIN_REPUTATION_VALUES,
   type OsmGeneratedMap,
 } from 'engine';
@@ -29,6 +30,7 @@ import type {
   GameRulesSettings,
   GameState,
   GenerateMapInput,
+  InviteSetup,
   SavedBot,
 } from './types';
 
@@ -214,17 +216,37 @@ function applyRules(
   );
 }
 
-export function applySavedGameSettings(): void {
-  const { mapGeneration, playerMapId, mapName, ...rules } = getGameSettings();
+const OPEN_SEAT_RULES = {
+  minRank: 'private',
+  minGames: 0,
+  minAccountAge: 'none',
+  minReputation: MIN_REPUTATION,
+};
+
+export function applySavedGameSettings(invite?: InviteSetup): void {
+  const { mapGeneration, playerMapId, mapName, gameType, ...savedRules } =
+    getGameSettings();
   void mapName;
+  const rules = connector.isOffline()
+    ? savedRules
+    : { ...savedRules, gameType };
   if (!isLoggedIn()) {
     applySavedMap(mapGeneration, playerMapId);
     seatBots(GUEST_SLOTS, GUEST_BOTS);
     return;
   }
-  applyRules(rules);
+  applyRules(
+    invite
+      ? {
+          ...rules,
+          ...OPEN_SEAT_RULES,
+          gameType: invite.casual ? 'casual' : gameType,
+        }
+      : rules,
+  );
   applySavedMap(mapGeneration, playerMapId);
-  seatBots(getGameSlots(), getGameBots());
+  if (invite) seatBots(2, []);
+  else seatBots(getGameSlots(), getGameBots());
   if (connector.isOffline())
     for (const name of getGameLocalPlayers()) connector.addLocalPlayer(name);
 }

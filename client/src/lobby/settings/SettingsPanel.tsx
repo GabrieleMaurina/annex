@@ -350,8 +350,11 @@ function SettingsPanel({
           </Form.Label>
           {mapPending && (
             <div className="d-flex align-items-center gap-2">
-              <div className="flex-grow-1">
-                <GenerationProgress text="Generating map…" />
+              <div className="flex-grow-1 d-flex align-items-center gap-2">
+                <GenerationProgress
+                  text="Generating map…"
+                  className="flex-grow-1"
+                />
               </div>
               {mapRegenerating && (
                 <Button

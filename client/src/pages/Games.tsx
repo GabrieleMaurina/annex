@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Container, Form, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import CasualBadge from '../common/badges/CasualBadge';
 import { useWhiteIcon } from '../common/icon';
 import {
   Field,
@@ -114,7 +115,10 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
     <tr role="button" onClick={onOpen}>
       <td>{endedAt.toLocaleDateString()}</td>
       <td>{endedAt.toLocaleTimeString()}</td>
-      <td>{row.name}</td>
+      <td>
+        {row.name}
+        <CasualBadge gameType={row.settings.gameType} className="ms-2" />
+      </td>
       <td>{row.mapName}</td>
       <td>{titleCase(row.gameMode)}</td>
       <td>

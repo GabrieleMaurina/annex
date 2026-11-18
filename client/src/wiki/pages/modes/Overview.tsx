@@ -25,6 +25,11 @@ function Overview() {
               <WikiLink key="a" to="modes/conquest" />,
             ],
             [
+              'Capitals',
+              'Owning every territory, or every capital from round 4.',
+              <WikiLink key="a" to="modes/capitals" />,
+            ],
+            [
               'Supremacy 3/4',
               'Owning at least 3/4 of the territories.',
               <WikiLink key="a" to="modes/conquest" />,
@@ -43,11 +48,6 @@ function Overview() {
               'Team Deathmatch',
               'Your team owning every territory.',
               <WikiLink key="a" to="modes/teams" />,
-            ],
-            [
-              'Capitals',
-              'Owning every territory, or every capital from round 4.',
-              <WikiLink key="a" to="modes/capitals" />,
             ],
             [
               '5-Round, 10-Round',

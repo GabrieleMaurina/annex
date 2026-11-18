@@ -1,4 +1,5 @@
 import { defenceDiceFor } from '../../game/combat/dice';
+import { minTroopsFor } from '../../game/mechanics';
 import { closedTiles } from '../../game/tiles/unlock';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { attackWinProbability } from '../features/combat';
@@ -89,7 +90,8 @@ export function chooseUnlock(ctx: PlanContext): UnlockChoice | null {
 }
 
 function marginalIncome(ctx: PlanContext, ownedCount: number): number {
-  const { minTroops, troopsPerTerritory } = ctx.game;
+  const { troopsPerTerritory } = ctx.game;
+  const minTroops = minTroopsFor(ctx.game, ctx.botId);
   return (
     Math.max(minTroops, (ownedCount + 1) * troopsPerTerritory) -
     Math.max(minTroops, ownedCount * troopsPerTerritory)

@@ -35,6 +35,7 @@ export interface EngineCallbacks {
   onGameEnded?(payload: {
     gameName: string;
     gameMode: string;
+    gameType: string;
     aborted: boolean;
     ranking: {
       playerId: number;

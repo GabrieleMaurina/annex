@@ -194,6 +194,14 @@ export const connector = {
       .catch(() => cb(false));
   },
 
+  isPlayerReachable(userId: string, cb: (reachable: boolean) => void): void {
+    httpGet<{ reachable: boolean }>(
+      '/presence?userId=' + encodeURIComponent(userId),
+    )
+      .then((res) => cb(res.reachable))
+      .catch(() => cb(false));
+  },
+
   watchGame(userId: string, cb: (gameName: string | null) => void): void {
     httpGet<{ gameName: string | null }>(
       '/games/watch?userId=' + encodeURIComponent(userId),
@@ -422,6 +430,10 @@ export const connector = {
 
   cycleColor(cb: AckCallback): void {
     route('game:cycleColor', undefined, cb);
+  },
+
+  setReady(ready: boolean, cb: AckCallback): void {
+    route('game:setReady', { ready }, cb);
   },
 
   nextPhase(cb: AckCallback): void {

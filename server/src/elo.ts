@@ -85,6 +85,7 @@ export function reconcileGameElos(existing: Set<string>): void {
 export function handleGameEnded(payload: {
   gameName: string;
   gameMode: string;
+  gameType: string;
   aborted: boolean;
   ranking: {
     playerId: number;
@@ -133,7 +134,8 @@ export function handleGameEnded(payload: {
         userId: string;
       } => entry.userId !== undefined,
     );
-  const contenders = ranked.length < 2 ? [] : ranked;
+  const contenders =
+    ranked.length < 2 || payload.gameType === 'casual' ? [] : ranked;
 
   return getElosByIds([...participants.values()])
     .then((ratings) => {

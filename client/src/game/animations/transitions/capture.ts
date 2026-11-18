@@ -135,21 +135,25 @@ function rippleIn(
     1,
     (animationNow() - capture.startedAt) / CAPTURE_MS,
   );
-  const dir = capture.dir ?? { x: 0, y: 0 };
-  const corners = [
-    [box[0], box[1]],
-    [box[2], box[1]],
-    [box[0], box[3]],
-    [box[2], box[3]],
-  ];
+  const dirX = capture.dir?.x ?? 0;
+  const dirY = capture.dir?.y ?? 0;
+  const [left, top, right, bottom] = box;
+  const projection = (cx: number, cy: number) =>
+    (center.x - cx) * dirX + (center.y - cy) * dirY;
   const reach = Math.max(
     0,
-    ...corners.map(([x, y]) => (center.x - x) * dir.x + (center.y - y) * dir.y),
+    projection(left, top),
+    projection(right, top),
+    projection(left, bottom),
+    projection(right, bottom),
   );
-  const x = center.x - dir.x * reach;
-  const y = center.y - dir.y * reach;
+  const x = center.x - dirX * reach;
+  const y = center.y - dirY * reach;
   const maxRadius = Math.max(
-    ...corners.map(([cx, cy]) => Math.hypot(cx - x, cy - y)),
+    Math.hypot(left - x, top - y),
+    Math.hypot(right - x, top - y),
+    Math.hypot(left - x, bottom - y),
+    Math.hypot(right - x, bottom - y),
   );
   return {
     from: capture.from,
@@ -187,6 +191,21 @@ export function markerRipple(
   return rippleIn(capture, center, box, radius * RING_WIDTH);
 }
 
+export function paintRipple(
+  ctx: CanvasRenderingContext2D,
+  color: string,
+  ripple: Ripple,
+) {
+  ctx.beginPath();
+  ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.globalAlpha = ripple.ring;
+  ctx.strokeStyle = lighten(color, RING_LIGHTEN);
+  ctx.lineWidth = ripple.ringWidth;
+  ctx.stroke();
+}
+
 export function fillWithRipple(
   ctx: CanvasRenderingContext2D,
   path: Path2D,
@@ -198,13 +217,6 @@ export function fillWithRipple(
   if (!ripple) return;
   ctx.save();
   ctx.clip(path);
-  ctx.beginPath();
-  ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.globalAlpha = ripple.ring;
-  ctx.strokeStyle = lighten(color, RING_LIGHTEN);
-  ctx.lineWidth = ripple.ringWidth;
-  ctx.stroke();
+  paintRipple(ctx, color, ripple);
   ctx.restore();
 }

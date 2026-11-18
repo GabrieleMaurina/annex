@@ -3,7 +3,12 @@ import { useWhiteIcon } from '../common/icon';
 import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
 import { GLOBAL_TARGET_ID } from '../game/logic/emoji';
-import type { BotDifficulty, BotPersonality, GameState } from '../lib/types';
+import type {
+  BotDifficulty,
+  BotPersonality,
+  GameState,
+  PlayerOdds,
+} from '../lib/types';
 import { scaled } from '../ui/uiScale';
 import RosterTable from './roster/RosterTable';
 import type { TeamLayout } from './roster/teamLayout';
@@ -16,6 +21,7 @@ export interface RosterProps {
   selfId: number | null;
   setTeams: (teams: TeamLayout) => void;
   cycleColor: () => void;
+  setReady: (ready: boolean) => void;
   cycleBotColor: (botPlayerId: number) => void;
   removePlayer: (playerId: number) => void;
   removeEmptySlot: () => void;
@@ -29,6 +35,7 @@ export interface RosterProps {
     difficulty: BotDifficulty | 'random',
     personality: BotPersonality | 'random',
   ) => void;
+  setPlayerOdds: (playerId: number, odds: PlayerOdds) => void;
   removeBot: (botPlayerId: number) => void;
   rowRefs: React.RefObject<Map<number, HTMLElement>>;
   nameCellRefs: React.RefObject<Map<number, HTMLElement>>;

@@ -45,7 +45,7 @@ function PersonRow({
       <Flag country={person.country} />
       <Tip text="Open profile">
         <Button
-          variant="outline-secondary"
+          variant="secondary"
           className="flex-grow-1 text-start"
           onClick={onOpen}
         >
@@ -135,7 +135,7 @@ function Friends({ account }: Props) {
               >
                 <Tip text="Open profile">
                   <Button
-                    variant="outline-secondary"
+                    variant="secondary"
                     className="flex-grow-1 text-start"
                     onClick={() => open(r.username)}
                   >

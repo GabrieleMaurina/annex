@@ -55,6 +55,7 @@ import {
   ENTRENCHMENTS_HELP,
   FOG_OF_WAR_HELP,
   FORTIFICATION_HELP,
+  GAME_TYPE_HELP,
   HILLS_HELP,
   INITIAL_TROOPS_HELP,
   MAX_DURATION_HELP,
@@ -66,6 +67,7 @@ import {
   MIN_REPUTATION_HELP,
   MIN_TROOPS_HELP,
   NUKES_HELP,
+  ODDS_HELP,
   PLACEMENT_HELP,
   PORTALS_HELP,
   RADIATIONS_HELP,
@@ -96,6 +98,8 @@ export const GENERATED_MAP_VALUE = 'generated';
 export const DEFAULT_GAME_SETTINGS: Omit<GameSettingsInput, 'mapName'> = {
   alliances: 'off',
   anonymous: 'off',
+  gameType: 'ranked',
+  odds: 'off',
   blitz: 'balanced',
   bounties: 'off',
   capitalRefund: 'off',
@@ -314,6 +318,20 @@ export const GAME_SETTINGS: GameSettingDef[] = [
     range: STARTING_CAPITALS_RANGE,
     options: options(...STARTING_CAPITALS.map(String)),
     help: STARTING_CAPITALS_HELP,
+  },
+  {
+    key: 'odds',
+    label: 'Odds',
+    section: 'Setup',
+    options: onOff(),
+    help: ODDS_HELP,
+  },
+  {
+    key: 'gameType',
+    label: 'Game Type',
+    section: 'Setup',
+    options: caps('ranked', 'casual'),
+    help: GAME_TYPE_HELP,
   },
   {
     key: 'blitz',
@@ -630,7 +648,9 @@ export function isSettingVisible(
   return (
     (!def.modes || def.modes.includes(gameMode)) &&
     !(
-      (def.key === 'anonymous' || SEAT_REQUIREMENT_KEYS.includes(def.key)) &&
+      (def.key === 'anonymous' ||
+        def.key === 'gameType' ||
+        SEAT_REQUIREMENT_KEYS.includes(def.key)) &&
       offline
     )
   );
@@ -666,6 +686,8 @@ export function changedSettingCount(
 
 const KEEP_CURRENT_KEYS = [
   'anonymous',
+  'gameType',
+  'odds',
   ...SEAT_REQUIREMENT_KEYS,
   'disconnectBotPersonality',
   'disconnectBotDifficulty',

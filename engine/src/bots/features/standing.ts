@@ -1,3 +1,4 @@
+import { minTroopsFor } from '../../game/mechanics';
 import { Game } from '../../types';
 import { PublicIncome } from '../intel';
 import { BotView, ownerOf, troopsAt } from '../view';
@@ -78,7 +79,10 @@ function knownStrengths(
   for (const ownerId of owners.values())
     knownCounts.set(ownerId, (knownCounts.get(ownerId) ?? 0) + 1);
   for (const [playerId, income] of incomes) {
-    if (income.territories <= game.minTroops || game.troopsPerTerritory <= 0)
+    if (
+      income.territories <= minTroopsFor(game, playerId) ||
+      game.troopsPerTerritory <= 0
+    )
       continue;
     const hidden =
       income.territories / game.troopsPerTerritory -

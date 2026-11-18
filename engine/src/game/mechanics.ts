@@ -1,6 +1,6 @@
 import { getGameMap } from '../maps/maps';
 import { playersById } from '../session/players';
-import { Game } from '../types';
+import { DEFAULT_PLAYER_ODDS, Game } from '../types';
 import { isInteger } from '../util/validate';
 import { recordReplayFrame } from './replay';
 import {
@@ -157,6 +157,20 @@ export function interleaveTeams(game: Game): number[] {
   return order;
 }
 
+export function initialTroopsFor(game: Game, playerId: number): number {
+  return (
+    (game.odds === 'on' ? game.playerOdds.get(playerId)?.troops : null) ??
+    game.initialTroops
+  );
+}
+
+export function minTroopsFor(game: Game, playerId: number): number {
+  return (
+    (game.odds === 'on' ? game.playerOdds.get(playerId)?.minTroops : null) ??
+    game.minTroops
+  );
+}
+
 export function turnOrderBonus(index: number): number {
   if (index < 3) return 0;
   if (index < 5) return index - 2;
@@ -178,6 +192,56 @@ function firstTurnBonus(
     : 0;
 }
 
+function territoryWeights(game: Game): number[] {
+  return game.playerIds.map(
+    (id) =>
+      (game.odds === 'on' ? game.playerOdds.get(id)?.territories : undefined) ??
+      DEFAULT_PLAYER_ODDS.territories,
+  );
+}
+
+export function territoryQuotas(game: Game, total: number): number[] {
+  const weights = territoryWeights(game);
+  const count = weights.length;
+  if (weights.every((w) => w === weights[0]) || total < count) {
+    const base = Math.floor(total / count);
+    const remainder = total % count;
+    return weights.map((_, i) => base + (i >= count - remainder ? 1 : 0));
+  }
+  const weightSum = weights.reduce((sum, w) => sum + w, 0);
+  const exact = weights.map((w) => (total * w) / weightSum);
+  const quotas = exact.map((share) => Math.max(1, Math.floor(share)));
+  const indices = weights.map((_, i) => i);
+  let surplus = quotas.reduce((sum, q) => sum + q, 0) - total;
+  while (surplus > 0) {
+    const donors = indices.filter((i) => quotas[i] > 1);
+    const donor = donors.reduce((a, b) =>
+      quotas[b] - exact[b] > quotas[a] - exact[a] ? b : a,
+    );
+    quotas[donor]--;
+    surplus--;
+  }
+  for (; surplus < 0; surplus++) {
+    const taker = indices.reduce((a, b) =>
+      exact[b] - quotas[b] > exact[a] - quotas[a] ? b : a,
+    );
+    quotas[taker]++;
+  }
+  return quotas;
+}
+
+export function claimQuota(game: Game, playerId: number): number {
+  const total =
+    getGameMap(game).territories.length - game.radiationTerritoryIds.size;
+  return territoryQuotas(game, total)[game.playerIds.indexOf(playerId)];
+}
+
+export function needsClaim(game: Game, playerId: number): boolean {
+  if (game.deathOrder.includes(playerId)) return false;
+  if (game.odds === 'off' || game.placement !== 'custom') return true;
+  return ownedTerritoryIds(game, playerId).length < claimQuota(game, playerId);
+}
+
 function splitTerritoriesAmongPlayers(game: Game): number[][] {
   const map = getGameMap(game);
   const territoryIds = shuffle(
@@ -185,14 +249,10 @@ function splitTerritoriesAmongPlayers(game: Game): number[][] {
       .map((t) => t.id)
       .filter((id) => !game.radiationTerritoryIds.has(id)),
   );
-  const playerCount = game.playerIds.length;
-  const base = Math.floor(territoryIds.length / playerCount);
-  const remainder = territoryIds.length % playerCount;
-
+  const quotas = territoryQuotas(game, territoryIds.length);
   const groups: number[][] = [];
   let index = 0;
-  game.playerIds.forEach((_, i) => {
-    const count = base + (i >= playerCount - remainder ? 1 : 0);
+  quotas.forEach((count) => {
     groups.push(territoryIds.slice(index, index + count));
     index += count;
   });
@@ -214,7 +274,8 @@ export function assignTerritories(game: Game) {
   const groups = assignTerritoryOwners(game);
   game.playerIds.forEach((_, i) => {
     const owned = groups[i];
-    let remainingTroops = owned.length * (game.initialTroops - 1);
+    let remainingTroops =
+      owned.length * (initialTroopsFor(game, game.playerIds[i]) - 1);
     while (remainingTroops > 0) {
       const territoryId = owned[Math.floor(Math.random() * owned.length)];
       game.territoryTroops.set(
@@ -380,9 +441,10 @@ export interface DeployTroopsBreakdown {
 export function territoryIncome(
   game: Pick<Game, 'minTroops' | 'troopsPerTerritory'>,
   territoryCount: number,
+  minTroops = game.minTroops,
 ): number {
   return Math.max(
-    game.minTroops,
+    minTroops,
     Math.floor(territoryCount * game.troopsPerTerritory),
   );
 }
@@ -433,6 +495,7 @@ export type DeploySettings = Pick<
 >;
 
 export interface DeployFacts {
+  minTroops?: number;
   roundNumber: number;
   playerIndex: number;
   territoryCount: number;
@@ -446,7 +509,11 @@ export function deployBreakdownFor(
   facts: DeployFacts,
 ): DeployTroopsBreakdown {
   return {
-    territories: territoryIncome(settings, facts.territoryCount),
+    territories: territoryIncome(
+      settings,
+      facts.territoryCount,
+      facts.minTroops,
+    ),
     bonuses: settings.continents === 'off' ? 0 : facts.heldBonuses,
     capitals:
       settings.gameMode === 'capitals' ? facts.capitalsControlled * 2 : 0,
@@ -469,6 +536,7 @@ export function calculateDeployTroopsBreakdown(
   }
 
   return deployBreakdownFor(game, {
+    minTroops: minTroopsFor(game, playerId),
     roundNumber: game.roundNumber,
     playerIndex: game.playerIds.indexOf(playerId),
     territoryCount: [...game.territoryOwners.values()].filter(

@@ -1,4 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express';
+import { invitesRouter } from '../invites/invitesRoutes';
 import { LiveGameRow, SeatProfile } from './liveGames';
 import {
   corsMiddleware,
@@ -67,6 +68,7 @@ export function createHttpApp(deps: HttpDeps): express.Express {
   api.use(settingsRouter);
   api.use(accountRouter);
   api.use(friendsRouter);
+  api.use(invitesRouter);
   api.use(messagesRouter);
   api.use(conductRouter);
   app.use('/api', api);

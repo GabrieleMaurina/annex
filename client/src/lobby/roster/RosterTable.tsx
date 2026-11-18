@@ -26,6 +26,8 @@ import {
   BOT_PERSONALITY_LABELS,
 } from '../botOptions';
 import type { RosterProps } from '../PlayerRoster';
+import { OddsCells, OddsHeaders } from './OddsCells';
+import ReadyCell from './ReadyCell';
 import { MAX_SLOTS, MIN_SLOTS } from './teamLayout';
 
 type Player = GameState['players'][number];
@@ -56,12 +58,14 @@ function RosterTable({
     isHost,
     selfId,
     cycleColor,
+    setReady,
     cycleBotColor,
     addBot,
     addLocalPlayer,
     setLocalPlayerName,
     cycleLocalPlayerColor,
     setBotProfile,
+    setPlayerOdds,
     removeBot,
     removePlayer,
     rowRefs,
@@ -72,6 +76,10 @@ function RosterTable({
   const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
   const hasBots = game.players.some((p) => p.isBot);
   const draggable = isHost && team !== undefined;
+  const showReady = !connector.isOffline();
+  const showOdds = game.odds === 'on';
+  const columnCount =
+    3 + (hasBots ? 2 : 0) + (showOdds ? 3 : 0) + (showReady ? 1 : 0);
 
   function rowClick(p: Player | null) {
     if (!p) return undefined;
@@ -99,6 +107,10 @@ function RosterTable({
             <th>Player</th>
             {hasBots && <th className="text-nowrap">Personality</th>}
             {hasBots && <th className="text-nowrap">Difficulty</th>}
+            {showOdds && <OddsHeaders />}
+            {showReady && (
+              <th style={{ width: '1%' }} className="text-nowrap"></th>
+            )}
             {isHost && (
               <th style={{ width: '1%' }} className="text-nowrap"></th>
             )}
@@ -113,7 +125,7 @@ function RosterTable({
                   ref={register?.('gap')}
                   style={{ height: scaled(40) }}
                 >
-                  <td colSpan={2 + (hasBots ? 2 : 0) + 1} className="p-1">
+                  <td colSpan={columnCount} className="p-1">
                     <div
                       className="rounded h-100"
                       style={{ border: '2px dashed var(--bs-primary)' }}
@@ -326,6 +338,24 @@ function RosterTable({
                       ))}
                   </td>
                 )}
+                {showOdds && (
+                  <OddsCells
+                    game={game}
+                    player={p}
+                    isHost={isHost}
+                    style={rowStyle}
+                    setPlayerOdds={setPlayerOdds}
+                  />
+                )}
+                {showReady && (
+                  <ReadyCell
+                    player={p}
+                    hostId={game.hostId}
+                    selfId={selfId}
+                    style={rowStyle}
+                    setReady={setReady}
+                  />
+                )}
                 {isHost && (
                   <td className="text-nowrap align-middle" style={rowStyle}>
                     {p?.id !== selfId && (
@@ -384,10 +414,7 @@ function RosterTable({
           })}
           {isHost && (
             <tr>
-              <td
-                colSpan={2 + (hasBots ? 2 : 0) + 1}
-                className="text-center align-middle"
-              >
+              <td colSpan={columnCount} className="text-center align-middle">
                 <TipSpan
                   text={
                     game.slots >= MAX_SLOTS

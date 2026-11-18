@@ -55,6 +55,33 @@ function Lobby() {
           <WikiLink to="bots/personalities" />.
         </p>
       </WikiSection>
+      <WikiSection id="ready" title="Getting ready">
+        <p>
+          In online games every player except the host confirms with the Ready
+          button on their own row. Everyone sees who is ready. The host does not
+          need to, and spectators and bots have no button. Click Ready again to
+          take it back.
+        </p>
+        <ul>
+          <li>
+            When the host changes a setting, the map or the bots, every player
+            becomes not ready again and has to confirm the new game.
+          </li>
+          <li>
+            When the host presses Start, players who are not ready become
+            spectators and a bot takes their seat.
+          </li>
+          <li>
+            If nobody else is ready, the game becomes an offline game against
+            bots and all spectators are removed from the lobby.
+          </li>
+          <li>
+            Leaving the lobby clears your ready state. If you take over as host
+            and the original host returns, you are ready again if you were
+            before.
+          </li>
+        </ul>
+      </WikiSection>
       <WikiSection id="teams" title="Teams">
         <p>
           In Team Deathmatch the roster is grouped by team. The host adds and

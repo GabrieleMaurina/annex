@@ -123,6 +123,7 @@ export interface GameSummary {
   hasBots: boolean;
   botCount: number;
   gameMode: string;
+  gameType: GameType;
   createdAt: number;
   roundNumber: number;
   minRank: string;
@@ -155,9 +156,9 @@ export type CardsMode =
 export type TurnDuration = 30 | 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
   | 'supremacy'
+  | 'capitals'
   | 'supremacy 3/4'
   | 'supremacy 2/3'
-  | 'capitals'
   | 'team deathmatch'
   | 'continent'
   | '5-round'
@@ -170,9 +171,9 @@ export type GameMode =
   | 'empire';
 export const GAME_MODES: GameMode[] = [
   'supremacy',
+  'capitals',
   'supremacy 3/4',
   'supremacy 2/3',
-  'capitals',
   'team deathmatch',
   'continent',
   '5-round',
@@ -212,6 +213,18 @@ export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
 export type Anonymous = 'off' | 'on';
+export type GameType = 'ranked' | 'casual';
+export type Odds = 'off' | 'on';
+
+export interface PlayerOdds {
+  territories: number;
+  troops: number | null;
+  minTroops: number | null;
+}
+
+export interface PlayerOddsInput extends PlayerOdds {
+  playerId: number;
+}
 export type Nukes = 'off' | 'on';
 export type DrawReason =
   'max rounds' | 'max duration' | 'capital standoff' | 'agreed' | 'aborted';
@@ -315,6 +328,8 @@ export interface GameState {
   state: 'lobby' | 'playing' | 'ended';
   alliances: Alliances;
   anonymous: Anonymous;
+  gameType: GameType;
+  odds: Odds;
   allianceStates: {
     playerId: number;
     state: AllianceViewState;
@@ -418,6 +433,8 @@ export interface GameState {
     elo: number | null;
     team: number;
     color: number;
+    odds: PlayerOdds;
+    ready: boolean;
     territoryCount: number | null;
     troopCount: number | null;
     capitalCount: number;
@@ -492,6 +509,9 @@ export interface GameResults {
 export interface GameSettingsInput {
   alliances?: Alliances;
   anonymous?: Anonymous;
+  gameType?: GameType;
+  odds?: Odds;
+  playerOdds?: PlayerOddsInput[];
   bannedPlayerIds?: number[];
   blitz?: Blitz;
   bounties?: Bounties;
@@ -545,6 +565,8 @@ export type GameRulesSettings = Pick<
   GameSettingsInput,
   | 'alliances'
   | 'anonymous'
+  | 'gameType'
+  | 'odds'
   | 'blitz'
   | 'bounties'
   | 'capitalRefund'
@@ -694,6 +716,8 @@ export interface StoredGameSettings {
   fogOfWar: FogOfWar;
   alliances: Alliances;
   anonymous: Anonymous;
+  gameType: GameType;
+  odds: Odds;
   nukes: Nukes;
   turnDuration: TurnDuration;
   attackIncrement: number;

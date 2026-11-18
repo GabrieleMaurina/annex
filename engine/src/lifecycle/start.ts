@@ -34,6 +34,11 @@ import {
 } from '../session/store';
 import { Game } from '../types';
 import { freshGameRun } from './create';
+import {
+  humanPlayerCount,
+  kickSpectators,
+  seatBotsForUnreadyPlayers,
+} from './lobby/ready';
 import { isBlitzOffAllowed } from './settings';
 
 export function startGame(playerId: number): GameResponse {
@@ -47,17 +52,21 @@ export function startGame(playerId: number): GameResponse {
   if (!hasMap(game)) return { ok: false, error: 'no map selected' };
   if (game.playerIds.length < 2)
     return { ok: false, error: 'not enough players' };
-  if (
-    !game.offline &&
-    game.playerIds.filter((id) => !playersById.get(id)?.isBot).length < 2
-  )
-    return { ok: false, error: 'not enough human players' };
   if (game.gameMode === 'team deathmatch' && teamCount(game) < 2)
     return { ok: false, error: 'not enough teams' };
   if (game.gameMode === 'team deathmatch' && game.alliances === 'on')
     return { ok: false, error: 'alliances not allowed in team deathmatch' };
   if (game.blitz === 'off' && !isBlitzOffAllowed(game))
     return { ok: false, error: 'blitz off not allowed with these settings' };
+
+  if (!game.offline) {
+    seatBotsForUnreadyPlayers(game);
+    if (humanPlayerCount(game) < 2) {
+      kickSpectators(game);
+      broadcastHomeGames();
+      return respondGameState(game, player.id);
+    }
+  }
 
   prepareGameStart(game);
   game.remainingSpecialPhases = [

@@ -33,13 +33,25 @@ export function contrastTextColor(hex: string): string {
   return yiq >= 128 ? '#000000' : '#ffffff';
 }
 
+const lightenedByAmount = new Map<number, Map<string, string>>();
+
 export function lighten(hex: string, amount: number): string {
-  return `#${[1, 3, 5]
-    .map((i) => {
-      const c = parseInt(hex.slice(i, i + 2), 16);
-      return Math.round(c + (255 - c) * amount)
-        .toString(16)
-        .padStart(2, '0');
-    })
-    .join('')}`;
+  let lightened = lightenedByAmount.get(amount);
+  if (!lightened) {
+    lightened = new Map();
+    lightenedByAmount.set(amount, lightened);
+  }
+  let result = lightened.get(hex);
+  if (result === undefined) {
+    result = `#${[1, 3, 5]
+      .map((i) => {
+        const c = parseInt(hex.slice(i, i + 2), 16);
+        return Math.round(c + (255 - c) * amount)
+          .toString(16)
+          .padStart(2, '0');
+      })
+      .join('')}`;
+    lightened.set(hex, result);
+  }
+  return result;
 }

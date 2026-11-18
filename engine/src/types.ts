@@ -174,9 +174,9 @@ export type CardsMode =
 export type TurnDuration = 30 | 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
   | 'supremacy'
+  | 'capitals'
   | 'supremacy 3/4'
   | 'supremacy 2/3'
-  | 'capitals'
   | 'team deathmatch'
   | 'continent'
   | '5-round'
@@ -214,6 +214,20 @@ export type SupplyLines = 'off' | 'on';
 export type FogOfWar = 'off' | 'on';
 export type Alliances = 'off' | 'on';
 export type Anonymous = 'off' | 'on';
+export type GameType = 'ranked' | 'casual';
+export type Odds = 'off' | 'on';
+
+export interface PlayerOdds {
+  territories: number;
+  troops: number | null;
+  minTroops: number | null;
+}
+
+export const DEFAULT_PLAYER_ODDS: PlayerOdds = {
+  territories: 100,
+  troops: null,
+  minTroops: null,
+};
 export type Nukes = 'off' | 'on';
 export type DrawReason =
   'max rounds' | 'max duration' | 'capital standoff' | 'agreed' | 'aborted';
@@ -529,6 +543,9 @@ export interface Game {
   fogOfWar: FogOfWar;
   fortification: Fortification;
   gameMode: GameMode;
+  gameType: GameType;
+  odds: Odds;
+  playerOdds: Map<number, PlayerOdds>;
   initialTroops: number;
   minTroops: number;
   troopsPerTerritory: number;
@@ -599,6 +616,7 @@ export interface Game {
   playerTeams: Map<number, number>;
   playerColors: Map<number, number>;
   bannedIds: Set<number>;
+  readyIds: Set<number>;
   territoryOwners: Map<number, number>;
   territoryTroops: Map<number, number>;
   territoryEntrenchment: Map<number, number>;

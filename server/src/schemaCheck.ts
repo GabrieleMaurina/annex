@@ -30,6 +30,7 @@ const FIELD_DEFAULTS: Record<string, unknown> = {
   musicVolume: DEFAULT_CLIENT_SETTINGS.musicVolume,
   uiScale: DEFAULT_CLIENT_SETTINGS.uiScale,
   minReputation: DEFAULT_MIN_REPUTATION,
+  disconnectBotDifficulty: 'idle',
   presets: DEFAULT_PRESETS,
 };
 

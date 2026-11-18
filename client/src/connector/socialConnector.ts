@@ -2,7 +2,10 @@ import { httpGet, httpSend } from '../lib/http';
 import type {
   AccountResult,
   ClientSettings,
+  Friend,
   FriendsOverview,
+  InviteKind,
+  InvitesOverview,
   MessagesOverview,
   PlayerAchievement,
   PlayerHistoryPoint,
@@ -126,6 +129,46 @@ export const socialConnector = {
     httpSend<AuthAck>('POST', '/friends/remove', { userId })
       .then(cb)
       .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  listInvites(cb: (overview: InvitesOverview) => void): void {
+    httpGet<InvitesOverview>('/invites')
+      .then(cb)
+      .catch(() => {});
+  },
+
+  listInvitableFriends(cb: (friends: Friend[]) => void): void {
+    httpGet<Friend[]>('/invites/friends')
+      .then(cb)
+      .catch(() => cb([]));
+  },
+
+  sendInvite(
+    data: { userId: string; kind: InviteKind; lobby?: boolean },
+    cb: (res: { ok: true; id: string } | { ok: false; error: string }) => void,
+  ): void {
+    httpSend<{ ok: true; id: string } | { ok: false; error: string }>(
+      'POST',
+      '/invites',
+      data,
+    )
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  respondToInvite(
+    data: { id: string; accept: boolean },
+    cb: (res: AuthAck) => void,
+  ): void {
+    httpSend<AuthAck>('POST', '/invites/respond', data)
+      .then(cb)
+      .catch(() => cb({ ok: false, error: 'server error' }));
+  },
+
+  cancelInvite(id: string, cb: () => void = () => {}): void {
+    httpSend<AuthAck>('POST', '/invites/cancel', { id })
+      .then(() => cb())
+      .catch(() => cb());
   },
 
   listMessages(cb: (overview: MessagesOverview) => void): void {

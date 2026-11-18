@@ -1,6 +1,7 @@
 import {
   buildGameDataExport,
   createEngine,
+  DEFAULT_PLAYER_ODDS,
   type Engine,
   type EngineCallbacks,
   type Fill,
@@ -19,6 +20,7 @@ import type {
   EarthMapInput,
   ExportData,
   GameState,
+  PlayerOdds,
 } from '../../lib/types';
 import { moveToTeam } from '../../lobby/roster/teamLayout';
 import { tutorialMap } from '../../tutorials/tutorialMap';
@@ -83,6 +85,7 @@ interface OfflineSeed {
   slots: number;
   teamSlots: number[];
   teams: number[] | null;
+  odds: PlayerOdds[] | null;
   bots: { difficulty: string; personality: string }[];
 }
 
@@ -101,6 +104,8 @@ export function seedOffline(state: GameState): void {
       alliances: state.alliances,
       anonymous: state.anonymous,
       blitz: state.blitz,
+      gameType: state.gameType,
+      odds: state.odds,
       bounties: state.bounties,
       capitalRefund: state.capitalRefund,
       startingCapitals: state.startingCapitals,
@@ -150,6 +155,12 @@ export function seedOffline(state: GameState): void {
       state.gameMode === 'team deathmatch'
         ? [host?.team ?? 0, ...bots.map((b) => b.team)]
         : null,
+    odds:
+      state.odds === 'on'
+        ? [host?.odds, ...bots.map((b) => b.odds)].map(
+            (odds) => odds ?? DEFAULT_PLAYER_ODDS,
+          )
+        : null,
     bots: bots.map((b) => ({
       difficulty: b.botDifficulty ?? 'easy',
       personality: b.botPersonality ?? 'random',
@@ -174,12 +185,17 @@ function applySeed(s: OfflineSeed): void {
   let resp = engine.updateSettings(id, { ...s.settings, slots: s.slots });
   for (const bot of s.bots)
     resp = engine.addBot(id, bot.difficulty, bot.personality);
+  const seated = resp.ok
+    ? [
+        resp.game.players.find((p) => !p.isBot),
+        ...resp.game.players.filter((p) => p.isBot),
+      ]
+    : [];
+  if (s.odds && resp.ok)
+    engine.updateSettings(id, {
+      playerOdds: seated.map((p, i) => ({ ...s.odds?.[i], playerId: p?.id })),
+    });
   if (s.teams && resp.ok) {
-    const players = resp.game.players;
-    const seated = [
-      players.find((p) => !p.isBot),
-      ...players.filter((p) => p.isBot),
-    ];
     engine.updateSettings(id, {
       teams: s.teamSlots.map((slots, team) => ({
         slots,

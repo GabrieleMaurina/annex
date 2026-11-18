@@ -9,9 +9,10 @@ function Setup() {
     <>
       <WikiSection id="start" title="Starting the game">
         <p>
-          The host starts the game from the lobby. It needs a map, at least two
-          players and, online, at least two humans. Team Deathmatch also needs
-          two teams (<WikiLink to="modes/teams" />
+          The host starts the game from the lobby. It needs a map and at least
+          two players. Online, players who are not ready are replaced by bots (
+          <WikiLink to="play/lobby#ready" />
+          ). Team Deathmatch also needs two teams (<WikiLink to="modes/teams" />
           ). Turn order is then randomized, alternating between teams in Team
           Deathmatch.
         </p>

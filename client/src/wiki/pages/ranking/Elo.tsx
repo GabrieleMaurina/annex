@@ -35,6 +35,11 @@ function Elo() {
             ).
           </li>
           <li>Offline games and tutorials never change Elo.</li>
+          <li>
+            Casual games never change Elo, for anyone (
+            <WikiLink to="settings/setup#game-type" />
+            ).
+          </li>
         </ul>
       </WikiSection>
       <WikiSection id="how" title="How it changes">

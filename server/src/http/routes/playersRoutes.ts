@@ -15,6 +15,7 @@ import {
   PlayersQuery,
 } from '../../db';
 import { buildPlayerExport } from '../../exports/playerExport';
+import { canReceiveInvite } from '../../invites/invites';
 import { playerExportLimited, rateLimited } from '../middleware';
 import { isOnline } from '../presence';
 
@@ -92,11 +93,16 @@ playersRouter.get('/players', (req, res) => {
 playersRouter.get('/presence', (req, res) => {
   const userId = req.query.userId;
   if (typeof userId !== 'string') {
-    res.json({ online: false });
+    res.json({ online: false, reachable: false });
     return;
   }
   isBlockPeer(req.headers.cookie, userId)
-    .then((blocked) => res.json({ online: !blocked && isOnline(userId) }))
+    .then((blocked) =>
+      res.json({
+        online: !blocked && isOnline(userId),
+        reachable: !blocked && canReceiveInvite(userId),
+      }),
+    )
     .catch(() => res.status(500).json({ ok: false, error: 'server error' }));
 });
 

@@ -1,6 +1,7 @@
 import { attackDiceFor, defenceDiceFor } from '../../game/combat/dice';
 import {
   MAX_TERRITORY_TROOPS,
+  initialTroopsFor,
   supplyHubTerritoryIds,
 } from '../../game/mechanics';
 import { isClaimPhase } from '../../game/state';
@@ -231,7 +232,7 @@ export function planBotTurn(
     const planned =
       hoard === null &&
       troops >= 1 &&
-      game.initialTroops <= MAX_PLANNED_INITIAL_TROOPS
+      initialTroopsFor(game, botId) <= MAX_PLANNED_INITIAL_TROOPS
         ? plannedPlacement(game, botId, botProfile, troops, pool)
         : null;
     const territoryId = hoard ?? planned ?? chooseTroopPlacement(game, botId);

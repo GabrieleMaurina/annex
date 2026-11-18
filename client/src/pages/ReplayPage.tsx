@@ -1,3 +1,4 @@
+import { DEFAULT_PLAYER_ODDS } from 'engine';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
@@ -77,6 +78,8 @@ function buildGameState(
     state: 'ended',
     alliances: s.alliances,
     anonymous: s.anonymous,
+    gameType: s.gameType,
+    odds: s.odds,
     allianceStates: [],
     blitz: s.blitz,
     bounties: s.bounties,
@@ -191,6 +194,8 @@ function buildGameState(
         elo: p.userId ? p.elo : null,
         team: p.team,
         color: p.color,
+        odds: { ...DEFAULT_PLAYER_ODDS },
+        ready: false,
         territoryCount: counts.get(p.playerId)?.territories ?? 0,
         troopCount: counts.get(p.playerId)?.troops ?? 0,
         capitalCount: finalTerritories.filter(

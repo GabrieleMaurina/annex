@@ -13,6 +13,8 @@ import {
   awardDeployTroops,
   calculateDeployTroopsBreakdown,
   deployTargetIds,
+  initialTroopsFor,
+  needsClaim,
   ownedTerritoryIds,
   ownsAnyTerritory,
   startingPoolBonus,
@@ -421,7 +423,10 @@ export function advanceTerritoryPhase(game: Game) {
     beginNextSpecialPhase(game);
     return;
   }
-  game.turnPlayerIndex = nextAliveIndexFrom(game, game.turnPlayerIndex);
+  game.turnPlayerIndex =
+    nextIndexMatching(game, game.turnPlayerIndex, (id) =>
+      needsClaim(game, id),
+    ) ?? nextAliveIndexFrom(game, game.turnPlayerIndex);
   scheduleTurnTimer(game);
 }
 
@@ -443,7 +448,7 @@ export function startTroopPhase(game: Game) {
     const count = territoryCounts.get(id) ?? 0;
     game.placementTroopPools.set(
       id,
-      count * (game.initialTroops - 1) + startingPoolBonus(game, i),
+      count * (initialTroopsFor(game, id) - 1) + startingPoolBonus(game, i),
     );
   });
   const startIndex = nextTroopIndexFrom(game, -1);
@@ -484,7 +489,8 @@ export function claimTerritory(
   bonusTroops = 0,
 ) {
   const troops =
-    (game.placement === 'single' ? game.initialTroops : 1) + bonusTroops;
+    (game.placement === 'single' ? initialTroopsFor(game, playerId) : 1) +
+    bonusTroops;
   game.territoryOwners.set(territoryId, playerId);
   game.territoryTroops.set(territoryId, troops);
   recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });

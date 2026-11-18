@@ -51,6 +51,8 @@ export interface GameSettings {
   bots: { difficulty: string; personality: string }[];
   localPlayers: string[];
   gameMode: string;
+  gameType: string;
+  odds: string;
   blitz: string;
   defenceDice: number;
   attackDice: number;
@@ -151,9 +153,9 @@ const SIDES = [
 export const GAME_ENUMS: Record<string, unknown[]> = {
   gameMode: [
     'supremacy',
+    'capitals',
     'supremacy 3/4',
     'supremacy 2/3',
-    'capitals',
     'team deathmatch',
     'continent',
     '5-round',
@@ -165,6 +167,8 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'king of the hill',
     'empire',
   ],
+  gameType: ['ranked', 'casual'],
+  odds: ['off', 'on'],
   blitz: ['balanced', 'true', 'fair', 'off'],
   defenceDice: [2, 1, ...Array.from({ length: 8 }, (_, i) => i + 3)],
   attackDice: [3, 1, 2, ...Array.from({ length: 7 }, (_, i) => i + 4)],
@@ -232,8 +236,9 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
   maxDuration: [180, ...MAX_DURATION_VALUES.filter((value) => value !== 180)],
   capitalStandoff: stalemateRounds(50, MIN_CAPITAL_STANDOFF),
   drawOfferRound: stalemateRounds(500, MIN_STALEMATE_ROUNDS),
-  disconnectBotDifficulty: ['idle', 'easy', 'medium', 'hard', 'random'],
+  disconnectBotDifficulty: ['random', 'idle', 'easy', 'medium', 'hard'],
   disconnectBotPersonality: [
+    'random',
     'balanced',
     'taker',
     'breaker',
@@ -244,7 +249,6 @@ export const GAME_ENUMS: Record<string, unknown[]> = {
     'police',
     'hoarder',
     'opportunist',
-    'random',
   ],
   minRank: MIN_RANK_VALUES,
   minGames: MIN_GAMES_VALUES,
@@ -308,6 +312,8 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   })),
   localPlayers: [],
   gameMode: 'supremacy',
+  gameType: 'ranked',
+  odds: 'off',
   blitz: 'balanced',
   defenceDice: 2,
   attackDice: 3,

@@ -144,6 +144,8 @@ export interface GameExport {
     fogOfWar: string;
     alliances: string;
     anonymous: string;
+    gameType: string;
+    odds: string;
     nukes: string;
     turnDuration: number;
     attackIncrement: number;
@@ -447,6 +449,8 @@ export function exportGame(gameName: string): GameExport | null {
       fogOfWar: game.fogOfWar,
       alliances: game.alliances,
       anonymous: game.anonymous,
+      gameType: game.gameType,
+      odds: game.odds,
       nukes: game.nukes,
       turnDuration: game.turnDuration,
       attackIncrement: game.attackIncrement,

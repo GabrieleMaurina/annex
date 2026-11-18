@@ -224,6 +224,7 @@ const continentLandByRegions = new WeakMap<
   Map<string, LandEntry>
 >();
 const boxesByRegions = new WeakMap<ClickableRegions, Box[]>();
+const MAX_LABELS = 32768;
 const landJobs = new Map<number, (svg: string | null) => void>();
 let landWorker: Worker | null = null;
 let lastLandJobId = 0;
@@ -231,23 +232,25 @@ let lastLandJobId = 0;
 export function regionBoxes(regions: ClickableRegions): Box[] {
   const cached = boxesByRegions.get(regions);
   if (cached) return cached;
-  const boxes: Box[] = [];
-  const { fillLabels, width } = regions;
-  for (let i = 0; i < fillLabels.length; i++) {
-    const id = fillLabels[i];
-    if (id < 0) continue;
-    const x = i % width;
-    const y = (i - x) / width;
-    const box = boxes[id];
-    if (!box) {
-      boxes[id] = [x, y, x + 1, y + 1];
-      continue;
+  const { fillLabels, width, height } = regions;
+  const lefts = new Int32Array(MAX_LABELS).fill(width);
+  const tops = new Int32Array(MAX_LABELS).fill(height);
+  const rights = new Int32Array(MAX_LABELS);
+  const bottoms = new Int32Array(MAX_LABELS);
+  for (let y = 0, i = 0; y < height; y++) {
+    for (let x = 0; x < width; x++, i++) {
+      const id = fillLabels[i];
+      if (id < 0) continue;
+      if (x < lefts[id]) lefts[id] = x;
+      if (y < tops[id]) tops[id] = y;
+      if (x >= rights[id]) rights[id] = x + 1;
+      bottoms[id] = y + 1;
     }
-    box[0] = Math.min(box[0], x);
-    box[1] = Math.min(box[1], y);
-    box[2] = Math.max(box[2], x + 1);
-    box[3] = Math.max(box[3], y + 1);
   }
+  const boxes: Box[] = [];
+  for (let id = 0; id < MAX_LABELS; id++)
+    if (rights[id] > 0)
+      boxes[id] = [lefts[id], tops[id], rights[id], bottoms[id]];
   boxesByRegions.set(regions, boxes);
   return boxes;
 }

@@ -31,7 +31,9 @@ import {
   Fortification,
   Game,
   GameMode,
+  GameType,
   Nukes,
+  Odds,
   Placement,
   Portals,
   Radiations,
@@ -55,6 +57,11 @@ import {
   MIN_REPUTATION_VALUES,
 } from './eligibility';
 import {
+  MAX_BLITZ_OFF_TROOPS,
+  oddsAllowBlitzOff,
+  setPlayerOdds,
+} from './lobby/odds';
+import {
   MAX_SLOTS,
   MIN_SLOTS,
   openTeam,
@@ -65,6 +72,8 @@ import {
 
 const ALLIANCES_VALUES: Alliances[] = ['off', 'on'];
 const ANONYMOUS_VALUES: Anonymous[] = ['off', 'on'];
+const GAME_TYPE_VALUES: GameType[] = ['ranked', 'casual'];
+const ODDS_VALUES: Odds[] = ['off', 'on'];
 const BLITZ_VALUES: Blitz[] = ['balanced', 'true', 'fair', 'off'];
 const BOUNTIES_VALUES: Bounties[] = ['off', 'on'];
 const CAPITAL_REFUND_VALUES: CapitalRefund[] = ['off', 'on'];
@@ -106,9 +115,9 @@ const FORTIFICATION_VALUES: Fortification[] = [
 ];
 const GAME_MODE_VALUES: GameMode[] = [
   'supremacy',
+  'capitals',
   'supremacy 3/4',
   'supremacy 2/3',
-  'capitals',
   'team deathmatch',
   'continent',
   '5-round',
@@ -155,8 +164,6 @@ export const MIN_CAPITAL_STANDOFF = 5;
 export const MAX_DURATION_VALUES = [
   30, 60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 540, 600,
 ];
-
-export const MAX_BLITZ_OFF_TROOPS = 10;
 
 function isStalemateRound(value: unknown): value is number {
   return (
@@ -230,8 +237,18 @@ export function updateSettings(
     return { ok: false, error: 'game already started' };
 
   const merged = { ...game, ...settings };
-  if (merged.blitz === 'off' && !isBlitzOffAllowed(merged))
+  if (
+    merged.blitz === 'off' &&
+    !(isBlitzOffAllowed(merged) && oddsAllowBlitzOff(game, settings))
+  )
     return { ok: false, error: 'blitz off not allowed with these settings' };
+
+  if (merged.odds === 'on' && merged.gameType === 'ranked' && !game.offline)
+    return { ok: false, error: 'odds not allowed in ranked games' };
+
+  const changesGame = Object.entries(settings).some(
+    ([key, value]) => key !== 'bannedPlayerIds' && value !== undefined,
+  );
 
   if (settings.alliances !== undefined) {
     if (!(ALLIANCES_VALUES as unknown[]).includes(settings.alliances))
@@ -256,6 +273,12 @@ export function updateSettings(
         playersById.get(game.originalHostId)?.name ?? '',
       );
     game.anonymous = settings.anonymous as Anonymous;
+  }
+
+  if (settings.gameType !== undefined) {
+    if (!(GAME_TYPE_VALUES as unknown[]).includes(settings.gameType))
+      return { ok: false, error: 'invalid game type' };
+    game.gameType = settings.gameType as GameType;
   }
 
   if (settings.attackDice !== undefined) {
@@ -329,6 +352,18 @@ export function updateSettings(
     if (!(BLITZ_VALUES as unknown[]).includes(settings.blitz))
       return { ok: false, error: 'invalid blitz' };
     game.blitz = settings.blitz as Blitz;
+  }
+
+  if (settings.odds !== undefined) {
+    if (!(ODDS_VALUES as unknown[]).includes(settings.odds))
+      return { ok: false, error: 'invalid odds' };
+    game.odds = settings.odds as Odds;
+    if (game.odds === 'off') game.playerOdds.clear();
+  }
+
+  if (settings.playerOdds !== undefined) {
+    if (!setPlayerOdds(game, settings.playerOdds))
+      return { ok: false, error: 'invalid player odds' };
   }
 
   if (settings.bounties !== undefined) {
@@ -656,6 +691,7 @@ export function updateSettings(
     }
   }
 
+  if (changesGame) game.readyIds.clear();
   broadcastHomeGames();
   return respondGameState(game, player.id);
 }

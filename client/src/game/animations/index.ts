@@ -113,6 +113,7 @@ export {
   fillWithRipple,
   markerRipple,
   noteCaptureSource,
+  paintRipple,
   regionRipple,
   trackCaptures,
 } from './transitions/capture';

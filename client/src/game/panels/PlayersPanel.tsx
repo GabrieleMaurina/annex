@@ -2,6 +2,7 @@ import { isPointsMode } from 'engine';
 import type { MutableRefObject } from 'react';
 import { memo, useReducer, useRef, useState } from 'react';
 import { Button, ListGroup } from 'react-bootstrap';
+import CasualBadge from '../../common/badges/CasualBadge';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import { panelConduct } from '../../common/conduct/panelConduct';
@@ -19,6 +20,7 @@ import type {
   FriendsOverview,
   GameMode,
   GameState,
+  GameType,
   Mission,
   Starvation,
   Toxins,
@@ -95,6 +97,7 @@ interface Props {
   conductBlockedUserIds?: string[];
   onConductChange?: () => void;
   anonymous: boolean;
+  gameType: GameType;
   recoloredIds?: Set<number>;
   onCycleColor?: (playerId: number) => void;
 }
@@ -156,6 +159,7 @@ function PlayersPanel({
   conductBlockedUserIds,
   onConductChange,
   anonymous,
+  gameType,
   recoloredIds,
   onCycleColor,
 }: Props) {
@@ -299,6 +303,7 @@ function PlayersPanel({
         >
           <div className="d-flex align-items-center justify-content-center gap-1">
             <span>{titleCase(gameMode)}</span>
+            <CasualBadge gameType={gameType} />
             {mission && (
               <Tip
                 text={

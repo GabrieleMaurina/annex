@@ -269,7 +269,7 @@ function Messages({ account }: Props) {
                 <Flag country={conversation.country} />
                 <Tip text="Open profile">
                   <Button
-                    variant="outline-secondary"
+                    variant="secondary"
                     className="fs-5"
                     onClick={() =>
                       navigate(

@@ -31,17 +31,18 @@ function Create() {
       <WikiSection id="start" title="Requirements to start">
         <ul>
           <li>A map must be selected.</li>
-          <li>
-            At least two players. Online, at least two of them must be human.
-          </li>
+          <li>At least two players.</li>
           <li>
             Team Deathmatch needs two teams with players and no alliances.
           </li>
           <li>Blitz Off needs a settings combination that allows it.</li>
         </ul>
         <p>
-          If you are the only human, the game quietly becomes an offline game
-          with the same map, settings and bots (<WikiLink to="play/offline" />
+          Online, players who are not ready when you press Start are replaced by
+          bots (<WikiLink to="play/lobby#ready" />
+          ). If no other human is ready, the game quietly becomes an offline
+          game with the same map, settings and bots (
+          <WikiLink to="play/offline" />
           ).
         </p>
       </WikiSection>

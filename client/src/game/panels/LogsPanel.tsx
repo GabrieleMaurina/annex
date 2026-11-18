@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, useState, type ReactNode, type UIEvent } from 'react';
 import { Table } from 'react-bootstrap';
 import { useWhiteIcon } from '../../common/icon';
 import PanelHeader from '../../common/PanelHeader';
@@ -22,6 +22,8 @@ interface Props {
 }
 
 const BOTTOM_MARGIN = 72;
+const PAGE_SIZE = 60;
+const LOAD_MORE_DISTANCE = 400;
 
 function boldRanges(text: string): [number, number][] {
   const wordEnd = text.search(/[ \n]/);
@@ -165,9 +167,44 @@ function LogText({
   );
 }
 
+const LogRow = memo(function LogRow({
+  log,
+  whiteBotIcon,
+}: {
+  log: LogEntry;
+  whiteBotIcon: string | undefined;
+}) {
+  const rowForeground = contrastTextColor(log.color);
+  return (
+    <tr>
+      <td
+        className="small text-nowrap"
+        style={{ backgroundColor: log.color, color: rowForeground }}
+      >
+        <LogText
+          text={log.text}
+          colorRanges={log.colorRanges}
+          whiteBotIcon={whiteBotIcon}
+          rowForeground={rowForeground}
+        />
+      </td>
+    </tr>
+  );
+});
+
 function LogsPanel({ logs, stats, top, onClose }: Props) {
-  const newestFirst = [...logs].reverse();
+  const [shown, setShown] = useState(PAGE_SIZE);
+  const newestFirst = logs.slice(-shown).reverse();
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+
+  const showMoreNearEnd = (e: UIEvent<HTMLDivElement>) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
+    if (
+      shown < logs.length &&
+      scrollHeight - scrollTop - clientHeight < LOAD_MORE_DISTANCE
+    )
+      setShown((count) => count + PAGE_SIZE);
+  };
 
   return (
     <div
@@ -196,6 +233,7 @@ function LogsPanel({ logs, stats, top, onClose }: Props) {
           className="no-scrollbar"
           style={{ overflowY: 'auto', minHeight: 0 }}
           onWheel={(e) => e.stopPropagation()}
+          onScroll={showMoreNearEnd}
         >
           <Table
             size="sm"
@@ -204,27 +242,9 @@ function LogsPanel({ logs, stats, top, onClose }: Props) {
             style={{ width: '100%' }}
           >
             <tbody>
-              {newestFirst.map((log) => {
-                const rowForeground = contrastTextColor(log.color);
-                return (
-                  <tr key={log.id}>
-                    <td
-                      className="small text-nowrap"
-                      style={{
-                        backgroundColor: log.color,
-                        color: rowForeground,
-                      }}
-                    >
-                      <LogText
-                        text={log.text}
-                        colorRanges={log.colorRanges}
-                        whiteBotIcon={whiteBotIcon}
-                        rowForeground={rowForeground}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
+              {newestFirst.map((log) => (
+                <LogRow key={log.id} log={log} whiteBotIcon={whiteBotIcon} />
+              ))}
             </tbody>
           </Table>
         </div>

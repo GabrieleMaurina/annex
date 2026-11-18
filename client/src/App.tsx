@@ -17,6 +17,8 @@ import {
 } from 'react-router-dom';
 import AchievementToasts from './common/achievements/AchievementToasts';
 import WhiteIcon from './common/icons/WhiteIcon';
+import InviteToasts from './common/invites/InviteToasts';
+import { takeHostSetup } from './common/invites/invitesStore';
 import BurgerMenu from './common/menus/BurgerMenu';
 import SettingsMenu from './common/menus/SettingsMenu';
 import ShortcutsPanel from './common/menus/shortcuts/ShortcutsPanel';
@@ -245,7 +247,7 @@ function App() {
 
         connector.createGame({ name: room }, (createRes: Ack) => {
           if (createRes.ok) {
-            applySavedGameSettings();
+            applySavedGameSettings(takeHostSetup(room));
             setJoinError('');
             connector.requestState();
             return;
@@ -593,6 +595,7 @@ function App() {
       {!mapVisible && <SiteFooter />}
       <PageGate />
       <AchievementToasts enabled={!!account} />
+      <InviteToasts enabled={!!account} />
     </>
   );
 }

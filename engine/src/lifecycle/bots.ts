@@ -53,6 +53,7 @@ export function addBot(
 
   const profile = resolveBotProfile(difficulty, personality);
   const bot = createBotPlayer(botDisplayName(profile), profile);
+  game.readyIds.clear();
   bot.gameName = game.name;
   game.playerIds.push(bot.id);
   game.playerTeams.set(bot.id, seatTeam);
@@ -80,6 +81,7 @@ export function setBotProfile(
     return { ok: false, error: 'invalid personality' };
 
   const profile = resolveBotProfile(difficulty, personality);
+  game.readyIds.clear();
   bot.botProfile = profile;
   bot.name = botDisplayName(profile);
 
@@ -94,9 +96,11 @@ export function removeBot(playerId: number, botPlayerId: number): GameResponse {
   const bot = findLobbyBot(game, botPlayerId);
   if (!bot) return { ok: false, error: 'invalid bot' };
 
+  game.readyIds.clear();
   game.playerIds = game.playerIds.filter((id) => id !== bot.id);
   game.playerTeams.delete(bot.id);
   game.playerColors.delete(bot.id);
+  game.playerOdds.delete(bot.id);
   playersById.delete(bot.id);
 
   return respondGameState(game, player.id);

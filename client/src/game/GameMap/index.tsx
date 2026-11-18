@@ -840,6 +840,7 @@ function GameMap({
           conductFriends={conductFriends}
           conductBlockedUserIds={conductBlockedUserIds}
           anonymous={game.anonymous === 'on'}
+          gameType={game.gameType}
           onConductChange={onConductChange}
           endedAt={game.endedAt}
           recoloredIds={recoloredIds}

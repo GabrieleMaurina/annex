@@ -2,6 +2,7 @@ import { newAccountAllowance } from 'engine';
 import { useEffect, useState } from 'react';
 import { Button, Container, Spinner, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
+import CasualBadge from '../../common/badges/CasualBadge';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
 import CareerChart from '../../common/charts/CareerChart';
@@ -36,6 +37,7 @@ import Achievements from './Achievements';
 import ProfileBio from './ProfileBio';
 
 const PAGE_SIZE = 20;
+const ONLINE_POLL_MS = 5000;
 
 function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
   const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
@@ -44,7 +46,10 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
     <tr role="button" onClick={onOpen}>
       <td>{endedAt.toLocaleDateString()}</td>
       <td>{endedAt.toLocaleTimeString()}</td>
-      <td>{row.name}</td>
+      <td>
+        {row.name}
+        <CasualBadge gameType={row.settings.gameType} className="ms-2" />
+      </td>
       <td>{row.mapName}</td>
       <td>{titleCase(row.gameMode)}</td>
       <td>
@@ -110,6 +115,24 @@ function PlayerProfilePage({ account }: { account: Account | null }) {
     if (!username) return;
     connector.getPlayerProfile(username, setProfile);
   }, [username]);
+
+  const profileUserId = profile?.id;
+
+  useEffect(() => {
+    if (!profileUserId) return;
+    const refreshOnline = () => {
+      if (document.visibilityState === 'hidden') return;
+      connector.isPlayerOnline(profileUserId, (online) => {
+        setProfile((current) =>
+          current && current.id === profileUserId && current.online !== online
+            ? { ...current, online }
+            : current,
+        );
+      });
+    };
+    const timer = setInterval(refreshOnline, ONLINE_POLL_MS);
+    return () => clearInterval(timer);
+  }, [profileUserId]);
 
   useEffect(() => {
     if (!reportMenu) return;

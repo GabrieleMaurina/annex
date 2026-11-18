@@ -29,6 +29,7 @@ import {
 } from './lifecycle/bots';
 import { createGame } from './lifecycle/create';
 import { joinGame } from './lifecycle/join';
+import { setReady } from './lifecycle/lobby/ready';
 import {
   clearMap,
   generateMap,
@@ -176,9 +177,9 @@ export {
   newAccountAllowance,
   RANKS,
 } from './lifecycle/eligibility';
+export { MAX_BLITZ_OFF_TROOPS } from './lifecycle/lobby/odds';
 export {
   isBlitzOffAllowed,
-  MAX_BLITZ_OFF_TROOPS,
   MAX_DURATION_VALUES,
   MAX_STALEMATE_ROUNDS,
   MAX_STARTING_CAPITALS,
@@ -287,6 +288,7 @@ export { randomPlayerName } from './session/players';
 export { REPORT_REASONS, ReportReason } from './social/reports';
 export {
   AchievementFacts,
+  DEFAULT_PLAYER_ODDS,
   DirectionalConnection,
   FixedTile,
   GameMap,
@@ -342,6 +344,7 @@ export function createEngine(
     restartGame,
     startTutorial,
     cycleColor,
+    setReady,
     nextPhase,
     previousPhase,
     pauseGame,

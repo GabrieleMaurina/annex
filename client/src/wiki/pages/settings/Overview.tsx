@@ -19,7 +19,7 @@ function Overview() {
           rows={[
             [
               'Setup',
-              'Placement, initial troops, fortification, capitals, points',
+              'Game type, odds, placement, initial troops, fortification, capitals, points',
               <WikiLink key="a" to="settings/setup" />,
             ],
             [
@@ -78,8 +78,9 @@ function Overview() {
       <WikiSection id="random" title="Randomize">
         <p>
           Randomize rolls a fresh rule set. It favors defaults and stays near
-          them, and leaves Anonymous and the Bots, Stalemate Prevention and
-          Session groups untouched. A good way to find new ways to play.
+          them, and leaves Game Type, Odds, Anonymous and the Bots, Stalemate
+          Prevention and Session groups untouched. A good way to find new ways
+          to play.
         </p>
       </WikiSection>
       <WikiSection id="presets" title="Presets">

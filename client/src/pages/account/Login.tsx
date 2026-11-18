@@ -176,7 +176,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
             </Button>
             <Button
               className="d-inline-flex align-items-center justify-content-center gap-1"
-              variant="outline-secondary"
+              variant="secondary"
               size="sm"
               onClick={() => navigate('/')}
             >
@@ -189,7 +189,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
             <p className="mb-2 small">{info}</p>
             <Button
               className="d-inline-flex align-items-center justify-content-center gap-1"
-              variant="outline-secondary"
+              variant="secondary"
               size="sm"
               onClick={() => goto('login')}
             >
@@ -294,7 +294,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
               <div className="d-flex flex-column gap-2">
                 <Button
                   className="d-inline-flex align-items-center justify-content-center gap-1"
-                  variant="outline-secondary"
+                  variant="secondary"
                   size="sm"
                   onClick={() => goto('register')}
                 >
@@ -304,7 +304,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
                 {loginFailed && (
                   <Button
                     className="d-inline-flex align-items-center justify-content-center gap-1"
-                    variant="outline-secondary"
+                    variant="secondary"
                     size="sm"
                     onClick={() => goto('forgotPassword')}
                   >
@@ -317,7 +317,7 @@ function Login({ account, onSessionChange, navigate }: Props) {
             {mode !== 'login' && (
               <Button
                 className="d-inline-flex align-items-center justify-content-center gap-1"
-                variant="outline-secondary"
+                variant="secondary"
                 size="sm"
                 onClick={() => goto('login')}
               >

@@ -1,5 +1,6 @@
 import { meetsRequirements } from 'engine';
 import { Badge, Table } from 'react-bootstrap';
+import CasualBadge from '../../common/badges/CasualBadge';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import Tip from '../../common/tooltips/Tip';
 import { playerColor } from '../../lib/palette';
@@ -140,6 +141,7 @@ function GamesTable({ games, account, onOpen }: Props) {
                     </span>
                   )}
                   {game.name}
+                  <CasualBadge gameType={game.gameType} className="ms-2" />
                 </td>
                 <td>{game.mapName}</td>
                 <td>{titleCase(game.gameMode)}</td>

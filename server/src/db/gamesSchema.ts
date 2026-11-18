@@ -216,6 +216,8 @@ const result = object(
 
 export const SETTINGS_ENUM_KEYS = [
   'gameMode',
+  'gameType',
+  'odds',
   'blitz',
   'defenceDice',
   'attackDice',

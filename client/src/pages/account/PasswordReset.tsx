@@ -78,7 +78,7 @@ function PasswordReset({ code, navigate }: Props) {
         </Form>
       )}
       <Button
-        variant="outline-secondary"
+        variant="secondary"
         className="mt-2 d-inline-flex align-items-center justify-content-center gap-1"
         onClick={() => navigate('/')}
       >

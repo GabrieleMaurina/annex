@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
+import CasualBadge from '../common/badges/CasualBadge';
 import { useTitleIconFit } from '../common/useTitleIconFit';
 import { playSound } from '../lib/sounds';
 import type { GameSettingsInput, GameState } from '../lib/types';
@@ -77,6 +78,11 @@ function Header({ game, isHost, applySettings }: Props) {
           />
         )}
       </div>
+      {game.gameType === 'casual' && (
+        <div className="text-center mt-2">
+          <CasualBadge gameType={game.gameType} className="fs-6" />
+        </div>
+      )}
     </div>
   );
 }

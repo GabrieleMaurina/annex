@@ -685,7 +685,7 @@ function WorldMapModal({ sessionKey = 'editor', onHide, onGenerated }: Props) {
             {result && (
               <Tip text="View the generated map full size">
                 <Button
-                  variant="link"
+                  variant="secondary"
                   className="p-0 w-100"
                   onClick={() => setPreviewOpen(true)}
                 >

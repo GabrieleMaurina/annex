@@ -15,9 +15,12 @@ import { scaled } from '../../ui/uiScale';
 import GameEndResults from '../GameEndResults';
 import GameMap from '../GameMap';
 import { gameMapDataProps, noopGameMapHandlers } from '../gameMapProps';
+import { loadClickableRegions } from '../regions/clickableRegions';
 import ExportReplayModal from './clip/ExportReplayModal';
 import type { FoldedReplay } from './replay';
 import ReplayLoading from './ReplayLoading';
+
+const REGIONS_PREFETCH_MS = 300;
 
 interface Props {
   game: GameState;
@@ -81,6 +84,14 @@ function GameReplayView({
   const previousReplayIndexRef = useRef<number | null>(null);
   const uiHidden = useUiHidden();
   const [clipOpen, setClipOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(
+      () => loadClickableRegions(mapRenderName, game.playerMapId),
+      REGIONS_PREFETCH_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [mapRenderName, game.playerMapId]);
 
   useEffect(() => {
     onViewChange?.(view === 'replay' && replay ? 'replay' : 'results');

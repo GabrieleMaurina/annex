@@ -8,11 +8,11 @@ export const BOT_DIFFICULTY_LABELS: Record<BotDifficulty | 'random', string> = {
   random: 'Random',
 };
 export const BOT_DIFFICULTIES: (BotDifficulty | 'random')[] = [
+  'random',
   'idle',
   'easy',
   'medium',
   'hard',
-  'random',
 ];
 
 export const BOT_PERSONALITY_LABELS: Record<BotPersonality | 'random', string> =
@@ -30,6 +30,7 @@ export const BOT_PERSONALITY_LABELS: Record<BotPersonality | 'random', string> =
     random: 'Random',
   };
 export const BOT_PERSONALITIES: (BotPersonality | 'random')[] = [
+  'random',
   'balanced',
   'taker',
   'breaker',
@@ -40,5 +41,4 @@ export const BOT_PERSONALITIES: (BotPersonality | 'random')[] = [
   'police',
   'hoarder',
   'opportunist',
-  'random',
 ];

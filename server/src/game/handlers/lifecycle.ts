@@ -16,12 +16,22 @@ import {
   parseMetaSettings,
 } from '../../gameMeta';
 import {
+  canCreateGame,
+  canJoinGame,
+  gameCreated,
+  gameJoined,
+  hasInvitesFor,
+  isInvitedTo,
+  renameError,
+} from '../../invites/invites';
+import {
   gameNameByPlayerId,
   playerIdBySocketId,
   setSocketRoom,
   userIdBySocketId,
 } from '../../sockets/socketRooms';
 import { isObject } from '../../validate';
+import { registerGameAction } from '../handlerHelpers';
 
 type GameResponse = { ok: true; game: unknown } | { ok: false; error: string };
 
@@ -29,7 +39,7 @@ function settingsFromClient(
   playerId: number,
   settings: Record<string, unknown>,
 ): Record<string, unknown> | null {
-  const { bannedPlayerIds, teams } = settings;
+  const { bannedPlayerIds, teams, playerOdds } = settings;
   const bannedIds = Array.isArray(bannedPlayerIds)
     ? bannedPlayerIds.map((id) => fromClient(playerId, id))
     : bannedPlayerIds;
@@ -47,6 +57,13 @@ function settingsFromClient(
             : team,
         )
       : teams,
+    playerOdds: Array.isArray(playerOdds)
+      ? playerOdds.map((entry) =>
+          isObject(entry)
+            ? { ...entry, playerId: fromClient(playerId, entry.playerId) }
+            : entry,
+        )
+      : playerOdds,
   };
 }
 
@@ -62,8 +79,13 @@ export function registerGameHandlers(
       const playerId = playerIdBySocketId.get(socket.id);
       if (playerId === undefined)
         return callback({ ok: false, error: 'not identified' });
+      const userId = userIdBySocketId.get(socket.id);
+      const name = isObject(data) ? data.name : undefined;
+      if (typeof name === 'string' && !canCreateGame(name.trim(), userId))
+        return callback({ ok: false, error: 'game name already in use' });
       const response = engine.createGame(playerId, isObject(data) ? data : {});
       if (response.ok) {
+        if (userId) gameCreated(response.game.name, userId);
         createGameMeta(response.game.name, playerId);
         setSocketRoom(io, playerId, response.game.name);
         emitGameMeta(io, response.game.name, socket);
@@ -84,13 +106,21 @@ export function registerGameHandlers(
       if (typeof gameName !== 'string')
         return callback({ ok: false, error: 'game not found' });
       const password = isObject(data) ? data.password : undefined;
+      const userId = userIdBySocketId.get(socket.id);
 
-      if (!checkGamePassword(gameName, playerId, password))
+      if (!canJoinGame(gameName, userId))
+        return callback({ ok: false, error: 'game unavailable' });
+
+      if (
+        !checkGamePassword(gameName, playerId, password) &&
+        !(userId && isInvitedTo(gameName, userId))
+      )
         return callback({ ok: false, error: 'invalid password' });
 
       const join = () => {
         const response = engine.joinGame(playerId, gameName);
         if (response.ok) {
+          if (userId) gameJoined(response.game.name, userId);
           grantGamePasswordExempt(response.game.name, playerId);
           setSocketRoom(io, playerId, response.game.name);
           emitGameMeta(io, response.game.name, socket);
@@ -99,7 +129,6 @@ export function registerGameHandlers(
         if (response.ok) emitBlockedPlayers(io, playerId);
       };
 
-      const userId = userIdBySocketId.get(socket.id);
       if (!userId || engine.isGameMember(playerId, gameName)) return join();
       loadBlockPeers(userId)
         .then(() => {
@@ -137,6 +166,24 @@ export function registerGameHandlers(
       const settings = settingsFromClient(playerId, isObject(data) ? data : {});
       if (!settings)
         return callback({ ok: false, error: 'invalid banned players' });
+      const currentName = gameNameByPlayerId.get(playerId);
+      const newName =
+        typeof settings.name === 'string' ? settings.name.trim() : null;
+      const anonymousRename =
+        settings.anonymous === 'on' &&
+        engine
+          .listGameSummaries()
+          .some(
+            (game) =>
+              game.name === currentName && game.settings.anonymous === 'off',
+          );
+      const nameError =
+        currentName && newName && newName !== currentName
+          ? renameError(currentName, newName)
+          : currentName && anonymousRename && hasInvitesFor(currentName)
+            ? 'game has pending invites'
+            : null;
+      if (nameError) return callback({ ok: false, error: nameError });
       const metaUpdate = parseMetaSettings(settings);
       if ('error' in metaUpdate)
         return callback({ ok: false, error: metaUpdate.error });
@@ -156,19 +203,24 @@ export function registerGameHandlers(
     if (playerId === undefined)
       return callback({ ok: false, error: 'not in a game' });
     const response = engine.startGame(playerId);
-    if (response.ok) {
-      const started = response.game as {
+    const started = response.ok && response.game.state === 'playing';
+    if (started) {
+      const startedGame = response.game as {
         name: string;
         players: { id: number }[];
       };
-      recordGameParticipants(started);
-      rememberReportableGame(started);
+      recordGameParticipants(startedGame);
+      rememberReportableGame(startedGame);
     }
     callback(viewResponse(playerId, response));
-    if (!response.ok) return;
+    if (!started) return;
     for (const [viewerId, name] of gameNameByPlayerId)
       if (name === response.game.name) emitBlockedPlayers(io, viewerId);
   });
+
+  registerGameAction(socket, 'game:setReady', (playerId, data) =>
+    engine.setReady(playerId, data.ready),
+  );
 
   socket.on('game:cycleColor', (callback: (response: GameResponse) => void) => {
     if (typeof callback !== 'function') return;

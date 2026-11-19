@@ -66,7 +66,7 @@ export function ownedTerritoryIds(game: Game, botId: number): number[] {
   return ids;
 }
 
-export function isFrontier(
+function isFrontier(
   game: Game,
   view: BotView,
   botId: number,

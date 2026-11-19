@@ -1,4 +1,4 @@
-import { evaluateBoard } from '../planning/board';
+import { evaluateEntrenched } from '../planning/board';
 import { PlanContext, SimState, cloneState } from '../planning/context';
 
 export const RISKY_STEP_WIN = 0.8;
@@ -39,7 +39,10 @@ export function expectedScore(
       (score, risk) =>
         score -
         mass(risk) *
-          Math.max(0, successScore - evaluateBoard(ctx, failureBoard(risk))),
+          Math.max(
+            0,
+            successScore - evaluateEntrenched(ctx, failureBoard(risk)),
+          ),
       successScore,
     );
 }

@@ -5,6 +5,7 @@ import {
 } from '../claims/objectives';
 import { contestedShare, hopelessContinent } from '../claims/score';
 import { cleanupCandidates } from '../cleanup/cleanup';
+import { entrenchStackTargets } from '../entrench/entrench';
 import {
   continentBreakCandidates,
   continentCompletionCandidates,
@@ -486,6 +487,12 @@ function defensiveCandidates(
     const stacking = openStackDeployments(ctx, state, budget);
     const gathering = mainStackDeployments(ctx, state, budget);
     const guarding = capitalDeployments(ctx, state, budget);
+    const entrenching =
+      budget > 0
+        ? entrenchStackTargets(ctx, state).filter((id) =>
+            supplyConnected(ctx, id),
+          )
+        : [];
     return [
       {
         objectives,
@@ -519,6 +526,12 @@ function defensiveCandidates(
             },
           ]
         : []),
+      ...entrenching.map((id) => ({
+        objectives,
+        deployments: [{ territoryId: id, troops: budget }],
+        stacks: [],
+        fortifyHint: id,
+      })),
     ];
   }
   return [

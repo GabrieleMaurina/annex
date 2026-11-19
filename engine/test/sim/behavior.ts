@@ -6,6 +6,7 @@ const RUNAWAY_RATIO = 1.5;
 const MULTI_MIN_PLAYERS = 4;
 const SMALL_STACK = 6;
 const LARGE_STACK = 12;
+const CAPITAL_STACK = 8;
 
 export interface BehaviorStats {
   turns: number;
@@ -17,6 +18,9 @@ export interface BehaviorStats {
   territoryTurns: number;
   attacksReceived: number;
   bonusTurns: number;
+  entrenches: number;
+  capitalStackTurns: number;
+  capitalStackEntrenchedTurns: number;
 }
 
 export type BehaviorEntry = [string, BehaviorStats];
@@ -32,6 +36,9 @@ export function emptyBehavior(): BehaviorStats {
     territoryTurns: 0,
     attacksReceived: 0,
     bonusTurns: 0,
+    entrenches: 0,
+    capitalStackTurns: 0,
+    capitalStackEntrenchedTurns: 0,
   };
 }
 
@@ -78,6 +85,25 @@ export function recordAttack(
   if (game.territoryOwners.get(targetId) === leaderId) stats.leaderAttacks++;
 }
 
+function capitalStackTerritories(game: Game, playerId: number): number[] {
+  if (game.gameMode !== 'capitals') return [];
+  const neighbors = new Map(
+    getGameMap(game).territories.map((t) => [t.id, t.neighbors]),
+  );
+  const stacks = new Set<number>();
+  for (const capitalId of game.capitalTerritoryIds) {
+    const ownerId = game.territoryOwners.get(capitalId);
+    if (ownerId === undefined || ownerId === playerId) continue;
+    for (const id of neighbors.get(capitalId) ?? [])
+      if (
+        game.territoryOwners.get(id) === playerId &&
+        (game.territoryTroops.get(id) ?? 0) >= CAPITAL_STACK
+      )
+        stacks.add(id);
+  }
+  return [...stacks];
+}
+
 export function recordTurnEnd(
   stats: BehaviorStats,
   game: Game,
@@ -105,6 +131,10 @@ export function recordTurnEnd(
       stats.bonusTurns++;
       break;
     }
+  const capitalStacks = capitalStackTerritories(game, playerId);
+  if (capitalStacks.length > 0) stats.capitalStackTurns++;
+  if (capitalStacks.some((id) => (game.territoryEntrenchment.get(id) ?? 0) > 0))
+    stats.capitalStackEntrenchedTurns++;
   if (largest >= SMALL_STACK) stats.smallStackTurns++;
   if (largest >= LARGE_STACK) stats.largeStackTurns++;
   stats.concentration += largest / total;
@@ -144,6 +174,10 @@ export function formatBehavior(
       'on leader',
       'hit per 100 held',
       'holds bonus',
+      'entrenches',
+      'per 100 turns',
+      'capital stack turns',
+      'capital stack entrenched',
     ].join('\t'),
   ];
   for (const key of keys) {
@@ -162,6 +196,12 @@ export function formatBehavior(
           ? ((100 * stats.attacksReceived) / stats.territoryTurns).toFixed(2)
           : 'n/a',
         percent(stats.bonusTurns, stats.turns),
+        stats.entrenches,
+        stats.turns > 0
+          ? ((100 * stats.entrenches) / stats.turns).toFixed(2)
+          : 'n/a',
+        percent(stats.capitalStackTurns, stats.turns),
+        percent(stats.capitalStackEntrenchedTurns, stats.capitalStackTurns),
       ].join('\t'),
     );
   }

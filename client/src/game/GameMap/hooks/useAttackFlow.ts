@@ -600,6 +600,7 @@ export function useAttackFlow({
       x: selectedUnlockTile.x,
       y: selectedUnlockTile.y,
       cost: unlockCostValue,
+      tile: selectedUnlockTile,
     },
     flip: selectedSwitch && {
       x: selectedSwitch.x,

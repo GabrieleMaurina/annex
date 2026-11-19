@@ -4,6 +4,7 @@ import {
   supplyHubTerritoryIds,
 } from '../../game/mechanics';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
+import { applyEntrenchments } from '../entrench/entrench';
 import { cashForcedSets } from '../features/cardOutlook';
 import { scaledOutcome } from '../features/combat';
 import {
@@ -30,7 +31,7 @@ import {
 } from '../goals/stackOpenness';
 import { hoardFortify } from '../personality/specialists/hoarder';
 import { checkPlanClock } from '../timing/planClock';
-import { evaluateBoard } from './board';
+import { evaluateEntrenched } from './board';
 import {
   PlanContext,
   SimState,
@@ -342,7 +343,7 @@ function capitalReturn(
   if (troops < 1) return null;
   state.troops.set(source, 1);
   state.troops.set(capital, capitalTroops + troops);
-  const score = evaluateBoard(ctx, state, cachedProgress);
+  const score = evaluateEntrenched(ctx, state, cachedProgress);
   state.troops.set(source, sourceTroops);
   state.troops.set(capital, capitalTroops);
   return { move: { startId: source, endId: capital, troops }, score };
@@ -358,7 +359,7 @@ export function bestFortify(
   const goal = modeGoalFor(ctx);
   const cachedProgress =
     goal.minTroops <= 1 ? sideProgress(ctx, goal, state) : undefined;
-  const baseScore = evaluateBoard(ctx, state, cachedProgress);
+  const baseScore = evaluateEntrenched(ctx, state, cachedProgress);
   if (ctx.personality === 'hoarder')
     return { move: hoardFortify(ctx, state), score: baseScore };
   const owned = ownedIds(state, ctx.botId);
@@ -455,7 +456,7 @@ export function bestFortify(
       for (const amount of amounts) {
         state.troops.set(source, amount === troops ? 1 : sourceTroops - amount);
         state.troops.set(target, targetTroops + amount);
-        let score = evaluateBoard(ctx, state, cachedProgress);
+        let score = evaluateEntrenched(ctx, state, cachedProgress);
         state.troops.set(source, sourceTroops);
         state.troops.set(target, targetTroops);
         if (target === hint) score += 3;
@@ -486,7 +487,7 @@ function blendRollScore(
   defeat.troopsLost += roll.attackers;
   return (
     winProbability * victoryScore +
-    (1 - winProbability) * evaluateBoard(ctx, defeat)
+    (1 - winProbability) * evaluateEntrenched(ctx, defeat)
   );
 }
 
@@ -594,6 +595,8 @@ export function simulateTurn(
       troopsIn(state, fortify.move.endId) + fortify.move.troops,
     );
   }
+
+  applyEntrenchments(ctx, state);
 
   const score = riskAware
     ? expectedScore(ctx, risks, fortify.score)

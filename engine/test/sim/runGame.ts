@@ -316,6 +316,7 @@ export function runSimGame(
         }
         lastFailureKey = null;
         repeatedFailures = 0;
+        if (action.event === 'game:entrench') stats.entrenches++;
       }
       clearTurnTimer(name);
 

@@ -75,6 +75,7 @@ export interface PlanContext {
   income: number;
   claims: ClaimContext | null;
   position: PositionContext | null;
+  entrenchWorth: number;
 }
 
 const FINISHER_DEPTH = 40;
@@ -445,6 +446,7 @@ export function buildContext(
     income: incomeOf(game, botId),
     claims: null,
     position: null,
+    entrenchWorth: entrenchWorthOf(game),
   };
   const claiming = claimsEnabled(game, personality, params);
   const positioned = positionEnabled(personality, params);
@@ -596,9 +598,18 @@ export function troopsPerDefenderAt(
   return troopsPerDefender(ctx.game, defenceDiceAt(ctx, territoryId));
 }
 
+function entrenchWorthOf(game: Game): number {
+  if (game.entrenchments !== 'on') return 1;
+  return (
+    troopsPerDefender(game, game.defenceDice + 1) /
+    troopsPerDefender(game, game.defenceDice)
+  );
+}
+
 export interface SimState {
   owners: Map<number, number>;
   troops: Map<number, number>;
+  entrenched: Set<number>;
   damageByPlayer: Map<number, number>;
   conquestsByPlayer: Map<number, number>;
   conquered: boolean;
@@ -610,6 +621,7 @@ export interface SimState {
 export function snapshotState(ctx: PlanContext): SimState {
   const owners = new Map<number, number>();
   const troops = new Map<number, number>();
+  const entrenched = new Set<number>();
   for (const territory of ctx.map.territories) {
     if (!isVisible(ctx.view, territory.id)) {
       const remembered = ctx.view.remembered.get(territory.id);
@@ -621,10 +633,16 @@ export function snapshotState(ctx: PlanContext): SimState {
     const ownerId = ctx.game.territoryOwners.get(territory.id);
     if (ownerId !== undefined) owners.set(territory.id, ownerId);
     troops.set(territory.id, ctx.game.territoryTroops.get(territory.id) ?? 0);
+    if (
+      ownerId === ctx.botId &&
+      (ctx.game.territoryEntrenchment.get(territory.id) ?? 0) > 0
+    )
+      entrenched.add(territory.id);
   }
   return {
     owners,
     troops,
+    entrenched,
     damageByPlayer: new Map(),
     conquestsByPlayer: new Map(),
     conquered: ctx.game.conqueredThisTurn,
@@ -638,6 +656,7 @@ export function cloneState(state: SimState): SimState {
   return {
     owners: new Map(state.owners),
     troops: new Map(state.troops),
+    entrenched: new Set(state.entrenched),
     damageByPlayer: new Map(state.damageByPlayer),
     conquestsByPlayer: new Map(state.conquestsByPlayer),
     conquered: state.conquered,
@@ -649,6 +668,17 @@ export function cloneState(state: SimState): SimState {
 
 export function troopsIn(state: SimState, territoryId: number): number {
   return state.troops.get(territoryId) ?? 0;
+}
+
+export function defendingTroops(
+  ctx: PlanContext,
+  state: SimState,
+  territoryId: number,
+): number {
+  const troops = troopsIn(state, territoryId);
+  return state.entrenched.has(territoryId)
+    ? troops * ctx.entrenchWorth
+    : troops;
 }
 
 export function ownedIds(state: SimState, playerId: number): number[] {

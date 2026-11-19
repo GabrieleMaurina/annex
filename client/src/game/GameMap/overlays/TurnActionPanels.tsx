@@ -1,5 +1,12 @@
 import { ONLINE_PAUSE_SECONDS } from 'engine';
-import type { Dispatch, RefObject, SetStateAction } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from 'react';
 import { stepTroops } from '../../../common/inputs/useTroopsInput';
 import { connector } from '../../../connector';
 import { playerColor } from '../../../lib/palette';
@@ -7,6 +14,7 @@ import type {
   BlitzOutcome,
   DiceTies,
   GameState,
+  LockedTile,
   Placement,
   TurnDuration,
   TurnPhase,
@@ -188,7 +196,7 @@ export default function TurnActionPanels({
     selectedType: AttackType;
     manualTroops: number;
     blitzTroops: number;
-    unlock: { x: number; y: number; cost: number } | null;
+    unlock: { x: number; y: number; cost: number; tile: LockedTile } | null;
     flip: { x: number; y: number; cost: number } | null;
   };
   blitzEnabled: boolean;
@@ -247,7 +255,50 @@ export default function TurnActionPanels({
       target?.y,
     ].join(':'),
   );
-  const styles = usePanelStyles(anchors, useCameraTransform(camera), target);
+  const panelsRef = useRef<HTMLDivElement>(null);
+  const [panelSize, setPanelSize] = useState<{ w: number; h: number } | null>(
+    null,
+  );
+  const panelsMounted = !!currentTurnPlayer;
+  useLayoutEffect(() => {
+    const container = panelsRef.current;
+    if (!container) return;
+    const measure = () => {
+      const panel = container.firstElementChild;
+      const next =
+        panel instanceof HTMLElement
+          ? { w: panel.offsetWidth, h: panel.offsetHeight }
+          : null;
+      setPanelSize((prev) =>
+        prev?.w === next?.w && prev?.h === next?.h ? prev : next,
+      );
+    };
+    const resizeObserver = new ResizeObserver(measure);
+    const observeFirstPanel = () => {
+      resizeObserver.disconnect();
+      if (container.firstElementChild) {
+        resizeObserver.observe(container.firstElementChild, {
+          box: 'border-box',
+        });
+      }
+    };
+    const mutationObserver = new MutationObserver(() => {
+      observeFirstPanel();
+      measure();
+    });
+    mutationObserver.observe(container, { childList: true });
+    observeFirstPanel();
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [panelsMounted]);
+  const styles = usePanelStyles(
+    anchors,
+    useCameraTransform(camera),
+    target,
+    panelSize,
+  );
   const deployPanelStyle = drag.shift(styles.deployPanelStyle);
   const fortifyPanelStyle = drag.shift(styles.fortifyPanelStyle);
   const attackPanelStyle = drag.shift(styles.attackPanelStyle);
@@ -305,7 +356,11 @@ export default function TurnActionPanels({
           />
         </>
       )}
-      <div style={{ display: 'contents' }} onPointerDown={drag.start}>
+      <div
+        ref={panelsRef}
+        style={{ display: 'contents' }}
+        onPointerDown={drag.start}
+      >
         {deployPanelOpen && deployPanelStyle && (
           <TroopPanel
             label={turnPhase === 'troop' ? 'Place troops:' : 'Deploy troops:'}

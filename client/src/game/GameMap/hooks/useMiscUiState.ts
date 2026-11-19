@@ -11,7 +11,7 @@ import {
   setToxinsActive,
 } from '../../animations';
 import type { SeaTerritory, Territory } from '../../mapData';
-import { getAnchoredPanelPosition } from '../../mapMath';
+import type { ClickableRegions } from '../../regions/clickableRegions';
 import type { ConquestArrow } from '../../replay/replay';
 import {
   computeSupplyConnectedTerritoryIds,
@@ -22,7 +22,7 @@ import {
   ATTACK_PANEL_HEIGHT,
   ATTACK_PANEL_WIDTH,
   getScales,
-  getTerritoryScreenPos,
+  getScreenOffset,
   SCREEN_EDGE_MARGIN,
   TROOP_PANEL_GAP,
   TROOP_PANEL_HEIGHT,
@@ -30,6 +30,11 @@ import {
   TURN_PANEL_RESERVED_HEIGHT,
   type Transform,
 } from '../helpers';
+import {
+  coversObstacles,
+  placePanel,
+  type PanelObstacle,
+} from '../panelPlacement';
 
 export function useLiveGameRefs() {
   const ownerByIdRef = useRef(
@@ -74,40 +79,20 @@ export function useLiveGameRefs() {
   };
 }
 
-function anchoredStyle(
-  screenPos: { x: number; y: number } | null,
-  zoomedRadius: number,
-  width: number,
-  height: number,
-  size: { w: number; h: number },
-): CSSProperties | undefined {
-  if (!screenPos) return undefined;
-  return {
-    position: 'absolute',
-    ...getAnchoredPanelPosition(
-      screenPos,
-      zoomedRadius,
-      width,
-      height,
-      size.w,
-      size.h,
-      TROOP_PANEL_GAP,
-      SCREEN_EDGE_MARGIN,
-      TURN_PANEL_RESERVED_HEIGHT,
-    ),
-  };
-}
-
 export interface PanelAnchors {
   territories: Territory[];
   seaTerritories: { id: number; x: number; y: number }[];
   size: { w: number; h: number };
   imgDims: { w: number; h: number };
   VERTEX_RADIUS: number;
+  regions: ClickableRegions | null;
   selectedTerritoryId: number | null;
+  fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
+  attackStartTerritoryId: number | null;
   attackEndTerritoryId: number | null;
   attackDiceRollTerritoryId: number | undefined;
+  sailStartTerritoryId: number | null;
   sailEndTerritoryId: number | null;
   attackSeaTerritoryId: number | null;
   attackSeaDiceRollTerritoryId: number | undefined;
@@ -121,135 +106,158 @@ export function usePanelStyles(
     size,
     imgDims,
     VERTEX_RADIUS,
+    regions,
     selectedTerritoryId,
+    fortifyStartTerritoryId,
     fortifyEndTerritoryId,
+    attackStartTerritoryId,
     attackEndTerritoryId,
     attackDiceRollTerritoryId,
+    sailStartTerritoryId,
     sailEndTerritoryId,
     attackSeaTerritoryId,
     attackSeaDiceRollTerritoryId,
     deploySeaTerritoryId,
   }: PanelAnchors,
   transform: Transform,
-  unlockAnchor: { x: number; y: number } | null,
+  unlockTarget: PanelObstacle | null,
+  measuredSize: { w: number; h: number } | null,
 ) {
-  const zoomedRadius =
-    VERTEX_RADIUS * getScales(size.w, size.h, transform.zoom, imgDims).scaleX;
+  const unlockX = unlockTarget?.x;
+  const unlockY = unlockTarget?.y;
+  const unlockTile = unlockTarget?.tile;
+  return useMemo(() => {
+    const { scaleX, scaleY } = getScales(
+      size.w,
+      size.h,
+      transform.zoom,
+      imgDims,
+    );
+    const { x: offsetX, y: offsetY } = getScreenOffset(
+      size.w,
+      size.h,
+      transform.zoom,
+      transform.offsetX,
+      transform.offsetY,
+      imgDims,
+    );
+    const view = {
+      scaleX,
+      scaleY,
+      offsetX,
+      offsetY,
+      vertexRadius: VERTEX_RADIUS,
+    };
 
-  const selectedTerritory =
-    selectedTerritoryId !== null
-      ? territories.find((t) => t.id === selectedTerritoryId)
-      : undefined;
-  const selectedScreenPos = selectedTerritory
-    ? getTerritoryScreenPos(selectedTerritory, size, transform, imgDims)
-    : null;
-  const deployPanelStyle = anchoredStyle(
-    selectedScreenPos,
-    zoomedRadius,
-    TROOP_PANEL_WIDTH,
-    TROOP_PANEL_HEIGHT,
+    function obstacleAt(id: number | null | undefined) {
+      if (id === null || id === undefined) return undefined;
+      const land = territories.find((t) => t.id === id);
+      if (land) return { id, x: land.x, y: land.y };
+      const sea = seaTerritories.find((s) => s.id === id);
+      return sea && { id, x: sea.x, y: sea.y, sea: true };
+    }
+
+    function placedStyle(
+      anchor: PanelObstacle | undefined,
+      others: (PanelObstacle | undefined)[],
+      fallback: { w: number; h: number },
+    ): CSSProperties | undefined {
+      if (!anchor) return undefined;
+      const panel = measuredSize ?? fallback;
+      const obstacles = [
+        anchor,
+        ...others.filter((o): o is PanelObstacle => o !== undefined),
+      ];
+      return {
+        position: 'absolute',
+        width: 'max-content',
+        maxWidth: size.w - 2 * SCREEN_EDGE_MARGIN,
+        ...placePanel({
+          anchor: {
+            x: anchor.x * scaleX + offsetX,
+            y: anchor.y * scaleY + offsetY,
+          },
+          anchorRadius: VERTEX_RADIUS * scaleX,
+          width: panel.w,
+          height: panel.h,
+          screenW: size.w,
+          screenH: size.h,
+          gap: TROOP_PANEL_GAP,
+          edgeMargin: SCREEN_EDGE_MARGIN,
+          reservedBottom: TURN_PANEL_RESERVED_HEIGHT,
+          covers: coversObstacles(obstacles, regions, view),
+        }),
+      };
+    }
+
+    const troopPanel = { w: TROOP_PANEL_WIDTH, h: TROOP_PANEL_HEIGHT };
+    const attackPanel = { w: ATTACK_PANEL_WIDTH, h: ATTACK_PANEL_HEIGHT };
+
+    return {
+      deployPanelStyle: placedStyle(
+        obstacleAt(selectedTerritoryId),
+        [],
+        troopPanel,
+      ),
+      fortifyPanelStyle: placedStyle(
+        obstacleAt(fortifyEndTerritoryId),
+        [obstacleAt(fortifyStartTerritoryId)],
+        troopPanel,
+      ),
+      attackPanelStyle: placedStyle(
+        obstacleAt(attackEndTerritoryId ?? attackDiceRollTerritoryId),
+        [obstacleAt(attackStartTerritoryId)],
+        attackPanel,
+      ),
+      sailPanelStyle: placedStyle(
+        obstacleAt(sailEndTerritoryId),
+        [obstacleAt(sailStartTerritoryId)],
+        troopPanel,
+      ),
+      attackSeaPanelStyle: placedStyle(
+        obstacleAt(attackSeaTerritoryId ?? attackSeaDiceRollTerritoryId),
+        [],
+        attackPanel,
+      ),
+      deploySeaPanelStyle: placedStyle(
+        obstacleAt(deploySeaTerritoryId),
+        [],
+        troopPanel,
+      ),
+      unlockPanelStyle: placedStyle(
+        unlockX === undefined || unlockY === undefined
+          ? undefined
+          : { x: unlockX, y: unlockY, tile: unlockTile },
+        [obstacleAt(attackStartTerritoryId)],
+        troopPanel,
+      ),
+    };
+  }, [
+    territories,
+    seaTerritories,
     size,
-  );
-
-  const fortifyEndTerritory =
-    fortifyEndTerritoryId !== null
-      ? territories.find((t) => t.id === fortifyEndTerritoryId)
-      : undefined;
-  const fortifyScreenPos = fortifyEndTerritory
-    ? getTerritoryScreenPos(fortifyEndTerritory, size, transform, imgDims)
-    : null;
-  const fortifyPanelStyle = anchoredStyle(
-    fortifyScreenPos,
-    zoomedRadius,
-    TROOP_PANEL_WIDTH,
-    TROOP_PANEL_HEIGHT,
-    size,
-  );
-
-  const attackAnchorTerritoryId =
-    attackEndTerritoryId ?? attackDiceRollTerritoryId ?? null;
-  const attackEndTerritory =
-    attackAnchorTerritoryId !== null
-      ? territories.find((t) => t.id === attackAnchorTerritoryId)
-      : undefined;
-  const attackScreenPos = attackEndTerritory
-    ? getTerritoryScreenPos(attackEndTerritory, size, transform, imgDims)
-    : null;
-  const attackPanelStyle = anchoredStyle(
-    attackScreenPos,
-    zoomedRadius,
-    ATTACK_PANEL_WIDTH,
-    ATTACK_PANEL_HEIGHT,
-    size,
-  );
-
-  const sailEndSea =
-    sailEndTerritoryId !== null
-      ? seaTerritories.find((s) => s.id === sailEndTerritoryId)
-      : undefined;
-  const sailScreenPos = sailEndSea
-    ? getTerritoryScreenPos(sailEndSea, size, transform, imgDims)
-    : null;
-  const sailPanelStyle = anchoredStyle(
-    sailScreenPos,
-    zoomedRadius,
-    TROOP_PANEL_WIDTH,
-    TROOP_PANEL_HEIGHT,
-    size,
-  );
-
-  const attackSeaAnchorTerritoryId =
-    attackSeaTerritoryId ?? attackSeaDiceRollTerritoryId ?? null;
-  const attackSeaSea =
-    attackSeaAnchorTerritoryId !== null
-      ? seaTerritories.find((s) => s.id === attackSeaAnchorTerritoryId)
-      : undefined;
-  const attackSeaScreenPos = attackSeaSea
-    ? getTerritoryScreenPos(attackSeaSea, size, transform, imgDims)
-    : null;
-  const attackSeaPanelStyle = anchoredStyle(
-    attackSeaScreenPos,
-    zoomedRadius,
-    ATTACK_PANEL_WIDTH,
-    ATTACK_PANEL_HEIGHT,
-    size,
-  );
-
-  const deploySea =
-    deploySeaTerritoryId !== null
-      ? seaTerritories.find((s) => s.id === deploySeaTerritoryId)
-      : undefined;
-  const deploySeaScreenPos = deploySea
-    ? getTerritoryScreenPos(deploySea, size, transform, imgDims)
-    : null;
-  const deploySeaPanelStyle = anchoredStyle(
-    deploySeaScreenPos,
-    zoomedRadius,
-    TROOP_PANEL_WIDTH,
-    TROOP_PANEL_HEIGHT,
-    size,
-  );
-
-  const unlockScreenPos = unlockAnchor
-    ? getTerritoryScreenPos(unlockAnchor, size, transform, imgDims)
-    : null;
-  const unlockPanelStyle = anchoredStyle(
-    unlockScreenPos,
-    zoomedRadius,
-    TROOP_PANEL_WIDTH,
-    TROOP_PANEL_HEIGHT,
-    size,
-  );
-
-  return {
-    deployPanelStyle,
-    fortifyPanelStyle,
-    attackPanelStyle,
-    sailPanelStyle,
-    attackSeaPanelStyle,
-    deploySeaPanelStyle,
-    unlockPanelStyle,
-  };
+    imgDims,
+    VERTEX_RADIUS,
+    regions,
+    selectedTerritoryId,
+    fortifyStartTerritoryId,
+    fortifyEndTerritoryId,
+    attackStartTerritoryId,
+    attackEndTerritoryId,
+    attackDiceRollTerritoryId,
+    sailStartTerritoryId,
+    sailEndTerritoryId,
+    attackSeaTerritoryId,
+    attackSeaDiceRollTerritoryId,
+    deploySeaTerritoryId,
+    transform.zoom,
+    transform.offsetX,
+    transform.offsetY,
+    unlockX,
+    unlockY,
+    unlockTile,
+    measuredSize,
+  ]);
 }
 
 export function useAnimationActiveFlags({

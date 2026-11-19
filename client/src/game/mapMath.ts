@@ -562,29 +562,6 @@ export function concaveHull(
   return outline.map((idx) => points[idx]);
 }
 
-export function getAnchoredPanelPosition(
-  anchor: Point,
-  anchorRadius: number,
-  panelWidth: number,
-  panelHeight: number,
-  screenW: number,
-  screenH: number,
-  gap: number,
-  edgeMargin: number,
-  reservedBottom: number,
-): { left: number; top: number } {
-  const rawLeft = anchor.x - panelWidth / 2;
-  const fitsBelow =
-    anchor.y + anchorRadius + gap + panelHeight <= screenH - reservedBottom;
-  const rawTop = fitsBelow
-    ? anchor.y + anchorRadius + gap
-    : anchor.y - anchorRadius - gap - panelHeight;
-  return {
-    left: clamp(rawLeft, edgeMargin, screenW - panelWidth - edgeMargin),
-    top: clamp(rawTop, edgeMargin, screenH - reservedBottom - panelHeight),
-  };
-}
-
 export function buildWrappedPathSegments(
   path: Point[],
   toScreen: (p: Point) => Point,

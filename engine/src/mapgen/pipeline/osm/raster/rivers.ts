@@ -1,11 +1,13 @@
+import { addEdge } from '../../connectivity';
+import { discOffsets, pairKey } from '../../riverUtils';
 import { OsmRiver, OsmWater } from '../types';
 import { fillRings, strokeLine } from './rasterize';
 
 const MAX_RIVERS = 5;
-const MIN_FOLLOWER_SHARE = 0.5;
+const MIN_FOLLOWER_SHARE = 0.65;
 const FOLLOWER_RANK_GAP = 1;
 const WORLD_CLASS_RANK = 6;
-const MIN_RIVER_LENGTH_RATIO = 0.25;
+const MIN_RIVER_LENGTH_RATIO = 0.33;
 const RIVER_RADIUS = 4;
 const JOIN_RADIUS = 2 * RIVER_RADIUS;
 const CORRIDOR_RATIO = 0.03;
@@ -14,7 +16,6 @@ const BRIDGE_HALF_WIDTH = 1;
 const BRIDGE_OVERHANG = 2;
 const BRIDGE_SEARCH = 3 * RIVER_RADIUS;
 const MAX_CROSSING_RATIO = 0.05;
-const PAIR_KEY_BASE = 65536;
 const DIRECTIONS: [number, number][] = [
   [1, 0],
   [0, 1],
@@ -72,14 +73,6 @@ function landLength(
     }
   }
   return length;
-}
-
-function discOffsets(radius: number): [number, number][] {
-  const offsets: [number, number][] = [];
-  for (let dy = -radius; dy <= radius; dy++)
-    for (let dx = -radius; dx <= radius; dx++)
-      if (dx * dx + dy * dy <= radius * radius) offsets.push([dx, dy]);
-  return offsets;
 }
 
 function widen(
@@ -264,7 +257,7 @@ function riverCrossings(
       const a = Math.min(ahead.label, behind.label);
       const b = Math.max(ahead.label, behind.label);
       if (a === b || adjacency.get(a)?.has(b)) continue;
-      const key = a * PAIR_KEY_BASE + b;
+      const key = pairKey(a, b);
       const crossing = {
         a,
         b,
@@ -358,8 +351,7 @@ export function bridgeRivers(
       chosen.push(crossing);
   const pixels: number[] = [];
   for (const crossing of chosen) {
-    adjacency.get(crossing.a)!.add(crossing.b);
-    adjacency.get(crossing.b)!.add(crossing.a);
+    addEdge(adjacency, crossing.a, crossing.b);
     pixels.push(...bridgePixels(crossing, width, height));
   }
   return pixels;

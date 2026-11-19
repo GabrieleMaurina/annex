@@ -4,7 +4,7 @@ import { closedTiles } from '../../game/tiles/unlock';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { attackWinProbability } from '../features/combat';
 import { expectedScore, StepRisk } from '../goals/failureRisk';
-import { evaluateBoard } from '../planning/board';
+import { evaluateEntrenched } from '../planning/board';
 import {
   attackersOf,
   cloneState,
@@ -192,8 +192,8 @@ export function chooseOpportunisticUnlock(
           steps: steps.slice(1),
           occupy: false,
           score:
-            expectedScore(ctx, risks, evaluateBoard(ctx, after)) -
-            (baseScore ??= evaluateBoard(ctx, state)),
+            expectedScore(ctx, risks, evaluateEntrenched(ctx, after)) -
+            (baseScore ??= evaluateEntrenched(ctx, state)),
         });
       }
     }

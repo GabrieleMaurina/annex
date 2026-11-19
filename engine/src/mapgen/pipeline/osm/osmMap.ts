@@ -46,6 +46,7 @@ import {
 } from './raster/nature';
 import { extendLine, fillRings, strokeLine } from './raster/rasterize';
 import { reliefMap, ruggedMask } from './raster/relief';
+import { dropIdleRivers } from './raster/riverEdges';
 import { bridgeRivers, majorRiverMask } from './raster/rivers';
 import { smoothBorders, smoothCoast } from './raster/smooth';
 import { waterwayRivers } from './raster/waterways';
@@ -66,7 +67,7 @@ const WHOLE_STATES_COUNTRY = 'United States of America';
 const SEA_AREA_MULTIPLIER = 16;
 const LAKE_AREA_RATIO = 0.1;
 const NATURAL_AREA_RATIO = 0.1;
-const WATERWAY_JOIN_RATIO = 0.02;
+const WATERWAY_JOIN_RATIO = 0.03;
 const BORDER_OVERSHOOT = 12;
 const WATER_CLASSES = ['ocean', 'lake'];
 const LIMIT_LEVELS = [8, 7, 6, 5, 4];
@@ -426,6 +427,9 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
   const { adjacency } = buildAdjacency(labelGrid, width, height);
   for (let t = 0; t < landCount; t++)
     if (!adjacency.has(t)) adjacency.set(t, new Set());
+  const idleRiver = river
+    ? dropIdleRivers(river, labelGrid, adjacency, width, height, 0)
+    : [];
   const bridges = river
     ? bridgeRivers(
         river,
@@ -441,6 +445,7 @@ export function generateOsmMap(params: OsmMapParams): OsmGeneratedMap {
     if (rawLand[i] && visibleLand[i] && labelGrid[i] < 0) voidMask[i] = 1;
   for (let i = 0; i < voidMask.length; i++)
     if (mountains[i] && !land[i]) voidMask[i] = MOUNTAIN_VOID;
+  for (const i of idleRiver) voidMask[i] = 0;
   for (let i = 0; i < voidMask.length; i++) {
     if (labelGrid[i] >= 0) continue;
     if (removed?.[i] || (voidMask[i] === 1 && scenery?.[i]))

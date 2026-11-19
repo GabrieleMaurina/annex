@@ -10,6 +10,7 @@ import { BotProfile, Game, GameMap } from '../../types';
 import { claimsEnabled } from '../claims/snapshot';
 import { plannedMove } from '../cleanup/plannedMove';
 import { difficultyParams } from '../difficulty';
+import { entrenchMoves } from '../entrench/entrench';
 import {
   canHoldSet,
   currentSetValue,
@@ -45,7 +46,6 @@ import { chooseDeploy } from '../heuristics/deploy';
 import { chooseFortify } from '../heuristics/fortify';
 import {
   chooseCapital,
-  chooseEntrench,
   chooseTerritoryClaim,
   chooseTroopPlacement,
 } from '../heuristics/misc';
@@ -276,7 +276,7 @@ export function planBotTurn(
   if (phase === 'sail') return planSail(ctx, game, plan);
   if (phase === 'attack') return planAttack(ctx, game, plan);
   if (phase === 'fortify') return planFortify(ctx, game, plan);
-  if (phase === 'entrench') return planEntrench(ctx, game, plan);
+  if (phase === 'entrench') return planEntrench(ctx, plan);
   return result([], plan);
 }
 
@@ -974,15 +974,11 @@ function fortifyValid(
   );
 }
 
-function planEntrench(
-  ctx: PlanContext,
-  game: Game,
-  plan: TurnPlan,
-): PlanBotTurnResult {
+function planEntrench(ctx: PlanContext, plan: TurnPlan): PlanBotTurnResult {
   const choice =
     plan.entrenchesIssued < ctx.params.maxPlanDepth
-      ? chooseEntrench(game, ctx.view, ctx.botId, ctx.weights)
-      : null;
+      ? entrenchMoves(ctx, snapshotState(ctx))[0]
+      : undefined;
   if (choice) {
     plan.entrenchesIssued++;
     return result([{ event: 'game:entrench', payload: choice }], plan);

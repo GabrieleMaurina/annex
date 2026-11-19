@@ -7,7 +7,7 @@ import {
 } from '../../maps/switches';
 import { attackWinProbability } from '../features/combat';
 import { expectedScore, StepRisk } from '../goals/failureRisk';
-import { evaluateBoard } from '../planning/board';
+import { evaluateEntrenched } from '../planning/board';
 import {
   cloneState,
   defenceDiceAt,
@@ -95,7 +95,7 @@ function conquestGain(
     risks,
   );
   if (steps.length === 0) return -Infinity;
-  return expectedScore(next, risks, evaluateBoard(next, after)) - base;
+  return expectedScore(next, risks, evaluateEntrenched(next, after)) - base;
 }
 
 function flipScore(
@@ -113,7 +113,7 @@ function flipScore(
   after.troops.set(fromId, troopsIn(after, fromId) - FLIP_COST);
   after.troopsLost += FLIP_COST;
   return Math.max(
-    evaluateBoard(next, after) - base,
+    evaluateEntrenched(next, after) - base,
     ...newTargets(ctx, next, after).map(([from, target]) =>
       conquestGain(next, after, base, from, target),
     ),
@@ -124,7 +124,7 @@ function chooseSwitchFlip(ctx: PlanContext): SwitchFlip | null {
   const { switches } = ctx.map;
   if (switches.length === 0) return null;
   const state = snapshotState(ctx);
-  const base = evaluateBoard(ctx, state);
+  const base = evaluateEntrenched(ctx, state);
   let best: SwitchFlip | null = null;
   for (let switchId = 0; switchId < switches.length; switchId++) {
     const fromId = switches[switchId].neighbors

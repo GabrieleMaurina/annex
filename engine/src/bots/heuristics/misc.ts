@@ -4,17 +4,9 @@ import { getGameMap } from '../../maps/maps';
 import { Game } from '../../types';
 import { setupRivalClaims } from '../claims/setup';
 import { isTeammate } from '../features/mode/mode';
-import {
-  isFrontier,
-  isKeyTerritory,
-  neighborsOf,
-  ownedTerritoryIds,
-} from '../features/territory';
+import { neighborsOf, ownedTerritoryIds } from '../features/territory';
 import { Shape, shapeOf } from '../position/shape';
-import { Weights } from '../types';
 import { BotView, getBotView, ownerOf } from '../view';
-
-const MAX_ENTRENCH_TROOPS = 5;
 
 function continentsOf(game: Game): Map<number, number[]> {
   const continents = new Map<number, number[]>();
@@ -413,31 +405,4 @@ export function chooseCapital(
     TRAFFIC_WEIGHT * (traffic.get(id) ?? 0) +
     CHOKEPOINT_WEIGHT * (chokepoint.get(id) ?? 0);
   return owned.reduce((best, id) => (value(id) > value(best) ? id : best));
-}
-
-export function chooseEntrench(
-  game: Game,
-  view: BotView,
-  botId: number,
-  weights: Weights,
-): { territoryId: number; troops: number } | null {
-  if (weights.defendFrontier < 1) return null;
-  const owned = ownedTerritoryIds(game, botId)
-    .filter(
-      (id) =>
-        !game.capitalTerritoryIds.has(id) &&
-        (game.territoryTroops.get(id) ?? 0) >= 3 &&
-        isFrontier(game, view, botId, id),
-    )
-    .sort(
-      (a, b) =>
-        Number(isKeyTerritory(game, b)) - Number(isKeyTerritory(game, a)),
-    );
-  if (owned.length === 0) return null;
-  const territoryId = owned[0];
-  const troops = Math.min(
-    MAX_ENTRENCH_TROOPS,
-    Math.floor((game.territoryTroops.get(territoryId) ?? 0) / 2),
-  );
-  return troops >= 1 ? { territoryId, troops } : null;
 }

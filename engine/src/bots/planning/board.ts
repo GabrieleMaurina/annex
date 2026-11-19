@@ -1,6 +1,11 @@
 import { minTroopsFor, territoryIncome } from '../../game/mechanics';
 import { upcomingSetValues } from '../../game/progression/cards';
 import { ClaimEvaluation, evaluateClaims } from '../claims/score';
+import {
+  applyEntrenchments,
+  capitalPressure,
+  undoEntrenchments,
+} from '../entrench/entrench';
 import { grudgeAgainst } from '../features/grudge';
 import {
   capitalShortfall,
@@ -26,6 +31,7 @@ import {
   attackersOf,
   bonusOf,
   cloneState,
+  defendingTroops,
   guardAt,
   heldContinentBonus,
   holdsContinent,
@@ -126,7 +132,7 @@ export function applyEnemyResponse(
       let targetTroops = Infinity;
       for (const n of neighborsOf(ctx, from)) {
         if (s.owners.get(n) !== ctx.botId) continue;
-        const t = troopsIn(s, n);
+        const t = defendingTroops(ctx, s, n);
         if (t < targetTroops) {
           targetTroops = t;
           target = n;
@@ -171,6 +177,7 @@ const KEY_TERRITORY_RISK = 2;
 const CAPITAL_GUARD = 3;
 const EXPENDABLE_RISK = 5;
 const CAPITAL_CAPTURE = 15;
+const CAPITAL_PRESSURE = 4;
 const ANTI_LEADER = 0.15;
 const GRUDGE = 0.1;
 const CARD = 0.5;
@@ -319,7 +326,7 @@ function riskAndWaste(
     if (isBotBorder(ctx, state, id)) {
       hasBorder = true;
       const threat = strongestThreatAt(ctx, state, id);
-      const deficit = Math.max(0, threat - troops);
+      const deficit = Math.max(0, threat - defendingTroops(ctx, state, id));
       risk +=
         guardAt(ctx, id) *
         (isKeyTerritory(ctx.game, id) ? deficit : Math.min(deficit, riskCap));
@@ -411,7 +418,7 @@ function keyTerritoryRisk(ctx: PlanContext, state: SimState): number {
   ]) {
     if (state.owners.get(id) !== ctx.botId) continue;
     const threat = strongestThreatAt(ctx, state, id);
-    penalty += Math.max(0, threat * 1.2 - troopsIn(state, id));
+    penalty += Math.max(0, threat * 1.2 - defendingTroops(ctx, state, id));
   }
   return penalty;
 }
@@ -490,6 +497,7 @@ function scoreState(
   score -= KEY_TERRITORY_RISK * keyTerritoryRisk(ctx, state);
   score -= (CAPITAL_GUARD * capitalShortfall(ctx, state)) / scale;
   score += CAPITAL_CAPTURE * heldRivalCapitals(ctx, state);
+  score += CAPITAL_PRESSURE * capitalPressure(ctx, state);
   if (leader && leader.playerId !== ctx.botId)
     score -=
       ctx.weights.antiLeader *
@@ -519,4 +527,15 @@ export function evaluateBoard(
     ? STRATEGIST_RESPONSE_WEIGHT
     : RESPONSE_WEIGHT;
   return (1 - responseWeight) * raw + responseWeight * afterResponse;
+}
+
+export function evaluateEntrenched(
+  ctx: PlanContext,
+  state: SimState,
+  cachedProgress?: SideProgress,
+): number {
+  const moves = applyEntrenchments(ctx, state);
+  const score = evaluateBoard(ctx, state, cachedProgress);
+  undoEntrenchments(state, moves);
+  return score;
 }

@@ -16,12 +16,8 @@ import { cleanLandMask } from '../islands';
 import { mergeTerritories } from '../merge';
 import { placeTerritoryCenters } from '../placement';
 import { buildLandMask } from '../terrain';
-import {
-  settleRivers,
-  terrainFeatures,
-  TerrainToggles,
-  trimRivers,
-} from './features';
+import { terrainFeatures, TerrainToggles } from './features';
+import { carveRivers } from './rivers';
 import { finishTerrainMap, TerrainMap } from './terrainGraph';
 
 const TERRAIN_SEA_AREA_MULTIPLIER = 16;
@@ -48,17 +44,15 @@ export function generateTerrain(
   const targetCount = randomInt(rng, minCount, maxCount) + mergeCount;
   const maxLandNeighborsPerSea = TERRAIN_MAX_LAND_NEIGHBORS_PER_SEA[size];
 
-  const { cleanedLand, expectedTerritoryArea, voidMask } = timeStep(
+  const { cleanedLand, expectedTerritoryArea, voidMask, heights } = timeStep(
     'shape',
     () => {
       const { land, heights } = buildLandMask(rng, fill, dims);
       const voidMask = terrainFeatures(
-        rng,
         land,
         heights,
         fill,
         width,
-        height,
         countCells(land) / targetCount,
         toggles,
       );
@@ -71,8 +65,7 @@ export function generateTerrain(
         expectedTerritoryArea,
       );
       for (let i = 0; i < land.length; i++) if (voidMask[i]) cleanedLand[i] = 0;
-      if (toggles.rivers) trimRivers(voidMask, cleanedLand, width, height);
-      return { cleanedLand, expectedTerritoryArea, voidMask };
+      return { cleanedLand, expectedTerritoryArea, voidMask, heights };
     },
   );
 
@@ -104,9 +97,21 @@ export function generateTerrain(
       mergeCount,
     );
     regularizeBorders(labelGrid, width, height, expectedTerritoryArea);
-    const { adjacency } = buildAdjacency(labelGrid, width, height);
-    if (toggles.rivers)
-      settleRivers(voidMask, labelGrid, adjacency, width, height);
+    const graph = buildAdjacency(labelGrid, width, height);
+    if (!toggles.rivers)
+      return { labelGrid, adjacency: graph.adjacency, centers };
+    carveRivers(
+      rng,
+      labelGrid,
+      graph.adjacency,
+      heights,
+      voidMask,
+      centers.length,
+      fill,
+      width,
+      height,
+    );
+    const adjacency = buildAdjacency(labelGrid, width, height).adjacency;
     return { labelGrid, adjacency, centers };
   });
 

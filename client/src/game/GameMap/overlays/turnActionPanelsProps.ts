@@ -38,9 +38,13 @@ type AnchorKeys =
   | 'size'
   | 'imgDims'
   | 'VERTEX_RADIUS'
+  | 'regions'
   | 'selectedTerritoryId'
+  | 'fortifyStartTerritoryId'
   | 'fortifyEndTerritoryId'
+  | 'attackStartTerritoryId'
   | 'attackEndTerritoryId'
+  | 'sailStartTerritoryId'
   | 'sailEndTerritoryId'
   | 'attackSeaTerritoryId';
 
@@ -59,9 +63,13 @@ export function turnActionPanelsProps({
   size,
   imgDims,
   VERTEX_RADIUS,
+  regions,
   selectedTerritoryId,
+  fortifyStartTerritoryId,
   fortifyEndTerritoryId,
+  attackStartTerritoryId,
   attackEndTerritoryId,
+  sailStartTerritoryId,
   sailEndTerritoryId,
   attackSeaTerritoryId,
   turnPhase,
@@ -88,10 +96,14 @@ export function turnActionPanelsProps({
       size,
       imgDims,
       VERTEX_RADIUS,
+      regions,
       selectedTerritoryId,
+      fortifyStartTerritoryId,
       fortifyEndTerritoryId,
+      attackStartTerritoryId,
       attackEndTerritoryId,
       attackDiceRollTerritoryId: attackFlow.attackDiceRoll?.territoryId,
+      sailStartTerritoryId,
       sailEndTerritoryId,
       attackSeaTerritoryId,
       attackSeaDiceRollTerritoryId:

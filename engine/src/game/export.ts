@@ -164,6 +164,7 @@ export interface GameExport {
     playerId: number;
     name: string;
     isBot: boolean;
+    isZombie: boolean;
     botDifficulty: string | null;
     botPersonality: string | null;
     team: number;
@@ -471,6 +472,7 @@ export function exportGame(gameName: string): GameExport | null {
         playerId,
         name: member?.name ?? '',
         isBot: !!member?.isBot,
+        isZombie: playerId === game.zombieId,
         botDifficulty: member?.botProfile?.difficulty ?? null,
         botPersonality: member?.botProfile?.personality ?? null,
         team: game.playerTeams.get(playerId) ?? 0,

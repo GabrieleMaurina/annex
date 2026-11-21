@@ -178,6 +178,15 @@ export const EVENT_VIEWS: EventViews = {
     complete<EventPayload<'onDeployedMany'>>({
       deposits: p.deposits,
       playerId: aliasOf(game, p.playerId),
+      surge: p.surge,
+    }),
+  onInfected: (game, _viewerId, p) =>
+    complete<EventPayload<'onInfected'>>({
+      territoryId: p.territoryId,
+      troops: p.troops,
+      victimId: aliasOf(game, p.victimId),
+      playerId: aliasOf(game, p.playerId),
+      respawn: p.respawn,
     }),
   onFortified: (game, _viewerId, p) =>
     complete<EventPayload<'onFortified'>>({
@@ -360,6 +369,7 @@ type LogViews = {
 const LOG_VIEWS: LogViews = {
   'game:deployed': EVENT_VIEWS.onDeployed,
   'game:deployedMany': EVENT_VIEWS.onDeployedMany,
+  'game:infected': EVENT_VIEWS.onInfected,
   'game:fortified': EVENT_VIEWS.onFortified,
   'game:attackMoved': EVENT_VIEWS.onAttackMoved,
   'game:attacked': EVENT_VIEWS.onAttacked,

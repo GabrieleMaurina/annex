@@ -24,6 +24,7 @@ const STRUCTURAL = Infinity;
 const DUEL_OPEN_BOOST = 3;
 const CONSOLIDATION = 2;
 const KEEP_STACK_SHIFT = 0.5;
+const ZOMBIE_KEEP_STACK = 0.5;
 
 export function openStackWeight(ctx: PlanContext): number {
   return (
@@ -32,12 +33,17 @@ export function openStackWeight(ctx: PlanContext): number {
 }
 
 export function keepStackWeight(ctx: PlanContext): number {
+  const zombieBoost =
+    ctx.game.zombieId === null
+      ? 0
+      : ZOMBIE_KEEP_STACK * ctx.params.zombieCaution;
   return (
     Math.max(0, ctx.weights.keepStack) *
-    ctx.params.planningConfidence *
-    (1 +
-      KEEP_STACK_SHIFT *
-        (consolidation(ctx.stackFocus) - spreading(ctx.stackFocus)))
+      ctx.params.planningConfidence *
+      (1 +
+        KEEP_STACK_SHIFT *
+          (consolidation(ctx.stackFocus) - spreading(ctx.stackFocus))) +
+    zombieBoost
   );
 }
 

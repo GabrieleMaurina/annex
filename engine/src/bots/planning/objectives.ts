@@ -183,6 +183,8 @@ function eliminateCandidates(
     if (list) list.push(id);
     else byPlayer.set(ownerId, [id]);
   }
+  if (ctx.game.zombieId !== null && byPlayer.size > 1)
+    byPlayer.delete(ctx.game.zombieId);
   return [...byPlayer.entries()]
     .filter(([, ids]) => ids.length / totalTerritories <= threshold)
     .sort((a, b) => a[1].length - b[1].length)

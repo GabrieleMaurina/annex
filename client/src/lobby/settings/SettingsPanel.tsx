@@ -36,6 +36,8 @@ import GenerationProgress from '../../ui/feedback/GenerationProgress';
 import Selector from '../../ui/forms/Selector';
 import { scaled } from '../../ui/uiScale';
 import MapLikeButton from '../MapLikeButton';
+import { MAX_SLOTS } from '../roster/teamLayout';
+import { GAME_MODE_DESCRIPTIONS, GAME_MODE_HELP } from './gameModeHelp';
 import {
   changedSettingCount,
   DEFAULT_GAME_SETTINGS,
@@ -43,7 +45,7 @@ import {
   titleCase,
 } from './gameSettings';
 import GameSettingsFields from './GameSettingsFields';
-import { GAME_MODE_HELP, MAP_HELP } from './settingsHelp';
+import { MAP_HELP } from './settingsHelp';
 
 const HEADER_FIELD_STYLE = { minWidth: scaled(220) };
 const MAP_TOOLTIP_STYLE = {
@@ -328,19 +330,30 @@ function SettingsPanel({
               onChange={(value) =>
                 applySettings({ gameMode: value as GameMode })
               }
+              optionTips={GAME_MODE_DESCRIPTIONS}
             >
               {GAME_MODES.map((m) => (
                 <option
                   key={m}
                   value={m}
-                  disabled={m === 'team deathmatch' && game.alliances === 'on'}
+                  disabled={
+                    (m === 'team deathmatch' && game.alliances === 'on') ||
+                    (m === 'zombies' &&
+                      game.gameMode !== 'zombies' &&
+                      game.players.length >= MAX_SLOTS)
+                  }
                 >
                   {titleCase(m)}
                 </option>
               ))}
             </Selector>
           ) : (
-            <span>{titleCase(game.gameMode)}</span>
+            <Tip
+              text={GAME_MODE_DESCRIPTIONS[game.gameMode]}
+              placement="bottom"
+            >
+              <span>{titleCase(game.gameMode)}</span>
+            </Tip>
           )}
         </div>
 

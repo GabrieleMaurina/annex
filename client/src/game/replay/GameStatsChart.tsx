@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Button } from 'react-bootstrap';
-import { contrastTextColor, playerColor } from '../../lib/palette';
+import {
+  ZOMBIE_TEXTURE_URL,
+  playerColor,
+  playerSwatch,
+} from '../../lib/palette';
 import type {
   GameState,
   ReplayPlayerState,
@@ -412,6 +416,14 @@ function GameStatsChart({
               opacity={0.6}
             />
           </pattern>
+          <pattern
+            id="zombie-texture"
+            width={12}
+            height={12}
+            patternUnits="userSpaceOnUse"
+          >
+            <image href={ZOMBIE_TEXTURE_URL} width={12} height={12} />
+          </pattern>
         </defs>
         {selected.stacked &&
           stackedBands.map(({ player, lower, upper, spans }) => {
@@ -424,16 +436,24 @@ function GameStatsChart({
                 .map((v, k) => `L${x(start + k)},${y(v)}`)
                 .reverse()
                 .join(' ')} Z`;
+            const full = area(0, upper.length - 1);
             return (
               <g key={player.id}>
                 <path
-                  d={area(0, upper.length - 1)}
+                  d={full}
                   fill={playerColor(player.color)}
                   stroke="var(--bs-body-bg)"
                   strokeWidth={1}
                 >
                   <title>{player.name}</title>
                 </path>
+                {player.isZombie && (
+                  <path
+                    d={full}
+                    fill="url(#zombie-texture)"
+                    pointerEvents="none"
+                  />
+                )}
                 {spans.map(({ takeover, start, end }) => (
                   <path
                     key={start}
@@ -476,10 +496,7 @@ function GameStatsChart({
           <span
             key={p.id}
             className="badge"
-            style={{
-              backgroundColor: playerColor(p.color),
-              color: contrastTextColor(playerColor(p.color)),
-            }}
+            style={playerSwatch(p.color, p.isZombie)}
           >
             {p.name}
           </span>

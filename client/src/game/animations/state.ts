@@ -11,6 +11,7 @@ import {
   type ArrowPoint,
 } from './transitions/shipMoves';
 import { makeUnlockEffect, type DustPuff, type RockPiece } from './unlock';
+import { makeZombieParticles } from './zombie/effects';
 
 export type AnimationType =
   | 'add'
@@ -20,7 +21,9 @@ export type AnimationType =
   | 'starve'
   | 'arrow'
   | 'nuke'
-  | 'unlock';
+  | 'unlock'
+  | 'spawn'
+  | 'infect';
 
 export interface Particle {
   angle: number;
@@ -74,10 +77,14 @@ export const DURATIONS: Record<AnimationType, number> = {
   arrow: 500,
   nuke: NUKE_FLIGHT_MS + NUKE_MUSHROOM_MS,
   unlock: UNLOCK_DELAY_MS + UNLOCK_CRACK_MS + UNLOCK_CRUMBLE_MS,
+  spawn: 900,
+  infect: 1100,
 };
 export const TROOP_CHANGE_RING_COLOR = '255, 255, 255';
 const REFERENCE_RADIUS = 20;
 const LABEL_DURATION = 2000;
+const LABEL_FADE_DELAY = 1000;
+const LABEL_FONT_SCALE = 1.3;
 const LABEL_GAP = 8;
 const LABEL_RISE = 24;
 export const CARD_SET_FLASH_DURATION = 2000;
@@ -191,7 +198,9 @@ export function startAnimation(
         ? makeExplosionParticles()
         : type === 'entrench'
           ? makeEntrenchParticles()
-          : undefined,
+          : type === 'spawn' || type === 'infect'
+            ? makeZombieParticles(type)
+            : undefined,
     arrowPath,
     arrowFades,
   });
@@ -421,19 +430,28 @@ export function drawLabel(
   a: Animation,
   p: { x: number; y: number },
   radius: number,
+  troopFontSize: number,
   now: number,
 ) {
   if (!a.label) return;
-  const labelProgress = Math.min(1, (now - a.startedAt) / LABEL_DURATION);
+  const elapsed = now - a.startedAt;
+  const labelProgress = Math.min(1, elapsed / LABEL_DURATION);
+  const fadeProgress = Math.min(
+    1,
+    Math.max(
+      0,
+      (elapsed - LABEL_FADE_DELAY) / (LABEL_DURATION - LABEL_FADE_DELAY),
+    ),
+  );
   const scale = radiusScale(radius);
   const sprite = labelSprite(
     a.label,
     a.labelColor ?? '#ffffff',
-    Math.round(radius * 2) / 2,
+    Math.round(troopFontSize * LABEL_FONT_SCALE * 2) / 2,
     ctx.getTransform().a,
   );
   ctx.save();
-  ctx.globalAlpha = 1 - labelProgress;
+  ctx.globalAlpha = 1 - fadeProgress;
   ctx.drawImage(
     sprite.canvas,
     p.x - sprite.width / 2,

@@ -1,5 +1,6 @@
 import Flag from '../../../../common/badges/Flag';
 import { usePlayerProfile } from '../../../../common/conduct/usePlayerProfile';
+import { botLabel } from '../../../../common/icon';
 import AllianceCell from './AllianceCell';
 import PlayerAvatar from './PlayerAvatar';
 import PlayerProgress from './PlayerProgress';
@@ -38,7 +39,9 @@ function PlayerCard({ row, big, live, showPicture }: Props) {
           <span className="fw-semibold text-truncate">{row.label}</span>
           <Flag country={player.country} height={big ? 16 : 14} />
           {player.isBot && (
-            <span className="badge text-bg-secondary fw-normal">Bot</span>
+            <span className="badge text-bg-secondary fw-normal">
+              {botLabel(player.isZombie)}
+            </span>
           )}
           {row.alliance && (
             <span className="ms-auto">

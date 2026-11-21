@@ -178,6 +178,7 @@ export function createClipSession(
             game.portalsEnabled,
             scene.imgDims.w,
             scene.imgDims.h,
+            game.players.find((p) => p.isZombie)?.id ?? null,
           )
         : new Map();
     const params: DrawCanvasParams = {

@@ -123,6 +123,18 @@ export interface EngineCallbacks {
     payload: {
       deposits: { territoryId: number; troops: number }[];
       playerId: number;
+      surge?: boolean;
+    },
+    gameName: string,
+  ): void;
+  onInfected(
+    playerId: number,
+    payload: {
+      territoryId: number;
+      troops: number;
+      victimId: number;
+      playerId: number;
+      respawn: boolean;
     },
     gameName: string,
   ): void;

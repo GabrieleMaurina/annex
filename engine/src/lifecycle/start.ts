@@ -1,6 +1,7 @@
 import { forgetBotPlan } from '../bots/controller';
 import { rerollBotProfile } from '../bots/reveal';
 import { endTakeover } from '../bots/takeover';
+import { zombieLast } from '../bots/zombie/seat';
 import { isAnonymous } from '../game/anonymous';
 import { isLobbyBot } from '../game/draw';
 import {
@@ -105,7 +106,7 @@ export function restartGame(playerId: number): GameResponse {
 
   clearTurnTimer(game.name);
   forgetBotPlan(game.name);
-  game.playerIds.forEach(resetSeat);
+  game.playerIds.filter((id) => id !== game.zombieId).forEach(resetSeat);
   games.set(game.name, {
     ...game,
     ...freshGameRun(),
@@ -125,13 +126,14 @@ export function prepareGameStart(game: Game) {
     compactTeams(game);
     game.playerIds = interleaveTeams(game);
   } else {
-    game.playerIds = shuffle(game.playerIds);
+    game.playerIds = zombieLast(game, shuffle(game.playerIds));
   }
   if (isAnonymous(game)) {
+    const recolored = game.playerIds.filter((id) => id !== game.zombieId);
     const colors = shuffle(
-      game.playerIds.map((id) => game.playerColors.get(id) ?? 0),
+      recolored.map((id) => game.playerColors.get(id) ?? 0),
     );
-    game.playerIds.forEach((id, i) => game.playerColors.set(id, colors[i]));
+    recolored.forEach((id, i) => game.playerColors.set(id, colors[i]));
     game.spectatorIds = shuffle(game.spectatorIds);
     game.aliases = new Map();
   }

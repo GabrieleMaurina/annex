@@ -187,7 +187,9 @@ function PlayersPanel({
   const canRestart = !gameEnded && connector.canRestart(players);
   const canPause =
     canControl && (connector.isOffline() || paused || !pauseUsed);
-  const hasLivingBot = players.some((p) => p.isBot && !p.eliminated);
+  const hasLivingBot = players.some(
+    (p) => p.isBot && !p.isZombie && !p.eliminated,
+  );
   const showAllianceColumn = alliances === 'on' && !isSpectator && !gameEnded;
   const totalCapitals = players.reduce((sum, p) => sum + p.capitalCount, 0);
   const contenders = players.filter((p) => !p.eliminated && !p.surrendered);
@@ -495,7 +497,11 @@ function PlayersPanel({
             bumpConductVersion();
             onConductChange?.();
           }}
-          onCycleColor={onCycleColor && (() => onCycleColor(selectedPlayer.id))}
+          onCycleColor={
+            onCycleColor && !selectedPlayer.isZombie
+              ? () => onCycleColor(selectedPlayer.id)
+              : undefined
+          }
           stats={stats}
           statuses={playerStatuses({
             player: selectedPlayer,

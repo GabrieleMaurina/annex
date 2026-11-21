@@ -1,9 +1,10 @@
 import {
   attackDiceFor,
   defenceDiceFor,
+  diceTiesFor,
   gameDiceRules,
 } from '../../game/combat/dice';
-import { Game } from '../../types';
+import { DiceTies, Game } from '../../types';
 import { lossRatio } from '../features/combat';
 import { seaBridgeTargets } from '../features/navy';
 import { targetPreference } from '../features/standing';
@@ -43,8 +44,9 @@ function killsPerLoss(
   game: Game,
   defenceDice: number,
   attackDice: number = game.attackDice,
+  ties: DiceTies = game.diceTies,
 ): number {
-  return 1 / lossRatio(gameDiceRules(game, defenceDice, attackDice));
+  return 1 / lossRatio(gameDiceRules(game, defenceDice, attackDice, ties));
 }
 
 function protectedTerritories(ctx: PlanContext): Set<number> {
@@ -161,6 +163,7 @@ function evaluatePair(
     game,
     defenceDiceFor(game, endId),
     attackDiceFor(game, startId),
+    diceTiesFor(game, endId),
   );
   if (efficiency < FRUSTRATED_MIN_EFFICIENCY) return null;
 

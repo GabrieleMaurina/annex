@@ -122,6 +122,18 @@ export function startFrameEffects(
     case 'deploy':
       troopChange('add', animation);
       break;
+    case 'deployMany':
+      for (const deposit of animation.deposits) {
+        troopChange('add', { ...deposit, playerId: animation.playerId });
+        const position = findPosition(deposit.territoryId);
+        if (position) startAnimation('spawn', position.x, position.y);
+      }
+      break;
+    case 'infect': {
+      const position = findPosition(animation.territoryId);
+      if (position) startAnimation('infect', position.x, position.y);
+      break;
+    }
     case 'fortify': {
       let arrowPath: { x: number; y: number }[][] | undefined;
       if (!partOfConquestPair) {

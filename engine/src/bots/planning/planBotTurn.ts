@@ -1,4 +1,8 @@
-import { attackDiceFor, defenceDiceFor } from '../../game/combat/dice';
+import {
+  attackDiceFor,
+  defenceDiceFor,
+  diceTiesFor,
+} from '../../game/combat/dice';
 import {
   MAX_TERRITORY_TROOPS,
   initialTroopsFor,
@@ -722,6 +726,7 @@ function planAttack(
       game.territoryTroops.get(endId) ?? 0,
       defenceDiceFor(game, endId),
       attackDiceFor(game, startId),
+      diceTiesFor(game, endId),
     );
   const passiveRisk = (startId: number, endId: number) =>
     winChance(startId, endId) < PASSIVE_MIN_WIN - BOLD_WIN_RELIEF * boldness
@@ -737,6 +742,7 @@ function planAttack(
       game.territoryTroops.get(endId) ?? 0,
       defenceDiceFor(game, endId),
       attackDiceFor(game, startId),
+      diceTiesFor(game, endId),
     );
     return attackers - outcome.winProbability * outcome.attackerSurvivorsMean;
   };

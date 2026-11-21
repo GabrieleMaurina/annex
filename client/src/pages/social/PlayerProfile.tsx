@@ -9,7 +9,7 @@ import CareerChart from '../../common/charts/CareerChart';
 import ReportPlayerModal from '../../common/conduct/ReportPlayerModal';
 import ExportDataButton from '../../common/export/ExportDataButton';
 import { formatError } from '../../common/formatError';
-import { useWhiteIcon } from '../../common/icon';
+import { botLabel, useBotIcon } from '../../common/icon';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import PreferredColorsPicker from '../../common/inputs/PreferredColorsPicker';
 import ProfilePictureEditor from '../../common/inputs/ProfilePictureEditor';
@@ -17,7 +17,11 @@ import SharePageButton from '../../common/menus/SharePageButton';
 import ProfileActions from '../../common/ProfileActions';
 import Tip from '../../common/tooltips/Tip';
 import { connector } from '../../connector';
-import { contrastTextColor, playerColor } from '../../lib/palette';
+import {
+  contrastTextColor,
+  playerColor,
+  playerSwatch,
+} from '../../lib/palette';
 import { rankForElo } from '../../lib/ranks';
 import { useToggleSound } from '../../lib/sounds';
 import type {
@@ -40,7 +44,7 @@ const PAGE_SIZE = 20;
 const ONLINE_POLL_MS = 5000;
 
 function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
-  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+  const botIcon = useBotIcon();
   const endedAt = new Date(row.endedAt);
   return (
     <tr role="button" onClick={onOpen}>
@@ -58,22 +62,18 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
             <span
               key={i}
               className="badge d-inline-flex align-items-center gap-1"
-              style={{
-                backgroundColor: playerColor(p.color),
-                color: contrastTextColor(playerColor(p.color)),
-              }}
+              style={playerSwatch(p.color, p.isZombie)}
             >
               {p.name}
               {p.isBot && (
                 <img
-                  src={
-                    contrastTextColor(playerColor(p.color)) === '#ffffff'
-                      ? (whiteBotIcon ?? '/icons/bot.svg')
-                      : '/icons/bot.svg'
-                  }
+                  src={botIcon(
+                    p.isZombie,
+                    contrastTextColor(playerColor(p.color)) === '#ffffff',
+                  )}
                   width={12}
                   height={12}
-                  alt="Bot"
+                  alt={botLabel(p.isZombie)}
                 />
               )}
             </span>

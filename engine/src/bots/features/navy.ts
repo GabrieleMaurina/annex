@@ -1,5 +1,5 @@
 import { alliedIds } from '../../game/alliances';
-import { defenceDiceFor } from '../../game/combat/dice';
+import { defenceDiceFor, diceTiesFor } from '../../game/combat/dice';
 import { supplyHubTerritoryIds } from '../../game/mechanics';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { connectedFortifyTerritories } from '../../game/world/connectivity';
@@ -317,6 +317,8 @@ export function landingViable(
             (game.territoryTroops.get(source.id) ?? 0) - 1,
             game.territoryTroops.get(target.id) ?? 0,
             defenceDiceFor(game, target.id),
+            game.attackDice,
+            diceTiesFor(game, target.id),
           ) >= threshold,
       ),
     );

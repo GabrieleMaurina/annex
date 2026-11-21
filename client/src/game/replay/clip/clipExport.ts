@@ -172,7 +172,14 @@ function exportMp4(
 
   const audio =
     sounds > 0 || music > 0
-      ? renderClipAudio({ replay, indices, durations, sounds, music })
+      ? renderClipAudio({
+          replay,
+          zombieId: game.players.find((p) => p.isZombie)?.id ?? null,
+          indices,
+          durations,
+          sounds,
+          music,
+        })
       : Promise.resolve(null);
 
   audio

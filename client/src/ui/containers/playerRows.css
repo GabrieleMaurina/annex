@@ -140,6 +140,12 @@
   background-color: var(--player-color);
 }
 
+.is-zombie .player-orb,
+.is-zombie .player-progress > i {
+  background-image: url('/images/zombie-texture.svg');
+  background-size: 12px 12px;
+}
+
 .player-progress-thin {
   height: 0.1875rem;
 }
@@ -150,4 +156,62 @@
     var(--ui-drum) 0 5px,
     var(--ui-well) 5px 10px
   );
+}
+
+.zombie-icon-head,
+.zombie-icon-jaw {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+:root:not(.animations-off) .zombie-icon-head {
+  animation: zombie-sway 3.2s ease-in-out infinite;
+}
+
+:root:not(.animations-off) .zombie-icon-jaw {
+  animation: zombie-chomp 3.2s ease-in-out infinite;
+}
+
+:root:not(.animations-off) .zombie-icon-turn .zombie-icon-head {
+  animation-duration: 1.1s;
+}
+
+:root:not(.animations-off) .zombie-icon-turn .zombie-icon-jaw {
+  animation-duration: 0.55s;
+}
+
+:root:not(.animations-off) .zombie-icon-surge {
+  animation: zombie-lunge 0.7s ease-out 1;
+}
+
+@keyframes zombie-sway {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes zombie-chomp {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1.2px);
+  }
+}
+
+@keyframes zombie-lunge {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.45) rotate(-8deg);
+  }
+  100% {
+    transform: scale(1);
+  }
 }

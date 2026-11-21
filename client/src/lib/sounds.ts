@@ -23,6 +23,13 @@ const SOUND_NAMES = [
   'disconnect',
   'surrender',
   'bass',
+  'zombieTurn',
+  'zombieDeploy',
+  'zombieSurge',
+  'zombieInfect',
+  'zombieRespawn',
+  'zombieAttack',
+  'zombieDeath',
 ];
 const SOUND_FILES: Record<string, string> = {
   ...Object.fromEntries(SOUND_NAMES.map((name) => [name, name])),

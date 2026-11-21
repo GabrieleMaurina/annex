@@ -1,4 +1,4 @@
-import { defenceDiceFor } from '../../game/combat/dice';
+import { defenceDiceFor, diceTiesFor } from '../../game/combat/dice';
 import { minTroopsFor } from '../../game/mechanics';
 import { closedTiles } from '../../game/tiles/unlock';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
@@ -173,6 +173,8 @@ export function chooseOpportunisticUnlock(
           troops - cost - 2,
           troopsIn(state, targetId),
           defenceDiceFor(game, targetId),
+          game.attackDice,
+          diceTiesFor(game, targetId),
         );
         if (win < BRIDGE_MIN_WIN) continue;
         const after = cloneState(state);

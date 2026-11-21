@@ -261,6 +261,7 @@ const callbacks: EngineCallbacks = {
   onTurnStarted: relay('onTurnStarted', 'game:turnStarted'),
   onDeployed: relay('onDeployed', 'game:deployed'),
   onDeployedMany: relay('onDeployedMany', 'game:deployedMany'),
+  onInfected: relay('onInfected', 'game:infected'),
   onFortified: relay('onFortified', 'game:fortified'),
   onShipsBought: relay('onShipsBought', 'game:shipsBought'),
   onSailed: relay('onSailed', 'game:sailed'),

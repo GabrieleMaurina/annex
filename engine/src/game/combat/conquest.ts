@@ -12,7 +12,7 @@ import { attackFullPath } from './seaBridge';
 
 export function snapshotCapitalRefunds(game: Game, playerId: number) {
   game.capitalRefunds = new Map(
-    game.capitalRefund === 'on'
+    game.capitalRefund === 'on' && playerId !== game.zombieId
       ? [...game.capitalTerritoryIds]
           .filter((id) => game.territoryOwners.get(id) !== playerId)
           .map((id) => [id, game.territoryTroops.get(id) ?? 0])

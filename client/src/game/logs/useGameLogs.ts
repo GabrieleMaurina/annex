@@ -10,6 +10,7 @@ export interface LogEntry {
   color: string;
   text: string;
   colorRanges?: LogColorRange[];
+  isZombie?: boolean;
 }
 
 const LIVE_EVENTS = [
@@ -17,6 +18,7 @@ const LIVE_EVENTS = [
   'game:fortified',
   'game:attackMoved',
   'game:deployedMany',
+  'game:infected',
   'game:entrenched',
   'game:toxined',
   'game:unlocked',

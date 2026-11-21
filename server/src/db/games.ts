@@ -17,6 +17,7 @@ export interface GamePlayerDoc {
   userId: string | null;
   name: string | null;
   isBot: boolean;
+  isZombie?: boolean;
   botDifficulty: string | null;
   botPersonality: string | null;
   team: number;
@@ -62,7 +63,13 @@ export interface GameHistoryRow {
   draw: boolean;
   yourRank: number | null;
   settings: GameDoc['settings'];
-  players: { name: string; isBot: boolean; color: number; team: number }[];
+  players: {
+    name: string;
+    isBot: boolean;
+    isZombie: boolean;
+    color: number;
+    team: number;
+  }[];
 }
 
 export interface GamesQuery {
@@ -363,6 +370,7 @@ export function toRow(
     players: doc.players.map((p) => ({
       name: playerDisplayName(p, nameByUserId),
       isBot: p.isBot,
+      isZombie: !!p.isZombie,
       color: p.color,
       team: p.team,
     })),
@@ -450,8 +458,9 @@ function queryGames(
     if (query.maxRounds !== undefined) range.$lte = query.maxRounds;
     filter.roundNumber = range;
   }
-  if (query.hasBots === true) filter['players.isBot'] = true;
-  else if (query.hasBots === false) filter['players.isBot'] = { $ne: true };
+  const botSeat = { $elemMatch: { isBot: true, isZombie: { $ne: true } } };
+  if (query.hasBots === true) filter.players = botSeat;
+  else if (query.hasBots === false) filter.players = { $not: botSeat };
   for (const [key, value] of Object.entries(query.settings ?? {}))
     filter[`settings.${key}`] = value;
   const requiredPlayerIds = [

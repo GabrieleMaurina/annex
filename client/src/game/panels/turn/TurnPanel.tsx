@@ -5,7 +5,7 @@ import { useWhiteIcon } from '../../../common/icon';
 import WhiteIcon from '../../../common/icons/WhiteIcon';
 import Tip from '../../../common/tooltips/Tip';
 import { connector } from '../../../connector';
-import { contrastTextColor } from '../../../lib/palette';
+import { contrastTextColor, ZOMBIE_TEXTURE } from '../../../lib/palette';
 import type { TurnPhase } from '../../../lib/types';
 
 const SPARK_BASE_ANGLES = [-50, -35, -20, -7, 7, 20, 35, 50];
@@ -116,6 +116,7 @@ interface Props {
   turnPhase: TurnPhase;
   currentPlayerName: string;
   color: string;
+  isZombie: boolean;
   isMyTurn: boolean;
   troopsToDeploy: number;
   troopsRemaining: number;
@@ -134,6 +135,7 @@ function TurnPanel({
   turnPhase,
   currentPlayerName,
   color,
+  isZombie,
   isMyTurn,
   troopsToDeploy,
   troopsRemaining,
@@ -187,6 +189,7 @@ function TurnPanel({
           zIndex: 1,
           backgroundColor: color,
           color: contrastTextColor(color),
+          ...(isZombie ? ZOMBIE_TEXTURE : {}),
         } as CSSProperties
       }
     >

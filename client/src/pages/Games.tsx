@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Container, Form, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import CasualBadge from '../common/badges/CasualBadge';
-import { useWhiteIcon } from '../common/icon';
+import { botLabel, useBotIcon } from '../common/icon';
 import {
   Field,
   FilterDetails,
@@ -13,7 +13,7 @@ import {
 import type { SearchSelectItem } from '../common/inputs/SearchMultiSelect';
 import PagePanel from '../common/page/PagePanel';
 import { connector } from '../connector';
-import { contrastTextColor, playerColor } from '../lib/palette';
+import { contrastTextColor, playerColor, playerSwatch } from '../lib/palette';
 import type {
   Account,
   Fill,
@@ -32,8 +32,8 @@ import {
   PlayerFilter,
   SettingFilterSections,
 } from '../lobby/gameFilters';
+import { GAME_MODE_HELP } from '../lobby/settings/gameModeHelp';
 import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
-import { GAME_MODE_HELP } from '../lobby/settings/settingsHelp';
 import { SECTION_CLASS } from '../ui/containers/panelStyle';
 import Selector from '../ui/forms/Selector';
 import { scaled } from '../ui/uiScale';
@@ -109,7 +109,7 @@ interface Filters {
 }
 
 function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
-  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+  const botIcon = useBotIcon();
   const endedAt = new Date(row.endedAt);
   return (
     <tr role="button" onClick={onOpen}>
@@ -127,22 +127,18 @@ function GameRow({ row, onOpen }: { row: GameHistoryRow; onOpen: () => void }) {
             <span
               key={i}
               className="badge d-inline-flex align-items-center gap-1"
-              style={{
-                backgroundColor: playerColor(p.color),
-                color: contrastTextColor(playerColor(p.color)),
-              }}
+              style={playerSwatch(p.color, p.isZombie)}
             >
               {p.name}
               {p.isBot && (
                 <img
-                  src={
-                    contrastTextColor(playerColor(p.color)) === '#ffffff'
-                      ? (whiteBotIcon ?? '/icons/bot.svg')
-                      : '/icons/bot.svg'
-                  }
+                  src={botIcon(
+                    p.isZombie,
+                    contrastTextColor(playerColor(p.color)) === '#ffffff',
+                  )}
                   width={12}
                   height={12}
-                  alt="Bot"
+                  alt={botLabel(p.isZombie)}
                 />
               )}
             </span>

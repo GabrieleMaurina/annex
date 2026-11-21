@@ -36,6 +36,10 @@ function GuideDetails() {
             chosen continent.
           </li>
           <li>
+            <strong>Zombies:</strong> an AI horde fights everyone; eliminate the
+            other players, then capture every zombie territory.
+          </li>
+          <li>
             <strong>Round limits:</strong> after 5 or 10 rounds, whoever holds
             the most territories wins.
           </li>

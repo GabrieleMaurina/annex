@@ -341,6 +341,7 @@ export default function TurnActionPanels({
             turnPhase={turnPhase}
             currentPlayerName={currentTurnPlayer.name}
             color={playerColor(currentTurnPlayer.color)}
+            isZombie={currentTurnPlayer.isZombie}
             isMyTurn={isMyTurn}
             troopsToDeploy={troopsToDeploy}
             troopsRemaining={currentTurnPlayer.troopsRemaining}

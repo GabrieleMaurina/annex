@@ -13,6 +13,7 @@ import {
 } from './state';
 import type { ArrowPoint } from './transitions/shipMoves';
 import { drawUnlock } from './unlock';
+import { drawInfect, drawSpawn } from './zombie/effects';
 
 const TROOP_CHANGE_RING_WIDTH = 4;
 
@@ -39,6 +40,10 @@ export function drawAnimations(
       drawUnlock(ctx, a, toScreen, now);
     } else if (a.type === 'entrench') {
       drawEntrench(ctx, a, p, radius, now);
+    } else if (a.type === 'spawn') {
+      drawSpawn(ctx, a, p, radius, now);
+    } else if (a.type === 'infect') {
+      drawInfect(ctx, a, p, radius, now);
     } else if (a.type === 'add' || a.type === 'remove') {
       ctx.beginPath();
       ctx.arc(p.x, p.y, radius * (1 + progress), 0, Math.PI * 2);
@@ -64,8 +69,26 @@ export function drawAnimations(
         }
       }
     }
+  }
+}
 
-    drawLabel(ctx, a, p, radius, now);
+export function drawAnimationLabels(
+  ctx: CanvasRenderingContext2D,
+  toScreen: (p: { x: number; y: number }) => { x: number; y: number },
+  radius: number,
+  fontSizeAt: (x: number, y: number) => number,
+) {
+  const now = animationNow();
+  for (const a of getAnimations()) {
+    if (now < a.startedAt) continue;
+    drawLabel(
+      ctx,
+      a,
+      toScreen({ x: a.x, y: a.y }),
+      radius,
+      fontSizeAt(a.x, a.y),
+      now,
+    );
   }
 }
 

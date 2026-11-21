@@ -32,7 +32,7 @@ export function applyStarvation(
   playerId: number,
 ): Map<number, number> {
   const losses = new Map<number, number>();
-  if (game.starvation === 'off') return losses;
+  if (game.starvation === 'off' || playerId === game.zombieId) return losses;
   const territoryIds = ownedTerritoryIds(game, playerId);
 
   function removeTroop(territoryId: number) {

@@ -1,4 +1,8 @@
-import { attackDiceFor, defenceDiceFor } from '../../game/combat/dice';
+import {
+  attackDiceFor,
+  defenceDiceFor,
+  diceTiesFor,
+} from '../../game/combat/dice';
 import { Game } from '../../types';
 import { attackWinProbability } from '../features/combat';
 import {
@@ -95,6 +99,7 @@ export function chooseAttack(
       defendingTroops,
       defenceDiceFor(game, endId),
       attackDiceFor(game, startId),
+      diceTiesFor(game, endId),
     );
     if (winProb < minWin - noise * 0.3) return;
 

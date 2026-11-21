@@ -1,3 +1,4 @@
+import { attackDiceFor, diceTiesFor } from '../../../game/combat/dice';
 import { attackWinProbability } from '../../features/combat';
 import { continentBreakCandidates } from '../../features/continents';
 import { minWinProbability } from '../../features/pressure';
@@ -155,6 +156,8 @@ export function policeOutranked(
         attackers,
         troopsIn(state, endId),
         defenceDiceAt(ctx, endId),
+        attackDiceFor(ctx.game, startId),
+        diceTiesFor(ctx.game, endId),
       );
       if (win >= minWin) top = Math.max(top, preferenceOf(ctx, state, endId));
     }

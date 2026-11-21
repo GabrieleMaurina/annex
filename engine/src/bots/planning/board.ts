@@ -25,6 +25,7 @@ import {
 import { standingScore } from '../goals/standingScore';
 import { holdValue } from '../position/context';
 import { checkPlanClock } from '../timing/planClock';
+import { applyZombieResponse, isThinZombieTarget } from '../zombie/response';
 import {
   PlanContext,
   SimState,
@@ -58,7 +59,7 @@ function addEnemyRoundTroops(ctx: PlanContext, s: SimState): void {
   if (ctx.game.roundTroops !== 'on') return;
   const strongest = new Map<number, number>();
   for (const [id, ownerId] of s.owners) {
-    if (isFriendly(ctx, ownerId)) continue;
+    if (isFriendly(ctx, ownerId) || ownerId === ctx.game.zombieId) continue;
     const best = strongest.get(ownerId);
     if (best === undefined || troopsIn(s, id) > troopsIn(s, best))
       strongest.set(ownerId, id);
@@ -110,7 +111,7 @@ export function applyEnemyResponse(
   addEnemyRoundTroops(ctx, s);
   const enemyStacks: number[] = [];
   for (const [id, ownerId] of s.owners) {
-    if (isFriendly(ctx, ownerId)) continue;
+    if (isFriendly(ctx, ownerId) || ownerId === ctx.game.zombieId) continue;
     if (troopsIn(s, id) >= 2) enemyStacks.push(id);
   }
   enemyStacks.sort((a, b) => troopsIn(s, b) - troopsIn(s, a));
@@ -147,6 +148,7 @@ export function applyEnemyResponse(
       attackers = survivors - 1;
     }
   }
+  applyZombieResponse(ctx, s);
   return s;
 }
 
@@ -155,6 +157,7 @@ const HELD_BONUS = 1.6;
 const CONTINENT_PROGRESS = 0.6;
 const DENIAL = 0.3;
 const FRONTIER_RISK = 0.5;
+const ZOMBIE_THIN = 6;
 const INTERIOR_WASTE = 0.12;
 const EXPOSURE = 0.35;
 const TEAM_STRANDED = 0.2;
@@ -305,6 +308,7 @@ function riskAndWaste(
   largest: number;
   scattered: number;
   held: number;
+  thin: number;
 } {
   let risk = 0;
   let waste = 0;
@@ -313,6 +317,7 @@ function riskAndWaste(
   let largestAny = 0;
   let excess = 0;
   let held = 0;
+  let thin = 0;
   let hasBorder = false;
   const riskCap =
     ctx.game.gameMode === 'capitals'
@@ -325,6 +330,7 @@ function riskAndWaste(
     excess += Math.max(0, troops - 1);
     if (isBotBorder(ctx, state, id)) {
       hasBorder = true;
+      if (isThinZombieTarget(ctx, state, id)) thin++;
       const threat = strongestThreatAt(ctx, state, id);
       const deficit = Math.max(0, threat - defendingTroops(ctx, state, id));
       risk +=
@@ -338,7 +344,7 @@ function riskAndWaste(
   }
   const largest = hasBorder ? largestBorder : largestAny;
   const scattered = excess - Math.max(0, largestAny - 1);
-  return { risk, waste, concentration, largest, scattered, held };
+  return { risk, waste, concentration, largest, scattered, held, thin };
 }
 
 function strandedTeammateTroops(ctx: PlanContext, state: SimState): number {
@@ -450,10 +456,8 @@ function scoreState(
   cachedProgress?: SideProgress,
 ): number {
   checkPlanClock();
-  const { risk, waste, concentration, largest, scattered, held } = riskAndWaste(
-    ctx,
-    state,
-  );
+  const { risk, waste, concentration, largest, scattered, held, thin } =
+    riskAndWaste(ctx, state);
   const gathering = consolidation(ctx.stackFocus);
   const riskFactor =
     1 + SPREAD_RISK * spreading(ctx.stackFocus) - STACK_RISK_RELIEF * gathering;
@@ -472,6 +476,8 @@ function scoreState(
   score += denial(ctx, state);
   score -= (ctx.weights.defense * FRONTIER_RISK * riskFactor * risk) / scale;
   score -= (INTERIOR_WASTE * waste) / scale;
+  score -=
+    (ZOMBIE_THIN * ctx.params.zombieCaution * Math.max(0, thin - 1)) / scale;
   score -= (SCATTER * gathering * scattered) / scale;
   score -= ctx.weights.defense * EXPOSURE * exposure(ctx, state);
   score -= (TEAM_STRANDED * strandedTeammateTroops(ctx, state)) / scale;

@@ -179,6 +179,7 @@ function buildModeGoal(ctx: PlanContext): ModeGoal {
   const goal = neutralGoal(ctx);
   switch (game.gameMode) {
     case 'supremacy':
+    case 'zombies':
       goal.threshold = goal.total;
       goal.threatThreshold = goal.total;
       goal.ownWeight = PASSIVE_WEIGHT;

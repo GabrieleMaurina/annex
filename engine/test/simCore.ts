@@ -1,5 +1,9 @@
 import { dispatchBotAction } from '../src/bots/dispatch';
 import { TurnPlanCache, planBotTurn } from '../src/bots/planning/planBotTurn';
+import {
+  playZombieTurnsSynchronously,
+  scheduleZombieTurnIfNeeded,
+} from '../src/bots/zombie/runner';
 import { EngineCallbacks, setCallbacks } from '../src/callbacks';
 import { clearTurnTimer, forceEndTurnImpl } from '../src/game/turns';
 import { addBot } from '../src/lifecycle/bots';
@@ -13,6 +17,7 @@ import {
   BotPersonality,
   Game,
   GameMap,
+  GameMode,
   Territory,
 } from '../src/types';
 
@@ -74,9 +79,21 @@ const SETTING_VARIANTS: Record<string, unknown>[] = [
   { cards: 'exponential' },
   { fogOfWar: 'on' },
   { entrenchments: 'on', cards: 'linear' },
-  { gameMode: 'capitals' },
   { supplyLines: 'on' },
 ];
+
+const GAME_MODE_CYCLE: GameMode[] = [
+  ...Array.from({ length: 8 }, (): GameMode => 'supremacy'),
+  ...Array.from({ length: 8 }, (): GameMode => 'capitals'),
+  'zombies',
+  'continent',
+  'king of the hill',
+  'empire',
+];
+
+function gameModeFor(index: number): GameMode {
+  return GAME_MODE_CYCLE[index % GAME_MODE_CYCLE.length];
+}
 
 export interface TurnSample {
   difficulty: BotDifficulty;
@@ -94,6 +111,7 @@ export interface GameResult {
 }
 
 export function setupSim(): void {
+  playZombieTurnsSynchronously();
   setCallbacks(
     new Proxy({}, { get: () => () => undefined }) as EngineCallbacks,
   );
@@ -155,7 +173,10 @@ export function runGame(
     mountains: true,
     rivers: true,
   };
-  updateSettings(host.id, { slots: roster.length, ...settings });
+  updateSettings(host.id, {
+    slots: roster.length + (settings.gameMode === 'zombies' ? 1 : 0),
+    ...settings,
+  });
   for (let i = 1; i < roster.length; i++)
     addBot(host.id, roster[i], randomPersonality());
   startGame(host.id);
@@ -167,6 +188,13 @@ export function runGame(
 
   while (game.state === 'playing' && game.roundNumber < roundCap) {
     const playerId = game.playerIds[game.turnPlayerIndex];
+    if (playerId === game.zombieId) {
+      scheduleZombieTurnIfNeeded(game);
+      if (game.playerIds[game.turnPlayerIndex] === playerId)
+        forceEndTurnImpl(game, true);
+      clearTurnTimer(name);
+      continue;
+    }
     const conquestsBefore = game.stats.get(playerId)?.territoriesConquered ?? 0;
     let planMs = 0;
     let objectives = '';
@@ -245,17 +273,19 @@ export function runGame(
 
   clearTurnTimer(name);
   let winnerDifficulty: BotDifficulty | null = null;
-  if (game.winnerIds.length > 0) {
-    winnerDifficulty = difficultyOf(game.winnerIds[0]);
-  } else if (game.state === 'ended') {
-    const alive = game.playerIds
+  const bots = game.playerIds.filter((id) => id !== game.zombieId);
+  const winnerId = game.winnerIds.find((id) => id !== game.zombieId);
+  if (winnerId !== undefined) {
+    winnerDifficulty = difficultyOf(winnerId);
+  } else if (game.state === 'ended' && game.winnerIds.length === 0) {
+    const alive = bots
       .map((id) => ({ id, n: territoryCount(game, id) }))
       .sort((a, b) => b.n - a.n);
     if (alive[0]) winnerDifficulty = difficultyOf(alive[0].id);
   }
   const rounds = game.roundNumber;
   const totalTerritories = game.territoryOwners.size || 1;
-  const ranked = game.playerIds
+  const ranked = bots
     .map((id) => ({ id, n: territoryCount(game, id) }))
     .sort((a, b) => b.n - a.n);
   const finalShare = ranked.map((entry, index) => ({
@@ -314,13 +344,10 @@ export function runMixedBatch(
       (_, k) => DIFFICULTIES[(i + k) % DIFFICULTIES.length],
     );
     results.push(
-      runGame(
-        `sim-${i}`,
-        i % 2 === 0 ? 'World' : 'Europe',
-        roster,
-        roundCap,
-        SETTING_VARIANTS[i % SETTING_VARIANTS.length],
-      ),
+      runGame(`sim-${i}`, i % 2 === 0 ? 'World' : 'Europe', roster, roundCap, {
+        ...SETTING_VARIANTS[i % SETTING_VARIANTS.length],
+        gameMode: gameModeFor(i),
+      }),
     );
     playersById.clear();
   }
@@ -385,7 +412,7 @@ export function runSoloMatchup(
       i % 2 === 0 ? 'World' : 'Europe',
       roster,
       roundCap,
-      {},
+      { gameMode: gameModeFor(i) },
     );
     playersById.clear();
     const mine = r.finalShare.find((f) => f.difficulty === test);

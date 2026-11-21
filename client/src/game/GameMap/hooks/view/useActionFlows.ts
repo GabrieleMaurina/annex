@@ -42,7 +42,7 @@ export function useActionFlows({
   cards,
   nextSetBaseValues,
   setGame,
-}: Omit<AttackParams, 'blitzEnabled' | 'attackDice'> &
+}: Omit<AttackParams, 'blitzEnabled' | 'attackDice' | 'diceTies' | 'zombieId'> &
   SailParams &
   Omit<AttackSeaParams, 'attackDice' | 'blitzEnabled'> &
   Omit<
@@ -74,6 +74,8 @@ export function useActionFlows({
     attackDice: attackStartEntrenched
       ? Math.min(MAX_DICE, game.attackDice + 1)
       : game.attackDice,
+    diceTies: game.diceTies,
+    zombieId: game.players.find((p) => p.isZombie)?.id ?? null,
     closedTiles,
     switches,
     cards,

@@ -175,18 +175,19 @@ export type TurnDuration = 30 | 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
   | 'supremacy'
   | 'capitals'
+  | 'team deathmatch'
+  | 'zombies'
+  | 'continent'
+  | 'king of the hill'
+  | 'empire'
   | 'supremacy 3/4'
   | 'supremacy 2/3'
-  | 'team deathmatch'
-  | 'continent'
   | '5-round'
   | '10-round'
   | 'assassin'
   | 'mission'
   | 'player kills'
-  | 'troop kills'
-  | 'king of the hill'
-  | 'empire';
+  | 'troop kills';
 export type Placement = 'random' | 'semi' | 'custom' | 'single';
 export type Fortification = 'connected' | 'neighboring' | 'unrestricted';
 export type Entrenchments = 'off' | 'on';
@@ -277,6 +278,20 @@ export type MissionType = Mission['type'];
 
 export type ReplayAnimation =
   | { type: 'deploy'; territoryId: number; troops: number; playerId: number }
+  | {
+      type: 'deployMany';
+      deposits: { territoryId: number; troops: number }[];
+      playerId: number;
+      surge?: boolean;
+    }
+  | {
+      type: 'infect';
+      territoryId: number;
+      troops: number;
+      victimId: number;
+      playerId: number;
+      respawn: boolean;
+    }
   | {
       type: 'fortify';
       fromTerritoryId: number;
@@ -543,6 +558,10 @@ export interface Game {
   fogOfWar: FogOfWar;
   fortification: Fortification;
   gameMode: GameMode;
+  zombieId: number | null;
+  zombieAddedSlot: boolean;
+  zombieGrowthStep: number;
+  zombieInfectedIds: Set<number>;
   gameType: GameType;
   odds: Odds;
   playerOdds: Map<number, PlayerOdds>;

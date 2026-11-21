@@ -28,7 +28,7 @@ export function duelFocus(
   const opponents = game.playerIds.filter(
     (id) => id !== botId && !dead.has(id) && !friendlyIds.has(id),
   );
-  if (opponents.length !== 1) return NO_DUEL;
+  if (opponents.length !== 1 || opponents[0] === game.zombieId) return NO_DUEL;
   const scaled = (weight: number) =>
     Math.min(1, Math.max(0, weight) / WEIGHT_CEILING) * params.duelSkill;
   return {

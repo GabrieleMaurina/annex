@@ -22,6 +22,22 @@ function viewAnimation(game: Game, a: ReplayAnimation): ReplayAnimation {
         troops: a.troops,
         playerId: aliasOf(game, a.playerId),
       });
+    case 'deployMany':
+      return complete<typeof a>({
+        type: a.type,
+        deposits: a.deposits,
+        playerId: aliasOf(game, a.playerId),
+        surge: a.surge,
+      });
+    case 'infect':
+      return complete<typeof a>({
+        type: a.type,
+        territoryId: a.territoryId,
+        troops: a.troops,
+        victimId: aliasOf(game, a.victimId),
+        playerId: aliasOf(game, a.playerId),
+        respawn: a.respawn,
+      });
     case 'entrench':
       return complete<typeof a>({
         type: a.type,

@@ -3,6 +3,10 @@ import {
   TurnPlanCache,
   planBotTurn,
 } from '../../src/bots/planning/planBotTurn';
+import {
+  playZombieTurnsSynchronously,
+  scheduleZombieTurnIfNeeded,
+} from '../../src/bots/zombie/runner';
 import { EngineCallbacks, setCallbacks } from '../../src/callbacks';
 import { computeFinalRanking } from '../../src/game/progression/stats';
 import { clearTurnTimer, forceEndTurnImpl } from '../../src/game/turns';
@@ -46,6 +50,7 @@ let callbacksInstalled = false;
 function ensureCallbacks(): void {
   if (callbacksInstalled) return;
   callbacksInstalled = true;
+  playZombieTurnsSynchronously();
   setCallbacks(
     new Proxy({}, { get: () => () => undefined }) as EngineCallbacks,
   );
@@ -174,7 +179,7 @@ export function runSimGame(
 
   const { settings, teams } = randomGameSettings(rng, ROSTER_SIZE);
   const settingsApplied = updateSettings(host.id, {
-    slots: ROSTER_SIZE,
+    slots: ROSTER_SIZE + (settings.gameMode === 'zombies' ? 1 : 0),
     ...settings,
   }).ok;
 
@@ -227,6 +232,13 @@ export function runSimGame(
     game.replayTurnMarkers.length = 0;
     game.replayLog.length = 0;
     const playerId = game.playerIds[game.turnPlayerIndex];
+    if (playerId === game.zombieId) {
+      scheduleZombieTurnIfNeeded(game);
+      if (game.playerIds[game.turnPlayerIndex] === playerId)
+        forceEndTurnImpl(game, true);
+      clearTurnTimer(name);
+      continue;
+    }
     const identity = identityById.get(playerId)!;
     const planner =
       identity.contestant === 'baseline' ? baselinePlanner! : planBotTurn;
@@ -360,7 +372,9 @@ export function runSimGame(
   clearTurnTimer(name);
   const truncated = game.state === 'playing';
   const finalBoard = truncated ? snapshotBoard(game) : null;
-  const rankedIds = [...computeFinalRanking(game)];
+  const rankedIds = [...computeFinalRanking(game)].filter((id) =>
+    identityById.has(id),
+  );
   const seen = new Set<number>();
   const orderedIds = [...rankedIds, ...botIds].filter((id) => {
     if (seen.has(id)) return false;
@@ -375,6 +389,7 @@ export function runSimGame(
   }));
 
   for (const id of botIds) playersById.delete(id);
+  if (game.zombieId !== null) playersById.delete(game.zombieId);
   games.delete(name);
 
   return {

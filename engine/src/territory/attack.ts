@@ -16,6 +16,7 @@ import {
   attackDiceFor,
   defenceDiceFor,
   DiceRules,
+  diceTiesFor,
   gameDiceRules,
   NO_LUCK,
 } from '../game/combat/dice';
@@ -55,6 +56,7 @@ import {
 } from '../session/store';
 import { Game } from '../types';
 import { isInteger, isNullableInteger } from '../util/validate';
+import { discardHand } from './cards';
 
 export type BlitzOutcome = { attackLosses: number; defenceLosses: number };
 
@@ -215,6 +217,7 @@ export function attackSelectEnd(
     game,
     defenceDiceFor(game, territoryId),
     attackDiceFor(game, game.attackStartTerritoryId),
+    diceTiesFor(game, territoryId),
   );
   const blitzWinProbabilities = computeBlitzWinProbabilities(
     game,
@@ -281,7 +284,12 @@ export function attack(
   let luck = NO_LUCK;
   const defendingDice = defenceDiceFor(game, endId);
   const attackingDice = attackDiceFor(game, startId);
-  const dice = gameDiceRules(game, defendingDice, attackingDice);
+  const dice = gameDiceRules(
+    game,
+    defendingDice,
+    attackingDice,
+    diceTiesFor(game, endId),
+  );
   if (defenderId === undefined) {
     attackLosses = 0;
     defenceLosses = 0;
@@ -363,16 +371,19 @@ export function attack(
       );
 
       if (defenderEliminated && defenderId !== undefined) {
-        const defenderHand = game.playerCards.get(defenderId) ?? [];
-        const attackerHand = game.playerCards.get(playerId) ?? [];
-        attackerHand.push(...defenderHand);
-        game.playerCards.set(defenderId, []);
-        attackerStats.cardsGained += defenderHand.length;
-        attackerStats.cardsStolen += defenderHand.length;
-        cardsTaken = defenderHand.length;
-        if (defenderHand.length > 0) {
-          sendPlayerCards(game, playerId);
-          sendPlayerCards(game, defenderId);
+        if (playerId === game.zombieId) discardHand(game, defenderId);
+        else {
+          const defenderHand = game.playerCards.get(defenderId) ?? [];
+          game.playerCards.set(defenderId, []);
+          const attackerHand = game.playerCards.get(playerId) ?? [];
+          attackerHand.push(...defenderHand);
+          attackerStats.cardsGained += defenderHand.length;
+          attackerStats.cardsStolen += defenderHand.length;
+          cardsTaken = defenderHand.length;
+          if (defenderHand.length > 0) {
+            sendPlayerCards(game, playerId);
+            sendPlayerCards(game, defenderId);
+          }
         }
       }
       game.attackConquestMinTroops = minMoveTroops;

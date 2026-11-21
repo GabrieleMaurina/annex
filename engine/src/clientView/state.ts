@@ -32,6 +32,7 @@ function viewPlayer(game: Game, p: PlayerView): PlayerView {
     troopsKilled: p.troopsKilled,
     troopsLost: p.troopsLost,
     isBot: p.isBot,
+    isZombie: p.isZombie,
     botDifficulty: p.botDifficulty,
     botPersonality: p.botPersonality,
   });

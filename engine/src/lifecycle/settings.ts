@@ -1,4 +1,5 @@
 import { isDifficultyInput, isPersonalityInput } from '../bots/randomProfile';
+import { addZombieSeat, removeZombieSeat } from '../bots/zombie/seat';
 import { callbacks } from '../callbacks';
 import { MAX_DICE, MAX_SIDES, MIN_SIDES } from '../game/combat/dice';
 import { addHostCandidate } from '../game/host';
@@ -116,18 +117,19 @@ const FORTIFICATION_VALUES: Fortification[] = [
 const GAME_MODE_VALUES: GameMode[] = [
   'supremacy',
   'capitals',
+  'team deathmatch',
+  'zombies',
+  'continent',
+  'king of the hill',
+  'empire',
   'supremacy 3/4',
   'supremacy 2/3',
-  'team deathmatch',
-  'continent',
   '5-round',
   '10-round',
   'assassin',
   'mission',
   'player kills',
   'troop kills',
-  'king of the hill',
-  'empire',
 ];
 const PLACEMENT_VALUES: Placement[] = ['random', 'semi', 'custom', 'single'];
 const PORTALS_VALUES: Portals[] = ['off', 'static', 'dynamic'];
@@ -242,6 +244,13 @@ export function updateSettings(
     !(isBlitzOffAllowed(merged) && oddsAllowBlitzOff(game, settings))
   )
     return { ok: false, error: 'blitz off not allowed with these settings' };
+
+  if (
+    settings.gameMode === 'zombies' &&
+    game.gameMode !== 'zombies' &&
+    game.playerIds.length >= MAX_SLOTS
+  )
+    return { ok: false, error: 'no open slots' };
 
   if (merged.odds === 'on' && merged.gameType === 'ranked' && !game.offline)
     return { ok: false, error: 'odds not allowed in ranked games' };
@@ -473,6 +482,8 @@ export function updateSettings(
       return { ok: false, error: 'invalid game mode' };
     const previousGameMode = game.gameMode;
     game.gameMode = settings.gameMode as GameMode;
+    if (previousGameMode === 'zombies' && game.gameMode !== 'zombies')
+      removeZombieSeat(game);
     const maxPoints = defaultMaxPoints(game.gameMode);
     if (game.gameMode !== previousGameMode && maxPoints !== undefined)
       game.maxPoints = maxPoints;
@@ -481,6 +492,8 @@ export function updateSettings(
       (previousGameMode === 'team deathmatch')
     )
       resetTeams(game);
+    if (previousGameMode !== 'zombies' && game.gameMode === 'zombies')
+      addZombieSeat(game);
   }
 
   if (settings.hills !== undefined) {

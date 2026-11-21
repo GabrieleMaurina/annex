@@ -51,7 +51,7 @@ export function OddsCells({
   style,
   setPlayerOdds,
 }: Props) {
-  if (!player)
+  if (!player || player.isZombie)
     return (
       <>
         <td style={style} />

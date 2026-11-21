@@ -8,11 +8,10 @@ import { phaseHasAction } from './combat/autoSkip';
 import { moveIntoConquest, snapshotCapitalRefunds } from './combat/conquest';
 import { checkGameEnd, checkStalemate } from './end';
 import {
-  MAX_TERRITORY_TROOPS,
+  DeployTroopsBreakdown,
   addTroopsCapped,
   awardDeployTroops,
   calculateDeployTroopsBreakdown,
-  deployTargetIds,
   initialTroopsFor,
   needsClaim,
   ownedTerritoryIds,
@@ -20,15 +19,15 @@ import {
   startingPoolBonus,
   turnOrderBonus,
 } from './mechanics';
-import { payContinentBonuses } from './progression/bonuses';
 import {
-  counterKey,
-  pickBestSet,
-  popRandomCard,
-  returnCardsToDeck,
-} from './progression/cards';
+  dropTroopsRandomly,
+  emitDeployedMany,
+  forceCompleteDeployPhase,
+} from './progression/autoDeploy';
+import { payContinentBonuses } from './progression/bonuses';
+import { popRandomCard } from './progression/cards';
 import { awardTurnPoints } from './progression/points';
-import { bumpStat, recordCardSet, recordTurnStart } from './progression/stats';
+import { bumpStat, recordTurnStart } from './progression/stats';
 import { updateRadiationForNewRound } from './radiation/radiation';
 import { recordReplayFrame } from './replay';
 import { decrementToxinsGlobally } from './toxins/toxins';
@@ -60,6 +59,15 @@ export const ONLINE_PAUSE_SECONDS = 60;
 const MAX_EXTENDED_REMAINING_SECONDS = 180;
 const TROOP_PHASE_TURN_MAX = 3;
 const MAX_DISCONNECTED_TURNS = 2;
+
+const NO_DEPLOY_TROOPS: DeployTroopsBreakdown = {
+  territories: 0,
+  bonuses: 0,
+  capitals: 0,
+  roundTroops: 0,
+  bounties: 0,
+  turnOrder: 0,
+};
 
 const turnTimers = new Map<string, NodeJS.Timeout>();
 const autoResumeTimers = new Map<Game, NodeJS.Timeout>();
@@ -159,123 +167,6 @@ export function extendTurnTimer(game: Game, seconds: number) {
 
 export function topUpTurnTimerToHalf(game: Game) {
   extendRemainingTurnTo(game, (game.turnDuration * 1000) / 2);
-}
-
-function dropTroopsRandomly(
-  game: Game,
-  playerId: number,
-  amount: number,
-  deposits: Map<number, number>,
-  countsAsGained: boolean,
-) {
-  const room = new Map<number, number>();
-  for (const id of deployTargetIds(game, playerId)) {
-    const free = MAX_TERRITORY_TROOPS - (game.territoryTroops.get(id) ?? 0);
-    if (free > 0) room.set(id, free);
-  }
-  const open = [...room.keys()];
-  const tally = new Map<number, number>();
-  let placed = 0;
-  while (placed < amount && open.length > 0) {
-    const index = Math.floor(Math.random() * open.length);
-    const territoryId = open[index];
-    tally.set(territoryId, (tally.get(territoryId) ?? 0) + 1);
-    placed++;
-    const left = room.get(territoryId)! - 1;
-    room.set(territoryId, left);
-    if (left === 0) {
-      open[index] = open[open.length - 1];
-      open.pop();
-    }
-  }
-
-  if (countsAsGained) bumpStat(game, playerId, 'troopsGained', placed);
-  for (const [territoryId, troops] of tally) {
-    game.territoryTroops.set(
-      territoryId,
-      (game.territoryTroops.get(territoryId) ?? 0) + troops,
-    );
-    deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + troops);
-    recordReplayFrame(game, { type: 'deploy', territoryId, troops, playerId });
-  }
-  return placed;
-}
-
-function emitDeployedMany(
-  game: Game,
-  playerId: number,
-  deposits: Map<number, number>,
-) {
-  if (deposits.size === 0) return;
-  const entries = [...deposits.entries()].map(([territoryId, troops]) => ({
-    territoryId,
-    troops,
-  }));
-  fogFilterEmit(
-    game,
-    'game:deployedMany',
-    callbacks.onDeployedMany,
-    (viewerId) => {
-      const visible = visibleTerritoryIdsOrAll(game, viewerId);
-      const filtered =
-        visible === null
-          ? entries
-          : entries.filter((e) => visible.has(e.territoryId));
-      return filtered.length > 0 ? { deposits: filtered, playerId } : null;
-    },
-  );
-}
-
-function forceCompleteDeployPhase(game: Game): Map<number, number> {
-  const playerId = game.playerIds[game.turnPlayerIndex];
-  const deposits = new Map<number, number>();
-  let cardsChanged = false;
-
-  dropTroopsRandomly(game, playerId, game.troopsToDeploy, deposits, true);
-  game.troopsToDeploy = 0;
-
-  while ((game.playerCards.get(playerId)?.length ?? 0) >= 5) {
-    const hand = game.playerCards.get(playerId) ?? [];
-    const best = pickBestSet(game, hand, playerId);
-    if (!best) break;
-
-    for (const used of best.cards) {
-      const index = hand.indexOf(used);
-      if (index !== -1) hand.splice(index, 1);
-    }
-    cardsChanged = true;
-    returnCardsToDeck(game.deck, best.cards);
-    const key = counterKey(game, playerId);
-    game.cardSetsPlayed.set(key, (game.cardSetsPlayed.get(key) ?? 0) + 1);
-    if (game.cards === 'exponential' || game.cards === 'exponential per player')
-      game.cardsLastSetValue.set(key, best.baseValue);
-
-    let bonusGained = 0;
-    for (const territoryId of best.territoryBonusIds) {
-      const troops = addTroopsCapped(game, territoryId, 2);
-      bonusGained += troops;
-      deposits.set(territoryId, (deposits.get(territoryId) ?? 0) + troops);
-      recordReplayFrame(game, {
-        type: 'deploy',
-        territoryId,
-        troops,
-        playerId,
-      });
-    }
-    bumpStat(game, playerId, 'troopsGained', bonusGained);
-    const placed = dropTroopsRandomly(
-      game,
-      playerId,
-      best.baseValue,
-      deposits,
-      true,
-    );
-    recordCardSet(game, playerId, bonusGained + placed);
-  }
-
-  if (cardsChanged) sendPlayerCards(game, playerId);
-
-  return deposits;
 }
 
 function capitalCandidateIds(game: Game, playerId: number): number[] {
@@ -382,15 +273,17 @@ function nextIndexMatching(
   return null;
 }
 
+function isPlacingPlayer(game: Game, id: number): boolean {
+  return !game.deathOrder.includes(id) && id !== game.zombieId;
+}
+
 function firstAliveIndex(game: Game): number {
-  return (
-    nextIndexMatching(game, -1, (id) => !game.deathOrder.includes(id)) ?? 0
-  );
+  return nextIndexMatching(game, -1, (id) => isPlacingPlayer(game, id)) ?? 0;
 }
 
 function nextAliveIndexFrom(game: Game, fromIndex: number): number {
   return (
-    nextIndexMatching(game, fromIndex, (id) => !game.deathOrder.includes(id)) ??
+    nextIndexMatching(game, fromIndex, (id) => isPlacingPlayer(game, id)) ??
     fromIndex
   );
 }
@@ -403,14 +296,14 @@ export function startTerritoryPhase(game: Game) {
 
 function eliminatePlayersWithoutTerritory(game: Game) {
   for (const id of game.playerIds) {
-    if (!ownsAnyTerritory(game, id) && !game.deathOrder.includes(id))
+    if (isPlacingPlayer(game, id) && !ownsAnyTerritory(game, id))
       game.deathOrder.push(id);
   }
 }
 
 function everyAlivePlayerOwnsTerritory(game: Game): boolean {
   return game.playerIds.every(
-    (id) => game.deathOrder.includes(id) || ownsAnyTerritory(game, id),
+    (id) => !isPlacingPlayer(game, id) || ownsAnyTerritory(game, id),
   );
 }
 
@@ -444,7 +337,7 @@ export function startTroopPhase(game: Game) {
   game.placementTroopPools = new Map();
   const territoryCounts = countTerritoriesByOwner(game);
   game.playerIds.forEach((id, i) => {
-    if (game.deathOrder.includes(id)) return;
+    if (!isPlacingPlayer(game, id)) return;
     const count = territoryCounts.get(id) ?? 0;
     game.placementTroopPools.set(
       id,
@@ -559,8 +452,11 @@ export function beginNextSpecialPhase(game: Game) {
 function startDeployPhase(game: Game, playerId: number) {
   snapshotCapitalRefunds(game, playerId);
   game.deployCardMandate = (game.playerCards.get(playerId)?.length ?? 0) >= 5;
-  const breakdown = calculateDeployTroopsBreakdown(game, playerId);
-  payContinentBonuses(game, playerId);
+  const isZombie = playerId === game.zombieId;
+  const breakdown = isZombie
+    ? NO_DEPLOY_TROOPS
+    : calculateDeployTroopsBreakdown(game, playerId);
+  if (!isZombie) payContinentBonuses(game, playerId);
   const earned =
     breakdown.territories +
     breakdown.bonuses +
@@ -775,8 +671,18 @@ export function forceEndTurnImpl(game: Game, skipDeploy = false) {
   advanceToNextPlayer(game);
 }
 
+function hasTurn(game: Game, playerId: number): boolean {
+  if (ownsAnyTerritory(game, playerId)) return true;
+  return (
+    playerId === game.zombieId &&
+    game.playerIds.some(
+      (other) => other !== playerId && ownsAnyTerritory(game, other),
+    )
+  );
+}
+
 function findNextAliveIndexFrom(game: Game, fromIndex: number): number | null {
-  return nextIndexMatching(game, fromIndex, (id) => ownsAnyTerritory(game, id));
+  return nextIndexMatching(game, fromIndex, (id) => hasTurn(game, id));
 }
 
 function isIdleBot(playerId: number): boolean {
@@ -823,7 +729,11 @@ export function advanceToNextPlayer(game: Game) {
   rememberVisibleTerritories(game);
   bumpStat(game, endingPlayerId, 'turnsPlayed');
 
-  if (game.conqueredThisTurn && game.cards !== 'off') {
+  if (
+    game.conqueredThisTurn &&
+    game.cards !== 'off' &&
+    endingPlayerId !== game.zombieId
+  ) {
     const card = popRandomCard(game.deck);
     if (card) {
       game.playerCards.get(endingPlayerId)?.push(card);

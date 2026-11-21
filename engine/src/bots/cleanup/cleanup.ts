@@ -1,4 +1,5 @@
-import { attackDiceFor } from '../../game/combat/dice';
+import { attackDiceFor, diceTiesFor } from '../../game/combat/dice';
+import { DiceTies } from '../../types';
 import { attackWinProbability, scaledOutcome } from '../features/combat';
 import {
   PlanContext,
@@ -77,6 +78,7 @@ function minAttackers(
   defenders: number,
   defenceDice: number,
   attackDice: number,
+  ties: DiceTies,
 ): number | null {
   const sure = (attackers: number) =>
     attackWinProbability(
@@ -85,6 +87,7 @@ function minAttackers(
       defenders,
       defenceDice,
       attackDice,
+      ties,
     ) >= SURE_HOP;
   let high = Math.max(2, defenders);
   while (!sure(high)) {
@@ -111,7 +114,8 @@ function buildJob(
   const defenders = troopsIn(state, id);
   const defenceDice = defenceDiceAt(ctx, id);
   const attackDice = attackDiceFor(ctx.game, fromId);
-  const attackers = minAttackers(ctx, defenders, defenceDice, attackDice);
+  const ties = diceTiesFor(ctx.game, id);
+  const attackers = minAttackers(ctx, defenders, defenceDice, attackDice, ties);
   if (attackers === null) return null;
   const outcome = scaledOutcome(
     ctx.game,
@@ -119,6 +123,7 @@ function buildJob(
     defenders,
     defenceDice,
     attackDice,
+    ties,
   );
   const loss = Math.max(
     0,

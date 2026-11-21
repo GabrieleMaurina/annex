@@ -737,7 +737,7 @@ function pickNearDefault(
 
 export function randomGameSettings(): GameSettingsInput {
   const gameMode = pickFavoringDefault(
-    GAME_MODES,
+    GAME_MODES.filter((mode) => mode !== 'zombies'),
     DEFAULT_GAME_SETTINGS.gameMode as GameMode,
   );
   const settings: Record<string, string | number> = { gameMode };

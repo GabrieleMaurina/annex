@@ -1,4 +1,5 @@
 import WhiteIcon from '../../../../common/icons/WhiteIcon';
+import ZombieIcon from '../../../../common/icons/ZombieIcon';
 import Tip from '../../../../common/tooltips/Tip';
 import { scaled } from '../../../../ui/uiScale';
 import type { Player } from './rowTypes';
@@ -20,8 +21,14 @@ function PlayerAvatar({
   picture,
   teamBadge = false,
 }: Props) {
-  const kind = isSelf ? 'You' : player.isBot ? 'Bot' : 'Player';
-  const icon = `/icons/${kind.toLowerCase()}.svg`;
+  const kind = isSelf
+    ? 'You'
+    : player.isZombie
+      ? 'Zombies'
+      : player.isBot
+        ? 'Bot'
+        : 'Player';
+  const icon = `/icons/${player.isBot ? 'bot' : kind.toLowerCase()}.svg`;
   return (
     <Tip text={isTurn ? `${kind}\nCurrent turn` : kind}>
       <span
@@ -34,6 +41,8 @@ function PlayerAvatar({
             alt=""
             className="rounded-2 w-100 h-100 object-fit-cover"
           />
+        ) : player.isZombie ? (
+          <ZombieIcon size={Math.round(size * 0.6)} isTurn={isTurn} />
         ) : (
           <WhiteIcon path={icon} size={Math.round(size * 0.5)} />
         )}

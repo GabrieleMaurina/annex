@@ -17,7 +17,11 @@ export function finisherMode(
 ): boolean {
   const dead = new Set(game.deathOrder);
   const rivals = game.playerIds.filter(
-    (id) => id !== botId && !dead.has(id) && !friendlyIds.has(id),
+    (id) =>
+      id !== botId &&
+      id !== game.zombieId &&
+      !dead.has(id) &&
+      !friendlyIds.has(id),
   );
   if (rivals.length === 0 || rivalUnitCount(game, rivals) > MAX_FINISHER_RIVALS)
     return false;

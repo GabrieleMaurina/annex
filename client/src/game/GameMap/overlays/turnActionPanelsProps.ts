@@ -38,7 +38,7 @@ type AnchorKeys =
   | 'size'
   | 'imgDims'
   | 'VERTEX_RADIUS'
-  | 'regions'
+  | 'getRegions'
   | 'selectedTerritoryId'
   | 'fortifyStartTerritoryId'
   | 'fortifyEndTerritoryId'
@@ -63,7 +63,7 @@ export function turnActionPanelsProps({
   size,
   imgDims,
   VERTEX_RADIUS,
-  regions,
+  getRegions,
   selectedTerritoryId,
   fortifyStartTerritoryId,
   fortifyEndTerritoryId,
@@ -96,7 +96,7 @@ export function turnActionPanelsProps({
       size,
       imgDims,
       VERTEX_RADIUS,
-      regions,
+      getRegions,
       selectedTerritoryId,
       fortifyStartTerritoryId,
       fortifyEndTerritoryId,

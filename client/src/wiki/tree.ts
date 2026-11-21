@@ -124,6 +124,11 @@ export const WIKI_SECTIONS: WikiSectionInfo[] = [
       'Scoring modes',
       'Player Kills, Troop Kills, King of the Hill and Empire.',
     ],
+    [
+      'zombies',
+      'Zombies',
+      'A zombie horde that infects, grows and fights everyone.',
+    ],
   ]),
   section(
     'play',

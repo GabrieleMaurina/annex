@@ -15,6 +15,8 @@ export const BOT_DIFFICULTIES: (BotDifficulty | 'random')[] = [
   'hard',
 ];
 
+export const ZOMBIE_DIFFICULTIES: BotDifficulty[] = ['easy', 'medium', 'hard'];
+
 export const BOT_PERSONALITY_LABELS: Record<BotPersonality | 'random', string> =
   {
     balanced: 'Balanced',

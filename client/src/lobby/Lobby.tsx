@@ -212,7 +212,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
 
   function savedBots(state: GameState): SavedBot[] {
     return state.players
-      .filter((p) => p.isBot)
+      .filter((p) => p.isBot && !p.isZombie)
       .map(
         (p) =>
           botInputsRef.current.get(p.id) ??
@@ -224,7 +224,9 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
   }
 
   function addBot(team?: number) {
-    const lastBot = [...game.players].reverse().find((p) => p.isBot);
+    const lastBot = [...game.players]
+      .reverse()
+      .find((p) => p.isBot && !p.isZombie);
     const difficulty = lastBot?.botDifficulty ?? 'easy';
     const personality = lastBot?.botPersonality ?? 'random';
     const knownBotIds = new Set(game.players.map((p) => p.id));
@@ -235,7 +237,7 @@ function Lobby({ game, gameMeta, setGame, selfId, account, navigate }: Props) {
       }
       setSettingsError('');
       const added = res.game.players.find(
-        (p) => p.isBot && !knownBotIds.has(p.id),
+        (p) => p.isBot && !p.isZombie && !knownBotIds.has(p.id),
       );
       if (added)
         botInputsRef.current.set(added.id, { difficulty, personality });

@@ -25,6 +25,7 @@ import {
   withAnimationDelay,
 } from '../../animations';
 import { NUKE_FLIGHT_MS } from '../../animations/state';
+import { zombieSounds } from '../../animations/zombie/seat';
 import { getAttackPath } from '../../logic/attack';
 import { formatTroops } from '../../logic/formatTroops';
 import { getFortifyPath } from '../../logic/fortify';
@@ -41,6 +42,8 @@ import { drawGameMapCanvas } from '../draw/drawCanvas';
 import { layersSettling } from '../draw/layerCache';
 import type { Point } from '../helpers';
 import { useArrowFlash } from './canvas/useArrowFlash';
+import { useFortifyEvents } from './canvas/useFortifyEvents';
+import { useMassDeployEvents } from './canvas/useMassDeployEvents';
 import { useTroopAnimations } from './canvas/useTroopAnimations';
 import { slideShipsAlongPath } from './sea/shipSlides';
 import { useSeaSocketEvents } from './sea/useSeaSocketEvents';
@@ -60,6 +63,7 @@ export function useGameSocketEvents({
   regions,
   ownerByIdRef,
   colorByPlayerIdRef,
+  zombieId,
   visibleTerritoryIdsRef,
   adjustTerritoryTroops,
   adjustToxinTerritories,
@@ -79,6 +83,7 @@ export function useGameSocketEvents({
   regions: ClickableRegions | null;
   ownerByIdRef: RefObject<Map<number, GameState['territories'][number]>>;
   colorByPlayerIdRef: RefObject<Map<number, number>>;
+  zombieId: number | null;
   visibleTerritoryIdsRef: RefObject<GameState['visibleTerritoryIds']>;
   adjustTerritoryTroops: (
     deltas: { territoryId: number; delta: number; ownerId?: number }[],
@@ -153,12 +158,22 @@ export function useGameSocketEvents({
     animateAdd,
     animateRemove,
     scheduleRefund,
+    staggerTroops,
     afterRefund,
   } = useTroopAnimations({
     colorByPlayerIdRef,
     ownerByIdRef,
     frozenTroopsRef,
     findPosition,
+    startAnimationLoop,
+  });
+
+  const playMassFrame = useMassDeployEvents({
+    zombieId,
+    findPosition,
+    adjustTerritoryTroops,
+    animateAdd,
+    staggerTroops,
     startAnimationLoop,
   });
 
@@ -283,6 +298,18 @@ export function useGameSocketEvents({
     territoryPoints,
   });
 
+  useFortifyEvents({
+    zombieId,
+    ownerByIdRef,
+    adjustTerritoryTroops,
+    slideShips,
+    flashArrowRuns,
+    animateAdd,
+    animateRemove,
+    staggerTroops,
+    startAnimationLoop,
+  });
+
   const playAttackLossEffects = useCallback(
     (
       attackingTerritoryId: number,
@@ -354,6 +381,11 @@ export function useGameSocketEvents({
           troops: animation.troops,
           playerId: animation.playerId,
         });
+      } else if (
+        animation.type === 'deployMany' ||
+        animation.type === 'infect'
+      ) {
+        playMassFrame(animation);
       } else if (animation.type === 'fortify') {
         playSound('fortify');
         let arrowPath: Point[][] | undefined;
@@ -472,6 +504,7 @@ export function useGameSocketEvents({
     },
     [
       animateAdd,
+      playMassFrame,
       animateRemove,
       scheduleRefund,
       afterRefund,
@@ -494,7 +527,7 @@ export function useGameSocketEvents({
     ],
   );
 
-  const replay = useReplay(replayData ?? null, playFrameAnimation);
+  const replay = useReplay(replayData ?? null, playFrameAnimation, zombieId);
 
   useEffect(() => {
     function playAddEffect(
@@ -510,44 +543,6 @@ export function useGameSocketEvents({
     }
     function onDeployed(payload: { territoryId: number; troops: number }) {
       playAddEffect('deploy', payload);
-    }
-    function onFortified(payload: {
-      territoryId: number;
-      fromTerritoryId: number;
-      troopsRemoved?: number;
-      troopsAdded?: number;
-      path: number[][];
-    }) {
-      playSound('fortify');
-      const deltas: { territoryId: number; delta: number }[] = [];
-      if (payload.troopsRemoved !== undefined)
-        deltas.push({
-          territoryId: payload.fromTerritoryId,
-          delta: -payload.troopsRemoved,
-        });
-      if (payload.troopsAdded !== undefined)
-        deltas.push({
-          territoryId: payload.territoryId,
-          delta: payload.troopsAdded,
-        });
-      if (deltas.length > 0) adjustTerritoryTroops(deltas);
-      const shipOwnerId = ownerByIdRef.current.get(
-        payload.fromTerritoryId,
-      )?.ownerId;
-      withAnimationDelay(slideShips(payload.path, shipOwnerId), () => {
-        flashArrowRuns(payload.path, shipOwnerId);
-        if (payload.troopsRemoved !== undefined)
-          animateRemove({
-            territoryId: payload.fromTerritoryId,
-            troops: payload.troopsRemoved,
-          });
-        if (payload.troopsAdded !== undefined)
-          animateAdd({
-            territoryId: payload.territoryId,
-            troops: payload.troopsAdded,
-          });
-      });
-      startAnimationLoop();
     }
     function onAttackMoved(payload: {
       territoryId: number;
@@ -586,19 +581,6 @@ export function useGameSocketEvents({
         afterRefund(payload.territoryId, fireAnimation);
       if (pendingDelay > 0) setTimeout(fireAfterRefund, pendingDelay);
       else fireAfterRefund();
-    }
-    function onDeployedMany(payload: {
-      deposits: { territoryId: number; troops: number }[];
-    }) {
-      playSound('deploy');
-      adjustTerritoryTroops(
-        payload.deposits.map((d) => ({
-          territoryId: d.territoryId,
-          delta: d.troops,
-        })),
-      );
-      for (const deposit of payload.deposits) animateAdd(deposit);
-      startAnimationLoop();
     }
     function onEntrenched(payload: {
       territoryId: number;
@@ -703,9 +685,7 @@ export function useGameSocketEvents({
       startAnimationLoop();
     }
     connector.on('game:deployed', onDeployed);
-    connector.on('game:fortified', onFortified);
     connector.on('game:attackMoved', onAttackMoved);
-    connector.on('game:deployedMany', onDeployedMany);
     connector.on('game:entrenched', onEntrenched);
     connector.on('game:starved', onStarved);
     connector.on('game:toxined', onToxined);
@@ -717,9 +697,7 @@ export function useGameSocketEvents({
     connector.on('game:nukeLaunched', onNukeLaunched);
     return () => {
       connector.off('game:deployed', onDeployed);
-      connector.off('game:fortified', onFortified);
       connector.off('game:attackMoved', onAttackMoved);
-      connector.off('game:deployedMany', onDeployedMany);
       connector.off('game:entrenched', onEntrenched);
       connector.off('game:starved', onStarved);
       connector.off('game:toxined', onToxined);
@@ -870,6 +848,13 @@ export function useGameSocketEvents({
         attackRevealDeadlineRef.current.delete(payload.attackingTerritoryId);
         attackRevealDeadlineRef.current.delete(payload.defendingTerritoryId);
         if (!freeConquest) playSound('explode');
+        for (const sound of zombieSounds(
+          zombieId,
+          payload.attackerId,
+          payload.defenderId,
+          conquered,
+        ))
+          playSound(sound);
         frozenTroopsRef.current.delete(payload.attackingTerritoryId);
         if (troopsRefunded > 0 && !areAnimationsDisabled())
           frozenTroopsRef.current.set(payload.defendingTerritoryId, 0);
@@ -921,6 +906,7 @@ export function useGameSocketEvents({
     frozenVisibleOwnersRef,
     nextFreezeIdRef,
     startAnimationLoop,
+    zombieId,
   ]);
 
   useEffect(() => {

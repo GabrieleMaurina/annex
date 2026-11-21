@@ -18,6 +18,7 @@ import type {
   ReplayTerritory,
   StoredGame,
 } from '../../lib/types';
+import { zombieSounds } from '../animations/zombie/seat';
 
 export function groupSeaShips(flat: ReplaySeaShips[]): GameState['seas'] {
   const byPlayerBySea = new Map<
@@ -273,7 +274,11 @@ export function switchFlipsAt(replay: ReplayData, index: number): number[] {
     );
 }
 
-export function frameSounds(replay: ReplayData, index: number): string[] {
+export function frameSounds(
+  replay: ReplayData,
+  index: number,
+  zombieId: number | null,
+): string[] {
   const sounds: string[] = [];
   const frame = replay.frames[index];
   const previous = index > 0 ? replay.frames[index - 1] : null;
@@ -288,6 +293,22 @@ export function frameSounds(replay: ReplayData, index: number): string[] {
     previous?.radiationTerritories ?? replay.initialRadiation;
   if (frame.radiationTerritories.some((id) => !previousRadiation.includes(id)))
     sounds.push('radiation');
+  if (animation.type === 'attack' && zombieId !== null) {
+    const ownerAfter = frame.territories.find(
+      (t) => t.id === animation.defendingTerritoryId,
+    )?.ownerId;
+    const ownerBefore = previousTerritories.find(
+      (t) => t.id === animation.defendingTerritoryId,
+    )?.ownerId;
+    sounds.push(
+      ...zombieSounds(
+        zombieId,
+        animation.attackerId,
+        animation.defenderId,
+        ownerBefore !== ownerAfter,
+      ),
+    );
+  }
   if (index === replay.frames.length - 1) {
     sounds.push('end');
     return sounds;
@@ -322,12 +343,18 @@ export function frameSounds(replay: ReplayData, index: number): string[] {
   if (newlySurrendered) sounds.push('surrender');
   if (connectionChanges.includes(true)) sounds.push('connect');
   if (connectionChanges.includes(false)) sounds.push('disconnect');
-  if (phaseChanged) sounds.push('phase');
+  const turnStarted = previous !== null && previous.playerId !== frame.playerId;
+  if (turnStarted && frame.playerId === zombieId) sounds.push('zombieTurn');
+  else if (phaseChanged) sounds.push('phase');
   return sounds;
 }
 
-function playFrameSounds(replay: ReplayData, index: number) {
-  for (const sound of frameSounds(replay, index)) playSound(sound);
+function playFrameSounds(
+  replay: ReplayData,
+  index: number,
+  zombieId: number | null,
+) {
+  for (const sound of frameSounds(replay, index, zombieId)) playSound(sound);
 }
 
 export function useReplay(
@@ -336,6 +363,7 @@ export function useReplay(
     animation: ReplayAnimation,
     partOfConquestPair: boolean,
   ) => void,
+  zombieId: number | null,
 ) {
   const [index, setIndex] = useState(() => replay?.frames.length ?? 0);
   const [playing, setPlaying] = useState(false);
@@ -363,10 +391,10 @@ export function useReplay(
       replay.frames[current].animation,
       conquestArrowAt(replay, next) !== null,
     );
-    playFrameSounds(replay, current);
+    playFrameSounds(replay, current, zombieId);
     setIndex(next);
     if (next >= totalFrames) setPlaying(false);
-  }, [replay, totalFrames, onEnterFrame]);
+  }, [replay, totalFrames, onEnterFrame, zombieId]);
 
   function stepBackward() {
     setPlaying(false);

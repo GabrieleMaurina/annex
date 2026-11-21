@@ -3,7 +3,8 @@ import { GameExport } from '../export';
 import { isPointsMode } from '../progression/points';
 import { buildCharts } from './charts';
 
-type SourcePlayer = GameExport['players'][number] & {
+type SourcePlayer = Omit<GameExport['players'][number], 'isZombie'> & {
+  isZombie?: boolean;
   userId?: string | null;
   country?: string | null;
   elo?: number;
@@ -43,6 +44,7 @@ export function buildGameDataExport(game: GameDataSource) {
       name: p.name,
       country: p.country ?? null,
       isBot: p.isBot,
+      isZombie: !!p.isZombie,
       botDifficulty: p.botDifficulty,
       botPersonality: p.botPersonality,
       team: p.team,

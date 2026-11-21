@@ -102,6 +102,7 @@ function Game({
     (game?.state === 'ended' && endReplaying);
   const receivedFirstStateRef = useRef(false);
   const prevStateRef = useRef<GameState['state'] | null>(null);
+  const zombieIdRef = useRef<number | null>(null);
   const prevTurnPhaseRef = useRef<GameState['turnPhase'] | null>(null);
   const playerStatusRef = useRef<PlayerStatus | null>(null);
   const localColors = useLocalColors(game);
@@ -154,6 +155,7 @@ function Game({
       ) {
         playSound('phase');
       }
+      zombieIdRef.current = state.players.find((p) => p.isZombie)?.id ?? null;
       prevStateRef.current = state.state;
       if (state.state === 'playing') prevTurnPhaseRef.current = state.turnPhase;
       setGame(state);
@@ -195,7 +197,8 @@ function Game({
       prevTurnPhaseRef.current = 'deploy';
       if (!isGameStart) {
         const isOwnTurn = payload.playerId === selfId;
-        playSound(isOwnTurn ? 'turn' : 'phase');
+        if (payload.playerId === zombieIdRef.current) playSound('zombieTurn');
+        else playSound(isOwnTurn ? 'turn' : 'phase');
         if (isOwnTurn) setTurnFlash({ playerId: payload.playerId });
       }
     }

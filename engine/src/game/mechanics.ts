@@ -202,6 +202,18 @@ function territoryWeights(game: Game): number[] {
 
 export function territoryQuotas(game: Game, total: number): number[] {
   const weights = territoryWeights(game);
+  if (game.zombieId === null || game.placement === 'random')
+    return quotasFor(weights, total);
+  const zombieIndex = game.playerIds.indexOf(game.zombieId);
+  const quotas = quotasFor(
+    weights.filter((_, i) => i !== zombieIndex),
+    total,
+  );
+  quotas.splice(zombieIndex, 0, 0);
+  return quotas;
+}
+
+function quotasFor(weights: number[], total: number): number[] {
   const count = weights.length;
   if (weights.every((w) => w === weights[0]) || total < count) {
     const base = Math.floor(total / count);
@@ -237,7 +249,8 @@ export function claimQuota(game: Game, playerId: number): number {
 }
 
 export function needsClaim(game: Game, playerId: number): boolean {
-  if (game.deathOrder.includes(playerId)) return false;
+  if (game.deathOrder.includes(playerId) || playerId === game.zombieId)
+    return false;
   if (game.odds === 'off' || game.placement !== 'custom') return true;
   return ownedTerritoryIds(game, playerId).length < claimQuota(game, playerId);
 }
@@ -351,7 +364,7 @@ export function deployableTroops(
 
 export function deployTargetIds(game: Game, playerId: number): number[] {
   const owned = ownedTerritoryIds(game, playerId);
-  if (game.supplyLines !== 'on') return owned;
+  if (game.supplyLines !== 'on' || playerId === game.zombieId) return owned;
   const supplied = connectedFortifyTerritories(
     game,
     playerId,

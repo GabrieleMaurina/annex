@@ -11,6 +11,7 @@ import { fogFilterEmit, recordLogForAll } from '../game/world/fog';
 import { visibleTerritoryIdsOrAll } from '../game/world/visibility';
 import { GameResponse, requireGame } from '../session/context';
 import { respondGameState, sendPlayerCards } from '../session/store';
+import { Game } from '../types';
 import { isNullableInteger } from '../util/validate';
 
 function isCardSelection(value: unknown): value is (number | null)[] {
@@ -19,6 +20,13 @@ function isCardSelection(value: unknown): value is (number | null)[] {
     value.length === 3 &&
     value.every((c) => isNullableInteger(c))
   );
+}
+
+export function discardHand(game: Game, playerId: number): void {
+  const hand = game.playerCards.get(playerId) ?? [];
+  game.playerCards.set(playerId, []);
+  returnCardsToDeck(game.deck, hand);
+  if (hand.length > 0) sendPlayerCards(game, playerId);
 }
 
 export function requestCards(playerId: number): void {

@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 export const PLAYER_COLORS = [
   '#E35B41',
   '#5B7CAF',
@@ -23,6 +25,25 @@ export const PLAYER_COLORS = [
 
 export function playerColor(colorIndex: number): string {
   return PLAYER_COLORS[colorIndex];
+}
+
+export const ZOMBIE_TEXTURE_URL = '/images/zombie-texture.svg';
+
+export const ZOMBIE_TEXTURE: CSSProperties = {
+  backgroundImage: `url(${ZOMBIE_TEXTURE_URL})`,
+  backgroundSize: '12px 12px',
+};
+
+export function playerSwatch(
+  colorIndex: number,
+  isZombie: boolean | undefined,
+): CSSProperties {
+  const backgroundColor = playerColor(colorIndex);
+  return {
+    backgroundColor,
+    color: contrastTextColor(backgroundColor),
+    ...(isZombie ? ZOMBIE_TEXTURE : {}),
+  };
 }
 
 export function contrastTextColor(hex: string): string {

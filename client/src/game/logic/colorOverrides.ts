@@ -67,7 +67,7 @@ export function useLocalColors(game: GameState | null) {
   function cycleColor(playerId: number) {
     if (!game || !shownGame) return;
     const current = shownGame.players.find((p) => p.id === playerId);
-    if (!current) return;
+    if (!current || current.isZombie) return;
     const usedByOthers = new Set(
       shownGame.players.filter((p) => p.id !== playerId).map((p) => p.color),
     );

@@ -1,4 +1,4 @@
-import { attackDiceFor } from '../../game/combat/dice';
+import { attackDiceFor, diceTiesFor } from '../../game/combat/dice';
 import {
   MAX_TERRITORY_TROOPS,
   supplyHubTerritoryIds,
@@ -180,6 +180,7 @@ export function walkStack(
       defenders,
       defenceDiceAt(ctx, next),
       attackDiceFor(ctx.game, cur),
+      diceTiesFor(ctx.game, next),
     );
     if (outcome.winProbability < HOPELESS_FLOOR) break;
     if (outcome.winProbability < STEP_FLOOR && i > 0) break;
@@ -504,6 +505,7 @@ function firstStepWin(
     troopsIn(state, target),
     defenceDiceAt(ctx, target),
     attackDiceFor(ctx.game, stack.startId),
+    diceTiesFor(ctx.game, target),
   ).winProbability;
 }
 

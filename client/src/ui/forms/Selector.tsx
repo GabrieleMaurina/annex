@@ -7,6 +7,7 @@ import type {
 } from 'react';
 import { Children, isValidElement, useEffect, useRef, useState } from 'react';
 import { Dropdown } from 'react-bootstrap';
+import Tip from '../../common/tooltips/Tip';
 
 const TYPE_AHEAD_RESET = 600;
 const SELECTOR_POPPER_CONFIG = { strategy: 'fixed' as const };
@@ -25,6 +26,7 @@ interface Props {
   disabled?: boolean;
   className?: string;
   style?: CSSProperties;
+  optionTips?: Record<string, ReactNode>;
   'aria-label'?: string;
 }
 
@@ -56,6 +58,7 @@ function Selector({
   disabled,
   className = '',
   style,
+  optionTips,
   'aria-label': ariaLabel,
 }: Props) {
   const options = readOptions(children);
@@ -101,6 +104,8 @@ function Selector({
       [index]?.focus();
   }
 
+  const label = <span className="text-truncate">{selected?.label}</span>;
+
   return (
     <Dropdown
       className="selector"
@@ -118,7 +123,13 @@ function Selector({
         disabled={disabled}
       >
         {ariaLabel && <span className="visually-hidden">{ariaLabel}</span>}
-        <span className="text-truncate">{selected?.label}</span>
+        {!show && optionTips?.[value] ? (
+          <Tip text={optionTips[value]} placement="bottom">
+            {label}
+          </Tip>
+        ) : (
+          label
+        )}
       </Dropdown.Toggle>
       <Dropdown.Menu
         ref={menuRef}
@@ -127,22 +138,39 @@ function Selector({
         popperConfig={SELECTOR_POPPER_CONFIG}
         onKeyDown={onMenuKeyDown}
       >
-        {options.map((option, index) => (
-          <Dropdown.Item
-            key={option.value}
-            as="button"
-            type="button"
-            eventKey={option.value}
-            tabIndex={-1}
-            disabled={option.disabled}
-            className="selector-option"
-            style={{ '--selector-row': index } as CSSProperties}
-            data-selected={option.value === value || undefined}
-            onMouseEnter={(e) => e.currentTarget.focus({ preventScroll: true })}
-          >
-            <span className="text-truncate">{option.label}</span>
-          </Dropdown.Item>
-        ))}
+        {options.map((option, index) => {
+          const item = (
+            <Dropdown.Item
+              key={option.value}
+              as="button"
+              type="button"
+              eventKey={option.value}
+              tabIndex={-1}
+              disabled={option.disabled}
+              className="selector-option"
+              style={{ '--selector-row': index } as CSSProperties}
+              data-selected={option.value === value || undefined}
+              onMouseEnter={(e) =>
+                e.currentTarget.focus({ preventScroll: true })
+              }
+            >
+              <span className="text-truncate">{option.label}</span>
+            </Dropdown.Item>
+          );
+          const tip = show ? optionTips?.[option.value] : undefined;
+          return tip ? (
+            <Tip
+              key={option.value}
+              text={tip}
+              placement="right"
+              popperConfig={SELECTOR_POPPER_CONFIG}
+            >
+              {item}
+            </Tip>
+          ) : (
+            item
+          );
+        })}
       </Dropdown.Menu>
     </Dropdown>
   );

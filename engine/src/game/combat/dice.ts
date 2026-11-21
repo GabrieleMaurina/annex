@@ -47,21 +47,33 @@ export function defenceDiceFor(game: Game, territoryId: number): number {
 }
 
 export function attackDiceFor(game: Game, territoryId: number): number {
+  if (game.territoryOwners.get(territoryId) === game.zombieId)
+    return Math.max(1, game.attackDice - 1);
   if ((game.territoryEntrenchment.get(territoryId) ?? 0) > 0)
     return Math.min(MAX_DICE, game.attackDice + 1);
   return game.attackDice;
+}
+
+export function diceTiesFor(
+  game: Game,
+  defendingTerritoryId: number,
+): DiceTies {
+  return game.territoryOwners.get(defendingTerritoryId) === game.zombieId
+    ? 'attack'
+    : game.diceTies;
 }
 
 export function gameDiceRules(
   game: Game,
   defence: number,
   attack: number = game.attackDice,
+  ties: DiceTies = game.diceTies,
 ): DiceRules {
   return {
     attack,
     defence,
     attackSides: game.attackSides,
     defenceSides: game.defenceSides,
-    ties: game.diceTies,
+    ties,
   };
 }

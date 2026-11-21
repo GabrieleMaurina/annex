@@ -10,7 +10,7 @@ import type { ResultRow } from '../common/ResultsTable';
 import ResultsTable from '../common/ResultsTable';
 import Tip from '../common/tooltips/Tip';
 import { connector } from '../connector';
-import { contrastTextColor, playerColor } from '../lib/palette';
+import { playerSwatch } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/settings/SettingsPanel';
 import { getGeneratedMapData } from './mapData';
@@ -116,10 +116,7 @@ function GameEndResults({
           <p className="fs-4 mb-0">
             <span
               className="badge"
-              style={{
-                backgroundColor: playerColor(winners[0]?.color ?? 0),
-                color: contrastTextColor(playerColor(winners[0]?.color ?? 0)),
-              }}
+              style={playerSwatch(winners[0]?.color ?? 0, winners[0]?.isZombie)}
             >
               {winners[0]?.name}
             </span>{' '}

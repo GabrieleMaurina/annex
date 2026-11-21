@@ -1,3 +1,4 @@
+import { diceTiesFor } from '../../game/combat/dice';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { toggleFlipped } from '../../game/world/switches';
 import {
@@ -82,6 +83,8 @@ function conquestGain(
     troopsIn(state, fromId) - 1,
     troopsIn(state, targetId),
     defenceDiceAt(next, targetId),
+    game.attackDice,
+    diceTiesFor(game, targetId),
   );
   if (win < NEW_TARGET_MIN_WIN) return -Infinity;
   const after = cloneState(state);

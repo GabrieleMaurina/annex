@@ -21,6 +21,7 @@ const INBOUND_EVENTS = [
   'game:cardSetPlayed',
   'game:deployed',
   'game:deployedMany',
+  'game:infected',
   'game:fortified',
   'game:attacked',
   'game:attackMoved',

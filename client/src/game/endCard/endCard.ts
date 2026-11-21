@@ -1,10 +1,12 @@
 import { contrastTextColor, playerColor } from '../../lib/palette';
 import type { GameState } from '../../lib/types';
+import { zombiePattern } from '../GameMap/draw/zombieTexture';
 import { CANVAS_FONT_FAMILY } from '../GameMap/helpers';
 
 export interface EndCard {
   text: string;
   color: string;
+  zombie?: boolean;
 }
 
 export interface EndCardOverlay {
@@ -74,7 +76,11 @@ export function endCardFor(game: GameState): EndCard | null {
   const color = playerColor(winners[0].color);
   return game.gameMode === 'team deathmatch'
     ? { text: `Team ${winners[0].team + 1} wins!`, color }
-    : { text: `${winners[0].name} wins!`, color };
+    : {
+        text: `${winners[0].name} wins!`,
+        color,
+        zombie: winners[0].isZombie,
+      };
 }
 
 function progress(elapsed: number, delay: number, length: number): number {
@@ -158,6 +164,12 @@ export function drawEndCard(
     ctx.shadowBlur = fontSize * 0.25;
     ctx.fillStyle = card.color;
     ctx.fillText(card.text, 0, 0);
+    const pattern = card.zombie ? zombiePattern(ctx, fontSize * 0.12) : null;
+    if (pattern) {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = pattern;
+      ctx.fillText(card.text, 0, 0);
+    }
     ctx.restore();
   }
 

@@ -1,8 +1,8 @@
 import { memo, useState, type ReactNode, type UIEvent } from 'react';
 import { Table } from 'react-bootstrap';
-import { useWhiteIcon } from '../../common/icon';
+import { botLabel, useBotIcon, type BotIcon } from '../../common/icon';
 import PanelHeader from '../../common/PanelHeader';
-import { contrastTextColor } from '../../lib/palette';
+import { contrastTextColor, ZOMBIE_TEXTURE } from '../../lib/palette';
 import { PANEL_BG_CLASS, PANEL_CLASS } from '../../ui/containers/panelStyle';
 import { scaled } from '../../ui/uiScale';
 import type { LogColorRange } from '../logs/logFormat';
@@ -12,6 +12,7 @@ interface LogEntry {
   color: string;
   text: string;
   colorRanges?: LogColorRange[];
+  isZombie?: boolean;
 }
 
 interface Props {
@@ -48,7 +49,7 @@ function boldRanges(text: string): [number, number][] {
 function logLines(
   text: string,
   colorRanges: LogColorRange[] = [],
-  whiteBotIcon: string | undefined,
+  botIcon: BotIcon,
   rowForeground: string,
 ): ReactNode[][] {
   const bold = boldRanges(text);
@@ -65,14 +66,12 @@ function logLines(
     ]),
   ].sort((a, b) => a - b);
 
-  const botIcon = (fg: string) => (
+  const botImage = (fg: string, isZombie: boolean | undefined) => (
     <img
-      src={
-        fg === '#ffffff' ? (whiteBotIcon ?? '/icons/bot.svg') : '/icons/bot.svg'
-      }
+      src={botIcon(isZombie, fg === '#ffffff')}
       width={12}
       height={12}
-      alt="Bot"
+      alt={botLabel(isZombie)}
     />
   );
 
@@ -109,10 +108,14 @@ function logLines(
         <span
           key={start}
           className="badge d-inline-flex align-items-center gap-1"
-          style={{ backgroundColor: colorRange.color, color: fg }}
+          style={{
+            backgroundColor: colorRange.color,
+            color: fg,
+            ...(colorRange.isZombie ? ZOMBIE_TEXTURE : {}),
+          }}
         >
           {isBold ? <strong>{piece}</strong> : piece}
-          {colorRange.isBot && botIcon(fg)}
+          {colorRange.isBot && botImage(fg, colorRange.isZombie)}
         </span>,
       );
     } else if (colorRange?.color) {
@@ -123,14 +126,14 @@ function logLines(
           style={{ color: colorRange.color }}
         >
           {isBold ? <strong>{piece}</strong> : piece}
-          {colorRange.isBot && botIcon(rowForeground)}
+          {colorRange.isBot && botImage(rowForeground, colorRange.isZombie)}
         </span>,
       );
     } else if (colorRange?.isBot) {
       nodes.push(
         <span key={start} className="d-inline-flex align-items-center gap-1">
           {isBold ? <strong>{piece}</strong> : piece}
-          {botIcon(rowForeground)}
+          {botImage(rowForeground, colorRange.isZombie)}
         </span>,
       );
     } else if (isBold) {
@@ -145,17 +148,17 @@ function logLines(
 function LogText({
   text,
   colorRanges,
-  whiteBotIcon,
+  botIcon,
   rowForeground,
 }: {
   text: string;
   colorRanges?: LogColorRange[];
-  whiteBotIcon: string | undefined;
+  botIcon: BotIcon;
   rowForeground: string;
 }) {
   return (
     <>
-      {logLines(text, colorRanges, whiteBotIcon, rowForeground).map(
+      {logLines(text, colorRanges, botIcon, rowForeground).map(
         (line, index) => (
           <div key={index} className={index > 0 ? 'ps-3' : undefined}>
             {index === 0 && '• '}
@@ -169,22 +172,26 @@ function LogText({
 
 const LogRow = memo(function LogRow({
   log,
-  whiteBotIcon,
+  botIcon,
 }: {
   log: LogEntry;
-  whiteBotIcon: string | undefined;
+  botIcon: BotIcon;
 }) {
   const rowForeground = contrastTextColor(log.color);
   return (
     <tr>
       <td
         className="small text-nowrap"
-        style={{ backgroundColor: log.color, color: rowForeground }}
+        style={{
+          backgroundColor: log.color,
+          color: rowForeground,
+          ...(log.isZombie ? ZOMBIE_TEXTURE : {}),
+        }}
       >
         <LogText
           text={log.text}
           colorRanges={log.colorRanges}
-          whiteBotIcon={whiteBotIcon}
+          botIcon={botIcon}
           rowForeground={rowForeground}
         />
       </td>
@@ -195,7 +202,7 @@ const LogRow = memo(function LogRow({
 function LogsPanel({ logs, stats, top, onClose }: Props) {
   const [shown, setShown] = useState(PAGE_SIZE);
   const newestFirst = logs.slice(-shown).reverse();
-  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+  const botIcon = useBotIcon();
 
   const showMoreNearEnd = (e: UIEvent<HTMLDivElement>) => {
     const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
@@ -243,7 +250,7 @@ function LogsPanel({ logs, stats, top, onClose }: Props) {
           >
             <tbody>
               {newestFirst.map((log) => (
-                <LogRow key={log.id} log={log} whiteBotIcon={whiteBotIcon} />
+                <LogRow key={log.id} log={log} botIcon={botIcon} />
               ))}
             </tbody>
           </Table>

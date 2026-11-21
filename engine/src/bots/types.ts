@@ -36,4 +36,5 @@ export interface DifficultyParams {
   claims: boolean;
   position: boolean;
   cleanup: boolean;
+  zombieCaution: number;
 }

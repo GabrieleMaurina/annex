@@ -1,4 +1,8 @@
-import { attackDiceFor, defenceDiceFor } from '../../game/combat/dice';
+import {
+  attackDiceFor,
+  defenceDiceFor,
+  diceTiesFor,
+} from '../../game/combat/dice';
 import { pickBestSet } from '../../game/progression/cards';
 import { isFreeConquestTarget } from '../../game/toxins/toxins';
 import { flippedSwitchesKey } from '../../maps/maps';
@@ -75,7 +79,11 @@ function isDuelFinisher(ctx: PlanContext): boolean {
   if (!ctx.finisher) return false;
   const dead = new Set(ctx.game.deathOrder);
   const rivals = ctx.game.playerIds.filter(
-    (id) => id !== ctx.botId && !dead.has(id) && !ctx.friendlyIds.has(id),
+    (id) =>
+      id !== ctx.botId &&
+      id !== ctx.game.zombieId &&
+      !dead.has(id) &&
+      !ctx.friendlyIds.has(id),
   );
   return rivals.length <= 1;
 }
@@ -527,6 +535,7 @@ export function stepStatus(
     endTroops,
     defenceDiceFor(game, step.endId),
     attackDiceFor(game, step.startId),
+    diceTiesFor(game, step.endId),
   );
   return winProb >= step.minWinProb ? 'ok' : 'invalid';
 }

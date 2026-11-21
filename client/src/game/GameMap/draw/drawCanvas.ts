@@ -12,6 +12,7 @@ import { getUiScale } from '../../../ui/uiScale';
 import {
   areAnimationsDisabled,
   crackingTileIds,
+  drawAnimationLabels,
   drawAnimations,
   drawFortifyPath,
   regionRipple,
@@ -95,6 +96,9 @@ import {
   resetCanvas,
   type LayerView,
 } from './layerCache';
+import { zombieTextureLayer, zombieTextureReady } from './zombieTexture';
+
+const NUMBER_CLEARANCE = 1.1;
 
 export interface DrawCanvasParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -314,6 +318,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ])
     : null;
   const colorByPlayerId = new Map(players.map((pl) => [pl.id, pl.color]));
+  const zombieId = players.find((pl) => pl.isZombie)?.id ?? null;
   const ownerOf = (id: number) =>
     ownerById.get(id) ?? frozenTerritoryDataRef.current.get(id);
   const displayOwnerOf = (id: number) =>
@@ -323,6 +328,11 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       ? playerColor(colorByPlayerId.get(ownerId) ?? 0)
       : UNCLAIMED_TERRITORY_COLOR;
   const fillColorOf = (id: number) => ownerColor(displayOwnerOf(id));
+  const zombieOwned = (id: number) =>
+    zombieId !== null &&
+    !heatMap &&
+    !(visibleSet && !visibleSet.has(id)) &&
+    displayOwnerOf(id) === zombieId;
   const view = { scaleX, scaleY, offsetX, offsetY };
   const trackedCaptures = trackCaptures(canvas, {
     territories,
@@ -343,6 +353,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       cracking,
       ownerOf,
       fillColorOf,
+      zombieOwned,
       ready: imageRef.current !== null,
     }),
     toScreen,
@@ -356,6 +367,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
   const fillColors = new Map<number, string>();
   const tintedFillColors = new Map<number, string>();
   const ripples = new Map<number, Ripple>();
+  const texturedIds = new Set<number>();
   if (regions) {
     for (const t of territories) {
       if (!regions.shapes.has(t.id)) continue;
@@ -370,6 +382,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       tintedFillColors.set(t.id, lighten(color, tint));
       const capture = captures.get(t.id);
       if (capture) ripples.set(t.id, regionRipple(regions, t, capture, tint));
+      else if (zombieOwned(t.id)) texturedIds.add(t.id);
     }
   }
 
@@ -385,6 +398,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     scaleY,
     uiScale,
   };
+  const texturedKey = zombieTextureReady() ? [...texturedIds].join(',') : '';
   const paintBase = (target: CanvasRenderingContext2D) => {
     const smoothed =
       image !== null &&
@@ -405,15 +419,20 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         offsetY,
         scaleX,
       );
-    if (smoothed) return;
     const drawLayer = (layer: CanvasImageSource) => {
       target.imageSmoothingEnabled = minified;
       target.drawImage(layer, offsetX, offsetY, imgW * scaleX, imgH * scaleY);
       target.imageSmoothingEnabled = true;
     };
-    if (image) drawLayer(image);
-    if (tileLayer) drawLayer(tileLayer);
-    if (regions) drawLayer(regionFillLayer(regions, tintedFillColors, ripples));
+    if (!smoothed) {
+      if (image) drawLayer(image);
+      if (tileLayer) drawLayer(tileLayer);
+      if (regions)
+        drawLayer(regionFillLayer(regions, tintedFillColors, ripples));
+    }
+    const zombieLayer =
+      regions && zombieTextureLayer(regions, texturedIds, texturedKey);
+    if (zombieLayer) drawLayer(zombieLayer);
   };
   drawCached(
     ctx,
@@ -421,7 +440,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       name: 'base',
       content:
         image && ripples.size === 0
-          ? `${identityOf(image)}|${identityOf(tileLayer)}|${identityOf(regions)}|${[...tintedFillColors].map(([id, color]) => `${id}${color}`).join(',')}`
+          ? `${identityOf(image)}|${identityOf(tileLayer)}|${identityOf(regions)}|${texturedKey}|${[...tintedFillColors].map(([id, color]) => `${id}${color}`).join(',')}`
           : null,
       view: layerView,
       reuse: 'translate',
@@ -434,6 +453,13 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     const growingRails: Shown<RailEdge>[] = [];
     for (const rail of frame.shown.supply.values())
       (rail.scale === 1 ? settledRails : growingRails).push(rail);
+    const railClearance = new Map<number, number>();
+    const capitalKey: number[] = [];
+    for (const t of territories) {
+      if (ownerOf(t.id)?.isCapital) capitalKey.push(t.id);
+      else if (regions?.shapes.has(t.id))
+        railClearance.set(t.id, NUMBER_CLEARANCE * VERTEX_RADIUS * scaleX);
+    }
     const paintRails = (
       target: CanvasRenderingContext2D,
       rails: Shown<RailEdge>[],
@@ -448,13 +474,14 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
         imgH,
         uiScale,
         forcedWraps,
+        railClearance,
       );
     if (settledRails.length > 0)
       drawCached(
         ctx,
         {
           name: 'rails',
-          content: `${identityOf(image)}|${settledRails.map((r) => `${r.data.fromId}>${r.data.toId}`).join(',')}`,
+          content: `${identityOf(image)}|${identityOf(regions)}|${capitalKey.join(',')}|${settledRails.map((r) => `${r.data.fromId}>${r.data.toId}`).join(',')}`,
           view: layerView,
           reuse: 'transform',
         },
@@ -723,6 +750,10 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
     drawFog(frame, s.id, p, seaHexRadius);
   }
 
+  const troopFontSizeOf = (t: Territory) =>
+    VERTEX_RADIUS *
+    scaleX *
+    (regions?.shapes.has(t.id) && !ownerOf(t.id)?.isCapital ? 1.25 : 1);
   for (const t of territories) {
     if (cracking.has(t.id)) continue;
     const isVisible = visibleSet === null || visibleSet.has(t.id);
@@ -751,8 +782,7 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
                 : fortifyPanelOpen && t.id === fortifyStartTerritoryId
                   ? owner.troops - fortifyTroops
                   : (frozenTroopsRef.current.get(t.id) ?? owner.troops);
-      const fullyClickable = shape && !owner.isCapital;
-      const fontSize = VERTEX_RADIUS * scaleX * (fullyClickable ? 1.25 : 1);
+      const fontSize = troopFontSizeOf(t);
       ctx.font = `bold ${fontSize}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
@@ -904,6 +934,11 @@ export function drawGameMapCanvas(params: DrawCanvasParams) {
       }
     }
   }
+
+  drawAnimationLabels(ctx, toScreen, VERTEX_RADIUS * scaleX, (x, y) => {
+    const t = territories.find((c) => c.x === x && c.y === y);
+    return t ? troopFontSizeOf(t) : VERTEX_RADIUS * scaleX;
+  });
 
   if (turnStart?.bannerShown)
     drawTurnBanner(ctx, size, turnStartColor, sinceTurnStart);

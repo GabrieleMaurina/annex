@@ -2,14 +2,18 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { Badge, Button, Table } from 'react-bootstrap';
 import Flag from '../../common/badges/Flag';
 import RankIcon from '../../common/badges/RankIcon';
-import { useWhiteIcon } from '../../common/icon';
+import { botLabel, useBotIcon, useWhiteIcon } from '../../common/icon';
 import WhiteIcon from '../../common/icons/WhiteIcon';
 import PlayerNameEditor from '../../common/inputs/PlayerNameEditor';
 import { isPlayerMuted } from '../../common/mutedPlayers';
 import Tip from '../../common/tooltips/Tip';
 import TipSpan from '../../common/tooltips/TipSpan';
 import { connector } from '../../connector';
-import { contrastTextColor, playerColor } from '../../lib/palette';
+import {
+  contrastTextColor,
+  playerColor,
+  playerSwatch,
+} from '../../lib/palette';
 import type { BotDifficulty, BotPersonality, GameState } from '../../lib/types';
 import {
   CURSOR_DEFAULT,
@@ -24,6 +28,7 @@ import {
   BOT_DIFFICULTY_LABELS,
   BOT_PERSONALITIES,
   BOT_PERSONALITY_LABELS,
+  ZOMBIE_DIFFICULTIES,
 } from '../botOptions';
 import type { RosterProps } from '../PlayerRoster';
 import { OddsCells, OddsHeaders } from './OddsCells';
@@ -72,7 +77,7 @@ function RosterTable({
     nameCellRefs,
     onEmojiRowClick,
   } = roster;
-  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+  const botIcon = useBotIcon();
   const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
   const hasBots = game.players.some((p) => p.isBot);
   const draggable = isHost && team !== undefined;
@@ -84,6 +89,7 @@ function RosterTable({
   function rowClick(p: Player | null) {
     if (!p) return undefined;
     if (p.id === selfId) return cycleColor;
+    if (p.isZombie) return undefined;
     if (p.isBot) return isHost ? () => cycleBotColor(p.id) : undefined;
     if (connector.isOffline())
       return cycleLocalPlayerColor
@@ -139,8 +145,7 @@ function RosterTable({
             const onRowClick = rowClick(p);
             const rowStyle = p
               ? {
-                  backgroundColor: playerColor(p.color),
-                  color: contrastTextColor(playerColor(p.color)),
+                  ...playerSwatch(p.color, p.isZombie),
                   cursor: onRowClick
                     ? CURSOR_POINTER
                     : draggable
@@ -208,15 +213,14 @@ function RosterTable({
                       )}
                       {p.isBot && (
                         <img
-                          src={
+                          src={botIcon(
+                            p.isZombie,
                             contrastTextColor(playerColor(p.color)) ===
-                            '#ffffff'
-                              ? (whiteBotIcon ?? '/icons/bot.svg')
-                              : '/icons/bot.svg'
-                          }
+                              '#ffffff',
+                          )}
                           width={14}
                           height={14}
-                          alt="Bot"
+                          alt={botLabel(p.isZombie)}
                           className="flex-shrink-0"
                         />
                       )}
@@ -275,6 +279,7 @@ function RosterTable({
                 {hasBots && (
                   <td className="align-middle" style={rowStyle}>
                     {p?.isBot &&
+                      !p.isZombie &&
                       (isHost ? (
                         <span
                           className="d-inline-block"
@@ -325,7 +330,10 @@ function RosterTable({
                               )
                             }
                           >
-                            {BOT_DIFFICULTIES.map((value) => (
+                            {(p.isZombie
+                              ? ZOMBIE_DIFFICULTIES
+                              : BOT_DIFFICULTIES
+                            ).map((value) => (
                               <option key={value} value={value}>
                                 {BOT_DIFFICULTY_LABELS[value]}
                               </option>
@@ -358,7 +366,7 @@ function RosterTable({
                 )}
                 {isHost && (
                   <td className="text-nowrap align-middle" style={rowStyle}>
-                    {p?.id !== selfId && (
+                    {p?.id !== selfId && !p?.isZombie && (
                       <span
                         className="d-inline-block"
                         onClick={(e) => e.stopPropagation()}

@@ -37,8 +37,9 @@ import {
   PlayerFilter,
   SettingFilterSections,
 } from '../lobby/gameFilters';
+import { GAME_MODE_HELP } from '../lobby/settings/gameModeHelp';
 import { GENERATED_MAP_VALUE, titleCase } from '../lobby/settings/gameSettings';
-import { GAME_MODE_HELP, PASSWORD_HELP } from '../lobby/settings/settingsHelp';
+import { PASSWORD_HELP } from '../lobby/settings/settingsHelp';
 import { loadCompletedTutorials } from '../tutorials/progress';
 import TutorialInviteModal from '../tutorials/TutorialInviteModal';
 import { TUTORIALS } from '../tutorials/tutorials';

@@ -191,6 +191,7 @@ export function computeSupplyLineEdges(
   portalsEnabled: boolean,
   mapW: number,
   mapH: number,
+  zombieId: number | null,
 ): Map<number, RailEdge[]> {
   const territoryById = new Map(nodes.map((t) => [t.id, t]));
   const ownedByPlayer = new Map<number, number[]>();
@@ -202,6 +203,7 @@ export function computeSupplyLineEdges(
 
   const result = new Map<number, RailEdge[]>();
   for (const [playerId, ownedIds] of ownedByPlayer) {
+    if (playerId === zombieId) continue;
     const suppliableSet = new Set([
       ...ownedIds,
       ...shippedSeaIds(seas, playerId),
@@ -384,6 +386,29 @@ function traceRailway(
   }
 }
 
+const MAX_TRIMMED_SHARE = 0.6;
+
+function trimSegment(
+  a: Point,
+  b: Point,
+  startClearance: number,
+  endClearance: number,
+) {
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  const total = startClearance + endClearance;
+  if (len < 1 || total === 0) return { a, b };
+  const fit =
+    total > len * MAX_TRIMMED_SHARE ? (len * MAX_TRIMMED_SHARE) / total : 1;
+  const ux = (b.x - a.x) / len;
+  const uy = (b.y - a.y) / len;
+  const start = startClearance * fit;
+  const end = endClearance * fit;
+  return {
+    a: { x: a.x + ux * start, y: a.y + uy * start },
+    b: { x: b.x - ux * end, y: b.y - uy * end },
+  };
+}
+
 function scaleSegment(a: Point, b: Point, scale: number) {
   const mx = (a.x + b.x) / 2;
   const my = (a.y + b.y) / 2;
@@ -403,6 +428,7 @@ export function drawSupplyLines(
   mapH: number,
   uiScale: number,
   forcedWraps: ForcedWraps,
+  clearanceById: Map<number, number>,
 ) {
   const sleepers = new Path2D();
   const rails = new Path2D();
@@ -420,7 +446,13 @@ export function drawSupplyLines(
       forcedWraps,
     );
     for (const segment of segments) {
-      const { a, b } = scaleSegment(segment.a, segment.b, scale);
+      const trimmed = trimSegment(
+        segment.a,
+        segment.b,
+        segment.t0 === 0 ? (clearanceById.get(edge.fromId) ?? 0) : 0,
+        segment.t1 === 1 ? (clearanceById.get(edge.toId) ?? 0) : 0,
+      );
+      const { a, b } = scaleSegment(trimmed.a, trimmed.b, scale);
       if (overSea) {
         dots.moveTo(a.x, a.y);
         dots.lineTo(b.x, b.y);

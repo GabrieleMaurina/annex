@@ -85,7 +85,7 @@ export interface PanelAnchors {
   size: { w: number; h: number };
   imgDims: { w: number; h: number };
   VERTEX_RADIUS: number;
-  regions: ClickableRegions | null;
+  getRegions: () => ClickableRegions | null;
   selectedTerritoryId: number | null;
   fortifyStartTerritoryId: number | null;
   fortifyEndTerritoryId: number | null;
@@ -106,7 +106,7 @@ export function usePanelStyles(
     size,
     imgDims,
     VERTEX_RADIUS,
-    regions,
+    getRegions,
     selectedTerritoryId,
     fortifyStartTerritoryId,
     fortifyEndTerritoryId,
@@ -123,6 +123,7 @@ export function usePanelStyles(
   unlockTarget: PanelObstacle | null,
   measuredSize: { w: number; h: number } | null,
 ) {
+  const regions = getRegions();
   const unlockX = unlockTarget?.x;
   const unlockY = unlockTarget?.y;
   const unlockTile = unlockTarget?.tile;
@@ -386,6 +387,7 @@ export function useSupplyLineOverlay({
   showReplay,
   visibleTerritoryIds,
   selfId,
+  zombieId,
 }: {
   supplyLines: GameState['supplyLines'];
   territories: Territory[];
@@ -399,6 +401,7 @@ export function useSupplyLineOverlay({
   showReplay: boolean;
   visibleTerritoryIds: GameState['visibleTerritoryIds'];
   selfId: number | null;
+  zombieId: number | null;
 }) {
   const nodes = useMemo(
     () => [...territories, ...seaTerritories],
@@ -415,6 +418,7 @@ export function useSupplyLineOverlay({
       portalsEnabled,
       imgWidth,
       imgHeight,
+      zombieId,
     );
     if (!showReplay && visibleTerritoryIds && selfId !== null) {
       const ownEdges = edges.get(selfId);
@@ -436,6 +440,7 @@ export function useSupplyLineOverlay({
     showReplay,
     visibleTerritoryIds,
     selfId,
+    zombieId,
   ]);
   const supplyConnectedTerritoryIds = useMemo(
     () =>

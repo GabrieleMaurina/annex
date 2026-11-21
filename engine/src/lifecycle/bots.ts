@@ -4,6 +4,7 @@ import {
   resolveBotProfile,
 } from '../bots/randomProfile';
 import { botDisplayName } from '../bots/reveal';
+import { isZombieDifficulty, setZombieDifficulty } from '../bots/zombie/seat';
 import { addHostCandidate } from '../game/host';
 import { assignRandomColor, cycleColor } from '../game/mechanics';
 import { GameResponse } from '../session/context';
@@ -75,6 +76,13 @@ export function setBotProfile(
 
   const bot = findLobbyBot(game, botPlayerId);
   if (!bot) return { ok: false, error: 'invalid bot' };
+  if (bot.id === game.zombieId) {
+    if (!isZombieDifficulty(difficulty))
+      return { ok: false, error: 'invalid difficulty' };
+    game.readyIds.clear();
+    setZombieDifficulty(bot, difficulty);
+    return respondGameState(game, player.id);
+  }
   if (!isDifficultyInput(difficulty))
     return { ok: false, error: 'invalid difficulty' };
   if (!isPersonalityInput(personality))
@@ -94,7 +102,8 @@ export function removeBot(playerId: number, botPlayerId: number): GameResponse {
   const { game, player } = ctx;
 
   const bot = findLobbyBot(game, botPlayerId);
-  if (!bot) return { ok: false, error: 'invalid bot' };
+  if (!bot || bot.id === game.zombieId)
+    return { ok: false, error: 'invalid bot' };
 
   game.readyIds.clear();
   game.playerIds = game.playerIds.filter((id) => id !== bot.id);
@@ -115,7 +124,8 @@ export function cycleBotColor(
   const { game, player } = ctx;
 
   const bot = findLobbyBot(game, botPlayerId);
-  if (!bot) return { ok: false, error: 'invalid bot' };
+  if (!bot || bot.id === game.zombieId)
+    return { ok: false, error: 'invalid bot' };
 
   cycleColor(game, bot.id);
 

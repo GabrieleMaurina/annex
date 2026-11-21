@@ -15,6 +15,7 @@ interface SoundEvent {
 
 interface AudioRequest {
   replay: ReplayData;
+  zombieId: number | null;
   indices: number[];
   durations: number[];
   sounds: number;
@@ -29,6 +30,10 @@ function animationSound(animation: ReplayAnimation): string | null {
     case 'fortify':
     case 'sail':
       return 'fortify';
+    case 'deployMany':
+      return animation.surge ? 'zombieSurge' : 'zombieDeploy';
+    case 'infect':
+      return animation.respawn ? 'zombieRespawn' : 'zombieInfect';
     case 'entrench':
       return 'entrench';
     case 'toxins':
@@ -49,18 +54,24 @@ function animationSound(animation: ReplayAnimation): string | null {
   }
 }
 
-function soundsBetween(replay: ReplayData, from: number, to: number) {
+function soundsBetween(
+  replay: ReplayData,
+  zombieId: number | null,
+  from: number,
+  to: number,
+) {
   const names = new Set<string>();
   for (let i = from; i < to; i++) {
     const own = animationSound(replay.frames[i].animation);
     if (own) names.add(own);
-    for (const name of frameSounds(replay, i)) names.add(name);
+    for (const name of frameSounds(replay, i, zombieId)) names.add(name);
   }
   return [...names];
 }
 
 function soundEvents(
   replay: ReplayData,
+  zombieId: number | null,
   indices: number[],
   durations: number[],
 ): SoundEvent[] {
@@ -69,7 +80,12 @@ function soundEvents(
   indices.forEach((index, position) => {
     const seconds = durations[position] / 1000;
     if (position > 0) {
-      const names = soundsBetween(replay, indices[position - 1], index);
+      const names = soundsBetween(
+        replay,
+        zombieId,
+        indices[position - 1],
+        index,
+      );
       const step = Math.min(MAX_SOUND_STEP_SECONDS, seconds / names.length);
       names.forEach((name, i) =>
         events.push({ name, time: frameStart + i * step }),
@@ -94,6 +110,7 @@ function decode(
 
 export function renderClipAudio({
   replay,
+  zombieId,
   indices,
   durations,
   sounds,
@@ -105,7 +122,8 @@ export function renderClipAudio({
     Math.ceil(totalSeconds * SAMPLE_RATE),
     SAMPLE_RATE,
   );
-  const events = sounds > 0 ? soundEvents(replay, indices, durations) : [];
+  const events =
+    sounds > 0 ? soundEvents(replay, zombieId, indices, durations) : [];
   const names = [...new Set(events.map((event) => event.name))];
   const track = music > 0 ? exportTrack() : null;
 

@@ -1,4 +1,4 @@
-import { attackDiceFor } from '../../../game/combat/dice';
+import { attackDiceFor, diceTiesFor } from '../../../game/combat/dice';
 import { attackWinProbability } from '../../features/combat';
 import { AttackChoice, attackOrder } from '../../heuristics/attack';
 import {
@@ -128,6 +128,7 @@ export function chooseSnipe(
         1,
         defenceDiceAt(ctx, endId),
         attackDiceFor(ctx.game, startId),
+        diceTiesFor(ctx.game, endId),
       );
       if (win <= bestWin) continue;
       bestWin = win;

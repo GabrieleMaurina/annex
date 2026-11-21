@@ -642,7 +642,10 @@ export function setPreferredColorsAndRecolor(
   const game = player?.gameName ? games.get(player.gameName) : undefined;
   if (!game || game.state !== 'lobby' || !game.playerIds.includes(playerId))
     return;
-  const ids = [playerId, ...game.playerIds.filter(isLobbyBot)];
+  const ids = [
+    playerId,
+    ...game.playerIds.filter((id) => isLobbyBot(id) && id !== game.zombieId),
+  ];
   for (const id of ids) game.playerColors.delete(id);
   for (const id of ids) assignRandomColor(game, id);
 }

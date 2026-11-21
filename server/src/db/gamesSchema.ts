@@ -291,6 +291,7 @@ const player = object(
     userId: { bsonType: ['string', 'null'] },
     name: { bsonType: ['string', 'null'] },
     isBot: bool,
+    isZombie: bool,
     botDifficulty: { bsonType: ['string', 'null'] },
     botPersonality: { bsonType: ['string', 'null'] },
     team: int,

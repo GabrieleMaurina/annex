@@ -53,6 +53,7 @@ export function rowClassName(row: RowProps, base: string): string {
     'player-row position-relative overflow-hidden',
     base,
     row.isSelf ? 'is-self' : '',
+    row.player.isZombie ? 'is-zombie' : '',
     row.isTurn ? 'is-turn' : '',
     row.selected ? 'is-selected' : '',
     row.player.eliminated ? 'opacity-50' : '',

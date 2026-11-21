@@ -6,6 +6,7 @@ import { dispatchBotAction } from './dispatch';
 import { planBotTurnAsync } from './planning/botPool';
 import { BotAction, TurnPlanCache } from './planning/planBotTurn';
 import { clickDelayMs, thinkDelayMs } from './thinkTime';
+import { scheduleZombieTurnIfNeeded } from './zombie/runner';
 
 type Payload = Record<string, unknown>;
 
@@ -53,6 +54,7 @@ function turnKeyOf(game: Game): string {
 }
 
 export function scheduleBotTurnIfNeeded(game: Game): void {
+  if (scheduleZombieTurnIfNeeded(game)) return;
   const player = currentBot(game);
   if (!player) return;
   if (pendingActs.has(game.name) || inFlight.has(game.name)) return;

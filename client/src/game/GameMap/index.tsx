@@ -12,6 +12,7 @@ import ReplayPanel from '../panels/ReplayPanel';
 import { switchesOnAfter } from '../switches/switches';
 import { useTurnStart } from '../turnStart/useTurnStart';
 import { loadHourglassIcons } from './draw/drawTimedLinks';
+import { onZombieTextureReady } from './draw/zombieTexture';
 import GameCanvas from './GameCanvas';
 import {
   getScales,
@@ -191,6 +192,7 @@ function GameMap({
 
   const { toasts, setToasts, addToasts } = useGameToasts();
   const [, bumpMuteVersion] = useReducer((c) => c + 1, 0);
+  const zombieId = players.find((pl) => pl.isZombie)?.id ?? null;
 
   const {
     frozenTroopsRef,
@@ -216,6 +218,7 @@ function GameMap({
     regions: mapRegions,
     ownerByIdRef,
     colorByPlayerIdRef,
+    zombieId,
     visibleTerritoryIdsRef,
     adjustTerritoryTroops,
     adjustToxinTerritories,
@@ -476,6 +479,7 @@ function GameMap({
       showReplay,
       visibleTerritoryIds,
       selfId,
+      zombieId,
     });
   const territoryClaimCandidates =
     (turnPhase === 'territory' ||
@@ -609,6 +613,7 @@ function GameMap({
 
   useEffect(() => {
     loadHourglassIcons().then(startAnimationLoop);
+    onZombieTextureReady(startAnimationLoop);
   }, [startAnimationLoop]);
 
   const endCardShown = showReplay
@@ -911,7 +916,7 @@ function GameMap({
             size,
             imgDims,
             VERTEX_RADIUS,
-            regions,
+            getRegions: () => regions,
             selectedTerritoryId,
             fortifyStartTerritoryId,
             fortifyEndTerritoryId,

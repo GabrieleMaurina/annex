@@ -178,7 +178,9 @@ export function buildStanding(
   const sideOf = (playerId: number) =>
     teamMode ? (game.playerTeams.get(playerId) ?? 0) : playerId;
   const dead = new Set(game.deathOrder);
-  const alivePlayers = game.playerIds.filter((id) => !dead.has(id));
+  const alivePlayers = game.playerIds.filter(
+    (id) => !dead.has(id) && id !== game.zombieId,
+  );
   const aliveSides = new Set(alivePlayers.map(sideOf));
   const regime = regimeFor(aliveSides.size);
   const botSide = sideOf(botId);

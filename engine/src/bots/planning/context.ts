@@ -1,5 +1,5 @@
 import { alliedIds } from '../../game/alliances';
-import { defenceDiceFor } from '../../game/combat/dice';
+import { defenceDiceFor, diceTiesFor } from '../../game/combat/dice';
 import { calculateDeployTroopsBreakdown } from '../../game/mechanics';
 import { closedTiles, unlockCost } from '../../game/tiles/unlock';
 import { withPortalEdges } from '../../game/world/portals';
@@ -45,6 +45,7 @@ import {
 } from '../position/context';
 import { BotStyle, DifficultyParams, Weights } from '../types';
 import { BotView, getBotView, isVisible } from '../view';
+import { zombieThreat } from '../zombie/forecast';
 import { isPlanFresh, MapTopology, TurnPlan } from './turnPlan';
 
 export interface PlanContext {
@@ -595,7 +596,11 @@ export function troopsPerDefenderAt(
   ctx: PlanContext,
   territoryId: number,
 ): number {
-  return troopsPerDefender(ctx.game, defenceDiceAt(ctx, territoryId));
+  return troopsPerDefender(
+    ctx.game,
+    defenceDiceAt(ctx, territoryId),
+    diceTiesFor(ctx.game, territoryId),
+  );
 }
 
 function entrenchWorthOf(game: Game): number {
@@ -778,7 +783,11 @@ export function strongestThreatAt(
   let worst = 0;
   for (const n of attackersOf(ctx, territoryId)) {
     if (!isEnemyTerritory(ctx, state, n)) continue;
-    const troops = troopsIn(state, n);
+    const stack = troopsIn(state, n);
+    const troops =
+      state.owners.get(n) === ctx.game.zombieId
+        ? zombieThreat(ctx.game, stack)
+        : stack;
     if (troops > worst) worst = troops;
   }
   return worst;

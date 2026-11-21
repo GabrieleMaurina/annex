@@ -34,6 +34,7 @@ export interface DiceRoll {
   attackerDice: number[];
   defenderDice: number[];
   territoryId: number;
+  ties?: DiceTies;
   id: number;
 }
 
@@ -144,6 +145,7 @@ export function DiceRollDisplay({
   }, [step]);
 
   const settled = step === DICE_ROLL_STEPS - 1;
+  const ties = diceRoll.ties ?? diceTies;
 
   function outcomeFor(
     side: 'attacker' | 'defender',
@@ -152,10 +154,10 @@ export function DiceRollDisplay({
     if (!settled || i >= pairs) return undefined;
     const attackerDie = diceRoll.attackerDice[i];
     const defenderDie = diceRoll.defenderDice[i];
-    if (attackerDie === defenderDie && diceTies === 'tie') return undefined;
+    if (attackerDie === defenderDie && ties === 'tie') return undefined;
     const attackerWins =
       attackerDie > defenderDie ||
-      (attackerDie === defenderDie && diceTies === 'attack');
+      (attackerDie === defenderDie && ties === 'attack');
     return side === 'attacker'
       ? attackerWins
         ? 'win'

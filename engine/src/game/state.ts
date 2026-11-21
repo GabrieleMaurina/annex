@@ -89,8 +89,12 @@ function watchablePlayerIds(game: Game): number[] {
 }
 
 export function gameSummary(game: Game) {
-  const botCount = game.playerIds.filter((id) =>
-    isAnonymousPlaying(game) ? id < 0 : (playersById.get(id)?.isBot ?? false),
+  const botCount = game.playerIds.filter(
+    (id) =>
+      id !== game.zombieId &&
+      (isAnonymousPlaying(game)
+        ? id < 0
+        : (playersById.get(id)?.isBot ?? false)),
   ).length;
   return {
     name: game.name,
@@ -419,11 +423,14 @@ export function gameState(game: Game) {
           anonymousPlaying ||
           (!!member?.connected && member.gameName === game.name),
         surrendered: game.surrenderedIds.has(player.id),
-        eliminated: isEliminated(game, territoryCount),
+        eliminated:
+          (player.id !== game.zombieId || game.state === 'ended') &&
+          isEliminated(game, territoryCount),
         playersKilled: playerStats.playersKilled as number[] | null,
         troopsKilled: playerStats.troopsKilled as number | null,
         troopsLost: playerStats.troopsLost as number | null,
         isBot: !!member?.isBot && !anonymousPlaying,
+        isZombie: player.id === game.zombieId,
         botDifficulty:
           member?.botProfile && !anonymousPlaying
             ? member.botProfile.difficultyHidden

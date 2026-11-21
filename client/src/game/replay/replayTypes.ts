@@ -27,6 +27,20 @@ export interface ReplaySeaShips {
 export type ReplayAnimation =
   | { type: 'deploy'; territoryId: number; troops: number; playerId: number }
   | {
+      type: 'deployMany';
+      deposits: { territoryId: number; troops: number }[];
+      playerId: number;
+      surge?: boolean;
+    }
+  | {
+      type: 'infect';
+      territoryId: number;
+      troops: number;
+      victimId: number;
+      playerId: number;
+      respawn: boolean;
+    }
+  | {
       type: 'fortify';
       fromTerritoryId: number;
       toTerritoryId: number;

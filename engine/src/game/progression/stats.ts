@@ -160,6 +160,7 @@ export function recordElimination(
   defenderId: number,
   attackerId?: number,
 ): boolean {
+  if (defenderId === game.zombieId) return false;
   const eliminated = !ownsAnyTerritory(game, defenderId);
   if (eliminated && !game.deathOrder.includes(defenderId)) {
     game.deathOrder.push(defenderId);

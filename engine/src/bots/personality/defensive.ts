@@ -24,7 +24,7 @@ export function defensiveBoldness(
   friendlyIds: Set<number>,
 ): number {
   const opponents = game.playerIds.filter(
-    (id) => id !== botId && !friendlyIds.has(id),
+    (id) => id !== botId && id !== game.zombieId && !friendlyIds.has(id),
   );
   if (opponents.length <= 1) return 1;
   const dead = new Set(game.deathOrder);

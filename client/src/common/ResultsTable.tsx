@@ -1,9 +1,9 @@
 import { Badge, Table } from 'react-bootstrap';
-import { contrastTextColor, playerColor } from '../lib/palette';
+import { playerSwatch } from '../lib/palette';
 import type { EloPenalty, GameState } from '../lib/types';
 import Flag from './badges/Flag';
 import RankIcon from './badges/RankIcon';
-import { useWhiteIcon } from './icon';
+import { botLabel, useBotIcon, useWhiteIcon } from './icon';
 import { isPlayerMuted } from './mutedPlayers';
 import Tip from './tooltips/Tip';
 
@@ -99,7 +99,7 @@ function ResultsTable({
   navigate,
   showMuted = false,
 }: Props) {
-  const whiteBotIcon = useWhiteIcon('/icons/bot.svg');
+  const botIcon = useBotIcon();
   const whiteMutedIcon = useWhiteIcon('/icons/muted.svg');
   const whiteDeathIcon = useWhiteIcon('/icons/death.svg');
   const whiteNoWifiIcon = useWhiteIcon('/icons/no-wifi.svg');
@@ -140,8 +140,6 @@ function ResultsTable({
         </thead>
         <tbody>
           {rankedPlayers.map((p, index) => {
-            const bg = playerColor(p.color);
-            const fg = contrastTextColor(bg);
             const goToProfile =
               !onRowClick && p.userId && navigate
                 ? () => navigate(`/players/${encodeURIComponent(p.name)}`)
@@ -149,11 +147,8 @@ function ResultsTable({
             const clickable = rowClickable ? rowClickable(p) : false;
             const rowClick =
               goToProfile ?? (clickable ? () => onRowClick?.(p.id) : undefined);
-            const rowStyle = {
-              backgroundColor: bg,
-              color: fg,
-            };
-            const isDark = fg === '#ffffff';
+            const rowStyle = playerSwatch(p.color, p.isZombie);
+            const isDark = rowStyle.color === '#ffffff';
             const rowIcon = (white: string | undefined, path: string) =>
               isDark ? (white ?? path) : path;
             const playersKilled = p.playersKilled ?? [];
@@ -186,12 +181,12 @@ function ResultsTable({
                       {p.id === selfId && showYouLabel ? 'You' : p.name}
                     </span>
                     {p.isBot && (
-                      <Tip text="Bot">
+                      <Tip text={botLabel(p.isZombie)}>
                         <img
-                          src={rowIcon(whiteBotIcon, '/icons/bot.svg')}
+                          src={botIcon(p.isZombie, isDark)}
                           width={12}
                           height={12}
-                          alt="Bot"
+                          alt={botLabel(p.isZombie)}
                           className="flex-shrink-0"
                         />
                       </Tip>

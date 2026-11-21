@@ -34,18 +34,26 @@ interface Props {
 function PlayerPips({
   filled,
   bots,
+  zombies,
   slots,
 }: {
   filled: number;
   bots: number;
+  zombies: number;
   slots: number;
 }) {
   if (slots > MAX_PIPS) return null;
-  const humans = filled - bots;
+  const humans = filled - bots - zombies;
   return (
     <span className="d-inline-flex align-items-center gap-1 me-2 align-middle">
       {Array.from({ length: slots }, (_, i) =>
-        i >= humans && i < filled ? (
+        i >= humans + bots && i < filled ? (
+          <Tip key={i} text="Zombies">
+            <span className="d-inline-flex">
+              <WhiteIcon path="/icons/zombie.svg" size={12} alt="Zombies" />
+            </span>
+          </Tip>
+        ) : i >= humans && i < filled ? (
           <Tip key={i} text="Bot">
             <span className="d-inline-flex">
               <WhiteIcon path="/icons/bot.svg" size={12} alt="Bot" />
@@ -150,6 +158,7 @@ function GamesTable({ games, account, onOpen }: Props) {
                   <PlayerPips
                     filled={game.playerCount}
                     bots={game.botCount}
+                    zombies={game.gameMode === 'zombies' ? 1 : 0}
                     slots={game.slots}
                   />
                   {game.playerCount}/{game.slots}

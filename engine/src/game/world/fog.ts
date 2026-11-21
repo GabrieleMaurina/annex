@@ -6,6 +6,7 @@ export const SERVER_VIEW_ID = 0;
 export interface FogEventPayloads {
   'game:deployed': CallbackPayload<'onDeployed'>;
   'game:deployedMany': CallbackPayload<'onDeployedMany'>;
+  'game:infected': CallbackPayload<'onInfected'>;
   'game:fortified': CallbackPayload<'onFortified'>;
   'game:attackMoved': CallbackPayload<'onAttackMoved'>;
   'game:attacked': CallbackPayload<'onAttacked'>;
@@ -26,6 +27,7 @@ export interface FogEventPayloads {
 export interface LogPayloads {
   'game:deployed': CallbackPayload<'onDeployed'>;
   'game:deployedMany': CallbackPayload<'onDeployedMany'>;
+  'game:infected': CallbackPayload<'onInfected'>;
   'game:fortified': CallbackPayload<'onFortified'>;
   'game:attackMoved': CallbackPayload<'onAttackMoved'>;
   'game:attacked': CallbackPayload<'onAttacked'>;
@@ -54,6 +56,7 @@ const LOGGED_EVENTS: Set<string> = new Set<keyof LogPayloads>([
   'game:fortified',
   'game:attackMoved',
   'game:deployedMany',
+  'game:infected',
   'game:entrenched',
   'game:toxined',
   'game:unlocked',

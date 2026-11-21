@@ -9,6 +9,7 @@ export interface FormatPlayer {
   name: string;
   color: number;
   isBot: boolean;
+  isZombie?: boolean;
 }
 
 export interface LogColorRange {
@@ -17,6 +18,7 @@ export interface LogColorRange {
   color?: string;
   badge?: boolean;
   isBot?: boolean;
+  isZombie?: boolean;
   bold?: boolean;
   label?: boolean;
 }
@@ -25,6 +27,7 @@ interface LogPart {
   color: string;
   text: string;
   colorRanges?: LogColorRange[];
+  isZombie?: boolean;
 }
 
 type LogHighlight = Omit<LogColorRange, 'start' | 'end'>;
@@ -86,28 +89,48 @@ export function createLogFormatter() {
       (id === undefined ? undefined : playerById.get(id)?.name) ?? 'a player';
     const isBotFor = (id: number | undefined) =>
       (id === undefined ? undefined : playerById.get(id)?.isBot) ?? false;
+    const isZombieFor = (id: number | undefined) =>
+      (id === undefined ? undefined : playerById.get(id)?.isZombie) ?? false;
     const badgeFor = (id: number | undefined): LogHighlight | undefined =>
       id === undefined ? undefined : { color: colorFor(id), badge: true };
 
     const parts: LogPart[] = [];
-    const push = (color: string, text: string, colorRanges?: LogColorRange[]) =>
-      parts.push({ color, text, colorRanges });
+    const push = (
+      color: string,
+      text: string,
+      colorRanges?: LogColorRange[],
+      isZombie = false,
+    ) => parts.push({ color, text, colorRanges, isZombie });
     const p = entry.payload as Record<string, unknown>;
     const n = (key: string) => p[key] as number;
     const optional = (key: string) => p[key] as number | undefined;
     const moved = (added: string, removed: string) =>
       (p[added] ?? p[removed]) as number;
 
-    const log = (color: string, write: (b: TextBuilder) => void) => {
+    const logWith = (
+      color: string,
+      isZombie: boolean,
+      write: (b: TextBuilder) => void,
+    ) => {
       const b = buildText();
       write(b);
       const { text, colorRanges } = b.finish();
-      push(color, text, colorRanges);
+      push(color, text, colorRanges, isZombie);
     };
+    const log = (id: number | undefined, write: (b: TextBuilder) => void) =>
+      logWith(colorFor(id), isZombieFor(id), write);
     const actor = (b: TextBuilder, id: number | undefined) =>
-      b.append(nameFor(id), { bold: true, isBot: isBotFor(id) });
+      b.append(nameFor(id), {
+        bold: true,
+        isBot: isBotFor(id),
+        isZombie: isZombieFor(id),
+      });
     const opponent = (b: TextBuilder, id: number) =>
-      b.append(nameFor(id), { ...badgeFor(id), isBot: isBotFor(id) });
+      b.append(nameFor(id), {
+        ...badgeFor(id),
+        isBot: isBotFor(id),
+        isZombie: isZombieFor(id),
+      });
     const opponents = (b: TextBuilder, ids: number[]) =>
       ids.forEach((id, index) => {
         if (index > 0) b.append(', ');
@@ -158,7 +181,7 @@ export function createLogFormatter() {
       push(NEUTRAL_LOG_COLOR, `Started round ${round + 1}`);
     };
     const deploy = (playerId: number, territoryId: number, troops: number) =>
-      log(colorFor(playerId), (b) => {
+      log(playerId, (b) => {
         actor(b, playerId);
         b.append(` deployed ${plural(troops, 'troop')} to `);
         place(b, territoryId, 'territory ');
@@ -167,6 +190,15 @@ export function createLogFormatter() {
     switch (entry.type) {
       case 'game:deployed':
         deploy(n('playerId'), n('territoryId'), n('troops'));
+        break;
+      case 'game:infected':
+        log(n('playerId'), (b) => {
+          actor(b, n('playerId'));
+          b.append(' infected ');
+          opponent(b, n('victimId'));
+          b.append(' at ');
+          place(b, n('territoryId'), 'territory ');
+        });
         break;
       case 'game:deployedMany': {
         const deposits = p.deposits as {
@@ -177,7 +209,7 @@ export function createLogFormatter() {
           deploy(n('playerId'), deposits[0].territoryId, deposits[0].troops);
           break;
         }
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(
             ` deployed ${plural(
@@ -194,7 +226,7 @@ export function createLogFormatter() {
         break;
       }
       case 'game:fortified':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(
             ` fortified ${plural(moved('troopsAdded', 'troopsRemoved'), 'troop')}`,
@@ -203,7 +235,7 @@ export function createLogFormatter() {
         });
         break;
       case 'game:attackMoved':
-        log(colorFor(lastConquestAttackerId), (b) => {
+        log(lastConquestAttackerId, (b) => {
           actor(b, lastConquestAttackerId);
           b.append(
             ` moved ${plural(moved('troopsAdded', 'troopsRemoved'), 'troop')} into `,
@@ -216,7 +248,7 @@ export function createLogFormatter() {
         });
         break;
       case 'game:entrenched':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(' entrenched ');
           place(b, n('territoryId'), 'territory ');
@@ -227,7 +259,7 @@ export function createLogFormatter() {
         });
         break;
       case 'game:toxined':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(' released toxin on ');
           place(b, n('territoryId'), 'territory ');
@@ -238,7 +270,7 @@ export function createLogFormatter() {
         });
         break;
       case 'game:unlocked':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(` unlocked tile #${n('tileId') + 1}`);
           b.line('From');
@@ -248,7 +280,7 @@ export function createLogFormatter() {
         });
         break;
       case 'game:switchFlipped':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(` flipped switch #${n('switchId') + 1}`);
           b.line('From');
@@ -260,7 +292,7 @@ export function createLogFormatter() {
       case 'game:nukeLaunched': {
         const launcherId = n('playerId');
         const eliminatedIds = (p.eliminatedPlayerIds as number[]) ?? [];
-        log(colorFor(launcherId), (b) => {
+        log(launcherId, (b) => {
           actor(b, launcherId);
           if (p.intercepted) {
             b.append("'s nuke was intercepted");
@@ -280,7 +312,7 @@ export function createLogFormatter() {
       case 'game:radiationChanged': {
         const newly = p.newlyRadiatedIds as number[];
         if (newly.length > 0)
-          log(NEUTRAL_LOG_COLOR, (b) => {
+          logWith(NEUTRAL_LOG_COLOR, false, (b) => {
             if (newly.length === 1) {
               b.append('Radiation spread to ');
               place(b, newly[0], 'territory ');
@@ -293,7 +325,7 @@ export function createLogFormatter() {
             }
           });
         for (const id of p.eliminatedPlayerIds as number[])
-          log(colorFor(id), (b) => {
+          log(id, (b) => {
             actor(b, id);
             b.append(' was eliminated by radiation');
           });
@@ -304,7 +336,7 @@ export function createLogFormatter() {
         const defenderId = p.defenderId as number | undefined;
         if (p.conquered) lastConquestAttackerId = attackerId;
         const defenderHighlight = badgeFor(defenderId);
-        log(colorFor(attackerId), (b) => {
+        log(attackerId, (b) => {
           actor(b, attackerId);
           b.append(' attacked ');
           if (defenderId !== undefined) opponent(b, defenderId);
@@ -362,7 +394,7 @@ export function createLogFormatter() {
         break;
       }
       case 'game:shipsBought':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           if (p.fromPool) {
             b.append(` deployed ${plural(n('ships'), 'ship')} to `);
@@ -374,7 +406,7 @@ export function createLogFormatter() {
         });
         break;
       case 'game:sailed':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(
             ` sailed ${plural(moved('shipsAdded', 'shipsRemoved'), 'ship')}`,
@@ -386,7 +418,7 @@ export function createLogFormatter() {
         const attackerId = n('attackerId');
         const defenderId = n('defenderId');
         const defenderHighlight = badgeFor(defenderId);
-        log(colorFor(attackerId), (b) => {
+        log(attackerId, (b) => {
           actor(b, attackerId);
           b.append(' attacked ');
           opponent(b, defenderId);
@@ -418,14 +450,14 @@ export function createLogFormatter() {
         break;
       }
       case 'game:surrendered':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(' surrendered');
         });
         break;
       case 'game:pointsScored':
         logRound(n('roundNumber'));
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(` scored ${plural(n('points'), 'point')}`);
           b.line('Total');
@@ -434,7 +466,7 @@ export function createLogFormatter() {
         break;
       case 'game:gameOver': {
         const winnerIds = p.winnerIds as number[];
-        log(NEUTRAL_LOG_COLOR, (b) => {
+        logWith(NEUTRAL_LOG_COLOR, false, (b) => {
           b.append('Game over');
           if (p.drawReason) {
             b.line('Result');
@@ -454,7 +486,7 @@ export function createLogFormatter() {
         break;
       }
       case 'game:cardSetPlayed':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(
             ` received ${plural(n('troops') - n('territoryBonusCount') * 2, 'troop')} from a set`,
@@ -466,7 +498,7 @@ export function createLogFormatter() {
         const sources = TURN_SOURCES.filter(([key]) => n(key) > 0);
         const withheld = n('troopsWithheld') > 0;
         if (sources.length === 0 && !withheld) break;
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(
             ` received ${plural(
@@ -489,7 +521,7 @@ export function createLogFormatter() {
         push(NEUTRAL_LOG_COLOR, 'Started capital placement');
         break;
       case 'game:territoryClaimed':
-        log(colorFor(n('playerId')), (b) => {
+        log(n('playerId'), (b) => {
           actor(b, n('playerId'));
           b.append(' claimed ');
           place(b, n('territoryId'), 'territory ');
@@ -501,7 +533,7 @@ export function createLogFormatter() {
         const actorId = p.playerId as number | undefined;
         const withId = n('withId');
         const formed = entry.type === 'game:allianceFormed';
-        log(colorFor(actorId ?? withId), (b) => {
+        log(actorId ?? withId, (b) => {
           if (actorId === undefined) {
             b.append(
               formed

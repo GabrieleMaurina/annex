@@ -71,11 +71,9 @@ const CARDS_MODES: CardsMode[] = [
   'exponential per player',
   'off',
 ];
-const GAME_MODES: GameMode[] = [
-  'supremacy',
+const OTHER_GAME_MODES: GameMode[] = [
   'supremacy 3/4',
   'supremacy 2/3',
-  'capitals',
   'team deathmatch',
   'continent',
   '5-round',
@@ -87,6 +85,9 @@ const GAME_MODES: GameMode[] = [
   'king of the hill',
   'empire',
 ];
+const SUPREMACY_SHARE = 0.4;
+const CAPITALS_SHARE = 0.4;
+const ZOMBIES_SHARE = 0.05;
 const BLITZ_VALUES: Blitz[] = ['balanced', 'true', 'fair', 'off'];
 const PLACEMENT_VALUES: Placement[] = ['random', 'semi', 'custom', 'single'];
 
@@ -186,11 +187,19 @@ function randomSides(rng: () => number): number {
   return MIN_SIDES + Math.floor(rng() * (MAX_SIDES - MIN_SIDES + 1));
 }
 
+function pickGameMode(rng: () => number): GameMode {
+  const roll = rng();
+  if (roll < SUPREMACY_SHARE) return 'supremacy';
+  if (roll < SUPREMACY_SHARE + CAPITALS_SHARE) return 'capitals';
+  if (roll < SUPREMACY_SHARE + CAPITALS_SHARE + ZOMBIES_SHARE) return 'zombies';
+  return pick(rng, OTHER_GAME_MODES);
+}
+
 export function randomGameSettings(
   rng: () => number,
   botCount: number,
 ): RandomSettings {
-  const gameMode = pick(rng, GAME_MODES);
+  const gameMode = pickGameMode(rng);
   const defaultDice = rng() < 0.95;
   const attackDice = defaultDice ? 3 : 1 + Math.floor(rng() * MAX_DICE);
   const defenceDice = defaultDice ? 2 : 1 + Math.floor(rng() * attackDice);
@@ -230,7 +239,10 @@ export function randomGameSettings(
       blitzOffAllowed ? BLITZ_VALUES : BLITZ_VALUES.filter((b) => b !== 'off'),
       'balanced',
     ),
-    placement: weightedDefault(rng, PLACEMENT_VALUES, 'random'),
+    placement:
+      gameMode === 'zombies'
+        ? 'random'
+        : weightedDefault(rng, PLACEMENT_VALUES, 'random'),
     fogOfWar: rng() < 0.3 ? 'on' : 'off',
     entrenchments: defenceDice < MAX_DICE && rng() < 0.3 ? 'on' : 'off',
     supplyLines: rng() < 0.3 ? 'on' : 'off',

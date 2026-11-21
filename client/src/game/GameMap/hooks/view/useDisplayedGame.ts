@@ -194,6 +194,7 @@ export function useDisplayedGame({
               name: p.name,
               color: p.color,
               isBot: p.isBot,
+              isZombie: p.isZombie,
             })),
             placeNames,
           )

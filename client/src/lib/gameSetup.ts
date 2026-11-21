@@ -170,7 +170,7 @@ function seatBots(
       (res: Ack) => {
         onAck(res);
         if (!res.ok) return;
-        const seated = res.game.players.filter((p) => p.isBot);
+        const seated = res.game.players.filter((p) => p.isBot && !p.isZombie);
         if (seated[index]) recordRestoredBotInput(seated[index].id, bot);
       },
     );
@@ -245,7 +245,7 @@ export function applySavedGameSettings(invite?: InviteSetup): void {
       : rules,
   );
   applySavedMap(mapGeneration, playerMapId);
-  if (invite) seatBots(2, []);
+  if (invite) seatBots(rules.gameMode === 'zombies' ? 3 : 2, []);
   else seatBots(getGameSlots(), getGameBots());
   if (connector.isOffline())
     for (const name of getGameLocalPlayers()) connector.addLocalPlayer(name);
@@ -260,10 +260,11 @@ export function applyPreset(
     preset.settings;
   void mapName;
   applyRules(rules, onAck);
-  const currentBots = game.players.filter((p) => p.isBot);
+  const currentBots = game.players.filter((p) => p.isBot && !p.isZombie);
   for (const bot of currentBots)
     connector.removeBot({ botPlayerId: bot.id }, onAck);
-  const humans = game.players.length - currentBots.length;
+  const zombieSeat = rules.gameMode === 'zombies' ? 1 : 0;
+  const humans = game.players.filter((p) => !p.isBot).length + zombieSeat;
   const seats = Math.max(slots, humans);
   seatBots(seats, bots.slice(0, seats - humans), onAck);
   if (mapGeneration) generateMap(mapGeneration, onAck);

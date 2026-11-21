@@ -16,6 +16,7 @@ const PARAMS: Record<Exclude<BotDifficulty, 'idle'>, DifficultyParams> = {
     claims: false,
     position: false,
     cleanup: false,
+    zombieCaution: 0.3,
   },
   medium: {
     noise: 0.37,
@@ -31,6 +32,7 @@ const PARAMS: Record<Exclude<BotDifficulty, 'idle'>, DifficultyParams> = {
     claims: false,
     position: false,
     cleanup: false,
+    zombieCaution: 0.65,
   },
   hard: {
     noise: 0.1,
@@ -46,6 +48,7 @@ const PARAMS: Record<Exclude<BotDifficulty, 'idle'>, DifficultyParams> = {
     claims: true,
     position: true,
     cleanup: true,
+    zombieCaution: 1,
   },
 };
 
@@ -65,6 +68,7 @@ export function difficultyParams(difficulty: BotDifficulty): DifficultyParams {
       claims: false,
       position: false,
       cleanup: false,
+      zombieCaution: 0,
     };
   return PARAMS[difficulty];
 }

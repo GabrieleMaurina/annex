@@ -87,6 +87,7 @@ interface OfflineSeed {
   teams: number[] | null;
   odds: PlayerOdds[] | null;
   bots: { difficulty: string; personality: string }[];
+  zombieDifficulty: string | null;
 }
 
 let seed: OfflineSeed | null = null;
@@ -94,7 +95,7 @@ let convertedFromOnline = false;
 
 export function seedOffline(state: GameState): void {
   const host = state.players.find((p) => !p.isBot);
-  const bots = state.players.filter((p) => p.isBot);
+  const bots = state.players.filter((p) => p.isBot && !p.isZombie);
   const earthMap =
     state.mapGeneration || state.playerMapId
       ? undefined
@@ -161,6 +162,8 @@ export function seedOffline(state: GameState): void {
             (odds) => odds ?? DEFAULT_PLAYER_ODDS,
           )
         : null,
+    zombieDifficulty:
+      state.players.find((p) => p.isZombie)?.botDifficulty ?? null,
     bots: bots.map((b) => ({
       difficulty: b.botDifficulty ?? 'easy',
       personality: b.botPersonality ?? 'random',
@@ -185,10 +188,15 @@ function applySeed(s: OfflineSeed): void {
   let resp = engine.updateSettings(id, { ...s.settings, slots: s.slots });
   for (const bot of s.bots)
     resp = engine.addBot(id, bot.difficulty, bot.personality);
+  const zombie = resp.ok
+    ? resp.game.players.find((p) => p.isZombie)
+    : undefined;
+  if (zombie && s.zombieDifficulty)
+    engine.setBotProfile(id, zombie.id, s.zombieDifficulty, 'balanced');
   const seated = resp.ok
     ? [
         resp.game.players.find((p) => !p.isBot),
-        ...resp.game.players.filter((p) => p.isBot),
+        ...resp.game.players.filter((p) => p.isBot && !p.isZombie),
       ]
     : [];
   if (s.odds && resp.ok)
@@ -368,6 +376,7 @@ const callbacks: EngineCallbacks = {
   onTurnStarted: forward('game:turnStarted'),
   onDeployed: forward('game:deployed'),
   onDeployedMany: forward('game:deployedMany'),
+  onInfected: forward('game:infected'),
   onFortified: forward('game:fortified'),
   onShipsBought: forward('game:shipsBought'),
   onSailed: forward('game:sailed'),

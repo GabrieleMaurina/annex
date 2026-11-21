@@ -30,6 +30,31 @@ function Overview() {
               <WikiLink key="a" to="modes/capitals" />,
             ],
             [
+              'Team Deathmatch',
+              'Your team owning every territory.',
+              <WikiLink key="a" to="modes/teams" />,
+            ],
+            [
+              'Zombies',
+              'Capturing every zombie territory after eliminating everyone else.',
+              <WikiLink key="a" to="modes/zombies" />,
+            ],
+            [
+              'Continent',
+              'Owning every territory of one chosen continent from round 4.',
+              <WikiLink key="a" to="modes/conquest" />,
+            ],
+            [
+              'King of the Hill',
+              'Reaching Max Points by holding hills.',
+              <WikiLink key="a" to="modes/scoring" />,
+            ],
+            [
+              'Empire',
+              'Reaching Max Points from territories and continents.',
+              <WikiLink key="a" to="modes/scoring" />,
+            ],
+            [
               'Supremacy 3/4',
               'Owning at least 3/4 of the territories.',
               <WikiLink key="a" to="modes/conquest" />,
@@ -38,16 +63,6 @@ function Overview() {
               'Supremacy 2/3',
               'Owning at least 2/3 of the territories.',
               <WikiLink key="a" to="modes/conquest" />,
-            ],
-            [
-              'Continent',
-              'Owning every territory of one chosen continent from round 4.',
-              <WikiLink key="a" to="modes/conquest" />,
-            ],
-            [
-              'Team Deathmatch',
-              'Your team owning every territory.',
-              <WikiLink key="a" to="modes/teams" />,
             ],
             [
               '5-Round, 10-Round',
@@ -72,16 +87,6 @@ function Overview() {
             [
               'Troop Kills',
               'Destroying the most enemy troops.',
-              <WikiLink key="a" to="modes/scoring" />,
-            ],
-            [
-              'King of the Hill',
-              'Reaching Max Points by holding hills.',
-              <WikiLink key="a" to="modes/scoring" />,
-            ],
-            [
-              'Empire',
-              'Reaching Max Points from territories and continents.',
               <WikiLink key="a" to="modes/scoring" />,
             ],
           ]}

@@ -1,4 +1,4 @@
-import { defenceDiceFor } from '../../game/combat/dice';
+import { defenceDiceFor, diceTiesFor } from '../../game/combat/dice';
 import { connectedSeaTerritories } from '../../game/world/connectivity';
 import { SHIP_COST } from '../../game/world/seaShips';
 import { Game } from '../../types';
@@ -92,6 +92,8 @@ export function chooseShipPurchase(
             attackers,
             o.targetTroops,
             defenceDiceFor(game, o.targetId),
+            game.attackDice,
+            diceTiesFor(game, o.targetId),
           ) >= minWinProbability(game))
       );
     })

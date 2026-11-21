@@ -211,6 +211,7 @@ function buildGameState(
         troopsKilled: result?.troopsKilled ?? 0,
         troopsLost: result?.troopsLost ?? 0,
         isBot: p.isBot,
+        isZombie: !!p.isZombie,
         botDifficulty: p.botDifficulty,
         botPersonality: p.botPersonality,
       };

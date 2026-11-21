@@ -157,33 +157,35 @@ export type TurnDuration = 30 | 60 | 90 | 120 | 150 | 180 | 300;
 export type GameMode =
   | 'supremacy'
   | 'capitals'
+  | 'team deathmatch'
+  | 'zombies'
+  | 'continent'
+  | 'king of the hill'
+  | 'empire'
   | 'supremacy 3/4'
   | 'supremacy 2/3'
-  | 'team deathmatch'
-  | 'continent'
   | '5-round'
   | '10-round'
   | 'assassin'
   | 'mission'
   | 'player kills'
-  | 'troop kills'
-  | 'king of the hill'
-  | 'empire';
+  | 'troop kills';
 export const GAME_MODES: GameMode[] = [
   'supremacy',
   'capitals',
+  'team deathmatch',
+  'zombies',
+  'continent',
+  'king of the hill',
+  'empire',
   'supremacy 3/4',
   'supremacy 2/3',
-  'team deathmatch',
-  'continent',
   '5-round',
   '10-round',
   'assassin',
   'mission',
   'player kills',
   'troop kills',
-  'king of the hill',
-  'empire',
 ];
 
 export type Placement = 'random' | 'semi' | 'custom' | 'single';
@@ -448,6 +450,7 @@ export interface GameState {
     troopsKilled: number | null;
     troopsLost: number | null;
     isBot: boolean;
+    isZombie: boolean;
     botDifficulty: BotDifficulty | 'random' | null;
     botPersonality: BotPersonality | 'random' | null;
   }[];
@@ -757,6 +760,7 @@ export interface StoredGame {
     name: string;
     country: string | null;
     isBot: boolean;
+    isZombie?: boolean;
     botDifficulty: BotDifficulty | null;
     botPersonality: BotPersonality | null;
     team: number;
@@ -820,7 +824,13 @@ export interface GameHistoryRow {
   draw: boolean;
   yourRank: number | null;
   settings: StoredGameSettings;
-  players: { name: string; isBot: boolean; color: number; team: number }[];
+  players: {
+    name: string;
+    isBot: boolean;
+    isZombie: boolean;
+    color: number;
+    team: number;
+  }[];
 }
 
 export interface GamesQuery {

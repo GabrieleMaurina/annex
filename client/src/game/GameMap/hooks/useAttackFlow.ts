@@ -6,6 +6,7 @@ import { playSound } from '../../../lib/sounds';
 import type {
   Ack,
   BlitzOutcome,
+  DiceTies,
   GameState,
   LockedTile,
   MapSwitch,
@@ -67,6 +68,8 @@ export function useAttackFlow({
   paused,
   blitzEnabled,
   attackDice,
+  diceTies,
+  zombieId,
   closedTiles,
   switches,
   cards,
@@ -89,6 +92,8 @@ export function useAttackFlow({
   paused: boolean;
   blitzEnabled: boolean;
   attackDice: number;
+  diceTies: DiceTies;
+  zombieId: number | null;
   closedTiles: LockedTile[];
   switches: MapSwitch[];
   cards: GameState['cards'];
@@ -330,6 +335,9 @@ export function useAttackFlow({
       maxBlitzTroops,
       attackDice,
     );
+    const defenderIsZombie =
+      attackEndTerritoryId !== null &&
+      ownerById.get(attackEndTerritoryId)?.ownerId === zombieId;
     const preRevealSnapshot = {
       maxBlitzTroops,
       blitzWinProbabilities: attackWinProbabilities ?? [],
@@ -373,6 +381,7 @@ export function useAttackFlow({
           attackerDice: res.attackerDice,
           defenderDice: res.defenderDice,
           territoryId: attackEndTerritoryId!,
+          ties: defenderIsZombie ? 'attack' : diceTies,
           id: rollId,
         });
         setAttackDiceSettled(false);
@@ -421,6 +430,9 @@ export function useAttackFlow({
     attackConquestMinTroops,
     maxBlitzTroops,
     attackDice,
+    ownerById,
+    diceTies,
+    zombieId,
     attackWinProbabilities,
     attackBlitzOutcomes,
     setGame,

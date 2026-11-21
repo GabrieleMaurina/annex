@@ -33,11 +33,13 @@ import {
   type Point,
 } from '../helpers';
 import type { DrawCanvasParams } from './drawCanvas';
+import { fillZombieTexture } from './zombieTexture';
 
 const ANTI_NUKE_COLOR = '#22d3ee';
 
 interface MarkerData {
   color: string;
+  textured: boolean;
   stroke: string;
   width: number;
 }
@@ -89,6 +91,7 @@ interface ModifierScene {
   cracking: Set<number>;
   ownerOf: (id: number) => GameState['territories'][number] | undefined;
   fillColorOf: (id: number) => string;
+  zombieOwned: (id: number) => boolean;
   ready: boolean;
 }
 
@@ -142,7 +145,7 @@ function collectTerritoryLooks(
     cardByTerritoryId,
     ownedTerritoryIds,
   } = params;
-  const { visibleSet, cracking, ownerOf, fillColorOf } = scene;
+  const { visibleSet, cracking, ownerOf, fillColorOf, zombieOwned } = scene;
   const toxinById = new Map(displayedToxinTerritories.map((t) => [t.id, t]));
   for (const t of territories) {
     if (cracking.has(t.id)) continue;
@@ -184,6 +187,7 @@ function collectTerritoryLooks(
         state: owner?.isCapital ? 'square' : 'circle',
         data: {
           color: fillColorOf(t.id),
+          textured: zombieOwned(t.id),
           stroke: style.stroke,
           width: style.width,
         },
@@ -463,6 +467,8 @@ export function drawOverModifiers(frame: ModifierFrame, id: number, p: Point) {
       else path.arc(p.x, p.y, radius, 0, Math.PI * 2);
       const ripple = markerRipple(frame.captures.get(id), p, radius);
       fillWithRipple(ctx, path, marker.data.color, ripple);
+      if (marker.data.textured && !ripple)
+        fillZombieTexture(ctx, path, uiScale);
       ctx.strokeStyle = marker.data.stroke;
       ctx.lineWidth = marker.data.width * uiScale;
       ctx.stroke(path);

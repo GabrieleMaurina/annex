@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Button } from 'react-bootstrap';
 import type { PlayerHistoryPoint } from '../../lib/types';
+import { lineAt, nearestIndex } from './chartSearch';
+import type { ChartPoint, ChartTip } from './ChartTooltipArea';
+import { ChartHit, ChartTooltipArea } from './ChartTooltipArea';
 
 const WIDTH = 1000;
 const HEIGHT = 240;
@@ -84,6 +87,53 @@ function CareerChart({ history, includeElo }: Props) {
     .map((v, i) => `${i === 0 ? 'M' : 'L'}${x(times[i])},${y(v)}`)
     .join(' ');
 
+  function tipAt(point: ChartPoint): ChartTip | null {
+    const time =
+      minTime + ((point.x * WIDTH - MARGIN.left) / plotWidth) * timeSpan;
+    const lineY = y(lineAt(times, values, time)) / HEIGHT;
+    if (Math.abs(lineY - point.y) > point.reachY) return null;
+    const index = nearestIndex(times, time);
+    const game = history[index - 1];
+    const marker = {
+      x: x(times[index]) / WIDTH,
+      y: y(values[index]) / HEIGHT,
+      color: 'var(--bs-primary)',
+    };
+    const when = {
+      label: 'Date',
+      value: new Date(times[index]).toLocaleString(),
+    };
+    if (!game) {
+      return {
+        id: '0',
+        title: `${selected.label} at start`,
+        rows: [
+          when,
+          { label: selected.label, value: values[index].toLocaleString() },
+        ],
+        marker,
+      };
+    }
+    const change = values[index] - values[index - 1];
+    return {
+      id: String(index),
+      title: `Game ${index}`,
+      rows: [
+        when,
+        {
+          label: 'Result',
+          value: game.draw ? 'Draw' : game.won ? 'Won' : 'Lost',
+        },
+        { label: selected.label, value: values[index].toLocaleString() },
+        {
+          label: 'This game',
+          value: `${change > 0 ? '+' : ''}${change.toLocaleString()}`,
+        },
+      ],
+      marker,
+    };
+  }
+
   return (
     <div>
       <div className="d-flex flex-wrap justify-content-center gap-1 mb-2">
@@ -99,72 +149,79 @@ function CareerChart({ history, includeElo }: Props) {
           </Button>
         ))}
       </div>
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="w-100"
-        role="img"
-        aria-label={`${selected.label} over time`}
-      >
-        {Array.from({ length: Y_TICKS + 1 }, (_, i) => yMin + i * yStep).map(
-          (value) => (
-            <g key={`y${value}`} className="text-body-secondary">
-              <line
-                x1={MARGIN.left}
-                x2={WIDTH - MARGIN.right}
-                y1={y(value)}
-                y2={y(value)}
-                stroke="currentColor"
-                strokeOpacity={0.25}
-              />
+      <ChartTooltipArea>
+        <svg
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          className="w-100 d-block"
+          role="img"
+          aria-label={`${selected.label} over time`}
+        >
+          {Array.from({ length: Y_TICKS + 1 }, (_, i) => yMin + i * yStep).map(
+            (value) => (
+              <g key={`y${value}`} className="text-body-secondary">
+                <line
+                  x1={MARGIN.left}
+                  x2={WIDTH - MARGIN.right}
+                  y1={y(value)}
+                  y2={y(value)}
+                  stroke="currentColor"
+                  strokeOpacity={0.25}
+                />
+                <text
+                  x={MARGIN.left - 4}
+                  y={y(value)}
+                  textAnchor="end"
+                  dominantBaseline="middle"
+                  fontSize={11}
+                  fill="currentColor"
+                >
+                  {selected === ELO ? value : compact.format(value)}
+                </text>
+              </g>
+            ),
+          )}
+          {Array.from({ length: X_TICKS + 1 }, (_, i) => i / X_TICKS).map(
+            (t) => (
               <text
-                x={MARGIN.left - 4}
-                y={y(value)}
-                textAnchor="end"
-                dominantBaseline="middle"
+                key={`x${t}`}
+                x={MARGIN.left + t * plotWidth}
+                y={HEIGHT - 6}
+                textAnchor={t === 0 ? 'start' : t === 1 ? 'end' : 'middle'}
                 fontSize={11}
                 fill="currentColor"
+                className="text-body-secondary"
               >
-                {selected === ELO ? value : compact.format(value)}
+                {new Date(minTime + t * timeSpan).toLocaleDateString()}
               </text>
-            </g>
-          ),
-        )}
-        {Array.from({ length: X_TICKS + 1 }, (_, i) => i / X_TICKS).map((t) => (
-          <text
-            key={`x${t}`}
-            x={MARGIN.left + t * plotWidth}
-            y={HEIGHT - 6}
-            textAnchor={t === 0 ? 'start' : t === 1 ? 'end' : 'middle'}
-            fontSize={11}
-            fill="currentColor"
-            className="text-body-secondary"
-          >
-            {new Date(minTime + t * timeSpan).toLocaleDateString()}
-          </text>
-        ))}
-        <path
-          d={path}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinejoin="round"
-          className="text-primary"
-        />
-        {values.map((v, i) => (
-          <circle
-            key={i}
-            cx={x(times[i])}
-            cy={y(v)}
-            r={2.5}
-            fill="currentColor"
+            ),
+          )}
+          <path
+            d={path}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinejoin="round"
             className="text-primary"
-          >
-            <title>
-              {new Date(times[i]).toLocaleString()}: {v.toLocaleString()}
-            </title>
-          </circle>
-        ))}
-      </svg>
+          />
+          {values.map((v, i) => (
+            <circle
+              key={i}
+              cx={x(times[i])}
+              cy={y(v)}
+              r={2.5}
+              fill="currentColor"
+              className="text-primary"
+            />
+          ))}
+          <ChartHit
+            x={MARGIN.left}
+            y={MARGIN.top}
+            width={plotWidth}
+            height={plotHeight}
+            tipAt={tipAt}
+          />
+        </svg>
+      </ChartTooltipArea>
     </div>
   );
 }

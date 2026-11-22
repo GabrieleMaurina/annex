@@ -14,6 +14,7 @@ import { playerSwatch } from '../lib/palette';
 import type { GameState } from '../lib/types';
 import SettingsPanel from '../lobby/settings/SettingsPanel';
 import { getGeneratedMapData } from './mapData';
+import DamageMatrix from './replay/DamageMatrix';
 import GameStatsChart from './replay/GameStatsChart';
 import MapAction from './replay/MapAction';
 import type { FoldedReplay } from './replay/replay';
@@ -220,6 +221,12 @@ function GameEndResults({
             capitalIds={capitalIds}
             isPointsMode={pointsMode}
           />
+        </div>
+      )}
+
+      {replay && (
+        <div className="mt-4">
+          <DamageMatrix players={game.players} replay={replay} />
         </div>
       )}
 

@@ -36,6 +36,7 @@ export interface PlayerHistoryPoint extends CareerTotals {
   elo: number;
   eloDelta: number;
   won: boolean;
+  draw: boolean;
 }
 
 export type GameResultDoc = GameExport['results'][number] & {
@@ -327,6 +328,7 @@ export function getPlayerHistory(
             elo: player.elo,
             eloDelta: player.eloDelta,
             won: !doc.draw && result?.rank === 0,
+            draw: !!doc.draw?.playerIds.includes(player.playerId),
             playersKilled: result?.playersKilled.length ?? 0,
             troopsGained: result?.troopsGained ?? 0,
             troopsKilled: result?.troopsKilled ?? 0,

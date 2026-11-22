@@ -808,6 +808,7 @@ export interface PlayerHistoryPoint extends CareerTotals {
   elo: number;
   eloDelta: number;
   won: boolean;
+  draw: boolean;
 }
 
 export interface GameHistoryRow {

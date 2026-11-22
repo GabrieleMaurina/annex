@@ -70,7 +70,8 @@ function Results() {
         <p>
           The results include charts of how each player changed over time (
           <WikiLink to="history/replays#charts" />
-          ).
+          ), a table of who destroyed whose troops, and a Per round view with
+          bars for how much each stat changed in every round.
         </p>
       </WikiSection>
       <WikiSection id="export" title="Exporting the data">

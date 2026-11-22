@@ -43,10 +43,31 @@ function Replays() {
       <WikiSection id="charts" title="Charts and heat map">
         <p>
           The stats chart plots each player against time. Switch between Troops,
-          Territories, Capitals, Bonuses (continents held), Generation (the
-          troops each player received at the start of their turn, not counting
-          card sets), ownership, Points, kills, troops gained, killed and lost,
-          conquests, cards and sets played.
+          Territories, Capitals, Largest Stack, Cards In Hand, Bonuses
+          (continents held), Generation (the troops each player received at the
+          start of their turn, not counting card sets), ownership, Points,
+          kills, troops gained, killed and lost, conquests, cards and sets
+          played.
+        </p>
+        <p>
+          Hover a line or area to see which player it belongs to, the round, the
+          value, how it changed, the rank and any bot or disconnected status.
+          Click to keep the tooltip open, then click the tooltip, press Escape
+          or click anywhere else to close it.
+        </p>
+        <p>
+          On the Over time view, a skull marks the moment a player was
+          eliminated and a square marks a captured capital, each with a dashed
+          vertical line in the player's color. Hover a marker to see who it was
+          and, for an elimination, who did it. The Per round view swaps the
+          lines for bars: one bar per player for each round, showing how much
+          the stat changed during that round.
+        </p>
+        <p>
+          Under the chart, the Troops destroyed table shows how many troops each
+          player destroyed of every other player, with each row in its player's
+          color and stronger colors for bigger numbers. Hover a cell to see both
+          directions.
         </p>
         <p>
           The heat map button on the replay map shades every territory by how

@@ -72,7 +72,10 @@ function Profiles() {
       <WikiSection id="chart" title="Stats over time">
         <p>
           A chart draws the career totals game by game. Use the buttons above it
-          to switch between Elo and each statistic.
+          to switch between Elo and each statistic. Hover the line to see the
+          game, its date, result, the total and the change it made. Click the
+          line to keep that tooltip open, then click the tooltip or anywhere
+          else to close it.
         </p>
       </WikiSection>
       <WikiSection id="achievements" title="Achievements, games and maps">
